@@ -98,5 +98,5 @@ struct TransactionRow: View {
 }
 
 #Preview {
-    TransactionsTableView(viewModel: TransactionsViewModel())
+    TransactionsTableView(viewModel: TransactionsViewModel(), limit: nil)
 }
