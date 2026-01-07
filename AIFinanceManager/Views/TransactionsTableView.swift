@@ -42,6 +42,7 @@ struct TransactionRow: View {
     let transaction: Transaction
     let currency: String
     let uniqueCategories: [String]
+    let customCategories: [CustomCategory]
     let onUpdateCategory: (String, String?) -> Void
     
     var body: some View {
