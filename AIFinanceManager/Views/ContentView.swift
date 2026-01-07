@@ -17,8 +17,12 @@ struct ContentView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
+                    if !viewModel.allTransactions.isEmpty {
+                        summaryCards
+                    }
+
                     QuickAddTransactionView(viewModel: viewModel)
-                    
+
                     if viewModel.isLoading {
                         ProgressView("Analyzing PDF...")
                             .padding()
@@ -27,11 +31,8 @@ struct ContentView: View {
                     if let error = viewModel.errorMessage {
                         ErrorMessageView(message: error)
                     }
-                    
-                    if !viewModel.allTransactions.isEmpty {
-                        summaryCards
-                        transactionsSection
-                    }
+
+                    transactionsSection
                 }
                 .padding()
             }
@@ -56,14 +57,10 @@ struct ContentView: View {
     private var summaryCards: some View {
         let summary = viewModel.summary
         let currency = viewModel.allTransactions.first?.currency ?? "USD"
-        
-        return LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible())
-        ], spacing: 16) {
+
+        return HStack(spacing: 12) {
             SummaryCard(title: "Income", amount: summary.totalIncome, currency: currency, color: .green)
             SummaryCard(title: "Expenses", amount: summary.totalExpenses, currency: currency, color: .red)
-            SummaryCard(title: "Internal", amount: summary.totalInternalTransfers, currency: currency, color: .gray)
             SummaryCard(
                 title: "Net Flow",
                 amount: summary.netFlow,
