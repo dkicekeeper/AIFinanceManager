@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var viewModel = TransactionsViewModel()
     @State private var showingFilePicker = false
     @State private var selectedFileURL: URL?
+    @State private var showAllTransactions = false
     
     var body: some View {
         NavigationView {
@@ -100,11 +101,25 @@ struct ContentView: View {
     
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Transactions")
-                .font(.title2)
-                .fontWeight(.bold)
+            HStack {
+                Text("Transactions")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Spacer()
+                
+                if !viewModel.filteredTransactions.isEmpty {
+                    Button(showAllTransactions ? "Hide" : "Show all") {
+                        showAllTransactions.toggle()
+                    }
+                    .font(.caption)
+                }
+            }
             
-            TransactionsTableView(viewModel: viewModel)
+            TransactionsTableView(
+                viewModel: viewModel,
+                limit: showAllTransactions ? nil : 3
+            )
         }
     }
     

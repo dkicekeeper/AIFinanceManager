@@ -9,15 +9,19 @@ import SwiftUI
 
 struct TransactionsTableView: View {
     @ObservedObject var viewModel: TransactionsViewModel
+    let limit: Int?
     
     var body: some View {
-        if viewModel.filteredTransactions.isEmpty {
+        let all = viewModel.filteredTransactions
+        let transactions = limit != nil ? Array(all.prefix(limit!)) : all
+        
+        if transactions.isEmpty {
             Text("No transactions found")
                 .foregroundColor(.secondary)
                 .padding()
         } else {
             List {
-                ForEach(viewModel.filteredTransactions) { transaction in
+                ForEach(transactions) { transaction in
                     TransactionRow(
                         transaction: transaction,
                         currency: viewModel.allTransactions.first?.currency ?? "USD",
