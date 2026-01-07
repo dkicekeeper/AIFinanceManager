@@ -41,7 +41,10 @@ struct ContentView: View {
                 }
 
                 // История операций со своей прокруткой
-                transactionsSection
+                NavigationLink(destination: HistoryView(viewModel: viewModel)) {
+                    transactionsSection
+                }
+                .buttonStyle(PlainButtonStyle())
             }
             .padding(.vertical)
             .navigationTitle("AI Finance Manager")
