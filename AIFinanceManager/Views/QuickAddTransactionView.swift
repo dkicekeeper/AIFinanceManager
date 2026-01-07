@@ -88,14 +88,37 @@ struct QuickAddTransactionView: View {
     }
     
     private var popularCategories: [String] {
-        if viewModel.popularCategories.isEmpty {
+        // Получаем все категории: пользовательские + дефолтные
+        var allCategories = Set<String>()
+        
+        // Добавляем пользовательские категории расходов
+        for customCategory in viewModel.customCategories where customCategory.type == .expense {
+            allCategories.insert(customCategory.name)
+        }
+        
+        // Добавляем категории из транзакций
+        for category in viewModel.popularCategories {
+            allCategories.insert(category)
+        }
+        
+        // Если нет категорий, добавляем дефолтные
+        if allCategories.isEmpty {
             return [
                 "Food", "Transport", "Shopping", "Entertainment",
                 "Bills", "Health", "Education", "Travel",
                 "Gifts", "Pets", "Groceries", "Coffee", "Subscriptions", "Other"
             ]
         }
-        return viewModel.popularCategories
+        
+        // Сортируем по популярности (сумме расходов)
+        return Array(allCategories).sorted { category1, category2 in
+            let total1 = viewModel.categoryExpenses[category1]?.total ?? 0
+            let total2 = viewModel.categoryExpenses[category2]?.total ?? 0
+            if total1 != total2 {
+                return total1 > total2
+            }
+            return category1 < category2
+        }
     }
 }
 

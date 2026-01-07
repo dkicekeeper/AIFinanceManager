@@ -12,7 +12,6 @@ struct ContentView: View {
     @StateObject private var viewModel = TransactionsViewModel()
     @State private var showingFilePicker = false
     @State private var selectedFileURL: URL?
-    @State private var showAllTransactions = false
     
     var body: some View {
         NavigationView {
@@ -23,7 +22,7 @@ struct ContentView: View {
                 }
 
                 if !viewModel.allTransactions.isEmpty {
-                    summaryCards
+                    analyticsCard
                         .padding(.horizontal)
                 }
 
@@ -92,42 +91,75 @@ struct ContentView: View {
             .padding(.vertical, 4)
         }
     }
-    private var summaryCards: some View {
-        let summary = viewModel.summary
-        let currency = viewModel.allTransactions.first?.currency ?? "USD"
-
-        return HStack(spacing: 12) {
-            SummaryCard(title: "Income", amount: summary.totalIncome, currency: currency, color: .green)
-            SummaryCard(title: "Expenses", amount: summary.totalExpenses, currency: currency, color: .red)
-            SummaryCard(
-                title: "Net Flow",
-                amount: summary.netFlow,
-                currency: currency,
-                color: summary.netFlow >= 0 ? .green : .red
-            )
+    private var analyticsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Аналитика операций")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+            }
+            
+            let summary = viewModel.summary
+            let currency = viewModel.allTransactions.first?.currency ?? "USD"
+            
+            HStack(spacing: 16) {
+                // Расходы
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Расходы")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(Color.red)
+                            .frame(width: 60, height: 8)
+                            .cornerRadius(4)
+                        
+                        Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                // Доходы
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Доходы")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(Color.green)
+                            .frame(width: 60, height: 8)
+                            .cornerRadius(4)
+                        
+                        Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.green)
+                    }
+                }
+            }
         }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
     
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Transactions")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                if !viewModel.filteredTransactions.isEmpty {
-                    Button(showAllTransactions ? "Hide" : "Show all") {
-                        showAllTransactions.toggle()
-                    }
-                    .font(.caption)
-                }
-            }
+            Text("Transactions")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
             
             TransactionsTableView(
                 viewModel: viewModel,
-                limit: showAllTransactions ? nil : 3
+                limit: 3
             )
         }
     }

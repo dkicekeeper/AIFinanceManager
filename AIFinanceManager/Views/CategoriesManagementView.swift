@@ -72,12 +72,57 @@ struct CategoriesManagementView: View {
     }
     
     private var filteredCategories: [CustomCategory] {
-        viewModel.customCategories.filter { $0.type == selectedType }
+        var categories: [CustomCategory] = []
+        
+        // Добавляем пользовательские категории
+        categories.append(contentsOf: viewModel.customCategories.filter { $0.type == selectedType })
+        
+        // Добавляем дефолтные категории, которых нет среди пользовательских
+        let defaultCategories = getDefaultCategories(for: selectedType)
+        let customCategoryNames = Set(categories.map { $0.name.lowercased() })
+        
+        for defaultCat in defaultCategories {
+            if !customCategoryNames.contains(defaultCat.name.lowercased()) {
+                categories.append(defaultCat)
+            }
+        }
+        
+        return categories.sorted { $0.name < $1.name }
+    }
+    
+    private func getDefaultCategories(for type: TransactionType) -> [CustomCategory] {
+        if type == .expense {
+            return [
+                CustomCategory(name: "Food", emoji: "🍔", colorHex: "#3b82f6", type: .expense),
+                CustomCategory(name: "Transport", emoji: "🚕", colorHex: "#8b5cf6", type: .expense),
+                CustomCategory(name: "Shopping", emoji: "🛍️", colorHex: "#ec4899", type: .expense),
+                CustomCategory(name: "Entertainment", emoji: "🎉", colorHex: "#f97316", type: .expense),
+                CustomCategory(name: "Bills", emoji: "💡", colorHex: "#eab308", type: .expense),
+                CustomCategory(name: "Health", emoji: "🏥", colorHex: "#22c55e", type: .expense),
+                CustomCategory(name: "Education", emoji: "🎓", colorHex: "#14b8a6", type: .expense),
+                CustomCategory(name: "Travel", emoji: "✈️", colorHex: "#06b6d4", type: .expense),
+                CustomCategory(name: "Gifts", emoji: "🎁", colorHex: "#6366f1", type: .expense),
+                CustomCategory(name: "Pets", emoji: "🐾", colorHex: "#d946ef", type: .expense),
+                CustomCategory(name: "Groceries", emoji: "🛒", colorHex: "#f43f5e", type: .expense),
+                CustomCategory(name: "Coffee", emoji: "☕️", colorHex: "#a855f7", type: .expense),
+                CustomCategory(name: "Subscriptions", emoji: "📺", colorHex: "#10b981", type: .expense),
+                CustomCategory(name: "Other", emoji: "💰", colorHex: "#f59e0b", type: .expense)
+            ]
+        } else {
+            return [
+                CustomCategory(name: "Income", emoji: "💵", colorHex: "#22c55e", type: .income),
+                CustomCategory(name: "Salary", emoji: "💼", colorHex: "#10b981", type: .income),
+                CustomCategory(name: "Bonus", emoji: "🎁", colorHex: "#3b82f6", type: .income),
+                CustomCategory(name: "Investment", emoji: "📈", colorHex: "#8b5cf6", type: .income),
+                CustomCategory(name: "Other", emoji: "💰", colorHex: "#f59e0b", type: .income)
+            ]
+        }
     }
 }
 
 struct CategoryRow: View {
     let category: CustomCategory
+    let isDefault: Bool
     let onEdit: () -> Void
     let onDelete: () -> Void
     
@@ -109,9 +154,11 @@ struct CategoryRow: View {
                         .foregroundColor(.blue)
                 }
                 
-                Button(action: onDelete) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.red)
+                if !isDefault {
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                    }
                 }
             }
         }

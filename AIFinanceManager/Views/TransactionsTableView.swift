@@ -13,7 +13,7 @@ struct TransactionsTableView: View {
     
     var body: some View {
         let all = viewModel.filteredTransactions
-        let transactions = limit != nil ? Array(all.prefix(limit!)) : all
+        let transactions = limit != nil ? Array(all.suffix(limit!)) : all
         
         if transactions.isEmpty {
             Text("No transactions found")
