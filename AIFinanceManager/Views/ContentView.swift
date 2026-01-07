@@ -17,8 +17,6 @@ struct ContentView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    headerView
-                    
                     QuickAddTransactionView(viewModel: viewModel)
                     
                     if viewModel.isLoading {
@@ -55,15 +53,6 @@ struct ContentView: View {
             }
         }
     }
-    
-    private var headerView: some View {
-        VStack(spacing: 8) {
-            Text("Upload statements to build your financial history")
-                .font(.headline)
-                .foregroundColor(.secondary)
-        }
-    }
-    
     private var summaryCards: some View {
         let summary = viewModel.summary
         let currency = viewModel.allTransactions.first?.currency ?? "USD"

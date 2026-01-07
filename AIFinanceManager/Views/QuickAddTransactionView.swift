@@ -14,46 +14,30 @@ struct QuickAddTransactionView: View {
     @State private var showingModal = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Quick Add Transaction")
-                .font(.headline)
-            
-            Text("Tap a coin to quickly add a transaction")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            // Coins
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(popularCategories, id: \.self) { category in
-                        CoinView(
-                            category: category,
-                            type: .expense,
-                            onTap: {
-                                selectedCategory = category
-                                selectedType = .expense
-                                showingModal = true
-                            }
-                        )
+        LazyVGrid(columns: gridColumns, spacing: 16) {
+            ForEach(popularCategories, id: \.self) { category in
+                CoinView(
+                    category: category,
+                    type: .expense,
+                    onTap: {
+                        selectedCategory = category
+                        selectedType = .expense
+                        showingModal = true
                     }
-                    
-                    // Income coin
-                    CoinView(
-                        category: "Income",
-                        type: .income,
-                        onTap: {
-                            selectedCategory = "Income"
-                            selectedType = .income
-                            showingModal = true
-                        }
-                    )
-                }
-                .padding(.horizontal)
+                )
             }
+            
+            // Income coin
+            CoinView(
+                category: "Income",
+                type: .income,
+                onTap: {
+                    selectedCategory = "Income"
+                    selectedType = .income
+                    showingModal = true
+                }
+            )
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
         .sheet(isPresented: $showingModal) {
             AddTransactionModal(
                 category: selectedCategory ?? "",
@@ -85,11 +69,19 @@ struct QuickAddTransactionView: View {
         }
     }
     
+    private var gridColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+    }
+    
     private var popularCategories: [String] {
         if viewModel.popularCategories.isEmpty {
-            return ["Food", "Transport", "Shopping", "Entertainment", "Bills", "Health", "Education", "Other"]
+            return [
+                "Food", "Transport", "Shopping", "Entertainment",
+                "Bills", "Health", "Education", "Travel",
+                "Gifts", "Pets", "Other"
+            ]
         }
-        return Array(viewModel.popularCategories.prefix(8))
+        return viewModel.popularCategories
     }
 }
 
