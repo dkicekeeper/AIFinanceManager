@@ -61,9 +61,11 @@ struct QuickAddTransactionView: View {
                     
                     viewModel.addTransaction(transaction)
                     selectedCategory = nil
+                    showingModal = false
                 },
                 onCancel: {
                     selectedCategory = nil
+                    showingModal = false
                 }
             )
         }
