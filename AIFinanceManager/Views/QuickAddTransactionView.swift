@@ -83,7 +83,7 @@ struct QuickAddTransactionView: View {
             return [
                 "Food", "Transport", "Shopping", "Entertainment",
                 "Bills", "Health", "Education", "Travel",
-                "Gifts", "Pets", "Other"
+                "Gifts", "Pets", "Groceries", "Coffee", "Subscriptions", "Other"
             ]
         }
         return viewModel.popularCategories
@@ -115,10 +115,22 @@ struct CoinView: View {
                     .scaleEffect(isPressed ? 0.9 : 1.0)
                     .animation(.easeInOut(duration: 0.1), value: isPressed)
                 
-                Text(category)
-                    .font(.caption)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
+                VStack(spacing: 2) {
+                    Text(category)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    if type == .expense {
+                        let total = viewModel.categoryExpenses[category]?.total ?? 0
+                        if total != 0 {
+                            Text(Formatting.formatCurrency(total, currency: viewModel.allTransactions.first?.currency ?? "USD"))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
             }
         }
         .buttonStyle(PlainButtonStyle())
@@ -168,7 +180,10 @@ private enum CategoryEmoji {
             "salary": "💼",
             "delivery": "📦",
             "gifts": "🎁",
-            "travel": "✈️"
+            "travel": "✈️",
+            "groceries": "🛒",
+            "coffee": "☕️",
+            "subscriptions": "📺"
         ]
         if let value = map[key] { return value }
         return type == .income ? "💵" : "💰"

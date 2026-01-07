@@ -16,6 +16,11 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 16) {
+                if !viewModel.accounts.isEmpty {
+                    accountsSection
+                        .padding(.horizontal)
+                }
+
                 if !viewModel.allTransactions.isEmpty {
                     summaryCards
                         .padding(.horizontal)
@@ -54,6 +59,27 @@ struct ContentView: View {
                     }
                 }
             }
+        }
+    }
+    
+    private var accountsSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(viewModel.accounts) { account in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(account.name)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(10)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+                }
+            }
+            .padding(.vertical, 4)
         }
     }
     private var summaryCards: some View {
@@ -110,7 +136,7 @@ struct SummaryCard: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             Text(Formatting.formatCurrency(amount, currency: currency))
-                .font(.title2)
+                .font(.headline)
                 .fontWeight(.bold)
                 .foregroundColor(color)
         }

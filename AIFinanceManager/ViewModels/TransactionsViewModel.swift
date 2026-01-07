@@ -24,6 +24,12 @@ class TransactionsViewModel: ObservableObject {
     
     init() {
         loadFromStorage()
+        
+        // Авто-создание базового счёта, если их ещё нет
+        if accounts.isEmpty {
+            let currency = allTransactions.first?.currency ?? "USD"
+            addAccount(name: "Main", balance: 0, currency: currency)
+        }
     }
     
     var filteredTransactions: [Transaction] {

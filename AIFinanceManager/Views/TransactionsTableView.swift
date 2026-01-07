@@ -39,9 +39,6 @@ struct TransactionRow: View {
     let uniqueCategories: [String]
     let onUpdateCategory: (String, String?) -> Void
     
-    @State private var isEditingCategory = false
-    @State private var categoryText = ""
-    
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
@@ -52,29 +49,19 @@ struct TransactionRow: View {
                 Text(transaction.description)
                     .font(.body)
                 
-                if isEditingCategory {
-                    TextField("Category", text: $categoryText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .onSubmit {
-                            saveCategory()
-                        }
-                } else {
-                    Button(action: { startEditing() }) {
-                        HStack {
-                            Text(transaction.category)
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(CategoryColors.hexColor(for: transaction.category, opacity: 0.2))
-                                .foregroundColor(CategoryColors.hexColor(for: transaction.category))
-                                .cornerRadius(8)
-                            
-                            if let subcategory = transaction.subcategory {
-                                Text(subcategory)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
+                HStack {
+                    Text(transaction.category)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(CategoryColors.hexColor(for: transaction.category, opacity: 0.2))
+                        .foregroundColor(CategoryColors.hexColor(for: transaction.category))
+                        .cornerRadius(8)
+                    
+                    if let subcategory = transaction.subcategory {
+                        Text(subcategory)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -103,21 +90,6 @@ struct TransactionRow: View {
         case .internalTransfer:
             return .gray
         }
-    }
-    
-    private func startEditing() {
-        categoryText = transaction.subcategory != nil
-            ? "\(transaction.category):\(transaction.subcategory!)"
-            : transaction.category
-        isEditingCategory = true
-    }
-    
-    private func saveCategory() {
-        let parts = categoryText.split(separator: ":").map { $0.trimmingCharacters(in: .whitespaces) }
-        let category = parts.first ?? transaction.category
-        let subcategory = parts.count > 1 ? parts[1] : nil
-        onUpdateCategory(category, subcategory)
-        isEditingCategory = false
     }
 }
 
