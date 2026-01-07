@@ -178,6 +178,7 @@ struct AddTransactionModal: View {
     let type: TransactionType
     let currency: String
     let accounts: [Account]
+    let viewModel: TransactionsViewModel
     let onSave: (Double, String, String?) -> Void
     let onCancel: () -> Void
     

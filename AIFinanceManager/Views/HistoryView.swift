@@ -174,7 +174,6 @@ struct HistoryView: View {
         var grouped: [String: [Transaction]] = [:]
         
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
         
         for transaction in transactions {
             let formatter = DateFormatter()
