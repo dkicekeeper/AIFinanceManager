@@ -43,7 +43,8 @@ struct QuickAddTransactionView: View {
                 category: selectedCategory ?? "",
                 type: selectedType,
                 currency: viewModel.allTransactions.first?.currency ?? "USD",
-                onSave: { amount, description in
+                accounts: viewModel.accounts,
+                onSave: { amount, description, accountId in
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateFormat = "yyyy-MM-dd"
                     let today = dateFormatter.string(from: Date())
@@ -56,7 +57,9 @@ struct QuickAddTransactionView: View {
                         currency: viewModel.allTransactions.first?.currency ?? "USD",
                         type: selectedType,
                         category: selectedCategory ?? "Other",
-                        subcategory: nil
+                        subcategory: nil,
+                        accountId: accountId,
+                        targetAccountId: nil
                     )
                     
                     viewModel.addTransaction(transaction)
@@ -177,16 +180,28 @@ struct AddTransactionModal: View {
     let category: String
     let type: TransactionType
     let currency: String
-    let onSave: (Double, String) -> Void
+    let accounts: [Account]
+    let onSave: (Double, String, String?) -> Void
     let onCancel: () -> Void
     
     @State private var amountText = ""
     @State private var descriptionText = ""
+    @State private var selectedAccountId: String?
     @FocusState private var isAmountFocused: Bool
     
     var body: some View {
         NavigationView {
             Form {
+                if !accounts.isEmpty {
+                    Section(header: Text("Account")) {
+                        Picker("Account", selection: $selectedAccountId) {
+                            ForEach(accounts) { account in
+                                Text("\(account.name) (\(Formatting.formatCurrency(account.balance, currency: account.currency)))")
+                                    .tag(Optional(account.id))
+                            }
+                        }
+                    }
+                }
                 Section(header: Text("Category")) {
                     Text(category)
                         .foregroundColor(CategoryColors.hexColor(for: category))
@@ -212,7 +227,7 @@ struct AddTransactionModal: View {
                     Button("Add") {
                         if let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")),
                            !descriptionText.isEmpty {
-                            onSave(amount, descriptionText)
+                            onSave(amount, descriptionText, selectedAccountId)
                         }
                     }
                     .disabled(amountText.isEmpty || descriptionText.isEmpty)
@@ -220,6 +235,9 @@ struct AddTransactionModal: View {
             }
             .onAppear {
                 isAmountFocused = true
+                if selectedAccountId == nil {
+                    selectedAccountId = accounts.first?.id
+                }
             }
         }
     }

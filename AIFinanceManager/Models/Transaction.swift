@@ -22,8 +22,21 @@ struct Transaction: Identifiable, Codable, Equatable {
     let type: TransactionType
     let category: String
     let subcategory: String?
+    let accountId: String?
+    let targetAccountId: String?
     
-    init(id: String, date: String, description: String, amount: Double, currency: String, type: TransactionType, category: String, subcategory: String? = nil) {
+    init(
+        id: String,
+        date: String,
+        description: String,
+        amount: Double,
+        currency: String,
+        type: TransactionType,
+        category: String,
+        subcategory: String? = nil,
+        accountId: String? = nil,
+        targetAccountId: String? = nil
+    ) {
         self.id = id
         self.date = date
         self.description = description
@@ -32,6 +45,8 @@ struct Transaction: Identifiable, Codable, Equatable {
         self.type = type
         self.category = category
         self.subcategory = subcategory
+        self.accountId = accountId
+        self.targetAccountId = targetAccountId
     }
 }
 
@@ -54,4 +69,18 @@ struct Summary: Codable {
     let currency: String
     let startDate: String
     let endDate: String
+}
+
+struct Account: Identifiable, Codable, Equatable {
+    let id: String
+    var name: String
+    var balance: Double
+    var currency: String
+    
+    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String) {
+        self.id = id
+        self.name = name
+        self.balance = balance
+        self.currency = currency
+    }
 }

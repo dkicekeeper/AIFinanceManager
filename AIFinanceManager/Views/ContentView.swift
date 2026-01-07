@@ -15,27 +15,29 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 20) {
-                    if !viewModel.allTransactions.isEmpty {
-                        summaryCards
-                    }
-
-                    QuickAddTransactionView(viewModel: viewModel)
-
-                    if viewModel.isLoading {
-                        ProgressView("Analyzing PDF...")
-                            .padding()
-                    }
-                    
-                    if let error = viewModel.errorMessage {
-                        ErrorMessageView(message: error)
-                    }
-
-                    transactionsSection
+            VStack(spacing: 16) {
+                if !viewModel.allTransactions.isEmpty {
+                    summaryCards
+                        .padding(.horizontal)
                 }
-                .padding()
+
+                QuickAddTransactionView(viewModel: viewModel)
+                    .padding(.horizontal)
+
+                if viewModel.isLoading {
+                    ProgressView("Analyzing PDF...")
+                        .padding()
+                }
+                
+                if let error = viewModel.errorMessage {
+                    ErrorMessageView(message: error)
+                        .padding(.horizontal)
+                }
+
+                // История операций со своей прокруткой
+                transactionsSection
             }
+            .padding(.vertical)
             .navigationTitle("AI Finance Manager")
             .sheet(isPresented: $showingFilePicker) {
                 DocumentPicker { url in

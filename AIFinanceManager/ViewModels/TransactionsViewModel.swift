@@ -13,12 +13,14 @@ import Combine
 class TransactionsViewModel: ObservableObject {
     @Published var allTransactions: [Transaction] = []
     @Published var categoryRules: [CategoryRule] = []
+    @Published var accounts: [Account] = []
     @Published var dateFilter: DateFilter = DateFilter()
     @Published var isLoading = false
     @Published var errorMessage: String?
     
     private let storageKeyTransactions = "allTransactions"
     private let storageKeyRules = "categoryRules"
+    private let storageKeyAccounts = "accounts"
     
     init() {
         loadFromStorage()
@@ -112,6 +114,7 @@ class TransactionsViewModel: ObservableObject {
         if !uniqueNew.isEmpty {
             allTransactions.append(contentsOf: uniqueNew)
             allTransactions.sort { $0.date > $1.date }
+            recalculateAccountBalances()
             saveToStorage()
         }
     }
@@ -134,7 +137,9 @@ class TransactionsViewModel: ObservableObject {
                 currency: transaction.currency,
                 type: transaction.type,
                 category: transaction.category,
-                subcategory: transaction.subcategory
+                subcategory: transaction.subcategory,
+                accountId: transaction.accountId,
+                targetAccountId: transaction.targetAccountId
             )
         } else {
             transactionWithID = transaction
@@ -146,6 +151,7 @@ class TransactionsViewModel: ObservableObject {
         if !existingIDs.contains(transactionWithID.id) {
             allTransactions.append(contentsOf: transactionsWithRules)
             allTransactions.sort { $0.date > $1.date }
+            recalculateAccountBalances()
             saveToStorage()
         }
     }
@@ -178,7 +184,9 @@ class TransactionsViewModel: ObservableObject {
                     currency: allTransactions[i].currency,
                     type: allTransactions[i].type,
                     category: category,
-                    subcategory: subcategory
+                    subcategory: subcategory,
+                    accountId: allTransactions[i].accountId,
+                    targetAccountId: allTransactions[i].targetAccountId
                 )
             }
         }
@@ -189,6 +197,62 @@ class TransactionsViewModel: ObservableObject {
     func clearHistory() {
         allTransactions = []
         categoryRules = []
+        accounts = []
+        saveToStorage()
+    }
+
+    // MARK: - Accounts
+
+    func addAccount(name: String, balance: Double, currency: String) {
+        let account = Account(name: name, balance: balance, currency: currency)
+        accounts.append(account)
+        saveToStorage()
+    }
+
+    func updateAccount(_ account: Account) {
+        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+            accounts[index] = account
+            saveToStorage()
+        }
+    }
+
+    func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {
+        guard
+            let sourceIndex = accounts.firstIndex(where: { $0.id == sourceId }),
+            let targetIndex = accounts.firstIndex(where: { $0.id == targetId }),
+            amount > 0
+        else { return }
+
+        let currency = accounts[sourceIndex].currency
+
+        // Обновляем балансы
+        accounts[sourceIndex].balance -= amount
+        accounts[targetIndex].balance += amount
+
+        // Сохраняем как internalTransfer-транзакцию
+        let id = TransactionIDGenerator.generateID(
+            date: date,
+            description: description,
+            amount: amount,
+            type: .internalTransfer,
+            currency: currency
+        )
+
+        let transferTx = Transaction(
+            id: id,
+            date: date,
+            description: description,
+            amount: amount,
+            currency: currency,
+            type: .internalTransfer,
+            category: "Transfer",
+            subcategory: nil,
+            accountId: sourceId,
+            targetAccountId: targetId
+        )
+
+        allTransactions.append(transferTx)
+        allTransactions.sort { $0.date > $1.date }
         saveToStorage()
     }
     
@@ -223,6 +287,9 @@ class TransactionsViewModel: ObservableObject {
         if let encoded = try? JSONEncoder().encode(categoryRules) {
             UserDefaults.standard.set(encoded, forKey: storageKeyRules)
         }
+        if let encoded = try? JSONEncoder().encode(accounts) {
+            UserDefaults.standard.set(encoded, forKey: storageKeyAccounts)
+        }
     }
     
     private func loadFromStorage() {
@@ -233,6 +300,46 @@ class TransactionsViewModel: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: storageKeyRules),
            let decoded = try? JSONDecoder().decode([CategoryRule].self, from: data) {
             categoryRules = decoded
+        }
+        if let data = UserDefaults.standard.data(forKey: storageKeyAccounts),
+           let decoded = try? JSONDecoder().decode([Account].self, from: data) {
+            accounts = decoded
+        }
+        recalculateAccountBalances()
+    }
+
+    private func recalculateAccountBalances() {
+        guard !accounts.isEmpty else { return }
+
+        var balancesById: [String: Double] = [:]
+        for account in accounts {
+            balancesById[account.id] = 0
+        }
+
+        for tx in allTransactions {
+            switch tx.type {
+            case .income:
+                if let accountId = tx.accountId {
+                    balancesById[accountId, default: 0] += tx.amount
+                }
+            case .expense:
+                if let accountId = tx.accountId {
+                    balancesById[accountId, default: 0] -= tx.amount
+                }
+            case .internalTransfer:
+                if let sourceId = tx.accountId {
+                    balancesById[sourceId, default: 0] -= tx.amount
+                }
+                if let targetId = tx.targetAccountId {
+                    balancesById[targetId, default: 0] += tx.amount
+                }
+            }
+        }
+
+        for index in accounts.indices {
+            if let newBalance = balancesById[accounts[index].id] {
+                accounts[index].balance = newBalance
+            }
         }
     }
 }
