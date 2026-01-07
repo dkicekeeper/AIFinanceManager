@@ -58,8 +58,14 @@ struct ContentView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingFilePicker = true }) {
-                        Image(systemName: "doc.badge.plus")
+                    HStack(spacing: 16) {
+                        NavigationLink(destination: CategoriesManagementView(viewModel: viewModel)) {
+                            Image(systemName: "tag")
+                        }
+                        
+                        Button(action: { showingFilePicker = true }) {
+                            Image(systemName: "doc.badge.plus")
+                        }
                     }
                 }
             }

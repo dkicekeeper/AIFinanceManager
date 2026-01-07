@@ -26,6 +26,7 @@ struct TransactionsTableView: View {
                         transaction: transaction,
                         currency: viewModel.allTransactions.first?.currency ?? "USD",
                         uniqueCategories: viewModel.uniqueCategories,
+                        customCategories: viewModel.customCategories,
                         onUpdateCategory: { category, subcategory in
                             viewModel.updateTransactionCategory(transaction.id, category: category, subcategory: subcategory)
                         }
@@ -53,14 +54,14 @@ struct TransactionRow: View {
                 Text(transaction.description)
                     .font(.body)
                 
-                HStack {
-                    Text(transaction.category)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(CategoryColors.hexColor(for: transaction.category, opacity: 0.2))
-                        .foregroundColor(CategoryColors.hexColor(for: transaction.category))
-                        .cornerRadius(8)
+                    HStack {
+                        Text(transaction.category)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(CategoryColors.hexColor(for: transaction.category, opacity: 0.2, customCategories: customCategories))
+                            .foregroundColor(CategoryColors.hexColor(for: transaction.category, customCategories: customCategories))
+                            .cornerRadius(8)
                     
                     if let subcategory = transaction.subcategory {
                         Text(subcategory)

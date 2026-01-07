@@ -8,7 +8,13 @@
 import Foundation
 
 enum CategoryEmoji {
-    static func emoji(for category: String, type: TransactionType) -> String {
+    static func emoji(for category: String, type: TransactionType, customCategories: [CustomCategory] = []) -> String {
+        // Сначала проверяем пользовательские категории
+        if let custom = customCategories.first(where: { $0.name.lowercased() == category.lowercased() && $0.type == type }) {
+            return custom.emoji
+        }
+        
+        // Затем дефолтные
         let key = category.lowercased()
         let map: [String: String] = [
             "income": "💵",

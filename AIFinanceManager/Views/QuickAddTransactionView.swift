@@ -24,6 +24,7 @@ struct QuickAddTransactionView: View {
                     category: category,
                     type: .expense,
                     totalText: totalText,
+                    viewModel: viewModel,
                     onTap: {
                         selectedCategory = category
                         selectedType = .expense
@@ -37,6 +38,7 @@ struct QuickAddTransactionView: View {
                 category: "Income",
                 type: .income,
                 totalText: nil,
+                viewModel: viewModel,
                 onTap: {
                     selectedCategory = "Income"
                     selectedType = .income
@@ -50,6 +52,7 @@ struct QuickAddTransactionView: View {
                 type: selectedType,
                 currency: viewModel.allTransactions.first?.currency ?? "USD",
                 accounts: viewModel.accounts,
+                viewModel: viewModel,
                 onSave: { amount, description, accountId in
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateFormat = "yyyy-MM-dd"
@@ -100,6 +103,7 @@ struct CoinView: View {
     let category: String
     let type: TransactionType
     let totalText: String?
+    let viewModel: TransactionsViewModel
     let onTap: () -> Void
     
     @State private var isPressed = false
@@ -153,18 +157,18 @@ struct CoinView: View {
         if type == .income {
             return Color.green.opacity(0.3)
         }
-        return CategoryColors.hexColor(for: category, opacity: 0.3)
+        return CategoryColors.hexColor(for: category, opacity: 0.3, customCategories: viewModel.customCategories)
     }
     
     private var coinBorderColor: Color {
         if type == .income {
             return Color.green.opacity(0.6)
         }
-        return CategoryColors.hexColor(for: category, opacity: 0.6)
+        return CategoryColors.hexColor(for: category, opacity: 0.6, customCategories: viewModel.customCategories)
     }
     
     private var emoji: String {
-        CategoryEmoji.emoji(for: category, type: type)
+        CategoryEmoji.emoji(for: category, type: type, customCategories: viewModel.customCategories)
     }
 }
 
@@ -197,7 +201,7 @@ struct AddTransactionModal: View {
                 }
                 Section(header: Text("Category")) {
                     Text(category)
-                        .foregroundColor(CategoryColors.hexColor(for: category))
+                        .foregroundColor(CategoryColors.hexColor(for: category, customCategories: viewModel.customCategories))
                 }
                 
                 Section(header: Text("Amount (\(currency))")) {

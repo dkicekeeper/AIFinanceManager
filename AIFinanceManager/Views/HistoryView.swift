@@ -160,7 +160,7 @@ struct HistoryView: View {
                 ForEach(grouped.keys.sorted(by: >), id: \.self) { dateKey in
                     Section(header: dateHeader(for: dateKey)) {
                         ForEach(grouped[dateKey] ?? []) { transaction in
-                            TransactionCard(transaction: transaction, currency: viewModel.allTransactions.first?.currency ?? "USD")
+                            TransactionCard(transaction: transaction, currency: viewModel.allTransactions.first?.currency ?? "USD", customCategories: viewModel.customCategories)
                         }
                     }
                 }
@@ -214,6 +214,7 @@ struct HistoryView: View {
 struct TransactionCard: View {
     let transaction: Transaction
     let currency: String
+    let customCategories: [CustomCategory]
     
     var body: some View {
         HStack(spacing: 12) {
@@ -256,14 +257,14 @@ struct TransactionCard: View {
         case .income:
             return Color.green.opacity(0.2)
         case .expense:
-            return CategoryColors.hexColor(for: transaction.category, opacity: 0.2)
+            return CategoryColors.hexColor(for: transaction.category, opacity: 0.2, customCategories: customCategories)
         case .internalTransfer:
             return Color.blue.opacity(0.2)
         }
     }
     
     private var categoryEmoji: String {
-        CategoryEmoji.emoji(for: transaction.category, type: transaction.type)
+        CategoryEmoji.emoji(for: transaction.category, type: transaction.type, customCategories: customCategories)
     }
     
     private var amountText: String {

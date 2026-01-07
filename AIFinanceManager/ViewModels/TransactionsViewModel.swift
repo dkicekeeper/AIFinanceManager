@@ -14,6 +14,7 @@ class TransactionsViewModel: ObservableObject {
     @Published var allTransactions: [Transaction] = []
     @Published var categoryRules: [CategoryRule] = []
     @Published var accounts: [Account] = []
+    @Published var customCategories: [CustomCategory] = []
     @Published var dateFilter: DateFilter = DateFilter()
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -21,6 +22,7 @@ class TransactionsViewModel: ObservableObject {
     private let storageKeyTransactions = "allTransactions"
     private let storageKeyRules = "categoryRules"
     private let storageKeyAccounts = "accounts"
+    private let storageKeyCustomCategories = "customCategories"
     
     init() {
         loadFromStorage()
@@ -207,6 +209,29 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
     }
 
+    // MARK: - Custom Categories
+    
+    func addCategory(_ category: CustomCategory) {
+        customCategories.append(category)
+        saveToStorage()
+    }
+    
+    func updateCategory(_ category: CustomCategory) {
+        if let index = customCategories.firstIndex(where: { $0.id == category.id }) {
+            customCategories[index] = category
+            saveToStorage()
+        }
+    }
+    
+    func deleteCategory(_ category: CustomCategory) {
+        customCategories.removeAll { $0.id == category.id }
+        saveToStorage()
+    }
+    
+    func getCategory(name: String, type: TransactionType) -> CustomCategory? {
+        return customCategories.first { $0.name.lowercased() == name.lowercased() && $0.type == type }
+    }
+
     // MARK: - Accounts
 
     func addAccount(name: String, balance: Double, currency: String) {
@@ -296,6 +321,9 @@ class TransactionsViewModel: ObservableObject {
         if let encoded = try? JSONEncoder().encode(accounts) {
             UserDefaults.standard.set(encoded, forKey: storageKeyAccounts)
         }
+        if let encoded = try? JSONEncoder().encode(customCategories) {
+            UserDefaults.standard.set(encoded, forKey: storageKeyCustomCategories)
+        }
     }
     
     private func loadFromStorage() {
@@ -310,6 +338,10 @@ class TransactionsViewModel: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: storageKeyAccounts),
            let decoded = try? JSONDecoder().decode([Account].self, from: data) {
             accounts = decoded
+        }
+        if let data = UserDefaults.standard.data(forKey: storageKeyCustomCategories),
+           let decoded = try? JSONDecoder().decode([CustomCategory].self, from: data) {
+            customCategories = decoded
         }
         recalculateAccountBalances()
     }

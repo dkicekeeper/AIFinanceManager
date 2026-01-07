@@ -20,7 +20,13 @@ struct CategoryColors {
         return palette[index].opacity(opacity)
     }
     
-    static func hexColor(for category: String, opacity: Double = 1.0) -> Color {
+    static func hexColor(for category: String, opacity: Double = 1.0, customCategories: [CustomCategory] = []) -> Color {
+        // Сначала проверяем пользовательские категории
+        if let custom = customCategories.first(where: { $0.name.lowercased() == category.lowercased() }) {
+            return custom.color.opacity(opacity)
+        }
+        
+        // Затем дефолтные
         let colors: [String] = [
             "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
             "#22c55e", "#14b8a6", "#06b6d4", "#6366f1", "#d946ef",
