@@ -27,10 +27,16 @@ struct CategoriesManagementView: View {
                 // Список категорий
                 List {
                     ForEach(filteredCategories) { category in
+                        let isDefaultCategory = !viewModel.customCategories.contains(where: { $0.id == category.id })
                         CategoryRow(
                             category: category,
+                            isDefault: isDefaultCategory,
                             onEdit: { editingCategory = category },
-                            onDelete: { viewModel.deleteCategory(category) }
+                            onDelete: { 
+                                if !isDefaultCategory {
+                                    viewModel.deleteCategory(category)
+                                }
+                            }
                         )
                     }
                 }
