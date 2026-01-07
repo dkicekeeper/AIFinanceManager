@@ -16,9 +16,14 @@ struct QuickAddTransactionView: View {
     var body: some View {
         LazyVGrid(columns: gridColumns, spacing: 16) {
             ForEach(popularCategories, id: \.self) { category in
+                let total = viewModel.categoryExpenses[category]?.total ?? 0
+                let currency = viewModel.allTransactions.first?.currency ?? "USD"
+                let totalText = total != 0 ? Formatting.formatCurrency(total, currency: currency) : nil
+
                 CoinView(
                     category: category,
                     type: .expense,
+                    totalText: totalText,
                     onTap: {
                         selectedCategory = category
                         selectedType = .expense
@@ -31,6 +36,7 @@ struct QuickAddTransactionView: View {
             CoinView(
                 category: "Income",
                 type: .income,
+                totalText: nil,
                 onTap: {
                     selectedCategory = "Income"
                     selectedType = .income
@@ -93,6 +99,7 @@ struct QuickAddTransactionView: View {
 struct CoinView: View {
     let category: String
     let type: TransactionType
+    let totalText: String?
     let onTap: () -> Void
     
     @State private var isPressed = false
@@ -121,14 +128,11 @@ struct CoinView: View {
                         .foregroundColor(.primary)
                         .lineLimit(1)
                     
-                    if type == .expense {
-                        let total = viewModel.categoryExpenses[category]?.total ?? 0
-                        if total != 0 {
-                            Text(Formatting.formatCurrency(total, currency: viewModel.allTransactions.first?.currency ?? "USD"))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
+                    if type == .expense, let totalText {
+                        Text(totalText)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
                     }
                 }
             }
