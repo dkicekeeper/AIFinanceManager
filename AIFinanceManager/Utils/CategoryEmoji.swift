@@ -9,6 +9,11 @@ import Foundation
 
 enum CategoryEmoji {
     static func emoji(for category: String, type: TransactionType, customCategories: [CustomCategory] = []) -> String {
+        // Для операций перевода всегда возвращаем ↔️
+        if type == .internalTransfer {
+            return "↔️"
+        }
+        
         // Сначала проверяем пользовательские категории
         if let custom = customCategories.first(where: { $0.name.lowercased() == category.lowercased() && $0.type == type }) {
             return custom.emoji
@@ -32,7 +37,8 @@ enum CategoryEmoji {
             "travel": "✈️",
             "groceries": "🛒",
             "coffee": "☕️",
-            "subscriptions": "📺"
+            "subscriptions": "📺",
+            "transfer": "↔️"
         ]
         if let value = map[key] { return value }
         return type == .income ? "💵" : "💰"

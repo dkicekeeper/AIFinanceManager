@@ -115,7 +115,23 @@ class GeminiService {
             throw GeminiError.invalidResponse
         }
         
-        let jsonData = text.data(using: .utf8)!
+        // Очистка JSON от markdown code blocks если есть
+        var cleanedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleanedText.hasPrefix("```json") {
+            cleanedText = String(cleanedText.dropFirst(7))
+        }
+        if cleanedText.hasPrefix("```") {
+            cleanedText = String(cleanedText.dropFirst(3))
+        }
+        if cleanedText.hasSuffix("```") {
+            cleanedText = String(cleanedText.dropLast(3))
+        }
+        cleanedText = cleanedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let jsonData = cleanedText.data(using: .utf8) else {
+            throw GeminiError.invalidResponse
+        }
+        
         let result = try JSONDecoder().decode(AnalysisResult.self, from: jsonData)
         
         // Generate IDs for transactions
@@ -124,12 +140,15 @@ class GeminiService {
             return Transaction(
                 id: id,
                 date: transaction.date,
+                time: nil,
                 description: transaction.description,
                 amount: transaction.amount,
                 currency: transaction.currency,
                 type: transaction.type,
                 category: transaction.category,
-                subcategory: transaction.subcategory
+                subcategory: transaction.subcategory,
+                accountId: nil,
+                targetAccountId: nil
             )
         }
         

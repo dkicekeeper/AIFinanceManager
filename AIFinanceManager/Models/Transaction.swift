@@ -16,6 +16,7 @@ enum TransactionType: String, Codable {
 struct Transaction: Identifiable, Codable, Equatable {
     let id: String
     let date: String // YYYY-MM-DD
+    let time: String? // HH:mm
     let description: String
     let amount: Double
     let currency: String
@@ -28,6 +29,7 @@ struct Transaction: Identifiable, Codable, Equatable {
     init(
         id: String,
         date: String,
+        time: String? = nil,
         description: String,
         amount: Double,
         currency: String,
@@ -39,6 +41,7 @@ struct Transaction: Identifiable, Codable, Equatable {
     ) {
         self.id = id
         self.date = date
+        self.time = time
         self.description = description
         self.amount = amount
         self.currency = currency

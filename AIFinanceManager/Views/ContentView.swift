@@ -12,18 +12,21 @@ struct ContentView: View {
     @StateObject private var viewModel = TransactionsViewModel()
     @State private var showingFilePicker = false
     @State private var selectedFileURL: URL?
+    @State private var selectedAccount: Account?
     
     var body: some View {
         NavigationView {
+            ScrollView {
             VStack(spacing: 16) {
-                if !viewModel.accounts.isEmpty {
-                    accountsSection
-                        .padding(.horizontal)
-                }
+                accountsSection
+                    .padding(.horizontal)
 
                 if !viewModel.allTransactions.isEmpty {
-                    analyticsCard
-                        .padding(.horizontal)
+                    NavigationLink(destination: HistoryView(viewModel: viewModel)) {
+                        analyticsCard
+                            .padding(.horizontal)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
 
                 QuickAddTransactionView(viewModel: viewModel)
@@ -38,14 +41,9 @@ struct ContentView: View {
                     ErrorMessageView(message: error)
                         .padding(.horizontal)
                 }
-
-                // История операций со своей прокруткой
-                NavigationLink(destination: HistoryView(viewModel: viewModel)) {
-                    transactionsSection
-                }
-                .buttonStyle(PlainButtonStyle())
             }
-            .padding(.vertical)
+                .padding(.vertical)
+            }
             .navigationTitle("AI Finance Manager")
             .sheet(isPresented: $showingFilePicker) {
                 DocumentPicker { url in
@@ -68,101 +66,113 @@ struct ContentView: View {
                     }
                 }
             }
+            .sheet(item: $selectedAccount) { account in
+                AccountActionView(viewModel: viewModel, account: account)
+            }
         }
     }
     
     private var accountsSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(viewModel.accounts) { account in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(account.name)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text(Formatting.formatCurrency(account.balance, currency: account.currency))
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                    }
+        HStack {
+            if viewModel.accounts.isEmpty {
+                Text("Нет счетов")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                     .padding(10)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(viewModel.accounts) { account in
+                            Button(action: {
+                                selectedAccount = account
+                            }) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(account.name)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                }
+                                .padding(10)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
             }
-            .padding(.vertical, 4)
+            
+            NavigationLink(destination: AccountsManagementView(viewModel: viewModel)) {
+                Image(systemName: "plus.circle")
+                    .font(.title3)
+                    .foregroundColor(.blue)
+            }
         }
     }
     private var analyticsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let summary = viewModel.summary
+        let currency = viewModel.allTransactions.first?.currency ?? "USD"
+        let total = summary.totalExpenses + summary.totalIncome
+        let expensePercent = total > 0 ? (summary.totalExpenses / total) : 0.0
+        let incomePercent = total > 0 ? (summary.totalIncome / total) : 0.0
+        
+        return VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Аналитика операций")
+                Text("History")
                     .font(.headline)
                     .fontWeight(.semibold)
                 
                 Spacer()
-            }
-            
-            let summary = viewModel.summary
-            let currency = viewModel.allTransactions.first?.currency ?? "USD"
-            
-            HStack(spacing: 16) {
-                // Расходы
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Расходы")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 8) {
-                        Rectangle()
-                            .fill(Color.red)
-                            .frame(width: 60, height: 8)
-                            .cornerRadius(4)
-                        
-                        Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.red)
-                    }
-                }
                 
-                // Доходы
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Доходы")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 8) {
-                        Rectangle()
-                            .fill(Color.green)
-                            .frame(width: 60, height: 8)
-                            .cornerRadius(4)
-                        
-                        Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.green)
-                    }
-                }
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
+            
+            // Суммы сверху
+            HStack {
+                Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.red)
+                
+                Spacer()
+                
+                Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.green)
+            }
+            
+            // Одна полоса, где расходы и доходы толкают друг друга
+            GeometryReader { geometry in
+                HStack(spacing: 0) {
+                    // Расходы слева
+                    Rectangle()
+                        .fill(Color.red)
+                        .frame(width: geometry.size.width * expensePercent)
+                    
+                    // Доходы справа
+                    Rectangle()
+                        .fill(Color.green)
+                        .frame(width: geometry.size.width * incomePercent)
+                    
+                    // Пустое пространство
+                    Spacer()
+                }
+                .cornerRadius(4)
+            }
+            .frame(height: 8)
         }
         .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
     }
     
-    private var transactionsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Transactions")
-                .font(.title2)
-                .fontWeight(.bold)
-                .padding(.horizontal)
-            
-            TransactionsTableView(
-                viewModel: viewModel,
-                limit: 3
-            )
-        }
-    }
     
     private func analyzePDF(url: URL) async {
         viewModel.isLoading = true

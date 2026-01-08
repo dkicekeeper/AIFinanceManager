@@ -32,19 +32,6 @@ struct QuickAddTransactionView: View {
                     }
                 )
             }
-            
-            // Income coin
-            CoinView(
-                category: "Income",
-                type: .income,
-                totalText: nil,
-                viewModel: viewModel,
-                onTap: {
-                    selectedCategory = "Income"
-                    selectedType = .income
-                    showingModal = true
-                }
-            )
         }
         .sheet(isPresented: $showingModal) {
             AddTransactionModal(
@@ -58,12 +45,26 @@ struct QuickAddTransactionView: View {
                     dateFormatter.dateFormat = "yyyy-MM-dd"
                     let today = dateFormatter.string(from: Date())
                     
+                    let timeFormatter = DateFormatter()
+                    timeFormatter.dateFormat = "HH:mm"
+                    let currentTime = timeFormatter.string(from: Date())
+                    
+                    // Получаем валюту счета или используем дефолтную
+                    let currency: String
+                    if let accountId = accountId,
+                       let account = viewModel.accounts.first(where: { $0.id == accountId }) {
+                        currency = account.currency
+                    } else {
+                        currency = viewModel.allTransactions.first?.currency ?? "USD"
+                    }
+                    
                     let transaction = Transaction(
                         id: "",
                         date: today,
+                        time: currentTime,
                         description: description,
                         amount: amount,
-                        currency: viewModel.allTransactions.first?.currency ?? "USD",
+                        currency: currency,
                         type: selectedType,
                         category: selectedCategory ?? "Other",
                         subcategory: nil,
@@ -88,7 +89,7 @@ struct QuickAddTransactionView: View {
     }
     
     private var popularCategories: [String] {
-        // Получаем все категории: пользовательские + дефолтные
+        // Получаем все категории: только пользовательские + из транзакций
         var allCategories = Set<String>()
         
         // Добавляем пользовательские категории расходов
@@ -99,15 +100,6 @@ struct QuickAddTransactionView: View {
         // Добавляем категории из транзакций
         for category in viewModel.popularCategories {
             allCategories.insert(category)
-        }
-        
-        // Если нет категорий, добавляем дефолтные
-        if allCategories.isEmpty {
-            return [
-                "Food", "Transport", "Shopping", "Entertainment",
-                "Bills", "Health", "Education", "Travel",
-                "Gifts", "Pets", "Groceries", "Coffee", "Subscriptions", "Other"
-            ]
         }
         
         // Сортируем по популярности (сумме расходов)
@@ -155,7 +147,10 @@ struct CoinView: View {
                         .foregroundColor(.primary)
                         .lineLimit(1)
                     
-                    if type == .expense, let totalText {
+                    if type == .expense {
+                        let total = viewModel.categoryExpenses[category]?.total ?? 0
+                        let currency = viewModel.allTransactions.first?.currency ?? "USD"
+                        let totalText = Formatting.formatCurrency(total, currency: currency)
                         Text(totalText)
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -215,43 +210,47 @@ struct AddTransactionModal: View {
             Form {
                 if !accounts.isEmpty {
                     Section(header: Text("Account")) {
-                        Picker("Account", selection: $selectedAccountId) {
-                            ForEach(accounts) { account in
-                                Text("\(account.name) (\(Formatting.formatCurrency(account.balance, currency: account.currency)))")
-                                    .tag(Optional(account.id))
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(accounts) { account in
+                                    AccountRadioButton(
+                                        account: account,
+                                        isSelected: selectedAccountId == account.id,
+                                        onTap: {
+                                            selectedAccountId = account.id
+                                        }
+                                    )
+                                }
                             }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
-                Section(header: Text("Category")) {
-                    Text(category)
-                        .foregroundColor(CategoryColors.hexColor(for: category, customCategories: viewModel.customCategories))
-                }
                 
-                Section(header: Text("Amount (\(currency))")) {
+                Section(header: Text("Amount")) {
                     TextField("0.00", text: $amountText)
                         .keyboardType(.decimalPad)
                         .focused($isAmountFocused)
                 }
                 
-                Section(header: Text("Description")) {
-                    TextField("What was this for?", text: $descriptionText)
-                }
+                        Section(header: Text("Description")) {
+                            TextField("What was this for? (optional)", text: $descriptionText)
+                        }
             }
-            .navigationTitle("Add \(type == .expense ? "Expense" : "Income")")
+            .navigationTitle(category)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", action: onCancel)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        if let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")),
-                           !descriptionText.isEmpty {
-                            onSave(amount, descriptionText, selectedAccountId)
-                        }
-                    }
-                    .disabled(amountText.isEmpty || descriptionText.isEmpty)
+                            Button("Add") {
+                                if let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")) {
+                                    let finalDescription = descriptionText.isEmpty ? category : descriptionText
+                                    onSave(amount, finalDescription, selectedAccountId)
+                                }
+                            }
+                            .disabled(amountText.isEmpty)
                 }
             }
             .onAppear {
@@ -264,6 +263,33 @@ struct AddTransactionModal: View {
     }
 }
 
+
+struct AccountRadioButton: View {
+    let account: Account
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(account.name)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .padding(10)
+            .background(isSelected ? Color.blue.opacity(0.2) : Color(.systemGray6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+            )
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
 
 #Preview {
     QuickAddTransactionView(viewModel: TransactionsViewModel())

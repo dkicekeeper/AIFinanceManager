@@ -9,13 +9,14 @@ import SwiftUI
 
 struct HistoryView: View {
     @ObservedObject var viewModel: TransactionsViewModel
-    @State private var selectedFilter: HistoryFilter = .week
-    @State private var showingSearch = false
+    @State private var selectedTimeFilter: TimeFilter = .week
+    @State private var selectedAccountFilter: String? = nil // nil = все счета
     @State private var searchText = ""
     
-    enum HistoryFilter: String, CaseIterable {
+    enum TimeFilter: String, CaseIterable {
+        case day = "За день"
         case week = "За неделю"
-        case all = "Все продукты"
+        case month = "За месяц"
     }
     
     var body: some View {
@@ -23,118 +24,83 @@ struct HistoryView: View {
             // Фильтры
             filterSection
             
-            // Аналитика (если есть транзакции)
-            if !viewModel.filteredTransactions.isEmpty {
-                analyticsCard
-                    .padding(.horizontal)
-                    .padding(.top, 12)
-            }
-            
             // Список транзакций
             transactionsList
         }
-        .navigationTitle("История")
+        .navigationTitle("History")
         .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showingSearch.toggle() }) {
-                    Image(systemName: "magnifyingglass")
-                }
-            }
-        }
-        .sheet(isPresented: $showingSearch) {
-            SearchView(viewModel: viewModel, searchText: $searchText)
-        }
+        .searchable(text: $searchText, prompt: "Search by amount, category, or description")
     }
     
     private var filterSection: some View {
         HStack(spacing: 12) {
-            ForEach(HistoryFilter.allCases, id: \.self) { filter in
-                Button(action: { selectedFilter = filter }) {
-                    Text(filter.rawValue)
+            // Фильтр по времени - выпадающий список
+            Menu {
+                ForEach(TimeFilter.allCases, id: \.self) { filter in
+                    Button(action: { selectedTimeFilter = filter }) {
+                        HStack {
+                            Text(filter.rawValue)
+                            if selectedTimeFilter == filter {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selectedTimeFilter.rawValue)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundColor(selectedFilter == filter ? .white : .primary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(selectedFilter == filter ? Color.blue : Color(.systemGray5))
-                        .cornerRadius(20)
+                    Image(systemName: "chevron.down")
+                        .font(.caption)
                 }
+                .foregroundColor(.primary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.systemGray5))
+                .cornerRadius(20)
+            }
+            
+            // Фильтр по счетам - выпадающий список
+            Menu {
+                Button(action: { selectedAccountFilter = nil }) {
+                    HStack {
+                        Text("Все счета")
+                        if selectedAccountFilter == nil {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                
+                ForEach(viewModel.accounts) { account in
+                    Button(action: { selectedAccountFilter = account.id }) {
+                        HStack {
+                            Text(account.name)
+                            if selectedAccountFilter == account.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selectedAccountFilter == nil ? "Все счета" : (viewModel.accounts.first(where: { $0.id == selectedAccountFilter })?.name ?? "Все счета"))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Image(systemName: "chevron.down")
+                        .font(.caption)
+                }
+                .foregroundColor(.primary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.systemGray5))
+                .cornerRadius(20)
             }
             
             Spacer()
-            
-            Button(action: {}) {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-                    .font(.title3)
-                    .foregroundColor(.primary)
-            }
         }
         .padding(.horizontal)
         .padding(.vertical, 12)
-    }
-    
-    private var analyticsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Аналитика операций")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            let summary = viewModel.summary
-            let currency = viewModel.allTransactions.first?.currency ?? "USD"
-            
-            HStack(spacing: 16) {
-                // Расходы
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Расходы")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 8) {
-                        Rectangle()
-                            .fill(Color.red)
-                            .frame(width: 60, height: 8)
-                            .cornerRadius(4)
-                        
-                        Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.red)
-                    }
-                }
-                
-                // Доходы
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Доходы")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 8) {
-                        Rectangle()
-                            .fill(Color.green)
-                            .frame(width: 60, height: 8)
-                            .cornerRadius(4)
-                        
-                        Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.green)
-                    }
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
     
     private var transactionsList: some View {
@@ -158,9 +124,14 @@ struct HistoryView: View {
         return AnyView(
             List {
                 ForEach(grouped.keys.sorted(by: >), id: \.self) { dateKey in
-                    Section(header: dateHeader(for: dateKey)) {
+                    Section(header: dateHeader(for: dateKey, transactions: grouped[dateKey] ?? [])) {
                         ForEach(grouped[dateKey] ?? []) { transaction in
-                            TransactionCard(transaction: transaction, currency: viewModel.allTransactions.first?.currency ?? "USD", customCategories: viewModel.customCategories)
+                            TransactionCard(
+                                transaction: transaction,
+                                currency: viewModel.allTransactions.first?.currency ?? "USD",
+                                customCategories: viewModel.customCategories,
+                                accounts: viewModel.accounts
+                            )
                         }
                     }
                 }
@@ -169,16 +140,75 @@ struct HistoryView: View {
         )
     }
     
+    private var filteredTransactions: [Transaction] {
+        var transactions = viewModel.filteredTransactions
+        
+        // Фильтр по счету
+        if let accountId = selectedAccountFilter {
+            transactions = transactions.filter { $0.accountId == accountId || $0.targetAccountId == accountId }
+        }
+        
+        // Фильтр по времени
+        let calendar = Calendar.current
+        let now = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        transactions = transactions.filter { transaction in
+            guard let date = dateFormatter.date(from: transaction.date) else { return false }
+            
+            switch selectedTimeFilter {
+            case .day:
+                return calendar.isDate(date, inSameDayAs: now)
+            case .week:
+                let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+                return date >= weekAgo
+            case .month:
+                let monthAgo = calendar.date(byAdding: .month, value: -1, to: now) ?? now
+                return date >= monthAgo
+            }
+        }
+        
+        // Фильтр по поиску
+        if !searchText.isEmpty {
+            let searchLower = searchText.lowercased()
+            transactions = transactions.filter { transaction in
+                // Поиск по категории
+                if transaction.category.lowercased().contains(searchLower) {
+                    return true
+                }
+                // Поиск по описанию
+                if transaction.description.lowercased().contains(searchLower) {
+                    return true
+                }
+                // Поиск по сумме
+                let amountString = String(format: "%.2f", transaction.amount)
+                if amountString.contains(searchText) || searchText.contains(amountString) {
+                    return true
+                }
+                // Поиск по сумме с валютой
+                let currency = viewModel.allTransactions.first?.currency ?? "USD"
+                let formattedAmount = Formatting.formatCurrency(transaction.amount, currency: currency).lowercased()
+                if formattedAmount.contains(searchLower) {
+                    return true
+                }
+                return false
+            }
+        }
+        
+        return transactions
+    }
+    
     private var groupedTransactions: [String: [Transaction]] {
-        let transactions = viewModel.filteredTransactions
+        let transactions = filteredTransactions
         var grouped: [String: [Transaction]] = [:]
         
         let calendar = Calendar.current
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
         
         for transaction in transactions {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            guard let date = formatter.date(from: transaction.date) else { continue }
+            guard let date = dateFormatter.date(from: transaction.date) else { continue }
             
             let dateKey: String
             if calendar.isDateInToday(date) {
@@ -198,15 +228,42 @@ struct HistoryView: View {
             grouped[dateKey]?.append(transaction)
         }
         
+        // Сортируем транзакции внутри каждого дня по времени (если есть) или по дате
+        // Сверху последние (новые), снизу первые (старые)
+        for key in grouped.keys {
+            grouped[key]?.sort { tx1, tx2 in
+                if let time1 = tx1.time, let time2 = tx2.time {
+                    return time1 > time2 // Новые сверху
+                }
+                return tx1.date > tx2.date // Новые сверху
+            }
+        }
+        
         return grouped
     }
     
-    private func dateHeader(for dateKey: String) -> some View {
-        Text(dateKey)
-            .font(.subheadline)
-            .fontWeight(.semibold)
-            .foregroundColor(.primary)
-            .textCase(nil)
+    private func dateHeader(for dateKey: String, transactions: [Transaction]) -> some View {
+        let currency = viewModel.allTransactions.first?.currency ?? "USD"
+        let dayExpenses = transactions
+            .filter { $0.type == .expense }
+            .reduce(0.0) { $0 + $1.amount }
+        
+        return HStack {
+            Text(dateKey)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            if dayExpenses > 0 {
+                Text("-" + Formatting.formatCurrency(dayExpenses, currency: currency))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.gray)
+            }
+        }
+        .textCase(nil)
     }
 }
 
@@ -214,6 +271,7 @@ struct TransactionCard: View {
     let transaction: Transaction
     let currency: String
     let customCategories: [CustomCategory]
+    let accounts: [Account]
     
     var body: some View {
         HStack(spacing: 12) {
@@ -228,13 +286,32 @@ struct TransactionCard: View {
             
             // Информация
             VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.description)
+                // Название категории
+                Text(transaction.category)
                     .font(.body)
                     .fontWeight(.medium)
                 
-                Text(transaction.category)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // Счет
+                if let accountId = transaction.accountId,
+                   let account = accounts.first(where: { $0.id == accountId }) {
+                    Text(account.name)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Время
+                if let time = transaction.time {
+                    Text(time)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Описание (если есть)
+                if !transaction.description.isEmpty {
+                    Text(transaction.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             
             Spacer()
@@ -279,34 +356,6 @@ struct TransactionCard: View {
             return .red
         case .internalTransfer:
             return .gray
-        }
-    }
-}
-
-struct SearchView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
-    @Binding var searchText: String
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                TextField("Поиск", text: $searchText)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding()
-                
-                // Здесь можно добавить фильтрованные результаты
-                Spacer()
-            }
-            .navigationTitle("Поиск")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Готово") {
-                        dismiss()
-                    }
-                }
-            }
         }
     }
 }

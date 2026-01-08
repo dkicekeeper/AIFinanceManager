@@ -26,12 +26,6 @@ class TransactionsViewModel: ObservableObject {
     
     init() {
         loadFromStorage()
-        
-        // Авто-создание базового счёта, если их ещё нет
-        if accounts.isEmpty {
-            let currency = allTransactions.first?.currency ?? "USD"
-            addAccount(name: "Main", balance: 0, currency: currency)
-        }
     }
     
     var filteredTransactions: [Transaction] {
@@ -140,6 +134,7 @@ class TransactionsViewModel: ObservableObject {
             transactionWithID = Transaction(
                 id: id,
                 date: transaction.date,
+                time: transaction.time,
                 description: transaction.description,
                 amount: transaction.amount,
                 currency: transaction.currency,
@@ -187,6 +182,7 @@ class TransactionsViewModel: ObservableObject {
                 allTransactions[i] = Transaction(
                     id: allTransactions[i].id,
                     date: allTransactions[i].date,
+                    time: allTransactions[i].time,
                     description: allTransactions[i].description,
                     amount: allTransactions[i].amount,
                     currency: allTransactions[i].currency,
@@ -243,8 +239,20 @@ class TransactionsViewModel: ObservableObject {
     func updateAccount(_ account: Account) {
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
             accounts[index] = account
+            recalculateAccountBalances()
             saveToStorage()
         }
+    }
+    
+    func deleteAccount(_ account: Account) {
+        // Удаляем все операции, связанные с этим счетом
+        allTransactions.removeAll { transaction in
+            transaction.accountId == account.id || transaction.targetAccountId == account.id
+        }
+        
+        accounts.removeAll { $0.id == account.id }
+        recalculateAccountBalances()
+        saveToStorage()
     }
 
     func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {

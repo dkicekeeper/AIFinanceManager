@@ -13,10 +13,12 @@ struct TransactionsTableView: View {
     
     var body: some View {
         let all = viewModel.filteredTransactions
-        let transactions = limit != nil ? Array(all.suffix(limit!)) : all
+        // Берем последние N операций (первые в отсортированном списке по дате)
+        // Список уже отсортирован по убыванию даты, поэтому берем первые N
+        let transactions = limit != nil ? Array(all.prefix(limit!)) : all
         
         if transactions.isEmpty {
-            Text("No transactions found")
+            Text("No transactions found", comment: "No transactions message")
                 .foregroundColor(.secondary)
                 .padding()
         } else {
@@ -48,9 +50,13 @@ struct TransactionRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(Formatting.formatDate(transaction.date))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    if let time = transaction.time {
+                        Text(time)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
                 
                 Text(transaction.description)
                     .font(.body)
