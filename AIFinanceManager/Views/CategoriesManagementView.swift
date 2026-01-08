@@ -24,6 +24,22 @@ struct CategoriesManagementView: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .padding()
+                    .gesture(
+                        DragGesture(minimumDistance: 50)
+                            .onEnded { value in
+                                if value.translation.width > 0 {
+                                    // Свайп вправо - переключить на предыдущий
+                                    if selectedType == .income {
+                                        selectedType = .expense
+                                    }
+                                } else {
+                                    // Свайп влево - переключить на следующий
+                                    if selectedType == .expense {
+                                        selectedType = .income
+                                    }
+                                }
+                            }
+                    )
                     
                     // Список категорий
                     ForEach(filteredCategories) { category in
@@ -43,9 +59,9 @@ struct CategoriesManagementView: View {
                 }
             }
             .navigationTitle("Categories")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showingAddCategory = true }) {
                         Image(systemName: "plus")
                     }
@@ -113,23 +129,19 @@ struct CategoryRow: View {
                 .fontWeight(.medium)
             
             Spacer()
-            
-            // Кнопки действий
-            HStack(spacing: 12) {
-                Button(action: onEdit) {
-                    Image(systemName: "pencil")
-                        .foregroundColor(.blue)
-                }
-                
-                if !isDefault {
-                    Button(action: onDelete) {
-                        Image(systemName: "trash")
-                            .foregroundColor(.red)
-                    }
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onEdit()
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if !isDefault {
+                Button(role: .destructive, action: onDelete) {
+                    Label("Delete", systemImage: "trash")
                 }
             }
         }
-        .padding(.vertical, 4)
     }
 }
 
@@ -145,6 +157,7 @@ struct CategoryEditView: View {
     @State private var selectedColor: String = "#3b82f6"
     @State private var showingEmojiPicker = false
     @State private var showingColorPicker = false
+    @State private var showingSubcategoryPicker = false
     
     private let defaultColors: [String] = [
         "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
@@ -198,14 +211,55 @@ struct CategoryEditView: View {
                         .padding(.vertical, 8)
                     }
                 }
+                
+                // Подкатегории
+                if let category = category {
+                    Section(header: Text("Подкатегории")) {
+                        let categoryId = category.id
+                        let linkedSubcategories = viewModel.getSubcategoriesForCategory(categoryId)
+                        
+                        ForEach(linkedSubcategories) { subcategory in
+                            HStack {
+                                Text(subcategory.name)
+                                Spacer()
+                                Button(action: {
+                                    viewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: categoryId)
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.red)
+                                }
+                            }
+                        }
+                        
+                        Button(action: { showingSubcategoryPicker = true }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Добавить подкатегорию")
+                            }
+                            .foregroundColor(.blue)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showingSubcategoryPicker) {
+                SubcategoryPickerView(
+                    viewModel: viewModel,
+                    categoryId: category?.id ?? "",
+                    onSelect: { subcategoryId in
+                        if let categoryId = category?.id {
+                            viewModel.linkSubcategoryToCategory(subcategoryId: subcategoryId, categoryId: categoryId)
+                        }
+                        showingSubcategoryPicker = false
+                    }
+                )
             }
             .navigationTitle(category == nil ? "Новая категория" : "Редактировать")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Отмена", action: onCancel)
                 }
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Сохранить") {
                         let newCategory = CustomCategory(
                             id: category?.id ?? UUID().uuidString,

@@ -12,6 +12,18 @@ struct HistoryView: View {
     @State private var selectedTimeFilter: TimeFilter = .week
     @State private var selectedAccountFilter: String? = nil // nil = все счета
     @State private var searchText = ""
+    @State private var showingCategoryFilter = false
+    let initialCategory: String? // Категория для предустановленного фильтра (из лонгтапа)
+    
+    // Кеш для отфильтрованных транзакций
+    @State private var cachedFilteredTransactions: [Transaction] = []
+    @State private var cachedGroupedTransactions: [String: [Transaction]] = [:]
+    @State private var lastFilterState: (TimeFilter, String?, String) = (.week, nil, "")
+    
+    init(viewModel: TransactionsViewModel, initialCategory: String? = nil) {
+        self.viewModel = viewModel
+        self.initialCategory = initialCategory
+    }
     
     enum TimeFilter: String, CaseIterable {
         case day = "За день"
@@ -30,81 +42,131 @@ struct HistoryView: View {
         .navigationTitle("History")
         .navigationBarTitleDisplayMode(.large)
         .searchable(text: $searchText, prompt: "Search by amount, category, or description")
+        .onAppear {
+            PerformanceProfiler.start("HistoryView.onAppear")
+            // Если передан initialCategory, устанавливаем фильтр по этой категории
+            if let category = initialCategory {
+                viewModel.selectedCategories = [category]
+            } else {
+                // Если initialCategory не передан, сбрасываем фильтр (показываем все категории)
+                // Но только если фильтр был установлен ранее (чтобы не сбрасывать пользовательский выбор)
+                // Это позволяет пользователю открыть историю без фильтра, а затем установить свой фильтр
+            }
+            updateCachedTransactions()
+            PerformanceProfiler.end("HistoryView.onAppear")
+        }
+        .onChange(of: selectedTimeFilter) { _, _ in
+            updateCachedTransactions()
+        }
+        .onChange(of: selectedAccountFilter) { _, _ in
+            updateCachedTransactions()
+        }
+        .onChange(of: searchText) { _, _ in
+            updateCachedTransactions()
+        }
+        .onChange(of: viewModel.filteredTransactions) { _, _ in
+            updateCachedTransactions()
+        }
+        .onDisappear {
+            // При закрытии не сбрасываем фильтр, чтобы пользователь мог вернуться к тому же фильтру
+            // Фильтр будет сброшен только при следующем открытии без initialCategory
+        }
+        .sheet(isPresented: $showingCategoryFilter) {
+            CategoryFilterView(viewModel: viewModel)
+        }
     }
     
     private var filterSection: some View {
-        HStack(spacing: 12) {
-            // Фильтр по времени - выпадающий список
-            Menu {
-                ForEach(TimeFilter.allCases, id: \.self) { filter in
-                    Button(action: { selectedTimeFilter = filter }) {
-                        HStack {
-                            Text(filter.rawValue)
-                            if selectedTimeFilter == filter {
-                                Image(systemName: "checkmark")
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                // Фильтр по времени - выпадающий список
+                Menu {
+                    ForEach(TimeFilter.allCases, id: \.self) { filter in
+                        Button(action: { selectedTimeFilter = filter }) {
+                            HStack {
+                                Text(filter.rawValue)
+                                if selectedTimeFilter == filter {
+                                    Image(systemName: "checkmark")
+                                }
                             }
                         }
                     }
-                }
-            } label: {
-                HStack {
-                    Text(selectedTimeFilter.rawValue)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
-                }
-                .foregroundColor(.primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray5))
-                .cornerRadius(20)
-            }
-            
-            // Фильтр по счетам - выпадающий список
-            Menu {
-                Button(action: { selectedAccountFilter = nil }) {
+                } label: {
                     HStack {
-                        Text("Все счета")
-                        if selectedAccountFilter == nil {
-                            Image(systemName: "checkmark")
-                        }
+                        Text(selectedTimeFilter.rawValue)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
                     }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemGray5))
+                    .cornerRadius(20)
                 }
                 
-                ForEach(viewModel.accounts) { account in
-                    Button(action: { selectedAccountFilter = account.id }) {
+                // Фильтр по счетам - выпадающий список
+                Menu {
+                    Button(action: { selectedAccountFilter = nil }) {
                         HStack {
-                            Text(account.name)
-                            if selectedAccountFilter == account.id {
+                            Text("Все счета")
+                            if selectedAccountFilter == nil {
                                 Image(systemName: "checkmark")
                             }
                         }
                     }
+                    
+                    ForEach(viewModel.accounts) { account in
+                        Button(action: { selectedAccountFilter = account.id }) {
+                            HStack {
+                                Text(account.name)
+                                if selectedAccountFilter == account.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(selectedAccountFilter == nil ? "Все счета" : (viewModel.accounts.first(where: { $0.id == selectedAccountFilter })?.name ?? "Все счета"))
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemGray5))
+                    .cornerRadius(20)
                 }
-            } label: {
-                HStack {
-                    Text(selectedAccountFilter == nil ? "Все счета" : (viewModel.accounts.first(where: { $0.id == selectedAccountFilter })?.name ?? "Все счета"))
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
+                
+                // Фильтр по категориям
+                Button(action: {
+                    showingCategoryFilter = true
+                }) {
+                    HStack {
+                        Text(categoryFilterText)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(viewModel.selectedCategories != nil ? Color.blue.opacity(0.2) : Color(.systemGray5))
+                    .cornerRadius(20)
                 }
-                .foregroundColor(.primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray5))
-                .cornerRadius(20)
             }
-            
-            Spacer()
+            .padding(.horizontal)
         }
-        .padding(.horizontal)
         .padding(.vertical, 12)
     }
     
     private var transactionsList: some View {
-        let grouped = groupedTransactions
+        let grouped = cachedGroupedTransactions.isEmpty ? groupedTransactions : cachedGroupedTransactions
         
         if grouped.isEmpty {
             return AnyView(
@@ -121,22 +183,45 @@ struct HistoryView: View {
             )
         }
         
+        // Сортируем ключи: Upcoming вверху, затем остальные по убыванию (Сегодня вверху)
+        let sortedKeys: [String] = {
+            let keys = Array(grouped.keys)
+            let upcomingKey = keys.first { $0 == "Upcoming" }
+            let otherKeys = keys.filter { $0 != "Upcoming" }.sorted(by: >)
+            if let upcoming = upcomingKey {
+                return [upcoming] + otherKeys
+            }
+            return otherKeys
+        }()
+        
         return AnyView(
-            List {
-                ForEach(grouped.keys.sorted(by: >), id: \.self) { dateKey in
-                    Section(header: dateHeader(for: dateKey, transactions: grouped[dateKey] ?? [])) {
-                        ForEach(grouped[dateKey] ?? []) { transaction in
-                            TransactionCard(
-                                transaction: transaction,
-                                currency: viewModel.allTransactions.first?.currency ?? "USD",
-                                customCategories: viewModel.customCategories,
-                                accounts: viewModel.accounts
-                            )
+            ScrollViewReader { proxy in
+                List {
+                    ForEach(sortedKeys, id: \.self) { dateKey in
+                        Section(header: dateHeader(for: dateKey, transactions: grouped[dateKey] ?? [])) {
+                            ForEach(grouped[dateKey] ?? []) { transaction in
+                                TransactionCard(
+                                    transaction: transaction,
+                                    currency: viewModel.allTransactions.first?.currency ?? "USD",
+                                    customCategories: viewModel.customCategories,
+                                    accounts: viewModel.accounts,
+                                    viewModel: viewModel
+                                )
+                            }
+                        }
+                        .id(dateKey)
+                    }
+                }
+                .listStyle(PlainListStyle())
+                .onAppear {
+                    // Скроллим к "Сегодня" при появлении
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation {
+                            proxy.scrollTo("Сегодня", anchor: .top)
                         }
                     }
                 }
             }
-            .listStyle(PlainListStyle())
         )
     }
     
@@ -151,8 +236,7 @@ struct HistoryView: View {
         // Фильтр по времени
         let calendar = Calendar.current
         let now = Date()
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateFormatter = DateFormatters.dateFormatter
         
         transactions = transactions.filter { transaction in
             guard let date = dateFormatter.date(from: transaction.date) else { return false }
@@ -202,13 +286,21 @@ struct HistoryView: View {
     private var groupedTransactions: [String: [Transaction]] {
         let transactions = filteredTransactions
         var grouped: [String: [Transaction]] = [:]
+        var upcomingTransactions: [Transaction] = [] // Для будущих recurring
         
         let calendar = Calendar.current
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateFormatter = DateFormatters.dateFormatter
+        let displayDateFormatter = DateFormatters.displayDateFormatter
+        let today = calendar.startOfDay(for: Date())
         
         for transaction in transactions {
             guard let date = dateFormatter.date(from: transaction.date) else { continue }
+            
+            // Если это будущая recurring транзакция, добавляем в отдельный список
+            if transaction.recurringSeriesId != nil && date >= today {
+                upcomingTransactions.append(transaction)
+                continue
+            }
             
             let dateKey: String
             if calendar.isDateInToday(date) {
@@ -216,10 +308,7 @@ struct HistoryView: View {
             } else if calendar.isDateInYesterday(date) {
                 dateKey = "Вчера"
             } else {
-                let displayFormatter = DateFormatter()
-                displayFormatter.locale = Locale(identifier: "ru_RU")
-                displayFormatter.dateFormat = "d MMMM"
-                dateKey = displayFormatter.string(from: date)
+                dateKey = displayDateFormatter.string(from: date)
             }
             
             if grouped[dateKey] == nil {
@@ -228,18 +317,69 @@ struct HistoryView: View {
             grouped[dateKey]?.append(transaction)
         }
         
+        // Сортируем будущие recurring транзакции
+        upcomingTransactions.sort { tx1, tx2 in
+            guard let date1 = dateFormatter.date(from: tx1.date),
+                  let date2 = dateFormatter.date(from: tx2.date) else { return false }
+            if date1 != date2 {
+                return date1 < date2 // Ближайшие сверху
+            }
+            if let time1 = tx1.time, let time2 = tx2.time {
+                return time1 < time2 // Ранние сверху
+            }
+            return false
+        }
+        
+        // Добавляем будущие recurring транзакции в отдельную группу
+        if !upcomingTransactions.isEmpty {
+            grouped["Upcoming"] = upcomingTransactions
+        }
+        
         // Сортируем транзакции внутри каждого дня по времени (если есть) или по дате
-        // Сверху последние (новые), снизу первые (старые)
         for key in grouped.keys {
-            grouped[key]?.sort { tx1, tx2 in
-                if let time1 = tx1.time, let time2 = tx2.time {
-                    return time1 > time2 // Новые сверху
+            if key != "Upcoming" { // Upcoming уже отсортированы
+                grouped[key]?.sort { tx1, tx2 in
+                    if let time1 = tx1.time, let time2 = tx2.time {
+                        return time1 > time2 // Новые сверху
+                    }
+                    return tx1.date > tx2.date // Новые сверху
                 }
-                return tx1.date > tx2.date // Новые сверху
             }
         }
         
         return grouped
+    }
+    
+    // Обновление кешированных транзакций
+    private func updateCachedTransactions() {
+        PerformanceProfiler.start("HistoryView.updateCachedTransactions")
+        let currentState = (selectedTimeFilter, selectedAccountFilter, searchText)
+        
+        // Проверяем, изменилось ли состояние фильтров
+        if currentState != lastFilterState {
+            lastFilterState = currentState
+            cachedGroupedTransactions = groupedTransactions
+        } else {
+            // Если состояние не изменилось, но изменились данные в viewModel, обновляем кеш
+            cachedGroupedTransactions = groupedTransactions
+        }
+        PerformanceProfiler.end("HistoryView.updateCachedTransactions")
+    }
+    
+    private func isRecurringFuture(_ transaction: Transaction, today: Date, dateFormatter: DateFormatter) -> Bool {
+        guard transaction.recurringSeriesId != nil else { return false }
+        guard let transactionDate = dateFormatter.date(from: transaction.date) else { return false }
+        return transactionDate >= today
+    }
+    
+    private var categoryFilterText: String {
+        guard let selectedCategories = viewModel.selectedCategories else {
+            return "Все категории"
+        }
+        if selectedCategories.count == 1 {
+            return selectedCategories.first ?? "Все категории"
+        }
+        return "\(selectedCategories.count) категорий"
     }
     
     private func dateHeader(for dateKey: String, transactions: [Transaction]) -> some View {
@@ -272,31 +412,94 @@ struct TransactionCard: View {
     let currency: String
     let customCategories: [CustomCategory]
     let accounts: [Account]
+    let viewModel: TransactionsViewModel?
+    
+    @State private var showingEditDialog = false
+    @State private var showingDeleteDialog = false
+    @State private var showingEditModal = false
+    
+    init(transaction: Transaction, currency: String, customCategories: [CustomCategory], accounts: [Account], viewModel: TransactionsViewModel? = nil) {
+        self.transaction = transaction
+        self.currency = currency
+        self.customCategories = customCategories
+        self.accounts = accounts
+        self.viewModel = viewModel
+    }
+    
+    private var isRecurringFuture: Bool {
+        guard transaction.recurringSeriesId != nil else { return false }
+        let dateFormatter = DateFormatters.dateFormatter
+        guard let transactionDate = dateFormatter.date(from: transaction.date) else { return false }
+        let today = Calendar.current.startOfDay(for: Date())
+        return transactionDate >= today
+    }
     
     var body: some View {
         HStack(spacing: 12) {
             // Иконка категории
-            Circle()
-                .fill(categoryColor)
-                .frame(width: 44, height: 44)
-                .overlay(
-                    Text(categoryEmoji)
-                        .font(.system(size: 20))
-                )
+            ZStack {
+                Circle()
+                    .fill(categoryColor)
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Text(categoryEmoji)
+                            .font(.system(size: 20))
+                    )
+                
+                // Иконка повторения в правом нижнем углу
+                if transaction.recurringSeriesId != nil {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12))
+                        .foregroundColor(.blue)
+                        .padding(4)
+                        .background(Color.white)
+                        .clipShape(Circle())
+                        .offset(x: 14, y: 14)
+                }
+            }
             
             // Информация
             VStack(alignment: .leading, spacing: 4) {
                 // Название категории
                 Text(transaction.category)
-                    .font(.body)
-                    .fontWeight(.medium)
+                    .font(.title3)
+                    .fontWeight(.semibold)
                 
-                // Счет
-                if let accountId = transaction.accountId,
-                   let account = accounts.first(where: { $0.id == accountId }) {
-                    Text(account.name)
+                // Подкатегории (если есть) - показываем через запятую
+                let linkedSubcategories = viewModel?.getSubcategoriesForTransaction(transaction.id) ?? []
+                if !linkedSubcategories.isEmpty {
+                    Text(linkedSubcategories.map { $0.name }.joined(separator: ", "))
                         .font(.caption)
                         .foregroundColor(.secondary)
+                }
+                
+                // Для переводов показываем откуда → куда
+                if transaction.type == .internalTransfer {
+                    HStack(spacing: 4) {
+                        if let sourceId = transaction.accountId,
+                           let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
+                            Text(sourceAccount.name)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+                        Image(systemName: "arrow.right")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        if let targetId = transaction.targetAccountId,
+                           let targetAccount = accounts.first(where: { $0.id == targetId }) {
+                            Text(targetAccount.name)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    // Счет (для не-переводов)
+                    if let accountId = transaction.accountId,
+                       let account = accounts.first(where: { $0.id == accountId }) {
+                        Text(account.name)
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 // Время
@@ -325,7 +528,95 @@ struct TransactionCard: View {
             }
         }
         .padding(.vertical, 8)
+        .opacity(isRecurringFuture ? 0.5 : 1.0)
         .contentShape(Rectangle())
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            // Удаление
+            Button(role: .destructive) {
+                if transaction.recurringSeriesId != nil {
+                    showingDeleteDialog = true
+                } else {
+                    if let viewModel = viewModel {
+                        viewModel.deleteTransaction(transaction)
+                    }
+                }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            
+            // Управление recurring (если есть)
+            if transaction.recurringSeriesId != nil {
+                Button {
+                    showingEditDialog = true
+                } label: {
+                    Label("Recurring", systemImage: "arrow.clockwise")
+                }
+                .tint(.blue)
+            }
+        }
+        .confirmationDialog("Delete Transaction", isPresented: $showingDeleteDialog) {
+            Button("Only this", role: .destructive) {
+                if let viewModel = viewModel {
+                    viewModel.deleteTransaction(transaction)
+                }
+            }
+            Button("All future", role: .destructive) {
+                if let viewModel = viewModel, let seriesId = transaction.recurringSeriesId {
+                    // Удаляем все будущие транзакции этой серии
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateFormat = "yyyy-MM-dd"
+                    guard let transactionDate = dateFormatter.date(from: transaction.date) else { return }
+                    
+                    let futureOccurrences = viewModel.recurringOccurrences.filter { occurrence in
+                        guard occurrence.seriesId == seriesId,
+                              let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
+                            return false
+                        }
+                        return occurrenceDate >= transactionDate
+                    }
+                    
+                    for occurrence in futureOccurrences {
+                        viewModel.allTransactions.removeAll { $0.id == occurrence.transactionId }
+                        viewModel.recurringOccurrences.removeAll { $0.id == occurrence.id }
+                    }
+                    viewModel.recalculateAccountBalances()
+                    viewModel.saveToStorage()
+                }
+            }
+            Button("Remove recurring", role: .destructive) {
+                if let viewModel = viewModel, let seriesId = transaction.recurringSeriesId {
+                    viewModel.deleteRecurringSeries(seriesId)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .onTapGesture {
+            showingEditModal = true
+        }
+        .confirmationDialog("Recurring Transaction", isPresented: $showingEditDialog, presenting: transaction) { transaction in
+            Button("Only this") {
+                showingEditModal = true
+            }
+            Button("All future") {
+                // Редактировать все будущие
+            }
+            Button("Stop recurring", role: .destructive) {
+                if let seriesId = transaction.recurringSeriesId {
+                    viewModel?.stopRecurringSeries(seriesId)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: $showingEditModal) {
+            if let viewModel = viewModel {
+                EditTransactionView(
+                    transaction: transaction,
+                    viewModel: viewModel,
+                    accounts: accounts,
+                    customCategories: customCategories
+                )
+            }
+        }
     }
     
     private var categoryColor: Color {
@@ -356,6 +647,125 @@ struct TransactionCard: View {
             return .red
         case .internalTransfer:
             return .gray
+        }
+    }
+}
+
+// View для фильтрации по категориям
+struct CategoryFilterView: View {
+    @ObservedObject var viewModel: TransactionsViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var selectedExpenseCategories: Set<String> = []
+    @State private var selectedIncomeCategories: Set<String> = []
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                // Опция "Все категории"
+                Section {
+                    HStack {
+                        Text("Все категории")
+                            .fontWeight(.medium)
+                        Spacer()
+                        if viewModel.selectedCategories == nil {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedExpenseCategories.removeAll()
+                        selectedIncomeCategories.removeAll()
+                        viewModel.selectedCategories = nil
+                    }
+                }
+                
+                // Категории расходов
+                Section(header: Text("Расходы")) {
+                    if viewModel.expenseCategories.isEmpty {
+                        Text("Нет категорий расходов")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(viewModel.expenseCategories, id: \.self) { category in
+                            HStack {
+                                Text(category)
+                                Spacer()
+                                if selectedExpenseCategories.contains(category) {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if selectedExpenseCategories.contains(category) {
+                                    selectedExpenseCategories.remove(category)
+                                } else {
+                                    selectedExpenseCategories.insert(category)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Категории доходов
+                Section(header: Text("Доходы")) {
+                    if viewModel.incomeCategories.isEmpty {
+                        Text("Нет категорий доходов")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(viewModel.incomeCategories, id: \.self) { category in
+                            HStack {
+                                Text(category)
+                                Spacer()
+                                if selectedIncomeCategories.contains(category) {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if selectedIncomeCategories.contains(category) {
+                                    selectedIncomeCategories.remove(category)
+                                } else {
+                                    selectedIncomeCategories.insert(category)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Фильтр по категориям")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Применить") {
+                        applyFilter()
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                // Загружаем текущий фильтр
+                if let currentFilter = viewModel.selectedCategories {
+                    selectedExpenseCategories = Set(viewModel.expenseCategories.filter { currentFilter.contains($0) })
+                    selectedIncomeCategories = Set(viewModel.incomeCategories.filter { currentFilter.contains($0) })
+                }
+            }
+        }
+    }
+    
+    private func applyFilter() {
+        let allSelected = selectedExpenseCategories.union(selectedIncomeCategories)
+        if allSelected.isEmpty {
+            // Если ничего не выбрано, показываем все категории
+            viewModel.selectedCategories = nil
+        } else {
+            viewModel.selectedCategories = allSelected
         }
     }
 }

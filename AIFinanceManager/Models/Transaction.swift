@@ -25,6 +25,8 @@ struct Transaction: Identifiable, Codable, Equatable {
     let subcategory: String?
     let accountId: String?
     let targetAccountId: String?
+    let recurringSeriesId: String? // Связь с периодической серией
+    let recurringOccurrenceId: String? // Связь с конкретным occurrence
     
     init(
         id: String,
@@ -37,7 +39,9 @@ struct Transaction: Identifiable, Codable, Equatable {
         category: String,
         subcategory: String? = nil,
         accountId: String? = nil,
-        targetAccountId: String? = nil
+        targetAccountId: String? = nil,
+        recurringSeriesId: String? = nil,
+        recurringOccurrenceId: String? = nil
     ) {
         self.id = id
         self.date = date
@@ -50,6 +54,8 @@ struct Transaction: Identifiable, Codable, Equatable {
         self.subcategory = subcategory
         self.accountId = accountId
         self.targetAccountId = targetAccountId
+        self.recurringSeriesId = recurringSeriesId
+        self.recurringOccurrenceId = recurringOccurrenceId
     }
 }
 
@@ -72,6 +78,7 @@ struct Summary: Codable {
     let currency: String
     let startDate: String
     let endDate: String
+    let plannedAmount: Double // Сумма всех невыполненных recurring операций
 }
 
 struct Account: Identifiable, Codable, Equatable {

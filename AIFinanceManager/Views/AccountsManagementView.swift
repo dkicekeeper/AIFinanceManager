@@ -29,9 +29,9 @@ struct AccountsManagementView: View {
                 }
             }
             .navigationTitle("Accounts")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showingAddAccount = true }) {
                         Image(systemName: "plus")
                     }
@@ -82,20 +82,17 @@ struct AccountRow: View {
             }
             
             Spacer()
-            
-            HStack(spacing: 12) {
-                Button(action: onEdit) {
-                    Image(systemName: "pencil")
-                        .foregroundColor(.blue)
-                }
-                
-                Button(action: onDelete) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.red)
-                }
-            }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onEdit()
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 }
 
@@ -135,10 +132,10 @@ struct AccountEditView: View {
             .navigationTitle(account == nil ? "Новый счёт" : "Редактировать счёт")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Отмена", action: onCancel)
                 }
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Сохранить") {
                         if let balance = Double(balanceText.replacingOccurrences(of: ",", with: ".")) {
                             let newAccount = Account(

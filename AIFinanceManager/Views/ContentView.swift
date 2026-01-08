@@ -22,7 +22,7 @@ struct ContentView: View {
                     .padding(.horizontal)
 
                 if !viewModel.allTransactions.isEmpty {
-                    NavigationLink(destination: HistoryView(viewModel: viewModel)) {
+                    NavigationLink(destination: HistoryView(viewModel: viewModel, initialCategory: nil)) {
                         analyticsCard
                             .padding(.horizontal)
                     }
@@ -89,7 +89,7 @@ struct ContentView: View {
                             }) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(account.name)
-                                        .font(.caption)
+                                        .font(.title3)
                                         .foregroundColor(.secondary)
                                     Text(Formatting.formatCurrency(account.balance, currency: account.currency))
                                         .font(.subheadline)
@@ -167,6 +167,22 @@ struct ContentView: View {
                 .cornerRadius(4)
             }
             .frame(height: 8)
+            
+            // В планах
+            if summary.plannedAmount > 0 {
+                HStack {
+                    Text("В планах")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                }
+            }
         }
         .padding()
         .background(Color(.systemGray6))

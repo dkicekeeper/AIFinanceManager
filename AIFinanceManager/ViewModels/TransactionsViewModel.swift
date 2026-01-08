@@ -15,59 +15,223 @@ class TransactionsViewModel: ObservableObject {
     @Published var categoryRules: [CategoryRule] = []
     @Published var accounts: [Account] = []
     @Published var customCategories: [CustomCategory] = []
+    @Published var recurringSeries: [RecurringSeries] = []
+    @Published var recurringOccurrences: [RecurringOccurrence] = []
+    @Published var subcategories: [Subcategory] = []
+    @Published var categorySubcategoryLinks: [CategorySubcategoryLink] = []
+    @Published var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
     @Published var dateFilter: DateFilter = DateFilter()
+    @Published var selectedCategories: Set<String>? = nil // nil = все категории, Set = выбранные категории
     @Published var isLoading = false
     @Published var errorMessage: String?
+    
+    // Храним начальные балансы счетов (баланс при создании/редактировании)
+    private var initialAccountBalances: [String: Double] = [:]
+    
+    // Кеш для summary
+    private var cachedSummary: Summary?
+    private var summaryCacheInvalidated = true
+    
+    // Кеш для categoryExpenses
+    private var cachedCategoryExpenses: [String: CategoryExpense]?
+    private var categoryExpensesCacheInvalidated = true
     
     private let storageKeyTransactions = "allTransactions"
     private let storageKeyRules = "categoryRules"
     private let storageKeyAccounts = "accounts"
     private let storageKeyCustomCategories = "customCategories"
+    private let storageKeyRecurringSeries = "recurringSeries"
+    private let storageKeyRecurringOccurrences = "recurringOccurrences"
+    private let storageKeySubcategories = "subcategories"
+    private let storageKeyCategorySubcategoryLinks = "categorySubcategoryLinks"
+    private let storageKeyTransactionSubcategoryLinks = "transactionSubcategoryLinks"
     
     init() {
+        PerformanceProfiler.start("ViewModel.init")
         loadFromStorage()
+        // Генерируем recurring транзакции асинхронно, чтобы не блокировать UI при запуске
+        // Используем Task с небольшой задержкой, чтобы UI успел отобразиться
+        Task { @MainActor in
+            // Небольшая задержка, чтобы UI успел загрузиться
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+            PerformanceProfiler.start("generateRecurringTransactions")
+            generateRecurringTransactions()
+            PerformanceProfiler.end("generateRecurringTransactions")
+        }
+        PerformanceProfiler.end("ViewModel.init")
+    }
+    
+    // Используем кешированный DateFormatter из утилит
+    private static var dateFormatter: DateFormatter {
+        DateFormatters.dateFormatter
     }
     
     var filteredTransactions: [Transaction] {
-        let transactions = applyRules(to: allTransactions)
+        var transactions = applyRules(to: allTransactions)
         
-        guard let startDate = dateFilter.startDate,
-              let endDate = dateFilter.endDate else {
-            return transactions
+        // Фильтр по категориям
+        if let selectedCategories = selectedCategories {
+            transactions = transactions.filter { transaction in
+                selectedCategories.contains(transaction.category)
+            }
         }
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
+        // Фильтр по датам
+        if let startDate = dateFilter.startDate,
+           let endDate = dateFilter.endDate {
+            transactions = transactions.filter { transaction in
+                guard let transactionDate = Self.dateFormatter.date(from: transaction.date) else {
+                    return false
+                }
+                return transactionDate >= startDate && transactionDate <= endDate
+            }
+        }
         
-        return transactions.filter { transaction in
-            guard let transactionDate = dateFormatter.date(from: transaction.date) else {
+        return filterRecurringTransactions(transactions)
+    }
+    
+    // Фильтрует recurring транзакции: показывает только следующую для каждой серии
+    private func filterRecurringTransactions(_ transactions: [Transaction]) -> [Transaction] {
+        // Используем кэшированный DateFormatter
+        let dateFormatter = Self.dateFormatter
+        
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        var result: [Transaction] = []
+        var recurringSeriesShown: Set<String> = []
+        
+        // Оптимизация: разделяем обычные и recurring транзакции за один проход
+        var regularTransactions: [Transaction] = []
+        var recurringTransactionsBySeries: [String: [Transaction]] = [:]
+        
+        for transaction in transactions {
+            if let seriesId = transaction.recurringSeriesId {
+                recurringTransactionsBySeries[seriesId, default: []].append(transaction)
+            } else {
+                regularTransactions.append(transaction)
+            }
+        }
+        
+        result.append(contentsOf: regularTransactions)
+        
+        // Для каждой активной recurring серии находим следующую транзакцию
+        for series in recurringSeries where series.isActive {
+            if recurringSeriesShown.contains(series.id) {
+                continue
+            }
+            
+            guard let seriesTransactions = recurringTransactionsBySeries[series.id] else {
+                continue
+            }
+            
+            // Находим следующую транзакцию (сегодня или в будущем)
+            // Сортируем только если нужно
+            let nextTransaction = seriesTransactions
+                .compactMap { transaction -> (Transaction, Date)? in
+                    guard let date = dateFormatter.date(from: transaction.date) else {
+                        return nil
+                    }
+                    return (transaction, date)
+                }
+                .filter { $0.1 >= today }
+                .min(by: { $0.1 < $1.1 })
+                .map { $0.0 }
+            
+            if let nextTransaction = nextTransaction {
+                result.append(nextTransaction)
+                recurringSeriesShown.insert(series.id)
+            }
+        }
+        
+        // Сортируем результат по дате (новые сверху)
+        return result.sorted { tx1, tx2 in
+            guard let date1 = dateFormatter.date(from: tx1.date),
+                  let date2 = dateFormatter.date(from: tx2.date) else {
                 return false
             }
-            return transactionDate >= startDate && transactionDate <= endDate
+            if date1 != date2 {
+                return date1 > date2
+            }
+            // Если даты равны, сортируем по времени
+            if let time1 = tx1.time, let time2 = tx2.time {
+                return time1 > time2
+            }
+            return false
         }
     }
     
     var summary: Summary {
+        // Используем кеш если он валиден
+        if let cached = cachedSummary, !summaryCacheInvalidated {
+            return cached
+        }
+        
+        PerformanceProfiler.start("summary.calculation")
+        
         let filtered = filteredTransactions
-        let totalIncome = filtered.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
-        let totalExpenses = filtered.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-        let totalInternal = filtered.filter { $0.type == .internalTransfer }.reduce(0) { $0 + $1.amount }
+        // Исключаем невыполненные recurring операции из расходов
+        let today = Calendar.current.startOfDay(for: Date())
+        let dateFormatter = Self.dateFormatter
+        
+        // Оптимизация: один проход вместо множественных фильтров
+        var totalIncome: Double = 0
+        var totalExpenses: Double = 0
+        var totalInternal: Double = 0
+        var plannedAmount: Double = 0
+        
+        for transaction in filtered {
+            let isFutureRecurring: Bool
+            if let _ = transaction.recurringSeriesId,
+               let transactionDate = dateFormatter.date(from: transaction.date),
+               transactionDate >= today {
+                isFutureRecurring = true
+                plannedAmount += transaction.amount
+            } else {
+                isFutureRecurring = false
+            }
+            
+            // Учитываем только выполненные транзакции
+            if !isFutureRecurring {
+                switch transaction.type {
+                case .income:
+                    totalIncome += transaction.amount
+                case .expense:
+                    totalExpenses += transaction.amount
+                case .internalTransfer:
+                    totalInternal += transaction.amount
+                }
+            }
+        }
         
         let currency = allTransactions.first?.currency ?? "USD"
         let dates = allTransactions.map { $0.date }.sorted()
         
-        return Summary(
+        let result = Summary(
             totalIncome: totalIncome,
             totalExpenses: totalExpenses,
             totalInternalTransfers: totalInternal,
             netFlow: totalIncome - totalExpenses,
             currency: currency,
             startDate: dates.first ?? "",
-            endDate: dates.last ?? ""
+            endDate: dates.last ?? "",
+            plannedAmount: plannedAmount
         )
+        
+        // Сохраняем в кеш
+        cachedSummary = result
+        summaryCacheInvalidated = false
+        
+        PerformanceProfiler.end("summary.calculation")
+        return result
     }
     
     var categoryExpenses: [String: CategoryExpense] {
+        // Используем кеш если он валиден
+        if let cached = cachedCategoryExpenses, !categoryExpensesCacheInvalidated {
+            return cached
+        }
+        
         let filtered = filteredTransactions.filter { $0.type == .expense }
         var result: [String: CategoryExpense] = [:]
         
@@ -85,6 +249,10 @@ class TransactionsViewModel: ObservableObject {
             
             result[category] = expense
         }
+        
+        // Сохраняем в кеш
+        cachedCategoryExpenses = result
+        categoryExpensesCacheInvalidated = false
         
         return result
     }
@@ -106,6 +274,24 @@ class TransactionsViewModel: ObservableObject {
         return Array(categories).sorted()
     }
     
+    // Получить все уникальные категории расходов
+    var expenseCategories: [String] {
+        var categories = Set<String>()
+        for transaction in allTransactions where transaction.type == .expense {
+            categories.insert(transaction.category.isEmpty ? "Uncategorized" : transaction.category)
+        }
+        return Array(categories).sorted()
+    }
+    
+    // Получить все уникальные категории доходов
+    var incomeCategories: [String] {
+        var categories = Set<String>()
+        for transaction in allTransactions where transaction.type == .income {
+            categories.insert(transaction.category.isEmpty ? "Uncategorized" : transaction.category)
+        }
+        return Array(categories).sorted()
+    }
+    
     func addTransactions(_ newTransactions: [Transaction]) {
         let transactionsWithRules = applyRules(to: newTransactions)
         
@@ -116,6 +302,7 @@ class TransactionsViewModel: ObservableObject {
         if !uniqueNew.isEmpty {
             allTransactions.append(contentsOf: uniqueNew)
             allTransactions.sort { $0.date > $1.date }
+            invalidateCaches()
             recalculateAccountBalances()
             saveToStorage()
         }
@@ -142,7 +329,9 @@ class TransactionsViewModel: ObservableObject {
                 category: transaction.category,
                 subcategory: transaction.subcategory,
                 accountId: transaction.accountId,
-                targetAccountId: transaction.targetAccountId
+                targetAccountId: transaction.targetAccountId,
+                recurringSeriesId: transaction.recurringSeriesId,
+                recurringOccurrenceId: transaction.recurringOccurrenceId
             )
         } else {
             transactionWithID = transaction
@@ -154,6 +343,7 @@ class TransactionsViewModel: ObservableObject {
         if !existingIDs.contains(transactionWithID.id) {
             allTransactions.append(contentsOf: transactionsWithRules)
             allTransactions.sort { $0.date > $1.date }
+            invalidateCaches()
             recalculateAccountBalances()
             saveToStorage()
         }
@@ -190,11 +380,14 @@ class TransactionsViewModel: ObservableObject {
                     category: category,
                     subcategory: subcategory,
                     accountId: allTransactions[i].accountId,
-                    targetAccountId: allTransactions[i].targetAccountId
+                    targetAccountId: allTransactions[i].targetAccountId,
+                    recurringSeriesId: allTransactions[i].recurringSeriesId,
+                    recurringOccurrenceId: allTransactions[i].recurringOccurrenceId
                 )
             }
         }
         
+        invalidateCaches()
         saveToStorage()
     }
     
@@ -204,23 +397,94 @@ class TransactionsViewModel: ObservableObject {
         accounts = []
         saveToStorage()
     }
+    
+    func deleteTransaction(_ transaction: Transaction) {
+        // Удаляем транзакцию
+        allTransactions.removeAll { $0.id == transaction.id }
+        
+        // Если это recurring occurrence, удаляем и его
+        if let occurrenceId = transaction.recurringOccurrenceId {
+            recurringOccurrences.removeAll { $0.id == occurrenceId }
+        }
+        
+        invalidateCaches()
+        recalculateAccountBalances()
+        saveToStorage()
+    }
+    
+    func updateTransaction(_ transaction: Transaction) {
+        guard let index = allTransactions.firstIndex(where: { $0.id == transaction.id }) else {
+            return
+        }
+        allTransactions[index] = transaction
+        invalidateCaches()
+        recalculateAccountBalances()
+        saveToStorage()
+    }
 
     // MARK: - Custom Categories
     
     func addCategory(_ category: CustomCategory) {
         customCategories.append(category)
+        invalidateCaches()
         saveToStorage()
     }
     
     func updateCategory(_ category: CustomCategory) {
-        if let index = customCategories.firstIndex(where: { $0.id == category.id }) {
-            customCategories[index] = category
+        guard let index = customCategories.firstIndex(where: { $0.id == category.id }) else {
+            // Если категория не найдена, возможно это новая категория с существующим id
+            // В этом случае добавляем её
+            print("Warning: Category with id \(category.id) not found, adding as new")
+            customCategories.append(category)
             saveToStorage()
+            return
         }
+        
+        // Сохраняем старое название для обновления транзакций
+        let oldCategory = customCategories[index]
+        let oldName = oldCategory.name
+        let newName = category.name
+        
+        // Обновляем категорию
+        customCategories[index] = category
+        
+        // Обновляем все транзакции с этой категорией, если изменилось название
+        if oldName != newName {
+            for i in allTransactions.indices {
+                if allTransactions[i].category == oldName {
+                    allTransactions[i] = Transaction(
+                        id: allTransactions[i].id,
+                        date: allTransactions[i].date,
+                        time: allTransactions[i].time,
+                        description: allTransactions[i].description,
+                        amount: allTransactions[i].amount,
+                        currency: allTransactions[i].currency,
+                        type: allTransactions[i].type,
+                        category: newName,
+                        subcategory: allTransactions[i].subcategory,
+                        accountId: allTransactions[i].accountId,
+                        targetAccountId: allTransactions[i].targetAccountId,
+                        recurringSeriesId: allTransactions[i].recurringSeriesId,
+                        recurringOccurrenceId: allTransactions[i].recurringOccurrenceId
+                    )
+                }
+            }
+            
+            // Обновляем recurring series с этой категорией
+            for i in recurringSeries.indices {
+                if recurringSeries[i].category == oldName {
+                    recurringSeries[i].category = newName
+                }
+            }
+        }
+        
+        invalidateCaches()
+        saveToStorage()
     }
     
     func deleteCategory(_ category: CustomCategory) {
         customCategories.removeAll { $0.id == category.id }
+        invalidateCaches()
         saveToStorage()
     }
     
@@ -233,12 +497,17 @@ class TransactionsViewModel: ObservableObject {
     func addAccount(name: String, balance: Double, currency: String) {
         let account = Account(name: name, balance: balance, currency: currency)
         accounts.append(account)
+        // Сохраняем начальный баланс
+        initialAccountBalances[account.id] = balance
+        recalculateAccountBalances()
         saveToStorage()
     }
 
     func updateAccount(_ account: Account) {
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
             accounts[index] = account
+            // Обновляем начальный баланс при редактировании
+            initialAccountBalances[account.id] = account.balance
             recalculateAccountBalances()
             saveToStorage()
         }
@@ -319,7 +588,7 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
-    private func saveToStorage() {
+    func saveToStorage() {
         if let encoded = try? JSONEncoder().encode(allTransactions) {
             UserDefaults.standard.set(encoded, forKey: storageKeyTransactions)
         }
@@ -331,6 +600,21 @@ class TransactionsViewModel: ObservableObject {
         }
         if let encoded = try? JSONEncoder().encode(customCategories) {
             UserDefaults.standard.set(encoded, forKey: storageKeyCustomCategories)
+        }
+        if let encoded = try? JSONEncoder().encode(recurringSeries) {
+            UserDefaults.standard.set(encoded, forKey: storageKeyRecurringSeries)
+        }
+        if let encoded = try? JSONEncoder().encode(recurringOccurrences) {
+            UserDefaults.standard.set(encoded, forKey: storageKeyRecurringOccurrences)
+        }
+        if let encoded = try? JSONEncoder().encode(subcategories) {
+            UserDefaults.standard.set(encoded, forKey: storageKeySubcategories)
+        }
+        if let encoded = try? JSONEncoder().encode(categorySubcategoryLinks) {
+            UserDefaults.standard.set(encoded, forKey: storageKeyCategorySubcategoryLinks)
+        }
+        if let encoded = try? JSONEncoder().encode(transactionSubcategoryLinks) {
+            UserDefaults.standard.set(encoded, forKey: storageKeyTransactionSubcategoryLinks)
         }
     }
     
@@ -346,47 +630,424 @@ class TransactionsViewModel: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: storageKeyAccounts),
            let decoded = try? JSONDecoder().decode([Account].self, from: data) {
             accounts = decoded
+            // Инициализируем начальные балансы из загруженных счетов
+            for account in accounts {
+                if initialAccountBalances[account.id] == nil {
+                    initialAccountBalances[account.id] = account.balance
+                }
+            }
         }
         if let data = UserDefaults.standard.data(forKey: storageKeyCustomCategories),
            let decoded = try? JSONDecoder().decode([CustomCategory].self, from: data) {
             customCategories = decoded
         }
+        if let data = UserDefaults.standard.data(forKey: storageKeyRecurringSeries),
+           let decoded = try? JSONDecoder().decode([RecurringSeries].self, from: data) {
+            recurringSeries = decoded
+        }
+        if let data = UserDefaults.standard.data(forKey: storageKeyRecurringOccurrences),
+           let decoded = try? JSONDecoder().decode([RecurringOccurrence].self, from: data) {
+            recurringOccurrences = decoded
+        }
+        if let data = UserDefaults.standard.data(forKey: storageKeySubcategories),
+           let decoded = try? JSONDecoder().decode([Subcategory].self, from: data) {
+            subcategories = decoded
+        }
+        if let data = UserDefaults.standard.data(forKey: storageKeyCategorySubcategoryLinks),
+           let decoded = try? JSONDecoder().decode([CategorySubcategoryLink].self, from: data) {
+            categorySubcategoryLinks = decoded
+        }
+        if let data = UserDefaults.standard.data(forKey: storageKeyTransactionSubcategoryLinks),
+           let decoded = try? JSONDecoder().decode([TransactionSubcategoryLink].self, from: data) {
+            transactionSubcategoryLinks = decoded
+        }
         recalculateAccountBalances()
     }
 
-    private func recalculateAccountBalances() {
+    func recalculateAccountBalances() {
         guard !accounts.isEmpty else { return }
 
-        var balancesById: [String: Double] = [:]
+        // Создаем словарь для расчета изменений балансов от транзакций
+        var balanceChanges: [String: Double] = [:]
         for account in accounts {
-            balancesById[account.id] = 0
+            balanceChanges[account.id] = 0
+            // Если начальный баланс еще не сохранен, сохраняем текущий
+            if initialAccountBalances[account.id] == nil {
+                initialAccountBalances[account.id] = account.balance
+            }
         }
 
+        // Рассчитываем изменения балансов от всех транзакций
         for tx in allTransactions {
             switch tx.type {
             case .income:
                 if let accountId = tx.accountId {
-                    balancesById[accountId, default: 0] += tx.amount
+                    balanceChanges[accountId, default: 0] += tx.amount
                 }
             case .expense:
                 if let accountId = tx.accountId {
-                    balancesById[accountId, default: 0] -= tx.amount
+                    balanceChanges[accountId, default: 0] -= tx.amount
                 }
             case .internalTransfer:
                 if let sourceId = tx.accountId {
-                    balancesById[sourceId, default: 0] -= tx.amount
+                    balanceChanges[sourceId, default: 0] -= tx.amount
                 }
                 if let targetId = tx.targetAccountId {
-                    balancesById[targetId, default: 0] += tx.amount
+                    balanceChanges[targetId, default: 0] += tx.amount
                 }
             }
         }
 
+        // Обновляем балансы: начальный баланс + изменения от транзакций
         for index in accounts.indices {
-            if let newBalance = balancesById[accounts[index].id] {
-                accounts[index].balance = newBalance
+            let accountId = accounts[index].id
+            let initialBalance = initialAccountBalances[accountId] ?? accounts[index].balance
+            let changes = balanceChanges[accountId] ?? 0
+            accounts[index].balance = initialBalance + changes
+        }
+    }
+    
+    // MARK: - Recurring Transactions
+    
+    func createRecurringSeries(
+        amount: Decimal,
+        currency: String,
+        category: String,
+        subcategory: String?,
+        description: String,
+        accountId: String?,
+        targetAccountId: String?,
+        frequency: RecurringFrequency,
+        startDate: String
+    ) -> RecurringSeries {
+        let series = RecurringSeries(
+            amount: amount,
+            currency: currency,
+            category: category,
+            subcategory: subcategory,
+            description: description,
+            accountId: accountId,
+            targetAccountId: targetAccountId,
+            frequency: frequency,
+            startDate: startDate
+        )
+        recurringSeries.append(series)
+        saveToStorage()
+        generateRecurringTransactions()
+        return series
+    }
+    
+    func updateRecurringSeries(_ series: RecurringSeries) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
+            recurringSeries[index] = series
+            saveToStorage()
+            generateRecurringTransactions()
+        }
+    }
+    
+    func stopRecurringSeries(_ seriesId: String) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == seriesId }) {
+            recurringSeries[index].isActive = false
+            saveToStorage()
+        }
+    }
+    
+    func deleteRecurringSeries(_ seriesId: String) {
+        // Удаляем все occurrences
+        recurringOccurrences.removeAll { $0.seriesId == seriesId }
+        // Удаляем серию
+        recurringSeries.removeAll { $0.id == seriesId }
+        saveToStorage()
+    }
+    
+    // Используем кешированный TimeFormatter из утилит
+    private static var timeFormatter: DateFormatter {
+        DateFormatters.timeFormatter
+    }
+    
+    // Основная версия для вызова из других мест (синхронная, но оптимизированная)
+    func generateRecurringTransactions() {
+        // Используем кэшированные форматтеры
+        let dateFormatter = Self.dateFormatter
+        let timeFormatter = Self.timeFormatter
+        
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let horizonDate = calendar.date(byAdding: .month, value: 12, to: today)!
+        
+        // Оптимизация: создаем Set существующих transaction IDs для быстрой проверки
+        let existingTransactionIds = Set(allTransactions.map { $0.id })
+        
+        // Оптимизация: создаем Set существующих occurrences для быстрой проверки
+        var existingOccurrenceKeys: Set<String> = []
+        for occurrence in recurringOccurrences {
+            existingOccurrenceKeys.insert("\(occurrence.seriesId):\(occurrence.occurrenceDate)")
+        }
+        
+        var newTransactions: [Transaction] = []
+        var newOccurrences: [RecurringOccurrence] = []
+        let currentTime = timeFormatter.string(from: Date())
+        
+        // Автоматически выполняем recurring операции, срок которых наступил
+        var hasChanges = false
+        for i in allTransactions.indices {
+            let transaction = allTransactions[i]
+            if let _ = transaction.recurringSeriesId,
+               let transactionDate = dateFormatter.date(from: transaction.date),
+               transactionDate < today {
+                // Срок наступил - помечаем как выполненную (убираем recurringSeriesId)
+                let updatedTransaction = Transaction(
+                    id: transaction.id,
+                    date: transaction.date,
+                    time: transaction.time,
+                    description: transaction.description,
+                    amount: transaction.amount,
+                    currency: transaction.currency,
+                    type: transaction.type,
+                    category: transaction.category,
+                    subcategory: transaction.subcategory,
+                    accountId: transaction.accountId,
+                    targetAccountId: transaction.targetAccountId,
+                    recurringSeriesId: nil, // Убираем связь с recurring
+                    recurringOccurrenceId: nil
+                )
+                allTransactions[i] = updatedTransaction
+                hasChanges = true
             }
         }
+        
+        for series in recurringSeries where series.isActive {
+            guard let startDate = dateFormatter.date(from: series.startDate) else { continue }
+            
+            // Генерируем транзакции на горизонт 12 месяцев
+            var currentDate = startDate
+            
+            while currentDate <= horizonDate {
+                let dateString = dateFormatter.string(from: currentDate)
+                let occurrenceKey = "\(series.id):\(dateString)"
+                
+                // Быстрая проверка через Set
+                if !existingOccurrenceKeys.contains(occurrenceKey) {
+                    let amountDouble = NSDecimalNumber(decimal: series.amount).doubleValue
+                    
+                    let transactionId = TransactionIDGenerator.generateID(
+                        date: dateString,
+                        description: series.description,
+                        amount: amountDouble,
+                        type: .expense,
+                        currency: series.currency
+                    )
+                    
+                    // Проверяем, нет ли уже такой транзакции
+                    if !existingTransactionIds.contains(transactionId) {
+                        let occurrenceId = UUID().uuidString
+                        
+                        let transaction = Transaction(
+                            id: transactionId,
+                            date: dateString,
+                            time: currentTime,
+                            description: series.description,
+                            amount: amountDouble,
+                            currency: series.currency,
+                            type: .expense,
+                            category: series.category,
+                            subcategory: series.subcategory,
+                            accountId: series.accountId,
+                            targetAccountId: series.targetAccountId,
+                            recurringSeriesId: series.id,
+                            recurringOccurrenceId: occurrenceId
+                        )
+                        
+                        let occurrence = RecurringOccurrence(
+                            id: occurrenceId,
+                            seriesId: series.id,
+                            occurrenceDate: dateString,
+                            transactionId: transactionId
+                        )
+                        
+                        newTransactions.append(transaction)
+                        newOccurrences.append(occurrence)
+                        existingOccurrenceKeys.insert(occurrenceKey)
+                    }
+                }
+                
+                // Переходим к следующей дате
+                switch series.frequency {
+                case .daily:
+                    currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
+                case .weekly:
+                    currentDate = calendar.date(byAdding: .day, value: 7, to: currentDate)!
+                case .monthly:
+                    currentDate = calendar.date(byAdding: .month, value: 1, to: currentDate)!
+                case .yearly:
+                    currentDate = calendar.date(byAdding: .year, value: 1, to: currentDate)!
+                }
+            }
+        }
+        
+        // Добавляем новые транзакции и occurrences только если они есть
+        if !newTransactions.isEmpty {
+            allTransactions.append(contentsOf: newTransactions)
+            allTransactions.sort { $0.date > $1.date }
+            recurringOccurrences.append(contentsOf: newOccurrences)
+            recalculateAccountBalances()
+            saveToStorage()
+        } else if hasChanges {
+            // Если были изменения в recurring (автоматическое выполнение), пересчитываем балансы и сохраняем
+            recalculateAccountBalances()
+            saveToStorage()
+        }
+    }
+    
+    func updateRecurringTransaction(_ transactionId: String, updateAllFuture: Bool, newAmount: Decimal? = nil, newCategory: String? = nil, newSubcategory: String? = nil) {
+        guard let transaction = allTransactions.first(where: { $0.id == transactionId }),
+              let seriesId = transaction.recurringSeriesId,
+              let seriesIndex = recurringSeries.firstIndex(where: { $0.id == seriesId }) else {
+            return
+        }
+        
+        if updateAllFuture {
+            // Обновляем серию
+            if let newAmount = newAmount {
+                recurringSeries[seriesIndex].amount = newAmount
+            }
+            if let newCategory = newCategory {
+                recurringSeries[seriesIndex].category = newCategory
+            }
+            if let newSubcategory = newSubcategory {
+                recurringSeries[seriesIndex].subcategory = newSubcategory
+            }
+            
+            // Удаляем все будущие транзакции этой серии
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            guard let transactionDate = dateFormatter.date(from: transaction.date) else { return }
+            
+            let futureOccurrences = recurringOccurrences.filter { occurrence in
+                occurrence.seriesId == seriesId &&
+                dateFormatter.date(from: occurrence.occurrenceDate)! >= transactionDate
+            }
+            
+            for occurrence in futureOccurrences {
+                allTransactions.removeAll { $0.id == occurrence.transactionId }
+                recurringOccurrences.removeAll { $0.id == occurrence.id }
+            }
+            
+            // Перегенерируем будущие транзакции
+            generateRecurringTransactions()
+        } else {
+            // Обновляем только эту транзакцию
+            if let index = allTransactions.firstIndex(where: { $0.id == transactionId }) {
+                var updatedTransaction = allTransactions[index]
+                if let newAmount = newAmount {
+                    let amountDouble = NSDecimalNumber(decimal: newAmount).doubleValue
+                    updatedTransaction = Transaction(
+                        id: updatedTransaction.id,
+                        date: updatedTransaction.date,
+                        time: updatedTransaction.time,
+                        description: updatedTransaction.description,
+                        amount: amountDouble,
+                        currency: updatedTransaction.currency,
+                        type: updatedTransaction.type,
+                        category: newCategory ?? updatedTransaction.category,
+                        subcategory: newSubcategory ?? updatedTransaction.subcategory,
+                        accountId: updatedTransaction.accountId,
+                        targetAccountId: updatedTransaction.targetAccountId,
+                        recurringSeriesId: updatedTransaction.recurringSeriesId,
+                        recurringOccurrenceId: updatedTransaction.recurringOccurrenceId
+                    )
+                    allTransactions[index] = updatedTransaction
+                }
+            }
+        }
+        
+        saveToStorage()
+    }
+    
+    // MARK: - Subcategories
+    
+    func addSubcategory(name: String) -> Subcategory {
+        let subcategory = Subcategory(name: name)
+        subcategories.append(subcategory)
+        saveToStorage()
+        return subcategory
+    }
+    
+    func updateSubcategory(_ subcategory: Subcategory) {
+        if let index = subcategories.firstIndex(where: { $0.id == subcategory.id }) {
+            subcategories[index] = subcategory
+            saveToStorage()
+        }
+    }
+    
+    func deleteSubcategory(_ subcategoryId: String) {
+        // Удаляем связи с категориями
+        categorySubcategoryLinks.removeAll { $0.subcategoryId == subcategoryId }
+        // Удаляем связи с транзакциями (оставляем транзакции, но убираем линк)
+        transactionSubcategoryLinks.removeAll { $0.subcategoryId == subcategoryId }
+        // Удаляем подкатегорию
+        subcategories.removeAll { $0.id == subcategoryId }
+        saveToStorage()
+    }
+    
+    func linkSubcategoryToCategory(subcategoryId: String, categoryId: String) {
+        // Проверяем, нет ли уже такой связи
+        let existingLink = categorySubcategoryLinks.first { link in
+            link.categoryId == categoryId && link.subcategoryId == subcategoryId
+        }
+        
+        if existingLink == nil {
+            let link = CategorySubcategoryLink(categoryId: categoryId, subcategoryId: subcategoryId)
+            categorySubcategoryLinks.append(link)
+            saveToStorage()
+        }
+    }
+    
+    func unlinkSubcategoryFromCategory(subcategoryId: String, categoryId: String) {
+        categorySubcategoryLinks.removeAll { link in
+            link.categoryId == categoryId && link.subcategoryId == subcategoryId
+        }
+        saveToStorage()
+    }
+    
+    func getSubcategoriesForCategory(_ categoryId: String) -> [Subcategory] {
+        let linkedSubcategoryIds = categorySubcategoryLinks
+            .filter { $0.categoryId == categoryId }
+            .map { $0.subcategoryId }
+        
+        return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
+    }
+    
+    func getSubcategoriesForTransaction(_ transactionId: String) -> [Subcategory] {
+        let linkedSubcategoryIds = transactionSubcategoryLinks
+            .filter { $0.transactionId == transactionId }
+            .map { $0.subcategoryId }
+        
+        return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
+    }
+    
+    func linkSubcategoriesToTransaction(transactionId: String, subcategoryIds: [String]) {
+        // Удаляем старые связи
+        transactionSubcategoryLinks.removeAll { $0.transactionId == transactionId }
+        
+        // Добавляем новые связи
+        for subcategoryId in subcategoryIds {
+            let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
+            transactionSubcategoryLinks.append(link)
+        }
+        
+        saveToStorage()
+    }
+    
+    func searchSubcategories(query: String) -> [Subcategory] {
+        let queryLower = query.lowercased()
+        return subcategories.filter { $0.name.lowercased().contains(queryLower) }
+    }
+    
+    // Инвалидация кешей при изменении данных
+    private func invalidateCaches() {
+        summaryCacheInvalidated = true
+        categoryExpensesCacheInvalidated = true
     }
 }
 

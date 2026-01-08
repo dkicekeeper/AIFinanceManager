@@ -32,6 +32,22 @@ struct AccountActionView: View {
                         Text("Transfer").tag(ActionType.transfer)
                     }
                     .pickerStyle(SegmentedPickerStyle())
+                    .gesture(
+                        DragGesture(minimumDistance: 50)
+                            .onEnded { value in
+                                if value.translation.width > 0 {
+                                    // Свайп вправо - переключить на предыдущий
+                                    if selectedAction == .transfer {
+                                        selectedAction = .income
+                                    }
+                                } else {
+                                    // Свайп влево - переключить на следующий
+                                    if selectedAction == .income {
+                                        selectedAction = .transfer
+                                    }
+                                }
+                            }
+                    )
                 }
                 
                 if selectedAction == .income {
@@ -137,13 +153,9 @@ struct AccountActionView: View {
     private func saveTransaction() {
         guard let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")) else { return }
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateFormatter = DateFormatters.dateFormatter
         let today = dateFormatter.string(from: Date())
-        
-        let timeFormatter = DateFormatter()
-        timeFormatter.dateFormat = "HH:mm"
-        let currentTime = timeFormatter.string(from: Date())
+        let currentTime = DateFormatters.timeFormatter.string(from: Date())
         
         let finalDescription = descriptionText.isEmpty ? (selectedAction == .income ? "Account top-up" : "Account transfer") : descriptionText
         

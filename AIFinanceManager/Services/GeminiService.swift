@@ -148,7 +148,9 @@ class GeminiService {
                 category: transaction.category,
                 subcategory: transaction.subcategory,
                 accountId: nil,
-                targetAccountId: nil
+                targetAccountId: nil,
+                recurringSeriesId: nil,
+                recurringOccurrenceId: nil
             )
         }
         
