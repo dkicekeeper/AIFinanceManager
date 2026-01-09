@@ -124,8 +124,9 @@ struct CategoryRow: View {
                 .fill(category.color.opacity(0.2))
                 .frame(width: 44, height: 44)
                 .overlay(
-                    Text(category.emoji)
+                    Image(systemName: category.iconName)
                         .font(.system(size: 20))
+                        .foregroundColor(category.color)
                 )
                 .overlay(
                     Circle()
@@ -162,9 +163,9 @@ struct CategoryEditView: View {
     let onCancel: () -> Void
     
     @State private var name: String = ""
-    @State private var emoji: String = "💰"
+    @State private var iconName: String = "banknote.fill"
     @State private var selectedColor: String = "#3b82f6"
-    @State private var showingEmojiPicker = false
+    @State private var showingIconPicker = false
     @State private var showingColorPicker = false
     @State private var showingSubcategoryPicker = false
     
@@ -174,10 +175,10 @@ struct CategoryEditView: View {
         "#f43f5e", "#a855f7", "#10b981", "#f59e0b"
     ]
     
-    private let commonEmojis: [String] = [
-        "💰", "🍔", "🚕", "🛍️", "🎉", "💡", "🏥", "🎓",
-        "💵", "💼", "📦", "🎁", "✈️", "🛒", "☕️", "📺",
-        "🏠", "🚗", "🍕", "🎬", "📱", "💻", "🎮", "🏋️"
+    private let commonIcons: [String] = [
+        "banknote.fill", "hamburger.fill", "car.fill", "bag.fill", "sparkles", "lightbulb.fill", "cross.case.fill", "graduationcap.fill",
+        "dollar.circle.fill", "briefcase.fill", "box.fill", "gift.fill", "airplane.fill", "cart.fill", "cup.and.saucer.fill", "tv.fill",
+        "house.fill", "car.fill", "fork.knife", "film.fill", "iphone", "laptopcomputer", "gamecontroller.fill", "dumbbell.fill"
     ]
     
     var body: some View {
@@ -187,11 +188,12 @@ struct CategoryEditView: View {
                     TextField("Название категории", text: $name)
                 }
                 
-                Section(header: Text("Эмодзи")) {
+                Section(header: Text("Иконка")) {
                     HStack {
-                        Button(action: { showingEmojiPicker.toggle() }) {
-                            Text(emoji)
-                                .font(.system(size: 40))
+                        Button(action: { showingIconPicker.toggle() }) {
+                            Image(systemName: iconName)
+                                .font(.system(size: 30))
+                                .foregroundColor(hexToColor(selectedColor))
                                 .frame(width: 60, height: 60)
                                 .background(Color(.systemGray6))
                                 .cornerRadius(12)
@@ -273,22 +275,22 @@ struct CategoryEditView: View {
                         let newCategory = CustomCategory(
                             id: category?.id ?? UUID().uuidString,
                             name: name,
-                            emoji: emoji,
+                            iconName: iconName,
                             colorHex: selectedColor,
                             type: type
                         )
                         onSave(newCategory)
                     }
-                    .disabled(name.isEmpty || emoji.isEmpty)
+                    .disabled(name.isEmpty || iconName.isEmpty)
                 }
             }
-            .sheet(isPresented: $showingEmojiPicker) {
-                EmojiPickerView(selectedEmoji: $emoji)
+            .sheet(isPresented: $showingIconPicker) {
+                IconPickerView(selectedIconName: $iconName)
             }
             .onAppear {
                 if let category = category {
                     name = category.name
-                    emoji = category.emoji
+                    iconName = category.iconName
                     selectedColor = category.colorHex
                 }
             }
@@ -310,41 +312,42 @@ struct CategoryEditView: View {
     }
 }
 
-struct EmojiPickerView: View {
-    @Binding var selectedEmoji: String
+struct IconPickerView: View {
+    @Binding var selectedIconName: String
     @Environment(\.dismiss) var dismiss
     
-    private let emojiCategories: [(String, [String])] = [
-        ("Часто используемые", ["💰", "🍔", "🚕", "🛍️", "🎉", "💡", "🏥", "🎓", "💵", "💼", "📦", "🎁", "✈️", "🛒", "☕️", "📺"]),
-        ("Еда", ["🍕", "🍔", "🌮", "🍜", "🍰", "🍎", "🥗", "🍝"]),
-        ("Транспорт", ["🚕", "🚗", "🚌", "✈️", "🚇", "🚲", "🛴", "🚢"]),
-        ("Покупки", ["🛍️", "🛒", "💳", "👜", "👕", "👟", "📱", "💻"]),
-        ("Развлечения", ["🎬", "🎮", "🎵", "🎭", "🎨", "📚", "⚽️", "🏋️"]),
-        ("Здоровье", ["🏥", "💊", "🏃", "🧘", "💉", "🦷", "👁️", "❤️"]),
-        ("Дом", ["🏠", "🔑", "🛋️", "🛏️", "🚿", "🍳", "🧹", "🌱"]),
-        ("Деньги", ["💰", "💵", "💳", "💎", "🏦", "📊", "💸", "💴"])
+    private let iconCategories: [(String, [String])] = [
+        ("Часто используемые", ["banknote.fill", "hamburger.fill", "car.fill", "bag.fill", "sparkles", "lightbulb.fill", "cross.case.fill", "graduationcap.fill", "dollar.circle.fill", "briefcase.fill", "box.fill", "gift.fill", "airplane.fill", "cart.fill", "cup.and.saucer.fill", "tv.fill"]),
+        ("Еда", ["fork.knife", "hamburger.fill", "cup.and.saucer.fill", "cart.fill", "wineglass.fill", "birthday.cake.fill", "apple.fill", "leaf.fill"]),
+        ("Транспорт", ["car.fill", "bus.fill", "airplane.fill", "tram.fill", "bicycle.circle.fill", "scooter", "ship.fill", "fuelpump.fill"]),
+        ("Покупки", ["bag.fill", "cart.fill", "creditcard.fill", "handbag.fill", "tshirt.fill", "shoe.fill", "iphone", "laptopcomputer"]),
+        ("Развлечения", ["film.fill", "gamecontroller.fill", "music.note", "theatermasks.fill", "paintpalette.fill", "book.fill", "sportscourt.fill", "dumbbell.fill"]),
+        ("Здоровье", ["cross.case.fill", "pills.fill", "figure.run", "figure.yoga", "syringe", "face.smiling.fill", "eye", "heart.fill"]),
+        ("Дом", ["house.fill", "key.fill", "chair.fill", "bed.double", "shower.fill", "flame.fill", "sparkles", "leaf.fill"]),
+        ("Деньги", ["banknote.fill", "dollar.circle.fill", "creditcard.fill", "diamond.circle.fill", "building.columns.fill", "chart.bar.fill", "banknote.fill", "dollarsign.circle.fill"])
     ]
     
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    ForEach(emojiCategories, id: \.0) { category in
+                    ForEach(iconCategories, id: \.0) { category in
                         VStack(alignment: .leading, spacing: 12) {
                             Text(category.0)
                                 .font(.headline)
                                 .padding(.horizontal)
                             
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 8), spacing: 12) {
-                                ForEach(category.1, id: \.self) { emoji in
+                                ForEach(category.1, id: \.self) { iconName in
                                     Button(action: {
-                                        selectedEmoji = emoji
+                                        selectedIconName = iconName
                                         dismiss()
                                     }) {
-                                        Text(emoji)
-                                            .font(.system(size: 32))
+                                        Image(systemName: iconName)
+                                            .font(.system(size: 24))
+                                            .foregroundColor(.primary)
                                             .frame(width: 50, height: 50)
-                                            .background(selectedEmoji == emoji ? Color.blue.opacity(0.2) : Color(.systemGray6))
+                                            .background(selectedIconName == iconName ? Color.blue.opacity(0.2) : Color(.systemGray6))
                                             .cornerRadius(10)
                                     }
                                 }
@@ -355,7 +358,7 @@ struct EmojiPickerView: View {
                 }
                 .padding(.vertical)
             }
-            .navigationTitle("Выберите эмодзи")
+            .navigationTitle("Выберите иконку")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

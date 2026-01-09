@@ -23,7 +23,6 @@ struct EditTransactionView: View {
     @State private var selectedDate: Date = Date()
     @State private var isRecurring: Bool = false
     @State private var selectedFrequency: RecurringFrequency = .monthly
-    @State private var showingDatePicker = false
     @State private var showingSubcategorySearch = false
     @State private var subcategorySearchText = ""
     @State private var showingRecurringDisableDialog = false
@@ -195,43 +194,8 @@ struct EditTransactionView: View {
                 }
                 
                 // Кнопки даты внизу
-                HStack(spacing: 12) {
-                    Button(action: {
-                        selectedDate = Date()
-                        saveTransaction(date: selectedDate)
-                    }) {
-                        Text("Сегодня")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                    
-                    Button(action: {
-                        if let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) {
-                            selectedDate = yesterday
-                            saveTransaction(date: yesterday)
-                        }
-                    }) {
-                        Text("Вчера")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                    
-                    Button(action: {
-                        showingDatePicker = true
-                    }) {
-                        Text("Календарь")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
+                DateButtonsView(selectedDate: $selectedDate) { date in
+                    saveTransaction(date: date)
                 }
                 .padding()
                 .background(Color(.systemBackground))
@@ -248,11 +212,6 @@ struct EditTransactionView: View {
                     Button("Save") {
                         saveTransaction(date: selectedDate)
                     }
-                }
-            }
-            .sheet(isPresented: $showingDatePicker) {
-                DatePickerSheet(selectedDate: $selectedDate) { date in
-                    saveTransaction(date: date)
                 }
             }
             .onAppear {

@@ -17,6 +17,7 @@ struct AccountActionView: View {
     @State private var descriptionText: String = ""
     @State private var selectedCategory: String? = nil
     @State private var selectedTargetAccountId: String? = nil
+    @State private var selectedDate: Date = Date()
     @FocusState private var isAmountFocused: Bool
     
     init(viewModel: TransactionsViewModel, account: Account) {
@@ -115,7 +116,7 @@ struct AccountActionView: View {
                             .keyboardType(.decimalPad)
                             .focused($isAmountFocused)
                         
-                        Picker("Валюта", selection: $selectedCurrency) {
+                        Picker("", selection: $selectedCurrency) {
                             ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
                                 Text(currency).tag(currency)
                             }
@@ -128,6 +129,13 @@ struct AccountActionView: View {
                 Section(header: Text("Описание")) {
                     TextField("Описание (необязательно)", text: $descriptionText, axis: .vertical)
                         .lineLimit(3...6)
+                }
+                
+                // Кнопки даты
+                Section {
+                    DateButtonsView(selectedDate: $selectedDate) { date in
+                        // Дата обновляется автоматически через binding
+                    }
                 }
             }
             .navigationTitle(selectedAction == .income ? "Пополнение счета" : "Перевод")
@@ -172,8 +180,8 @@ struct AccountActionView: View {
         guard let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")) else { return }
         
         let dateFormatter = DateFormatters.dateFormatter
-        let today = dateFormatter.string(from: Date())
-        let currentTime = DateFormatters.timeFormatter.string(from: Date())
+        let transactionDate = dateFormatter.string(from: selectedDate)
+        let currentTime = DateFormatters.timeFormatter.string(from: selectedDate)
         
         let finalDescription = descriptionText.isEmpty ? (selectedAction == .income ? "Пополнение счета" : "Перевод между счетами") : descriptionText
         
@@ -193,7 +201,7 @@ struct AccountActionView: View {
                     // Пополнение счета
                     let transaction = Transaction(
                         id: "",
-                        date: today,
+                        date: transactionDate,
                         time: currentTime,
                         description: finalDescription,
                         amount: amount,
@@ -211,7 +219,7 @@ struct AccountActionView: View {
                     guard let targetAccountId = selectedTargetAccountId else { return }
                     let transaction = Transaction(
                         id: "",
-                        date: today,
+                        date: transactionDate,
                         time: currentTime,
                         description: finalDescription,
                         amount: amount,
@@ -246,8 +254,9 @@ struct CategoryRadioButton: View {
                     .fill(isSelected ? coinColor : coinColor.opacity(0.5))
                     .frame(width: 64, height: 64)
                     .overlay(
-                        Text(emoji)
-                            .font(.title)
+                        Image(systemName: iconName)
+                            .font(.title2)
+                            .foregroundColor(iconColor)
                     )
                     .overlay(
                         Circle()
@@ -277,8 +286,15 @@ struct CategoryRadioButton: View {
         return CategoryColors.hexColor(for: category, opacity: 0.6, customCategories: viewModel.customCategories)
     }
     
-    private var emoji: String {
-        CategoryEmoji.emoji(for: category, type: type, customCategories: viewModel.customCategories)
+    private var iconColor: Color {
+        if type == .income {
+            return Color.green
+        }
+        return CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: viewModel.customCategories)
+    }
+    
+    private var iconName: String {
+        CategoryEmoji.iconName(for: category, type: type, customCategories: viewModel.customCategories)
     }
 }
 

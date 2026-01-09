@@ -86,7 +86,7 @@ struct VoiceInputConfirmationView: View {
                                     .stroke(amountWarning != nil ? Color.red : Color.clear, lineWidth: 1)
                             )
                         
-                        Picker("Валюта", selection: $selectedCurrency) {
+                        Picker("", selection: $selectedCurrency) {
                             ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
                                 Text(currency).tag(currency)
                             }
@@ -250,7 +250,7 @@ struct VoiceInputConfirmationView: View {
                 selectedCategoryName = otherCategory.name
             } else {
                 // Создаем категорию "Другое" если её нет
-                let otherCategory = CustomCategory(name: "Другое", emoji: "💰", colorHex: "#3b82f6", type: selectedType)
+                let otherCategory = CustomCategory(name: "Другое", iconName: "banknote.fill", colorHex: "#3b82f6", type: selectedType)
                 viewModel.addCategory(otherCategory)
                 // Ждем обновления списка категорий
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

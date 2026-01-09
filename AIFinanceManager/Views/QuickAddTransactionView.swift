@@ -9,14 +9,18 @@ import SwiftUI
 
 struct QuickAddTransactionView: View {
     @ObservedObject var viewModel: TransactionsViewModel
+    @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var selectedCategory: String?
     @State private var selectedType: TransactionType = .expense
     @State private var showingModal = false
     
     var body: some View {
-        LazyVGrid(columns: gridColumns, spacing: 16) {
-            ForEach(popularCategories, id: \.self) { category in
-                let total = viewModel.categoryExpenses[category]?.total ?? 0
+        let categories = popularCategories()
+        let categoryExpenses = viewModel.categoryExpenses(timeFilterManager: timeFilterManager)
+        
+        return LazyVGrid(columns: gridColumns, spacing: 16) {
+            ForEach(categories, id: \.self) { category in
+                let total = categoryExpenses[category]?.total ?? 0
                 let currency = viewModel.allTransactions.first?.currency ?? "USD"
                 let totalText = total != 0 ? Formatting.formatCurrency(total, currency: currency) : nil
 
@@ -25,6 +29,7 @@ struct QuickAddTransactionView: View {
                     type: .expense,
                     totalText: totalText,
                     viewModel: viewModel,
+                    timeFilterManager: timeFilterManager,
                     onTap: {
                         selectedCategory = category
                         selectedType = .expense
@@ -117,7 +122,7 @@ struct QuickAddTransactionView: View {
         Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
     }
     
-    private var popularCategories: [String] {
+    private func popularCategories() -> [String] {
         // Получаем все категории: только пользовательские + из транзакций
         var allCategories = Set<String>()
         
@@ -126,15 +131,17 @@ struct QuickAddTransactionView: View {
             allCategories.insert(customCategory.name)
         }
         
-        // Добавляем категории из транзакций
-        for category in viewModel.popularCategories {
+        // Добавляем категории из транзакций (с учетом фильтра по времени)
+        let popularFromTransactions = viewModel.popularCategories(timeFilterManager: timeFilterManager)
+        for category in popularFromTransactions {
             allCategories.insert(category)
         }
         
-        // Сортируем по популярности (сумме расходов)
+        // Сортируем по популярности (сумме расходов с учетом фильтра)
+        let categoryExpenses = viewModel.categoryExpenses(timeFilterManager: timeFilterManager)
         return Array(allCategories).sorted { category1, category2 in
-            let total1 = viewModel.categoryExpenses[category1]?.total ?? 0
-            let total2 = viewModel.categoryExpenses[category2]?.total ?? 0
+            let total1 = categoryExpenses[category1]?.total ?? 0
+            let total2 = categoryExpenses[category2]?.total ?? 0
             if total1 != total2 {
                 return total1 > total2
             }
@@ -148,6 +155,7 @@ struct CoinView: View {
     let type: TransactionType
     let totalText: String?
     let viewModel: TransactionsViewModel
+    let timeFilterManager: TimeFilterManager
     let onTap: () -> Void
     
     @State private var isPressed = false
@@ -159,14 +167,14 @@ struct CoinView: View {
                     .fill(coinColor)
                     .frame(width: 64, height: 64)
                     .overlay(
-                        Text(emoji)
-                            .font(.title)
+                        Image(systemName: iconName)
+                            .font(.title2)
+                            .foregroundColor(iconColor)
                     )
                     .overlay(
                         Circle()
                             .stroke(coinBorderColor, lineWidth: 2)
                     )
-                    .shadow(radius: isPressed ? 2 : 4)
                     .scaleEffect(isPressed ? 0.9 : 1.0)
                     .animation(.easeInOut(duration: 0.1), value: isPressed)
                 
@@ -176,10 +184,7 @@ struct CoinView: View {
                         .foregroundColor(.primary)
                         .lineLimit(1)
                     
-                    if type == .expense {
-                        let total = viewModel.categoryExpenses[category]?.total ?? 0
-                        let currency = viewModel.allTransactions.first?.currency ?? "USD"
-                        let totalText = Formatting.formatCurrency(total, currency: currency)
+                    if type == .expense, let totalText = totalText {
                         Text(totalText)
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -214,8 +219,15 @@ struct CoinView: View {
         return CategoryColors.hexColor(for: category, opacity: 0.6, customCategories: viewModel.customCategories)
     }
     
-    private var emoji: String {
-        CategoryEmoji.emoji(for: category, type: type, customCategories: viewModel.customCategories)
+    private var iconColor: Color {
+        if type == .income {
+            return Color.green
+        }
+        return CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: viewModel.customCategories)
+    }
+    
+    private var iconName: String {
+        CategoryEmoji.iconName(for: category, type: type, customCategories: viewModel.customCategories)
     }
 }
 
@@ -226,6 +238,7 @@ struct AddTransactionModal: View {
     let currency: String
     let accounts: [Account]
     let viewModel: TransactionsViewModel
+    @EnvironmentObject var timeFilterManager: TimeFilterManager
     let onSave: (Decimal, String, String?, String, Set<String>, String) -> Void // amount, description, accountId, date, subcategoryIds, currency
     let onCancel: () -> Void
     
@@ -234,7 +247,6 @@ struct AddTransactionModal: View {
     @State private var selectedAccountId: String?
     @State private var selectedCurrency: String
     @State private var selectedDate: Date = Date()
-    @State private var showingDatePicker = false
     @State private var isRecurring = false
     @State private var selectedFrequency: RecurringFrequency = .monthly
     @State private var selectedSubcategoryIds: Set<String> = []
@@ -302,7 +314,7 @@ struct AddTransactionModal: View {
                                 .keyboardType(.decimalPad)
                                 .focused($isAmountFocused)
                             
-                            Picker("Валюта", selection: $selectedCurrency) {
+                            Picker("", selection: $selectedCurrency) {
                                 ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
                                     Text(currency).tag(currency)
                                 }
@@ -386,43 +398,8 @@ struct AddTransactionModal: View {
                 }
                 
                 // Кнопки даты внизу
-                HStack(spacing: 12) {
-                    Button(action: {
-                        selectedDate = Date()
-                        saveTransaction(date: selectedDate)
-                    }) {
-                        Text("Сегодня")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                    
-                    Button(action: {
-                        if let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) {
-                            selectedDate = yesterday
-                            saveTransaction(date: yesterday)
-                        }
-                    }) {
-                        Text("Вчера")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                    
-                    Button(action: {
-                        showingDatePicker = true
-                    }) {
-                        Text("Календарь")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
+                DateButtonsView(selectedDate: $selectedDate) { date in
+                    saveTransaction(date: date)
                 }
                 .padding()
                 .background(Color(.systemBackground))
@@ -444,11 +421,7 @@ struct AddTransactionModal: View {
             .sheet(isPresented: $showingCategoryHistory) {
                 NavigationView {
                     HistoryView(viewModel: viewModel, initialCategory: category)
-                }
-            }
-            .sheet(isPresented: $showingDatePicker) {
-                DatePickerSheet(selectedDate: $selectedDate) { date in
-                    saveTransaction(date: date)
+                        .environmentObject(timeFilterManager)
                 }
             }
             .onAppear {

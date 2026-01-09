@@ -9,7 +9,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @ObservedObject var viewModel: TransactionsViewModel
-    @State private var selectedTimeFilter: TimeFilter = .week
+    @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var selectedAccountFilter: String? = nil // nil = все счета
     @State private var searchText = ""
     @State private var showingCategoryFilter = false
@@ -18,17 +18,11 @@ struct HistoryView: View {
     // Кеш для отфильтрованных транзакций
     @State private var cachedFilteredTransactions: [Transaction] = []
     @State private var cachedGroupedTransactions: [String: [Transaction]] = [:]
-    @State private var lastFilterState: (TimeFilter, String?, String) = (.week, nil, "")
+    @State private var lastFilterState: (String, String?, Set<String>?) = ("", nil, nil)
     
     init(viewModel: TransactionsViewModel, initialCategory: String? = nil) {
         self.viewModel = viewModel
         self.initialCategory = initialCategory
-    }
-    
-    enum TimeFilter: String, CaseIterable {
-        case day = "За день"
-        case week = "За неделю"
-        case month = "За месяц"
     }
     
     var body: some View {
@@ -42,20 +36,20 @@ struct HistoryView: View {
         .navigationTitle("History")
         .navigationBarTitleDisplayMode(.large)
         .searchable(text: $searchText, prompt: "Search by amount, category, or description")
-        .onAppear {
-            PerformanceProfiler.start("HistoryView.onAppear")
-            // Если передан initialCategory, устанавливаем фильтр по этой категории
+        .task {
+            // Устанавливаем фильтр по категории до onAppear, чтобы гарантировать применение
             if let category = initialCategory {
                 viewModel.selectedCategories = [category]
             } else {
-                // Если initialCategory не передан, сбрасываем фильтр (показываем все категории)
-                // Но только если фильтр был установлен ранее (чтобы не сбрасывать пользовательский выбор)
-                // Это позволяет пользователю открыть историю без фильтра, а затем установить свой фильтр
+                viewModel.selectedCategories = nil
             }
+        }
+        .onAppear {
+            PerformanceProfiler.start("HistoryView.onAppear")
             updateCachedTransactions()
             PerformanceProfiler.end("HistoryView.onAppear")
         }
-        .onChange(of: selectedTimeFilter) { _, _ in
+        .onChange(of: timeFilterManager.currentFilter) { _, _ in
             updateCachedTransactions()
         }
         .onChange(of: selectedAccountFilter) { _, _ in
@@ -67,9 +61,13 @@ struct HistoryView: View {
         .onChange(of: viewModel.filteredTransactions) { _, _ in
             updateCachedTransactions()
         }
+        .onChange(of: viewModel.selectedCategories) { _, _ in
+            updateCachedTransactions()
+        }
         .onDisappear {
-            // При закрытии не сбрасываем фильтр, чтобы пользователь мог вернуться к тому же фильтру
-            // Фильтр будет сброшен только при следующем открытии без initialCategory
+            // Сбрасываем фильтры при выходе из истории
+            selectedAccountFilter = nil
+            viewModel.selectedCategories = nil
         }
         .sheet(isPresented: $showingCategoryFilter) {
             CategoryFilterView(viewModel: viewModel)
@@ -79,38 +77,25 @@ struct HistoryView: View {
     private var filterSection: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                // Фильтр по времени - выпадающий список
-                Menu {
-                    ForEach(TimeFilter.allCases, id: \.self) { filter in
-                        Button(action: { selectedTimeFilter = filter }) {
-                            HStack {
-                                Text(filter.rawValue)
-                                if selectedTimeFilter == filter {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text(selectedTimeFilter.rawValue)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                    }
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemGray5))
-                    .cornerRadius(20)
+                // Фильтр по времени - отображаем текущий фильтр (не редактируемый здесь)
+                HStack {
+                    Image(systemName: "calendar")
+                    Text(timeFilterManager.currentFilter.displayName)
                 }
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.systemGray5))
+                .cornerRadius(20)
                 
                 // Фильтр по счетам - выпадающий список
                 Menu {
                     Button(action: { selectedAccountFilter = nil }) {
                         HStack {
                             Text("Все счета")
+                            Spacer()
                             if selectedAccountFilter == nil {
                                 Image(systemName: "checkmark")
                             }
@@ -119,8 +104,16 @@ struct HistoryView: View {
                     
                     ForEach(viewModel.accounts) { account in
                         Button(action: { selectedAccountFilter = account.id }) {
-                            HStack {
-                                Text(account.name)
+                            HStack(spacing: 8) {
+                                account.bankLogo.image(size: 20)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(account.name)
+                                        .font(.subheadline)
+                                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
                                 if selectedAccountFilter == account.id {
                                     Image(systemName: "checkmark")
                                 }
@@ -128,7 +121,10 @@ struct HistoryView: View {
                         }
                     }
                 } label: {
-                    HStack {
+                    HStack(spacing: 8) {
+                        if let selectedAccount = viewModel.accounts.first(where: { $0.id == selectedAccountFilter }) {
+                            selectedAccount.bankLogo.image(size: 16)
+                        }
                         Text(selectedAccountFilter == nil ? "Все счета" : (viewModel.accounts.first(where: { $0.id == selectedAccountFilter })?.name ?? "Все счета"))
                             .font(.subheadline)
                             .fontWeight(.medium)
@@ -146,7 +142,9 @@ struct HistoryView: View {
                 Button(action: {
                     showingCategoryFilter = true
                 }) {
-                    HStack {
+                    HStack(spacing: 8) {
+                        // Показываем иконку категории, если выбрана одна категория
+                        categoryFilterIcon
                         Text(categoryFilterText)
                             .font(.subheadline)
                             .fontWeight(.medium)
@@ -226,31 +224,12 @@ struct HistoryView: View {
     }
     
     private var filteredTransactions: [Transaction] {
-        var transactions = viewModel.filteredTransactions
+        // Используем глобальный фильтр по времени из TimeFilterManager и фильтр по категориям
+        var transactions = viewModel.transactionsFilteredByTimeAndCategory(timeFilterManager)
         
         // Фильтр по счету
         if let accountId = selectedAccountFilter {
             transactions = transactions.filter { $0.accountId == accountId || $0.targetAccountId == accountId }
-        }
-        
-        // Фильтр по времени
-        let calendar = Calendar.current
-        let now = Date()
-        let dateFormatter = DateFormatters.dateFormatter
-        
-        transactions = transactions.filter { transaction in
-            guard let date = dateFormatter.date(from: transaction.date) else { return false }
-            
-            switch selectedTimeFilter {
-            case .day:
-                return calendar.isDate(date, inSameDayAs: now)
-            case .week:
-                let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) ?? now
-                return date >= weekAgo
-            case .month:
-                let monthAgo = calendar.date(byAdding: .month, value: -1, to: now) ?? now
-                return date >= monthAgo
-            }
         }
         
         // Фильтр по поиску
@@ -353,7 +332,7 @@ struct HistoryView: View {
     // Обновление кешированных транзакций
     private func updateCachedTransactions() {
         PerformanceProfiler.start("HistoryView.updateCachedTransactions")
-        let currentState = (selectedTimeFilter, selectedAccountFilter, searchText)
+        let currentState = (timeFilterManager.currentFilter.displayName, selectedAccountFilter, viewModel.selectedCategories)
         
         // Проверяем, изменилось ли состояние фильтров
         if currentState != lastFilterState {
@@ -380,6 +359,27 @@ struct HistoryView: View {
             return selectedCategories.first ?? "Все категории"
         }
         return "\(selectedCategories.count) категорий"
+    }
+    
+    @ViewBuilder
+    private var categoryFilterIcon: some View {
+        if let selectedCategories = viewModel.selectedCategories,
+           selectedCategories.count == 1,
+           let category = selectedCategories.first {
+            let isIncome: Bool = {
+                if let customCategory = viewModel.customCategories.first(where: { $0.name == category }) {
+                    return customCategory.type == .income
+                } else {
+                    return viewModel.incomeCategories.contains(category)
+                }
+            }()
+            let categoryType: TransactionType = isIncome ? .income : .expense
+            let iconName = CategoryEmoji.iconName(for: category, type: categoryType, customCategories: viewModel.customCategories)
+            let iconColor = CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: viewModel.customCategories)
+            Image(systemName: iconName)
+                .font(.system(size: 14))
+                .foregroundColor(isIncome ? Color.green : iconColor)
+        }
     }
     
     private func dateHeader(for dateKey: String, transactions: [Transaction]) -> some View {
@@ -442,8 +442,9 @@ struct TransactionCard: View {
                     .fill(categoryColor)
                     .frame(width: 44, height: 44)
                     .overlay(
-                        Text(categoryEmoji)
+                        Image(systemName: categoryIconName)
                             .font(.system(size: 20))
+                            .foregroundColor(categoryIconColor)
                     )
                 
                 // Иконка повторения в правом нижнем углу
@@ -631,8 +632,19 @@ struct TransactionCard: View {
         }
     }
     
-    private var categoryEmoji: String {
-        CategoryEmoji.emoji(for: transaction.category, type: transaction.type, customCategories: customCategories)
+    private var categoryIconColor: Color {
+        switch transaction.type {
+        case .income:
+            return Color.green
+        case .expense:
+            return CategoryColors.hexColor(for: transaction.category, opacity: 1.0, customCategories: customCategories)
+        case .internalTransfer:
+            return Color.blue
+        }
+    }
+    
+    private var categoryIconName: String {
+        CategoryEmoji.iconName(for: transaction.category, type: transaction.type, customCategories: customCategories)
     }
     
     private var amountText: String {

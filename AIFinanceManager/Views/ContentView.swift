@@ -10,28 +10,33 @@ import PDFKit
 
 struct ContentView: View {
     @StateObject private var viewModel = TransactionsViewModel()
+    @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var showingFilePicker = false
     @State private var selectedFileURL: URL?
     @State private var selectedAccount: Account?
-    @State private var showingAccountsManagement = false
-    @State private var showingCategoriesManagement = false
     @State private var recognizedTransactions: [Transaction]?
     @State private var showingTransactionPreview = false
-    @State private var showingResetConfirmation = false
+    @State private var showingSettings = false
     @State private var showingVoiceInput = false
     @State private var showingVoiceConfirmation = false
     @State private var parsedOperation: ParsedOperation?
     @StateObject private var voiceService = VoiceInputService()
+    @State private var showingTimeFilter = false
     
     var body: some View {
         NavigationView {
             ScrollView {
             VStack(spacing: 16) {
+                // Фильтр по времени
+                timeFilterButton
+                    .padding(.horizontal)
+                
                 accountsSection
                     .padding(.horizontal)
 
                 if !viewModel.allTransactions.isEmpty {
-                    NavigationLink(destination: HistoryView(viewModel: viewModel, initialCategory: nil)) {
+                    NavigationLink(destination: HistoryView(viewModel: viewModel, initialCategory: nil)
+                        .environmentObject(timeFilterManager)) {
                         analyticsCard
                             .padding(.horizontal)
                     }
@@ -69,40 +74,15 @@ struct ContentView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 16) {
-                        Button(action: { showingCategoriesManagement = true }) {
-                            Image(systemName: "tag")
-                        }
-                        
-                        Button(action: { showingFilePicker = true }) {
-                            Image(systemName: "doc.badge.plus")
-                        }
-                        
-                        Menu {
-                            Button(role: .destructive, action: {
-                                showingResetConfirmation = true
-                            }) {
-                                Label("Обнулить все данные", systemImage: "trash")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                        }
+                    Button(action: {
+                        showingSettings = true
+                    }) {
+                        Image(systemName: "gearshape")
                     }
                 }
             }
-            .confirmationDialog("Обнулить все данные?", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
-                Button("Обнулить", role: .destructive) {
-                    viewModel.resetAllData()
-                }
-                Button("Отмена", role: .cancel) {}
-            } message: {
-                Text("Это действие удалит все транзакции, счета, категории и другие данные. Это действие нельзя отменить.")
-            }
-            .sheet(isPresented: $showingAccountsManagement) {
-                AccountsManagementView(viewModel: viewModel)
-            }
-            .sheet(isPresented: $showingCategoriesManagement) {
-                CategoriesManagementView(viewModel: viewModel)
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(viewModel: viewModel)
             }
             .sheet(item: $selectedAccount) { account in
                 AccountActionView(viewModel: viewModel, account: account)
@@ -133,25 +113,60 @@ struct ContentView: View {
                     )
                 }
             }
+            .sheet(isPresented: $showingTimeFilter) {
+                TimeFilterView(filterManager: timeFilterManager)
+            }
             .safeAreaInset(edge: .bottom) {
-                // Кнопка микрофона
-                Button(action: {
-                    showingVoiceInput = true
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.blue)
-                            .frame(width: 68, height: 68)
-                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                        
+                // Primary actions: голос и загрузка выписок (круглые кнопки в стиле iOS)
+                HStack(spacing: 20) {
+                    // Кнопка голосового ввода
+                    Button(action: {
+                        showingVoiceInput = true
+                    }) {
                         Image(systemName: "mic.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(.white)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.primary)
+                            .frame(width: 56, height: 56)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                    }
+                    
+                    // Кнопка загрузки выписок
+                    Button(action: {
+                        showingFilePicker = true
+                    }) {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.primary)
+                            .frame(width: 56, height: 56)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                     }
                 }
+                .padding(.horizontal, 16)
                 .padding(.bottom, 20)
                 .frame(maxWidth: .infinity)
             }
+        }
+    }
+    
+    private var timeFilterButton: some View {
+        Button(action: {
+            showingTimeFilter = true
+        }) {
+            HStack {
+                Image(systemName: "calendar")
+                Text(timeFilterManager.currentFilter.displayName)
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+            }
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .foregroundColor(.primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color(.systemGray5))
+            .cornerRadius(20)
         }
     }
     
@@ -192,16 +207,10 @@ struct ContentView: View {
                     .padding(.vertical, 4)
                 }
             }
-            
-            Button(action: { showingAccountsManagement = true }) {
-                Image(systemName: "plus.circle")
-                    .font(.title3)
-                    .foregroundColor(.blue)
-            }
         }
     }
     private var analyticsCard: some View {
-        let summary = viewModel.summary
+        let summary = viewModel.summary(timeFilterManager: timeFilterManager)
         let currency = viewModel.allTransactions.first?.currency ?? "USD"
         let total = summary.totalExpenses + summary.totalIncome
         let expensePercent = total > 0 ? (summary.totalExpenses / total) : 0.0

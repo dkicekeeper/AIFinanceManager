@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct AIFinanceManagerApp: App {
+    @StateObject private var timeFilterManager = TimeFilterManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(timeFilterManager)
         }
     }
 }

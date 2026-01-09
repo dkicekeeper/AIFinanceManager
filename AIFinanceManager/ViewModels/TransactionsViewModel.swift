@@ -20,8 +20,9 @@ class TransactionsViewModel: ObservableObject {
     @Published var subcategories: [Subcategory] = []
     @Published var categorySubcategoryLinks: [CategorySubcategoryLink] = []
     @Published var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
-    @Published var dateFilter: DateFilter = DateFilter()
     @Published var selectedCategories: Set<String>? = nil // nil = все категории, Set = выбранные категории
+    
+    // TimeFilterManager передается через EnvironmentObject, не хранится здесь
     @Published var isLoading = false
     @Published var errorMessage: String?
     
@@ -66,6 +67,8 @@ class TransactionsViewModel: ObservableObject {
         DateFormatters.dateFormatter
     }
     
+    // Фильтрация по времени теперь происходит через TimeFilterManager
+    // Этот метод фильтрует только по категориям и применяет правила
     var filteredTransactions: [Transaction] {
         var transactions = applyRules(to: allTransactions)
         
@@ -76,18 +79,32 @@ class TransactionsViewModel: ObservableObject {
             }
         }
         
-        // Фильтр по датам
-        if let startDate = dateFilter.startDate,
-           let endDate = dateFilter.endDate {
-            transactions = transactions.filter { transaction in
-                guard let transactionDate = Self.dateFormatter.date(from: transaction.date) else {
-                    return false
-                }
-                return transactionDate >= startDate && transactionDate <= endDate
-            }
-        }
-        
         return filterRecurringTransactions(transactions)
+    }
+    
+    // Метод для фильтрации транзакций с учетом TimeFilterManager (без фильтра по категориям)
+    func transactionsFilteredByTime(_ timeFilterManager: TimeFilterManager) -> [Transaction] {
+        let range = timeFilterManager.currentFilter.dateRange()
+        // Используем allTransactions с применением правил, но БЕЗ фильтра по категориям
+        let transactions = applyRules(to: allTransactions)
+        return transactions.filter { transaction in
+            guard let transactionDate = Self.dateFormatter.date(from: transaction.date) else {
+                return false
+            }
+            return transactionDate >= range.start && transactionDate < range.end
+        }
+    }
+    
+    // Метод для фильтрации транзакций с учетом TimeFilterManager И фильтра по категориям (для истории)
+    func transactionsFilteredByTimeAndCategory(_ timeFilterManager: TimeFilterManager) -> [Transaction] {
+        let range = timeFilterManager.currentFilter.dateRange()
+        // Используем filteredTransactions, который учитывает selectedCategories
+        return filteredTransactions.filter { transaction in
+            guard let transactionDate = Self.dateFormatter.date(from: transaction.date) else {
+                return false
+            }
+            return transactionDate >= range.start && transactionDate < range.end
+        }
     }
     
     // Фильтрует recurring транзакции: показывает только следующую для каждой серии
@@ -161,15 +178,13 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
-    var summary: Summary {
-        // Используем кеш если он валиден
-        if let cached = cachedSummary, !summaryCacheInvalidated {
-            return cached
-        }
-        
+    // Summary теперь требует TimeFilterManager для фильтрации по времени
+    func summary(timeFilterManager: TimeFilterManager) -> Summary {
+        // Используем кеш если он валиден (но только если фильтр не изменился)
+        // Пока отключаем кеш, так как фильтр может меняться
         PerformanceProfiler.start("summary.calculation")
         
-        let filtered = filteredTransactions
+        let filtered = transactionsFilteredByTime(timeFilterManager)
         // Исключаем невыполненные recurring операции из расходов
         let today = Calendar.current.startOfDay(for: Date())
         let dateFormatter = Self.dateFormatter
@@ -229,13 +244,12 @@ class TransactionsViewModel: ObservableObject {
         return result
     }
     
-    var categoryExpenses: [String: CategoryExpense] {
-        // Используем кеш если он валиден
-        if let cached = cachedCategoryExpenses, !categoryExpensesCacheInvalidated {
-            return cached
-        }
+    // CategoryExpenses теперь требует TimeFilterManager для фильтрации по времени
+    func categoryExpenses(timeFilterManager: TimeFilterManager) -> [String: CategoryExpense] {
+        // Используем кеш если он валиден (но только если фильтр не изменился)
+        // Пока отключаем кеш, так как фильтр может меняться
         
-        let filtered = filteredTransactions.filter { $0.type == .expense }
+        let filtered = transactionsFilteredByTime(timeFilterManager).filter { $0.type == .expense }
         var result: [String: CategoryExpense] = [:]
         
         for transaction in filtered {
@@ -262,9 +276,10 @@ class TransactionsViewModel: ObservableObject {
         return result
     }
     
-    var popularCategories: [String] {
-        Array(categoryExpenses.keys)
-            .sorted { categoryExpenses[$0]?.total ?? 0 > categoryExpenses[$1]?.total ?? 0 }
+    func popularCategories(timeFilterManager: TimeFilterManager) -> [String] {
+        let expenses = categoryExpenses(timeFilterManager: timeFilterManager)
+        return Array(expenses.keys)
+            .sorted { expenses[$0]?.total ?? 0 > expenses[$1]?.total ?? 0 }
     }
     
     var uniqueCategories: [String] {
@@ -432,7 +447,7 @@ class TransactionsViewModel: ObservableObject {
             
             if existingCategory == nil {
                 // Создаем новую категорию
-                let emoji = CategoryEmoji.emoji(for: categoryName, type: transaction.type, customCategories: customCategories)
+                let iconName = CategoryEmoji.iconName(for: categoryName, type: transaction.type, customCategories: customCategories)
                 let defaultColors: [String] = [
                     "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
                     "#22c55e", "#14b8a6", "#06b6d4", "#6366f1", "#d946ef",
@@ -442,7 +457,7 @@ class TransactionsViewModel: ObservableObject {
                 
                 let newCategory = CustomCategory(
                     name: categoryName,
-                    emoji: emoji,
+                    iconName: iconName,
                     colorHex: color,
                     type: transaction.type
                 )
@@ -584,7 +599,7 @@ class TransactionsViewModel: ObservableObject {
         initialAccountBalances = [:]
         
         // Очищаем фильтры
-        dateFilter = DateFilter()
+        // dateFilter удален - теперь используется TimeFilterManager
         selectedCategories = nil
         
         // Очищаем кеши
@@ -1269,10 +1284,7 @@ class TransactionsViewModel: ObservableObject {
     }
 }
 
-struct DateFilter {
-    var startDate: Date?
-    var endDate: Date?
-}
+// DateFilter удален - теперь используется TimeFilterManager
 
 struct CategoryExpense: Equatable {
     var total: Double

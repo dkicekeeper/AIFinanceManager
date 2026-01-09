@@ -11,14 +11,17 @@ import UniformTypeIdentifiers
 struct DocumentPicker: UIViewControllerRepresentable {
     let onDocumentPicked: (URL) -> Void
     
+    let contentTypes: [UTType]
+    
+    init(contentTypes: [UTType] = [.pdf], onDocumentPicked: @escaping (URL) -> Void) {
+        self.contentTypes = contentTypes
+        self.onDocumentPicked = onDocumentPicked
+    }
+    
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.pdf])
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: contentTypes)
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = false
-        // Важно: разрешаем доступ к файлам вне sandbox
-        if #available(iOS 11.0, *) {
-            picker.allowsMultipleSelection = false
-        }
         return picker
     }
     

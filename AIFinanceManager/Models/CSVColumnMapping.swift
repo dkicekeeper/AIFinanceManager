@@ -1,0 +1,58 @@
+//
+//  CSVColumnMapping.swift
+//  AIFinanceManager
+//
+//  Created on 2024
+//
+
+import Foundation
+
+struct CSVColumnMapping {
+    var dateColumn: String?
+    var dateFormat: DateFormatType = .auto
+    var typeColumn: String?
+    var amountColumn: String?
+    var currencyColumn: String?
+    var accountColumn: String?
+    var categoryColumn: String?
+    var subcategoriesColumn: String?
+    var subcategoriesSeparator: String = ","
+    var noteColumn: String?
+    
+    // Маппинг значений типа
+    var typeMappings: [String: TransactionType] = [
+        "expense": .expense,
+        "expenses": .expense,
+        "расход": .expense,
+        "расходы": .expense,
+        "-": .expense,
+        "out": .expense,
+        "income": .income,
+        "incomes": .income,
+        "доход": .income,
+        "доходы": .income,
+        "+": .income,
+        "in": .income
+    ]
+}
+
+enum DateFormatType: String, CaseIterable {
+    case iso = "ISO (yyyy-MM-dd)"
+    case ddmmyyyy = "dd.MM.yyyy"
+    case auto = "Автоопределение"
+}
+
+struct EntityMapping {
+    var accountMappings: [String: String] = [:] // CSV значение -> Account ID
+    var categoryMappings: [String: String] = [:] // CSV значение -> Category name
+    var subcategoryMappings: [String: (category: String, subcategory: String)] = [:] // CSV значение -> (category, subcategory)
+}
+
+struct ImportResult {
+    let importedCount: Int
+    let skippedCount: Int
+    let createdAccounts: Int
+    let createdCategories: Int
+    let createdSubcategories: Int
+    let errors: [String]
+}
