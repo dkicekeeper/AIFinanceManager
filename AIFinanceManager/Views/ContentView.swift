@@ -22,6 +22,9 @@ struct ContentView: View {
     @State private var parsedOperation: ParsedOperation?
     @StateObject private var voiceService = VoiceInputService()
     @State private var showingTimeFilter = false
+
+    // Кешированные данные для производительности
+    @State private var cachedSummary: Summary?
     
     var body: some View {
         NavigationView {
@@ -130,7 +133,7 @@ struct ContentView: View {
                             .background(.ultraThinMaterial, in: Circle())
                             .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                     }
-                    
+
                     // Кнопка загрузки выписок
                     Button(action: {
                         showingFilePicker = true
@@ -147,7 +150,25 @@ struct ContentView: View {
                 .padding(.bottom, 20)
                 .frame(maxWidth: .infinity)
             }
+            .onAppear {
+                PerformanceProfiler.start("ContentView.onAppear")
+                updateSummary()
+                PerformanceProfiler.end("ContentView.onAppear")
+            }
+            .onChange(of: viewModel.allTransactions.count) { _, _ in
+                updateSummary()
+            }
+            .onChange(of: timeFilterManager.currentFilter) { _, _ in
+                updateSummary()
+            }
         }
+    }
+
+    // Обновление кешированного summary
+    private func updateSummary() {
+        PerformanceProfiler.start("ContentView.updateSummary")
+        cachedSummary = viewModel.summary(timeFilterManager: timeFilterManager)
+        PerformanceProfiler.end("ContentView.updateSummary")
     }
     
     private var timeFilterButton: some View {
@@ -210,13 +231,17 @@ struct ContentView: View {
         }
     }
     private var analyticsCard: some View {
-        let summary = viewModel.summary(timeFilterManager: timeFilterManager)
+        // Используем кешированный summary вместо повторного вызова viewModel.summary()
+        guard let summary = cachedSummary else {
+            return AnyView(EmptyView())
+        }
+
         let currency = viewModel.allTransactions.first?.currency ?? "USD"
         let total = summary.totalExpenses + summary.totalIncome
         let expensePercent = total > 0 ? (summary.totalExpenses / total) : 0.0
         let incomePercent = total > 0 ? (summary.totalIncome / total) : 0.0
-        
-        return VStack(alignment: .leading, spacing: 12) {
+
+        return AnyView(VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("History")
                     .font(.headline)
@@ -282,7 +307,7 @@ struct ContentView: View {
         }
         .padding()
         .background(Color(.systemGray6))
-        .cornerRadius(10)
+        .cornerRadius(10))
     }
     
     

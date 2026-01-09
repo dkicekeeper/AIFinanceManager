@@ -13,10 +13,14 @@ struct QuickAddTransactionView: View {
     @State private var selectedCategory: String?
     @State private var selectedType: TransactionType = .expense
     @State private var showingModal = false
-    
+
+    // Кешированные данные для производительности
+    @State private var cachedCategories: [String] = []
+    @State private var cachedCategoryExpenses: [String: CategoryExpense] = [:]
+
     var body: some View {
-        let categories = popularCategories()
-        let categoryExpenses = viewModel.categoryExpenses(timeFilterManager: timeFilterManager)
+        let categories = cachedCategories
+        let categoryExpenses = cachedCategoryExpenses
         
         return LazyVGrid(columns: gridColumns, spacing: 16) {
             ForEach(categories, id: \.self) { category in
@@ -116,12 +120,32 @@ struct QuickAddTransactionView: View {
                 }
             )
         }
+        .onAppear {
+            updateCachedData()
+        }
+        .onChange(of: viewModel.allTransactions.count) { _, _ in
+            updateCachedData()
+        }
+        .onChange(of: timeFilterManager.currentFilter) { _, _ in
+            updateCachedData()
+        }
+        .onChange(of: viewModel.customCategories.count) { _, _ in
+            updateCachedData()
+        }
     }
-    
+
+    // Обновление кешированных данных
+    private func updateCachedData() {
+        PerformanceProfiler.start("QuickAddTransactionView.updateCachedData")
+        cachedCategoryExpenses = viewModel.categoryExpenses(timeFilterManager: timeFilterManager)
+        cachedCategories = popularCategories()
+        PerformanceProfiler.end("QuickAddTransactionView.updateCachedData")
+    }
+
     private var gridColumns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
     }
-    
+
     private func popularCategories() -> [String] {
         // Получаем все категории: только пользовательские + из транзакций
         var allCategories = Set<String>()
