@@ -254,18 +254,17 @@ class TransactionsViewModel: ObservableObject {
         
         for transaction in filtered {
             let category = transaction.category.isEmpty ? "Uncategorized" : transaction.category
-            if result[category] == nil {
-                result[category] = CategoryExpense(total: 0, subcategories: [:])
-            }
-            var expense = result[category]!
             // Используем convertedAmount, если он есть (сумма в валюте счета)
             let amountToUse = transaction.convertedAmount ?? transaction.amount
+
+            // Безопасное обновление без force unwrap
+            var expense = result[category] ?? CategoryExpense(total: 0, subcategories: [:])
             expense.total += amountToUse
-            
+
             if let subcategory = transaction.subcategory {
                 expense.subcategories[subcategory, default: 0] += amountToUse
             }
-            
+
             result[category] = expense
         }
         
@@ -1180,13 +1179,15 @@ class TransactionsViewModel: ObservableObject {
             }
             
             // Удаляем все будущие транзакции этой серии
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
+            let dateFormatter = Self.dateFormatter // Используем кешированный форматтер
             guard let transactionDate = dateFormatter.date(from: transaction.date) else { return }
-            
+
             let futureOccurrences = recurringOccurrences.filter { occurrence in
-                occurrence.seriesId == seriesId &&
-                dateFormatter.date(from: occurrence.occurrenceDate)! >= transactionDate
+                guard occurrence.seriesId == seriesId,
+                      let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
+                    return false
+                }
+                return occurrenceDate >= transactionDate
             }
             
             for occurrence in futureOccurrences {
