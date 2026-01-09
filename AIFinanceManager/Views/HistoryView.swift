@@ -333,13 +333,13 @@ struct HistoryView: View {
     private func updateCachedTransactions() {
         PerformanceProfiler.start("HistoryView.updateCachedTransactions")
         let currentState = (timeFilterManager.currentFilter.displayName, selectedAccountFilter, viewModel.selectedCategories)
-        
+
         // Проверяем, изменилось ли состояние фильтров
-        if currentState != lastFilterState {
+        if currentState.0 != lastFilterState.0 ||
+           currentState.1 != lastFilterState.1 ||
+           currentState.2 != lastFilterState.2 {
             lastFilterState = currentState
-            cachedGroupedTransactions = groupedTransactions
-        } else {
-            // Если состояние не изменилось, но изменились данные в viewModel, обновляем кеш
+            // Пересчитываем только если изменилось
             cachedGroupedTransactions = groupedTransactions
         }
         PerformanceProfiler.end("HistoryView.updateCachedTransactions")

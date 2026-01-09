@@ -254,18 +254,17 @@ class TransactionsViewModel: ObservableObject {
         
         for transaction in filtered {
             let category = transaction.category.isEmpty ? "Uncategorized" : transaction.category
-            if result[category] == nil {
-                result[category] = CategoryExpense(total: 0, subcategories: [:])
-            }
-            var expense = result[category]!
             // Используем convertedAmount, если он есть (сумма в валюте счета)
             let amountToUse = transaction.convertedAmount ?? transaction.amount
+
+            // Безопасное обновление без force unwrap
+            var expense = result[category] ?? CategoryExpense(total: 0, subcategories: [:])
             expense.total += amountToUse
-            
+
             if let subcategory = transaction.subcategory {
                 expense.subcategories[subcategory, default: 0] += amountToUse
             }
-            
+
             result[category] = expense
         }
         
@@ -816,32 +815,53 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func saveToStorage() {
-        if let encoded = try? JSONEncoder().encode(allTransactions) {
-            UserDefaults.standard.set(encoded, forKey: storageKeyTransactions)
-        }
-        if let encoded = try? JSONEncoder().encode(categoryRules) {
-            UserDefaults.standard.set(encoded, forKey: storageKeyRules)
-        }
-        if let encoded = try? JSONEncoder().encode(accounts) {
-            UserDefaults.standard.set(encoded, forKey: storageKeyAccounts)
-        }
-        if let encoded = try? JSONEncoder().encode(customCategories) {
-            UserDefaults.standard.set(encoded, forKey: storageKeyCustomCategories)
-        }
-        if let encoded = try? JSONEncoder().encode(recurringSeries) {
-            UserDefaults.standard.set(encoded, forKey: storageKeyRecurringSeries)
-        }
-        if let encoded = try? JSONEncoder().encode(recurringOccurrences) {
-            UserDefaults.standard.set(encoded, forKey: storageKeyRecurringOccurrences)
-        }
-        if let encoded = try? JSONEncoder().encode(subcategories) {
-            UserDefaults.standard.set(encoded, forKey: storageKeySubcategories)
-        }
-        if let encoded = try? JSONEncoder().encode(categorySubcategoryLinks) {
-            UserDefaults.standard.set(encoded, forKey: storageKeyCategorySubcategoryLinks)
-        }
-        if let encoded = try? JSONEncoder().encode(transactionSubcategoryLinks) {
-            UserDefaults.standard.set(encoded, forKey: storageKeyTransactionSubcategoryLinks)
+        // Выполняем сохранение асинхронно на background queue
+        Task.detached(priority: .utility) {
+            PerformanceProfiler.start("saveToStorage")
+
+            let encoder = JSONEncoder()
+
+            // Создаём копии данных на main thread
+            let transactions = await MainActor.run { self.allTransactions }
+            let rules = await MainActor.run { self.categoryRules }
+            let accs = await MainActor.run { self.accounts }
+            let categories = await MainActor.run { self.customCategories }
+            let series = await MainActor.run { self.recurringSeries }
+            let occurrences = await MainActor.run { self.recurringOccurrences }
+            let subcats = await MainActor.run { self.subcategories }
+            let catLinks = await MainActor.run { self.categorySubcategoryLinks }
+            let txLinks = await MainActor.run { self.transactionSubcategoryLinks }
+
+            // Кодируем на background thread
+            if let encoded = try? encoder.encode(transactions) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeyTransactions)
+            }
+            if let encoded = try? encoder.encode(rules) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeyRules)
+            }
+            if let encoded = try? encoder.encode(accs) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeyAccounts)
+            }
+            if let encoded = try? encoder.encode(categories) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeyCustomCategories)
+            }
+            if let encoded = try? encoder.encode(series) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeyRecurringSeries)
+            }
+            if let encoded = try? encoder.encode(occurrences) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeyRecurringOccurrences)
+            }
+            if let encoded = try? encoder.encode(subcats) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeySubcategories)
+            }
+            if let encoded = try? encoder.encode(catLinks) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeyCategorySubcategoryLinks)
+            }
+            if let encoded = try? encoder.encode(txLinks) {
+                UserDefaults.standard.set(encoded, forKey: self.storageKeyTransactionSubcategoryLinks)
+            }
+
+            PerformanceProfiler.end("saveToStorage")
         }
     }
     
@@ -1000,10 +1020,13 @@ class TransactionsViewModel: ObservableObject {
         // Используем кэшированные форматтеры
         let dateFormatter = Self.dateFormatter
         let timeFormatter = Self.timeFormatter
-        
+
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let horizonDate = calendar.date(byAdding: .month, value: 12, to: today)!
+        // Уменьшаем горизонт генерации с 12 до 3 месяцев для производительности
+        guard let horizonDate = calendar.date(byAdding: .month, value: 3, to: today) else {
+            return
+        }
         
         // Оптимизация: создаем Set существующих transaction IDs для быстрой проверки
         let existingTransactionIds = Set(allTransactions.map { $0.id })
@@ -1104,16 +1127,21 @@ class TransactionsViewModel: ObservableObject {
                 }
                 
                 // Переходим к следующей дате
-                switch series.frequency {
-                case .daily:
-                    currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
-                case .weekly:
-                    currentDate = calendar.date(byAdding: .day, value: 7, to: currentDate)!
-                case .monthly:
-                    currentDate = calendar.date(byAdding: .month, value: 1, to: currentDate)!
-                case .yearly:
-                    currentDate = calendar.date(byAdding: .year, value: 1, to: currentDate)!
+                guard let nextDate = {
+                    switch series.frequency {
+                    case .daily:
+                        return calendar.date(byAdding: .day, value: 1, to: currentDate)
+                    case .weekly:
+                        return calendar.date(byAdding: .day, value: 7, to: currentDate)
+                    case .monthly:
+                        return calendar.date(byAdding: .month, value: 1, to: currentDate)
+                    case .yearly:
+                        return calendar.date(byAdding: .year, value: 1, to: currentDate)
+                    }
+                }() else {
+                    break // Если не удалось вычислить следующую дату, прерываем цикл
                 }
+                currentDate = nextDate
             }
         }
         
@@ -1151,13 +1179,15 @@ class TransactionsViewModel: ObservableObject {
             }
             
             // Удаляем все будущие транзакции этой серии
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
+            let dateFormatter = Self.dateFormatter // Используем кешированный форматтер
             guard let transactionDate = dateFormatter.date(from: transaction.date) else { return }
-            
+
             let futureOccurrences = recurringOccurrences.filter { occurrence in
-                occurrence.seriesId == seriesId &&
-                dateFormatter.date(from: occurrence.occurrenceDate)! >= transactionDate
+                guard occurrence.seriesId == seriesId,
+                      let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
+                    return false
+                }
+                return occurrenceDate >= transactionDate
             }
             
             for occurrence in futureOccurrences {

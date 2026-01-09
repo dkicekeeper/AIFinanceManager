@@ -92,7 +92,7 @@ struct AnalysisResult: Codable {
     let summary: Summary
 }
 
-struct Summary: Codable {
+struct Summary: Codable, Equatable {
     let totalIncome: Double
     let totalExpenses: Double
     let totalInternalTransfers: Double
