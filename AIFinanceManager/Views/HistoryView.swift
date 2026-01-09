@@ -525,6 +525,7 @@ struct TransactionCard: View {
                     .font(.body)
                     .fontWeight(.semibold)
                     .foregroundColor(amountColor)
+                    .multilineTextAlignment(.trailing)
             }
         }
         .padding(.vertical, 8)
@@ -636,7 +637,18 @@ struct TransactionCard: View {
     
     private var amountText: String {
         let prefix = transaction.type == .income ? "+" : transaction.type == .expense ? "-" : ""
-        return prefix + Formatting.formatCurrency(transaction.amount, currency: currency)
+        let mainAmount = Formatting.formatCurrency(transaction.amount, currency: transaction.currency)
+        
+        // Если есть конвертированная сумма и она отличается от основной, показываем обе
+        if let convertedAmount = transaction.convertedAmount,
+           let accountId = transaction.accountId,
+           let account = accounts.first(where: { $0.id == accountId }),
+           transaction.currency != account.currency {
+            let convertedText = Formatting.formatCurrency(convertedAmount, currency: account.currency)
+            return "\(prefix)\(mainAmount)\n(\(convertedText))"
+        }
+        
+        return prefix + mainAmount
     }
     
     private var amountColor: Color {

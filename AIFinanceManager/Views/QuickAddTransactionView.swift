@@ -40,36 +40,50 @@ struct QuickAddTransactionView: View {
                 currency: viewModel.allTransactions.first?.currency ?? "USD",
                 accounts: viewModel.accounts,
                 viewModel: viewModel,
-                onSave: { amount, description, accountId, dateString, subcategoryIds in
+                onSave: { amount, description, accountId, dateString, subcategoryIds, transactionCurrency in
                     let currentTime = DateFormatters.timeFormatter.string(from: Date())
                     
-                    // Получаем валюту счета или используем дефолтную
-                    let currency: String
-                    if let accountId = accountId,
-                       let account = viewModel.accounts.first(where: { $0.id == accountId }) {
-                        currency = account.currency
-                    } else {
-                        currency = viewModel.allTransactions.first?.currency ?? "USD"
+                    // Получаем валюту счета
+                    guard let accountId = accountId,
+                          let account = viewModel.accounts.first(where: { $0.id == accountId }) else {
+                        return
                     }
+                    
+                    let accountCurrency = account.currency
                     
                     // Конвертируем Decimal в Double для Transaction
                     let amountDouble = NSDecimalNumber(decimal: amount).doubleValue
                     
-                    let transaction = Transaction(
-                        id: "",
-                        date: dateString,
-                        time: currentTime,
-                        description: description,
-                        amount: amountDouble,
-                        currency: currency,
-                        type: selectedType,
-                        category: selectedCategory ?? "Other",
-                        subcategory: nil,
-                        accountId: accountId,
-                        targetAccountId: nil
-                    )
-                    
-                    viewModel.addTransaction(transaction)
+                    // Конвертируем валюту, если она отличается от валюты счета
+                    Task {
+                        var convertedAmount: Double? = nil
+                        if transactionCurrency != accountCurrency {
+                            convertedAmount = await CurrencyConverter.convert(
+                                amount: amountDouble,
+                                from: transactionCurrency,
+                                to: accountCurrency
+                            )
+                        }
+                        
+                        let transaction = Transaction(
+                            id: "",
+                            date: dateString,
+                            time: currentTime,
+                            description: description,
+                            amount: amountDouble,
+                            currency: transactionCurrency,
+                            convertedAmount: convertedAmount,
+                            type: selectedType,
+                            category: selectedCategory ?? "Other",
+                            subcategory: nil,
+                            accountId: accountId,
+                            targetAccountId: nil
+                        )
+                        
+                        await MainActor.run {
+                            viewModel.addTransaction(transaction)
+                        }
+                    }
                     
                     // Связываем подкатегории с транзакцией
                     if !subcategoryIds.isEmpty {
@@ -212,12 +226,13 @@ struct AddTransactionModal: View {
     let currency: String
     let accounts: [Account]
     let viewModel: TransactionsViewModel
-    let onSave: (Decimal, String, String?, String, Set<String>) -> Void // amount, description, accountId, date, subcategoryIds
+    let onSave: (Decimal, String, String?, String, Set<String>, String) -> Void // amount, description, accountId, date, subcategoryIds, currency
     let onCancel: () -> Void
     
     @State private var amountText = ""
     @State private var descriptionText = ""
     @State private var selectedAccountId: String?
+    @State private var selectedCurrency: String
     @State private var selectedDate: Date = Date()
     @State private var showingDatePicker = false
     @State private var isRecurring = false
@@ -227,6 +242,17 @@ struct AddTransactionModal: View {
     @State private var subcategorySearchText = ""
     @State private var showingCategoryHistory = false
     @FocusState private var isAmountFocused: Bool
+    
+    init(category: String, type: TransactionType, currency: String, accounts: [Account], viewModel: TransactionsViewModel, onSave: @escaping (Decimal, String, String?, String, Set<String>, String) -> Void, onCancel: @escaping () -> Void) {
+        self.category = category
+        self.type = type
+        self.currency = currency
+        self.accounts = accounts
+        self.viewModel = viewModel
+        self.onSave = onSave
+        self.onCancel = onCancel
+        _selectedCurrency = State(initialValue: currency)
+    }
     
     private var categoryId: String? {
         viewModel.customCategories.first { $0.name == category }?.id
@@ -244,19 +270,15 @@ struct AddTransactionModal: View {
         return viewModel.searchSubcategories(query: subcategorySearchText)
     }
     
-    private var formattedAmount: String {
-        if let decimal = AmountFormatter.parse(amountText) {
-            return AmountFormatter.format(decimal)
-        }
-        return amountText
-    }
+    // Убрано computed property formattedAmount - оно вызывалось при каждом обновлении view
+    // Форматирование теперь происходит только при сохранении
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 Form {
                     if !accounts.isEmpty {
-                        Section(header: Text("Account")) {
+                        Section(header: Text("Счёт")) {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     ForEach(accounts) { account in
@@ -274,21 +296,32 @@ struct AddTransactionModal: View {
                         }
                     }
                     
-                    Section(header: Text("Amount")) {
-                        TextField("0.00", text: $amountText)
-                            .keyboardType(.decimalPad)
-                            .focused($isAmountFocused)
+                    Section(header: Text("Сумма")) {
+                        HStack {
+                            TextField("0.00", text: $amountText)
+                                .keyboardType(.decimalPad)
+                                .focused($isAmountFocused)
+                            
+                            Picker("Валюта", selection: $selectedCurrency) {
+                                ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
+                                    Text(currency).tag(currency)
+                                }
+                            }
+                            .pickerStyle(MenuPickerStyle())
+                            .frame(width: 80)
+                        }
                     }
                     
-                    Section(header: Text("Description")) {
-                        TextField("What was this for? (optional)", text: $descriptionText)
+                    Section(header: Text("Описание")) {
+                        TextField("Описание (необязательно)", text: $descriptionText, axis: .vertical)
+                            .lineLimit(3...6)
                     }
                     
-                    Section(header: Text("Recurring")) {
-                        Toggle("Make this recurring", isOn: $isRecurring)
+                    Section(header: Text("Повторяющаяся операция")) {
+                        Toggle("Сделать повторяющейся", isOn: $isRecurring)
                         
                         if isRecurring {
-                            Picker("Frequency", selection: $selectedFrequency) {
+                            Picker("Частота", selection: $selectedFrequency) {
                                 ForEach(RecurringFrequency.allCases, id: \.self) { frequency in
                                     Text(frequency.displayName).tag(frequency)
                                 }
@@ -398,7 +431,7 @@ struct AddTransactionModal: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel)
+                    Button("Отмена", action: onCancel)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
@@ -423,6 +456,18 @@ struct AddTransactionModal: View {
                 if selectedAccountId == nil {
                     selectedAccountId = accounts.first?.id
                 }
+                // Устанавливаем валюту счета, если счет выбран
+                if let accountId = selectedAccountId,
+                   let account = accounts.first(where: { $0.id == accountId }) {
+                    selectedCurrency = account.currency
+                }
+            }
+            .onChange(of: selectedAccountId) {
+                // Обновляем валюту при выборе счета
+                if let accountId = selectedAccountId,
+                   let account = accounts.first(where: { $0.id == accountId }) {
+                    selectedCurrency = account.currency
+                }
             }
         }
     }
@@ -441,7 +486,7 @@ struct AddTransactionModal: View {
         if isRecurring {
             _ = viewModel.createRecurringSeries(
                 amount: decimalAmount,
-                currency: currency,
+                currency: selectedCurrency,
                 category: category,
                 subcategory: nil,
                 description: finalDescription,
@@ -452,7 +497,7 @@ struct AddTransactionModal: View {
             )
         }
         
-        onSave(decimalAmount, finalDescription, selectedAccountId, dateString, selectedSubcategoryIds)
+        onSave(decimalAmount, finalDescription, selectedAccountId, dateString, selectedSubcategoryIds, selectedCurrency)
     }
 }
 
@@ -497,13 +542,17 @@ struct AccountRadioButton: View {
     
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(account.name)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text(Formatting.formatCurrency(account.balance, currency: account.currency))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+            HStack(spacing: 8) {
+                account.bankLogo.image(size: 18)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(account.name)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
             }
             .padding(10)
             .background(isSelected ? Color.blue.opacity(0.2) : Color(.systemGray6))

@@ -9,39 +9,40 @@ import SwiftUI
 
 struct CategoriesManagementView: View {
     @ObservedObject var viewModel: TransactionsViewModel
+    @Environment(\.dismiss) var dismiss
     @State private var selectedType: TransactionType = .expense
     @State private var showingAddCategory = false
     @State private var editingCategory: CustomCategory?
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Фильтр по типу
-                    Picker("Type", selection: $selectedType) {
-                        Text("Расходы").tag(TransactionType.expense)
-                        Text("Доходы").tag(TransactionType.income)
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .padding()
-                    .gesture(
-                        DragGesture(minimumDistance: 50)
-                            .onEnded { value in
-                                if value.translation.width > 0 {
-                                    // Свайп вправо - переключить на предыдущий
-                                    if selectedType == .income {
-                                        selectedType = .expense
-                                    }
-                                } else {
-                                    // Свайп влево - переключить на следующий
-                                    if selectedType == .expense {
-                                        selectedType = .income
-                                    }
+            VStack(spacing: 0) {
+                // Фильтр по типу
+                Picker("Type", selection: $selectedType) {
+                    Text("Расходы").tag(TransactionType.expense)
+                    Text("Доходы").tag(TransactionType.income)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding()
+                .gesture(
+                    DragGesture(minimumDistance: 50)
+                        .onEnded { value in
+                            if value.translation.width > 50 {
+                                // Свайп вправо - переключить на предыдущий
+                                if selectedType == .income {
+                                    selectedType = .expense
+                                }
+                            } else if value.translation.width < -50 {
+                                // Свайп влево - переключить на следующий
+                                if selectedType == .expense {
+                                    selectedType = .income
                                 }
                             }
-                    )
-                    
-                    // Список категорий
+                        }
+                )
+                
+                // Список категорий
+                List {
                     ForEach(filteredCategories) { category in
                         CategoryRow(
                             category: category,
@@ -55,13 +56,21 @@ struct CategoriesManagementView: View {
                         )
                         .padding(.horizontal)
                         .padding(.vertical, 4)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
                     }
                 }
+                .listStyle(PlainListStyle())
             }
             .navigationTitle("Categories")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Готово") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddCategory = true }) {
                         Image(systemName: "plus")
                     }

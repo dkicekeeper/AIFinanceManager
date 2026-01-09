@@ -9,29 +9,36 @@ import SwiftUI
 
 struct AccountsManagementView: View {
     @ObservedObject var viewModel: TransactionsViewModel
+    @Environment(\.dismiss) var dismiss
     @State private var showingAddAccount = false
     @State private var editingAccount: Account?
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(viewModel.accounts) { account in
-                        AccountRow(
-                            account: account,
-                            currency: viewModel.allTransactions.first?.currency ?? account.currency,
-                            onEdit: { editingAccount = account },
-                            onDelete: { viewModel.deleteAccount(account) }
-                        )
-                        .padding(.horizontal)
-                        .padding(.vertical, 4)
-                    }
+            List {
+                ForEach(viewModel.accounts) { account in
+                    AccountRow(
+                        account: account,
+                        currency: viewModel.allTransactions.first?.currency ?? account.currency,
+                        onEdit: { editingAccount = account },
+                        onDelete: { viewModel.deleteAccount(account) }
+                    )
+                    .padding(.horizontal)
+                    .padding(.vertical, 4)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                 }
             }
+            .listStyle(PlainListStyle())
             .navigationTitle("Accounts")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Готово") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddAccount = true }) {
                         Image(systemName: "plus")
                     }
@@ -42,7 +49,7 @@ struct AccountsManagementView: View {
                     viewModel: viewModel,
                     account: nil,
                     onSave: { account in
-                        viewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency)
+                        viewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
                         showingAddAccount = false
                     },
                     onCancel: { showingAddAccount = false }
@@ -71,6 +78,9 @@ struct AccountRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
+            // Логотип банка
+            account.bankLogo.image(size: 32)
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(account.name)
                     .font(.title3)
@@ -105,6 +115,8 @@ struct AccountEditView: View {
     @State private var name: String = ""
     @State private var balanceText: String = ""
     @State private var currency: String = "USD"
+    @State private var selectedBankLogo: BankLogo = .none
+    @State private var showingBankLogoPicker = false
     
     private let currencies = ["USD", "EUR", "KZT", "RUB", "GBP"]
     
@@ -113,6 +125,19 @@ struct AccountEditView: View {
             Form {
                 Section(header: Text("Название")) {
                     TextField("Название счёта", text: $name)
+                }
+                
+                Section(header: Text("Логотип банка")) {
+                    Button(action: { showingBankLogoPicker = true }) {
+                        HStack {
+                            Text("Выбрать логотип")
+                            Spacer()
+                            selectedBankLogo.image(size: 24)
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    }
                 }
                 
                 Section(header: Text("Баланс")) {
@@ -142,7 +167,8 @@ struct AccountEditView: View {
                                 id: account?.id ?? UUID().uuidString,
                                 name: name,
                                 balance: balance,
-                                currency: currency
+                                currency: currency,
+                                bankLogo: selectedBankLogo
                             )
                             onSave(newAccount)
                         }
@@ -155,8 +181,104 @@ struct AccountEditView: View {
                     name = account.name
                     balanceText = String(format: "%.2f", account.balance)
                     currency = account.currency
+                    selectedBankLogo = account.bankLogo
                 } else {
                     currency = viewModel.allTransactions.first?.currency ?? "USD"
+                    selectedBankLogo = .none
+                }
+            }
+            .sheet(isPresented: $showingBankLogoPicker) {
+                BankLogoPickerView(selectedLogo: $selectedBankLogo)
+            }
+        }
+    }
+}
+
+struct BankLogoPickerView: View {
+    @Binding var selectedLogo: BankLogo
+    @Environment(\.dismiss) var dismiss
+    
+    // Группируем банки по категориям для удобства
+    private var popularBanks: [BankLogo] {
+        [.alatauCityBank, .halykBank, .kaspi, .homeCredit, .eurasian, .forte, .jusan]
+    }
+    
+    private var otherBanks: [BankLogo] {
+        BankLogo.allCases.filter { $0 != .none && !popularBanks.contains($0) }
+    }
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Популярные банки")) {
+                    ForEach(popularBanks) { bank in
+                        BankLogoRow(
+                            bank: bank,
+                            isSelected: selectedLogo == bank,
+                            onSelect: {
+                                selectedLogo = bank
+                                dismiss()
+                            }
+                        )
+                    }
+                }
+                
+                Section(header: Text("Другие банки")) {
+                    ForEach(otherBanks) { bank in
+                        BankLogoRow(
+                            bank: bank,
+                            isSelected: selectedLogo == bank,
+                            onSelect: {
+                                selectedLogo = bank
+                                dismiss()
+                            }
+                        )
+                    }
+                }
+                
+                Section {
+                    BankLogoRow(
+                        bank: .none,
+                        isSelected: selectedLogo == .none,
+                        onSelect: {
+                            selectedLogo = .none
+                            dismiss()
+                        }
+                    )
+                }
+            }
+            .navigationTitle("Выбрать логотип")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Готово") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct BankLogoRow: View {
+    let bank: BankLogo
+    let isSelected: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                bank.image(size: 40)
+                    .frame(width: 40, height: 40)
+                
+                Text(bank.displayName)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.blue)
                 }
             }
         }

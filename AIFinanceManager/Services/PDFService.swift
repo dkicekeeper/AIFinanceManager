@@ -14,12 +14,43 @@ class PDFService {
     private init() {}
     
     func extractText(from url: URL) async throws -> String {
-        // Сначала пытаемся открыть PDF документ
-        guard let pdfDocument = PDFDocument(url: url) else {
-            print("Error: Could not open PDF document from URL: \(url)")
+        // Проверяем, что файл существует и доступен
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: url.path) else {
+            print("Error: PDF file does not exist at path: \(url.path)")
             throw PDFError.invalidDocument
         }
         
+        // Начинаем доступ к файлу, если это security-scoped resource
+        let isAccessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if isAccessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        
+        // Сначала пытаемся открыть PDF документ
+        guard let pdfDocument = PDFDocument(url: url) else {
+            print("Error: Could not open PDF document from URL: \(url)")
+            print("File path: \(url.path)")
+            print("File exists: \(fileManager.fileExists(atPath: url.path))")
+            
+            // Пытаемся прочитать данные напрямую
+            if let data = try? Data(contentsOf: url) {
+                print("File data size: \(data.count) bytes")
+                if let pdfFromData = PDFDocument(data: data) {
+                    // Если получилось открыть через Data, используем этот документ
+                    return try extractText(from: pdfFromData)
+                }
+            }
+            
+            throw PDFError.invalidDocument
+        }
+        
+        return try extractText(from: pdfDocument)
+    }
+    
+    private func extractText(from pdfDocument: PDFDocument) throws -> String {
         var fullText = ""
         let pageCount = pdfDocument.pageCount
         

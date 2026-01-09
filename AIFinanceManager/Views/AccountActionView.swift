@@ -13,10 +13,17 @@ struct AccountActionView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedAction: ActionType = .income
     @State private var amountText: String = ""
+    @State private var selectedCurrency: String
     @State private var descriptionText: String = ""
     @State private var selectedCategory: String? = nil
     @State private var selectedTargetAccountId: String? = nil
     @FocusState private var isAmountFocused: Bool
+    
+    init(viewModel: TransactionsViewModel, account: Account) {
+        self.viewModel = viewModel
+        self.account = account
+        _selectedCurrency = State(initialValue: account.currency)
+    }
     
     enum ActionType {
         case income
@@ -26,21 +33,21 @@ struct AccountActionView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Action")) {
-                    Picker("Type", selection: $selectedAction) {
-                        Text("Top up").tag(ActionType.income)
-                        Text("Transfer").tag(ActionType.transfer)
+                Section(header: Text("Действие")) {
+                    Picker("Тип", selection: $selectedAction) {
+                        Text("Пополнение").tag(ActionType.income)
+                        Text("Перевод").tag(ActionType.transfer)
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .gesture(
                         DragGesture(minimumDistance: 50)
                             .onEnded { value in
-                                if value.translation.width > 0 {
+                                if value.translation.width > 50 {
                                     // Свайп вправо - переключить на предыдущий
                                     if selectedAction == .transfer {
                                         selectedAction = .income
                                     }
-                                } else {
+                                } else if value.translation.width < -50 {
                                     // Свайп влево - переключить на следующий
                                     if selectedAction == .income {
                                         selectedAction = .transfer
@@ -53,12 +60,12 @@ struct AccountActionView: View {
                 if selectedAction == .income {
                     if incomeCategories.isEmpty {
                         Section {
-                            Text("No income categories available. Please create categories first.")
+                            Text("Нет доступных категорий дохода. Создайте категории сначала.")
                                 .foregroundColor(.secondary)
                                 .font(.caption)
                         }
                     } else {
-                        Section(header: Text("Income category")) {
+                        Section(header: Text("Категория дохода")) {
                             LazyVGrid(columns: gridColumns, spacing: 12) {
                                 ForEach(incomeCategories, id: \.self) { category in
                                     CategoryRadioButton(
@@ -78,12 +85,12 @@ struct AccountActionView: View {
                 } else {
                     if availableAccounts.isEmpty {
                         Section {
-                            Text("No other accounts available for transfer")
+                            Text("Нет других счетов для перевода")
                                 .foregroundColor(.secondary)
                                 .font(.caption)
                         }
                     } else {
-                        Section(header: Text("Recipient account")) {
+                        Section(header: Text("Счет получателя")) {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     ForEach(availableAccounts) { targetAccount in
@@ -102,26 +109,37 @@ struct AccountActionView: View {
                     }
                 }
                 
-                Section(header: Text("Amount")) {
-                    TextField("0.00", text: $amountText)
-                        .keyboardType(.decimalPad)
-                        .focused($isAmountFocused)
+                Section(header: Text("Сумма")) {
+                    HStack {
+                        TextField("0.00", text: $amountText)
+                            .keyboardType(.decimalPad)
+                            .focused($isAmountFocused)
+                        
+                        Picker("Валюта", selection: $selectedCurrency) {
+                            ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
+                                Text(currency).tag(currency)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(width: 80)
+                    }
                 }
                 
-                Section(header: Text("Description")) {
-                    TextField("Description (optional)", text: $descriptionText)
+                Section(header: Text("Описание")) {
+                    TextField("Описание (необязательно)", text: $descriptionText, axis: .vertical)
+                        .lineLimit(3...6)
                 }
             }
-            .navigationTitle(selectedAction == .income ? "Top up account" : "Transfer")
+            .navigationTitle(selectedAction == .income ? "Пополнение счета" : "Перевод")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("Отмена") {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("Сохранить") {
                         saveTransaction()
                     }
                     .disabled(amountText.isEmpty || 
@@ -157,44 +175,60 @@ struct AccountActionView: View {
         let today = dateFormatter.string(from: Date())
         let currentTime = DateFormatters.timeFormatter.string(from: Date())
         
-        let finalDescription = descriptionText.isEmpty ? (selectedAction == .income ? "Account top-up" : "Account transfer") : descriptionText
+        let finalDescription = descriptionText.isEmpty ? (selectedAction == .income ? "Пополнение счета" : "Перевод между счетами") : descriptionText
         
-        if selectedAction == .income {
-            // Пополнение счета
-            let transaction = Transaction(
-                id: "",
-                date: today,
-                time: currentTime,
-                description: finalDescription,
-                amount: amount,
-                currency: account.currency,
-                type: .income,
-                category: selectedCategory ?? "Income",
-                subcategory: nil,
-                accountId: account.id,
-                targetAccountId: nil
-            )
-            viewModel.addTransaction(transaction)
-        } else {
-            // Перевод между счетами
-            guard let targetAccountId = selectedTargetAccountId else { return }
-            let transaction = Transaction(
-                id: "",
-                date: today,
-                time: currentTime,
-                description: finalDescription,
-                amount: amount,
-                currency: account.currency,
-                type: .internalTransfer,
-                category: "Transfer",
-                subcategory: nil,
-                accountId: account.id,
-                targetAccountId: targetAccountId
-            )
-            viewModel.addTransaction(transaction)
+        // Конвертируем валюту, если она отличается от валюты счета
+        Task {
+            var convertedAmount: Double? = nil
+            if selectedCurrency != account.currency {
+                convertedAmount = await CurrencyConverter.convert(
+                    amount: amount,
+                    from: selectedCurrency,
+                    to: account.currency
+                )
+            }
+            
+            await MainActor.run {
+                if selectedAction == .income {
+                    // Пополнение счета
+                    let transaction = Transaction(
+                        id: "",
+                        date: today,
+                        time: currentTime,
+                        description: finalDescription,
+                        amount: amount,
+                        currency: selectedCurrency,
+                        convertedAmount: convertedAmount,
+                        type: .income,
+                        category: selectedCategory ?? "Доход",
+                        subcategory: nil,
+                        accountId: account.id,
+                        targetAccountId: nil
+                    )
+                    viewModel.addTransaction(transaction)
+                } else {
+                    // Перевод между счетами
+                    guard let targetAccountId = selectedTargetAccountId else { return }
+                    let transaction = Transaction(
+                        id: "",
+                        date: today,
+                        time: currentTime,
+                        description: finalDescription,
+                        amount: amount,
+                        currency: selectedCurrency,
+                        convertedAmount: convertedAmount,
+                        type: .internalTransfer,
+                        category: "Перевод",
+                        subcategory: nil,
+                        accountId: account.id,
+                        targetAccountId: targetAccountId
+                    )
+                    viewModel.addTransaction(transaction)
+                }
+                
+                dismiss()
+            }
         }
-        
-        dismiss()
     }
 }
 
@@ -251,6 +285,6 @@ struct CategoryRadioButton: View {
 #Preview {
     AccountActionView(
         viewModel: TransactionsViewModel(),
-        account: Account(name: "Main", balance: 1000, currency: "USD")
+        account: Account(name: "Main", balance: 1000, currency: "USD", bankLogo: .none)
     )
 }

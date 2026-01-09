@@ -8,8 +8,8 @@
 import Foundation
 
 struct AmountFormatter {
-    // Форматирует Decimal для отображения: "1 234 567.89"
-    static func format(_ value: Decimal) -> String {
+    // Кэшированный форматтер для производительности
+    private static let cachedFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
@@ -17,8 +17,12 @@ struct AmountFormatter {
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         formatter.usesGroupingSeparator = true
-        
-        return formatter.string(from: value as NSDecimalNumber) ?? "0.00"
+        return formatter
+    }()
+    
+    // Форматирует Decimal для отображения: "1 234 567.89"
+    static func format(_ value: Decimal) -> String {
+        return cachedFormatter.string(from: value as NSDecimalNumber) ?? "0.00"
     }
     
     // Парсит строку в Decimal, убирая пробелы и заменяя запятую на точку

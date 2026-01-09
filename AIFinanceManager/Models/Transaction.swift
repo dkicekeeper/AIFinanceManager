@@ -18,8 +18,9 @@ struct Transaction: Identifiable, Codable, Equatable {
     let date: String // YYYY-MM-DD
     let time: String? // HH:mm
     let description: String
-    let amount: Double
-    let currency: String
+    let amount: Double // Основная сумма операции
+    let currency: String // Валюта операции
+    let convertedAmount: Double? // Конвертированная сумма в валюте счета
     let type: TransactionType
     let category: String
     let subcategory: String?
@@ -35,6 +36,7 @@ struct Transaction: Identifiable, Codable, Equatable {
         description: String,
         amount: Double,
         currency: String,
+        convertedAmount: Double? = nil,
         type: TransactionType,
         category: String,
         subcategory: String? = nil,
@@ -49,6 +51,7 @@ struct Transaction: Identifiable, Codable, Equatable {
         self.description = description
         self.amount = amount
         self.currency = currency
+        self.convertedAmount = convertedAmount
         self.type = type
         self.category = category
         self.subcategory = subcategory
@@ -56,6 +59,25 @@ struct Transaction: Identifiable, Codable, Equatable {
         self.targetAccountId = targetAccountId
         self.recurringSeriesId = recurringSeriesId
         self.recurringOccurrenceId = recurringOccurrenceId
+    }
+    
+    // Кастомный decoder для обратной совместимости
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        date = try container.decode(String.self, forKey: .date)
+        time = try container.decodeIfPresent(String.self, forKey: .time)
+        description = try container.decode(String.self, forKey: .description)
+        amount = try container.decode(Double.self, forKey: .amount)
+        currency = try container.decode(String.self, forKey: .currency)
+        convertedAmount = try container.decodeIfPresent(Double.self, forKey: .convertedAmount)
+        type = try container.decode(TransactionType.self, forKey: .type)
+        category = try container.decode(String.self, forKey: .category)
+        subcategory = try container.decodeIfPresent(String.self, forKey: .subcategory)
+        accountId = try container.decodeIfPresent(String.self, forKey: .accountId)
+        targetAccountId = try container.decodeIfPresent(String.self, forKey: .targetAccountId)
+        recurringSeriesId = try container.decodeIfPresent(String.self, forKey: .recurringSeriesId)
+        recurringOccurrenceId = try container.decodeIfPresent(String.self, forKey: .recurringOccurrenceId)
     }
 }
 
@@ -86,11 +108,24 @@ struct Account: Identifiable, Codable, Equatable {
     var name: String
     var balance: Double
     var currency: String
+    var bankLogo: BankLogo
     
-    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String) {
+    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String, bankLogo: BankLogo = .none) {
         self.id = id
         self.name = name
         self.balance = balance
         self.currency = currency
+        self.bankLogo = bankLogo
+    }
+    
+    // Кастомный decoder для обратной совместимости со старыми данными
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        balance = try container.decode(Double.self, forKey: .balance)
+        currency = try container.decode(String.self, forKey: .currency)
+        // Если bankLogo отсутствует в старых данных, используем .none
+        bankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) ?? .none
     }
 }

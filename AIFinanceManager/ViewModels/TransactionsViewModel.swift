@@ -181,12 +181,15 @@ class TransactionsViewModel: ObservableObject {
         var plannedAmount: Double = 0
         
         for transaction in filtered {
+            // Используем convertedAmount, если он есть (сумма в валюте счета)
+            let amountToUse = transaction.convertedAmount ?? transaction.amount
+            
             let isFutureRecurring: Bool
             if let _ = transaction.recurringSeriesId,
                let transactionDate = dateFormatter.date(from: transaction.date),
                transactionDate >= today {
                 isFutureRecurring = true
-                plannedAmount += transaction.amount
+                plannedAmount += amountToUse
             } else {
                 isFutureRecurring = false
             }
@@ -195,11 +198,11 @@ class TransactionsViewModel: ObservableObject {
             if !isFutureRecurring {
                 switch transaction.type {
                 case .income:
-                    totalIncome += transaction.amount
+                    totalIncome += amountToUse
                 case .expense:
-                    totalExpenses += transaction.amount
+                    totalExpenses += amountToUse
                 case .internalTransfer:
-                    totalInternal += transaction.amount
+                    totalInternal += amountToUse
                 }
             }
         }
@@ -241,10 +244,12 @@ class TransactionsViewModel: ObservableObject {
                 result[category] = CategoryExpense(total: 0, subcategories: [:])
             }
             var expense = result[category]!
-            expense.total += transaction.amount
+            // Используем convertedAmount, если он есть (сумма в валюте счета)
+            let amountToUse = transaction.convertedAmount ?? transaction.amount
+            expense.total += amountToUse
             
             if let subcategory = transaction.subcategory {
-                expense.subcategories[subcategory, default: 0] += transaction.amount
+                expense.subcategories[subcategory, default: 0] += amountToUse
             }
             
             result[category] = expense
@@ -293,13 +298,42 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func addTransactions(_ newTransactions: [Transaction]) {
-        let transactionsWithRules = applyRules(to: newTransactions)
+        // Сначала применяем правила и сопоставляем с существующими категориями
+        let processedTransactions = newTransactions.map { transaction -> Transaction in
+            // Форматируем описание: только название поставщика, с заглавной буквы
+            let formattedDescription = formatMerchantName(transaction.description)
+            
+            // Сопоставляем категорию с существующими (case-insensitive)
+            let matchedCategory = matchCategory(transaction.category, type: transaction.type)
+            
+            return Transaction(
+                id: transaction.id,
+                date: transaction.date,
+                time: transaction.time,
+                description: formattedDescription,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                convertedAmount: transaction.convertedAmount,
+                type: transaction.type,
+                category: matchedCategory,
+                subcategory: transaction.subcategory,
+                accountId: transaction.accountId,
+                targetAccountId: transaction.targetAccountId,
+                recurringSeriesId: transaction.recurringSeriesId,
+                recurringOccurrenceId: transaction.recurringOccurrenceId
+            )
+        }
+        
+        let transactionsWithRules = applyRules(to: processedTransactions)
         
         // Remove duplicates
         let existingIDs = Set(allTransactions.map { $0.id })
         let uniqueNew = transactionsWithRules.filter { !existingIDs.contains($0.id) }
         
         if !uniqueNew.isEmpty {
+            // Автоматически создаем категории для новых транзакций
+            createCategoriesForTransactions(uniqueNew)
+            
             allTransactions.append(contentsOf: uniqueNew)
             allTransactions.sort { $0.date > $1.date }
             invalidateCaches()
@@ -308,12 +342,127 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
+    // Форматирует название поставщика: только название, с заглавной буквы
+    private func formatMerchantName(_ description: String) -> String {
+        // Убираем код авторизации и референс
+        var cleaned = description
+        
+        // Удаляем паттерны типа "Референс: ..." или "Код авторизации: ..."
+        let patterns = [
+            "Референс:\\s*[A-Za-z0-9]+",
+            "Код авторизации:\\s*[0-9]+",
+            "Референс:",
+            "Код авторизации:",
+            "Reference:",
+            "Authorization Code:"
+        ]
+        
+        for pattern in patterns {
+            let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+            if let regex = regex {
+                let range = NSRange(location: 0, length: cleaned.utf16.count)
+                cleaned = regex.stringByReplacingMatches(in: cleaned, options: [], range: range, withTemplate: "")
+            }
+        }
+        
+        // Убираем лишние пробелы и форматируем: первая буква заглавная, остальные строчные
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Разбиваем на слова и форматируем каждое слово
+        let words = cleaned.components(separatedBy: CharacterSet.whitespaces)
+            .filter { !$0.isEmpty }
+            .map { word -> String in
+                // Если слово в верхнем регистре (например, "YANDEX.GO"), форматируем
+                if word == word.uppercased() && word.count > 1 {
+                    // Сохраняем точки и другие символы, но форматируем буквы
+                    var result = ""
+                    var isFirstChar = true
+                    for char in word {
+                        if char.isLetter {
+                            result += isFirstChar ? char.uppercased() : char.lowercased()
+                            isFirstChar = false
+                        } else {
+                            result += String(char)
+                            // После точки или другого символа следующая буква должна быть заглавной
+                            if char == "." || char == "-" {
+                                isFirstChar = true
+                            }
+                        }
+                    }
+                    return result
+                }
+                // Для обычных слов используем capitalized
+                return word.capitalized
+            }
+        
+        return words.joined(separator: " ")
+    }
+    
+    // Сопоставляет категорию с существующими (case-insensitive)
+    private func matchCategory(_ categoryName: String, type: TransactionType) -> String {
+        let trimmed = categoryName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return categoryName }
+        
+        // Ищем существующую категорию (case-insensitive)
+        if let existing = customCategories.first(where: { category in
+            category.name.caseInsensitiveCompare(trimmed) == .orderedSame &&
+            category.type == type
+        }) {
+            return existing.name // Возвращаем точное название существующей категории
+        }
+        
+        // Если не найдена, возвращаем исходное название (будет создана новая категория)
+        return trimmed
+    }
+    
+    // Создает категории для транзакций, если они не существуют
+    private func createCategoriesForTransactions(_ transactions: [Transaction]) {
+        for transaction in transactions {
+            // Пропускаем internal transfers
+            guard transaction.type != .internalTransfer else { continue }
+            
+            let categoryName = transaction.category.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !categoryName.isEmpty else { continue }
+            
+            // Проверяем, существует ли уже категория с таким именем (case-insensitive)
+            let existingCategory = customCategories.first { category in
+                category.name.caseInsensitiveCompare(categoryName) == .orderedSame &&
+                category.type == transaction.type
+            }
+            
+            if existingCategory == nil {
+                // Создаем новую категорию
+                let emoji = CategoryEmoji.emoji(for: categoryName, type: transaction.type, customCategories: customCategories)
+                let defaultColors: [String] = [
+                    "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
+                    "#22c55e", "#14b8a6", "#06b6d4", "#6366f1", "#d946ef",
+                    "#f43f5e", "#a855f7", "#10b981", "#f59e0b"
+                ]
+                let color = defaultColors.randomElement() ?? "#3b82f6"
+                
+                let newCategory = CustomCategory(
+                    name: categoryName,
+                    emoji: emoji,
+                    colorHex: color,
+                    type: transaction.type
+                )
+                
+                customCategories.append(newCategory)
+                print("✅ Создана новая категория: \(categoryName) (\(transaction.type.rawValue))")
+            }
+        }
+    }
+    
     func addTransaction(_ transaction: Transaction) {
+        // Форматируем описание и сопоставляем категорию
+        let formattedDescription = formatMerchantName(transaction.description)
+        let matchedCategory = matchCategory(transaction.category, type: transaction.type)
+        
         let transactionWithID: Transaction
         if transaction.id.isEmpty {
             let id = TransactionIDGenerator.generateID(
                 date: transaction.date,
-                description: transaction.description,
+                description: formattedDescription,
                 amount: transaction.amount,
                 type: transaction.type,
                 currency: transaction.currency
@@ -322,11 +471,12 @@ class TransactionsViewModel: ObservableObject {
                 id: id,
                 date: transaction.date,
                 time: transaction.time,
-                description: transaction.description,
+                description: formattedDescription,
                 amount: transaction.amount,
                 currency: transaction.currency,
+                convertedAmount: transaction.convertedAmount,
                 type: transaction.type,
-                category: transaction.category,
+                category: matchedCategory,
                 subcategory: transaction.subcategory,
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
@@ -334,13 +484,31 @@ class TransactionsViewModel: ObservableObject {
                 recurringOccurrenceId: transaction.recurringOccurrenceId
             )
         } else {
-            transactionWithID = transaction
+            transactionWithID = Transaction(
+                id: transaction.id,
+                date: transaction.date,
+                time: transaction.time,
+                description: formattedDescription,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                convertedAmount: transaction.convertedAmount,
+                type: transaction.type,
+                category: matchedCategory,
+                subcategory: transaction.subcategory,
+                accountId: transaction.accountId,
+                targetAccountId: transaction.targetAccountId,
+                recurringSeriesId: transaction.recurringSeriesId,
+                recurringOccurrenceId: transaction.recurringOccurrenceId
+            )
         }
         
         let transactionsWithRules = applyRules(to: [transactionWithID])
         let existingIDs = Set(allTransactions.map { $0.id })
         
         if !existingIDs.contains(transactionWithID.id) {
+            // Создаем категорию, если нужно
+            createCategoriesForTransactions(transactionsWithRules)
+            
             allTransactions.append(contentsOf: transactionsWithRules)
             allTransactions.sort { $0.date > $1.date }
             invalidateCaches()
@@ -376,6 +544,7 @@ class TransactionsViewModel: ObservableObject {
                     description: allTransactions[i].description,
                     amount: allTransactions[i].amount,
                     currency: allTransactions[i].currency,
+                    convertedAmount: allTransactions[i].convertedAmount,
                     type: allTransactions[i].type,
                     category: category,
                     subcategory: subcategory,
@@ -396,6 +565,46 @@ class TransactionsViewModel: ObservableObject {
         categoryRules = []
         accounts = []
         saveToStorage()
+    }
+    
+    // Полное обнуление всех данных приложения
+    func resetAllData() {
+        // Очищаем все массивы данных
+        allTransactions = []
+        categoryRules = []
+        accounts = []
+        customCategories = []
+        recurringSeries = []
+        recurringOccurrences = []
+        subcategories = []
+        categorySubcategoryLinks = []
+        transactionSubcategoryLinks = []
+        
+        // Очищаем начальные балансы
+        initialAccountBalances = [:]
+        
+        // Очищаем фильтры
+        dateFilter = DateFilter()
+        selectedCategories = nil
+        
+        // Очищаем кеши
+        invalidateCaches()
+        
+        // Удаляем все данные из UserDefaults
+        UserDefaults.standard.removeObject(forKey: storageKeyTransactions)
+        UserDefaults.standard.removeObject(forKey: storageKeyRules)
+        UserDefaults.standard.removeObject(forKey: storageKeyAccounts)
+        UserDefaults.standard.removeObject(forKey: storageKeyCustomCategories)
+        UserDefaults.standard.removeObject(forKey: storageKeyRecurringSeries)
+        UserDefaults.standard.removeObject(forKey: storageKeyRecurringOccurrences)
+        UserDefaults.standard.removeObject(forKey: storageKeySubcategories)
+        UserDefaults.standard.removeObject(forKey: storageKeyCategorySubcategoryLinks)
+        UserDefaults.standard.removeObject(forKey: storageKeyTransactionSubcategoryLinks)
+        
+        // Синхронизируем изменения
+        UserDefaults.standard.synchronize()
+        
+        print("✅ Все данные приложения обнулены")
     }
     
     func deleteTransaction(_ transaction: Transaction) {
@@ -459,6 +668,7 @@ class TransactionsViewModel: ObservableObject {
                         description: allTransactions[i].description,
                         amount: allTransactions[i].amount,
                         currency: allTransactions[i].currency,
+                        convertedAmount: allTransactions[i].convertedAmount,
                         type: allTransactions[i].type,
                         category: newName,
                         subcategory: allTransactions[i].subcategory,
@@ -494,8 +704,8 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Accounts
 
-    func addAccount(name: String, balance: Double, currency: String) {
-        let account = Account(name: name, balance: balance, currency: currency)
+    func addAccount(name: String, balance: Double, currency: String, bankLogo: BankLogo = .none) {
+        let account = Account(name: name, balance: balance, currency: currency, bankLogo: bankLogo)
         accounts.append(account)
         // Сохраняем начальный баланс
         initialAccountBalances[account.id] = balance
@@ -552,6 +762,7 @@ class TransactionsViewModel: ObservableObject {
             description: description,
             amount: amount,
             currency: currency,
+            convertedAmount: nil,
             type: .internalTransfer,
             category: "Transfer",
             subcategory: nil,
@@ -579,6 +790,7 @@ class TransactionsViewModel: ObservableObject {
                     description: transaction.description,
                     amount: transaction.amount,
                     currency: transaction.currency,
+                    convertedAmount: transaction.convertedAmount,
                     type: transaction.type,
                     category: rule.category,
                     subcategory: rule.subcategory
@@ -679,21 +891,24 @@ class TransactionsViewModel: ObservableObject {
 
         // Рассчитываем изменения балансов от всех транзакций
         for tx in allTransactions {
+            // Используем convertedAmount, если он есть (сумма в валюте счета)
+            let amountToUse = tx.convertedAmount ?? tx.amount
+            
             switch tx.type {
             case .income:
                 if let accountId = tx.accountId {
-                    balanceChanges[accountId, default: 0] += tx.amount
+                    balanceChanges[accountId, default: 0] += amountToUse
                 }
             case .expense:
                 if let accountId = tx.accountId {
-                    balanceChanges[accountId, default: 0] -= tx.amount
+                    balanceChanges[accountId, default: 0] -= amountToUse
                 }
             case .internalTransfer:
                 if let sourceId = tx.accountId {
-                    balanceChanges[sourceId, default: 0] -= tx.amount
+                    balanceChanges[sourceId, default: 0] -= amountToUse
                 }
                 if let targetId = tx.targetAccountId {
-                    balanceChanges[targetId, default: 0] += tx.amount
+                    balanceChanges[targetId, default: 0] += amountToUse
                 }
             }
         }
@@ -803,6 +1018,7 @@ class TransactionsViewModel: ObservableObject {
                     description: transaction.description,
                     amount: transaction.amount,
                     currency: transaction.currency,
+                    convertedAmount: transaction.convertedAmount,
                     type: transaction.type,
                     category: transaction.category,
                     subcategory: transaction.subcategory,
@@ -849,6 +1065,7 @@ class TransactionsViewModel: ObservableObject {
                             description: series.description,
                             amount: amountDouble,
                             currency: series.currency,
+                            convertedAmount: nil,
                             type: .expense,
                             category: series.category,
                             subcategory: series.subcategory,
@@ -948,6 +1165,7 @@ class TransactionsViewModel: ObservableObject {
                         description: updatedTransaction.description,
                         amount: amountDouble,
                         currency: updatedTransaction.currency,
+                        convertedAmount: updatedTransaction.convertedAmount,
                         type: updatedTransaction.type,
                         category: newCategory ?? updatedTransaction.category,
                         subcategory: newSubcategory ?? updatedTransaction.subcategory,

@@ -48,5 +48,9 @@
 	<string>AIzaSyDMfk-HwyVYyOC6p1NecHNLH4M1ngPJMgU</string>
 	<key>NSDocumentPickerUsageDescription</key>
 	<string>This app needs access to your documents to analyze bank statements.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>This app needs access to speech recognition to add transactions by voice.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone to record voice for adding transactions.</string>
 </dict>
 </plist>
