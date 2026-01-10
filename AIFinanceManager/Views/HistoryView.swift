@@ -12,17 +12,20 @@ struct HistoryView: View {
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var selectedAccountFilter: String? = nil // nil = все счета
     @State private var searchText = ""
+    @State private var debouncedSearchText = "" // Дебаунсированный поиск
     @State private var showingCategoryFilter = false
     let initialCategory: String? // Категория для предустановленного фильтра (из лонгтапа)
+    let initialAccountId: String? // Счет для предустановленного фильтра
     
     // Кеш для отфильтрованных транзакций
     @State private var cachedFilteredTransactions: [Transaction] = []
     @State private var cachedGroupedTransactions: [String: [Transaction]] = [:]
     @State private var lastFilterState: (String, String?, Set<String>?) = ("", nil, nil)
     
-    init(viewModel: TransactionsViewModel, initialCategory: String? = nil) {
+    init(viewModel: TransactionsViewModel, initialCategory: String? = nil, initialAccountId: String? = nil) {
         self.viewModel = viewModel
         self.initialCategory = initialCategory
+        self.initialAccountId = initialAccountId
     }
     
     var body: some View {
@@ -46,6 +49,13 @@ struct HistoryView: View {
         }
         .onAppear {
             PerformanceProfiler.start("HistoryView.onAppear")
+            
+            // Устанавливаем фильтр по счету при появлении
+            if let accountId = initialAccountId, selectedAccountFilter != accountId {
+                selectedAccountFilter = accountId
+            }
+            
+            debouncedSearchText = searchText
             updateCachedTransactions()
             PerformanceProfiler.end("HistoryView.onAppear")
         }
@@ -55,13 +65,26 @@ struct HistoryView: View {
         .onChange(of: selectedAccountFilter) { _, _ in
             updateCachedTransactions()
         }
-        .onChange(of: searchText) { _, _ in
-            updateCachedTransactions()
+        .onChange(of: searchText) { oldValue, newValue in
+            // Дебаунсируем поиск - обновляем через 300ms после последнего ввода
+            Task {
+                try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+                if searchText == newValue { // Проверяем, что значение не изменилось за это время
+                    await MainActor.run {
+                        debouncedSearchText = newValue
+                        updateCachedTransactions()
+                    }
+                }
+            }
         }
         .onChange(of: viewModel.filteredTransactions) { _, _ in
             updateCachedTransactions()
         }
         .onChange(of: viewModel.selectedCategories) { _, _ in
+            updateCachedTransactions()
+        }
+        .onChange(of: viewModel.allTransactions) { _, _ in
+            // Обновляем кеш при изменении транзакций (например, после редактирования)
             updateCachedTransactions()
         }
         .onDisappear {
@@ -168,28 +191,32 @@ struct HistoryView: View {
         
         if grouped.isEmpty {
             return AnyView(
-                VStack(spacing: 16) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-                    Text("Нет операций")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.top, 60)
+                EmptyStateView(
+                    icon: "doc.text.magnifyingglass",
+                    title: "Нет операций",
+                    description: "Операции появятся здесь после добавления"
+                )
+                .padding(.top, AppSpacing.xxxl)
             )
         }
         
-        // Сортируем ключи: Upcoming вверху, затем остальные по убыванию (Сегодня вверху)
+        // Сортируем ключи по убыванию (Сегодня вверху, самые новые даты вверху)
         let sortedKeys: [String] = {
             let keys = Array(grouped.keys)
-            let upcomingKey = keys.first { $0 == "Upcoming" }
-            let otherKeys = keys.filter { $0 != "Upcoming" }.sorted(by: >)
-            if let upcoming = upcomingKey {
-                return [upcoming] + otherKeys
+            // Специальная обработка для "Сегодня" и "Вчера"
+            let todayKey = keys.first { $0 == "Сегодня" }
+            let yesterdayKey = keys.first { $0 == "Вчера" }
+            let otherKeys = keys.filter { $0 != "Сегодня" && $0 != "Вчера" }.sorted(by: >)
+            
+            var result: [String] = []
+            if let today = todayKey {
+                result.append(today)
             }
-            return otherKeys
+            if let yesterday = yesterdayKey {
+                result.append(yesterday)
+            }
+            result.append(contentsOf: otherKeys)
+            return result
         }()
         
         return AnyView(
@@ -212,10 +239,12 @@ struct HistoryView: View {
                 }
                 .listStyle(PlainListStyle())
                 .onAppear {
-                    // Скроллим к "Сегодня" при появлении
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation {
-                            proxy.scrollTo("Сегодня", anchor: .top)
+                    // Скроллим к "Сегодня" при появлении (самые новые операции уже вверху)
+                    if sortedKeys.contains("Сегодня") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation {
+                                proxy.scrollTo("Сегодня", anchor: .top)
+                            }
                         }
                     }
                 }
@@ -232,29 +261,59 @@ struct HistoryView: View {
             transactions = transactions.filter { $0.accountId == accountId || $0.targetAccountId == accountId }
         }
         
-        // Фильтр по поиску
-        if !searchText.isEmpty {
-            let searchLower = searchText.lowercased()
+        // Фильтр по поиску (используем дебаунсированный текст)
+        if !debouncedSearchText.isEmpty {
+            let searchLower = debouncedSearchText.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let searchNumber = Double(debouncedSearchText.replacingOccurrences(of: ",", with: "."))
+            
             transactions = transactions.filter { transaction in
                 // Поиск по категории
                 if transaction.category.lowercased().contains(searchLower) {
                     return true
                 }
+                
+                // Поиск по подкатегориям
+                let linkedSubcategories = viewModel.getSubcategoriesForTransaction(transaction.id)
+                if linkedSubcategories.contains(where: { $0.name.lowercased().contains(searchLower) }) {
+                    return true
+                }
+                
                 // Поиск по описанию
                 if transaction.description.lowercased().contains(searchLower) {
                     return true
                 }
-                // Поиск по сумме
-                let amountString = String(format: "%.2f", transaction.amount)
-                if amountString.contains(searchText) || searchText.contains(amountString) {
+                
+                // Поиск по счету
+                if let accountId = transaction.accountId,
+                   let account = viewModel.accounts.first(where: { $0.id == accountId }),
+                   account.name.lowercased().contains(searchLower) {
                     return true
                 }
+                
+                if let targetAccountId = transaction.targetAccountId,
+                   let targetAccount = viewModel.accounts.first(where: { $0.id == targetAccountId }),
+                   targetAccount.name.lowercased().contains(searchLower) {
+                    return true
+                }
+                
+                // Поиск по сумме (как строка, так и число)
+                let amountString = String(format: "%.2f", transaction.amount)
+                if amountString.contains(debouncedSearchText) || amountString.lowercased().contains(searchLower) {
+                    return true
+                }
+                
+                // Поиск по числовому значению суммы
+                if let searchNum = searchNumber, abs(transaction.amount - searchNum) < 0.01 {
+                    return true
+                }
+                
                 // Поиск по сумме с валютой
                 let currency = viewModel.allTransactions.first?.currency ?? "USD"
                 let formattedAmount = Formatting.formatCurrency(transaction.amount, currency: currency).lowercased()
                 if formattedAmount.contains(searchLower) {
                     return true
                 }
+                
                 return false
             }
         }
@@ -265,22 +324,15 @@ struct HistoryView: View {
     private var groupedTransactions: [String: [Transaction]] {
         let transactions = filteredTransactions
         var grouped: [String: [Transaction]] = [:]
-        var upcomingTransactions: [Transaction] = [] // Для будущих recurring
         
         let calendar = Calendar.current
         let dateFormatter = DateFormatters.dateFormatter
         let displayDateFormatter = DateFormatters.displayDateFormatter
-        let today = calendar.startOfDay(for: Date())
         
         for transaction in transactions {
             guard let date = dateFormatter.date(from: transaction.date) else { continue }
             
-            // Если это будущая recurring транзакция, добавляем в отдельный список
-            if transaction.recurringSeriesId != nil && date >= today {
-                upcomingTransactions.append(transaction)
-                continue
-            }
-            
+            // Все транзакции, включая будущие recurring, группируются по дате
             let dateKey: String
             if calendar.isDateInToday(date) {
                 dateKey = "Сегодня"
@@ -296,33 +348,15 @@ struct HistoryView: View {
             grouped[dateKey]?.append(transaction)
         }
         
-        // Сортируем будущие recurring транзакции
-        upcomingTransactions.sort { tx1, tx2 in
-            guard let date1 = dateFormatter.date(from: tx1.date),
-                  let date2 = dateFormatter.date(from: tx2.date) else { return false }
-            if date1 != date2 {
-                return date1 < date2 // Ближайшие сверху
-            }
-            if let time1 = tx1.time, let time2 = tx2.time {
-                return time1 < time2 // Ранние сверху
-            }
-            return false
-        }
-        
-        // Добавляем будущие recurring транзакции в отдельную группу
-        if !upcomingTransactions.isEmpty {
-            grouped["Upcoming"] = upcomingTransactions
-        }
-        
-        // Сортируем транзакции внутри каждого дня по времени (если есть) или по дате
+        // Сортируем транзакции внутри каждого дня - самые новые вверху (по дате, затем по ID для стабильности)
         for key in grouped.keys {
-            if key != "Upcoming" { // Upcoming уже отсортированы
-                grouped[key]?.sort { tx1, tx2 in
-                    if let time1 = tx1.time, let time2 = tx2.time {
-                        return time1 > time2 // Новые сверху
-                    }
-                    return tx1.date > tx2.date // Новые сверху
+            grouped[key]?.sort { tx1, tx2 in
+                // Сортируем по дате - новые сверху
+                if tx1.date != tx2.date {
+                    return tx1.date > tx2.date
                 }
+                // Если даты равны, сортируем по ID (более новые ID обычно больше)
+                return tx1.id > tx2.id
             }
         }
         
@@ -334,21 +368,11 @@ struct HistoryView: View {
         PerformanceProfiler.start("HistoryView.updateCachedTransactions")
         let currentState = (timeFilterManager.currentFilter.displayName, selectedAccountFilter, viewModel.selectedCategories)
 
-        // Проверяем, изменилось ли состояние фильтров
-        if currentState.0 != lastFilterState.0 ||
-           currentState.1 != lastFilterState.1 ||
-           currentState.2 != lastFilterState.2 {
-            lastFilterState = currentState
-            // Пересчитываем только если изменилось
-            cachedGroupedTransactions = groupedTransactions
-        }
+        // Всегда обновляем кеш, так как транзакции могли измениться
+        lastFilterState = currentState
+        cachedGroupedTransactions = groupedTransactions
+        cachedFilteredTransactions = filteredTransactions
         PerformanceProfiler.end("HistoryView.updateCachedTransactions")
-    }
-    
-    private func isRecurringFuture(_ transaction: Transaction, today: Date, dateFormatter: DateFormatter) -> Bool {
-        guard transaction.recurringSeriesId != nil else { return false }
-        guard let transactionDate = dateFormatter.date(from: transaction.date) else { return false }
-        return transactionDate >= today
     }
     
     private var categoryFilterText: String {
@@ -503,13 +527,6 @@ struct TransactionCard: View {
                     }
                 }
                 
-                // Время
-                if let time = transaction.time {
-                    Text(time)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
                 // Описание (если есть)
                 if !transaction.description.isEmpty {
                     Text(transaction.description)
@@ -558,11 +575,13 @@ struct TransactionCard: View {
         }
         .confirmationDialog("Delete Transaction", isPresented: $showingDeleteDialog) {
             Button("Only this", role: .destructive) {
+                HapticManager.warning()
                 if let viewModel = viewModel {
                     viewModel.deleteTransaction(transaction)
                 }
             }
             Button("All future", role: .destructive) {
+                HapticManager.warning()
                 if let viewModel = viewModel, let seriesId = transaction.recurringSeriesId {
                     // Удаляем все будущие транзакции этой серии
                     let dateFormatter = DateFormatter()
@@ -586,6 +605,7 @@ struct TransactionCard: View {
                 }
             }
             Button("Remove recurring", role: .destructive) {
+                HapticManager.warning()
                 if let viewModel = viewModel, let seriesId = transaction.recurringSeriesId {
                     viewModel.deleteRecurringSeries(seriesId)
                 }

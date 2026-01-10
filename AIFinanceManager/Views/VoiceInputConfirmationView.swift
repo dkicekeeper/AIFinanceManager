@@ -317,9 +317,7 @@ struct VoiceInputConfirmationView: View {
         let accountCurrency = account.currency
         
         let dateFormatter = DateFormatters.dateFormatter
-        let timeFormatter = DateFormatters.timeFormatter
         let dateString = dateFormatter.string(from: selectedDate)
-        let timeString = timeFormatter.string(from: Date())
         
         // Получаем ID подкатегорий (берем первую выбранную)
         var subcategoryId: String? = nil
@@ -342,7 +340,6 @@ struct VoiceInputConfirmationView: View {
             let transaction = Transaction(
                 id: "",
                 date: dateString,
-                time: timeString,
                 description: noteText.isEmpty ? originalText : noteText,
                 amount: amount,
                 currency: selectedCurrency,

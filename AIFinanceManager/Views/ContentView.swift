@@ -14,14 +14,17 @@ struct ContentView: View {
     @State private var showingFilePicker = false
     @State private var selectedFileURL: URL?
     @State private var selectedAccount: Account?
-    @State private var recognizedTransactions: [Transaction]?
-    @State private var showingTransactionPreview = false
-    @State private var showingSettings = false
     @State private var showingVoiceInput = false
     @State private var showingVoiceConfirmation = false
     @State private var parsedOperation: ParsedOperation?
     @StateObject private var voiceService = VoiceInputService()
     @State private var showingTimeFilter = false
+    @State private var ocrProgress: (current: Int, total: Int)? = nil
+    @State private var recognizedText: String? = nil
+    @State private var structuredRows: [[String]]? = nil
+    @State private var showingRecognizedText = false
+    @State private var showingCSVPreview = false
+    @State private var parsedCSVFile: CSVFile? = nil
 
     // Кешированные данные для производительности
     @State private var cachedSummary: Summary?
@@ -29,37 +32,50 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: AppSpacing.lg) {
                 // Фильтр по времени
                 timeFilterButton
-                    .padding(.horizontal)
-                
+                    .screenPadding()
+
                 accountsSection
-                    .padding(.horizontal)
+                    .screenPadding()
 
                 if !viewModel.allTransactions.isEmpty {
                     NavigationLink(destination: HistoryView(viewModel: viewModel, initialCategory: nil)
                         .environmentObject(timeFilterManager)) {
                         analyticsCard
-                            .padding(.horizontal)
+                            .screenPadding()
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
 
                 QuickAddTransactionView(viewModel: viewModel)
-                    .padding(.horizontal)
+                    .screenPadding()
 
                 if viewModel.isLoading {
-                    ProgressView("Analyzing PDF...")
-                        .padding()
+                    VStack(spacing: 12) {
+                        if let progress = ocrProgress {
+                            ProgressView(value: Double(progress.current), total: Double(progress.total)) {
+                                Text("Распознавание текста: страница \(progress.current) из \(progress.total)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            Text("Страница \(progress.current) из \(progress.total)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            ProgressView("Обработка PDF...")
+                        }
+                    }
+                    .padding(AppSpacing.md)
                 }
-                
+
                 if let error = viewModel.errorMessage {
                     ErrorMessageView(message: error)
-                        .padding(.horizontal)
+                        .screenPadding()
                 }
             }
-                .padding(.vertical)
+                .padding(.vertical, AppSpacing.md)
             }
             .navigationTitle("AI Finance Manager")
             .sheet(isPresented: $showingFilePicker) {
@@ -70,25 +86,55 @@ struct ContentView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingTransactionPreview) {
-                if let transactions = recognizedTransactions {
-                    TransactionPreviewView(viewModel: viewModel, transactions: transactions)
+            .sheet(isPresented: $showingRecognizedText) {
+                if let text = recognizedText, !text.isEmpty {
+                    RecognizedTextView(
+                        recognizedText: text,
+                        structuredRows: structuredRows,
+                        viewModel: viewModel,
+                        onImport: { csvFile in
+                            showingRecognizedText = false
+                            recognizedText = nil
+                            structuredRows = nil
+                            // Открываем CSVPreviewView для продолжения импорта
+                            showingCSVPreview = true
+                            parsedCSVFile = csvFile
+                        },
+                        onCancel: {
+                            showingRecognizedText = false
+                            recognizedText = nil
+                            structuredRows = nil
+                            viewModel.isLoading = false
+                        }
+                    )
+                } else {
+                    // Fallback - показываем пустой экран, если текст не загружен
+                    NavigationView {
+                        VStack {
+                            Text("Ошибка загрузки текста")
+                                .font(.headline)
+                            Text("Попробуйте еще раз")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showingCSVPreview) {
+                if let csvFile = parsedCSVFile {
+                    CSVPreviewView(csvFile: csvFile, viewModel: viewModel)
                 }
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingSettings = true
-                    }) {
+                    NavigationLink(destination: SettingsView(viewModel: viewModel)) {
                         Image(systemName: "gearshape")
                     }
                 }
             }
-            .sheet(isPresented: $showingSettings) {
-                SettingsView(viewModel: viewModel)
-            }
             .sheet(item: $selectedAccount) { account in
                 AccountActionView(viewModel: viewModel, account: account)
+                    .environmentObject(timeFilterManager)
             }
             .sheet(isPresented: $showingVoiceInput) {
                 VoiceInputView(voiceService: voiceService) { transcribedText in
@@ -121,17 +167,17 @@ struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 // Primary actions: голос и загрузка выписок (круглые кнопки в стиле iOS)
-                HStack(spacing: 20) {
+                HStack(spacing: AppSpacing.xl) {
                     // Кнопка голосового ввода
                     Button(action: {
                         showingVoiceInput = true
                     }) {
                         Image(systemName: "mic.fill")
-                            .font(.system(size: 20, weight: .medium))
+                            .font(.system(size: AppIconSize.md, weight: .medium))
                             .foregroundColor(.primary)
-                            .frame(width: 56, height: 56)
+                            .frame(width: AppIconSize.fab, height: AppIconSize.fab)
                             .background(.ultraThinMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                            .shadowStyle(AppShadow.md)
                     }
 
                     // Кнопка загрузки выписок
@@ -139,15 +185,15 @@ struct ContentView: View {
                         showingFilePicker = true
                     }) {
                         Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 20, weight: .medium))
+                            .font(.system(size: AppIconSize.md, weight: .medium))
                             .foregroundColor(.primary)
-                            .frame(width: 56, height: 56)
+                            .frame(width: AppIconSize.fab, height: AppIconSize.fab)
                             .background(.ultraThinMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                            .shadowStyle(AppShadow.md)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.bottom, AppSpacing.xl)
                 .frame(maxWidth: .infinity)
             }
             .onAppear {
@@ -305,47 +351,207 @@ struct ContentView: View {
                 }
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(10))
+        .cardStyle())
     }
     
     
     private func analyzePDF(url: URL) async {
-        viewModel.isLoading = true
-        viewModel.errorMessage = nil
+        print("📄 Starting PDF analysis for: \(url.path)")
         
-        do {
-            let text = try await PDFService.shared.extractText(from: url)
-            
-            // Проверяем, что текст не пустой
-            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                viewModel.errorMessage = "Не удалось извлечь текст из PDF. Убедитесь, что файл содержит текст (не сканированное изображение)."
-                viewModel.isLoading = false
-                return
-            }
-            
-            let result = try await GeminiService.shared.analyzeTransactions(from: text)
-            
-            // Проверяем, что есть транзакции
-            guard !result.transactions.isEmpty else {
-                viewModel.errorMessage = "Не удалось распознать транзакции в выписке. Попробуйте другой файл."
-                viewModel.isLoading = false
-                return
-            }
-            
-            // Сохраняем распознанные транзакции для предпросмотра
-            recognizedTransactions = result.transactions
-            showingTransactionPreview = true
-        } catch let error as GeminiError {
-            viewModel.errorMessage = error.localizedDescription
-        } catch let error as PDFError {
-            viewModel.errorMessage = error.localizedDescription
-        } catch {
-            viewModel.errorMessage = "Ошибка: \(error.localizedDescription)"
+        await MainActor.run {
+            viewModel.isLoading = true
+            viewModel.errorMessage = nil
+            ocrProgress = nil
+            recognizedText = nil
         }
         
-        viewModel.isLoading = false
+        do {
+            // Извлекаем текст через PDFKit или OCR
+            print("📖 Extracting text from PDF...")
+            let ocrResult = try await PDFService.shared.extractText(from: url) { current, total in
+                // Callback уже вызывается на MainActor в PDFService
+                print("📊 OCR Progress: \(current)/\(total)")
+                Task { @MainActor in
+                    ocrProgress = (current: current, total: total)
+                }
+            }
+            
+            print("✅ Text extracted: \(ocrResult.fullText.count) characters")
+            
+            // Проверяем, что текст не пустой
+            let trimmedText = ocrResult.fullText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            guard !trimmedText.isEmpty else {
+                print("❌ Extracted text is empty")
+                await MainActor.run {
+                    viewModel.errorMessage = "Не удалось извлечь текст из PDF. Возможно, документ поврежден или пуст."
+                    viewModel.isLoading = false
+                    ocrProgress = nil
+                }
+                return
+            }
+            
+            // Показываем распознанный текст для проверки пользователем на MainActor
+            print("📝 Showing recognized text modal...")
+            if let structuredRows = ocrResult.structuredRows {
+                print("📊 Structured rows found: \(structuredRows.count) rows")
+            } else {
+                print("⚠️ No structured rows found, will use text parsing")
+            }
+            
+            await MainActor.run {
+                recognizedText = ocrResult.fullText
+                structuredRows = ocrResult.structuredRows
+                ocrProgress = nil
+                viewModel.isLoading = false
+                showingRecognizedText = true
+                print("✅ Modal should be shown, showingRecognizedText = \(showingRecognizedText), recognizedText length = \(recognizedText?.count ?? 0), structuredRows count = \(structuredRows?.count ?? 0)")
+            }
+            
+        } catch let error as PDFError {
+            let errorMessage = error.localizedDescription
+            print("❌ PDF Error: \(errorMessage)")
+            await MainActor.run {
+                viewModel.errorMessage = errorMessage
+                viewModel.isLoading = false
+                ocrProgress = nil
+                recognizedText = nil
+                structuredRows = nil
+            }
+        } catch {
+            print("❌ General Error: \(error.localizedDescription)")
+            await MainActor.run {
+                viewModel.errorMessage = "Ошибка при распознавании: \(error.localizedDescription)"
+                viewModel.isLoading = false
+                ocrProgress = nil
+                recognizedText = nil
+                structuredRows = nil
+            }
+        }
+    }
+    
+}
+
+struct RecognizedTextView: View {
+    let recognizedText: String
+    let structuredRows: [[String]]?
+    let viewModel: TransactionsViewModel
+    let onImport: (CSVFile) -> Void
+    let onCancel: () -> Void
+    @State private var showingCopyAlert = false
+    @State private var isParsing = false
+    @State private var showingParseError = false
+    @State private var parseErrorMessage = ""
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Заголовок
+                VStack(spacing: 8) {
+                    Text("Распознанный текст")
+                        .font(.headline)
+                    Text("Текст успешно распознан. Вы можете импортировать транзакции или скопировать текст.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color(.systemGray6))
+                
+                // Текст
+                ScrollView {
+                    Text(recognizedText)
+                        .font(.system(.body, design: .monospaced))
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled) // Позволяет копировать текст
+                }
+                
+                // Кнопки
+                VStack(spacing: 12) {
+                    // Основная кнопка - импорт транзакций
+                    Button(action: {
+                        isParsing = true
+                        HapticManager.success()
+                        
+                        // Парсим текст выписки в CSV формат с использованием структурированных данных
+                        print("🔍 Парсинг выписки: structuredRows count = \(structuredRows?.count ?? 0)")
+                        let csvFile = StatementTextParser.parseStatementToCSV(recognizedText, structuredRows: structuredRows)
+                        
+                        isParsing = false
+                        
+                        if csvFile.rows.isEmpty {
+                            // Если не найдено транзакций, показываем ошибку
+                            if structuredRows != nil {
+                                parseErrorMessage = "Не удалось найти транзакции в структурированных данных. Возможно, формат выписки отличается от ожидаемого."
+                            } else {
+                                parseErrorMessage = "Не удалось найти транзакции в распознанном тексте. Убедитесь, что текст содержит таблицу транзакций выписки."
+                            }
+                            showingParseError = true
+                        } else {
+                            // Импортируем
+                            print("✅ Найдено \(csvFile.rows.count) транзакций для импорта")
+                            onImport(csvFile)
+                        }
+                    }) {
+                        Label("Импортировать транзакции", systemImage: "square.and.arrow.down")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                    .disabled(isParsing)
+                    
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            UIPasteboard.general.string = recognizedText
+                            showingCopyAlert = true
+                            HapticManager.success()
+                        }) {
+                            Label("Копировать", systemImage: "doc.on.doc")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.gray.opacity(0.2))
+                                .foregroundColor(.primary)
+                                .cornerRadius(10)
+                        }
+                        
+                        Button(action: onCancel) {
+                            Text("Закрыть")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.gray.opacity(0.2))
+                                .foregroundColor(.primary)
+                                .cornerRadius(10)
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Текст выписки")
+            .navigationBarTitleDisplayMode(.inline)
+            .overlay {
+                if isParsing {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                    ProgressView("Парсинг выписки...")
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(10)
+                }
+            }
+            .alert("Текст скопирован", isPresented: $showingCopyAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Распознанный текст скопирован в буфер обмена.")
+            }
+            .alert("Ошибка парсинга", isPresented: $showingParseError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(parseErrorMessage)
+            }
+        }
     }
 }
 
@@ -366,24 +572,24 @@ struct SummaryCard: View {
                 .foregroundColor(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .cardStyle()
     }
 }
 
 struct ErrorMessageView: View {
     let message: String
-    
+
     var body: some View {
-        HStack {
+        HStack(spacing: AppSpacing.md) {
             Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: AppIconSize.md))
             Text(message)
+                .font(AppTypography.body)
         }
-        .padding()
+        .padding(AppSpacing.md)
         .background(Color.red.opacity(0.1))
         .foregroundColor(.red)
-        .cornerRadius(8)
+        .cornerRadius(AppRadius.sm)
     }
 }
 

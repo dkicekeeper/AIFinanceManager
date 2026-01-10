@@ -167,14 +167,7 @@ class TransactionsViewModel: ObservableObject {
                   let date2 = dateFormatter.date(from: tx2.date) else {
                 return false
             }
-            if date1 != date2 {
-                return date1 > date2
-            }
-            // Если даты равны, сортируем по времени
-            if let time1 = tx1.time, let time2 = tx2.time {
-                return time1 > time2
-            }
-            return false
+            return date1 > date2
         }
     }
     
@@ -323,7 +316,6 @@ class TransactionsViewModel: ObservableObject {
             return Transaction(
                 id: transaction.id,
                 date: transaction.date,
-                time: transaction.time,
                 description: formattedDescription,
                 amount: transaction.amount,
                 currency: transaction.currency,
@@ -484,7 +476,6 @@ class TransactionsViewModel: ObservableObject {
             transactionWithID = Transaction(
                 id: id,
                 date: transaction.date,
-                time: transaction.time,
                 description: formattedDescription,
                 amount: transaction.amount,
                 currency: transaction.currency,
@@ -501,7 +492,6 @@ class TransactionsViewModel: ObservableObject {
             transactionWithID = Transaction(
                 id: transaction.id,
                 date: transaction.date,
-                time: transaction.time,
                 description: formattedDescription,
                 amount: transaction.amount,
                 currency: transaction.currency,
@@ -554,7 +544,6 @@ class TransactionsViewModel: ObservableObject {
                 allTransactions[i] = Transaction(
                     id: allTransactions[i].id,
                     date: allTransactions[i].date,
-                    time: allTransactions[i].time,
                     description: allTransactions[i].description,
                     amount: allTransactions[i].amount,
                     currency: allTransactions[i].currency,
@@ -674,14 +663,13 @@ class TransactionsViewModel: ObservableObject {
         // Обновляем все транзакции с этой категорией, если изменилось название
         if oldName != newName {
             for i in allTransactions.indices {
-                if allTransactions[i].category == oldName {
-                    allTransactions[i] = Transaction(
-                        id: allTransactions[i].id,
-                        date: allTransactions[i].date,
-                        time: allTransactions[i].time,
-                        description: allTransactions[i].description,
-                        amount: allTransactions[i].amount,
-                        currency: allTransactions[i].currency,
+            if allTransactions[i].category == oldName {
+                allTransactions[i] = Transaction(
+                    id: allTransactions[i].id,
+                    date: allTransactions[i].date,
+                    description: allTransactions[i].description,
+                    amount: allTransactions[i].amount,
+                    currency: allTransactions[i].currency,
                         convertedAmount: allTransactions[i].convertedAmount,
                         type: allTransactions[i].type,
                         category: newName,
@@ -706,7 +694,64 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
     }
     
-    func deleteCategory(_ category: CustomCategory) {
+    func deleteCategory(_ category: CustomCategory, deleteTransactions: Bool = false) {
+        if deleteTransactions {
+            // Удаляем все операции с этой категорией
+            allTransactions.removeAll { transaction in
+                transaction.category == category.name && transaction.type == category.type
+            }
+            // Пересчитываем балансы счетов после удаления операций
+            recalculateAccountBalances()
+        } else {
+            // Просто удаляем категорию, оставляя операции (они станут без категории или Uncategorized)
+            // Можно опционально обновить категорию в транзакциях на "Uncategorized"
+            for i in allTransactions.indices {
+                if allTransactions[i].category == category.name && allTransactions[i].type == category.type {
+                    allTransactions[i] = Transaction(
+                        id: allTransactions[i].id,
+                        date: allTransactions[i].date,
+                        description: allTransactions[i].description,
+                        amount: allTransactions[i].amount,
+                        currency: allTransactions[i].currency,
+                        convertedAmount: allTransactions[i].convertedAmount,
+                        type: allTransactions[i].type,
+                        category: "Uncategorized",
+                        subcategory: allTransactions[i].subcategory,
+                        accountId: allTransactions[i].accountId,
+                        targetAccountId: allTransactions[i].targetAccountId,
+                        recurringSeriesId: allTransactions[i].recurringSeriesId,
+                        recurringOccurrenceId: allTransactions[i].recurringOccurrenceId
+                    )
+                }
+            }
+        }
+        
+        // Удаляем связи категории с подкатегориями (используем ID категории до удаления)
+        categorySubcategoryLinks.removeAll { $0.categoryId == category.id }
+        
+        // Обновляем recurring серии, если они используют эту категорию
+        var seriesIdsToRemove: [String] = []
+        if deleteTransactions {
+            // Собираем ID серий для удаления
+            seriesIdsToRemove = recurringSeries
+                .filter { $0.category == category.name }
+                .map { $0.id }
+            
+            // Удаляем recurring серии, если удаляем операции
+            recurringSeries.removeAll { $0.category == category.name }
+            
+            // Удаляем все occurrences удаленных серий
+            recurringOccurrences.removeAll { seriesIdsToRemove.contains($0.seriesId) }
+        } else {
+            // Обновляем категорию на "Uncategorized" в сериях
+            for i in recurringSeries.indices {
+                if recurringSeries[i].category == category.name {
+                    recurringSeries[i].category = "Uncategorized"
+                }
+            }
+        }
+        
+        // Удаляем категорию
         customCategories.removeAll { $0.id == category.id }
         invalidateCaches()
         saveToStorage()
@@ -1019,7 +1064,6 @@ class TransactionsViewModel: ObservableObject {
     func generateRecurringTransactions() {
         // Используем кэшированные форматтеры
         let dateFormatter = Self.dateFormatter
-        let timeFormatter = Self.timeFormatter
 
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -1039,7 +1083,6 @@ class TransactionsViewModel: ObservableObject {
         
         var newTransactions: [Transaction] = []
         var newOccurrences: [RecurringOccurrence] = []
-        let currentTime = timeFormatter.string(from: Date())
         
         // Автоматически выполняем recurring операции, срок которых наступил
         var hasChanges = false
@@ -1052,7 +1095,6 @@ class TransactionsViewModel: ObservableObject {
                 let updatedTransaction = Transaction(
                     id: transaction.id,
                     date: transaction.date,
-                    time: transaction.time,
                     description: transaction.description,
                     amount: transaction.amount,
                     currency: transaction.currency,
@@ -1099,7 +1141,6 @@ class TransactionsViewModel: ObservableObject {
                         let transaction = Transaction(
                             id: transactionId,
                             date: dateString,
-                            time: currentTime,
                             description: series.description,
                             amount: amountDouble,
                             currency: series.currency,
@@ -1206,7 +1247,6 @@ class TransactionsViewModel: ObservableObject {
                     updatedTransaction = Transaction(
                         id: updatedTransaction.id,
                         date: updatedTransaction.date,
-                        time: updatedTransaction.time,
                         description: updatedTransaction.description,
                         amount: amountDouble,
                         currency: updatedTransaction.currency,

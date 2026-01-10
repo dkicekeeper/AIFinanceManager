@@ -14,58 +14,51 @@ struct AccountsManagementView: View {
     @State private var editingAccount: Account?
     
     var body: some View {
-        NavigationView {
-            List {
-                ForEach(viewModel.accounts) { account in
-                    AccountRow(
-                        account: account,
-                        currency: viewModel.allTransactions.first?.currency ?? account.currency,
-                        onEdit: { editingAccount = account },
-                        onDelete: { viewModel.deleteAccount(account) }
-                    )
-                    .padding(.horizontal)
-                    .padding(.vertical, 4)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                }
-            }
-            .listStyle(PlainListStyle())
-            .navigationTitle("Accounts")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Готово") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddAccount = true }) {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
-            .sheet(isPresented: $showingAddAccount) {
-                AccountEditView(
-                    viewModel: viewModel,
-                    account: nil,
-                    onSave: { account in
-                        viewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
-                        showingAddAccount = false
-                    },
-                    onCancel: { showingAddAccount = false }
-                )
-            }
-            .sheet(item: $editingAccount) { account in
-                AccountEditView(
-                    viewModel: viewModel,
+        List {
+            ForEach(viewModel.accounts) { account in
+                AccountRow(
                     account: account,
-                    onSave: { updatedAccount in
-                        viewModel.updateAccount(updatedAccount)
-                        editingAccount = nil
-                    },
-                    onCancel: { editingAccount = nil }
+                    currency: viewModel.allTransactions.first?.currency ?? account.currency,
+                    onEdit: { editingAccount = account },
+                    onDelete: { viewModel.deleteAccount(account) }
                 )
+                .padding(.horizontal)
+                .padding(.vertical, 4)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
             }
+        }
+        .listStyle(PlainListStyle())
+        .navigationTitle("Accounts")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showingAddAccount = true }) {
+                    Image(systemName: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showingAddAccount) {
+            AccountEditView(
+                viewModel: viewModel,
+                account: nil,
+                onSave: { account in
+                    viewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
+                    showingAddAccount = false
+                },
+                onCancel: { showingAddAccount = false }
+            )
+        }
+        .sheet(item: $editingAccount) { account in
+            AccountEditView(
+                viewModel: viewModel,
+                account: account,
+                onSave: { updatedAccount in
+                    viewModel.updateAccount(updatedAccount)
+                    editingAccount = nil
+                },
+                onCancel: { editingAccount = nil }
+            )
         }
     }
 }

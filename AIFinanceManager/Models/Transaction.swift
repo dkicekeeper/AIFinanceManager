@@ -16,7 +16,6 @@ enum TransactionType: String, Codable {
 struct Transaction: Identifiable, Codable, Equatable {
     let id: String
     let date: String // YYYY-MM-DD
-    let time: String? // HH:mm
     let description: String
     let amount: Double // Основная сумма операции
     let currency: String // Валюта операции
@@ -32,7 +31,6 @@ struct Transaction: Identifiable, Codable, Equatable {
     init(
         id: String,
         date: String,
-        time: String? = nil,
         description: String,
         amount: Double,
         currency: String,
@@ -47,7 +45,6 @@ struct Transaction: Identifiable, Codable, Equatable {
     ) {
         self.id = id
         self.date = date
-        self.time = time
         self.description = description
         self.amount = amount
         self.currency = currency
@@ -62,11 +59,17 @@ struct Transaction: Identifiable, Codable, Equatable {
     }
     
     // Кастомный decoder для обратной совместимости
+    enum CodingKeys: String, CodingKey {
+        case id, date, time, description, amount, currency, convertedAmount, type, category, subcategory
+        case accountId, targetAccountId, recurringSeriesId, recurringOccurrenceId
+    }
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         date = try container.decode(String.self, forKey: .date)
-        time = try container.decodeIfPresent(String.self, forKey: .time)
+        // Игнорируем поле time для обратной совместимости
+        _ = try? container.decodeIfPresent(String.self, forKey: .time)
         description = try container.decode(String.self, forKey: .description)
         amount = try container.decode(Double.self, forKey: .amount)
         currency = try container.decode(String.self, forKey: .currency)
@@ -78,6 +81,24 @@ struct Transaction: Identifiable, Codable, Equatable {
         targetAccountId = try container.decodeIfPresent(String.self, forKey: .targetAccountId)
         recurringSeriesId = try container.decodeIfPresent(String.self, forKey: .recurringSeriesId)
         recurringOccurrenceId = try container.decodeIfPresent(String.self, forKey: .recurringOccurrenceId)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(date, forKey: .date)
+        // Не кодируем поле time, так как оно больше не существует
+        try container.encode(description, forKey: .description)
+        try container.encode(amount, forKey: .amount)
+        try container.encode(currency, forKey: .currency)
+        try container.encodeIfPresent(convertedAmount, forKey: .convertedAmount)
+        try container.encode(type, forKey: .type)
+        try container.encode(category, forKey: .category)
+        try container.encodeIfPresent(subcategory, forKey: .subcategory)
+        try container.encodeIfPresent(accountId, forKey: .accountId)
+        try container.encodeIfPresent(targetAccountId, forKey: .targetAccountId)
+        try container.encodeIfPresent(recurringSeriesId, forKey: .recurringSeriesId)
+        try container.encodeIfPresent(recurringOccurrenceId, forKey: .recurringOccurrenceId)
     }
 }
 
@@ -119,6 +140,10 @@ struct Account: Identifiable, Codable, Equatable {
     }
     
     // Кастомный decoder для обратной совместимости со старыми данными
+    enum CodingKeys: String, CodingKey {
+        case id, name, balance, currency, bankLogo
+    }
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -127,5 +152,14 @@ struct Account: Identifiable, Codable, Equatable {
         currency = try container.decode(String.self, forKey: .currency)
         // Если bankLogo отсутствует в старых данных, используем .none
         bankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) ?? .none
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(balance, forKey: .balance)
+        try container.encode(currency, forKey: .currency)
+        try container.encode(bankLogo, forKey: .bankLogo)
     }
 }

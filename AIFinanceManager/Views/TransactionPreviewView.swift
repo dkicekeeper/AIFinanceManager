@@ -136,7 +136,6 @@ struct TransactionPreviewView: View {
             let updatedTransaction = Transaction(
                 id: transaction.id,
                 date: transaction.date,
-                time: transaction.time,
                 description: transaction.description,
                 amount: transaction.amount,
                 currency: transaction.currency,
@@ -177,17 +176,9 @@ struct TransactionPreviewRow: View {
                         .font(.body)
                         .fontWeight(.medium)
                     
-                    HStack {
-                        Text(transaction.date)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        if let time = transaction.time {
-                            Text("• \(time)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    Text(transaction.date)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     
                     Text(transaction.category)
                         .font(.caption)

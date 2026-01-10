@@ -11,6 +11,7 @@ struct AccountActionView: View {
     @ObservedObject var viewModel: TransactionsViewModel
     let account: Account
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var selectedAction: ActionType = .income
     @State private var amountText: String = ""
     @State private var selectedCurrency: String
@@ -18,6 +19,7 @@ struct AccountActionView: View {
     @State private var selectedCategory: String? = nil
     @State private var selectedTargetAccountId: String? = nil
     @State private var selectedDate: Date = Date()
+    @State private var showingAccountHistory = false
     @FocusState private var isAmountFocused: Bool
     
     init(viewModel: TransactionsViewModel, account: Account) {
@@ -33,30 +35,20 @@ struct AccountActionView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Действие")) {
-                    Picker("Тип", selection: $selectedAction) {
-                        Text("Пополнение").tag(ActionType.income)
-                        Text("Перевод").tag(ActionType.transfer)
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .gesture(
-                        DragGesture(minimumDistance: 50)
-                            .onEnded { value in
-                                if value.translation.width > 50 {
-                                    // Свайп вправо - переключить на предыдущий
-                                    if selectedAction == .transfer {
-                                        selectedAction = .income
-                                    }
-                                } else if value.translation.width < -50 {
-                                    // Свайп влево - переключить на следующий
-                                    if selectedAction == .income {
-                                        selectedAction = .transfer
-                                    }
-                                }
-                            }
-                    )
+            VStack(spacing: 0) {
+                // Закреплённый фильтр по типу действия
+                Picker("Тип", selection: $selectedAction) {
+                    Text("Пополнение").tag(ActionType.income)
+                    Text("Перевод").tag(ActionType.transfer)
                 }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+                .background(Color(UIColor.systemBackground))
+                
+                Divider()
+                
+                Form {
                 
                 if selectedAction == .income {
                     if incomeCategories.isEmpty {
@@ -130,13 +122,15 @@ struct AccountActionView: View {
                     TextField("Описание (необязательно)", text: $descriptionText, axis: .vertical)
                         .lineLimit(3...6)
                 }
-                
-                // Кнопки даты
-                Section {
-                    DateButtonsView(selectedDate: $selectedDate) { date in
-                        // Дата обновляется автоматически через binding
-                    }
                 }
+                .padding(.bottom, 0)
+                
+                // Кнопки даты внизу - сохраняют транзакцию при выборе даты
+                DateButtonsView(selectedDate: $selectedDate) { date in
+                    saveTransaction(date: date)
+                }
+                .padding()
+                .background(Color(.systemBackground))
             }
             .navigationTitle(selectedAction == .income ? "Пополнение счета" : "Перевод")
             .navigationBarTitleDisplayMode(.inline)
@@ -146,13 +140,18 @@ struct AccountActionView: View {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Сохранить") {
-                        saveTransaction()
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingAccountHistory = true
+                    }) {
+                        Image(systemName: "clock.arrow.circlepath")
                     }
-                    .disabled(amountText.isEmpty || 
-                             (selectedAction == .income && (selectedCategory == nil || incomeCategories.isEmpty)) ||
-                             (selectedAction == .transfer && (selectedTargetAccountId == nil || availableAccounts.isEmpty)))
+                }
+            }
+            .sheet(isPresented: $showingAccountHistory) {
+                NavigationView {
+                    HistoryView(viewModel: viewModel, initialAccountId: account.id)
+                        .environmentObject(timeFilterManager)
                 }
             }
             .onAppear {
@@ -176,12 +175,13 @@ struct AccountActionView: View {
         Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
     }
     
-    private func saveTransaction() {
+    private func saveTransaction(date: Date) {
+        // Проверяем валидность данных перед сохранением
         guard let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")) else { return }
+        guard !amountText.isEmpty else { return }
         
         let dateFormatter = DateFormatters.dateFormatter
-        let transactionDate = dateFormatter.string(from: selectedDate)
-        let currentTime = DateFormatters.timeFormatter.string(from: selectedDate)
+        let transactionDate = dateFormatter.string(from: date)
         
         let finalDescription = descriptionText.isEmpty ? (selectedAction == .income ? "Пополнение счета" : "Перевод между счетами") : descriptionText
         
@@ -199,16 +199,16 @@ struct AccountActionView: View {
             await MainActor.run {
                 if selectedAction == .income {
                     // Пополнение счета
+                    guard let category = selectedCategory, !incomeCategories.isEmpty else { return }
                     let transaction = Transaction(
                         id: "",
                         date: transactionDate,
-                        time: currentTime,
                         description: finalDescription,
                         amount: amount,
                         currency: selectedCurrency,
                         convertedAmount: convertedAmount,
                         type: .income,
-                        category: selectedCategory ?? "Доход",
+                        category: category,
                         subcategory: nil,
                         accountId: account.id,
                         targetAccountId: nil
@@ -216,11 +216,10 @@ struct AccountActionView: View {
                     viewModel.addTransaction(transaction)
                 } else {
                     // Перевод между счетами
-                    guard let targetAccountId = selectedTargetAccountId else { return }
+                    guard let targetAccountId = selectedTargetAccountId, !availableAccounts.isEmpty else { return }
                     let transaction = Transaction(
                         id: "",
                         date: transactionDate,
-                        time: currentTime,
                         description: finalDescription,
                         amount: amount,
                         currency: selectedCurrency,
@@ -234,6 +233,7 @@ struct AccountActionView: View {
                     viewModel.addTransaction(transaction)
                 }
                 
+                HapticManager.success()
                 dismiss()
             }
         }

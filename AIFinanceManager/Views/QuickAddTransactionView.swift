@@ -22,7 +22,7 @@ struct QuickAddTransactionView: View {
         let categories = cachedCategories
         let categoryExpenses = cachedCategoryExpenses
         
-        return LazyVGrid(columns: gridColumns, spacing: 16) {
+        LazyVGrid(columns: gridColumns, spacing: 16) {
             ForEach(categories, id: \.self) { category in
                 let total = categoryExpenses[category]?.total ?? 0
                 let currency = viewModel.allTransactions.first?.currency ?? "USD"
@@ -43,57 +43,56 @@ struct QuickAddTransactionView: View {
             }
         }
         .sheet(isPresented: $showingModal) {
-            AddTransactionModal(
-                category: selectedCategory ?? "",
-                type: selectedType,
-                currency: viewModel.allTransactions.first?.currency ?? "USD",
-                accounts: viewModel.accounts,
-                viewModel: viewModel,
-                onSave: { amount, description, accountId, dateString, subcategoryIds, transactionCurrency in
-                    let currentTime = DateFormatters.timeFormatter.string(from: Date())
-                    
-                    // Получаем валюту счета
-                    guard let accountId = accountId,
-                          let account = viewModel.accounts.first(where: { $0.id == accountId }) else {
-                        return
-                    }
-                    
-                    let accountCurrency = account.currency
-                    
-                    // Конвертируем Decimal в Double для Transaction
-                    let amountDouble = NSDecimalNumber(decimal: amount).doubleValue
-                    
-                    // Конвертируем валюту, если она отличается от валюты счета
-                    Task {
-                        var convertedAmount: Double? = nil
-                        if transactionCurrency != accountCurrency {
-                            convertedAmount = await CurrencyConverter.convert(
-                                amount: amountDouble,
-                                from: transactionCurrency,
-                                to: accountCurrency
-                            )
+            if let category = selectedCategory {
+                AddTransactionModal(
+                    category: category,
+                    type: selectedType,
+                    currency: viewModel.allTransactions.first?.currency ?? "USD",
+                    accounts: viewModel.accounts,
+                    viewModel: viewModel,
+                    onSave: { amount, description, accountId, dateString, subcategoryIds, transactionCurrency, transactionCategory in
+                        // Получаем валюту счета
+                        guard let accountId = accountId,
+                              let account = viewModel.accounts.first(where: { $0.id == accountId }) else {
+                            return
                         }
                         
-                        let transaction = Transaction(
-                            id: "",
-                            date: dateString,
-                            time: currentTime,
-                            description: description,
-                            amount: amountDouble,
-                            currency: transactionCurrency,
-                            convertedAmount: convertedAmount,
-                            type: selectedType,
-                            category: selectedCategory ?? "Other",
-                            subcategory: nil,
-                            accountId: accountId,
-                            targetAccountId: nil
-                        )
+                        let accountCurrency = account.currency
+                        
+                        // Конвертируем Decimal в Double для Transaction
+                        let amountDouble = NSDecimalNumber(decimal: amount).doubleValue
+                        
+                        // Конвертируем валюту, если она отличается от валюты счета
+                        Task {
+                            var convertedAmount: Double? = nil
+                            if transactionCurrency != accountCurrency {
+                                convertedAmount = await CurrencyConverter.convert(
+                                    amount: amountDouble,
+                                    from: transactionCurrency,
+                                    to: accountCurrency
+                                )
+                            }
+                            
+                            let transaction = Transaction(
+                                id: "",
+                                date: dateString,
+                                description: description,
+                                amount: amountDouble,
+                                currency: transactionCurrency,
+                                convertedAmount: convertedAmount,
+                                type: selectedType,
+                                category: transactionCategory,
+                                subcategory: nil,
+                                accountId: accountId,
+                                targetAccountId: nil
+                            )
                         
                         await MainActor.run {
                             viewModel.addTransaction(transaction)
+                            HapticManager.success()
                         }
                     }
-                    
+
                     // Связываем подкатегории с транзакцией
                     if !subcategoryIds.isEmpty {
                         // Получаем ID транзакции после добавления
@@ -102,7 +101,7 @@ struct QuickAddTransactionView: View {
                             tx.description == description &&
                             tx.amount == amountDouble
                         }
-                        
+
                         if let transactionId = addedTransaction?.id {
                             viewModel.linkSubcategoriesToTransaction(
                                 transactionId: transactionId,
@@ -110,7 +109,7 @@ struct QuickAddTransactionView: View {
                             )
                         }
                     }
-                    
+
                     selectedCategory = nil
                     showingModal = false
                 },
@@ -119,6 +118,7 @@ struct QuickAddTransactionView: View {
                     showingModal = false
                 }
             )
+            }
         }
         .onAppear {
             updateCachedData()
@@ -263,7 +263,7 @@ struct AddTransactionModal: View {
     let accounts: [Account]
     let viewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
-    let onSave: (Decimal, String, String?, String, Set<String>, String) -> Void // amount, description, accountId, date, subcategoryIds, currency
+    let onSave: (Decimal, String, String?, String, Set<String>, String, String) -> Void // amount, description, accountId, date, subcategoryIds, currency, category
     let onCancel: () -> Void
     
     @State private var amountText = ""
@@ -279,7 +279,7 @@ struct AddTransactionModal: View {
     @State private var showingCategoryHistory = false
     @FocusState private var isAmountFocused: Bool
     
-    init(category: String, type: TransactionType, currency: String, accounts: [Account], viewModel: TransactionsViewModel, onSave: @escaping (Decimal, String, String?, String, Set<String>, String) -> Void, onCancel: @escaping () -> Void) {
+    init(category: String, type: TransactionType, currency: String, accounts: [Account], viewModel: TransactionsViewModel, onSave: @escaping (Decimal, String, String?, String, Set<String>, String, String) -> Void, onCancel: @escaping () -> Void) {
         self.category = category
         self.type = type
         self.currency = currency
@@ -494,7 +494,7 @@ struct AddTransactionModal: View {
             )
         }
         
-        onSave(decimalAmount, finalDescription, selectedAccountId, dateString, selectedSubcategoryIds, selectedCurrency)
+        onSave(decimalAmount, finalDescription, selectedAccountId, dateString, selectedSubcategoryIds, selectedCurrency, category)
     }
 }
 

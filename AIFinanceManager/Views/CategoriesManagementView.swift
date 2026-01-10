@@ -13,93 +13,94 @@ struct CategoriesManagementView: View {
     @State private var selectedType: TransactionType = .expense
     @State private var showingAddCategory = false
     @State private var editingCategory: CustomCategory?
+    @State private var categoryToDelete: CustomCategory?
+    @State private var showingDeleteDialog = false
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Фильтр по типу
-                Picker("Type", selection: $selectedType) {
-                    Text("Расходы").tag(TransactionType.expense)
-                    Text("Доходы").tag(TransactionType.income)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding()
-                .gesture(
-                    DragGesture(minimumDistance: 50)
-                        .onEnded { value in
-                            if value.translation.width > 50 {
-                                // Свайп вправо - переключить на предыдущий
-                                if selectedType == .income {
-                                    selectedType = .expense
-                                }
-                            } else if value.translation.width < -50 {
-                                // Свайп влево - переключить на следующий
-                                if selectedType == .expense {
-                                    selectedType = .income
-                                }
-                            }
+        VStack(spacing: 0) {
+            // Закреплённый фильтр по типу
+            Picker("Type", selection: $selectedType) {
+                Text("Расходы").tag(TransactionType.expense)
+                Text("Доходы").tag(TransactionType.income)
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            .background(Color(UIColor.systemBackground))
+
+            Divider()
+
+            // Список категорий
+            List {
+                ForEach(filteredCategories) { category in
+                    CategoryRow(
+                        category: category,
+                        isDefault: false,
+                        onEdit: {
+                            editingCategory = category
+                        },
+                        onDelete: {
+                            categoryToDelete = category
+                            showingDeleteDialog = true
                         }
-                )
-                
-                // Список категорий
-                List {
-                    ForEach(filteredCategories) { category in
-                        CategoryRow(
-                            category: category,
-                            isDefault: false,
-                            onEdit: { 
-                                editingCategory = category
-                            },
-                            onDelete: { 
-                                viewModel.deleteCategory(category)
-                            }
-                        )
-                        .padding(.horizontal)
-                        .padding(.vertical, 4)
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                    }
-                }
-                .listStyle(PlainListStyle())
-            }
-            .navigationTitle("Categories")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Готово") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddCategory = true }) {
-                        Image(systemName: "plus")
-                    }
+                    )
+                    .padding(.horizontal)
+                    .padding(.vertical, 4)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                 }
             }
-            .sheet(isPresented: $showingAddCategory) {
-                CategoryEditView(
-                    viewModel: viewModel,
-                    category: nil,
-                    type: selectedType,
-                    onSave: { category in
-                        viewModel.addCategory(category)
-                        showingAddCategory = false
-                    },
-                    onCancel: { showingAddCategory = false }
-                )
+            .listStyle(PlainListStyle())
+        }
+        .navigationTitle("Categories")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showingAddCategory = true }) {
+                    Image(systemName: "plus")
+                }
             }
-            .sheet(item: $editingCategory) { category in
-                CategoryEditView(
-                    viewModel: viewModel,
-                    category: category,
-                    type: category.type,
-                    onSave: { updatedCategory in
-                        viewModel.updateCategory(updatedCategory)
-                        editingCategory = nil
-                    },
-                    onCancel: { editingCategory = nil }
-                )
+        }
+        .sheet(isPresented: $showingAddCategory) {
+            CategoryEditView(
+                viewModel: viewModel,
+                category: nil,
+                type: selectedType,
+                onSave: { category in
+                    viewModel.addCategory(category)
+                    showingAddCategory = false
+                },
+                onCancel: { showingAddCategory = false }
+            )
+        }
+        .sheet(item: $editingCategory) { category in
+            CategoryEditView(
+                viewModel: viewModel,
+                category: category,
+                type: category.type,
+                onSave: { updatedCategory in
+                    viewModel.updateCategory(updatedCategory)
+                    editingCategory = nil
+                },
+                onCancel: { editingCategory = nil }
+            )
+        }
+        .confirmationDialog("Удалить категорию?", isPresented: $showingDeleteDialog, presenting: categoryToDelete) { category in
+            Button("Удалить только категорию", role: .destructive) {
+                HapticManager.warning()
+                viewModel.deleteCategory(category, deleteTransactions: false)
+                categoryToDelete = nil
             }
+            Button("Удалить категорию и операции", role: .destructive) {
+                HapticManager.warning()
+                viewModel.deleteCategory(category, deleteTransactions: true)
+                categoryToDelete = nil
+            }
+            Button("Отмена", role: .cancel) {
+                categoryToDelete = nil
+            }
+        } message: { category in
+            Text("Выберите, что делать с операциями категории \"\(category.name)\".")
         }
     }
     
@@ -317,46 +318,55 @@ struct IconPickerView: View {
     @Environment(\.dismiss) var dismiss
     
     private let iconCategories: [(String, [String])] = [
-        ("Часто используемые", ["banknote.fill", "hamburger.fill", "car.fill", "bag.fill", "sparkles", "lightbulb.fill", "cross.case.fill", "graduationcap.fill", "dollar.circle.fill", "briefcase.fill", "box.fill", "gift.fill", "airplane.fill", "cart.fill", "cup.and.saucer.fill", "tv.fill"]),
-        ("Еда", ["fork.knife", "hamburger.fill", "cup.and.saucer.fill", "cart.fill", "wineglass.fill", "birthday.cake.fill", "apple.fill", "leaf.fill"]),
-        ("Транспорт", ["car.fill", "bus.fill", "airplane.fill", "tram.fill", "bicycle.circle.fill", "scooter", "ship.fill", "fuelpump.fill"]),
-        ("Покупки", ["bag.fill", "cart.fill", "creditcard.fill", "handbag.fill", "tshirt.fill", "shoe.fill", "iphone", "laptopcomputer"]),
-        ("Развлечения", ["film.fill", "gamecontroller.fill", "music.note", "theatermasks.fill", "paintpalette.fill", "book.fill", "sportscourt.fill", "dumbbell.fill"]),
-        ("Здоровье", ["cross.case.fill", "pills.fill", "figure.run", "figure.yoga", "syringe", "face.smiling.fill", "eye", "heart.fill"]),
-        ("Дом", ["house.fill", "key.fill", "chair.fill", "bed.double", "shower.fill", "flame.fill", "sparkles", "leaf.fill"]),
-        ("Деньги", ["banknote.fill", "dollar.circle.fill", "creditcard.fill", "diamond.circle.fill", "building.columns.fill", "chart.bar.fill", "banknote.fill", "dollarsign.circle.fill"])
+        ("Часто используемые", ["banknote.fill", "cart.fill", "car.fill", "bag.fill", "fork.knife", "house.fill", "briefcase.fill", "heart.fill", "airplane.fill", "gift.fill", "creditcard.fill", "tv.fill", "book.fill", "star.fill", "bolt.fill", "flame.fill"]),
+        ("Еда и напитки", ["fork.knife", "cup.and.saucer.fill", "birthday.cake.fill", "takeoutbag.and.cup.and.straw.fill", "carrot.fill", "fish.fill", "leaf.fill", "mug.fill"]),
+        ("Транспорт", ["car.fill", "bus.fill", "airplane.fill", "tram.fill", "bicycle", "scooter", "ferry.fill", "fuelpump.fill"]),
+        ("Покупки", ["bag.fill", "cart.fill", "creditcard.fill", "handbag.fill", "tshirt.fill", "giftcard.fill", "basket.fill", "tag.fill"]),
+        ("Развлечения", ["film.fill", "gamecontroller.fill", "music.note", "theatermasks.fill", "paintpalette.fill", "book.fill", "sportscourt.fill", "figure.walk"]),
+        ("Здоровье", ["cross.case.fill", "heart.text.square.fill", "bandage.fill", "syringe.fill", "cross.fill", "eye.fill", "waveform.path.ecg", "figure.run"]),
+        ("Дом и коммунальные", ["house.fill", "key.fill", "chair.fill", "bed.double.fill", "lightbulb.fill", "sparkles", "sofa.fill", "shower.fill"]),
+        ("Деньги и финансы", ["banknote.fill", "dollar.circle.fill", "creditcard.fill", "building.columns.fill", "chart.bar.fill", "dollarsign.circle.fill", "rublesign.circle.fill", "eurosign.circle.fill"])
     ]
     
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 24) {
                     ForEach(iconCategories, id: \.0) { category in
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 16) {
                             Text(category.0)
                                 .font(.headline)
-                                .padding(.horizontal)
-                            
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 8), spacing: 12) {
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+
+                            LazyVGrid(
+                                columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 6),
+                                spacing: 16
+                            ) {
                                 ForEach(category.1, id: \.self) { iconName in
                                     Button(action: {
                                         selectedIconName = iconName
                                         dismiss()
                                     }) {
                                         Image(systemName: iconName)
-                                            .font(.system(size: 24))
-                                            .foregroundColor(.primary)
-                                            .frame(width: 50, height: 50)
-                                            .background(selectedIconName == iconName ? Color.blue.opacity(0.2) : Color(.systemGray6))
-                                            .cornerRadius(10)
+                                            .font(.system(size: 26))
+                                            .foregroundColor(selectedIconName == iconName ? .white : .primary)
+                                            .frame(width: 52, height: 52)
+                                            .background(
+                                                selectedIconName == iconName
+                                                    ? Color.blue
+                                                    : Color(.systemGray6)
+                                            )
+                                            .cornerRadius(12)
                                     }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
                             }
-                            .padding(.horizontal)
+                            .padding(.horizontal, 20)
                         }
                     }
                 }
-                .padding(.vertical)
+                .padding(.vertical, 20)
             }
             .navigationTitle("Выберите иконку")
             .navigationBarTitleDisplayMode(.inline)

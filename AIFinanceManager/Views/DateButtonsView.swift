@@ -22,38 +22,30 @@ struct DateButtonsView: View {
                 }
             }) {
                 Text("Вчера")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color(.systemGray5))
-                    .foregroundColor(.primary)
             }
-            
+            .dateButton()
+
             // Сегодня - в центре
             Button(action: {
-                selectedDate = Date()
-                onDateSelected(selectedDate)
+                let today = Date()
+                selectedDate = today
+                onDateSelected(today)
             }) {
                 Text("Сегодня")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color(.systemGray5))
-                    .foregroundColor(.primary)
             }
-            
+            .dateButton()
+
             // Календарь - справа
             Button(action: {
                 showingDatePicker = true
             }) {
                 Text("Календарь")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color(.systemGray5))
-                    .foregroundColor(.primary)
             }
+            .dateButton()
         }
-        .cornerRadius(10)
+        .cornerRadius(AppRadius.md)
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: AppRadius.md)
                 .stroke(Color(.systemGray4), lineWidth: 0.5)
         )
         .sheet(isPresented: $showingDatePicker) {

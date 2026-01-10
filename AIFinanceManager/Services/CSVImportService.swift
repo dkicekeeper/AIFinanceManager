@@ -50,7 +50,7 @@ class CSVImportService {
         
         for (rowIndex, row) in csvFile.rows.enumerated() {
             // Парсим дату
-            guard let dateString = row[safe: dateIdx]?.trimmingCharacters(in: .whitespaces),
+            guard let dateString = row[safe: dateIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                   !dateString.isEmpty,
                   let date = parseDate(dateString, format: columnMapping.dateFormat) else {
                 skippedCount += 1
@@ -59,7 +59,7 @@ class CSVImportService {
             }
             
             // Парсим тип
-            guard let typeString = row[safe: typeIdx]?.trimmingCharacters(in: .whitespaces),
+            guard let typeString = row[safe: typeIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                   !typeString.isEmpty,
                   let type = parseType(typeString, mappings: columnMapping.typeMappings) else {
                 skippedCount += 1
@@ -68,7 +68,7 @@ class CSVImportService {
             }
             
             // Парсим сумму
-            guard let amountString = row[safe: amountIdx]?.trimmingCharacters(in: .whitespaces),
+            guard let amountString = row[safe: amountIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                   !amountString.isEmpty,
                   let amount = parseAmount(amountString) else {
                 skippedCount += 1
@@ -77,12 +77,12 @@ class CSVImportService {
             }
             
             // Парсим валюту
-            let currency = currencyIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: .whitespaces) } ?? "KZT"
+            let currency = currencyIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: CharacterSet.whitespaces) } ?? "KZT"
             
             // Парсим счет
             var accountId: String? = nil
             if let accountIdx = accountIndex,
-               let accountValue = row[safe: accountIdx]?.trimmingCharacters(in: .whitespaces),
+               let accountValue = row[safe: accountIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                !accountValue.isEmpty {
                 if let mappedAccountId = entityMapping.accountMappings[accountValue] {
                     accountId = mappedAccountId
@@ -95,7 +95,7 @@ class CSVImportService {
             var categoryName = "Другое"
             var categoryId: String? = nil
             if let categoryIdx = categoryIndex,
-               let categoryValue = row[safe: categoryIdx]?.trimmingCharacters(in: .whitespaces),
+               let categoryValue = row[safe: categoryIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                !categoryValue.isEmpty {
                 if let mappedCategory = entityMapping.categoryMappings[categoryValue] {
                     categoryName = mappedCategory
@@ -128,10 +128,10 @@ class CSVImportService {
             var subcategoryName: String? = nil
             var subcategoryIds: [String] = []
             if let subcategoriesIdx = subcategoriesIndex,
-               let subcategoriesValue = row[safe: subcategoriesIdx]?.trimmingCharacters(in: .whitespaces),
+               let subcategoriesValue = row[safe: subcategoriesIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                !subcategoriesValue.isEmpty {
                 let subcategories = subcategoriesValue.components(separatedBy: columnMapping.subcategoriesSeparator)
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .map { $0.trimmingCharacters(in: CharacterSet.whitespaces) }
                     .filter { !$0.isEmpty }
                 
                 // Создаем и привязываем подкатегории
@@ -162,12 +162,11 @@ class CSVImportService {
             }
             
             // Парсим заметку
-            let note = noteIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: .whitespaces) } ?? ""
+            let note = noteIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: CharacterSet.whitespaces) } ?? ""
             
             // Создаем транзакцию
             let transactionDateFormatter = DateFormatters.dateFormatter
             let transactionDateString = transactionDateFormatter.string(from: date)
-            let timeString = DateFormatters.timeFormatter.string(from: Date())
             
             // Генерируем ID для транзакции (используем note, даже если пустое)
             let descriptionForID = note.isEmpty ? categoryName : note
@@ -182,7 +181,6 @@ class CSVImportService {
             let transaction = Transaction(
                 id: transactionId,
                 date: transactionDateString,
-                time: timeString,
                 description: note, // Оставляем пустым, если пустое
                 amount: amount,
                 currency: currency,

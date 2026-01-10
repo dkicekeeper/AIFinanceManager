@@ -29,14 +29,32 @@ struct EditTransactionView: View {
     @FocusState private var isAmountFocused: Bool
     
     private var availableCategories: [String] {
-        switch transaction.type {
-        case .income:
-            return viewModel.incomeCategories
-        case .expense:
-            return viewModel.expenseCategories
-        case .internalTransfer:
-            return ["Transfer"]
+        var categories: Set<String> = []
+        let transactionType = transaction.type
+        
+        // Добавляем пользовательские категории нужного типа
+        for customCategory in customCategories where customCategory.type == transactionType {
+            categories.insert(customCategory.name)
         }
+        
+        // Добавляем категории из существующих транзакций того же типа
+        for tx in viewModel.allTransactions where tx.type == transactionType {
+            if !tx.category.isEmpty && tx.category != "Uncategorized" {
+                categories.insert(tx.category)
+            }
+        }
+        
+        // Если категория текущей транзакции не найдена, добавляем её
+        if !transaction.category.isEmpty && transaction.category != "Uncategorized" {
+            categories.insert(transaction.category)
+        }
+        
+        // Добавляем "Uncategorized" если нет категорий
+        if categories.isEmpty {
+            categories.insert("Uncategorized")
+        }
+        
+        return Array(categories).sorted()
     }
     
     private var categoryId: String? {
@@ -257,7 +275,6 @@ struct EditTransactionView: View {
         
         let dateFormatter = DateFormatters.dateFormatter
         let dateString = dateFormatter.string(from: date)
-        let currentTime = DateFormatters.timeFormatter.string(from: Date())
         
         // Обработка recurring
         var finalRecurringSeriesId: String? = transaction.recurringSeriesId
@@ -304,7 +321,6 @@ struct EditTransactionView: View {
         let updatedTransaction = Transaction(
             id: transaction.id,
             date: dateString,
-            time: currentTime,
             description: descriptionText,
             amount: amount,
             currency: transaction.currency,
