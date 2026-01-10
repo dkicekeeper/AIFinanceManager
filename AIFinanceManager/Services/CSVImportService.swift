@@ -168,14 +168,20 @@ class CSVImportService {
             let transactionDateFormatter = DateFormatters.dateFormatter
             let transactionDateString = transactionDateFormatter.string(from: date)
             
+            // Для CSV импорта используем дату транзакции как createdAt (чтобы сортировка соответствовала дате)
+            // Но добавляем небольшое смещение на основе индекса строки для сохранения порядка внутри дня
+            let createdAt = date.timeIntervalSince1970 + Double(rowIndex) * 0.001 // 1ms на транзакцию для сохранения порядка
+            
             // Генерируем ID для транзакции (используем note, даже если пустое)
+            // Включаем createdAt в генерацию ID для уникальности
             let descriptionForID = note.isEmpty ? categoryName : note
             let transactionId = TransactionIDGenerator.generateID(
                 date: transactionDateString,
                 description: descriptionForID,
                 amount: amount,
                 type: type,
-                currency: currency
+                currency: currency,
+                createdAt: createdAt
             )
             
             let transaction = Transaction(
@@ -191,7 +197,8 @@ class CSVImportService {
                 accountId: accountId,
                 targetAccountId: nil,
                 recurringSeriesId: nil,
-                recurringOccurrenceId: nil
+                recurringOccurrenceId: nil,
+                createdAt: createdAt // Используем дату транзакции + небольшое смещение для сохранения порядка
             )
             
             transactions.append(transaction)

@@ -26,6 +26,8 @@ struct EditTransactionView: View {
     @State private var showingSubcategorySearch = false
     @State private var subcategorySearchText = ""
     @State private var showingRecurringDisableDialog = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
     @FocusState private var isAmountFocused: Bool
     
     private var availableCategories: [String] {
@@ -265,12 +267,44 @@ struct EditTransactionView: View {
                     }
                 }
             }
+            .alert("Ошибка", isPresented: $showingError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
     
     private func saveTransaction(date: Date) {
-        guard let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")) else {
+        // Валидация: проверяем, что сумма введена и положительна
+        guard !amountText.isEmpty,
+              let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")),
+              amount > 0 else {
+            errorMessage = "Введите положительную сумму"
+            showingError = true
+            HapticManager.warning()
             return
+        }
+        
+        // Валидация для переводов: предотвращаем перевод самому себе
+        if transaction.type == .internalTransfer {
+            guard let sourceId = selectedAccountId,
+                  let targetId = selectedTargetAccountId,
+                  sourceId != targetId else {
+                errorMessage = "Нельзя перевести средства на тот же счет"
+                showingError = true
+                HapticManager.warning()
+                return
+            }
+            
+            // Проверяем, что оба счета существуют
+            guard accounts.contains(where: { $0.id == sourceId }),
+                  accounts.contains(where: { $0.id == targetId }) else {
+                errorMessage = "Один из счетов не найден"
+                showingError = true
+                HapticManager.error()
+                return
+            }
         }
         
         let dateFormatter = DateFormatters.dateFormatter
@@ -330,7 +364,8 @@ struct EditTransactionView: View {
             accountId: selectedAccountId,
             targetAccountId: selectedTargetAccountId,
             recurringSeriesId: finalRecurringSeriesId,
-            recurringOccurrenceId: finalRecurringOccurrenceId
+            recurringOccurrenceId: finalRecurringOccurrenceId,
+            createdAt: transaction.createdAt // Сохраняем оригинальный createdAt при редактировании
         )
         
         viewModel.updateTransaction(updatedTransaction)
@@ -341,6 +376,7 @@ struct EditTransactionView: View {
             subcategoryIds: Array(selectedSubcategoryIds)
         )
         
+        HapticManager.success()
         dismiss()
     }
 }

@@ -9,31 +9,34 @@ import SwiftUI
 
 struct DateButtonsView: View {
     @Binding var selectedDate: Date
-    let onDateSelected: (Date) -> Void
+    var isDisabled: Bool = false
+    let onSave: (Date) -> Void
     @State private var showingDatePicker = false
-    
+
     var body: some View {
         HStack(spacing: 0) {
             // Вчера - слева
             Button(action: {
                 if let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) {
                     selectedDate = yesterday
-                    onDateSelected(yesterday)
+                    onSave(yesterday)
                 }
             }) {
                 Text("Вчера")
             }
             .dateButton()
+            .disabled(isDisabled)
 
             // Сегодня - в центре
             Button(action: {
                 let today = Date()
                 selectedDate = today
-                onDateSelected(today)
+                onSave(today)
             }) {
                 Text("Сегодня")
             }
             .dateButton()
+            .disabled(isDisabled)
 
             // Календарь - справа
             Button(action: {
@@ -42,12 +45,14 @@ struct DateButtonsView: View {
                 Text("Календарь")
             }
             .dateButton()
+            .disabled(isDisabled)
         }
         .cornerRadius(AppRadius.md)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.md)
                 .stroke(Color(.systemGray4), lineWidth: 0.5)
         )
+        .opacity(isDisabled ? 0.6 : 1.0)
         .sheet(isPresented: $showingDatePicker) {
             NavigationView {
                 VStack {
@@ -67,7 +72,7 @@ struct DateButtonsView: View {
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Готово") {
-                            onDateSelected(selectedDate)
+                            onSave(selectedDate)
                             showingDatePicker = false
                         }
                     }

@@ -21,6 +21,10 @@ struct HistoryView: View {
     @State private var cachedFilteredTransactions: [Transaction] = []
     @State private var cachedGroupedTransactions: [String: [Transaction]] = [:]
     @State private var lastFilterState: (String, String?, Set<String>?) = ("", nil, nil)
+
+    // Индекс аккаунтов для O(1) lookup вместо O(n)
+    @State private var accountsById: [String: Account] = [:]
+    @State private var searchTask: Task<Void, Never>?
     
     init(viewModel: TransactionsViewModel, initialCategory: String? = nil, initialAccountId: String? = nil) {
         self.viewModel = viewModel
@@ -49,12 +53,15 @@ struct HistoryView: View {
         }
         .onAppear {
             PerformanceProfiler.start("HistoryView.onAppear")
-            
+
+            // Создаем индекс аккаунтов для быстрого поиска
+            buildAccountsIndex()
+
             // Устанавливаем фильтр по счету при появлении
             if let accountId = initialAccountId, selectedAccountFilter != accountId {
                 selectedAccountFilter = accountId
             }
-            
+
             debouncedSearchText = searchText
             updateCachedTransactions()
             PerformanceProfiler.end("HistoryView.onAppear")
@@ -66,9 +73,14 @@ struct HistoryView: View {
             updateCachedTransactions()
         }
         .onChange(of: searchText) { oldValue, newValue in
+            // Отменяем предыдущий поиск
+            searchTask?.cancel()
+
             // Дебаунсируем поиск - обновляем через 300ms после последнего ввода
-            Task {
+            searchTask = Task {
                 try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+                guard !Task.isCancelled else { return }
+
                 if searchText == newValue { // Проверяем, что значение не изменилось за это время
                     await MainActor.run {
                         debouncedSearchText = newValue
@@ -76,6 +88,11 @@ struct HistoryView: View {
                     }
                 }
             }
+        }
+        .onChange(of: viewModel.accounts) { _, _ in
+            // Пересоздаем индекс при изменении аккаунтов
+            buildAccountsIndex()
+            updateCachedTransactions()
         }
         .onChange(of: viewModel.filteredTransactions) { _, _ in
             updateCachedTransactions()
@@ -107,7 +124,7 @@ struct HistoryView: View {
                 }
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.secondary)
+                .foregroundColor(.black)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(Color(.systemGray5))
@@ -190,32 +207,102 @@ struct HistoryView: View {
         let grouped = cachedGroupedTransactions.isEmpty ? groupedTransactions : cachedGroupedTransactions
         
         if grouped.isEmpty {
+            // Определяем контекстное сообщение в зависимости от активных фильтров
+            let emptyMessage: String = {
+                if !debouncedSearchText.isEmpty {
+                    return "Попробуйте изменить поисковый запрос"
+                } else if selectedAccountFilter != nil || viewModel.selectedCategories != nil {
+                    return "Попробуйте изменить фильтры или добавьте новую операцию"
+                } else {
+                    return "Начните добавлять операции, чтобы отслеживать ваши финансы"
+                }
+            }()
+
             return AnyView(
                 EmptyStateView(
-                    icon: "doc.text.magnifyingglass",
-                    title: "Нет операций",
-                    description: "Операции появятся здесь после добавления"
+                    icon: !debouncedSearchText.isEmpty ? "magnifyingglass" : "doc.text",
+                    title: !debouncedSearchText.isEmpty ? "Ничего не найдено" : "Нет операций",
+                    description: emptyMessage
                 )
                 .padding(.top, AppSpacing.xxxl)
             )
         }
         
-        // Сортируем ключи по убыванию (Сегодня вверху, самые новые даты вверху)
+        // Сортируем ключи: будущие даты вверху (по возрастанию), затем Сегодня, Вчера, затем прошлые (по убыванию)
         let sortedKeys: [String] = {
             let keys = Array(grouped.keys)
-            // Специальная обработка для "Сегодня" и "Вчера"
+            let calendar = Calendar.current
+            let dateFormatter = DateFormatters.dateFormatter
+            let today = Date()
+            let todayStart = calendar.startOfDay(for: today)
+            
+            // Разделяем ключи на категории
             let todayKey = keys.first { $0 == "Сегодня" }
             let yesterdayKey = keys.first { $0 == "Вчера" }
-            let otherKeys = keys.filter { $0 != "Сегодня" && $0 != "Вчера" }.sorted(by: >)
+            let otherKeys = keys.filter { $0 != "Сегодня" && $0 != "Вчера" }
+            
+            // Для остальных ключей находим дату первой транзакции в группе
+            // Для recurring транзакций берем первую recurring, для обычных - первую обычную
+            let keysWithDates: [(key: String, date: Date, isRecurring: Bool)] = otherKeys.compactMap { key in
+                guard let transactionsInGroup = grouped[key] else { return nil }
+                
+                // Находим первую recurring транзакцию, если есть
+                if let recurringTransaction = transactionsInGroup.first(where: { $0.recurringSeriesId != nil }),
+                   let date = dateFormatter.date(from: recurringTransaction.date) {
+                    return (key: key, date: date, isRecurring: true)
+                }
+                
+                // Иначе берем первую обычную транзакцию
+                if let firstTransaction = transactionsInGroup.first,
+                   let date = dateFormatter.date(from: firstTransaction.date) {
+                    return (key: key, date: date, isRecurring: false)
+                }
+                
+                return nil
+            }
+            
+            let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)!
+            
+            // Разделяем на будущие и прошлые
+            let futureKeys = keysWithDates.filter { $0.date > todayStart }
+                .sorted { key1, key2 in
+                    // Recurring транзакции сортируем по убыванию (ближайшие вверху) - 12 января, затем 11 января
+                    if key1.isRecurring && key2.isRecurring {
+                        return key1.date > key2.date
+                    }
+                    // Обычные транзакции также по убыванию для будущих дат (ближайшие вверху)
+                    if !key1.isRecurring && !key2.isRecurring {
+                        return key1.date > key2.date
+                    }
+                    // Recurring всегда перед обычными в будущих датах
+                    return key1.isRecurring && !key2.isRecurring
+                }
+                .map { $0.key }
+            
+            // Разделяем прошлые даты на recurring и обычные (исключая "Вчера")
+            let pastRecurringKeys = keysWithDates.filter { $0.date < yesterdayStart && $0.isRecurring }
+                .sorted { $0.date < $1.date } // Recurring прошлые по возрастанию (старые вверху)
+                .map { $0.key }
+            
+            let pastRegularKeys = keysWithDates.filter { $0.date < yesterdayStart && !$0.isRecurring }
+                .sorted { $0.date > $1.date } // Обычные прошлые по убыванию (новые вверху)
+                .map { $0.key }
             
             var result: [String] = []
+            // Сначала будущие даты (recurring и обычные уже отсортированы)
+            result.append(contentsOf: futureKeys)
+            // Затем "Сегодня"
             if let today = todayKey {
                 result.append(today)
             }
+            // Затем "Вчера"
             if let yesterday = yesterdayKey {
                 result.append(yesterday)
             }
-            result.append(contentsOf: otherKeys)
+            // Затем прошлые recurring (по возрастанию - старые вверху)
+            result.append(contentsOf: pastRecurringKeys)
+            // Затем прошлые обычные (по убыванию - новые вверху)
+            result.append(contentsOf: pastRegularKeys)
             return result
         }()
         
@@ -227,7 +314,7 @@ struct HistoryView: View {
                             ForEach(grouped[dateKey] ?? []) { transaction in
                                 TransactionCard(
                                     transaction: transaction,
-                                    currency: viewModel.allTransactions.first?.currency ?? "USD",
+                                    currency: viewModel.appSettings.baseCurrency,
                                     customCategories: viewModel.customCategories,
                                     accounts: viewModel.accounts,
                                     viewModel: viewModel
@@ -239,11 +326,12 @@ struct HistoryView: View {
                 }
                 .listStyle(PlainListStyle())
                 .onAppear {
-                    // Скроллим к "Сегодня" при появлении (самые новые операции уже вверху)
-                    if sortedKeys.contains("Сегодня") {
+                    // Скроллим к "Сегодня" при появлении, если есть, иначе к первой секции
+                    let scrollTarget = sortedKeys.first { $0 == "Сегодня" } ?? sortedKeys.first
+                    if let target = scrollTarget {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             withAnimation {
-                                proxy.scrollTo("Сегодня", anchor: .top)
+                                proxy.scrollTo(target, anchor: .top)
                             }
                         }
                     }
@@ -283,15 +371,15 @@ struct HistoryView: View {
                     return true
                 }
                 
-                // Поиск по счету
+                // Поиск по счету (используем индекс для O(1) вместо O(n))
                 if let accountId = transaction.accountId,
-                   let account = viewModel.accounts.first(where: { $0.id == accountId }),
+                   let account = accountsById[accountId],
                    account.name.lowercased().contains(searchLower) {
                     return true
                 }
-                
+
                 if let targetAccountId = transaction.targetAccountId,
-                   let targetAccount = viewModel.accounts.first(where: { $0.id == targetAccountId }),
+                   let targetAccount = accountsById[targetAccountId],
                    targetAccount.name.lowercased().contains(searchLower) {
                     return true
                 }
@@ -308,7 +396,7 @@ struct HistoryView: View {
                 }
                 
                 // Поиск по сумме с валютой
-                let currency = viewModel.allTransactions.first?.currency ?? "USD"
+                let currency = viewModel.appSettings.baseCurrency
                 let formattedAmount = Formatting.formatCurrency(transaction.amount, currency: currency).lowercased()
                 if formattedAmount.contains(searchLower) {
                     return true
@@ -328,18 +416,67 @@ struct HistoryView: View {
         let calendar = Calendar.current
         let dateFormatter = DateFormatters.dateFormatter
         let displayDateFormatter = DateFormatters.displayDateFormatter
+        let displayDateWithYearFormatter = DateFormatters.displayDateWithYearFormatter
+        let currentYear = calendar.component(.year, from: Date())
+        
+        // Разделяем на recurring и обычные транзакции для разной сортировки
+        var recurringTransactions: [Transaction] = []
+        var regularTransactions: [Transaction] = []
         
         for transaction in transactions {
+            if transaction.recurringSeriesId != nil {
+                recurringTransactions.append(transaction)
+            } else {
+                regularTransactions.append(transaction)
+            }
+        }
+        
+        // Recurring транзакции сортируем по возрастанию (ближайшие вверху)
+        recurringTransactions.sort { tx1, tx2 in
+            guard let date1 = dateFormatter.date(from: tx1.date),
+                  let date2 = dateFormatter.date(from: tx2.date) else {
+                return false
+            }
+            return date1 < date2
+        }
+        
+        // Обычные транзакции сортируем по убыванию (новые вверху)
+        regularTransactions.sort { tx1, tx2 in
+            if tx1.createdAt != tx2.createdAt {
+                return tx1.createdAt > tx2.createdAt
+            }
+            return tx1.id > tx2.id
+        }
+        
+        // Объединяем: сначала recurring, затем обычные
+        let allTransactions = recurringTransactions + regularTransactions
+        
+        for transaction in allTransactions {
             guard let date = dateFormatter.date(from: transaction.date) else { continue }
             
             // Все транзакции, включая будущие recurring, группируются по дате
+            // Recurring транзакции должны быть в своей дате повторения, а не в "Сегодня"
             let dateKey: String
-            if calendar.isDateInToday(date) {
+            let today = calendar.startOfDay(for: Date())
+            let transactionDay = calendar.startOfDay(for: date)
+            let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+            let transactionYear = calendar.component(.year, from: date)
+            
+            // Сравниваем только даты (без времени) для правильной группировки
+            if transactionDay == today {
+                // Транзакция сегодня - показываем в блоке "Сегодня"
                 dateKey = "Сегодня"
-            } else if calendar.isDateInYesterday(date) {
+            } else if transactionDay == yesterday {
+                // Транзакция вчера - показываем в блоке "Вчера"
                 dateKey = "Вчера"
             } else {
-                dateKey = displayDateFormatter.string(from: date)
+                // Транзакция в другой день (прошлая или будущая) - показываем дату
+                // Если год не текущий - показываем год
+                if transactionYear != currentYear {
+                    dateKey = displayDateWithYearFormatter.string(from: date)
+                } else {
+                    dateKey = displayDateFormatter.string(from: date)
+                }
             }
             
             if grouped[dateKey] == nil {
@@ -348,21 +485,55 @@ struct HistoryView: View {
             grouped[dateKey]?.append(transaction)
         }
         
-        // Сортируем транзакции внутри каждого дня - самые новые вверху (по дате, затем по ID для стабильности)
+        // Сортируем транзакции внутри каждого дня
         for key in grouped.keys {
+            let today = calendar.startOfDay(for: Date())
+            
             grouped[key]?.sort { tx1, tx2 in
-                // Сортируем по дате - новые сверху
-                if tx1.date != tx2.date {
-                    return tx1.date > tx2.date
+                // Recurring транзакции сортируем по-разному в зависимости от даты
+                let isRecurring1 = tx1.recurringSeriesId != nil
+                let isRecurring2 = tx2.recurringSeriesId != nil
+                
+                if isRecurring1 && isRecurring2 {
+                    guard let date1 = dateFormatter.date(from: tx1.date),
+                          let date2 = dateFormatter.date(from: tx2.date) else {
+                        return false
+                    }
+                    // Для будущих дат - по убыванию (ближайшие вверху: 12 января > 11 января)
+                    // Для прошлых дат - по возрастанию (старые вверху: 8 января < 9 января)
+                    if date1 > today && date2 > today {
+                        // Обе даты в будущем - по убыванию
+                        return date1 > date2
+                    } else if date1 <= today && date2 <= today {
+                        // Обе даты в прошлом - по возрастанию
+                        return date1 < date2
+                    } else {
+                        // Одна в прошлом, одна в будущем - будущая всегда выше
+                        return date1 > today && date2 <= today
+                    }
                 }
-                // Если даты равны, сортируем по ID (более новые ID обычно больше)
-                return tx1.id > tx2.id
+                
+                // Обычные транзакции сортируем по убыванию (новые вверху)
+                if !isRecurring1 && !isRecurring2 {
+                    if tx1.createdAt != tx2.createdAt {
+                        return tx1.createdAt > tx2.createdAt
+                    }
+                    return tx1.id > tx2.id
+                }
+                
+                // Recurring всегда перед обычными
+                return isRecurring1 && !isRecurring2
             }
         }
         
         return grouped
     }
     
+    // Построение индекса аккаунтов для O(1) lookup
+    private func buildAccountsIndex() {
+        accountsById = Dictionary(uniqueKeysWithValues: viewModel.accounts.map { ($0.id, $0) })
+    }
+
     // Обновление кешированных транзакций
     private func updateCachedTransactions() {
         PerformanceProfiler.start("HistoryView.updateCachedTransactions")
@@ -407,7 +578,7 @@ struct HistoryView: View {
     }
     
     private func dateHeader(for dateKey: String, transactions: [Transaction]) -> some View {
-        let currency = viewModel.allTransactions.first?.currency ?? "USD"
+        let currency = viewModel.appSettings.baseCurrency
         let dayExpenses = transactions
             .filter { $0.type == .expense }
             .reduce(0.0) { $0 + $1.amount }
@@ -437,11 +608,17 @@ struct TransactionCard: View {
     let customCategories: [CustomCategory]
     let accounts: [Account]
     let viewModel: TransactionsViewModel?
-    
+
     @State private var showingEditDialog = false
     @State private var showingDeleteDialog = false
+    @State private var showingStopRecurringConfirmation = false
     @State private var showingEditModal = false
-    
+
+    // Кеш для style helper - вычисляется один раз
+    private var styleHelper: CategoryStyleHelper {
+        CategoryStyleHelper(category: transaction.category, type: transaction.type, customCategories: customCategories)
+    }
+
     init(transaction: Transaction, currency: String, customCategories: [CustomCategory], accounts: [Account], viewModel: TransactionsViewModel? = nil) {
         self.transaction = transaction
         self.currency = currency
@@ -450,12 +627,12 @@ struct TransactionCard: View {
         self.viewModel = viewModel
     }
     
-    private var isRecurringFuture: Bool {
-        guard transaction.recurringSeriesId != nil else { return false }
+    private var isFutureDate: Bool {
         let dateFormatter = DateFormatters.dateFormatter
         guard let transactionDate = dateFormatter.date(from: transaction.date) else { return false }
         let today = Calendar.current.startOfDay(for: Date())
-        return transactionDate >= today
+        // Транзакция с будущей датой (дата > today)
+        return transactionDate > today
     }
     
     var body: some View {
@@ -463,12 +640,12 @@ struct TransactionCard: View {
             // Иконка категории
             ZStack {
                 Circle()
-                    .fill(categoryColor)
-                    .frame(width: 44, height: 44)
+                    .fill(transaction.type == .internalTransfer ? Color.blue.opacity(0.2) : styleHelper.lightBackgroundColor)
+                    .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
                     .overlay(
-                        Image(systemName: categoryIconName)
-                            .font(.system(size: 20))
-                            .foregroundColor(categoryIconColor)
+                        Image(systemName: styleHelper.iconName)
+                            .font(.system(size: AppIconSize.md))
+                            .foregroundColor(transaction.type == .internalTransfer ? Color.blue : styleHelper.primaryColor)
                     )
                 
                 // Иконка повторения в правом нижнем углу
@@ -498,32 +675,41 @@ struct TransactionCard: View {
                         .foregroundColor(.secondary)
                 }
                 
-                // Для переводов показываем откуда → куда
+                // Для переводов показываем откуда → куда с логотипами счетов
                 if transaction.type == .internalTransfer {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         if let sourceId = transaction.accountId,
                            let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
-                            Text(sourceAccount.name)
-                                .font(.body)
-                                .foregroundColor(.secondary)
+                            HStack(spacing: 4) {
+                                sourceAccount.bankLogo.image(size: 14)
+                                Text(sourceAccount.name)
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         Image(systemName: "arrow.right")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         if let targetId = transaction.targetAccountId,
                            let targetAccount = accounts.first(where: { $0.id == targetId }) {
-                            Text(targetAccount.name)
-                                .font(.body)
-                                .foregroundColor(.secondary)
+                            HStack(spacing: 4) {
+                                targetAccount.bankLogo.image(size: 14)
+                                Text(targetAccount.name)
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 } else {
                     // Счет (для не-переводов)
                     if let accountId = transaction.accountId,
                        let account = accounts.first(where: { $0.id == accountId }) {
-                        Text(account.name)
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            account.bankLogo.image(size: 14)
+                            Text(account.name)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 
@@ -539,95 +725,82 @@ struct TransactionCard: View {
             
             // Сумма
             VStack(alignment: .trailing, spacing: 2) {
-                Text(amountText)
-                    .font(.body)
-                    .fontWeight(.semibold)
-                    .foregroundColor(amountColor)
-                    .multilineTextAlignment(.trailing)
-            }
-        }
-        .padding(.vertical, 8)
-        .opacity(isRecurringFuture ? 0.5 : 1.0)
-        .contentShape(Rectangle())
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            // Удаление
-            Button(role: .destructive) {
-                if transaction.recurringSeriesId != nil {
-                    showingDeleteDialog = true
+                if transaction.type == .internalTransfer {
+                    // Для переводов показываем две суммы с разными цветами и знаками
+                    transferAmountView
                 } else {
-                    if let viewModel = viewModel {
-                        viewModel.deleteTransaction(transaction)
-                    }
+                    Text(amountText)
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(amountColor)
+                        .multilineTextAlignment(.trailing)
                 }
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-            
-            // Управление recurring (если есть)
-            if transaction.recurringSeriesId != nil {
-                Button {
-                    showingEditDialog = true
-                } label: {
-                    Label("Recurring", systemImage: "arrow.clockwise")
-                }
-                .tint(.blue)
             }
         }
-        .confirmationDialog("Delete Transaction", isPresented: $showingDeleteDialog) {
-            Button("Only this", role: .destructive) {
+        .padding(.vertical, AppSpacing.sm)
+        .opacity(isFutureDate ? 0.5 : 1.0)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+        .accessibilityHint("Swipe left for options")
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            // Удаление - для recurring транзакций просто удаляем операцию без диалога
+            Button(role: .destructive) {
                 HapticManager.warning()
                 if let viewModel = viewModel {
                     viewModel.deleteTransaction(transaction)
                 }
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
-            Button("All future", role: .destructive) {
+            .accessibilityLabel("Delete transaction")
+
+            // Управление recurring (если есть)
+            if transaction.recurringSeriesId != nil {
+                Button {
+                    showingStopRecurringConfirmation = true
+                } label: {
+                    Label("Recurring", systemImage: "arrow.clockwise")
+                }
+                .tint(.blue)
+                .accessibilityLabel("Stop recurring transaction")
+            }
+        }
+        .alert("Прекратить повторение?", isPresented: $showingStopRecurringConfirmation) {
+            Button("Отмена", role: .cancel) {}
+            Button("Прекратить повторение", role: .destructive) {
                 HapticManager.warning()
                 if let viewModel = viewModel, let seriesId = transaction.recurringSeriesId {
-                    // Удаляем все будущие транзакции этой серии
-                    let dateFormatter = DateFormatter()
-                    dateFormatter.dateFormat = "yyyy-MM-dd"
+                    viewModel.stopRecurringSeries(seriesId)
+                    // После остановки серии нужно удалить будущие транзакции и перегенерировать список
+                    let dateFormatter = DateFormatters.dateFormatter
                     guard let transactionDate = dateFormatter.date(from: transaction.date) else { return }
+                    let today = Calendar.current.startOfDay(for: Date())
                     
+                    // Удаляем все будущие транзакции этой серии (начиная со следующего дня после текущей транзакции)
                     let futureOccurrences = viewModel.recurringOccurrences.filter { occurrence in
                         guard occurrence.seriesId == seriesId,
                               let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
                             return false
                         }
-                        return occurrenceDate >= transactionDate
+                        // Удаляем только будущие транзакции (после даты текущей транзакции)
+                        return occurrenceDate > transactionDate && occurrenceDate > today
                     }
                     
                     for occurrence in futureOccurrences {
                         viewModel.allTransactions.removeAll { $0.id == occurrence.transactionId }
                         viewModel.recurringOccurrences.removeAll { $0.id == occurrence.id }
                     }
+                    
                     viewModel.recalculateAccountBalances()
                     viewModel.saveToStorage()
                 }
             }
-            Button("Remove recurring", role: .destructive) {
-                HapticManager.warning()
-                if let viewModel = viewModel, let seriesId = transaction.recurringSeriesId {
-                    viewModel.deleteRecurringSeries(seriesId)
-                }
-            }
-            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Это прекратит повторение операции. Все будущие транзакции будут удалены.")
         }
         .onTapGesture {
             showingEditModal = true
-        }
-        .confirmationDialog("Recurring Transaction", isPresented: $showingEditDialog, presenting: transaction) { transaction in
-            Button("Only this") {
-                showingEditModal = true
-            }
-            Button("All future") {
-                // Редактировать все будущие
-            }
-            Button("Stop recurring", role: .destructive) {
-                if let seriesId = transaction.recurringSeriesId {
-                    viewModel?.stopRecurringSeries(seriesId)
-                }
-            }
-            Button("Cancel", role: .cancel) {}
         }
         .sheet(isPresented: $showingEditModal) {
             if let viewModel = viewModel {
@@ -641,37 +814,94 @@ struct TransactionCard: View {
         }
     }
     
-    private var categoryColor: Color {
-        switch transaction.type {
-        case .income:
-            return Color.green.opacity(0.2)
-        case .expense:
-            return CategoryColors.hexColor(for: transaction.category, opacity: 0.2, customCategories: customCategories)
-        case .internalTransfer:
-            return Color.blue.opacity(0.2)
-        }
-    }
-    
-    private var categoryIconColor: Color {
-        switch transaction.type {
-        case .income:
-            return Color.green
-        case .expense:
-            return CategoryColors.hexColor(for: transaction.category, opacity: 1.0, customCategories: customCategories)
-        case .internalTransfer:
-            return Color.blue
-        }
-    }
-    
-    private var categoryIconName: String {
-        CategoryEmoji.iconName(for: transaction.category, type: transaction.type, customCategories: customCategories)
-    }
     
     private var amountText: String {
-        let prefix = transaction.type == .income ? "+" : transaction.type == .expense ? "-" : ""
+        let prefix: String
+        switch transaction.type {
+        case .income:
+            prefix = "+"
+        case .expense:
+            prefix = "-"
+        case .internalTransfer:
+            prefix = "" // Для переводов без префикса
+        }
         let mainAmount = Formatting.formatCurrency(transaction.amount, currency: transaction.currency)
         
-        // Если есть конвертированная сумма и она отличается от основной, показываем обе
+        // Для переводов: показываем суммы для обоих счетов друг под другом
+        if transaction.type == .internalTransfer {
+            var lines: [String] = []
+            
+            // Получаем информацию о счетах
+            var sourceAccount: Account? = nil
+            var targetAccount: Account? = nil
+            
+            if let sourceId = transaction.accountId {
+                sourceAccount = accounts.first(where: { $0.id == sourceId })
+            }
+            if let targetId = transaction.targetAccountId {
+                targetAccount = accounts.first(where: { $0.id == targetId })
+            }
+            
+            // Если счетов нет, показываем только основную сумму
+            guard let source = sourceAccount else {
+                return mainAmount
+            }
+            
+            // Сумма для источника
+            var sourceAmount: Double = transaction.amount
+            var sourceCurrency: String = transaction.currency
+            
+            sourceCurrency = source.currency
+            if transaction.currency == source.currency {
+                // Валюты совпадают - используем сумму как есть
+                sourceAmount = transaction.amount
+            } else if let convertedAmount = transaction.convertedAmount {
+                // Есть конвертированная сумма для источника
+                sourceAmount = convertedAmount
+            } else if let converted = CurrencyConverter.convertSync(
+                amount: transaction.amount,
+                from: transaction.currency,
+                to: source.currency
+            ) {
+                // Конвертируем на лету
+                sourceAmount = converted
+            }
+            
+            // Если есть счет получателя и валюта отличается от источника - показываем обе суммы
+            if let target = targetAccount {
+                let targetCurrency = target.currency
+                
+                // Если валюты источника и получателя одинаковые - показываем только сумму источника
+                if sourceCurrency == targetCurrency {
+                    lines.append(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))
+                } else {
+                    // Валюты разные - показываем обе суммы
+                    lines.append(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))
+                    
+                    var targetAmount: Double = transaction.amount
+                    if transaction.currency == targetCurrency {
+                        // Валюты совпадают - используем сумму как есть
+                        targetAmount = transaction.amount
+                    } else if let converted = CurrencyConverter.convertSync(
+                        amount: transaction.amount,
+                        from: transaction.currency,
+                        to: targetCurrency
+                    ) {
+                        // Валюты разные - конвертируем на лету через кэш
+                        targetAmount = converted
+                    }
+                    lines.append(Formatting.formatCurrency(targetAmount, currency: targetCurrency))
+                }
+            } else {
+                // Если счета получателя нет, показываем только сумму источника
+                lines.append(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))
+            }
+            
+            // Объединяем все строки через \n (суммы друг под другом, без скобок)
+            return lines.isEmpty ? mainAmount : lines.joined(separator: "\n")
+        }
+        
+        // Для доходов и расходов: если есть конвертированная сумма и она отличается от основной, показываем обе
         if let convertedAmount = transaction.convertedAmount,
            let accountId = transaction.accountId,
            let account = accounts.first(where: { $0.id == accountId }),
@@ -683,6 +913,40 @@ struct TransactionCard: View {
         return prefix + mainAmount
     }
     
+    private var accessibilityText: String {
+        let typeText = transaction.type == .income ? "Income" : transaction.type == .expense ? "Expense" : "Transfer"
+        let amountText = Formatting.formatCurrency(transaction.amount, currency: transaction.currency)
+        var text = "\(typeText), \(transaction.category), \(amountText)"
+
+        if transaction.type == .internalTransfer {
+            // Для переводов: указываем источник и получателя
+            if let sourceId = transaction.accountId,
+               let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
+                text += ", from \(sourceAccount.name)"
+            }
+            if let targetId = transaction.targetAccountId,
+               let targetAccount = accounts.first(where: { $0.id == targetId }) {
+                text += ", to \(targetAccount.name)"
+            }
+        } else {
+            // Для доходов и расходов: указываем счет
+            if let accountId = transaction.accountId,
+               let account = accounts.first(where: { $0.id == accountId }) {
+                text += ", from \(account.name)"
+            }
+        }
+
+        if !transaction.description.isEmpty {
+            text += ", \(transaction.description)"
+        }
+
+        if transaction.recurringSeriesId != nil {
+            text += ", recurring transaction"
+        }
+
+        return text
+    }
+
     private var amountColor: Color {
         switch transaction.type {
         case .income:
@@ -690,7 +954,88 @@ struct TransactionCard: View {
         case .expense:
             return .red
         case .internalTransfer:
-            return .gray
+            return .blue // Синий цвет для переводов для консистентности с иконкой
+        }
+    }
+    
+    @ViewBuilder
+    private var transferAmountView: some View {
+        // Получаем информацию о счетах
+        let sourceAccount: Account? = transaction.accountId.flatMap { sourceId in
+            accounts.first(where: { $0.id == sourceId })
+        }
+        let targetAccount: Account? = transaction.targetAccountId.flatMap { targetId in
+            accounts.first(where: { $0.id == targetId })
+        }
+        
+        if let source = sourceAccount {
+            // Вычисляем сумму для источника
+            let sourceCurrency = source.currency
+            let sourceAmount: Double = {
+                if transaction.currency == sourceCurrency {
+                    return transaction.amount
+                } else if let convertedAmount = transaction.convertedAmount {
+                    return convertedAmount
+                } else if let converted = CurrencyConverter.convertSync(
+                    amount: transaction.amount,
+                    from: transaction.currency,
+                    to: sourceCurrency
+                ) {
+                    return converted
+                } else {
+                    return transaction.amount
+                }
+            }()
+            
+            // Если есть счет получателя и валюта отличается от источника - показываем обе суммы
+            if let target = targetAccount {
+                let targetCurrency = target.currency
+                
+                // Если валюты источника и получателя одинаковые - показываем только сумму источника
+                if sourceCurrency == targetCurrency {
+                    Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.red)
+                } else {
+                    // Валюты разные - показываем обе суммы
+                    Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.red)
+                    
+                    let targetAmount: Double = {
+                        if transaction.currency == targetCurrency {
+                            return transaction.amount
+                        } else if let converted = CurrencyConverter.convertSync(
+                            amount: transaction.amount,
+                            from: transaction.currency,
+                            to: targetCurrency
+                        ) {
+                            return converted
+                        } else {
+                            return transaction.amount
+                        }
+                    }()
+                    
+                    Text("+\(Formatting.formatCurrency(targetAmount, currency: targetCurrency))")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.green)
+                }
+            } else {
+                // Если счета получателя нет, показываем только сумму источника
+                Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.red)
+            }
+        } else {
+            // Если счета источника нет, показываем основную сумму
+            Text(amountText)
+                .font(.body)
+                .fontWeight(.semibold)
+                .foregroundColor(amountColor)
         }
     }
 }

@@ -27,6 +27,7 @@ struct Transaction: Identifiable, Codable, Equatable {
     let targetAccountId: String?
     let recurringSeriesId: String? // Связь с периодической серией
     let recurringOccurrenceId: String? // Связь с конкретным occurrence
+    let createdAt: TimeInterval // Timestamp создания транзакции для сортировки
     
     init(
         id: String,
@@ -41,7 +42,8 @@ struct Transaction: Identifiable, Codable, Equatable {
         accountId: String? = nil,
         targetAccountId: String? = nil,
         recurringSeriesId: String? = nil,
-        recurringOccurrenceId: String? = nil
+        recurringOccurrenceId: String? = nil,
+        createdAt: TimeInterval? = nil
     ) {
         self.id = id
         self.date = date
@@ -56,12 +58,14 @@ struct Transaction: Identifiable, Codable, Equatable {
         self.targetAccountId = targetAccountId
         self.recurringSeriesId = recurringSeriesId
         self.recurringOccurrenceId = recurringOccurrenceId
+        // Если createdAt не передан, используем текущее время
+        self.createdAt = createdAt ?? Date().timeIntervalSince1970
     }
     
     // Кастомный decoder для обратной совместимости
     enum CodingKeys: String, CodingKey {
         case id, date, time, description, amount, currency, convertedAmount, type, category, subcategory
-        case accountId, targetAccountId, recurringSeriesId, recurringOccurrenceId
+        case accountId, targetAccountId, recurringSeriesId, recurringOccurrenceId, createdAt
     }
     
     init(from decoder: Decoder) throws {
@@ -81,6 +85,19 @@ struct Transaction: Identifiable, Codable, Equatable {
         targetAccountId = try container.decodeIfPresent(String.self, forKey: .targetAccountId)
         recurringSeriesId = try container.decodeIfPresent(String.self, forKey: .recurringSeriesId)
         recurringOccurrenceId = try container.decodeIfPresent(String.self, forKey: .recurringOccurrenceId)
+        // Для обратной совместимости: если createdAt отсутствует, используем дату транзакции
+        if let existingCreatedAt = try? container.decodeIfPresent(TimeInterval.self, forKey: .createdAt) {
+            createdAt = existingCreatedAt
+        } else {
+            // Если createdAt отсутствует, используем дату транзакции как createdAt
+            let dateFormatter = DateFormatters.dateFormatter
+            if let transactionDate = dateFormatter.date(from: date) {
+                createdAt = transactionDate.timeIntervalSince1970
+            } else {
+                // Если не удалось распарсить дату, используем текущее время
+                createdAt = Date().timeIntervalSince1970
+            }
+        }
     }
     
     func encode(to encoder: Encoder) throws {
@@ -99,6 +116,7 @@ struct Transaction: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(targetAccountId, forKey: .targetAccountId)
         try container.encodeIfPresent(recurringSeriesId, forKey: .recurringSeriesId)
         try container.encodeIfPresent(recurringOccurrenceId, forKey: .recurringOccurrenceId)
+        try container.encode(createdAt, forKey: .createdAt)
     }
 }
 

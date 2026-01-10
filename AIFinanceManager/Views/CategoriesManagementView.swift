@@ -85,7 +85,10 @@ struct CategoriesManagementView: View {
                 onCancel: { editingCategory = nil }
             )
         }
-        .confirmationDialog("Удалить категорию?", isPresented: $showingDeleteDialog, presenting: categoryToDelete) { category in
+        .alert("Удалить категорию?", isPresented: $showingDeleteDialog, presenting: categoryToDelete) { category in
+            Button("Отмена", role: .cancel) {
+                categoryToDelete = nil
+            }
             Button("Удалить только категорию", role: .destructive) {
                 HapticManager.warning()
                 viewModel.deleteCategory(category, deleteTransactions: false)
@@ -94,9 +97,6 @@ struct CategoriesManagementView: View {
             Button("Удалить категорию и операции", role: .destructive) {
                 HapticManager.warning()
                 viewModel.deleteCategory(category, deleteTransactions: true)
-                categoryToDelete = nil
-            }
-            Button("Отмена", role: .cancel) {
                 categoryToDelete = nil
             }
         } message: { category in
@@ -169,6 +169,7 @@ struct CategoryEditView: View {
     @State private var showingIconPicker = false
     @State private var showingColorPicker = false
     @State private var showingSubcategoryPicker = false
+    @FocusState private var isNameFocused: Bool
     
     private let defaultColors: [String] = [
         "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
@@ -187,6 +188,7 @@ struct CategoryEditView: View {
             Form {
                 Section(header: Text("Название")) {
                     TextField("Название категории", text: $name)
+                        .focused($isNameFocused)
                 }
                 
                 Section(header: Text("Иконка")) {
@@ -293,6 +295,12 @@ struct CategoryEditView: View {
                     name = category.name
                     iconName = category.iconName
                     selectedColor = category.colorHex
+                    isNameFocused = false
+                } else {
+                    // Активируем поле названия при создании новой категории
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isNameFocused = true
+                    }
                 }
             }
         }

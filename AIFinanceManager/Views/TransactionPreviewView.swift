@@ -139,13 +139,15 @@ struct TransactionPreviewView: View {
                 description: transaction.description,
                 amount: transaction.amount,
                 currency: transaction.currency,
+                convertedAmount: transaction.convertedAmount,
                 type: transaction.type,
                 category: transaction.category,
                 subcategory: transaction.subcategory,
                 accountId: accountId,
                 targetAccountId: transaction.targetAccountId,
                 recurringSeriesId: transaction.recurringSeriesId,
-                recurringOccurrenceId: transaction.recurringOccurrenceId
+                recurringOccurrenceId: transaction.recurringOccurrenceId,
+                createdAt: transaction.createdAt // Сохраняем оригинальный createdAt
             )
             viewModel.addTransaction(updatedTransaction)
         }

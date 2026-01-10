@@ -35,4 +35,13 @@ enum DateFormatters {
         formatter.timeZone = TimeZone.current
         return formatter
     }()
+    
+    /// Форматтер для отображения даты с годом в формате "d MMMM yyyy" (русская локализация)
+    static let displayDateWithYearFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMMM yyyy"
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.timeZone = TimeZone.current
+        return formatter
+    }()
 }

@@ -282,7 +282,7 @@ struct ContentView: View {
             return AnyView(EmptyView())
         }
 
-        let currency = viewModel.allTransactions.first?.currency ?? "USD"
+        let currency = viewModel.appSettings.baseCurrency
         let total = summary.totalExpenses + summary.totalIncome
         let expensePercent = total > 0 ? (summary.totalExpenses / total) : 0.0
         let incomePercent = total > 0 ? (summary.totalIncome / total) : 0.0

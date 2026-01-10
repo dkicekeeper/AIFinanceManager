@@ -25,17 +25,25 @@ class TransactionsViewModel: ObservableObject {
     // TimeFilterManager передается через EnvironmentObject, не хранится здесь
     @Published var isLoading = false
     @Published var errorMessage: String?
-    
+    @Published var currencyConversionWarning: String? = nil // Предупреждение о проблемах с конвертацией валют
+    @Published var appSettings: AppSettings = AppSettings.load() // Настройки приложения
+
     // Храним начальные балансы счетов (баланс при создании/редактировании)
     private var initialAccountBalances: [String: Double] = [:]
     
     // Кеш для summary
     private var cachedSummary: Summary?
     private var summaryCacheInvalidated = true
-    
+
     // Кеш для categoryExpenses
     private var cachedCategoryExpenses: [String: CategoryExpense]?
     private var categoryExpensesCacheInvalidated = true
+
+    // Метод для инвалидации кешей (используется при смене базовой валюты)
+    func invalidateCaches() {
+        summaryCacheInvalidated = true
+        categoryExpensesCacheInvalidated = true
+    }
     
     private let storageKeyTransactions = "allTransactions"
     private let storageKeyRules = "categoryRules"
@@ -98,13 +106,61 @@ class TransactionsViewModel: ObservableObject {
     // Метод для фильтрации транзакций с учетом TimeFilterManager И фильтра по категориям (для истории)
     func transactionsFilteredByTimeAndCategory(_ timeFilterManager: TimeFilterManager) -> [Transaction] {
         let range = timeFilterManager.currentFilter.dateRange()
-        // Используем filteredTransactions, который учитывает selectedCategories
-        return filteredTransactions.filter { transaction in
-            guard let transactionDate = Self.dateFormatter.date(from: transaction.date) else {
-                return false
+        var transactions = applyRules(to: allTransactions)
+        
+        // Фильтр по категориям
+        if let selectedCategories = selectedCategories {
+            transactions = transactions.filter { transaction in
+                selectedCategories.contains(transaction.category)
             }
-            return transactionDate >= range.start && transactionDate < range.end
         }
+        
+        // Разделяем на recurring и обычные транзакции
+        var recurringTransactions: [Transaction] = []
+        var regularTransactions: [Transaction] = []
+        var recurringTransactionsBySeries: [String: [Transaction]] = [:]
+        
+        for transaction in transactions {
+            if let seriesId = transaction.recurringSeriesId {
+                // Группируем recurring транзакции по сериям
+                recurringTransactionsBySeries[seriesId, default: []].append(transaction)
+            } else {
+                // Обычные транзакции фильтруем по времени
+                guard let transactionDate = Self.dateFormatter.date(from: transaction.date) else {
+                    continue
+                }
+                if transactionDate >= range.start && transactionDate < range.end {
+                    regularTransactions.append(transaction)
+                }
+            }
+        }
+        
+        // Для каждой recurring серии показываем только одну транзакцию - следующую по дате
+        let dateFormatter = Self.dateFormatter
+        
+        for series in recurringSeries where series.isActive {
+            guard let seriesTransactions = recurringTransactionsBySeries[series.id] else {
+                continue
+            }
+            
+            // Находим следующую транзакцию (ближайшую по дате, включая сегодня)
+            let nextTransaction = seriesTransactions
+                .compactMap { transaction -> (Transaction, Date)? in
+                    guard let date = dateFormatter.date(from: transaction.date) else {
+                        return nil
+                    }
+                    return (transaction, date)
+                }
+                .min(by: { $0.1 < $1.1 }) // Ближайшая по дате
+                .map { $0.0 }
+            
+            if let nextTransaction = nextTransaction {
+                recurringTransactions.append(nextTransaction)
+            }
+        }
+        
+        // Объединяем: сначала recurring, затем обычные
+        return recurringTransactions + regularTransactions
     }
     
     // Фильтрует recurring транзакции: показывает только следующую для каждой серии
@@ -181,49 +237,218 @@ class TransactionsViewModel: ObservableObject {
         // Исключаем невыполненные recurring операции из расходов
         let today = Calendar.current.startOfDay(for: Date())
         let dateFormatter = Self.dateFormatter
+        let range = timeFilterManager.currentFilter.dateRange()
         
         // Оптимизация: один проход вместо множественных фильтров
         var totalIncome: Double = 0
         var totalExpenses: Double = 0
         var totalInternal: Double = 0
-        var plannedAmount: Double = 0
         
         for transaction in filtered {
-            // Используем convertedAmount, если он есть (сумма в валюте счета)
-            let amountToUse = transaction.convertedAmount ?? transaction.amount
-            
-            let isFutureRecurring: Bool
-            if let _ = transaction.recurringSeriesId,
-               let transactionDate = dateFormatter.date(from: transaction.date),
-               transactionDate >= today {
-                isFutureRecurring = true
-                plannedAmount += amountToUse
+            // Конвертируем все суммы в базовую валюту
+            let baseCurrency = appSettings.baseCurrency
+            let amountInBaseCurrency: Double
+            if transaction.currency == baseCurrency {
+                // Если транзакция уже в базовой валюте, используем сумму напрямую
+                amountInBaseCurrency = transaction.amount
             } else {
-                isFutureRecurring = false
+                // Конвертируем в базовую валюту через синхронный метод (курсы должны быть в кэше)
+                if let converted = CurrencyConverter.convertSync(
+                    amount: transaction.amount,
+                    from: transaction.currency,
+                    to: baseCurrency
+                ) {
+                    amountInBaseCurrency = converted
+                } else {
+                    // Если конвертация невозможна, используем convertedAmount или amount
+                    amountInBaseCurrency = transaction.convertedAmount ?? transaction.amount
+                    print("⚠️ Не удалось конвертировать транзакцию \(transaction.id) в \(baseCurrency) для summary")
+                }
             }
-            
-            // Учитываем только выполненные транзакции
-            if !isFutureRecurring {
+
+            // Проверяем, является ли транзакция будущей (дата > today)
+            guard let transactionDate = dateFormatter.date(from: transaction.date) else {
+                continue
+            }
+
+            let isFutureDate = transactionDate > today
+
+            // Учитываем в расходах только транзакции с датой <= today (выполненные)
+            if !isFutureDate {
                 switch transaction.type {
                 case .income:
-                    totalIncome += amountToUse
+                    totalIncome += amountInBaseCurrency
                 case .expense:
-                    totalExpenses += amountToUse
+                    totalExpenses += amountInBaseCurrency
                 case .internalTransfer:
-                    totalInternal += amountToUse
+                    totalInternal += amountInBaseCurrency
                 }
             }
         }
         
-        let currency = allTransactions.first?.currency ?? "USD"
-        let dates = allTransactions.map { $0.date }.sorted()
+        // Рассчитываем plannedAmount на основе активных recurring серий и диапазона фильтра
+        // Это позволяет корректно показывать планируемые расходы даже если транзакции еще не сгенерированы
+        var plannedAmount: Double = 0
         
+        // Если фильтр относится к будущему (range.end > today), рассчитываем планируемые расходы
+        if range.end > today {
+            let calendar = Calendar.current
+            
+            // Рассчитываем диапазон для планируемых транзакций: от today до конца фильтра
+            // Ограничиваем максимальный горизонт планирования до 2 лет для производительности
+            let maxHorizon = calendar.date(byAdding: .year, value: 2, to: today) ?? range.end
+            let planningEnd = min(range.end, maxHorizon)
+            
+            for series in recurringSeries where series.isActive {
+                guard let seriesStartDate = dateFormatter.date(from: series.startDate) else { continue }
+                
+                // Определяем начало планирования для этой серии
+                var firstRecurringDate: Date
+                
+                if seriesStartDate <= today {
+                    // Серия уже началась - первая будущая транзакция будет на следующей дате по частоте
+                    guard let nextDate = {
+                        switch series.frequency {
+                        case .daily:
+                            return calendar.date(byAdding: .day, value: 1, to: today)
+                        case .weekly:
+                            return calendar.date(byAdding: .day, value: 7, to: today)
+                        case .monthly:
+                            return calendar.date(byAdding: .month, value: 1, to: today)
+                        case .yearly:
+                            return calendar.date(byAdding: .year, value: 1, to: today)
+                        }
+                    }() else {
+                        continue
+                    }
+                    firstRecurringDate = nextDate
+                } else {
+                    // Серия начинается в будущем - первая транзакция на startDate
+                    firstRecurringDate = seriesStartDate
+                }
+                
+                // Если первая транзакция после конца фильтра, пропускаем
+                if firstRecurringDate >= planningEnd {
+                    continue
+                }
+                
+                // Рассчитываем количество транзакций в диапазоне для данной частоты
+                let amountDouble = NSDecimalNumber(decimal: series.amount).doubleValue
+
+                // Конвертируем сумму recurring серии в базовую валюту
+                let baseCurrency = appSettings.baseCurrency
+                let amountInBaseCurrency: Double
+                if series.currency == baseCurrency {
+                    amountInBaseCurrency = amountDouble
+                } else {
+                    if let converted = CurrencyConverter.convertSync(
+                        amount: amountDouble,
+                        from: series.currency,
+                        to: baseCurrency
+                    ) {
+                        amountInBaseCurrency = converted
+                    } else {
+                        amountInBaseCurrency = amountDouble
+                        print("⚠️ Не удалось конвертировать recurring series \(series.id) в \(baseCurrency) для plannedAmount")
+                    }
+                }
+
+                var currentDate = firstRecurringDate
+                var transactionCount = 0
+                
+                // Считаем количество транзакций в диапазоне планирования
+                while currentDate < planningEnd {
+                    transactionCount += 1
+                    
+                    // Переходим к следующей дате по частоте
+                    guard let nextDate = {
+                        switch series.frequency {
+                        case .daily:
+                            return calendar.date(byAdding: .day, value: 1, to: currentDate)
+                        case .weekly:
+                            return calendar.date(byAdding: .day, value: 7, to: currentDate)
+                        case .monthly:
+                            return calendar.date(byAdding: .month, value: 1, to: currentDate)
+                        case .yearly:
+                            return calendar.date(byAdding: .year, value: 1, to: currentDate)
+                        }
+                    }() else {
+                        break
+                    }
+                    
+                    // Проверяем, не вышли ли за пределы диапазона
+                    if nextDate >= planningEnd {
+                        break
+                    }
+                    
+                    currentDate = nextDate
+                }
+
+                // Добавляем планируемую сумму: количество транзакций × сумма транзакции (в базовой валюте)
+                plannedAmount += Double(transactionCount) * amountInBaseCurrency
+            }
+            
+            // Учитываем обычные будущие транзакции (expense и income)
+            // Проходим по всем транзакциям и находим те, которые:
+            // 1. Имеют будущую дату (date > today)
+            // 2. Попадают в диапазон фильтра (range.start <= date <= range.end)
+            // 3. Не являются recurring (recurringSeriesId == nil)
+            for transaction in filtered {
+                // Пропускаем recurring транзакции - они уже учтены выше
+                if transaction.recurringSeriesId != nil {
+                    continue
+                }
+                
+                // Проверяем, является ли транзакция будущей и попадает ли в диапазон фильтра
+                guard let transactionDate = dateFormatter.date(from: transaction.date) else {
+                    continue
+                }
+                
+                // Транзакция должна быть в будущем (date > today) и попадать в диапазон фильтра
+                // range.start уже учитывается в filtered, но проверяем range.end для безопасности
+                if transactionDate > today && transactionDate >= range.start && transactionDate <= range.end {
+                    // Конвертируем сумму в базовую валюту (используем ту же логику, что и для выполненных транзакций)
+                    let baseCurrency = appSettings.baseCurrency
+                    let amountInBaseCurrency: Double
+                    if transaction.currency == baseCurrency {
+                        // Если транзакция уже в базовой валюте, используем сумму напрямую
+                        amountInBaseCurrency = transaction.amount
+                    } else {
+                        // Конвертируем в базовую валюту через синхронный метод (курсы должны быть в кэше)
+                        if let converted = CurrencyConverter.convertSync(
+                            amount: transaction.amount,
+                            from: transaction.currency,
+                            to: baseCurrency
+                        ) {
+                            amountInBaseCurrency = converted
+                        } else {
+                            // Если конвертация невозможна (курсы не загружены в кэш), используем amount
+                            // Это может привести к неточности, но лучше чем ничего
+                            // Примечание: convertedAmount - это сумма в валюте счета, а не базовой валюты,
+                            // поэтому его нельзя использовать напрямую
+                            amountInBaseCurrency = transaction.amount
+                            print("⚠️ Не удалось конвертировать будущую транзакцию \(transaction.id) в \(baseCurrency) для plannedAmount. Используется сумма в валюте транзакции: \(transaction.amount) \(transaction.currency)")
+                        }
+                    }
+                    
+                    // Учитываем только expense транзакции (расходы) в планах
+                    // Income (доходы) и internalTransfer (переводы) не учитываются
+                    if transaction.type == .expense {
+                        plannedAmount += amountInBaseCurrency
+                    }
+                }
+            }
+        }
+
+        // Используем базовую валюту из настроек для summary
+        let dates = allTransactions.map { $0.date }.sorted()
+
         let result = Summary(
             totalIncome: totalIncome,
             totalExpenses: totalExpenses,
             totalInternalTransfers: totalInternal,
             netFlow: totalIncome - totalExpenses,
-            currency: currency,
+            currency: appSettings.baseCurrency, // Базовая валюта из настроек
             startDate: dates.first ?? "",
             endDate: dates.last ?? "",
             plannedAmount: plannedAmount
@@ -244,18 +469,43 @@ class TransactionsViewModel: ObservableObject {
         
         let filtered = transactionsFilteredByTime(timeFilterManager).filter { $0.type == .expense }
         var result: [String: CategoryExpense] = [:]
+        let today = Calendar.current.startOfDay(for: Date())
+        let dateFormatter = Self.dateFormatter
         
         for transaction in filtered {
+            // Исключаем транзакции с будущей датой из расходов
+            guard let transactionDate = dateFormatter.date(from: transaction.date),
+                  transactionDate <= today else {
+                continue
+            }
+
             let category = transaction.category.isEmpty ? "Uncategorized" : transaction.category
-            // Используем convertedAmount, если он есть (сумма в валюте счета)
-            let amountToUse = transaction.convertedAmount ?? transaction.amount
+
+            // Конвертируем все суммы в базовую валюту
+            let baseCurrency = appSettings.baseCurrency
+            let amountInBaseCurrency: Double
+            if transaction.currency == baseCurrency {
+                amountInBaseCurrency = transaction.amount
+            } else {
+                if let converted = CurrencyConverter.convertSync(
+                    amount: transaction.amount,
+                    from: transaction.currency,
+                    to: baseCurrency
+                ) {
+                    amountInBaseCurrency = converted
+                } else {
+                    // Если конвертация невозможна, используем convertedAmount или amount
+                    amountInBaseCurrency = transaction.convertedAmount ?? transaction.amount
+                    print("⚠️ Не удалось конвертировать транзакцию \(transaction.id) в \(baseCurrency) для categoryExpenses")
+                }
+            }
 
             // Безопасное обновление без force unwrap
             var expense = result[category] ?? CategoryExpense(total: 0, subcategories: [:])
-            expense.total += amountToUse
+            expense.total += amountInBaseCurrency
 
             if let subcategory = transaction.subcategory {
-                expense.subcategories[subcategory, default: 0] += amountToUse
+                expense.subcategories[subcategory, default: 0] += amountInBaseCurrency
             }
 
             result[category] = expense
@@ -326,7 +576,8 @@ class TransactionsViewModel: ObservableObject {
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
                 recurringSeriesId: transaction.recurringSeriesId,
-                recurringOccurrenceId: transaction.recurringOccurrenceId
+                recurringOccurrenceId: transaction.recurringOccurrenceId,
+                createdAt: transaction.createdAt // Сохраняем оригинальный createdAt
             )
         }
         
@@ -339,9 +590,9 @@ class TransactionsViewModel: ObservableObject {
         if !uniqueNew.isEmpty {
             // Автоматически создаем категории для новых транзакций
             createCategoriesForTransactions(uniqueNew)
-            
-            allTransactions.append(contentsOf: uniqueNew)
-            allTransactions.sort { $0.date > $1.date }
+
+            // Оптимизированная вставка вместо полной сортировки
+            insertTransactionsSorted(uniqueNew)
             invalidateCaches()
             recalculateAccountBalances()
             saveToStorage()
@@ -466,12 +717,14 @@ class TransactionsViewModel: ObservableObject {
         
         let transactionWithID: Transaction
         if transaction.id.isEmpty {
+            // Используем createdAt транзакции для генерации уникального ID
             let id = TransactionIDGenerator.generateID(
                 date: transaction.date,
                 description: formattedDescription,
                 amount: transaction.amount,
                 type: transaction.type,
-                currency: transaction.currency
+                currency: transaction.currency,
+                createdAt: transaction.createdAt
             )
             transactionWithID = Transaction(
                 id: id,
@@ -486,7 +739,8 @@ class TransactionsViewModel: ObservableObject {
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
                 recurringSeriesId: transaction.recurringSeriesId,
-                recurringOccurrenceId: transaction.recurringOccurrenceId
+                recurringOccurrenceId: transaction.recurringOccurrenceId,
+                createdAt: transaction.createdAt // Сохраняем createdAt из переданной транзакции (если есть)
             )
         } else {
             transactionWithID = Transaction(
@@ -502,7 +756,8 @@ class TransactionsViewModel: ObservableObject {
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
                 recurringSeriesId: transaction.recurringSeriesId,
-                recurringOccurrenceId: transaction.recurringOccurrenceId
+                recurringOccurrenceId: transaction.recurringOccurrenceId,
+                createdAt: transaction.createdAt // Сохраняем createdAt из переданной транзакции (если есть)
             )
         }
         
@@ -512,9 +767,9 @@ class TransactionsViewModel: ObservableObject {
         if !existingIDs.contains(transactionWithID.id) {
             // Создаем категорию, если нужно
             createCategoriesForTransactions(transactionsWithRules)
-            
-            allTransactions.append(contentsOf: transactionsWithRules)
-            allTransactions.sort { $0.date > $1.date }
+
+            // Оптимизированная вставка вместо полной сортировки
+            insertTransactionsSorted(transactionsWithRules)
             invalidateCaches()
             recalculateAccountBalances()
             saveToStorage()
@@ -554,7 +809,8 @@ class TransactionsViewModel: ObservableObject {
                     accountId: allTransactions[i].accountId,
                     targetAccountId: allTransactions[i].targetAccountId,
                     recurringSeriesId: allTransactions[i].recurringSeriesId,
-                    recurringOccurrenceId: allTransactions[i].recurringOccurrenceId
+                    recurringOccurrenceId: allTransactions[i].recurringOccurrenceId,
+                    createdAt: allTransactions[i].createdAt // Сохраняем оригинальный createdAt
                 )
             }
         }
@@ -677,7 +933,8 @@ class TransactionsViewModel: ObservableObject {
                         accountId: allTransactions[i].accountId,
                         targetAccountId: allTransactions[i].targetAccountId,
                         recurringSeriesId: allTransactions[i].recurringSeriesId,
-                        recurringOccurrenceId: allTransactions[i].recurringOccurrenceId
+                        recurringOccurrenceId: allTransactions[i].recurringOccurrenceId,
+                        createdAt: allTransactions[i].createdAt // Сохраняем оригинальный createdAt
                     )
                 }
             }
@@ -720,7 +977,8 @@ class TransactionsViewModel: ObservableObject {
                         accountId: allTransactions[i].accountId,
                         targetAccountId: allTransactions[i].targetAccountId,
                         recurringSeriesId: allTransactions[i].recurringSeriesId,
-                        recurringOccurrenceId: allTransactions[i].recurringOccurrenceId
+                        recurringOccurrenceId: allTransactions[i].recurringOccurrenceId,
+                        createdAt: allTransactions[i].createdAt // Сохраняем оригинальный createdAt
                     )
                 }
             }
@@ -807,12 +1065,14 @@ class TransactionsViewModel: ObservableObject {
         accounts[targetIndex].balance += amount
 
         // Сохраняем как internalTransfer-транзакцию
+        let createdAt = Date().timeIntervalSince1970
         let id = TransactionIDGenerator.generateID(
             date: date,
             description: description,
             amount: amount,
             type: .internalTransfer,
-            currency: currency
+            currency: currency,
+            createdAt: createdAt
         )
 
         let transferTx = Transaction(
@@ -823,17 +1083,48 @@ class TransactionsViewModel: ObservableObject {
             currency: currency,
             convertedAmount: nil,
             type: .internalTransfer,
-            category: "Transfer",
+            category: "Перевод",
             subcategory: nil,
             accountId: sourceId,
-            targetAccountId: targetId
+            targetAccountId: targetId,
+            recurringSeriesId: nil,
+            recurringOccurrenceId: nil,
+            createdAt: Date().timeIntervalSince1970 // Новая транзакция - текущее время
         )
 
-        allTransactions.append(transferTx)
-        allTransactions.sort { $0.date > $1.date }
+        // Оптимизированная вставка вместо полной сортировки
+        insertTransactionsSorted([transferTx])
         saveToStorage()
     }
     
+    // MARK: - Helper Methods
+
+    /// Оптимизированная вставка новых транзакций в отсортированный массив
+    /// Вместо полной сортировки O(n log n), делаем incremental insert O(n×m) где m << n
+    private func insertTransactionsSorted(_ newTransactions: [Transaction]) {
+        guard !newTransactions.isEmpty else { return }
+
+        // Сортируем только новые транзакции
+        let sortedNew = newTransactions.sorted { $0.date > $1.date }
+
+        // Если массив пуст, просто присваиваем
+        if allTransactions.isEmpty {
+            allTransactions = sortedNew
+            return
+        }
+
+        // Incremental insert: вставляем каждую транзакцию в правильную позицию
+        for newTransaction in sortedNew {
+            // Находим позицию для вставки (первый элемент меньше или равный новому)
+            if let insertIndex = allTransactions.firstIndex(where: { $0.date <= newTransaction.date }) {
+                allTransactions.insert(newTransaction, at: insertIndex)
+            } else {
+                // Если не нашли такой элемент, добавляем в конец
+                allTransactions.append(newTransaction)
+            }
+        }
+    }
+
     private func applyRules(to transactions: [Transaction]) -> [Transaction] {
         guard !categoryRules.isEmpty else { return transactions }
         
@@ -852,7 +1143,12 @@ class TransactionsViewModel: ObservableObject {
                     convertedAmount: transaction.convertedAmount,
                     type: transaction.type,
                     category: rule.category,
-                    subcategory: rule.subcategory
+                    subcategory: rule.subcategory,
+                    accountId: transaction.accountId,
+                    targetAccountId: transaction.targetAccountId,
+                    recurringSeriesId: transaction.recurringSeriesId,
+                    recurringOccurrenceId: transaction.recurringOccurrenceId,
+                    createdAt: transaction.createdAt // Сохраняем оригинальный createdAt
                 )
             }
             return transaction
@@ -959,6 +1255,9 @@ class TransactionsViewModel: ObservableObject {
     func recalculateAccountBalances() {
         guard !accounts.isEmpty else { return }
 
+        // Сбрасываем предупреждение о конвертации валют
+        currencyConversionWarning = nil
+
         // Создаем словарь для расчета изменений балансов от транзакций
         var balanceChanges: [String: Double] = [:]
         for account in accounts {
@@ -970,25 +1269,87 @@ class TransactionsViewModel: ObservableObject {
         }
 
         // Рассчитываем изменения балансов от всех транзакций
+        // Исключаем транзакции с будущей датой (они еще не выполнены)
+        let today = Calendar.current.startOfDay(for: Date())
+        let dateFormatter = Self.dateFormatter
+
+        // Флаг для отслеживания проблем с конвертацией
+        var hasConversionIssues = false
+        
         for tx in allTransactions {
-            // Используем convertedAmount, если он есть (сумма в валюте счета)
-            let amountToUse = tx.convertedAmount ?? tx.amount
+            // Исключаем транзакции с будущей датой из расчета балансов
+            guard let transactionDate = dateFormatter.date(from: tx.date),
+                  transactionDate <= today else {
+                continue
+            }
             
             switch tx.type {
             case .income:
                 if let accountId = tx.accountId {
+                    // Для дохода: используем convertedAmount (если есть) в валюте счета
+                    let amountToUse = tx.convertedAmount ?? tx.amount
                     balanceChanges[accountId, default: 0] += amountToUse
                 }
             case .expense:
                 if let accountId = tx.accountId {
+                    // Для расхода: используем convertedAmount (если есть) в валюте счета
+                    let amountToUse = tx.convertedAmount ?? tx.amount
                     balanceChanges[accountId, default: 0] -= amountToUse
                 }
             case .internalTransfer:
-                if let sourceId = tx.accountId {
-                    balanceChanges[sourceId, default: 0] -= amountToUse
+                // Для перевода: используем разные суммы для source и target счетов
+                if let sourceId = tx.accountId,
+                   let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
+                    // Источник: используем convertedAmount (если есть) или amount, но в валюте источника
+                    let sourceAmount: Double
+                    if tx.currency == sourceAccount.currency {
+                        // Валюты совпадают - используем amount
+                        sourceAmount = tx.amount
+                    } else if let converted = tx.convertedAmount {
+                        // Если есть convertedAmount, значит конвертация уже была в валюту источника
+                        sourceAmount = converted
+                    } else {
+                        // Если нет convertedAmount и валюты разные, пытаемся конвертировать через кэш
+                        if let converted = CurrencyConverter.convertSync(
+                            amount: tx.amount,
+                            from: tx.currency,
+                            to: sourceAccount.currency
+                        ) {
+                            sourceAmount = converted
+                        } else {
+                            // Если конвертация невозможна, используем amount и выводим предупреждение
+                            print("⚠️ Не удалось конвертировать \(tx.amount) \(tx.currency) в \(sourceAccount.currency) для счета-источника. Баланс может быть неточным.")
+                            hasConversionIssues = true
+                            sourceAmount = tx.amount
+                        }
+                    }
+                    balanceChanges[sourceId, default: 0] -= sourceAmount
                 }
-                if let targetId = tx.targetAccountId {
-                    balanceChanges[targetId, default: 0] += amountToUse
+
+                if let targetId = tx.targetAccountId,
+                   let targetAccount = accounts.first(where: { $0.id == targetId }) {
+                    // Получатель: нужно конвертировать в валюту получателя
+                    let targetAmount: Double
+                    if tx.currency == targetAccount.currency {
+                        // Валюты совпадают - используем amount
+                        targetAmount = tx.amount
+                    } else if let converted = CurrencyConverter.convertSync(
+                        amount: tx.amount,
+                        from: tx.currency,
+                        to: targetAccount.currency
+                    ) {
+                        // Валюты разные - конвертируем через кэш синхронно
+                        targetAmount = converted
+                    } else {
+                        // Если конвертация невозможна (нет курсов в кэше), выводим предупреждение
+                        // и используем amount без конвертации (будет неточный баланс)
+                        print("⚠️ Не удалось конвертировать \(tx.amount) \(tx.currency) в \(targetAccount.currency) для счета-получателя. Баланс может быть неточным.")
+                        print("⚠️ Перевод ID: \(tx.id), Описание: \(tx.description)")
+                        print("⚠️ Курсы валют не загружены в кэш. Проверьте подключение к интернету и перезапустите приложение.")
+                        hasConversionIssues = true
+                        targetAmount = tx.amount
+                    }
+                    balanceChanges[targetId, default: 0] += targetAmount
                 }
             }
         }
@@ -999,6 +1360,11 @@ class TransactionsViewModel: ObservableObject {
             let initialBalance = initialAccountBalances[accountId] ?? accounts[index].balance
             let changes = balanceChanges[accountId] ?? 0
             accounts[index].balance = initialBalance + changes
+        }
+
+        // Если были проблемы с конвертацией, устанавливаем предупреждение
+        if hasConversionIssues {
+            currencyConversionWarning = "Не удалось конвертировать валюты для некоторых переводов. Балансы могут быть неточными. Проверьте подключение к интернету."
         }
     }
     
@@ -1034,7 +1400,36 @@ class TransactionsViewModel: ObservableObject {
     
     func updateRecurringSeries(_ series: RecurringSeries) {
         if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
+            let oldSeries = recurringSeries[index]
+            
+            // Если изменилась частота, нужно удалить все будущие транзакции и перегенерировать
+            let frequencyChanged = oldSeries.frequency != series.frequency
+            let startDateChanged = oldSeries.startDate != series.startDate
+            
+            // Обновляем серию
             recurringSeries[index] = series
+            
+            if frequencyChanged || startDateChanged {
+                // Удаляем все будущие транзакции этой серии
+                let today = Calendar.current.startOfDay(for: Date())
+                let dateFormatter = Self.dateFormatter
+                
+                // Удаляем все будущие транзакции (дата > today) этой серии
+                let futureOccurrences = recurringOccurrences.filter { occurrence in
+                    guard occurrence.seriesId == series.id,
+                          let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
+                        return false
+                    }
+                    return occurrenceDate > today
+                }
+                
+                // Удаляем транзакции и occurrences
+                for occurrence in futureOccurrences {
+                    allTransactions.removeAll { $0.id == occurrence.transactionId }
+                    recurringOccurrences.removeAll { $0.id == occurrence.id }
+                }
+            }
+            
             saveToStorage()
             generateRecurringTransactions()
         }
@@ -1044,6 +1439,8 @@ class TransactionsViewModel: ObservableObject {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId }) {
             recurringSeries[index].isActive = false
             saveToStorage()
+            // Не вызываем generateRecurringTransactions() здесь, так как удаление будущих транзакций 
+            // должно происходить в UI после остановки серии
         }
     }
     
@@ -1084,14 +1481,16 @@ class TransactionsViewModel: ObservableObject {
         var newTransactions: [Transaction] = []
         var newOccurrences: [RecurringOccurrence] = []
         
-        // Автоматически выполняем recurring операции, срок которых наступил
+        // Автоматически выполняем recurring операции, срок которых наступил (включая сегодня)
+        // Recurring операции с датой сегодня сразу становятся выполненными (обычными транзакциями)
         var hasChanges = false
         for i in allTransactions.indices {
             let transaction = allTransactions[i]
             if let _ = transaction.recurringSeriesId,
                let transactionDate = dateFormatter.date(from: transaction.date),
-               transactionDate < today {
-                // Срок наступил - помечаем как выполненную (убираем recurringSeriesId)
+               transactionDate <= today {
+                // Срок наступил (включая сегодня) - помечаем как выполненную (убираем recurringSeriesId)
+                // Recurring операции с датой сегодня сразу становятся обычными транзакциями
                 let updatedTransaction = Transaction(
                     id: transaction.id,
                     date: transaction.date,
@@ -1104,8 +1503,9 @@ class TransactionsViewModel: ObservableObject {
                     subcategory: transaction.subcategory,
                     accountId: transaction.accountId,
                     targetAccountId: transaction.targetAccountId,
-                    recurringSeriesId: nil, // Убираем связь с recurring
-                    recurringOccurrenceId: nil
+                    recurringSeriesId: nil, // Убираем связь с recurring - становимся обычной транзакцией
+                    recurringOccurrenceId: nil,
+                    createdAt: transaction.createdAt // Сохраняем оригинальный createdAt
                 )
                 allTransactions[i] = updatedTransaction
                 hasChanges = true
@@ -1115,9 +1515,32 @@ class TransactionsViewModel: ObservableObject {
         for series in recurringSeries where series.isActive {
             guard let startDate = dateFormatter.date(from: series.startDate) else { continue }
             
-            // Генерируем транзакции на горизонт 12 месяцев
-            var currentDate = startDate
+            // Если серия начинается сегодня или раньше, первая транзакция должна быть на завтра (или следующую дату)
+            // Recurring операции с датой сегодня автоматически выполняются и становятся обычными транзакциями
+            var currentDate: Date
+            if startDate <= today {
+                // Серия уже началась или начинается сегодня - начинаем генерацию со следующей даты по частоте
+                guard let nextDate = {
+                    switch series.frequency {
+                    case .daily:
+                        return calendar.date(byAdding: .day, value: 1, to: today)
+                    case .weekly:
+                        return calendar.date(byAdding: .day, value: 7, to: today)
+                    case .monthly:
+                        return calendar.date(byAdding: .month, value: 1, to: today)
+                    case .yearly:
+                        return calendar.date(byAdding: .year, value: 1, to: today)
+                    }
+                }() else {
+                    continue // Если не удалось вычислить следующую дату, пропускаем серию
+                }
+                currentDate = nextDate
+            } else {
+                // Серия начинается в будущем - начинаем с startDate
+                currentDate = startDate
+            }
             
+            // Генерируем транзакции на горизонт 3 месяцев (начиная с первой будущей даты)
             while currentDate <= horizonDate {
                 let dateString = dateFormatter.string(from: currentDate)
                 let occurrenceKey = "\(series.id):\(dateString)"
@@ -1126,18 +1549,22 @@ class TransactionsViewModel: ObservableObject {
                 if !existingOccurrenceKeys.contains(occurrenceKey) {
                     let amountDouble = NSDecimalNumber(decimal: series.amount).doubleValue
                     
+                    // Для recurring транзакций используем дату транзакции как createdAt (чтобы они сортировались по дате выполнения)
+                    let transactionDate = dateFormatter.date(from: dateString) ?? Date()
+                    let createdAt = transactionDate.timeIntervalSince1970
+                    
                     let transactionId = TransactionIDGenerator.generateID(
                         date: dateString,
                         description: series.description,
                         amount: amountDouble,
                         type: .expense,
-                        currency: series.currency
+                        currency: series.currency,
+                        createdAt: createdAt
                     )
                     
                     // Проверяем, нет ли уже такой транзакции
                     if !existingTransactionIds.contains(transactionId) {
                         let occurrenceId = UUID().uuidString
-                        
                         let transaction = Transaction(
                             id: transactionId,
                             date: dateString,
@@ -1151,7 +1578,8 @@ class TransactionsViewModel: ObservableObject {
                             accountId: series.accountId,
                             targetAccountId: series.targetAccountId,
                             recurringSeriesId: series.id,
-                            recurringOccurrenceId: occurrenceId
+                            recurringOccurrenceId: occurrenceId,
+                            createdAt: createdAt // Используем дату транзакции для сортировки
                         )
                         
                         let occurrence = RecurringOccurrence(
@@ -1188,8 +1616,8 @@ class TransactionsViewModel: ObservableObject {
         
         // Добавляем новые транзакции и occurrences только если они есть
         if !newTransactions.isEmpty {
-            allTransactions.append(contentsOf: newTransactions)
-            allTransactions.sort { $0.date > $1.date }
+            // Используем оптимизированную вставку
+            insertTransactionsSorted(newTransactions)
             recurringOccurrences.append(contentsOf: newOccurrences)
             recalculateAccountBalances()
             saveToStorage()
@@ -1257,7 +1685,8 @@ class TransactionsViewModel: ObservableObject {
                         accountId: updatedTransaction.accountId,
                         targetAccountId: updatedTransaction.targetAccountId,
                         recurringSeriesId: updatedTransaction.recurringSeriesId,
-                        recurringOccurrenceId: updatedTransaction.recurringOccurrenceId
+                        recurringOccurrenceId: updatedTransaction.recurringOccurrenceId,
+                        createdAt: updatedTransaction.createdAt // Сохраняем оригинальный createdAt
                     )
                     allTransactions[index] = updatedTransaction
                 }
@@ -1345,12 +1774,6 @@ class TransactionsViewModel: ObservableObject {
     func searchSubcategories(query: String) -> [Subcategory] {
         let queryLower = query.lowercased()
         return subcategories.filter { $0.name.lowercased().contains(queryLower) }
-    }
-    
-    // Инвалидация кешей при изменении данных
-    private func invalidateCaches() {
-        summaryCacheInvalidated = true
-        categoryExpensesCacheInvalidated = true
     }
 }
 

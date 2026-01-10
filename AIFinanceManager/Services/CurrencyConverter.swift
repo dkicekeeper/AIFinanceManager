@@ -12,23 +12,28 @@ class CurrencyConverter {
     private static var cachedRates: [String: Double] = [:]
     private static var cacheDate: Date?
     private static let cacheValidityHours: TimeInterval = 24 * 60 * 60 // 24 часа
-    
+
     // Получить курс валюты к тенге
     static func getExchangeRate(for currency: String) async -> Double? {
         // KZT всегда равен 1
         if currency == "KZT" {
             return 1.0
         }
-        
+
         // Проверяем кэш
         if let cachedDate = cacheDate,
            Date().timeIntervalSince(cachedDate) < cacheValidityHours,
            let cachedRate = cachedRates[currency] {
             return cachedRate
         }
-        
+
         // Загружаем курсы с Нацбанка РК
-        guard let url = URL(string: baseURL) else { return nil }
+        // API требует параметр fdate в формате DD.MM.YYYY
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd.MM.yyyy"
+        let dateString = dateFormatter.string(from: Date())
+
+        guard let url = URL(string: "\(baseURL)?fdate=\(dateString)") else { return nil }
         
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
@@ -57,15 +62,19 @@ class CurrencyConverter {
         if from == to {
             return amount
         }
-        
+
         // Получаем курсы обеих валют к тенге
         guard let fromRate = await getExchangeRate(for: from),
               let toRate = await getExchangeRate(for: to) else {
             return nil
         }
-        
-        // Конвертируем через тенге: amount * (toRate / fromRate)
-        let converted = amount * (toRate / fromRate)
+
+        // Конвертируем через тенге
+        // Курсы показывают: 1 валюта = X KZT
+        // Шаг 1: Конвертируем from в KZT: amount * fromRate
+        // Шаг 2: Конвертируем KZT в to: amountInKZT / toRate
+        // Итоговая формула: amount * fromRate / toRate
+        let converted = amount * fromRate / toRate
         return converted
     }
     
@@ -73,6 +82,67 @@ class CurrencyConverter {
     static func getAllRates() async -> [String: Double] {
         _ = await getExchangeRate(for: "USD") // Загружаем курсы
         return cachedRates
+    }
+    
+    // Синхронная конвертация через кэш (без сетевых запросов)
+    // Используется в recalculateAccountBalances() для конвертации валют переводов
+    static func convertSync(amount: Double, from: String, to: String) -> Double? {
+        // Если валюты одинаковые, возвращаем сумму без изменений
+        if from == to {
+            return amount
+        }
+
+        // KZT всегда равен 1
+        // Получаем курсы, проверяя наличие в кэше
+        let fromRate: Double?
+        if from == "KZT" {
+            fromRate = 1.0
+        } else {
+            fromRate = cachedRates[from]
+            // Если курса нет в кэше, возвращаем nil (нельзя конвертировать)
+            if fromRate == nil {
+                print("⚠️ Курс валюты \(from) не найден в кэше")
+                return nil
+            }
+        }
+
+        let toRate: Double?
+        if to == "KZT" {
+            toRate = 1.0
+        } else {
+            toRate = cachedRates[to]
+            // Если курса нет в кэше, возвращаем nil (нельзя конвертировать)
+            if toRate == nil {
+                print("⚠️ Курс валюты \(to) не найден в кэше")
+                return nil
+            }
+        }
+
+        // Убеждаемся, что оба курса получены
+        guard let fromRateValue = fromRate, let toRateValue = toRate else {
+            return nil
+        }
+
+        // Конвертируем через тенге
+        // Курсы показывают: 1 валюта = X KZT
+        // Шаг 1: Конвертируем from в KZT: amount * fromRate
+        // Шаг 2: Конвертируем KZT в to: amountInKZT / toRate
+        // Итоговая формула: amount * fromRate / toRate
+        let converted = amount * fromRateValue / toRateValue
+        return converted
+    }
+
+    // Проверяет, доступны ли курсы валют в кэше
+    static func areRatesAvailableInCache(for currencies: [String]) -> Bool {
+        for currency in currencies {
+            if currency == "KZT" {
+                continue // KZT всегда доступен
+            }
+            if cachedRates[currency] == nil {
+                return false
+            }
+        }
+        return true
     }
 }
 
@@ -82,36 +152,45 @@ private class ExchangeRateParserDelegate: NSObject, XMLParserDelegate {
     private var currentElement = ""
     private var currentTitle = ""
     private var currentDescription = ""
-    
+    private var currentQuant = ""
+
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
         currentElement = elementName
     }
-    
+
     func parser(_ parser: XMLParser, foundCharacters string: String) {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return }
-        
+
         switch currentElement {
         case "title":
             currentTitle += trimmed
         case "description":
             currentDescription += trimmed
+        case "quant":
+            currentQuant += trimmed
         default:
             break
         }
     }
-    
+
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
         if elementName == "item" {
-            // Парсим курс из title и description
-            // Формат: title содержит название валюты, description содержит курс
+            // Парсим курс из title, description и quant
+            // Формат: title содержит код валюты, description содержит курс, quant - количество единиц
             if !currentTitle.isEmpty && !currentDescription.isEmpty {
                 // Ищем код валюты в title (например, "USD", "EUR")
                 let currencyCodes = ["USD", "EUR", "RUB", "GBP", "CNY", "JPY", "KGS", "UZS"]
                 for code in currencyCodes {
                     if currentTitle.uppercased().contains(code) {
-                        if let rate = Double(currentDescription.replacingOccurrences(of: ",", with: ".")) {
-                            rates[code] = rate
+                        if let rate = Double(currentDescription.replacingOccurrences(of: ",", with: ".")),
+                           let quant = Double(currentQuant.isEmpty ? "1" : currentQuant) {
+                            // Нормализуем курс: делим на количество единиц
+                            // Например, для JPY (quant=1): rate = 3.23 / 1 = 3.23
+                            // Для UZS (quant=100): rate = 4.21 / 100 = 0.0421 (за 1 UZS)
+                            let normalizedRate = rate / quant
+                            rates[code] = normalizedRate
+                            print("✅ Загружен курс: 1 \(code) = \(normalizedRate) KZT (исходный курс: \(rate) за \(quant) \(code))")
                         }
                         break
                     }
@@ -119,6 +198,7 @@ private class ExchangeRateParserDelegate: NSObject, XMLParserDelegate {
             }
             currentTitle = ""
             currentDescription = ""
+            currentQuant = ""
         }
         currentElement = ""
     }

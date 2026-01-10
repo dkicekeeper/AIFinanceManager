@@ -10,9 +10,8 @@ import SwiftUI
 struct QuickAddTransactionView: View {
     @ObservedObject var viewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
-    @State private var selectedCategory: String?
+    @State private var selectedCategory: String? = nil
     @State private var selectedType: TransactionType = .expense
-    @State private var showingModal = false
 
     // Кешированные данные для производительности
     @State private var cachedCategories: [String] = []
@@ -25,7 +24,7 @@ struct QuickAddTransactionView: View {
         LazyVGrid(columns: gridColumns, spacing: 16) {
             ForEach(categories, id: \.self) { category in
                 let total = categoryExpenses[category]?.total ?? 0
-                let currency = viewModel.allTransactions.first?.currency ?? "USD"
+                let currency = viewModel.appSettings.baseCurrency
                 let totalText = total != 0 ? Formatting.formatCurrency(total, currency: currency) : nil
 
                 CoinView(
@@ -37,87 +36,25 @@ struct QuickAddTransactionView: View {
                     onTap: {
                         selectedCategory = category
                         selectedType = .expense
-                        showingModal = true
                     }
                 )
             }
         }
-        .sheet(isPresented: $showingModal) {
+        .sheet(isPresented: Binding(
+            get: { selectedCategory != nil },
+            set: { if !$0 { selectedCategory = nil } }
+        )) {
             if let category = selectedCategory {
                 AddTransactionModal(
                     category: category,
                     type: selectedType,
-                    currency: viewModel.allTransactions.first?.currency ?? "USD",
+                    currency: viewModel.appSettings.baseCurrency,
                     accounts: viewModel.accounts,
                     viewModel: viewModel,
-                    onSave: { amount, description, accountId, dateString, subcategoryIds, transactionCurrency, transactionCategory in
-                        // Получаем валюту счета
-                        guard let accountId = accountId,
-                              let account = viewModel.accounts.first(where: { $0.id == accountId }) else {
-                            return
-                        }
-                        
-                        let accountCurrency = account.currency
-                        
-                        // Конвертируем Decimal в Double для Transaction
-                        let amountDouble = NSDecimalNumber(decimal: amount).doubleValue
-                        
-                        // Конвертируем валюту, если она отличается от валюты счета
-                        Task {
-                            var convertedAmount: Double? = nil
-                            if transactionCurrency != accountCurrency {
-                                convertedAmount = await CurrencyConverter.convert(
-                                    amount: amountDouble,
-                                    from: transactionCurrency,
-                                    to: accountCurrency
-                                )
-                            }
-                            
-                            let transaction = Transaction(
-                                id: "",
-                                date: dateString,
-                                description: description,
-                                amount: amountDouble,
-                                currency: transactionCurrency,
-                                convertedAmount: convertedAmount,
-                                type: selectedType,
-                                category: transactionCategory,
-                                subcategory: nil,
-                                accountId: accountId,
-                                targetAccountId: nil
-                            )
-                        
-                        await MainActor.run {
-                            viewModel.addTransaction(transaction)
-                            HapticManager.success()
-                        }
+                    onDismiss: {
+                        selectedCategory = nil
                     }
-
-                    // Связываем подкатегории с транзакцией
-                    if !subcategoryIds.isEmpty {
-                        // Получаем ID транзакции после добавления
-                        let addedTransaction = viewModel.allTransactions.first { tx in
-                            tx.date == dateString &&
-                            tx.description == description &&
-                            tx.amount == amountDouble
-                        }
-
-                        if let transactionId = addedTransaction?.id {
-                            viewModel.linkSubcategoriesToTransaction(
-                                transactionId: transactionId,
-                                subcategoryIds: Array(subcategoryIds)
-                            )
-                        }
-                    }
-
-                    selectedCategory = nil
-                    showingModal = false
-                },
-                onCancel: {
-                    selectedCategory = nil
-                    showingModal = false
-                }
-            )
+                )
             }
         }
         .onAppear {
@@ -181,36 +118,40 @@ struct CoinView: View {
     let viewModel: TransactionsViewModel
     let timeFilterManager: TimeFilterManager
     let onTap: () -> Void
-    
+
     @State private var isPressed = false
-    
+
+    private var styleHelper: CategoryStyleHelper {
+        CategoryStyleHelper(category: category, type: type, customCategories: viewModel.customCategories)
+    }
+
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 8) {
+            VStack(spacing: AppSpacing.sm) {
                 Circle()
-                    .fill(coinColor)
-                    .frame(width: 64, height: 64)
+                    .fill(styleHelper.coinColor)
+                    .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                     .overlay(
-                        Image(systemName: iconName)
+                        Image(systemName: styleHelper.iconName)
                             .font(.title2)
-                            .foregroundColor(iconColor)
+                            .foregroundColor(styleHelper.iconColor)
                     )
                     .overlay(
                         Circle()
-                            .stroke(coinBorderColor, lineWidth: 2)
+                            .stroke(styleHelper.coinBorderColor, lineWidth: 2)
                     )
                     .scaleEffect(isPressed ? 0.9 : 1.0)
-                    .animation(.easeInOut(duration: 0.1), value: isPressed)
-                
+                    .animation(.easeInOut(duration: AppAnimation.fast), value: isPressed)
+
                 VStack(spacing: 2) {
                     Text(category)
-                        .font(.caption)
+                        .font(AppTypography.caption)
                         .foregroundColor(.primary)
                         .lineLimit(1)
-                    
+
                     if type == .expense, let totalText = totalText {
                         Text(totalText)
-                            .font(.caption2)
+                            .font(AppTypography.caption2)
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                     }
@@ -227,31 +168,8 @@ struct CoinView: View {
                     isPressed = false
                 }
         )
-    }
-    
-    private var coinColor: Color {
-        if type == .income {
-            return Color.green.opacity(0.3)
-        }
-        return CategoryColors.hexColor(for: category, opacity: 0.3, customCategories: viewModel.customCategories)
-    }
-    
-    private var coinBorderColor: Color {
-        if type == .income {
-            return Color.green.opacity(0.6)
-        }
-        return CategoryColors.hexColor(for: category, opacity: 0.6, customCategories: viewModel.customCategories)
-    }
-    
-    private var iconColor: Color {
-        if type == .income {
-            return Color.green
-        }
-        return CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: viewModel.customCategories)
-    }
-    
-    private var iconName: String {
-        CategoryEmoji.iconName(for: category, type: type, customCategories: viewModel.customCategories)
+        .accessibilityLabel("\(category) category")
+        .accessibilityHint(totalText != nil ? "Total spent: \(totalText!)" : "Tap to add transaction")
     }
 }
 
@@ -263,8 +181,7 @@ struct AddTransactionModal: View {
     let accounts: [Account]
     let viewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
-    let onSave: (Decimal, String, String?, String, Set<String>, String, String) -> Void // amount, description, accountId, date, subcategoryIds, currency, category
-    let onCancel: () -> Void
+    let onDismiss: () -> Void
     
     @State private var amountText = ""
     @State private var descriptionText = ""
@@ -277,16 +194,17 @@ struct AddTransactionModal: View {
     @State private var showingSubcategorySearch = false
     @State private var subcategorySearchText = ""
     @State private var showingCategoryHistory = false
+    @State private var isSaving = false
+    @State private var validationError: String?
     @FocusState private var isAmountFocused: Bool
     
-    init(category: String, type: TransactionType, currency: String, accounts: [Account], viewModel: TransactionsViewModel, onSave: @escaping (Decimal, String, String?, String, Set<String>, String, String) -> Void, onCancel: @escaping () -> Void) {
+    init(category: String, type: TransactionType, currency: String, accounts: [Account], viewModel: TransactionsViewModel, onDismiss: @escaping () -> Void) {
         self.category = category
         self.type = type
         self.currency = currency
         self.accounts = accounts
         self.viewModel = viewModel
-        self.onSave = onSave
-        self.onCancel = onCancel
+        self.onDismiss = onDismiss
         _selectedCurrency = State(initialValue: currency)
     }
     
@@ -333,18 +251,31 @@ struct AddTransactionModal: View {
                     }
                     
                     Section(header: Text("Сумма")) {
-                        HStack {
-                            TextField("0.00", text: $amountText)
-                                .keyboardType(.decimalPad)
-                                .focused($isAmountFocused)
-                            
-                            Picker("", selection: $selectedCurrency) {
-                                ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
-                                    Text(currency).tag(currency)
+                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                            HStack {
+                                TextField("0.00", text: $amountText)
+                                    .keyboardType(.decimalPad)
+                                    .focused($isAmountFocused)
+                                    .onChange(of: amountText) {
+                                        // Сбросить ошибку при вводе
+                                        validationError = nil
+                                    }
+
+                                Picker("", selection: $selectedCurrency) {
+                                    ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
+                                        Text(currency).tag(currency)
+                                    }
                                 }
+                                .pickerStyle(MenuPickerStyle())
+                                .frame(width: 80)
+                                .disabled(isSaving)
                             }
-                            .pickerStyle(MenuPickerStyle())
-                            .frame(width: 80)
+
+                            if let error = validationError {
+                                Text(error)
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(.red)
+                            }
                         }
                     }
                     
@@ -422,17 +353,32 @@ struct AddTransactionModal: View {
                 }
                 
                 // Кнопки даты внизу
-                DateButtonsView(selectedDate: $selectedDate) { date in
-                    saveTransaction(date: date)
-                }
+                DateButtonsView(
+                    selectedDate: $selectedDate,
+                    isDisabled: isSaving,
+                    onSave: { date in
+                        saveTransaction(date: date)
+                    }
+                )
                 .padding()
                 .background(Color(.systemBackground))
+                .overlay(
+                    Group {
+                        if isSaving {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                                .scaleEffect(1.5)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .background(Color.black.opacity(0.2))
+                        }
+                    }
+                )
             }
             .navigationTitle(category)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена", action: onCancel)
+                    Button("Отмена", action: onDismiss)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
@@ -470,14 +416,46 @@ struct AddTransactionModal: View {
     }
     
     private func saveTransaction(date: Date) {
+        // Валидация суммы
         guard let decimalAmount = AmountFormatter.parse(amountText) else {
+            validationError = "Введите корректную сумму"
+            HapticManager.error()
+            return
+        }
+
+        guard decimalAmount > 0 else {
+            validationError = "Сумма должна быть больше нуля"
+            HapticManager.error()
             return
         }
         
+        // Валидация: проверяем, что счет выбран
+        guard let accountId = selectedAccountId else {
+            validationError = "Выберите счёт"
+            HapticManager.error()
+            return
+        }
+        
+        guard let account = accounts.first(where: { $0.id == accountId }) else {
+            validationError = "Счёт не найден"
+            HapticManager.error()
+            return
+        }
+
+        // Показываем loading
+        isSaving = true
+        validationError = nil
+
         let dateFormatter = DateFormatters.dateFormatter
         let dateString = dateFormatter.string(from: date)
-        
         let finalDescription = descriptionText
+        let amountDouble = NSDecimalNumber(decimal: decimalAmount).doubleValue
+        let accountCurrency = account.currency
+        
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let transactionDate = calendar.startOfDay(for: date)
+        let isFutureDate = transactionDate > today
         
         // Если это recurring, создаем серию
         if isRecurring {
@@ -487,14 +465,69 @@ struct AddTransactionModal: View {
                 category: category,
                 subcategory: nil,
                 description: finalDescription,
-                accountId: selectedAccountId,
+                accountId: accountId,
                 targetAccountId: nil,
                 frequency: selectedFrequency,
                 startDate: dateString
             )
+            
+            // Если дата в будущем, транзакция будет создана через generateRecurringTransactions
+            // Не создаем её здесь, чтобы избежать дублирования
+            if isFutureDate {
+                HapticManager.success()
+                isSaving = false
+                onDismiss()
+                return
+            }
+            // Если дата сегодня или в прошлом - создаем обычную транзакцию (она уже выполнена)
+        }
+
+        // Конвертация валюты (синхронная, если есть кеш)
+        var convertedAmount: Double? = nil
+        if selectedCurrency != accountCurrency {
+            convertedAmount = CurrencyConverter.convertSync(
+                amount: amountDouble,
+                from: selectedCurrency,
+                to: accountCurrency
+            )
         }
         
-        onSave(decimalAmount, finalDescription, selectedAccountId, dateString, selectedSubcategoryIds, selectedCurrency, category)
+        // Создаем транзакцию
+        let transaction = Transaction(
+            id: "",
+            date: dateString,
+            description: finalDescription,
+            amount: amountDouble,
+            currency: selectedCurrency,
+            convertedAmount: convertedAmount,
+            type: type,
+            category: category,
+            subcategory: nil,
+            accountId: accountId,
+            targetAccountId: nil
+        )
+        
+        viewModel.addTransaction(transaction)
+        
+        // Связываем подкатегории с транзакцией
+        if !selectedSubcategoryIds.isEmpty {
+            let addedTransaction = viewModel.allTransactions.first { tx in
+                tx.date == dateString &&
+                tx.description == finalDescription &&
+                tx.amount == amountDouble
+            }
+
+            if let transactionId = addedTransaction?.id {
+                viewModel.linkSubcategoriesToTransaction(
+                    transactionId: transactionId,
+                    subcategoryIds: Array(selectedSubcategoryIds)
+                )
+            }
+        }
+        
+        HapticManager.success()
+        isSaving = false
+        onDismiss()
     }
 }
 

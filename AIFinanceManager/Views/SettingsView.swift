@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import Combine
 
 struct SettingsView: View {
     @ObservedObject var viewModel: TransactionsViewModel
@@ -18,6 +19,27 @@ struct SettingsView: View {
     
     var body: some View {
         List {
+            Section(header: Text("Общие настройки")) {
+                HStack {
+                    Image(systemName: "dollarsign.circle")
+                    Text("Базовая валюта")
+                    Spacer()
+                    Picker("", selection: $viewModel.appSettings.baseCurrency) {
+                        ForEach(AppSettings.availableCurrencies, id: \.self) { currency in
+                            Text(currency).tag(currency)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    .onChange(of: viewModel.appSettings.baseCurrency) {
+                        viewModel.appSettings.save()
+                        // Инвалидируем кеш summary и categoryExpenses для пересчета в новой валюте
+                        viewModel.invalidateCaches()
+                        // Принудительно обновляем UI
+                        viewModel.objectWillChange.send()
+                    }
+                }
+            }
+
             Section(header: Text("Управление данными")) {
                 NavigationLink(destination: CategoriesManagementView(viewModel: viewModel)) {
                     HStack {
@@ -25,7 +47,7 @@ struct SettingsView: View {
                         Text("Категории")
                     }
                 }
-                
+
                 NavigationLink(destination: AccountsManagementView(viewModel: viewModel)) {
                     HStack {
                         Image(systemName: "creditcard")
@@ -67,7 +89,7 @@ struct SettingsView: View {
         }
         .navigationTitle("Настройки")
         .navigationBarTitleDisplayMode(.large)
-        .confirmationDialog("Удалить все данные?", isPresented: $showingResetConfirmation, titleVisibility: .visible) {
+        .alert("Удалить все данные?", isPresented: $showingResetConfirmation) {
             Button("Удалить", role: .destructive) {
                 HapticManager.warning()
                 viewModel.resetAllData()

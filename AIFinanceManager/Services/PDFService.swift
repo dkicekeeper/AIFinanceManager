@@ -275,7 +275,7 @@ class PDFService {
             print("📊 Found \(lineSelections.count) lines in PDF")
             
             // Для каждой строки извлекаем слова с их приблизительными позициями
-            for (index, lineSelection) in lineSelections.enumerated() {
+            for lineSelection in lineSelections {
                 guard let lineTextRaw = lineSelection.string else { continue }
                 let lineText = lineTextRaw.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
             

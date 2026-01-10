@@ -18,7 +18,7 @@ struct AccountsManagementView: View {
             ForEach(viewModel.accounts) { account in
                 AccountRow(
                     account: account,
-                    currency: viewModel.allTransactions.first?.currency ?? account.currency,
+                    currency: viewModel.appSettings.baseCurrency,
                     onEdit: { editingAccount = account },
                     onDelete: { viewModel.deleteAccount(account) }
                 )
@@ -110,6 +110,7 @@ struct AccountEditView: View {
     @State private var currency: String = "USD"
     @State private var selectedBankLogo: BankLogo = .none
     @State private var showingBankLogoPicker = false
+    @FocusState private var isNameFocused: Bool
     
     private let currencies = ["USD", "EUR", "KZT", "RUB", "GBP"]
     
@@ -118,6 +119,7 @@ struct AccountEditView: View {
             Form {
                 Section(header: Text("Название")) {
                     TextField("Название счёта", text: $name)
+                        .focused($isNameFocused)
                 }
                 
                 Section(header: Text("Логотип банка")) {
@@ -155,18 +157,26 @@ struct AccountEditView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Сохранить") {
-                        if let balance = Double(balanceText.replacingOccurrences(of: ",", with: ".")) {
-                            let newAccount = Account(
-                                id: account?.id ?? UUID().uuidString,
-                                name: name,
-                                balance: balance,
-                                currency: currency,
-                                bankLogo: selectedBankLogo
-                            )
-                            onSave(newAccount)
+                        // Если balanceText пустой, используем 0 по умолчанию
+                        let balance: Double
+                        if balanceText.isEmpty {
+                            balance = 0.0
+                        } else if let parsedBalance = Double(balanceText.replacingOccurrences(of: ",", with: ".")) {
+                            balance = parsedBalance
+                        } else {
+                            balance = 0.0
                         }
+                        
+                        let newAccount = Account(
+                            id: account?.id ?? UUID().uuidString,
+                            name: name,
+                            balance: balance,
+                            currency: currency,
+                            bankLogo: selectedBankLogo
+                        )
+                        onSave(newAccount)
                     }
-                    .disabled(name.isEmpty || balanceText.isEmpty)
+                    .disabled(name.isEmpty)
                 }
             }
             .onAppear {
@@ -175,9 +185,15 @@ struct AccountEditView: View {
                     balanceText = String(format: "%.2f", account.balance)
                     currency = account.currency
                     selectedBankLogo = account.bankLogo
+                    isNameFocused = false
                 } else {
-                    currency = viewModel.allTransactions.first?.currency ?? "USD"
+                    currency = viewModel.appSettings.baseCurrency
                     selectedBankLogo = .none
+                    balanceText = ""
+                    // Активируем поле названия при создании нового счета
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isNameFocused = true
+                    }
                 }
             }
             .sheet(isPresented: $showingBankLogoPicker) {
