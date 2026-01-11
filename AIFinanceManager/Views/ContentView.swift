@@ -320,6 +320,7 @@ struct ContentView: View {
                             }) {
                                 HStack(spacing: 8) {
                                     account.bankLogo.image(size: 32)
+                                        .foregroundStyle(adaptiveTextColor.opacity(0.7))
                                     
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(account.name)

@@ -179,6 +179,7 @@ struct CoinView: View {
                 }
             }
         }
+        .contentShape(Rectangle())
         .buttonStyle(PlainButtonStyle())
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
