@@ -10,6 +10,7 @@ import SwiftUI
 struct QuickAddTransactionView: View {
     @ObservedObject var viewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
+    let adaptiveTextColor: Color
     @State private var selectedCategory: String? = nil
     @State private var selectedType: TransactionType = .expense
 
@@ -33,6 +34,7 @@ struct QuickAddTransactionView: View {
                     totalText: totalText,
                     viewModel: viewModel,
                     timeFilterManager: timeFilterManager,
+                    adaptiveTextColor: adaptiveTextColor,
                     onTap: {
                         selectedCategory = category
                         selectedType = .expense
@@ -40,6 +42,9 @@ struct QuickAddTransactionView: View {
                 )
             }
         }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(Color.white.opacity(0.001))
         .sheet(isPresented: Binding(
             get: { selectedCategory != nil },
             set: { if !$0 { selectedCategory = nil } }
@@ -117,6 +122,7 @@ struct CoinView: View {
     let totalText: String?
     let viewModel: TransactionsViewModel
     let timeFilterManager: TimeFilterManager
+    let adaptiveTextColor: Color
     let onTap: () -> Void
 
     @State private var isPressed = false
@@ -146,13 +152,13 @@ struct CoinView: View {
                 VStack(spacing: 2) {
                     Text(category)
                         .font(AppTypography.caption)
-                        .foregroundColor(.primary)
+                        .foregroundStyle(adaptiveTextColor)
                         .lineLimit(1)
 
                     if type == .expense, let totalText = totalText {
                         Text(totalText)
                             .font(AppTypography.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(adaptiveTextColor.opacity(0.7))
                             .lineLimit(1)
                     }
                 }
@@ -615,5 +621,6 @@ struct AccountRadioButton: View {
 }
 
 #Preview {
-    QuickAddTransactionView(viewModel: TransactionsViewModel())
+    QuickAddTransactionView(viewModel: TransactionsViewModel(), adaptiveTextColor: .primary)
+        .environmentObject(TimeFilterManager())
 }

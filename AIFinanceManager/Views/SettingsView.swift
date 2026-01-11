@@ -8,6 +8,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import Combine
+import PhotosUI
 
 struct SettingsView: View {
     @ObservedObject var viewModel: TransactionsViewModel
@@ -16,6 +17,7 @@ struct SettingsView: View {
     @State private var showingImportPicker = false
     @State private var showingCategoriesManagement = false
     @State private var showingAccountsManagement = false
+    @State private var selectedPhoto: PhotosPickerItem? = nil
     
     var body: some View {
         List {
@@ -36,6 +38,41 @@ struct SettingsView: View {
                         viewModel.invalidateCaches()
                         // Принудительно обновляем UI
                         viewModel.objectWillChange.send()
+                    }
+                }
+                
+                HStack {
+                    Image(systemName: "photo")
+                    Text("Обои на главной")
+                    Spacer()
+                    
+                    let hasWallpaper = viewModel.appSettings.wallpaperImageName?.isEmpty == false
+                    
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        HStack(spacing: 4) {
+                            if hasWallpaper {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                            }
+                            Text(hasWallpaper ? "Изменить" : "Выбрать")
+                                .font(.subheadline)
+                        }
+                    }
+                    .onChange(of: selectedPhoto) { _, newItem in
+                        Task { @MainActor in
+                            if let newItem = newItem {
+                                await loadPhoto(newItem)
+                            }
+                        }
+                    }
+                    
+                    if hasWallpaper {
+                        Button(action: {
+                            removeWallpaper()
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                        }
                     }
                 }
             }
@@ -158,5 +195,53 @@ struct SettingsView: View {
                 showingError = true
             }
         }
+    }
+    
+    private func loadPhoto(_ item: PhotosPickerItem) async {
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = UIImage(data: data) else {
+            return
+        }
+        
+        // Сохраняем изображение в Documents directory
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let fileName = "wallpaper_\(UUID().uuidString).jpg"
+        let fileURL = documentsPath.appendingPathComponent(fileName)
+        
+        if let jpegData = image.jpegData(compressionQuality: 0.8) {
+            do {
+                try jpegData.write(to: fileURL)
+                
+                // Удаляем старое изображение, если есть
+                if let oldFileName = viewModel.appSettings.wallpaperImageName,
+                   oldFileName.hasPrefix("wallpaper_") {
+                    let oldURL = documentsPath.appendingPathComponent(oldFileName)
+                    try? FileManager.default.removeItem(at: oldURL)
+                }
+                
+                await MainActor.run {
+                    viewModel.appSettings.wallpaperImageName = fileName
+                    viewModel.appSettings.save()
+                    // Принудительно обновляем UI
+                    viewModel.objectWillChange.send()
+                }
+            } catch {
+                print("❌ Ошибка сохранения обоев: \(error)")
+            }
+        }
+    }
+    
+    private func removeWallpaper() {
+        // Удаляем файл изображения
+        if let fileName = viewModel.appSettings.wallpaperImageName {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsPath.appendingPathComponent(fileName)
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+        
+        viewModel.appSettings.wallpaperImageName = nil
+        viewModel.appSettings.save()
+        // Принудительно обновляем UI
+        viewModel.objectWillChange.send()
     }
 }

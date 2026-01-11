@@ -28,57 +28,106 @@ struct ContentView: View {
 
     // Кешированные данные для производительности
     @State private var cachedSummary: Summary?
+    @State private var wallpaperImage: UIImage? = nil
+    @State private var isDarkWallpaper: Bool = false
     
     var body: some View {
         NavigationView {
             ScrollView {
-            VStack(spacing: AppSpacing.lg) {
-                accountsSection
-                    .screenPadding()
+                VStack(spacing: AppSpacing.lg) {
+                    accountsSection
+                        .screenPadding()
 
-                if !viewModel.allTransactions.isEmpty {
-                    NavigationLink(destination: HistoryView(viewModel: viewModel, initialCategory: nil)
+                    if !viewModel.allTransactions.isEmpty {
+                        NavigationLink(destination: HistoryView(viewModel: viewModel, initialCategory: nil)
+                            .environmentObject(timeFilterManager)) {
+                            analyticsCard
+                                .screenPadding()
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    
+                    NavigationLink(destination: SubscriptionsListView(viewModel: viewModel)
                         .environmentObject(timeFilterManager)) {
-                        analyticsCard
+                        subscriptionsCard
                             .screenPadding()
                     }
                     .buttonStyle(PlainButtonStyle())
-                }
-                
-                NavigationLink(destination: SubscriptionsListView(viewModel: viewModel)
-                    .environmentObject(timeFilterManager)) {
-                    subscriptionsCard
-                        .screenPadding()
-                }
-                .buttonStyle(PlainButtonStyle())
 
-                QuickAddTransactionView(viewModel: viewModel)
-                    .screenPadding()
+                        QuickAddTransactionView(viewModel: viewModel, adaptiveTextColor: adaptiveTextColor)
+                            .screenPadding()
 
-                if viewModel.isLoading {
-                    VStack(spacing: 12) {
-                        if let progress = ocrProgress {
-                            ProgressView(value: Double(progress.current), total: Double(progress.total)) {
-                                Text("Распознавание текста: страница \(progress.current) из \(progress.total)")
-                                    .font(.subheadline)
+                    if viewModel.isLoading {
+                        VStack(spacing: 12) {
+                            if let progress = ocrProgress {
+                                ProgressView(value: Double(progress.current), total: Double(progress.total)) {
+                                    Text("Распознавание текста: страница \(progress.current) из \(progress.total)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                Text("Страница \(progress.current) из \(progress.total)")
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
+                            } else {
+                                ProgressView("Обработка PDF...")
                             }
-                            Text("Страница \(progress.current) из \(progress.total)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        } else {
-                            ProgressView("Обработка PDF...")
                         }
+                        .padding(AppSpacing.md)
                     }
-                    .padding(AppSpacing.md)
-                }
 
-                if let error = viewModel.errorMessage {
-                    ErrorMessageView(message: error)
-                        .screenPadding()
+                    if let error = viewModel.errorMessage {
+                        ErrorMessageView(message: error)
+                            .screenPadding()
+                    }
                 }
-            }
                 .padding(.vertical, AppSpacing.md)
+            }
+            .scrollContentBackground(.hidden)
+            .safeAreaInset(edge: .bottom) {
+                // Primary actions: голос и загрузка выписок (liquid glass стиль iOS 16+)
+                HStack(spacing: AppSpacing.xl) {
+                    // Кнопка голосового ввода
+                    Button(action: {
+                        showingVoiceInput = true
+                    }) {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(adaptiveTextColor)
+                            .frame(width: 64, height: 64)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    }
+
+                    // Кнопка загрузки выписок
+                    Button(action: {
+                        showingFilePicker = true
+                    }) {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(adaptiveTextColor)
+                            .frame(width: 64, height: 64)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    }
+                }
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.bottom, AppSpacing.xl)
+//                .frame(maxWidth: .infinity)
+//                .background(Color.clear)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .tabBar)
+            .background {
+                // Wallpaper фон - должен покрывать весь экран, включая область под safeAreaInset
+                if let wallpaperImage = wallpaperImage {
+                    Image(uiImage: wallpaperImage)
+                        .resizable()
+                        .scaledToFill()
+                        .ignoresSafeArea(.all, edges: .all)
+                } else {
+                    defaultGradient
+                }
             }
             .sheet(isPresented: $showingFilePicker) {
                 DocumentPicker { url in
@@ -181,40 +230,16 @@ struct ContentView: View {
             .sheet(isPresented: $showingTimeFilter) {
                 TimeFilterView(filterManager: timeFilterManager)
             }
-            .safeAreaInset(edge: .bottom) {
-                // Primary actions: голос и загрузка выписок (liquid glass стиль iOS 16+)
-                HStack(spacing: AppSpacing.xl) {
-                    // Кнопка голосового ввода
-                    Button(action: {
-                        showingVoiceInput = true
-                    }) {
-                        Image(systemName: "mic.fill")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 64, height: 64)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                    }
-
-                    // Кнопка загрузки выписок
-                    Button(action: {
-                        showingFilePicker = true
-                    }) {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 64, height: 64)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                    }
-                }
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.bottom, AppSpacing.xl)
-                .frame(maxWidth: .infinity)
-            }
             .onAppear {
                 PerformanceProfiler.start("ContentView.onAppear")
                 updateSummary()
+                loadWallpaper()
+                // Очищаем фон NavigationView через UIKit
+                let appearance = UINavigationBarAppearance()
+                appearance.configureWithTransparentBackground()
+                appearance.backgroundColor = .clear
+                UINavigationBar.appearance().standardAppearance = appearance
+                UINavigationBar.appearance().scrollEdgeAppearance = appearance
                 PerformanceProfiler.end("ContentView.onAppear")
             }
             .onChange(of: viewModel.allTransactions.count) { _, _ in
@@ -222,6 +247,9 @@ struct ContentView: View {
             }
             .onChange(of: timeFilterManager.currentFilter) { _, _ in
                 updateSummary()
+            }
+            .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
+                loadWallpaper()
             }
         }
     }
@@ -231,6 +259,103 @@ struct ContentView: View {
         PerformanceProfiler.start("ContentView.updateSummary")
         cachedSummary = viewModel.summary(timeFilterManager: timeFilterManager)
         PerformanceProfiler.end("ContentView.updateSummary")
+    }
+    
+    // Загрузка обоев
+    private func loadWallpaper() {
+        guard let wallpaperName = viewModel.appSettings.wallpaperImageName else {
+            wallpaperImage = nil
+            isDarkWallpaper = false
+            return
+        }
+        
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let fileURL = documentsPath.appendingPathComponent(wallpaperName)
+        
+        // Проверяем существование файла
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            wallpaperImage = nil
+            isDarkWallpaper = false
+            return
+        }
+        
+        // Загружаем изображение напрямую из файла
+        if let image = UIImage(contentsOfFile: fileURL.path) {
+            // Используем изображение напрямую, без пересоздания через CGImage
+            // Это избегает проблем с кешированием и устаревшими API
+            wallpaperImage = image
+            // Определяем яркость изображения для адаптации цвета текста
+            isDarkWallpaper = calculateBrightness(image: image) < 0.5
+        } else {
+            wallpaperImage = nil
+            isDarkWallpaper = false
+        }
+    }
+    
+    // Вычисление средней яркости изображения (возвращает значение от 0.0 до 1.0)
+    private func calculateBrightness(image: UIImage) -> CGFloat {
+        guard let cgImage = image.cgImage else {
+            return 0.5 // По умолчанию считаем средне-ярким
+        }
+        
+        // Создаем уменьшенную версию изображения для быстрого анализа
+        let size = CGSize(width: 100, height: 100)
+        let context = CGContext(
+            data: nil,
+            width: Int(size.width),
+            height: Int(size.height),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        )
+        
+        guard let ctx = context else {
+            return 0.5
+        }
+        
+        ctx.interpolationQuality = .low
+        ctx.draw(cgImage, in: CGRect(origin: .zero, size: size))
+        
+        guard let data = ctx.data else {
+            return 0.5
+        }
+        
+        let ptr = data.bindMemory(to: UInt8.self, capacity: Int(size.width * size.height * 4))
+        var totalBrightness: CGFloat = 0
+        let pixelCount = Int(size.width * size.height)
+        
+        // Вычисляем яркость каждого пикселя (используя формулу luminance)
+        for i in 0..<pixelCount {
+            let offset = i * 4
+            let r = CGFloat(ptr[offset])
+            let g = CGFloat(ptr[offset + 1])
+            let b = CGFloat(ptr[offset + 2])
+            
+            // Формула относительной яркости (luminance)
+            let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+            totalBrightness += brightness
+        }
+        
+        return totalBrightness / CGFloat(pixelCount)
+    }
+    
+    // Адаптивный цвет текста в зависимости от яркости обоев
+    private var adaptiveTextColor: Color {
+        if wallpaperImage != nil {
+            return isDarkWallpaper ? .white : .black
+        }
+        // Если нет обоев, используем системный цвет
+        return Color(UIColor.label)
+    }
+    
+    private var defaultGradient: some View {
+        LinearGradient(
+            colors: [Color.blue.opacity(0.3), Color.green.opacity(0.3)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea(.all, edges: .all)
     }
     
     private var timeFilterButton: some View {
@@ -258,7 +383,7 @@ struct ContentView: View {
             if viewModel.accounts.isEmpty {
                 Text("Нет счетов")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(adaptiveTextColor)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -274,15 +399,17 @@ struct ContentView: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(account.name)
                                             .font(.title3)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(adaptiveTextColor)
                                         Text(Formatting.formatCurrency(account.balance, currency: account.currency))
                                             .font(.subheadline)
                                             .fontWeight(.semibold)
+                                            .foregroundStyle(adaptiveTextColor)
                                     }
                                 }
-                                .padding(10)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(10)
+                                .padding(16)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay(Color.white.opacity(0.001))
+                                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
@@ -307,60 +434,68 @@ struct ContentView: View {
         let expensePercent = total > 0 ? (summary.totalExpenses / total) : 0.0
         let incomePercent = total > 0 ? (summary.totalIncome / total) : 0.0
 
-        return AnyView(VStack(alignment: .leading, spacing: 12) {
+        return AnyView(VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("History")
+                Text("История")
                     .font(.headline)
                     .fontWeight(.semibold)
+                    .foregroundStyle(adaptiveTextColor)
                 
                 Spacer()
                 
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(adaptiveTextColor)
             }
             
-            // Суммы сверху
-            HStack {
-                Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.red)
-                
-                Spacer()
-                
-                Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.green)
-            }
-            
-            // Одна полоса, где расходы и доходы толкают друг друга
-            GeometryReader { geometry in
-                HStack(spacing: 0) {
-                    // Расходы слева
-                    Rectangle()
-                        .fill(Color.red)
-                        .frame(width: geometry.size.width * expensePercent)
-                    
-                    // Доходы справа
-                    Rectangle()
-                        .fill(Color.green)
-                        .frame(width: geometry.size.width * incomePercent)
-                    
-                    // Пустое пространство
-                    Spacer()
+            // Прогресс-бар с суммами под ним
+            VStack(spacing: 8) {
+                // Прогресс-бар
+                GeometryReader { geometry in
+                    HStack(spacing: 0) {
+                        // Расходы слева
+                        if expensePercent > 0 {
+                            Rectangle()
+                                .fill(Color.red)
+                                .frame(width: geometry.size.width * expensePercent)
+                        }
+                        
+                        // Доходы справа
+                        if incomePercent > 0 {
+                            Rectangle()
+                                .fill(Color.green)
+                                .frame(width: geometry.size.width * incomePercent)
+                        }
+                        
+                        // Пустое пространство
+                        Spacer()
+                    }
+                    .cornerRadius(6)
                 }
-                .cornerRadius(4)
+                .frame(height: 12)
+                
+                // Суммы под прогресс-баром
+                HStack {
+                    Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.red)
+                    
+                    Spacer()
+                    
+                    Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.green)
+                }
             }
-            .frame(height: 8)
             
             // В планах
             if summary.plannedAmount > 0 {
                 HStack {
                     Text("В планах")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(adaptiveTextColor)
                     
                     Spacer()
                     
@@ -371,7 +506,10 @@ struct ContentView: View {
                 }
             }
         }
-        .cardStyle())
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(Color.white.opacity(0.001))
+        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5))
     }
     
     
@@ -615,4 +753,5 @@ struct ErrorMessageView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(TimeFilterManager())
 }
