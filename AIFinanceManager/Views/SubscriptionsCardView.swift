@@ -83,31 +83,9 @@ struct SubscriptionsCardView: View {
             }
         }
         .padding(16)
-        .background {
-            // Многослойный liquid glass эффект с размытием и приломлением
-            ZStack {
-                // Основной материал с размытием
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(.thinMaterial)
-                
-                // Эффект приломления - светлая граница сверху
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color.white.opacity(0.2),
-                                Color.white.opacity(0.05),
-                                Color.clear
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .blendMode(.overlay)
-            }
-        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
         .overlay {
-            // Дополнительная граница для глубины
+            // Граница для глубины
             RoundedRectangle(cornerRadius: 20)
                 .stroke(
                     LinearGradient(
@@ -121,8 +99,8 @@ struct SubscriptionsCardView: View {
                     lineWidth: 1
                 )
         }
-//        .overlay(Color.white.opacity(0.001))
-        .shadow(color: .black.opacity(0.15), radius: 15, x: 0, y: 8)
+        .overlay(Color.white.opacity(0.001))
+        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
         .task {
             await calculateTotal()
         }
@@ -163,54 +141,9 @@ struct SubscriptionsCardView: View {
         }
         
         wallpaperImage = image
-        isDarkWallpaper = calculateBrightness(image: image) < 0.5
+        isDarkWallpaper = ImageBrightnessCalculator.isDark(image)
     }
-    
-    // Вычисление средней яркости изображения
-    private func calculateBrightness(image: UIImage) -> CGFloat {
-        guard let cgImage = image.cgImage else {
-            return 0.5
-        }
-        
-        let size = CGSize(width: 100, height: 100)
-        let context = CGContext(
-            data: nil,
-            width: Int(size.width),
-            height: Int(size.height),
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
-        )
-        
-        guard let ctx = context else {
-            return 0.5
-        }
-        
-        ctx.interpolationQuality = .low
-        ctx.draw(cgImage, in: CGRect(origin: .zero, size: size))
-        
-        guard let data = ctx.data else {
-            return 0.5
-        }
-        
-        let ptr = data.bindMemory(to: UInt8.self, capacity: Int(size.width * size.height * 4))
-        var totalBrightness: CGFloat = 0
-        let pixelCount = Int(size.width * size.height)
-        
-        for i in 0..<pixelCount {
-            let offset = i * 4
-            let r = CGFloat(ptr[offset])
-            let g = CGFloat(ptr[offset + 1])
-            let b = CGFloat(ptr[offset + 2])
-            
-            let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
-            totalBrightness += brightness
-        }
-        
-        return totalBrightness / CGFloat(pixelCount)
-    }
-    
+
     private func calculateTotal() async {
         guard !subscriptions.isEmpty else {
             await MainActor.run {

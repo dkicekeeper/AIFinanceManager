@@ -12,7 +12,6 @@ struct ContentView: View {
     @StateObject private var viewModel = TransactionsViewModel()
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var showingFilePicker = false
-    @State private var selectedFileURL: URL?
     @State private var selectedAccount: Account?
     @State private var showingVoiceInput = false
     @State private var showingVoiceConfirmation = false
@@ -112,8 +111,6 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.bottom, AppSpacing.xl)
-//                .frame(maxWidth: .infinity)
-//                .background(Color.clear)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -126,12 +123,12 @@ struct ContentView: View {
                         .scaledToFill()
                         .ignoresSafeArea(.all, edges: .all)
                 } else {
-                    defaultGradient
+                    // Базовый фон как везде
+                    Color.clear
                 }
             }
             .sheet(isPresented: $showingFilePicker) {
                 DocumentPicker { url in
-                    selectedFileURL = url
                     Task {
                         await analyzePDF(url: url)
                     }
@@ -261,83 +258,39 @@ struct ContentView: View {
         PerformanceProfiler.end("ContentView.updateSummary")
     }
     
-    // Загрузка обоев
+    // Загрузка обоев (асинхронно для производительности)
     private func loadWallpaper() {
-        guard let wallpaperName = viewModel.appSettings.wallpaperImageName else {
-            wallpaperImage = nil
-            isDarkWallpaper = false
-            return
+        Task.detached(priority: .userInitiated) {
+            guard let wallpaperName = await MainActor.run(body: { viewModel.appSettings.wallpaperImageName }) else {
+                await MainActor.run {
+                    wallpaperImage = nil
+                    isDarkWallpaper = false
+                }
+                return
+            }
+
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsPath.appendingPathComponent(wallpaperName)
+
+            // Проверяем существование файла
+            guard FileManager.default.fileExists(atPath: fileURL.path),
+                  let image = UIImage(contentsOfFile: fileURL.path) else {
+                await MainActor.run {
+                    wallpaperImage = nil
+                    isDarkWallpaper = false
+                }
+                return
+            }
+
+            // Вычисляем яркость в background thread для производительности
+            let isDark = ImageBrightnessCalculator.isDark(image)
+
+            // Обновляем UI на главном потоке
+            await MainActor.run {
+                wallpaperImage = image
+                isDarkWallpaper = isDark
+            }
         }
-        
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let fileURL = documentsPath.appendingPathComponent(wallpaperName)
-        
-        // Проверяем существование файла
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            wallpaperImage = nil
-            isDarkWallpaper = false
-            return
-        }
-        
-        // Загружаем изображение напрямую из файла
-        if let image = UIImage(contentsOfFile: fileURL.path) {
-            // Используем изображение напрямую, без пересоздания через CGImage
-            // Это избегает проблем с кешированием и устаревшими API
-            wallpaperImage = image
-            // Определяем яркость изображения для адаптации цвета текста
-            isDarkWallpaper = calculateBrightness(image: image) < 0.5
-        } else {
-            wallpaperImage = nil
-            isDarkWallpaper = false
-        }
-    }
-    
-    // Вычисление средней яркости изображения (возвращает значение от 0.0 до 1.0)
-    private func calculateBrightness(image: UIImage) -> CGFloat {
-        guard let cgImage = image.cgImage else {
-            return 0.5 // По умолчанию считаем средне-ярким
-        }
-        
-        // Создаем уменьшенную версию изображения для быстрого анализа
-        let size = CGSize(width: 100, height: 100)
-        let context = CGContext(
-            data: nil,
-            width: Int(size.width),
-            height: Int(size.height),
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
-        )
-        
-        guard let ctx = context else {
-            return 0.5
-        }
-        
-        ctx.interpolationQuality = .low
-        ctx.draw(cgImage, in: CGRect(origin: .zero, size: size))
-        
-        guard let data = ctx.data else {
-            return 0.5
-        }
-        
-        let ptr = data.bindMemory(to: UInt8.self, capacity: Int(size.width * size.height * 4))
-        var totalBrightness: CGFloat = 0
-        let pixelCount = Int(size.width * size.height)
-        
-        // Вычисляем яркость каждого пикселя (используя формулу luminance)
-        for i in 0..<pixelCount {
-            let offset = i * 4
-            let r = CGFloat(ptr[offset])
-            let g = CGFloat(ptr[offset + 1])
-            let b = CGFloat(ptr[offset + 2])
-            
-            // Формула относительной яркости (luminance)
-            let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
-            totalBrightness += brightness
-        }
-        
-        return totalBrightness / CGFloat(pixelCount)
     }
     
     // Адаптивный цвет текста в зависимости от яркости обоев
@@ -349,35 +302,7 @@ struct ContentView: View {
         return Color(UIColor.label)
     }
     
-    private var defaultGradient: some View {
-        LinearGradient(
-            colors: [Color.blue.opacity(0.3), Color.green.opacity(0.3)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea(.all, edges: .all)
-    }
-    
-    private var timeFilterButton: some View {
-        Button(action: {
-            showingTimeFilter = true
-        }) {
-            HStack {
-                Image(systemName: "calendar")
-                Text(timeFilterManager.currentFilter.displayName)
-                Image(systemName: "chevron.down")
-                    .font(.caption)
-            }
-            .font(.subheadline)
-            .fontWeight(.medium)
-            .foregroundColor(.primary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color(.systemGray5))
-            .cornerRadius(20)
-        }
-    }
-    
+
     private var accountsSection: some View {
         HStack {
             if viewModel.accounts.isEmpty {
@@ -408,6 +333,21 @@ struct ContentView: View {
                                 }
                                 .padding(16)
                                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay {
+                                    // Граница для глубины
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    Color.white.opacity(0.3),
+                                                    Color.white.opacity(0.1)
+                                                ]),
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1
+                                        )
+                                }
                                 .overlay(Color.white.opacity(0.001))
                                 .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                             }
@@ -508,6 +448,21 @@ struct ContentView: View {
         }
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            // Граница для глубины
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.3),
+                            Color.white.opacity(0.1)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
         .overlay(Color.white.opacity(0.001))
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5))
     }

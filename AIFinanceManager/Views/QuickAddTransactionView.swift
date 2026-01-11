@@ -44,6 +44,21 @@ struct QuickAddTransactionView: View {
         }
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            // Граница для глубины
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.3),
+                            Color.white.opacity(0.1)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
         .overlay(Color.white.opacity(0.001))
         .sheet(isPresented: Binding(
             get: { selectedCategory != nil },
