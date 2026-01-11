@@ -142,7 +142,7 @@ struct AccountEditView: View {
                         
                         Picker("Валюта", selection: $currency) {
                             ForEach(currencies, id: \.self) { curr in
-                                Text(curr).tag(curr)
+                                Text(Formatting.currencySymbol(for: curr)).tag(curr)
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
@@ -153,10 +153,12 @@ struct AccountEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена", action: onCancel)
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Сохранить") {
+                    Button {
                         // Если balanceText пустой, используем 0 по умолчанию
                         let balance: Double
                         if balanceText.isEmpty {
@@ -175,6 +177,8 @@ struct AccountEditView: View {
                             bankLogo: selectedBankLogo
                         )
                         onSave(newAccount)
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
                     .disabled(name.isEmpty)
                 }

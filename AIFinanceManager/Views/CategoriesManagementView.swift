@@ -271,10 +271,12 @@ struct CategoryEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена", action: onCancel)
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Сохранить") {
+                    Button {
                         let newCategory = CustomCategory(
                             id: category?.id ?? UUID().uuidString,
                             name: name,
@@ -283,6 +285,8 @@ struct CategoryEditView: View {
                             type: type
                         )
                         onSave(newCategory)
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
                     .disabled(name.isEmpty || iconName.isEmpty)
                 }

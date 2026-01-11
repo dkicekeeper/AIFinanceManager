@@ -131,7 +131,7 @@ struct SubscriptionEditView: View {
                         
                         Picker("Валюта", selection: $currency) {
                             ForEach(currencies, id: \.self) { curr in
-                                Text(curr).tag(curr)
+                                Text(Formatting.currencySymbol(for: curr)).tag(curr)
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
@@ -189,11 +189,15 @@ struct SubscriptionEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена", action: onCancel)
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Сохранить") {
+                    Button {
                         saveSubscription()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
                     .disabled(description.isEmpty || amountText.isEmpty)
                 }

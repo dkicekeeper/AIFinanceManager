@@ -107,7 +107,7 @@ struct SubscriptionDetailView: View {
             }
         }
         
-        // Фильтруем транзакции по диапазону дат и сортируем в обратном порядке (новые сверху)
+        // Фильтруем транзакции по диапазону дат и сортируем: ближайшие сверху, дальние снизу
         return allTransactions
             .filter { transaction in
                 guard let transactionDate = dateFormatter.date(from: transaction.date) else {
@@ -115,7 +115,13 @@ struct SubscriptionDetailView: View {
                 }
                 return transactionDate >= dateRange.start && transactionDate < dateRange.end
             }
-            .sorted { $0.date > $1.date }
+            .sorted { transaction1, transaction2 in
+                guard let date1 = dateFormatter.date(from: transaction1.date),
+                      let date2 = dateFormatter.date(from: transaction2.date) else {
+                    return transaction1.date < transaction2.date // Fallback: строковое сравнение
+                }
+                return date1 < date2 // Ближайшие сверху
+            }
     }
     
     private var nextChargeDate: Date? {

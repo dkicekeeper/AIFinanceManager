@@ -13,29 +13,39 @@ struct Formatting {
         "USD": "$",
         "EUR": "€",
         "RUB": "₽",
-        "GBP": "£"
+        "GBP": "£",
+        "CNY": "¥",
+        "JPY": "¥"
     ]
-
-    // Кешированный форматтер для оптимизации производительности
-    private static let cachedCurrencyFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        formatter.locale = Locale(identifier: "ru_RU")
-        return formatter
-    }()
-
+    
+    /// Получает символ валюты по коду
+    /// - Parameter currency: Код валюты (например, "USD", "KZT")
+    /// - Returns: Символ валюты (например, "$", "₸") или код валюты, если символ не найден
+    static func currencySymbol(for currency: String) -> String {
+        return currencySymbols[currency.uppercased()] ?? currency
+    }
+    
+    /// Форматирует сумму с символом валюты
+    /// - Parameters:
+    ///   - amount: Сумма
+    ///   - currency: Код валюты
+    /// - Returns: Отформатированная строка с символом валюты (например, "1,234.56 $")
     static func formatCurrency(_ amount: Double, currency: String) -> String {
-        // Используем кешированный форматтер
-        cachedCurrencyFormatter.currencyCode = currency
-
-        if let formatted = cachedCurrencyFormatter.string(from: NSNumber(value: amount)) {
-            return formatted
+        let symbol = currencySymbol(for: currency)
+        
+        // Форматируем число с разделителями тысяч
+        let numberFormatter = NumberFormatter()
+        numberFormatter.numberStyle = .decimal
+        numberFormatter.minimumFractionDigits = 2
+        numberFormatter.maximumFractionDigits = 2
+        numberFormatter.groupingSeparator = " "
+        numberFormatter.decimalSeparator = "."
+        
+        guard let formattedAmount = numberFormatter.string(from: NSNumber(value: amount)) else {
+            return String(format: "%.2f %@", amount, symbol)
         }
-
-        // Fallback
-        let symbol = currencySymbols[currency.uppercased()] ?? currency
-        return String(format: "%.2f %@", amount, symbol)
+        
+        // Возвращаем в формате: сумма + символ (например, "1 234.56 $" или "1,234.56 ₸")
+        return "\(formattedAmount) \(symbol)"
     }
 }

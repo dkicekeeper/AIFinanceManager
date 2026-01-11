@@ -140,15 +140,19 @@ struct CSVColumnMappingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Далее") {
+                    Button {
                         if canProceed {
                             showingEntityMapping = true
                         }
+                    } label: {
+                        Image(systemName: "arrow.right")
                     }
                     .disabled(!canProceed)
                 }

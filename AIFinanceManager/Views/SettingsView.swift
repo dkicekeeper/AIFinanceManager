@@ -26,7 +26,7 @@ struct SettingsView: View {
                     Spacer()
                     Picker("", selection: $viewModel.appSettings.baseCurrency) {
                         ForEach(AppSettings.availableCurrencies, id: \.self) { currency in
-                            Text(currency).tag(currency)
+                            Text(Formatting.currencySymbol(for: currency)).tag(currency)
                         }
                     }
                     .pickerStyle(MenuPickerStyle())

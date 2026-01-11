@@ -189,9 +189,9 @@ struct ContentView: View {
                         showingVoiceInput = true
                     }) {
                         Image(systemName: "mic.fill")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(.primary)
-                            .frame(width: 56, height: 56)
+                            .frame(width: 64, height: 64)
                             .background(.ultraThinMaterial, in: Circle())
                             .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                     }
@@ -201,9 +201,9 @@ struct ContentView: View {
                         showingFilePicker = true
                     }) {
                         Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(.primary)
-                            .frame(width: 56, height: 56)
+                            .frame(width: 64, height: 64)
                             .background(.ultraThinMaterial, in: Circle())
                             .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                     }

@@ -66,14 +66,18 @@ struct DateButtonsView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Отмена") {
+                        Button {
                             showingDatePicker = false
+                        } label: {
+                            Image(systemName: "xmark")
                         }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Готово") {
+                        Button {
                             onSave(selectedDate)
                             showingDatePicker = false
+                        } label: {
+                            Image(systemName: "checkmark")
                         }
                     }
                 }

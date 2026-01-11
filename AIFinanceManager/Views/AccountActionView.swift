@@ -112,7 +112,7 @@ struct AccountActionView: View {
                         
                         Picker("", selection: $selectedCurrency) {
                             ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
-                                Text(currency).tag(currency)
+                                Text(Formatting.currencySymbol(for: currency)).tag(currency)
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
@@ -138,8 +138,10 @@ struct AccountActionView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {

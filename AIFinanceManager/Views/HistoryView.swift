@@ -14,6 +14,7 @@ struct HistoryView: View {
     @State private var searchText = ""
     @State private var debouncedSearchText = "" // Дебаунсированный поиск
     @State private var showingCategoryFilter = false
+    @State private var isSearchActive = false
     let initialCategory: String? // Категория для предустановленного фильтра (из лонгтапа)
     let initialAccountId: String? // Счет для предустановленного фильтра
     
@@ -42,7 +43,7 @@ struct HistoryView: View {
         }
         .navigationTitle("History")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search by amount, category, or description")
+        .searchable(text: $searchText, isPresented: $isSearchActive, prompt: "Search by amount, category, or description")
         .task {
             // Устанавливаем фильтр по категории до onAppear, чтобы гарантировать применение
             if let category = initialCategory {
@@ -1126,14 +1127,18 @@ struct CategoryFilterView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Применить") {
+                    Button {
                         applyFilter()
                         dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
                 }
             }

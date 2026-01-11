@@ -110,8 +110,10 @@ struct TransactionPreviewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
                 }
             }
@@ -213,7 +215,7 @@ struct TransactionPreviewRow: View {
                 )) {
                     Text("Без счета").tag("")
                     ForEach(availableAccounts) { account in
-                        Text("\(account.name) (\(account.currency))").tag(account.id)
+                        Text("\(account.name) (\(Formatting.currencySymbol(for: account.currency)))").tag(account.id)
                     }
                 }
                 .pickerStyle(MenuPickerStyle())

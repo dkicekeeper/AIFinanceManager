@@ -263,7 +263,7 @@ struct AddTransactionModal: View {
 
                                 Picker("", selection: $selectedCurrency) {
                                     ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
-                                        Text(currency).tag(currency)
+                                        Text(Formatting.currencySymbol(for: currency)).tag(currency)
                                     }
                                 }
                                 .pickerStyle(MenuPickerStyle())
@@ -378,7 +378,9 @@ struct AddTransactionModal: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена", action: onDismiss)
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark")
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {

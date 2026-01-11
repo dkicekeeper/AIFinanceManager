@@ -93,12 +93,14 @@ struct CSVEntityMappingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Назад") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "arrow.left")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Импортировать") {
+                    Button {
                         entityMapping.accountMappings = accountMappings
                         entityMapping.categoryMappings = categoryMappings
                         // Закрываем модалку сопоставления сущностей перед началом импорта
@@ -107,6 +109,8 @@ struct CSVEntityMappingView: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             onComplete(entityMapping)
                         }
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
                     }
                 }
             }

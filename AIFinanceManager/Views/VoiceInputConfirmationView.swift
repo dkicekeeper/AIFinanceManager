@@ -88,7 +88,7 @@ struct VoiceInputConfirmationView: View {
                         
                         Picker("", selection: $selectedCurrency) {
                             ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
-                                Text(currency).tag(currency)
+                                Text(Formatting.currencySymbol(for: currency)).tag(currency)
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
@@ -164,13 +164,17 @@ struct VoiceInputConfirmationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Сохранить") {
+                    Button {
                         saveTransaction()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
                     .disabled(!canSave)
                 }

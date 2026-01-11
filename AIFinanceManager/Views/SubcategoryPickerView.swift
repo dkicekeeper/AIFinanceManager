@@ -31,45 +31,37 @@ struct SubcategoryPickerView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
-                // Поиск
-                TextField("Поиск подкатегорий", text: $searchText)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .padding()
-                
-                // Список подкатегорий
-                List {
-                    ForEach(availableSubcategories) { subcategory in
-                        Button(action: {
-                            onSelect(subcategory.id)
-                        }) {
-                            Text(subcategory.name)
-                        }
+            List {
+                ForEach(availableSubcategories) { subcategory in
+                    Button(action: {
+                        onSelect(subcategory.id)
+                    }) {
+                        Text(subcategory.name)
                     }
                 }
                 
                 // Кнопка создания новой подкатегории
-                Button(action: {
-                    showingCreateSubcategory = true
-                }) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Создать новую подкатегорию")
+                Section {
+                    Button(action: {
+                        showingCreateSubcategory = true
+                    }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Создать новую подкатегорию")
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
                 }
-                .padding()
             }
             .navigationTitle("Выберите подкатегорию")
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $searchText, prompt: "Поиск подкатегорий")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Отмена") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
                 }
             }
@@ -101,15 +93,19 @@ struct CreateSubcategoryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Сохранить") {
+                    Button {
                         let subcategory = viewModel.addSubcategory(name: name)
                         onSave(subcategory)
                         dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
                     .disabled(name.isEmpty)
                 }
