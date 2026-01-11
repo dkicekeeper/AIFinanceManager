@@ -33,10 +33,6 @@ struct ContentView: View {
         NavigationView {
             ScrollView {
             VStack(spacing: AppSpacing.lg) {
-                // Фильтр по времени
-                timeFilterButton
-                    .screenPadding()
-
                 accountsSection
                     .screenPadding()
 
@@ -48,6 +44,13 @@ struct ContentView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
+                
+                NavigationLink(destination: SubscriptionsListView(viewModel: viewModel)
+                    .environmentObject(timeFilterManager)) {
+                    subscriptionsCard
+                        .screenPadding()
+                }
+                .buttonStyle(PlainButtonStyle())
 
                 QuickAddTransactionView(viewModel: viewModel)
                     .screenPadding()
@@ -77,7 +80,6 @@ struct ContentView: View {
             }
                 .padding(.vertical, AppSpacing.md)
             }
-            .navigationTitle("AI Finance Manager")
             .sheet(isPresented: $showingFilePicker) {
                 DocumentPicker { url in
                     selectedFileURL = url
@@ -126,6 +128,20 @@ struct ContentView: View {
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        showingTimeFilter = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                            Text(timeFilterManager.currentFilter.displayName)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.primary)
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: SettingsView(viewModel: viewModel)) {
                         Image(systemName: "gearshape")
@@ -166,18 +182,18 @@ struct ContentView: View {
                 TimeFilterView(filterManager: timeFilterManager)
             }
             .safeAreaInset(edge: .bottom) {
-                // Primary actions: голос и загрузка выписок (круглые кнопки в стиле iOS)
+                // Primary actions: голос и загрузка выписок (liquid glass стиль iOS 16+)
                 HStack(spacing: AppSpacing.xl) {
                     // Кнопка голосового ввода
                     Button(action: {
                         showingVoiceInput = true
                     }) {
                         Image(systemName: "mic.fill")
-                            .font(.system(size: AppIconSize.md, weight: .medium))
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(.primary)
-                            .frame(width: AppIconSize.fab, height: AppIconSize.fab)
+                            .frame(width: 56, height: 56)
                             .background(.ultraThinMaterial, in: Circle())
-                            .shadowStyle(AppShadow.md)
+                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                     }
 
                     // Кнопка загрузки выписок
@@ -185,11 +201,11 @@ struct ContentView: View {
                         showingFilePicker = true
                     }) {
                         Image(systemName: "doc.badge.plus")
-                            .font(.system(size: AppIconSize.md, weight: .medium))
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(.primary)
-                            .frame(width: AppIconSize.fab, height: AppIconSize.fab)
+                            .frame(width: 56, height: 56)
                             .background(.ultraThinMaterial, in: Circle())
-                            .shadowStyle(AppShadow.md)
+                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                     }
                 }
                 .padding(.horizontal, AppSpacing.lg)
@@ -276,6 +292,10 @@ struct ContentView: View {
             }
         }
     }
+    private var subscriptionsCard: some View {
+        SubscriptionsCardView(viewModel: viewModel)
+    }
+    
     private var analyticsCard: some View {
         // Используем кешированный summary вместо повторного вызова viewModel.summary()
         guard let summary = cachedSummary else {

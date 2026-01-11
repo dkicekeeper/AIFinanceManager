@@ -50,5 +50,7 @@
 	<string>This app needs access to speech recognition to add transactions by voice.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to microphone to record voice for adding transactions.</string>
+	<key>LOGO_DEV_PUBLIC_KEY</key>
+	<string>pk_Riva83iaQH6NOq-Q9GcAfQ</string>
 </dict>
 </plist>

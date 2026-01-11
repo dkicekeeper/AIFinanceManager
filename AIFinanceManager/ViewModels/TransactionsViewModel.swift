@@ -1450,6 +1450,172 @@ class TransactionsViewModel: ObservableObject {
         // Удаляем серию
         recurringSeries.removeAll { $0.id == seriesId }
         saveToStorage()
+        
+        // Cancel notifications for subscriptions
+        Task {
+            await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
+        }
+    }
+    
+    // MARK: - Subscriptions
+    
+    /// Get all subscriptions
+    var subscriptions: [RecurringSeries] {
+        recurringSeries.filter { $0.isSubscription }
+    }
+    
+    /// Get active subscriptions
+    var activeSubscriptions: [RecurringSeries] {
+        subscriptions.filter { $0.subscriptionStatus == .active && $0.isActive }
+    }
+    
+    /// Create a new subscription
+    func createSubscription(
+        amount: Decimal,
+        currency: String,
+        category: String,
+        subcategory: String?,
+        description: String,
+        accountId: String?,
+        frequency: RecurringFrequency,
+        startDate: String,
+        brandLogo: BankLogo?,
+        brandId: String?,
+        reminderOffsets: [Int]?
+    ) -> RecurringSeries {
+        let series = RecurringSeries(
+            amount: amount,
+            currency: currency,
+            category: category,
+            subcategory: subcategory,
+            description: description,
+            accountId: accountId,
+            targetAccountId: nil,
+            frequency: frequency,
+            startDate: startDate,
+            kind: .subscription,
+            brandLogo: brandLogo,
+            brandId: brandId,
+            reminderOffsets: reminderOffsets,
+            status: .active
+        )
+        recurringSeries.append(series)
+        saveToStorage()
+        generateRecurringTransactions()
+        
+        // Schedule notifications
+        Task {
+            if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
+                await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
+            }
+        }
+        
+        return series
+    }
+    
+    /// Update a subscription
+    func updateSubscription(_ series: RecurringSeries) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
+            let oldSeries = recurringSeries[index]
+            
+            // If frequency or start date changed, remove future transactions
+            let frequencyChanged = oldSeries.frequency != series.frequency
+            let startDateChanged = oldSeries.startDate != series.startDate
+            
+            recurringSeries[index] = series
+            
+            if frequencyChanged || startDateChanged {
+                // Remove all future transactions for this series
+                let today = Calendar.current.startOfDay(for: Date())
+                let dateFormatter = Self.dateFormatter
+                
+                let futureOccurrences = recurringOccurrences.filter { occurrence in
+                    guard occurrence.seriesId == series.id,
+                          let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
+                        return false
+                    }
+                    return occurrenceDate > today
+                }
+                
+                for occurrence in futureOccurrences {
+                    allTransactions.removeAll { $0.id == occurrence.transactionId }
+                    recurringOccurrences.removeAll { $0.id == occurrence.id }
+                }
+            }
+            
+            saveToStorage()
+            generateRecurringTransactions()
+            
+            // Update notifications
+            Task {
+                if series.subscriptionStatus == .active {
+                    if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
+                        await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
+                    }
+                } else {
+                    await SubscriptionNotificationScheduler.shared.cancelNotifications(for: series.id)
+                }
+            }
+        }
+    }
+    
+    /// Pause a subscription
+    func pauseSubscription(_ seriesId: String) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
+            recurringSeries[index].status = .paused
+            recurringSeries[index].isActive = false
+            saveToStorage()
+            
+            // Cancel notifications
+            Task {
+                await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
+            }
+        }
+    }
+    
+    /// Resume a subscription
+    func resumeSubscription(_ seriesId: String) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
+            recurringSeries[index].status = .active
+            recurringSeries[index].isActive = true
+            saveToStorage()
+            generateRecurringTransactions()
+            
+            // Schedule notifications
+            Task {
+                if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: recurringSeries[index]) {
+                    await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: recurringSeries[index], nextChargeDate: nextChargeDate)
+                }
+            }
+        }
+    }
+    
+    /// Archive a subscription
+    func archiveSubscription(_ seriesId: String) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
+            recurringSeries[index].status = .archived
+            recurringSeries[index].isActive = false
+            saveToStorage()
+            
+            // Cancel notifications
+            Task {
+                await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
+            }
+        }
+    }
+    
+    /// Get transactions for a subscription
+    func transactions(for subscriptionId: String) -> [Transaction] {
+        allTransactions.filter { $0.recurringSeriesId == subscriptionId }
+            .sorted { $0.date > $1.date }
+    }
+    
+    /// Get next charge date for a subscription
+    func nextChargeDate(for subscriptionId: String) -> Date? {
+        guard let series = recurringSeries.first(where: { $0.id == subscriptionId && $0.isSubscription }) else {
+            return nil
+        }
+        return SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series)
     }
     
     // Используем кешированный TimeFormatter из утилит
@@ -1621,10 +1787,28 @@ class TransactionsViewModel: ObservableObject {
             recurringOccurrences.append(contentsOf: newOccurrences)
             recalculateAccountBalances()
             saveToStorage()
+            
+            // Update notifications for subscriptions after generating transactions
+            Task {
+                for series in recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
+                    if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
+                        await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
+                    }
+                }
+            }
         } else if hasChanges {
             // Если были изменения в recurring (автоматическое выполнение), пересчитываем балансы и сохраняем
             recalculateAccountBalances()
             saveToStorage()
+            
+            // Update notifications for subscriptions after changes
+            Task {
+                for series in recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
+                    if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
+                        await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
+                    }
+                }
+            }
         }
     }
     
