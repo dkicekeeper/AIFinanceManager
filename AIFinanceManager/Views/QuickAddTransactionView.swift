@@ -482,52 +482,68 @@ struct AddTransactionModal: View {
             // Если дата сегодня или в прошлом - создаем обычную транзакцию (она уже выполнена)
         }
 
-        // Конвертация валюты (синхронная, если есть кеш)
-        var convertedAmount: Double? = nil
-        if selectedCurrency != accountCurrency {
-            convertedAmount = CurrencyConverter.convertSync(
-                amount: amountDouble,
-                from: selectedCurrency,
-                to: accountCurrency
-            )
-        }
-        
-        // Создаем транзакцию
-        let transaction = Transaction(
-            id: "",
-            date: dateString,
-            description: finalDescription,
-            amount: amountDouble,
-            currency: selectedCurrency,
-            convertedAmount: convertedAmount,
-            type: type,
-            category: category,
-            subcategory: nil,
-            accountId: accountId,
-            targetAccountId: nil
-        )
-        
-        viewModel.addTransaction(transaction)
-        
-        // Связываем подкатегории с транзакцией
-        if !selectedSubcategoryIds.isEmpty {
-            let addedTransaction = viewModel.allTransactions.first { tx in
-                tx.date == dateString &&
-                tx.description == finalDescription &&
-                tx.amount == amountDouble
-            }
-
-            if let transactionId = addedTransaction?.id {
-                viewModel.linkSubcategoriesToTransaction(
-                    transactionId: transactionId,
-                    subcategoryIds: Array(selectedSubcategoryIds)
+        // Конвертация валюты: предварительно загружаем курсы, если они не в кеше
+        Task { @MainActor in
+            var convertedAmount: Double? = nil
+            if selectedCurrency != accountCurrency {
+                // Предварительно загружаем курсы валют для обеих валют
+                _ = await CurrencyConverter.getExchangeRate(for: selectedCurrency)
+                _ = await CurrencyConverter.getExchangeRate(for: accountCurrency)
+                
+                // Теперь конвертируем (синхронно, так как курсы уже в кеше)
+                convertedAmount = CurrencyConverter.convertSync(
+                    amount: amountDouble,
+                    from: selectedCurrency,
+                    to: accountCurrency
                 )
+                
+                // Если синхронная конвертация не сработала, используем асинхронную
+                if convertedAmount == nil {
+                    convertedAmount = await CurrencyConverter.convert(
+                        amount: amountDouble,
+                        from: selectedCurrency,
+                        to: accountCurrency
+                    )
+                }
             }
+            
+            // Создаем транзакцию
+            let transaction = Transaction(
+                id: "",
+                date: dateString,
+                description: finalDescription,
+                amount: amountDouble,
+                currency: selectedCurrency,
+                convertedAmount: convertedAmount,
+                type: type,
+                category: category,
+                subcategory: nil,
+                accountId: accountId,
+                targetAccountId: nil
+            )
+            
+            viewModel.addTransaction(transaction)
+            
+            // Связываем подкатегории с транзакцией
+            if !selectedSubcategoryIds.isEmpty {
+                let addedTransaction = viewModel.allTransactions.first { tx in
+                    tx.date == dateString &&
+                    tx.description == finalDescription &&
+                    tx.amount == amountDouble
+                }
+
+                if let transactionId = addedTransaction?.id {
+                    viewModel.linkSubcategoriesToTransaction(
+                        transactionId: transactionId,
+                        subcategoryIds: Array(selectedSubcategoryIds)
+                    )
+                }
+            }
+            
+            HapticManager.success()
+            isSaving = false
+            onDismiss()
         }
-        
-        HapticManager.success()
-        isSaving = false
-        onDismiss()
     }
 }
 

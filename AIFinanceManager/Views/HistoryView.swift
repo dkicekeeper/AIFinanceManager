@@ -124,7 +124,6 @@ struct HistoryView: View {
                 }
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.black)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(Color(.systemGray5))

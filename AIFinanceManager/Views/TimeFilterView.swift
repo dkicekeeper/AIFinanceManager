@@ -36,7 +36,7 @@ struct TimeFilterView: View {
                         }) {
                             HStack {
                                 Text(preset.rawValue)
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                                 Spacer()
                                 if selectedPreset == preset {
                                     Image(systemName: "checkmark")
@@ -54,7 +54,7 @@ struct TimeFilterView: View {
                     }) {
                         HStack {
                             Text("Пользовательский период")
-                                .foregroundColor(.black)
+                                .foregroundColor(.primary)
                             Spacer()
                             if selectedPreset == .custom {
                                 Image(systemName: "checkmark")
