@@ -15,37 +15,16 @@ struct CustomCategory: Identifiable, Codable, Equatable {
     var colorHex: String
     var type: TransactionType
     
-    // Обратная совместимость для старых данных
-    var emoji: String {
-        get { iconName }
-        set { iconName = newValue }
-    }
-    
-    init(id: String = UUID().uuidString, name: String, emoji: String? = nil, iconName: String? = nil, colorHex: String, type: TransactionType) {
+    init(id: String = UUID().uuidString, name: String, iconName: String? = nil, colorHex: String, type: TransactionType) {
         self.id = id
         self.name = name
-        // Поддержка миграции: если передан emoji (старый формат), конвертируем в iconName
-        if let emoji = emoji, iconName == nil {
-            self.iconName = CategoryEmoji.iconNameFromEmoji(emoji) ?? CategoryEmoji.iconName(for: name, type: type)
-        } else {
-            self.iconName = iconName ?? CategoryEmoji.iconName(for: name, type: type)
-        }
+        self.iconName = iconName ?? CategoryIcon.iconName(for: name, type: type)
         self.colorHex = colorHex
         self.type = type
     }
     
-    // Старый инициализатор для обратной совместимости
-    init(id: String = UUID().uuidString, name: String, emoji: String, colorHex: String, type: TransactionType) {
-        self.id = id
-        self.name = name
-        self.iconName = CategoryEmoji.iconNameFromEmoji(emoji) ?? CategoryEmoji.iconName(for: name, type: type)
-        self.colorHex = colorHex
-        self.type = type
-    }
-    
-    // Codable для миграции старых данных
     enum CodingKeys: String, CodingKey {
-        case id, name, emoji, iconName, colorHex, type
+        case id, name, iconName, colorHex, type
     }
     
     init(from decoder: Decoder) throws {
@@ -55,13 +34,10 @@ struct CustomCategory: Identifiable, Codable, Equatable {
         colorHex = try container.decode(String.self, forKey: .colorHex)
         type = try container.decode(TransactionType.self, forKey: .type)
         
-        // Поддержка миграции: если есть старый emoji, конвертируем в iconName
-        if let oldEmoji = try? container.decode(String.self, forKey: .emoji) {
-            iconName = CategoryEmoji.iconNameFromEmoji(oldEmoji) ?? CategoryEmoji.iconName(for: name, type: type)
-        } else if let newIconName = try? container.decode(String.self, forKey: .iconName) {
+        if let newIconName = try? container.decode(String.self, forKey: .iconName) {
             iconName = newIconName
         } else {
-            iconName = CategoryEmoji.iconName(for: name, type: type)
+            iconName = CategoryIcon.iconName(for: name, type: type)
         }
     }
     

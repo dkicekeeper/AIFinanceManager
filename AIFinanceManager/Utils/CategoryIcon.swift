@@ -1,13 +1,13 @@
 //
-//  CategoryEmoji.swift
+//  CategoryIcon.swift
 //  AIFinanceManager
 //
-//  Created on 2024
+//  Utility for getting SF Symbol icon names for categories
 //
 
 import Foundation
 
-enum CategoryEmoji {
+enum CategoryIcon {
     static func iconName(for category: String, type: TransactionType, customCategories: [CustomCategory] = []) -> String {
         // Для операций перевода всегда возвращаем arrow.left.arrow.right
         if type == .internalTransfer {
@@ -23,8 +23,8 @@ enum CategoryEmoji {
         let key = category.lowercased()
         let map: [String: String] = [
             // Английские
-            "income": "dollar.circle.fill",
-            "food": "hamburger.fill",
+            "income": "dollarsign.circle.fill",
+            "food": "fork.knife",
             "transport": "car.fill",
             "shopping": "bag.fill",
             "entertainment": "sparkles",
@@ -35,15 +35,15 @@ enum CategoryEmoji {
             "salary": "briefcase.fill",
             "delivery": "box.fill",
             "gifts": "gift.fill",
-            "travel": "airplane.fill",
+            "travel": "airplane",
             "groceries": "cart.fill",
             "coffee": "cup.and.saucer.fill",
             "subscriptions": "tv.fill",
             "transfer": "arrow.left.arrow.right",
             // Русские
-            "доход": "dollar.circle.fill",
-            "доходы": "dollar.circle.fill",
-            "еда": "hamburger.fill",
+            "доход": "dollarsign.circle.fill",
+            "доходы": "dollarsign.circle.fill",
+            "еда": "fork.knife",
             "продукты": "cart.fill",
             "транспорт": "car.fill",
             "покупки": "bag.fill",
@@ -55,7 +55,7 @@ enum CategoryEmoji {
             "зарплата": "briefcase.fill",
             "доставка": "box.fill",
             "подарки": "gift.fill",
-            "путешествия": "airplane.fill",
+            "путешествия": "airplane",
             "кофе": "cup.and.saucer.fill",
             "подписки": "tv.fill",
             "перевод": "arrow.left.arrow.right",
@@ -81,7 +81,7 @@ enum CategoryEmoji {
             "спорт": "sportscourt.fill",
             "фитнес": "dumbbell.fill",
             "одежда": "tshirt.fill",
-            "обувь": "shoe.fill",
+            "обувь": "shoe.2.fill",
             "техника": "iphone",
             "компьютер": "laptopcomputer",
             "телефон": "iphone",
@@ -98,7 +98,7 @@ enum CategoryEmoji {
             "страховка": "shield.fill",
             "налоги": "chart.bar.fill",
             "пенсия": "person.fill",
-            "пособие": "dollar.circle.fill",
+            "пособие": "dollarsign.circle.fill",
             "дивиденды": "chart.line.uptrend.xyaxis",
             "инвестиции": "chart.bar.fill",
             "бизнес": "briefcase.fill",
@@ -119,8 +119,8 @@ enum CategoryEmoji {
             "страховка авто": "car.fill",
             "проезд": "bus.fill",
             "билет": "ticket.fill",
-            "отель": "building.2.fill",
-            "отпуск": "airplane.fill",
+            "отель": "building.2",
+            "отпуск": "airplane",
             "туризм": "map.fill",
             "виза": "key.fill",
             "багаж": "suitcase.fill"
@@ -136,75 +136,6 @@ enum CategoryEmoji {
             }
         }
         
-        return type == .income ? "dollar.circle.fill" : "banknote.fill"
-    }
-    
-    // Обратная совместимость - для миграции старых данных
-    static func emoji(for category: String, type: TransactionType, customCategories: [CustomCategory] = []) -> String {
-        return iconName(for: category, type: type, customCategories: customCategories)
-    }
-    
-    // Конвертация эмодзи в SF Symbol для миграции
-    static func iconNameFromEmoji(_ emoji: String) -> String? {
-        let emojiToIconMap: [String: String] = [
-            "💵": "dollar.circle.fill",
-            "🍔": "hamburger.fill",
-            "🚕": "car.fill",
-            "🛍️": "bag.fill",
-            "🎉": "sparkles",
-            "💡": "lightbulb.fill",
-            "🏥": "cross.case.fill",
-            "🎓": "graduationcap.fill",
-            "💰": "banknote.fill",
-            "💼": "briefcase.fill",
-            "📦": "box.fill",
-            "🎁": "gift.fill",
-            "✈️": "airplane.fill",
-            "🛒": "cart.fill",
-            "☕️": "cup.and.saucer.fill",
-            "📺": "tv.fill",
-            "↔️": "arrow.left.arrow.right",
-            "🚌": "bus.fill",
-            "🚇": "tram.fill",
-            "🍽️": "fork.knife",
-            "💊": "pills.fill",
-            "🎬": "film.fill",
-            "🎭": "theatermasks.fill",
-            "🎵": "music.note",
-            "⚽️": "sportscourt.fill",
-            "🏋️": "dumbbell.fill",
-            "👕": "tshirt.fill",
-            "👟": "shoe.fill",
-            "📱": "iphone",
-            "💻": "laptopcomputer",
-            "🌐": "globe",
-            "📞": "phone.fill",
-            "⚡️": "bolt.fill",
-            "🔥": "flame.fill",
-            "💧": "drop.fill",
-            "🏠": "house.fill",
-            "🏦": "building.columns.fill",
-            "💳": "creditcard.fill",
-            "🛡️": "shield.fill",
-            "📊": "chart.bar.fill",
-            "👴": "person.fill",
-            "📈": "chart.line.uptrend.xyaxis",
-            "🔧": "wrench.and.screwdriver.fill",
-            "🔨": "hammer.fill",
-            "💅": "paintbrush.fill",
-            "✂️": "scissors",
-            "📚": "book.fill",
-            "🎮": "gamecontroller.fill",
-            "⛽️": "fuelpump.fill",
-            "🅿️": "parking.circle.fill",
-            "🚿": "shower.fill",
-            "🚗": "car.fill",
-            "🎫": "ticket.fill",
-            "🏨": "building.2.fill",
-            "🗺️": "map.fill",
-            "🛂": "key.fill",
-            "🧳": "suitcase.fill"
-        ]
-        return emojiToIconMap[emoji]
+        return type == .income ? "dollarsign.circle.fill" : "banknote.fill"
     }
 }

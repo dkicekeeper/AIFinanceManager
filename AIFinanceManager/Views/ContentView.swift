@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  AIFinanceManager
-//
-//  Created on 2024
-//
-
 import SwiftUI
 import PDFKit
 
@@ -57,15 +50,15 @@ struct ContentView: View {
                             .screenPadding()
 
                     if viewModel.isLoading {
-                        VStack(spacing: 12) {
+                        VStack(spacing: AppSpacing.md) {
                             if let progress = ocrProgress {
                                 ProgressView(value: Double(progress.current), total: Double(progress.total)) {
                                     Text("Распознавание текста: страница \(progress.current) из \(progress.total)")
-                                        .font(.subheadline)
+                                        .font(AppTypography.bodySmall)
                                         .foregroundColor(.secondary)
                                 }
                                 Text("Страница \(progress.current) из \(progress.total)")
-                                    .font(.caption)
+                                    .font(AppTypography.caption)
                                     .foregroundColor(.secondary)
                             } else {
                                 ProgressView("Обработка PDF...")
@@ -178,10 +171,10 @@ struct ContentView: View {
                     Button(action: {
                         showingTimeFilter = true
                     }) {
-                        HStack(spacing: 4) {
+                        HStack(spacing: AppSpacing.xs) {
                             Image(systemName: "calendar")
                             Text(timeFilterManager.currentFilter.displayName)
-                                .font(.subheadline)
+                                .font(AppTypography.bodySmall)
                                 .fontWeight(.medium)
                         }
                         .foregroundColor(.primary)
@@ -307,55 +300,24 @@ struct ContentView: View {
         HStack {
             if viewModel.accounts.isEmpty {
                 Text("Нет счетов")
-                    .font(.subheadline)
+                    .font(AppTypography.bodySmall)
                     .foregroundStyle(adaptiveTextColor)
-                    .padding(10)
+                    .padding(AppSpacing.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: AppSpacing.md) {
                         ForEach(viewModel.accounts) { account in
-                            Button(action: {
-                                selectedAccount = account
-                            }) {
-                                HStack(spacing: 8) {
-                                    account.bankLogo.image(size: 32)
-                                        .foregroundStyle(adaptiveTextColor.opacity(0.7))
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(account.name)
-                                            .font(.title3)
-                                            .foregroundStyle(adaptiveTextColor)
-                                        Text(Formatting.formatCurrency(account.balance, currency: account.currency))
-                                            .font(.subheadline)
-                                            .fontWeight(.semibold)
-                                            .foregroundStyle(adaptiveTextColor)
-                                    }
+                            AccountCard(
+                                account: account,
+                                adaptiveTextColor: adaptiveTextColor,
+                                onTap: {
+                                    selectedAccount = account
                                 }
-                                .padding(16)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                                .overlay {
-                                    // Граница для глубины
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(
-                                            LinearGradient(
-                                                gradient: Gradient(colors: [
-                                                    Color.white.opacity(0.3),
-                                                    Color.white.opacity(0.1)
-                                                ]),
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 1
-                                        )
-                                }
-                                .overlay(Color.white.opacity(0.001))
-                                .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                            )
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, AppSpacing.xs)
                 }
             }
         }
@@ -375,97 +337,77 @@ struct ContentView: View {
         let expensePercent = total > 0 ? (summary.totalExpenses / total) : 0.0
         let incomePercent = total > 0 ? (summary.totalIncome / total) : 0.0
 
-        return AnyView(VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("История")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(adaptiveTextColor)
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(adaptiveTextColor)
-            }
-            
-            // Прогресс-бар с суммами под ним
-            VStack(spacing: 8) {
-                // Прогресс-бар
-                GeometryReader { geometry in
-                    HStack(spacing: 0) {
-                        // Расходы слева
-                        if expensePercent > 0 {
-                            Rectangle()
-                                .fill(Color.red)
-                                .frame(width: geometry.size.width * expensePercent)
-                        }
+        return AnyView(
+            CardContainer {
+                VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                    HStack {
+                        Text("История")
+                            .font(AppTypography.h3)
+                            .foregroundStyle(adaptiveTextColor)
                         
-                        // Доходы справа
-                        if incomePercent > 0 {
-                            Rectangle()
-                                .fill(Color.green)
-                                .frame(width: geometry.size.width * incomePercent)
-                        }
-                        
-                        // Пустое пространство
                         Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: AppIconSize.sm))
+                            .foregroundStyle(adaptiveTextColor)
                     }
-                    .cornerRadius(6)
-                }
-                .frame(height: 12)
-                
-                // Суммы под прогресс-баром
-                HStack {
-                    Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.red)
                     
-                    Spacer()
+                    // Progress bar with amounts
+                    VStack(spacing: AppSpacing.sm) {
+                        GeometryReader { geometry in
+                            HStack(spacing: 0) {
+                                if expensePercent > 0 {
+                                    Rectangle()
+                                        .fill(Color.red)
+                                        .frame(width: geometry.size.width * expensePercent)
+                                }
+                                
+                                if incomePercent > 0 {
+                                    Rectangle()
+                                        .fill(Color.green)
+                                        .frame(width: geometry.size.width * incomePercent)
+                                }
+                                
+                                Spacer()
+                            }
+                            .cornerRadius(AppRadius.sm)
+                        }
+                        .frame(height: 12)
+                        
+                        // Amounts below progress bar
+                        HStack {
+                            Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
+                                .font(AppTypography.bodySmall)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.red)
+                            
+                            Spacer()
+                            
+                            Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
+                                .font(AppTypography.bodySmall)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.green)
+                        }
+                    }
                     
-                    Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.green)
+                    // Planned amount
+                    if summary.plannedAmount > 0 {
+                        HStack {
+                            Text("В планах")
+                                .font(AppTypography.bodySmall)
+                                .foregroundStyle(adaptiveTextColor)
+                            
+                            Spacer()
+                            
+                            Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
+                                .font(AppTypography.bodySmall)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                        }
+                    }
                 }
             }
-            
-            // В планах
-            if summary.plannedAmount > 0 {
-                HStack {
-                    Text("В планах")
-                        .font(.subheadline)
-                        .foregroundStyle(adaptiveTextColor)
-                    
-                    Spacer()
-                    
-                    Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.blue)
-                }
-            }
-        }
-        .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .overlay {
-            // Граница для глубины
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0.3),
-                            Color.white.opacity(0.1)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        }
-        .overlay(Color.white.opacity(0.001))
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5))
+        )
     }
     
     

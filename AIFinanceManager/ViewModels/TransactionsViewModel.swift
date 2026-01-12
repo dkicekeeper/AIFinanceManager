@@ -689,7 +689,7 @@ class TransactionsViewModel: ObservableObject {
             
             if existingCategory == nil {
                 // Создаем новую категорию
-                let iconName = CategoryEmoji.iconName(for: categoryName, type: transaction.type, customCategories: customCategories)
+                let iconName = CategoryIcon.iconName(for: categoryName, type: transaction.type, customCategories: customCategories)
                 let defaultColors: [String] = [
                     "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
                     "#22c55e", "#14b8a6", "#06b6d4", "#6366f1", "#d946ef",

@@ -22,31 +22,38 @@ struct QuickAddTransactionView: View {
         let categories = cachedCategories
         let categoryExpenses = cachedCategoryExpenses
         
-        LazyVGrid(columns: gridColumns, spacing: 16) {
+        LazyVGrid(columns: gridColumns, spacing: AppSpacing.lg) {
             ForEach(categories, id: \.self) { category in
                 let total = categoryExpenses[category]?.total ?? 0
                 let currency = viewModel.appSettings.baseCurrency
                 let totalText = total != 0 ? Formatting.formatCurrency(total, currency: currency) : nil
 
-                CoinView(
-                    category: category,
-                    type: .expense,
-                    totalText: totalText,
-                    viewModel: viewModel,
-                    timeFilterManager: timeFilterManager,
-                    adaptiveTextColor: adaptiveTextColor,
-                    onTap: {
-                        selectedCategory = category
-                        selectedType = .expense
+                VStack(spacing: AppSpacing.xs) {
+                    CategoryChip(
+                        category: category,
+                        type: .expense,
+                        customCategories: viewModel.customCategories,
+                        isSelected: false,
+                        adaptiveTextColor: adaptiveTextColor,
+                        onTap: {
+                            selectedCategory = category
+                            selectedType = .expense
+                        }
+                    )
+                    
+                    if let totalText = totalText {
+                        Text(totalText)
+                            .font(AppTypography.caption2)
+                            .foregroundStyle(adaptiveTextColor.opacity(0.7))
+                            .lineLimit(1)
                     }
-                )
+                }
             }
         }
-        .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .padding(AppSpacing.lg)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppRadius.lg))
         .overlay {
-            // Граница для глубины
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: AppRadius.lg)
                 .stroke(
                     LinearGradient(
                         gradient: Gradient(colors: [
@@ -131,69 +138,7 @@ struct QuickAddTransactionView: View {
     }
 }
 
-struct CoinView: View {
-    let category: String
-    let type: TransactionType
-    let totalText: String?
-    let viewModel: TransactionsViewModel
-    let timeFilterManager: TimeFilterManager
-    let adaptiveTextColor: Color
-    let onTap: () -> Void
-
-    @State private var isPressed = false
-
-    private var styleHelper: CategoryStyleHelper {
-        CategoryStyleHelper(category: category, type: type, customCategories: viewModel.customCategories)
-    }
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: AppSpacing.sm) {
-                Circle()
-                    .fill(styleHelper.coinColor)
-                    .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                    .overlay(
-                        Image(systemName: styleHelper.iconName)
-                            .font(.title2)
-                            .foregroundColor(styleHelper.iconColor)
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(styleHelper.coinBorderColor, lineWidth: 2)
-                    )
-                    .scaleEffect(isPressed ? 0.9 : 1.0)
-                    .animation(.easeInOut(duration: AppAnimation.fast), value: isPressed)
-
-                VStack(spacing: 2) {
-                    Text(category)
-                        .font(AppTypography.caption)
-                        .foregroundStyle(adaptiveTextColor)
-                        .lineLimit(1)
-
-                    if type == .expense, let totalText = totalText {
-                        Text(totalText)
-                            .font(AppTypography.caption2)
-                            .foregroundStyle(adaptiveTextColor.opacity(0.7))
-                            .lineLimit(1)
-                    }
-                }
-            }
-        }
-        .contentShape(Rectangle())
-        .buttonStyle(PlainButtonStyle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    isPressed = true
-                }
-                .onEnded { _ in
-                    isPressed = false
-                }
-        )
-        .accessibilityLabel("\(category) category")
-        .accessibilityHint(totalText != nil ? "Total spent: \(totalText!)" : "Tap to add transaction")
-    }
-}
+// CoinView replaced by CategoryChip component
 
 
 struct AddTransactionModal: View {

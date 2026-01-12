@@ -36,7 +36,11 @@ struct HistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Фильтры
-            filterSection
+            HistoryFilterSection(
+                viewModel: viewModel,
+                selectedAccountFilter: $selectedAccountFilter,
+                showingCategoryFilter: $showingCategoryFilter
+            )
             
             // Список транзакций
             transactionsList
@@ -115,93 +119,6 @@ struct HistoryView: View {
         }
     }
     
-    private var filterSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                // Фильтр по времени - отображаем текущий фильтр (не редактируемый здесь)
-                HStack {
-                    Image(systemName: "calendar")
-                    Text(timeFilterManager.currentFilter.displayName)
-                }
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray5))
-                .cornerRadius(20)
-                
-                // Фильтр по счетам - выпадающий список
-                Menu {
-                    Button(action: { selectedAccountFilter = nil }) {
-                        HStack {
-                            Text("Все счета")
-                            Spacer()
-                            if selectedAccountFilter == nil {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                    
-                    ForEach(viewModel.accounts) { account in
-                        Button(action: { selectedAccountFilter = account.id }) {
-                            HStack(spacing: 8) {
-                                account.bankLogo.image(size: 20)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(account.name)
-                                        .font(.subheadline)
-                                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                if selectedAccountFilter == account.id {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        if let selectedAccount = viewModel.accounts.first(where: { $0.id == selectedAccountFilter }) {
-                            selectedAccount.bankLogo.image(size: 16)
-                        }
-                        Text(selectedAccountFilter == nil ? "Все счета" : (viewModel.accounts.first(where: { $0.id == selectedAccountFilter })?.name ?? "Все счета"))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                    }
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemGray5))
-                    .cornerRadius(20)
-                }
-                
-                // Фильтр по категориям
-                Button(action: {
-                    showingCategoryFilter = true
-                }) {
-                    HStack(spacing: 8) {
-                        // Показываем иконку категории, если выбрана одна категория
-                        categoryFilterIcon
-                        Text(categoryFilterText)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                    }
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(viewModel.selectedCategories != nil ? Color.blue.opacity(0.2) : Color(.systemGray5))
-                    .cornerRadius(20)
-                }
-            }
-            .padding(.horizontal)
-        }
-        .padding(.vertical, 12)
-    }
     
     private var transactionsList: some View {
         let grouped = cachedGroupedTransactions.isEmpty ? groupedTransactions : cachedGroupedTransactions
@@ -546,36 +463,6 @@ struct HistoryView: View {
         PerformanceProfiler.end("HistoryView.updateCachedTransactions")
     }
     
-    private var categoryFilterText: String {
-        guard let selectedCategories = viewModel.selectedCategories else {
-            return "Все категории"
-        }
-        if selectedCategories.count == 1 {
-            return selectedCategories.first ?? "Все категории"
-        }
-        return "\(selectedCategories.count) категорий"
-    }
-    
-    @ViewBuilder
-    private var categoryFilterIcon: some View {
-        if let selectedCategories = viewModel.selectedCategories,
-           selectedCategories.count == 1,
-           let category = selectedCategories.first {
-            let isIncome: Bool = {
-                if let customCategory = viewModel.customCategories.first(where: { $0.name == category }) {
-                    return customCategory.type == .income
-                } else {
-                    return viewModel.incomeCategories.contains(category)
-                }
-            }()
-            let categoryType: TransactionType = isIncome ? .income : .expense
-            let iconName = CategoryEmoji.iconName(for: category, type: categoryType, customCategories: viewModel.customCategories)
-            let iconColor = CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: viewModel.customCategories)
-            Image(systemName: iconName)
-                .font(.system(size: 14))
-                .foregroundColor(isIncome ? Color.green : iconColor)
-        }
-    }
     
     private func dateHeader(for dateKey: String, transactions: [Transaction]) -> some View {
         let currency = viewModel.appSettings.baseCurrency
@@ -583,22 +470,11 @@ struct HistoryView: View {
             .filter { $0.type == .expense }
             .reduce(0.0) { $0 + $1.amount }
         
-        return HStack {
-            Text(dateKey)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
-            
-            Spacer()
-            
-            if dayExpenses > 0 {
-                Text("-" + Formatting.formatCurrency(dayExpenses, currency: currency))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.gray)
-            }
-        }
-        .textCase(nil)
+        return DateSectionHeader(
+            dateKey: dateKey,
+            dayExpenses: dayExpenses,
+            currency: currency
+        )
     }
 }
 
@@ -636,101 +512,26 @@ struct TransactionCard: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Иконка категории
-            ZStack {
-                Circle()
-                    .fill(transaction.type == .internalTransfer ? Color.blue.opacity(0.2) : styleHelper.lightBackgroundColor)
-                    .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
-                    .overlay(
-                        Image(systemName: styleHelper.iconName)
-                            .font(.system(size: AppIconSize.md))
-                            .foregroundColor(transaction.type == .internalTransfer ? Color.blue : styleHelper.primaryColor)
-                    )
-                
-                // Иконка повторения в правом нижнем углу
-                if transaction.recurringSeriesId != nil {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 12))
-                        .foregroundColor(.blue)
-                        .padding(4)
-                        .background(Color.white)
-                        .clipShape(Circle())
-                        .offset(x: 14, y: 14)
-                }
-            }
+        HStack(spacing: AppSpacing.md) {
+            // Transaction icon
+            TransactionIconView(transaction: transaction, styleHelper: styleHelper)
             
-            // Информация
-            VStack(alignment: .leading, spacing: 4) {
-                // Название категории
-                Text(transaction.category)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                
-                // Подкатегории (если есть) - показываем через запятую
-                let linkedSubcategories = viewModel?.getSubcategoriesForTransaction(transaction.id) ?? []
-                if !linkedSubcategories.isEmpty {
-                    Text(linkedSubcategories.map { $0.name }.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                // Для переводов показываем откуда → куда с логотипами счетов
-                if transaction.type == .internalTransfer {
-                    HStack(spacing: 6) {
-                        if let sourceId = transaction.accountId,
-                           let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
-                            HStack(spacing: 4) {
-                                sourceAccount.bankLogo.image(size: 14)
-                                Text(sourceAccount.name)
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        Image(systemName: "arrow.right")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        if let targetId = transaction.targetAccountId,
-                           let targetAccount = accounts.first(where: { $0.id == targetId }) {
-                            HStack(spacing: 4) {
-                                targetAccount.bankLogo.image(size: 14)
-                                Text(targetAccount.name)
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                } else {
-                    // Счет (для не-переводов)
-                    if let accountId = transaction.accountId,
-                       let account = accounts.first(where: { $0.id == accountId }) {
-                        HStack(spacing: 4) {
-                            account.bankLogo.image(size: 14)
-                            Text(account.name)
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
-                // Описание (если есть)
-                if !transaction.description.isEmpty {
-                    Text(transaction.description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
+            // Transaction info
+            TransactionInfoView(
+                transaction: transaction,
+                accounts: accounts,
+                linkedSubcategories: viewModel?.getSubcategoriesForTransaction(transaction.id) ?? []
+            )
             
             Spacer()
             
-            // Сумма
+            // Amount
             VStack(alignment: .trailing, spacing: 2) {
                 if transaction.type == .internalTransfer {
-                    // Для переводов показываем две суммы с разными цветами и знаками
                     transferAmountView
                 } else {
                     Text(amountText)
-                        .font(.body)
+                        .font(AppTypography.body)
                         .fontWeight(.semibold)
                         .foregroundColor(amountColor)
                         .multilineTextAlignment(.trailing)
@@ -994,13 +795,13 @@ struct TransactionCard: View {
                 // Если валюты источника и получателя одинаковые - показываем только сумму источника
                 if sourceCurrency == targetCurrency {
                     Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
-                        .font(.body)
+                        .font(AppTypography.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.red)
                 } else {
                     // Валюты разные - показываем обе суммы
                     Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
-                        .font(.body)
+                        .font(AppTypography.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.red)
                     
@@ -1019,7 +820,7 @@ struct TransactionCard: View {
                     }()
                     
                     Text("+\(Formatting.formatCurrency(targetAmount, currency: targetCurrency))")
-                        .font(.body)
+                        .font(AppTypography.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.green)
                 }
@@ -1033,7 +834,7 @@ struct TransactionCard: View {
         } else {
             // Если счета источника нет, показываем основную сумму
             Text(amountText)
-                .font(.body)
+                .font(AppTypography.body)
                 .fontWeight(.semibold)
                 .foregroundColor(amountColor)
         }

@@ -178,8 +178,8 @@ struct CategoryEditView: View {
     ]
     
     private let commonIcons: [String] = [
-        "banknote.fill", "hamburger.fill", "car.fill", "bag.fill", "sparkles", "lightbulb.fill", "cross.case.fill", "graduationcap.fill",
-        "dollar.circle.fill", "briefcase.fill", "box.fill", "gift.fill", "airplane.fill", "cart.fill", "cup.and.saucer.fill", "tv.fill",
+        "banknote.fill", "fork.knife", "car.fill", "bag.fill", "sparkles", "lightbulb.fill", "cross.case.fill", "graduationcap.fill",
+        "dollarsign.circle.fill", "briefcase.fill", "box.fill", "gift.fill", "airplane", "cart.fill", "cup.and.saucer.fill", "tv.fill",
         "house.fill", "car.fill", "fork.knife", "film.fill", "iphone", "laptopcomputer", "gamecontroller.fill", "dumbbell.fill"
     ]
     
@@ -330,14 +330,14 @@ struct IconPickerView: View {
     @Environment(\.dismiss) var dismiss
     
     private let iconCategories: [(String, [String])] = [
-        ("Часто используемые", ["banknote.fill", "cart.fill", "car.fill", "bag.fill", "fork.knife", "house.fill", "briefcase.fill", "heart.fill", "airplane.fill", "gift.fill", "creditcard.fill", "tv.fill", "book.fill", "star.fill", "bolt.fill", "flame.fill"]),
+        ("Часто используемые", ["banknote.fill", "cart.fill", "car.fill", "bag.fill", "fork.knife", "house.fill", "briefcase.fill", "heart.fill", "airplane", "gift.fill", "creditcard.fill", "tv.fill", "book.fill", "star.fill", "bolt.fill", "flame.fill"]),
         ("Еда и напитки", ["fork.knife", "cup.and.saucer.fill", "birthday.cake.fill", "takeoutbag.and.cup.and.straw.fill", "carrot.fill", "fish.fill", "leaf.fill", "mug.fill"]),
-        ("Транспорт", ["car.fill", "bus.fill", "airplane.fill", "tram.fill", "bicycle", "scooter", "ferry.fill", "fuelpump.fill"]),
+        ("Транспорт", ["car.fill", "bus.fill", "airplane", "tram.fill", "bicycle", "scooter", "ferry.fill", "fuelpump.fill"]),
         ("Покупки", ["bag.fill", "cart.fill", "creditcard.fill", "handbag.fill", "tshirt.fill", "giftcard.fill", "basket.fill", "tag.fill"]),
         ("Развлечения", ["film.fill", "gamecontroller.fill", "music.note", "theatermasks.fill", "paintpalette.fill", "book.fill", "sportscourt.fill", "figure.walk"]),
         ("Здоровье", ["cross.case.fill", "heart.text.square.fill", "bandage.fill", "syringe.fill", "cross.fill", "eye.fill", "waveform.path.ecg", "figure.run"]),
         ("Дом и коммунальные", ["house.fill", "key.fill", "chair.fill", "bed.double.fill", "lightbulb.fill", "sparkles", "sofa.fill", "shower.fill"]),
-        ("Деньги и финансы", ["banknote.fill", "dollar.circle.fill", "creditcard.fill", "building.columns.fill", "chart.bar.fill", "dollarsign.circle.fill", "rublesign.circle.fill", "eurosign.circle.fill"])
+        ("Деньги и финансы", ["banknote.fill", "dollarsign.circle.fill", "creditcard.fill", "building.columns.fill", "chart.bar.fill", "rublesign.circle.fill", "eurosign.circle.fill"])
     ]
     
     var body: some View {

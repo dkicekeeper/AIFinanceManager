@@ -63,11 +63,12 @@ struct AccountActionView: View {
                         Section(header: Text("Категория дохода")) {
                             LazyVGrid(columns: gridColumns, spacing: AppSpacing.md) {
                                 ForEach(incomeCategories, id: \.self) { category in
-                                    CategoryRadioButton(
+                                    CategoryChip(
                                         category: category,
-                                        isSelected: selectedCategory == category,
-                                        viewModel: viewModel,
                                         type: .income,
+                                        customCategories: viewModel.customCategories,
+                                        isSelected: selectedCategory == category,
+                                        adaptiveTextColor: .primary,
                                         onTap: {
                                             selectedCategory = category
                                         }
@@ -403,44 +404,7 @@ struct AccountActionView: View {
     }
 }
 
-struct CategoryRadioButton: View {
-    let category: String
-    let isSelected: Bool
-    let viewModel: TransactionsViewModel
-    let type: TransactionType
-    let onTap: () -> Void
-
-    private var styleHelper: CategoryStyleHelper {
-        CategoryStyleHelper(category: category, type: type, customCategories: viewModel.customCategories)
-    }
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: AppSpacing.sm) {
-                Circle()
-                    .fill(isSelected ? styleHelper.coinColor : styleHelper.coinColor.opacity(0.5))
-                    .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                    .overlay(
-                        Image(systemName: styleHelper.iconName)
-                            .font(.title2)
-                            .foregroundColor(styleHelper.iconColor)
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(isSelected ? styleHelper.coinBorderColor : Color.clear, lineWidth: 3)
-                    )
-
-                Text(category)
-                    .font(AppTypography.caption)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-            }
-        }
-        .buttonStyle(PlainButtonStyle())
-        .accessibilityLabel("\(category) category")
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-    }
-}
+// CategoryRadioButton is now replaced by CategoryChip
 
 #Preview {
     AccountActionView(

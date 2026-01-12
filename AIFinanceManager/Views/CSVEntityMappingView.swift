@@ -148,7 +148,7 @@ struct CSVEntityMappingView: View {
     private func createCategory(name: String) {
         // Определяем тип категории по умолчанию (expense)
         // Используем автоматический подбор иконки и цвета
-        let iconName = CategoryEmoji.iconName(for: name, type: .expense, customCategories: viewModel.customCategories)
+        let iconName = CategoryIcon.iconName(for: name, type: .expense, customCategories: viewModel.customCategories)
         let colorHex = CategoryColors.hexColor(for: name, customCategories: viewModel.customCategories)
         // Конвертируем Color в hex строку
         let hexString = colorToHex(colorHex)

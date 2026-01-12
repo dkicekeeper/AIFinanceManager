@@ -60,7 +60,7 @@ struct CategoryStyleHelper {
 
     /// Имя иконки SF Symbol для категории
     var iconName: String {
-        CategoryEmoji.iconName(for: category, type: type, customCategories: customCategories)
+        CategoryIcon.iconName(for: category, type: type, customCategories: customCategories)
     }
 
     // MARK: - Convenience Initializers
@@ -86,7 +86,7 @@ struct CategoryStyleHelper {
 
     /// Быстрый доступ к иконке категории без создания helper
     static func icon(for category: String, type: TransactionType, customCategories: [CustomCategory]) -> String {
-        CategoryEmoji.iconName(for: category, type: type, customCategories: customCategories)
+        CategoryIcon.iconName(for: category, type: type, customCategories: customCategories)
     }
 }
 

@@ -106,7 +106,7 @@ class CSVImportService {
                     categoryId = existingCategory.id
                 } else {
                     // Создаем категорию с автоматическим подбором иконки и цвета
-                    let iconName = CategoryEmoji.iconName(for: categoryValue, type: type, customCategories: viewModel.customCategories)
+                    let iconName = CategoryIcon.iconName(for: categoryValue, type: type, customCategories: viewModel.customCategories)
                     let colorHex = CategoryColors.hexColor(for: categoryValue, customCategories: viewModel.customCategories)
                     // Конвертируем Color в hex строку
                     let hexString = colorToHex(colorHex)
