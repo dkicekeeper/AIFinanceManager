@@ -59,7 +59,7 @@ struct QuickAddTransactionView: View {
                     lineWidth: 1
                 )
         }
-        .overlay(Color.white.opacity(0.001))
+        .overlay(Color.white.opacity(0.001).allowsHitTesting(false))
         .sheet(isPresented: Binding(
             get: { selectedCategory != nil },
             set: { if !$0 { selectedCategory = nil } }
