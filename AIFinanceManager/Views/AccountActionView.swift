@@ -24,10 +24,15 @@ struct AccountActionView: View {
     @State private var errorMessage = ""
     @FocusState private var isAmountFocused: Bool
     
-    init(viewModel: TransactionsViewModel, account: Account) {
+    let transferDirection: DepositTransferDirection? // nil для обычных счетов, .toDeposit для пополнения, .fromDeposit для вывода
+    
+    init(viewModel: TransactionsViewModel, account: Account, transferDirection: DepositTransferDirection? = nil) {
         self.viewModel = viewModel
         self.account = account
+        self.transferDirection = transferDirection
         _selectedCurrency = State(initialValue: account.currency)
+        // Для депозитов всегда используем перевод
+        _selectedAction = State(initialValue: account.isDeposit ? .transfer : .transfer)
     }
     
     enum ActionType {
@@ -38,21 +43,23 @@ struct AccountActionView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Закреплённый фильтр по типу действия
-                Picker("Тип", selection: $selectedAction) {
-                    Text("Перевод").tag(ActionType.transfer)
-                    Text("Пополнение").tag(ActionType.income)
+                // Закреплённый фильтр по типу действия (для депозитов только перевод)
+                if !account.isDeposit {
+                    Picker("Тип", selection: $selectedAction) {
+                        Text("Перевод").tag(ActionType.transfer)
+                        Text("Пополнение").tag(ActionType.income)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
+                    .background(Color(UIColor.systemBackground))
+                    
+                    Divider()
                 }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding(.horizontal)
-                .padding(.vertical, 12)
-                .background(Color(UIColor.systemBackground))
-                
-                Divider()
                 
                 Form {
                 
-                if selectedAction == .income {
+                if selectedAction == .income && !account.isDeposit {
                     if incomeCategories.isEmpty {
                         Section {
                             Text("Нет доступных категорий дохода. Создайте категории сначала.")
@@ -68,7 +75,6 @@ struct AccountActionView: View {
                                         type: .income,
                                         customCategories: viewModel.customCategories,
                                         isSelected: selectedCategory == category,
-                                        adaptiveTextColor: .primary,
                                         onTap: {
                                             selectedCategory = category
                                         }
@@ -86,7 +92,7 @@ struct AccountActionView: View {
                                 .font(.caption)
                         }
                     } else {
-                        Section(header: Text("Счет получателя")) {
+                        Section(header: Text(headerForAccountSelection)) {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: AppSpacing.md) {
                                     ForEach(availableAccounts) { targetAccount in
@@ -135,7 +141,7 @@ struct AccountActionView: View {
                 .padding()
                 .background(Color(.systemBackground))
             }
-            .navigationTitle(selectedAction == .income ? "Пополнение счета" : "Перевод")
+            .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -181,6 +187,26 @@ struct AccountActionView: View {
         viewModel.accounts.filter { $0.id != account.id }
     }
     
+    private var headerForAccountSelection: String {
+        if account.isDeposit {
+            if let direction = transferDirection {
+                return direction == .toDeposit ? "Счет источника" : "Счет получателя"
+            }
+            return "Счет источника"
+        }
+        return "Счет получателя"
+    }
+    
+    private var navigationTitleText: String {
+        if account.isDeposit {
+            if let direction = transferDirection {
+                return direction == .toDeposit ? "Пополнение депозита" : "Перевод с депозита"
+            }
+            return "Пополнение депозита"
+        }
+        return selectedAction == .income ? "Пополнение счета" : "Перевод"
+    }
+    
     private var gridColumns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: AppSpacing.md), count: 4)
     }
@@ -224,12 +250,45 @@ struct AccountActionView: View {
                     convertedAmount = converted
                 }
             } else {
-                // Для перевода: конвертируем для источника (если нужно)
-                if selectedCurrency != account.currency {
+                // Для перевода: конвертируем для источника
+                // Для депозитов: источник зависит от направления перевода
+                //   - .toDeposit: источник = selectedTargetAccountId (счет, с которого пополняем)
+                //   - .fromDeposit: источник = account.id (сам депозит)
+                // Для обычных счетов: источник = account
+                let sourceAccountId: String?
+                if account.isDeposit {
+                    if let direction = transferDirection {
+                        sourceAccountId = direction == .toDeposit ? selectedTargetAccountId : account.id
+                    } else {
+                        sourceAccountId = selectedTargetAccountId // Fallback для обратной совместимости
+                    }
+                } else {
+                    sourceAccountId = account.id
+                }
+                
+                let sourceCurrency: String? = await MainActor.run {
+                    if account.isDeposit, let direction = transferDirection {
+                        if direction == .fromDeposit {
+                            // Для вывода с депозита источник - сам депозит
+                            return account.currency
+                        } else if let sourceId = selectedTargetAccountId {
+                            // Для пополнения депозита источник - выбранный счет
+                            return viewModel.accounts.first(where: { $0.id == sourceId })?.currency
+                        } else {
+                            return account.currency
+                        }
+                    } else if account.isDeposit, let sourceId = sourceAccountId {
+                        return viewModel.accounts.first(where: { $0.id == sourceId })?.currency
+                    } else {
+                        return account.currency
+                    }
+                }
+                
+                if let sourceCurrency = sourceCurrency, selectedCurrency != sourceCurrency {
                     guard let converted = await CurrencyConverter.convert(
                         amount: amount,
                         from: selectedCurrency,
-                        to: account.currency
+                        to: sourceCurrency
                     ) else {
                         await MainActor.run {
                             errorMessage = "Ошибка конвертации валюты. Проверьте подключение к интернету."
@@ -354,7 +413,7 @@ struct AccountActionView: View {
                 } else {
                     // Перевод между счетами
                     guard let targetAccountId = selectedTargetAccountId else {
-                        errorMessage = "Выберите счет получателя"
+                        errorMessage = headerForAccountSelection
                         showingError = true
                         HapticManager.warning()
                         return
@@ -376,25 +435,66 @@ struct AccountActionView: View {
                         return
                     }
                     
-                    // TODO: Добавить поле targetConvertedAmount в модель Transaction для хранения конвертированной суммы получателя
-                    // Конвертацию для получателя делаем в recalculateAccountBalances() на лету через convertSync
-                    let transaction = Transaction(
-                        id: "",
-                        date: transactionDate,
-                        description: finalDescription,
-                        amount: amount,
-                        currency: selectedCurrency,
-                        convertedAmount: convertedAmount, // Конвертированная сумма для источника (в валюте источника)
-                        type: .internalTransfer,
-                        category: "Перевод",
-                        subcategory: nil,
-                        accountId: account.id,
-                        targetAccountId: targetAccountId
-                    )
-                    viewModel.addTransaction(transaction)
+                    // Определяем направление перевода для депозитов
+                    let (sourceId, targetId): (String, String)
+                    if account.isDeposit {
+                        if let direction = transferDirection {
+                            // Для депозитов используем transferDirection для определения направления
+                            switch direction {
+                            case .toDeposit:
+                                // Пополнение: С выбранного счета НА депозит
+                                sourceId = targetAccountId
+                                targetId = account.id
+                            case .fromDeposit:
+                                // Вывод: С депозита НА выбранный счет
+                                sourceId = account.id
+                                targetId = targetAccountId
+                            }
+                        } else {
+                            // Fallback: по умолчанию пополнение (для обратной совместимости)
+                            sourceId = targetAccountId
+                            targetId = account.id
+                        }
+                    } else {
+                        // Для обычных счетов: перевод С текущего счета НА выбранный счет
+                        sourceId = account.id
+                        targetId = targetAccountId
+                    }
                     
-                    // После добавления транзакции пересчитываем балансы, чтобы применить конвертацию для получателя
-                    viewModel.recalculateAccountBalances()
+                    // Для депозитов всегда используем addTransaction, чтобы можно было указать валюту депозита
+                    // Для обычных счетов используем transfer() если валюты совпадают
+                    if account.isDeposit || selectedCurrency != account.currency {
+                        // Для депозитов или когда валюты разные - используем addTransaction
+                        // Для депозитов: валюта транзакции = валюта депозита (selectedCurrency = account.currency)
+                        // Для получателя (депозита) используется transaction.currency (валюта депозита)
+                        // Для источника конвертируется через convertedAmount или convertSync
+                        let transaction = Transaction(
+                            id: "",
+                            date: transactionDate,
+                            description: finalDescription,
+                            amount: amount,
+                            currency: selectedCurrency,
+                            convertedAmount: convertedAmount, // Конвертированная сумма для источника (в валюте источника), если валюты разные
+                            type: .internalTransfer,
+                            category: "Перевод",
+                            subcategory: nil,
+                            accountId: sourceId,
+                            targetAccountId: targetId
+                        )
+                        viewModel.addTransaction(transaction)
+                        
+                        // После добавления транзакции пересчитываем балансы, чтобы применить конвертацию для получателя
+                        viewModel.recalculateAccountBalances()
+                    } else {
+                        // Для обычных счетов с одинаковыми валютами - используем transfer()
+                        viewModel.transfer(
+                            from: sourceId,
+                            to: targetId,
+                            amount: amount,
+                            date: transactionDate,
+                            description: finalDescription
+                        )
+                    }
                     
                     HapticManager.success()
                     dismiss()

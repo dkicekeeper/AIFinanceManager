@@ -10,7 +10,6 @@ import SwiftUI
 struct QuickAddTransactionView: View {
     @ObservedObject var viewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
-    let adaptiveTextColor: Color
     @State private var selectedCategory: String? = nil
     @State private var selectedType: TransactionType = .expense
 
@@ -34,7 +33,6 @@ struct QuickAddTransactionView: View {
                         type: .expense,
                         customCategories: viewModel.customCategories,
                         isSelected: false,
-                        adaptiveTextColor: adaptiveTextColor,
                         onTap: {
                             selectedCategory = category
                             selectedType = .expense
@@ -44,7 +42,7 @@ struct QuickAddTransactionView: View {
                     if let totalText = totalText {
                         Text(totalText)
                             .font(AppTypography.caption2)
-                            .foregroundStyle(adaptiveTextColor.opacity(0.7))
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
@@ -582,6 +580,6 @@ struct AccountRadioButton: View {
 }
 
 #Preview {
-    QuickAddTransactionView(viewModel: TransactionsViewModel(), adaptiveTextColor: .primary)
+    QuickAddTransactionView(viewModel: TransactionsViewModel())
         .environmentObject(TimeFilterManager())
 }

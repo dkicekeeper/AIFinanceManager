@@ -9,23 +9,22 @@ import SwiftUI
 
 struct AccountCard: View {
     let account: Account
-    let adaptiveTextColor: Color
     let onTap: () -> Void
     
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.sm) {
                 account.bankLogo.image(size: AppIconSize.xl)
-                    .foregroundStyle(adaptiveTextColor.opacity(0.7))
+                    .foregroundStyle(.primary.opacity(0.7))
                 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
                         .font(AppTypography.h4)
-                        .foregroundStyle(adaptiveTextColor)
+                        .foregroundStyle(.primary)
                     Text(Formatting.formatCurrency(account.balance, currency: account.currency))
                         .font(AppTypography.bodySmall)
                         .fontWeight(.semibold)
-                        .foregroundStyle(adaptiveTextColor)
+                        .foregroundStyle(.primary)
                 }
             }
             .padding(AppSpacing.lg)
@@ -53,7 +52,6 @@ struct AccountCard: View {
 #Preview("Account Card") {
     AccountCard(
         account: Account(name: "Main Account", balance: 1000, currency: "USD", bankLogo: .none),
-        adaptiveTextColor: .primary,
         onTap: {}
     )
     .padding()

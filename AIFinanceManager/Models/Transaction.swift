@@ -11,6 +11,9 @@ enum TransactionType: String, Codable {
     case income
     case expense
     case internalTransfer = "internal"
+    case depositTopUp = "deposit_topup"
+    case depositWithdrawal = "deposit_withdrawal"
+    case depositInterestAccrual = "deposit_interest"
 }
 
 struct Transaction: Identifiable, Codable, Equatable {
@@ -142,24 +145,92 @@ struct Summary: Codable, Equatable {
     let plannedAmount: Double // Сумма всех невыполненных recurring операций
 }
 
+// MARK: - Deposit Models
+
+struct RateChange: Codable, Equatable {
+    let effectiveFrom: String // YYYY-MM-DD
+    let annualRate: Decimal
+    let note: String?
+    
+    init(effectiveFrom: String, annualRate: Decimal, note: String? = nil) {
+        self.effectiveFrom = effectiveFrom
+        self.annualRate = annualRate
+        self.note = note
+    }
+}
+
+struct DepositInfo: Codable, Equatable {
+    var bankName: String
+    var principalBalance: Decimal // Тело депозита
+    var capitalizationEnabled: Bool
+    var interestAccruedNotCapitalized: Decimal // Начисленные, но не капитализированные проценты
+    var interestRateAnnual: Decimal // Текущая годовая ставка
+    var interestRateHistory: [RateChange] // История ставок
+    var interestPostingDay: Int // 1-31, день месяца для начисления
+    var lastInterestCalculationDate: String // YYYY-MM-DD, дата последнего расчета
+    var lastInterestPostingMonth: String // YYYY-MM-01, начало месяца последнего начисления
+    var interestAccruedForCurrentPeriod: Decimal // Накоплено за текущий период до начисления
+    
+    init(
+        bankName: String,
+        principalBalance: Decimal,
+        capitalizationEnabled: Bool = true,
+        interestAccruedNotCapitalized: Decimal = 0,
+        interestRateAnnual: Decimal,
+        interestRateHistory: [RateChange]? = nil,
+        interestPostingDay: Int,
+        lastInterestCalculationDate: String? = nil,
+        lastInterestPostingMonth: String? = nil,
+        interestAccruedForCurrentPeriod: Decimal = 0
+    ) {
+        self.bankName = bankName
+        self.principalBalance = principalBalance
+        self.capitalizationEnabled = capitalizationEnabled
+        self.interestAccruedNotCapitalized = interestAccruedNotCapitalized
+        self.interestRateAnnual = interestRateAnnual
+        self.interestRateHistory = interestRateHistory ?? [RateChange(
+            effectiveFrom: lastInterestCalculationDate ?? DateFormatters.dateFormatter.string(from: Date()),
+            annualRate: interestRateAnnual
+        )]
+        self.interestPostingDay = interestPostingDay
+        let today = DateFormatters.dateFormatter.string(from: Date())
+        self.lastInterestCalculationDate = lastInterestCalculationDate ?? today
+        if let lastMonth = lastInterestPostingMonth {
+            self.lastInterestPostingMonth = lastMonth
+        } else {
+            // По умолчанию - начало текущего месяца
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.year, .month], from: Date())
+            if let date = calendar.date(from: components) {
+                self.lastInterestPostingMonth = DateFormatters.dateFormatter.string(from: date)
+            } else {
+                self.lastInterestPostingMonth = today
+            }
+        }
+        self.interestAccruedForCurrentPeriod = interestAccruedForCurrentPeriod
+    }
+}
+
 struct Account: Identifiable, Codable, Equatable {
     let id: String
     var name: String
     var balance: Double
     var currency: String
     var bankLogo: BankLogo
+    var depositInfo: DepositInfo? // Опциональная информация о депозите (nil для обычных счетов)
     
-    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String, bankLogo: BankLogo = .none) {
+    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String, bankLogo: BankLogo = .none, depositInfo: DepositInfo? = nil) {
         self.id = id
         self.name = name
         self.balance = balance
         self.currency = currency
         self.bankLogo = bankLogo
+        self.depositInfo = depositInfo
     }
     
     // Кастомный decoder для обратной совместимости со старыми данными
     enum CodingKeys: String, CodingKey {
-        case id, name, balance, currency, bankLogo
+        case id, name, balance, currency, bankLogo, depositInfo
     }
     
     init(from decoder: Decoder) throws {
@@ -170,6 +241,8 @@ struct Account: Identifiable, Codable, Equatable {
         currency = try container.decode(String.self, forKey: .currency)
         // Если bankLogo отсутствует в старых данных, используем .none
         bankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) ?? .none
+        // depositInfo опционален - для обратной совместимости
+        depositInfo = try container.decodeIfPresent(DepositInfo.self, forKey: .depositInfo)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -179,5 +252,11 @@ struct Account: Identifiable, Codable, Equatable {
         try container.encode(balance, forKey: .balance)
         try container.encode(currency, forKey: .currency)
         try container.encode(bankLogo, forKey: .bankLogo)
+        try container.encodeIfPresent(depositInfo, forKey: .depositInfo)
+    }
+    
+    // Computed property для проверки, является ли счет депозитом
+    var isDeposit: Bool {
+        depositInfo != nil
     }
 }

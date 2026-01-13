@@ -12,7 +12,6 @@ struct CategoryChip: View {
     let type: TransactionType
     let customCategories: [CustomCategory]
     let isSelected: Bool
-    let adaptiveTextColor: Color
     let onTap: () -> Void
     
     @State private var isPressed = false
@@ -41,7 +40,7 @@ struct CategoryChip: View {
                 
                 Text(category)
                     .font(AppTypography.caption)
-                    .foregroundColor(adaptiveTextColor)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
             }
         }
@@ -67,7 +66,6 @@ struct CategoryChip: View {
         type: .expense,
         customCategories: [],
         isSelected: false,
-        adaptiveTextColor: .primary,
         onTap: {}
     )
     .padding()

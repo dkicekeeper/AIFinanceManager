@@ -21,7 +21,6 @@ struct ContentView: View {
     // Кешированные данные для производительности
     @State private var cachedSummary: Summary?
     @State private var wallpaperImage: UIImage? = nil
-    @State private var isDarkWallpaper: Bool = false
     
     var body: some View {
         NavigationView {
@@ -46,7 +45,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
 
-                        QuickAddTransactionView(viewModel: viewModel, adaptiveTextColor: adaptiveTextColor)
+                        QuickAddTransactionView(viewModel: viewModel)
                             .screenPadding()
 
                     if viewModel.isLoading {
@@ -84,7 +83,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: "mic.fill")
                             .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(adaptiveTextColor)
+                            .foregroundStyle(.primary)
                             .frame(width: 64, height: 64)
                             .background(.ultraThinMaterial, in: Circle())
                             .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
@@ -96,7 +95,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: "doc.badge.plus")
                             .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(adaptiveTextColor)
+                            .foregroundStyle(.primary)
                             .frame(width: 64, height: 64)
                             .background(.ultraThinMaterial, in: Circle())
                             .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
@@ -188,8 +187,17 @@ struct ContentView: View {
                 }
             }
             .sheet(item: $selectedAccount) { account in
-                AccountActionView(viewModel: viewModel, account: account)
-                    .environmentObject(timeFilterManager)
+                Group {
+                    if account.isDeposit {
+                        NavigationView {
+                            DepositDetailView(viewModel: viewModel, accountId: account.id)
+                                .environmentObject(timeFilterManager)
+                        }
+                    } else {
+                        AccountActionView(viewModel: viewModel, account: account)
+                            .environmentObject(timeFilterManager)
+                    }
+                }
             }
             .sheet(isPresented: $showingVoiceInput) {
                 VoiceInputView(voiceService: voiceService) { transcribedText in
@@ -224,12 +232,6 @@ struct ContentView: View {
                 PerformanceProfiler.start("ContentView.onAppear")
                 updateSummary()
                 loadWallpaper()
-                // Очищаем фон NavigationView через UIKit
-                let appearance = UINavigationBarAppearance()
-                appearance.configureWithTransparentBackground()
-                appearance.backgroundColor = .clear
-                UINavigationBar.appearance().standardAppearance = appearance
-                UINavigationBar.appearance().scrollEdgeAppearance = appearance
                 PerformanceProfiler.end("ContentView.onAppear")
             }
             .onChange(of: viewModel.allTransactions.count) { _, _ in
@@ -257,7 +259,6 @@ struct ContentView: View {
             guard let wallpaperName = await MainActor.run(body: { viewModel.appSettings.wallpaperImageName }) else {
                 await MainActor.run {
                     wallpaperImage = nil
-                    isDarkWallpaper = false
                 }
                 return
             }
@@ -270,29 +271,15 @@ struct ContentView: View {
                   let image = UIImage(contentsOfFile: fileURL.path) else {
                 await MainActor.run {
                     wallpaperImage = nil
-                    isDarkWallpaper = false
                 }
                 return
             }
 
-            // Вычисляем яркость в background thread для производительности
-            let isDark = ImageBrightnessCalculator.isDark(image)
-
             // Обновляем UI на главном потоке
             await MainActor.run {
                 wallpaperImage = image
-                isDarkWallpaper = isDark
             }
         }
-    }
-    
-    // Адаптивный цвет текста в зависимости от яркости обоев
-    private var adaptiveTextColor: Color {
-        if wallpaperImage != nil {
-            return isDarkWallpaper ? .white : .black
-        }
-        // Если нет обоев, используем системный цвет
-        return Color(UIColor.label)
     }
     
 
@@ -301,7 +288,7 @@ struct ContentView: View {
             if viewModel.accounts.isEmpty {
                 Text("Нет счетов")
                     .font(AppTypography.bodySmall)
-                    .foregroundStyle(adaptiveTextColor)
+                    .foregroundStyle(.primary)
                     .padding(AppSpacing.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -310,7 +297,6 @@ struct ContentView: View {
                         ForEach(viewModel.accounts) { account in
                             AccountCard(
                                 account: account,
-                                adaptiveTextColor: adaptiveTextColor,
                                 onTap: {
                                     selectedAccount = account
                                 }
@@ -319,6 +305,7 @@ struct ContentView: View {
                     }
                     .padding(.vertical, AppSpacing.xs)
                 }
+                .scrollClipDisabled()
             }
         }
     }
@@ -343,13 +330,13 @@ struct ContentView: View {
                     HStack {
                         Text("История")
                             .font(AppTypography.h3)
-                            .foregroundStyle(adaptiveTextColor)
+                            .foregroundStyle(.primary)
                         
                         Spacer()
                         
                         Image(systemName: "chevron.right")
                             .font(.system(size: AppIconSize.sm))
-                            .foregroundStyle(adaptiveTextColor)
+                            .foregroundStyle(.primary)
                     }
                     
                     // Progress bar with amounts
@@ -395,7 +382,7 @@ struct ContentView: View {
                         HStack {
                             Text("В планах")
                                 .font(AppTypography.bodySmall)
-                                .foregroundStyle(adaptiveTextColor)
+                                .foregroundStyle(.primary)
                             
                             Spacer()
                             

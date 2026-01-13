@@ -18,18 +18,17 @@ struct CategoriesManagementView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Закреплённый фильтр по типу
-            Picker("Type", selection: $selectedType) {
+            // Picker прикреплен к navigation bar
+            Picker("", selection: $selectedType) {
                 Text("Расходы").tag(TransactionType.expense)
                 Text("Доходы").tag(TransactionType.income)
             }
-            .pickerStyle(SegmentedPickerStyle())
+            .pickerStyle(.segmented)
             .padding(.horizontal)
             .padding(.vertical, 12)
-            .background(Color(UIColor.systemBackground))
-
+            
             Divider()
-
+            
             // Список категорий
             List {
                 ForEach(filteredCategories) { category in
@@ -46,19 +45,18 @@ struct CategoriesManagementView: View {
                     )
                     .padding(.horizontal)
                     .padding(.vertical, 4)
-                    .listRowInsets(EdgeInsets())
+                    .listRowInsets(.init())
                     .listRowSeparator(.hidden)
                 }
             }
-            .listStyle(PlainListStyle())
+            .listStyle(.plain)
         }
         .navigationTitle("Categories")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
+//        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showingAddCategory = true }) {
-                    Image(systemName: "plus")
-                }
+                Button { showingAddCategory = true } label: { Image(systemName: "plus") }
             }
         }
         .sheet(isPresented: $showingAddCategory) {

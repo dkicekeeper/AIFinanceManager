@@ -11,6 +11,7 @@ struct AccountsManagementView: View {
     @ObservedObject var viewModel: TransactionsViewModel
     @Environment(\.dismiss) var dismiss
     @State private var showingAddAccount = false
+    @State private var showingAddDeposit = false
     @State private var editingAccount: Account?
     
     var body: some View {
@@ -31,9 +32,20 @@ struct AccountsManagementView: View {
         .listStyle(PlainListStyle())
         .navigationTitle("Accounts")
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            // Пересчитываем проценты депозитов при открытии экрана
+            viewModel.reconcileAllDeposits()
+        }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showingAddAccount = true }) {
+                Menu {
+                    Button(action: { showingAddAccount = true }) {
+                        Label("Новый счёт", systemImage: "creditcard")
+                    }
+                    Button(action: { showingAddDeposit = true }) {
+                        Label("Новый депозит", systemImage: "banknote")
+                    }
+                } label: {
                     Image(systemName: "plus")
                 }
             }
@@ -49,16 +61,52 @@ struct AccountsManagementView: View {
                 onCancel: { showingAddAccount = false }
             )
         }
-        .sheet(item: $editingAccount) { account in
-            AccountEditView(
+        .sheet(isPresented: $showingAddDeposit) {
+            DepositEditView(
                 viewModel: viewModel,
-                account: account,
-                onSave: { updatedAccount in
-                    viewModel.updateAccount(updatedAccount)
-                    editingAccount = nil
+                account: nil,
+                onSave: { account in
+                    if let depositInfo = account.depositInfo {
+                        viewModel.addDeposit(
+                            name: account.name,
+                            currency: account.currency,
+                            bankName: depositInfo.bankName,
+                            bankLogo: account.bankLogo,
+                            principalBalance: depositInfo.principalBalance,
+                            interestRateAnnual: depositInfo.interestRateAnnual,
+                            interestPostingDay: depositInfo.interestPostingDay,
+                            capitalizationEnabled: depositInfo.capitalizationEnabled
+                        )
+                    }
+                    showingAddDeposit = false
                 },
-                onCancel: { editingAccount = nil }
+                onCancel: { showingAddDeposit = false }
             )
+        }
+        .sheet(item: $editingAccount) { account in
+            Group {
+                if account.isDeposit {
+                    DepositEditView(
+                        viewModel: viewModel,
+                        account: account,
+                        onSave: { updatedAccount in
+                            viewModel.updateDeposit(updatedAccount)
+                            editingAccount = nil
+                        },
+                        onCancel: { editingAccount = nil }
+                    )
+                } else {
+                    AccountEditView(
+                        viewModel: viewModel,
+                        account: account,
+                        onSave: { updatedAccount in
+                            viewModel.updateAccount(updatedAccount)
+                            editingAccount = nil
+                        },
+                        onCancel: { editingAccount = nil }
+                    )
+                }
+            }
         }
     }
 }
@@ -82,9 +130,31 @@ struct AccountRow: View {
                 Text(Formatting.formatCurrency(account.balance, currency: account.currency))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
+                
+                if let depositInfo = account.depositInfo {
+                    let interestToToday = DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
+                    if interestToToday > 0 {
+                        Text("Проценты на сегодня: \(Formatting.formatCurrency(NSDecimalNumber(decimal: interestToToday).doubleValue, currency: account.currency))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if let nextPosting = DepositInterestService.nextPostingDate(depositInfo: depositInfo) {
+                        let formatter = DateFormatters.displayDateFormatter
+                        Text("Начисление: \(formatter.string(from: nextPosting))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             
             Spacer()
+            
+            if account.isDeposit {
+                Image(systemName: "banknote")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+            }
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())

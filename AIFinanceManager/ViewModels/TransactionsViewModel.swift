@@ -66,6 +66,9 @@ class TransactionsViewModel: ObservableObject {
             PerformanceProfiler.start("generateRecurringTransactions")
             generateRecurringTransactions()
             PerformanceProfiler.end("generateRecurringTransactions")
+            
+            // Пересчитываем проценты депозитов после генерации recurring транзакций
+            reconcileAllDeposits()
         }
         PerformanceProfiler.end("ViewModel.init")
     }
@@ -161,6 +164,245 @@ class TransactionsViewModel: ObservableObject {
         
         // Объединяем: сначала recurring, затем обычные
         return recurringTransactions + regularTransactions
+    }
+    
+    // MARK: - History View Filtering and Grouping
+    
+    /// Фильтрует транзакции для HistoryView с учетом всех фильтров (время, категории, счет, поиск)
+    func filterTransactionsForHistory(
+        timeFilterManager: TimeFilterManager,
+        accountId: String?,
+        searchText: String
+    ) -> [Transaction] {
+        // Базовая фильтрация по времени и категориям
+        var transactions = transactionsFilteredByTimeAndCategory(timeFilterManager)
+        
+        // Фильтр по счету
+        if let accountId = accountId {
+            transactions = transactions.filter { $0.accountId == accountId || $0.targetAccountId == accountId }
+        }
+        
+        // Фильтр по поиску
+        if !searchText.isEmpty {
+            let searchLower = searchText.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let searchNumber = Double(searchText.replacingOccurrences(of: ",", with: "."))
+            
+            // Создаем индекс аккаунтов для O(1) lookup
+            let accountsById = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
+            
+            transactions = transactions.filter { transaction in
+                // Поиск по категории
+                if transaction.category.lowercased().contains(searchLower) {
+                    return true
+                }
+                
+                // Поиск по подкатегориям
+                let linkedSubcategories = getSubcategoriesForTransaction(transaction.id)
+                if linkedSubcategories.contains(where: { $0.name.lowercased().contains(searchLower) }) {
+                    return true
+                }
+                
+                // Поиск по описанию
+                if transaction.description.lowercased().contains(searchLower) {
+                    return true
+                }
+                
+                // Поиск по счету
+                if let accountId = transaction.accountId,
+                   let account = accountsById[accountId],
+                   account.name.lowercased().contains(searchLower) {
+                    return true
+                }
+                
+                if let targetAccountId = transaction.targetAccountId,
+                   let targetAccount = accountsById[targetAccountId],
+                   targetAccount.name.lowercased().contains(searchLower) {
+                    return true
+                }
+                
+                // Поиск по сумме (как строка, так и число)
+                let amountString = String(format: "%.2f", transaction.amount)
+                if amountString.contains(searchText) || amountString.lowercased().contains(searchLower) {
+                    return true
+                }
+                
+                // Поиск по числовому значению суммы
+                if let searchNum = searchNumber, abs(transaction.amount - searchNum) < 0.01 {
+                    return true
+                }
+                
+                // Поиск по сумме с валютой
+                let currency = appSettings.baseCurrency
+                let formattedAmount = Formatting.formatCurrency(transaction.amount, currency: currency).lowercased()
+                if formattedAmount.contains(searchLower) {
+                    return true
+                }
+                
+                return false
+            }
+        }
+        
+        return transactions
+    }
+    
+    /// Группирует транзакции по датам и возвращает словарь с группированными транзакциями и отсортированными ключами
+    func groupAndSortTransactionsByDate(_ transactions: [Transaction]) -> (grouped: [String: [Transaction]], sortedKeys: [String]) {
+        var grouped: [String: [Transaction]] = [:]
+        
+        let calendar = Calendar.current
+        let dateFormatter = Self.dateFormatter
+        let displayDateFormatter = DateFormatters.displayDateFormatter
+        let displayDateWithYearFormatter = DateFormatters.displayDateWithYearFormatter
+        let currentYear = calendar.component(.year, from: Date())
+        
+        // Разделяем на recurring и обычные транзакции для разной сортировки
+        var recurringTransactions: [Transaction] = []
+        var regularTransactions: [Transaction] = []
+        
+        for transaction in transactions {
+            if transaction.recurringSeriesId != nil {
+                recurringTransactions.append(transaction)
+            } else {
+                regularTransactions.append(transaction)
+            }
+        }
+        
+        // Recurring транзакции сортируем по возрастанию (ближайшие вверху)
+        recurringTransactions.sort { tx1, tx2 in
+            guard let date1 = dateFormatter.date(from: tx1.date),
+                  let date2 = dateFormatter.date(from: tx2.date) else {
+                return false
+            }
+            return date1 < date2
+        }
+        
+        // Обычные транзакции сортируем по убыванию (новые вверху)
+        regularTransactions.sort { tx1, tx2 in
+            if tx1.createdAt != tx2.createdAt {
+                return tx1.createdAt > tx2.createdAt
+            }
+            return tx1.id > tx2.id
+        }
+        
+        // Объединяем: сначала recurring, затем обычные
+        let allTransactions = recurringTransactions + regularTransactions
+        
+        for transaction in allTransactions {
+            guard let date = dateFormatter.date(from: transaction.date) else { continue }
+            
+            let dateKey: String
+            let today = calendar.startOfDay(for: Date())
+            let transactionDay = calendar.startOfDay(for: date)
+            let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+            let transactionYear = calendar.component(.year, from: date)
+            
+            if transactionDay == today {
+                dateKey = "Сегодня"
+            } else if transactionDay == yesterday {
+                dateKey = "Вчера"
+            } else {
+                if transactionYear != currentYear {
+                    dateKey = displayDateWithYearFormatter.string(from: date)
+                } else {
+                    dateKey = displayDateFormatter.string(from: date)
+                }
+            }
+            
+            if grouped[dateKey] == nil {
+                grouped[dateKey] = []
+            }
+            grouped[dateKey]?.append(transaction)
+        }
+        
+        // Сортируем транзакции внутри каждого дня
+        for key in grouped.keys {
+            let today = calendar.startOfDay(for: Date())
+            
+            grouped[key]?.sort { tx1, tx2 in
+                let isRecurring1 = tx1.recurringSeriesId != nil
+                let isRecurring2 = tx2.recurringSeriesId != nil
+                
+                if isRecurring1 && isRecurring2 {
+                    guard let date1 = dateFormatter.date(from: tx1.date),
+                          let date2 = dateFormatter.date(from: tx2.date) else {
+                        return false
+                    }
+                    if date1 > today && date2 > today {
+                        return date1 > date2
+                    } else if date1 <= today && date2 <= today {
+                        return date1 < date2
+                    } else {
+                        return date1 > today && date2 <= today
+                    }
+                }
+                
+                if !isRecurring1 && !isRecurring2 {
+                    if tx1.createdAt != tx2.createdAt {
+                        return tx1.createdAt > tx2.createdAt
+                    }
+                    return tx1.id > tx2.id
+                }
+                
+                return isRecurring1 && !isRecurring2
+            }
+        }
+        
+        // Сортируем ключи: будущие даты вверху, затем Сегодня, Вчера, затем прошлые
+        let keys = Array(grouped.keys)
+        let todayKey = keys.first { $0 == "Сегодня" }
+        let yesterdayKey = keys.first { $0 == "Вчера" }
+        let otherKeys = keys.filter { $0 != "Сегодня" && $0 != "Вчера" }
+        
+        let keysWithDates: [(key: String, date: Date, isRecurring: Bool)] = otherKeys.compactMap { key in
+            guard let transactionsInGroup = grouped[key] else { return nil }
+            
+            if let recurringTransaction = transactionsInGroup.first(where: { $0.recurringSeriesId != nil }),
+               let date = dateFormatter.date(from: recurringTransaction.date) {
+                return (key: key, date: date, isRecurring: true)
+            }
+            
+            if let firstTransaction = transactionsInGroup.first,
+               let date = dateFormatter.date(from: firstTransaction.date) {
+                return (key: key, date: date, isRecurring: false)
+            }
+            
+            return nil
+        }
+        
+        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date()))!
+        
+        let futureKeys = keysWithDates.filter { $0.date > calendar.startOfDay(for: Date()) }
+            .sorted { key1, key2 in
+                if key1.isRecurring && key2.isRecurring {
+                    return key1.date > key2.date
+                }
+                if !key1.isRecurring && !key2.isRecurring {
+                    return key1.date > key2.date
+                }
+                return key1.isRecurring && !key2.isRecurring
+            }
+            .map { $0.key }
+        
+        let pastRecurringKeys = keysWithDates.filter { $0.date < yesterdayStart && $0.isRecurring }
+            .sorted { $0.date < $1.date }
+            .map { $0.key }
+        
+        let pastRegularKeys = keysWithDates.filter { $0.date < yesterdayStart && !$0.isRecurring }
+            .sorted { $0.date > $1.date }
+            .map { $0.key }
+        
+        var sortedKeys: [String] = []
+        sortedKeys.append(contentsOf: futureKeys)
+        if let today = todayKey {
+            sortedKeys.append(today)
+        }
+        if let yesterday = yesterdayKey {
+            sortedKeys.append(yesterday)
+        }
+        sortedKeys.append(contentsOf: pastRecurringKeys)
+        sortedKeys.append(contentsOf: pastRegularKeys)
+        
+        return (grouped, sortedKeys)
     }
     
     // Фильтрует recurring транзакции: показывает только следующую для каждой серии
@@ -282,6 +524,9 @@ class TransactionsViewModel: ObservableObject {
                     totalExpenses += amountInBaseCurrency
                 case .internalTransfer:
                     totalInternal += amountInBaseCurrency
+                case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+                    // Транзакции депозита не учитываются в общей статистике
+                    break
                 }
             }
         }
@@ -765,6 +1010,25 @@ class TransactionsViewModel: ObservableObject {
         let existingIDs = Set(allTransactions.map { $0.id })
         
         if !existingIDs.contains(transactionWithID.id) {
+            // Для internalTransfer с депозитами обновляем principalBalance
+            if transactionWithID.type == .internalTransfer {
+                if let sourceId = transactionWithID.accountId,
+                   let targetId = transactionWithID.targetAccountId {
+                    // Проверяем, нужно ли обновлять депозиты
+                    let sourceIsDeposit = accounts.first(where: { $0.id == sourceId })?.isDeposit ?? false
+                    let targetIsDeposit = accounts.first(where: { $0.id == targetId })?.isDeposit ?? false
+                    
+                    if sourceIsDeposit || targetIsDeposit {
+                        // Обновляем балансы депозитов с конвертацией валют
+                        updateDepositBalancesForTransfer(
+                            transaction: transactionWithID,
+                            sourceId: sourceId,
+                            targetId: targetId
+                        )
+                    }
+                }
+            }
+            
             // Создаем категорию, если нужно
             createCategoriesForTransactions(transactionsWithRules)
 
@@ -773,6 +1037,92 @@ class TransactionsViewModel: ObservableObject {
             invalidateCaches()
             recalculateAccountBalances()
             saveToStorage()
+        }
+    }
+    
+    // Helper функция для обновления балансов депозитов при переводе
+    private func updateDepositBalancesForTransfer(transaction: Transaction, sourceId: String, targetId: String) {
+        guard let sourceIndex = accounts.firstIndex(where: { $0.id == sourceId }),
+              let targetIndex = accounts.firstIndex(where: { $0.id == targetId }) else {
+            return
+        }
+        
+        let sourceAccount = accounts[sourceIndex]
+        let targetAccount = accounts[targetIndex]
+        
+        // Вычисляем сумму для источника в валюте источника
+        let sourceAmount: Double = {
+            if transaction.currency == sourceAccount.currency {
+                return transaction.amount
+            } else if let convertedAmount = transaction.convertedAmount, transaction.currency == sourceAccount.currency {
+                return convertedAmount
+            } else if let converted = CurrencyConverter.convertSync(
+                amount: transaction.amount,
+                from: transaction.currency,
+                to: sourceAccount.currency
+            ) {
+                return converted
+            } else {
+                return transaction.amount
+            }
+        }()
+        
+        // Вычисляем сумму для получателя в валюте получателя
+        let targetAmount: Double = {
+            if transaction.currency == targetAccount.currency {
+                return transaction.amount
+            } else if let converted = CurrencyConverter.convertSync(
+                amount: transaction.amount,
+                from: transaction.currency,
+                to: targetAccount.currency
+            ) {
+                return converted
+            } else {
+                return transaction.amount
+            }
+        }()
+        
+        // Обновляем источник (депозит)
+        if var sourceDepositInfo = sourceAccount.depositInfo {
+            let amountDecimal = Decimal(sourceAmount)
+            // Сначала снимаем с накопленных процентов (если есть и капитализация выключена), затем с principal
+            if !sourceDepositInfo.capitalizationEnabled && sourceDepositInfo.interestAccruedNotCapitalized > 0 {
+                if amountDecimal <= sourceDepositInfo.interestAccruedNotCapitalized {
+                    sourceDepositInfo.interestAccruedNotCapitalized -= amountDecimal
+                } else {
+                    let remaining = amountDecimal - sourceDepositInfo.interestAccruedNotCapitalized
+                    sourceDepositInfo.interestAccruedNotCapitalized = 0
+                    sourceDepositInfo.principalBalance -= remaining
+                }
+            } else {
+                sourceDepositInfo.principalBalance -= amountDecimal
+            }
+            accounts[sourceIndex].depositInfo = sourceDepositInfo
+            // Обновляем баланс счета на основе depositInfo
+            var totalBalance: Decimal = sourceDepositInfo.principalBalance
+            if !sourceDepositInfo.capitalizationEnabled {
+                totalBalance += sourceDepositInfo.interestAccruedNotCapitalized
+            }
+            accounts[sourceIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+        } else {
+            // Для обычных счетов просто уменьшаем баланс
+            accounts[sourceIndex].balance -= sourceAmount
+        }
+        
+        // Обновляем получатель (депозит)
+        if var targetDepositInfo = targetAccount.depositInfo {
+            let amountDecimal = Decimal(targetAmount)
+            targetDepositInfo.principalBalance += amountDecimal
+            accounts[targetIndex].depositInfo = targetDepositInfo
+            // Обновляем баланс счета на основе depositInfo
+            var totalBalance: Decimal = targetDepositInfo.principalBalance
+            if !targetDepositInfo.capitalizationEnabled {
+                totalBalance += targetDepositInfo.interestAccruedNotCapitalized
+            }
+            accounts[targetIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+        } else {
+            // Для обычных счетов просто увеличиваем баланс
+            accounts[targetIndex].balance += targetAmount
         }
     }
     
@@ -1060,9 +1410,64 @@ class TransactionsViewModel: ObservableObject {
 
         let currency = accounts[sourceIndex].currency
 
-        // Обновляем балансы
+        // Обновляем балансы и principalBalance для депозитов
         accounts[sourceIndex].balance -= amount
-        accounts[targetIndex].balance += amount
+        
+        // Если источник - депозит, уменьшаем principalBalance
+        if var sourceDepositInfo = accounts[sourceIndex].depositInfo {
+            let amountDecimal = Decimal(amount)
+            // Сначала снимаем с накопленных процентов (если есть и капитализация выключена), затем с principal
+            if !sourceDepositInfo.capitalizationEnabled && sourceDepositInfo.interestAccruedNotCapitalized > 0 {
+                if amountDecimal <= sourceDepositInfo.interestAccruedNotCapitalized {
+                    sourceDepositInfo.interestAccruedNotCapitalized -= amountDecimal
+                } else {
+                    let remaining = amountDecimal - sourceDepositInfo.interestAccruedNotCapitalized
+                    sourceDepositInfo.interestAccruedNotCapitalized = 0
+                    sourceDepositInfo.principalBalance -= remaining
+                }
+            } else {
+                sourceDepositInfo.principalBalance -= amountDecimal
+            }
+            accounts[sourceIndex].depositInfo = sourceDepositInfo
+            // Обновляем баланс счета на основе depositInfo
+            var totalBalance: Decimal = sourceDepositInfo.principalBalance
+            if !sourceDepositInfo.capitalizationEnabled {
+                totalBalance += sourceDepositInfo.interestAccruedNotCapitalized
+            }
+            accounts[sourceIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+        }
+        
+        // Если получатель - депозит, нужно конвертировать валюту
+        let targetAccount = accounts[targetIndex]
+        let targetAmount: Double
+        if currency == targetAccount.currency {
+            targetAmount = amount
+        } else if let converted = CurrencyConverter.convertSync(
+            amount: amount,
+            from: currency,
+            to: targetAccount.currency
+        ) {
+            targetAmount = converted
+        } else {
+            // Если конвертация невозможна, используем исходную сумму (будет неточный баланс)
+            print("⚠️ Не удалось конвертировать \(amount) \(currency) в \(targetAccount.currency) для депозита-получателя")
+            targetAmount = amount
+        }
+        
+        if var targetDepositInfo = targetAccount.depositInfo {
+            let amountDecimal = Decimal(targetAmount)
+            targetDepositInfo.principalBalance += amountDecimal
+            accounts[targetIndex].depositInfo = targetDepositInfo
+            // Обновляем баланс счета на основе depositInfo
+            var totalBalance: Decimal = targetDepositInfo.principalBalance
+            if !targetDepositInfo.capitalizationEnabled {
+                totalBalance += targetDepositInfo.interestAccruedNotCapitalized
+            }
+            accounts[targetIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+        } else {
+            // Для обычных счетов просто увеличиваем баланс
+            accounts[targetIndex].balance += targetAmount
+        }
 
         // Сохраняем как internalTransfer-транзакцию
         let createdAt = Date().timeIntervalSince1970
@@ -1095,6 +1500,98 @@ class TransactionsViewModel: ObservableObject {
         // Оптимизированная вставка вместо полной сортировки
         insertTransactionsSorted([transferTx])
         saveToStorage()
+    }
+    
+    // MARK: - Deposits
+    
+    func addDeposit(
+        name: String,
+        currency: String,
+        bankName: String,
+        bankLogo: BankLogo,
+        principalBalance: Decimal,
+        interestRateAnnual: Decimal,
+        interestPostingDay: Int,
+        capitalizationEnabled: Bool = true
+    ) {
+        let depositInfo = DepositInfo(
+            bankName: bankName,
+            principalBalance: principalBalance,
+            capitalizationEnabled: capitalizationEnabled,
+            interestRateAnnual: interestRateAnnual,
+            interestPostingDay: interestPostingDay
+        )
+        
+        let balance = NSDecimalNumber(decimal: principalBalance).doubleValue
+        let account = Account(
+            name: name,
+            balance: balance,
+            currency: currency,
+            bankLogo: bankLogo,
+            depositInfo: depositInfo
+        )
+        
+        accounts.append(account)
+        initialAccountBalances[account.id] = balance
+        recalculateAccountBalances()
+        saveToStorage()
+        
+        // Сразу делаем reconcile для расчета процентов до сегодня
+        reconcileAllDeposits()
+    }
+    
+    func updateDeposit(_ account: Account) {
+        guard account.isDeposit else { return }
+        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+            accounts[index] = account
+            if let depositInfo = account.depositInfo {
+                let balance = NSDecimalNumber(decimal: depositInfo.principalBalance).doubleValue
+                initialAccountBalances[account.id] = balance
+            }
+            recalculateAccountBalances()
+            saveToStorage()
+        }
+    }
+    
+    func deleteDeposit(_ account: Account) {
+        deleteAccount(account) // Используем существующий метод deleteAccount
+    }
+    
+    func addDepositRateChange(accountId: String, effectiveFrom: String, annualRate: Decimal, note: String? = nil) {
+        guard let index = accounts.firstIndex(where: { $0.id == accountId }),
+              var depositInfo = accounts[index].depositInfo else {
+            return
+        }
+        
+        DepositInterestService.addRateChange(
+            depositInfo: &depositInfo,
+            effectiveFrom: effectiveFrom,
+            annualRate: annualRate,
+            note: note
+        )
+        
+        accounts[index].depositInfo = depositInfo
+        recalculateAccountBalances()
+        saveToStorage()
+        
+        // Пересчитываем проценты после изменения ставки
+        reconcileAllDeposits()
+    }
+    
+    func reconcileAllDeposits() {
+        for index in accounts.indices where accounts[index].isDeposit {
+            DepositInterestService.reconcileDepositInterest(
+                account: &accounts[index],
+                allTransactions: allTransactions,
+                onTransactionCreated: { [weak self] transaction in
+                    self?.insertTransactionsSorted([transaction])
+                }
+            )
+        }
+        
+        if accounts.contains(where: { $0.isDeposit }) {
+            saveToStorage()
+        }
     }
     
     // MARK: - Helper Methods
@@ -1250,8 +1747,9 @@ class TransactionsViewModel: ObservableObject {
             transactionSubcategoryLinks = decoded
         }
         recalculateAccountBalances()
+        // reconcileAllDeposits вызывается асинхронно в init() после generateRecurringTransactions
     }
-
+    
     func recalculateAccountBalances() {
         guard !accounts.isEmpty else { return }
 
@@ -1296,6 +1794,10 @@ class TransactionsViewModel: ObservableObject {
                     let amountToUse = tx.convertedAmount ?? tx.amount
                     balanceChanges[accountId, default: 0] -= amountToUse
                 }
+            case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+                // Транзакции депозита не учитываются в балансе через этот механизм
+                // Баланс депозита управляется через depositInfo
+                break
             case .internalTransfer:
                 // Для перевода: используем разные суммы для source и target счетов
                 if let sourceId = tx.accountId,
@@ -1355,11 +1857,26 @@ class TransactionsViewModel: ObservableObject {
         }
 
         // Обновляем балансы: начальный баланс + изменения от транзакций
+        // Для депозитов баланс управляется через depositInfo, не через транзакции
         for index in accounts.indices {
             let accountId = accounts[index].id
-            let initialBalance = initialAccountBalances[accountId] ?? accounts[index].balance
-            let changes = balanceChanges[accountId] ?? 0
-            accounts[index].balance = initialBalance + changes
+            
+            if accounts[index].isDeposit {
+                // Для депозитов баланс уже установлен через depositInfo
+                // Просто убеждаемся, что баланс синхронизирован с depositInfo
+                if let depositInfo = accounts[index].depositInfo {
+                    var totalBalance: Decimal = depositInfo.principalBalance
+                    if !depositInfo.capitalizationEnabled {
+                        totalBalance += depositInfo.interestAccruedNotCapitalized
+                    }
+                    accounts[index].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+                }
+            } else {
+                // Для обычных счетов: начальный баланс + изменения от транзакций
+                let initialBalance = initialAccountBalances[accountId] ?? accounts[index].balance
+                let changes = balanceChanges[accountId] ?? 0
+                accounts[index].balance = initialBalance + changes
+            }
         }
 
         // Если были проблемы с конвертацией, устанавливаем предупреждение

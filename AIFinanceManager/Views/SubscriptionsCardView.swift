@@ -11,17 +11,6 @@ struct SubscriptionsCardView: View {
     @ObservedObject var viewModel: TransactionsViewModel
     @State private var totalAmount: Decimal = 0
     @State private var isLoadingTotal: Bool = false
-    @State private var isDarkWallpaper: Bool = false
-    @State private var wallpaperImage: UIImage? = nil
-    
-    // Адаптивный цвет текста в зависимости от яркости обоев
-    private var adaptiveTextColor: Color {
-        if wallpaperImage != nil {
-            return isDarkWallpaper ? .white : .black
-        }
-        // Если нет обоев, используем системный цвет
-        return Color(UIColor.label)
-    }
     
     private var subscriptions: [RecurringSeries] {
         viewModel.activeSubscriptions
@@ -39,19 +28,19 @@ struct SubscriptionsCardView: View {
                 Text("Подписки")
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(adaptiveTextColor)
+                    .foregroundStyle(.primary)
                 
                 Spacer()
                 
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(adaptiveTextColor)
+                    .foregroundStyle(.primary)
             }
             
             if subscriptions.isEmpty {
                 Text("Нет активных подписок")
                     .font(.subheadline)
-                    .foregroundStyle(adaptiveTextColor)
+                    .foregroundStyle(.primary)
             } else {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -65,12 +54,12 @@ struct SubscriptionsCardView: View {
                             ))
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundStyle(adaptiveTextColor)
+                            .foregroundStyle(.primary)
                         }
                         
                         Text("Активных \(subscriptions.count)")
                             .font(.subheadline)
-                            .foregroundStyle(adaptiveTextColor)
+                            .foregroundStyle(.primary)
                     }
                     
                     Spacer()
@@ -114,34 +103,6 @@ struct SubscriptionsCardView: View {
                 await calculateTotal()
             }
         }
-        .onAppear {
-            loadWallpaperAndCalculateBrightness()
-        }
-        .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
-            loadWallpaperAndCalculateBrightness()
-        }
-    }
-    
-    // Загрузка обоев и определение яркости
-    private func loadWallpaperAndCalculateBrightness() {
-        guard let wallpaperName = viewModel.appSettings.wallpaperImageName else {
-            wallpaperImage = nil
-            isDarkWallpaper = false
-            return
-        }
-        
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let fileURL = documentsPath.appendingPathComponent(wallpaperName)
-        
-        guard FileManager.default.fileExists(atPath: fileURL.path),
-              let image = UIImage(contentsOfFile: fileURL.path) else {
-            wallpaperImage = nil
-            isDarkWallpaper = false
-            return
-        }
-        
-        wallpaperImage = image
-        isDarkWallpaper = ImageBrightnessCalculator.isDark(image)
     }
 
     private func calculateTotal() async {
