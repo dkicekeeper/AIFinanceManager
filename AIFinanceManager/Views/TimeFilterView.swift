@@ -101,3 +101,9 @@ struct TimeFilterView: View {
         }
     }
 }
+
+#Preview {
+    NavigationView {
+        TimeFilterView(filterManager: TimeFilterManager())
+    }
+}

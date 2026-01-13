@@ -111,3 +111,17 @@ struct StatRow: View {
         }
     }
 }
+
+#Preview {
+    let result = ImportResult(
+        importedCount: 10,
+        skippedCount: 2,
+        createdAccounts: 1,
+        createdCategories: 2,
+        createdSubcategories: 0,
+        errors: []
+    )
+    return NavigationView {
+        CSVImportResultView(result: result, onDismiss: {})
+    }
+}

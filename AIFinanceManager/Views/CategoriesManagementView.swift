@@ -50,6 +50,7 @@ struct CategoriesManagementView: View {
                 }
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
         .navigationTitle("Categories")
         .navigationBarTitleDisplayMode(.inline)
@@ -103,9 +104,9 @@ struct CategoriesManagementView: View {
     }
     
     private var filteredCategories: [CustomCategory] {
-        // Только пользовательские категории (исключая скрытые)
+        // Только пользовательские категории выбранного типа
         return viewModel.customCategories
-            .filter { $0.type == selectedType && !$0.name.hasPrefix("_hidden_") }
+            .filter { $0.type == selectedType }
             .sorted { $0.name < $1.name }
     }
 }

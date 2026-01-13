@@ -516,3 +516,10 @@ struct DepositTransactionRow: View {
         return DateFormatters.displayDateFormatter.string(from: date)
     }
 }
+
+#Preview {
+    NavigationView {
+        DepositDetailView(viewModel: TransactionsViewModel(), accountId: "test")
+            .environmentObject(TimeFilterManager())
+    }
+}

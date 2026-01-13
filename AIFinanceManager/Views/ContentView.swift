@@ -83,30 +83,23 @@ struct ContentView: View {
                     }) {
                         Image(systemName: "mic.fill")
                             .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(.primary)
                             .frame(width: 64, height: 64)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                     }
-
+                    .buttonStyle(.glass)
                     // Кнопка загрузки выписок
                     Button(action: {
                         showingFilePicker = true
                     }) {
                         Image(systemName: "doc.badge.plus")
                             .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(.primary)
                             .frame(width: 64, height: 64)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                     }
+                    .buttonStyle(.glass)
                 }
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.bottom, AppSpacing.xl)
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .toolbarBackground(.hidden, for: .tabBar)
             .background {
                 // Wallpaper фон - должен покрывать весь экран, включая область под safeAreaInset
                 if let wallpaperImage = wallpaperImage {

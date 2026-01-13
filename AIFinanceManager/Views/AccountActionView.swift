@@ -43,7 +43,8 @@ struct AccountActionView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Закреплённый фильтр по типу действия (для депозитов только перевод)
+                // Picker для выбора типа действия (перевод/пополнение)
+                // Для депозитов Picker скрыт - доступен только перевод
                 if !account.isDeposit {
                     Picker("Тип", selection: $selectedAction) {
                         Text("Перевод").tag(ActionType.transfer)
@@ -52,9 +53,8 @@ struct AccountActionView: View {
                     .pickerStyle(SegmentedPickerStyle())
                     .padding(.horizontal)
                     .padding(.vertical, 12)
-                    .background(Color(UIColor.systemBackground))
-                    
-                    Divider()
+//                    .background(Color(UIColor.systemBackground))
+
                 }
                 
                 Form {

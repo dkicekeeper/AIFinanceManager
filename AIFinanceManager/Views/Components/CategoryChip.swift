@@ -24,7 +24,7 @@ struct CategoryChip: View {
         Button(action: onTap) {
             VStack(spacing: AppSpacing.sm) {
                 Circle()
-                    .fill(isSelected ? styleHelper.coinColor : styleHelper.coinColor.opacity(0.5))
+//                    .fill(isSelected ? styleHelper.coinColor : styleHelper.coinColor.opacity(0.5))
                     .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                     .overlay(
                         Image(systemName: styleHelper.iconName)
@@ -37,6 +37,7 @@ struct CategoryChip: View {
                     )
                     .scaleEffect(isPressed ? 0.9 : 1.0)
                     .animation(.easeInOut(duration: AppAnimation.fast), value: isPressed)
+                    .glassEffect()
                 
                 Text(category)
                     .font(AppTypography.caption)

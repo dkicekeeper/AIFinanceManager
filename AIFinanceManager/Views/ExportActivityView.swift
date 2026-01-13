@@ -41,3 +41,9 @@ struct ExportActivityView: UIViewControllerRepresentable {
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+
+#Preview {
+    // Note: ExportActivityView is a UIViewControllerRepresentable, 
+    // so it requires a real device/simulator to preview properly
+    ExportActivityView(viewModel: TransactionsViewModel())
+}

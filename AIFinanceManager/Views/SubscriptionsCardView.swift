@@ -30,11 +30,11 @@ struct SubscriptionsCardView: View {
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
                 
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.primary)
+//                Spacer()
+//                
+//                Image(systemName: "chevron.right")
+//                    .font(.caption)
+//                    .foregroundStyle(.primary)
             }
             
             if subscriptions.isEmpty {
@@ -72,24 +72,25 @@ struct SubscriptionsCardView: View {
             }
         }
         .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .overlay {
-            // Граница для глубины
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0.3),
-                            Color.white.opacity(0.1)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        }
-        .overlay(Color.white.opacity(0.001))
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+//        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+//        .overlay {
+//            // Граница для глубины
+//            RoundedRectangle(cornerRadius: 20)
+//                .stroke(
+//                    LinearGradient(
+//                        gradient: Gradient(colors: [
+//                            Color.white.opacity(0.3),
+//                            Color.white.opacity(0.1)
+//                        ]),
+//                        startPoint: .topLeading,
+//                        endPoint: .bottomTrailing
+//                    ),
+//                    lineWidth: 1
+//                )
+//        }
+//        .overlay(Color.white.opacity(0.001))
+//        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .glassEffect(in: .rect(cornerRadius: AppRadius.lg))
         .task {
             await calculateTotal()
         }
@@ -232,8 +233,8 @@ struct SubscriptionsCardView: View {
         // Генерируем случайные смещения для каждой подписки
         for subscription in subscriptions.prefix(20) {
             let subscriptionId = subscription.id
-            let randomX = Double.random(in: -8...8)
-            let randomY = Double.random(in: -8...8)
+            let randomX = Double.random(in: -20...20)
+            let randomY = Double.random(in: -20...20)
             let duration = Double.random(in: 2.5...4.0)
             
             // Устанавливаем начальное смещение
@@ -241,10 +242,14 @@ struct SubscriptionsCardView: View {
             
             // Создаем анимацию
             withAnimation(.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
-                let newX = Double.random(in: -8...8)
-                let newY = Double.random(in: -8...8)
+                let newX = Double.random(in: -20...20)
+                let newY = Double.random(in: -20...20)
                 floatingOffsets[subscriptionId] = CGSize(width: newX, height: newY)
             }
         }
     }
+}
+
+#Preview {
+    SubscriptionsCardView(viewModel: TransactionsViewModel())
 }

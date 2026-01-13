@@ -157,3 +157,14 @@ struct DepositEditView: View {
         }
     }
 }
+
+#Preview {
+    NavigationView {
+        DepositEditView(
+            viewModel: TransactionsViewModel(),
+            account: nil,
+            onSave: { _ in },
+            onCancel: {}
+        )
+    }
+}

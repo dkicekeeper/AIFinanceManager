@@ -259,3 +259,4 @@ struct CategoryMappingDetailView: View {
         .navigationTitle("Сопоставление категории")
     }
 }
+

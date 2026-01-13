@@ -31,7 +31,7 @@ struct AccountsManagementView: View {
         }
         .listStyle(PlainListStyle())
         .navigationTitle("Accounts")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             // Пересчитываем проценты депозитов при открытии экрана
             viewModel.reconcileAllDeposits()

@@ -364,3 +364,22 @@ struct VoiceInputConfirmationView: View {
         }
     }
 }
+
+#Preview {
+    let viewModel = TransactionsViewModel()
+    let parsedOperation = ParsedOperation(
+        type: .expense,
+        amount: Decimal(1000),
+        currencyCode: "KZT",
+        date: Date(),
+        categoryName: "Food",
+        note: "Test transaction"
+    )
+    NavigationView {
+        VoiceInputConfirmationView(
+            viewModel: viewModel,
+            parsedOperation: parsedOperation,
+            originalText: "Test"
+        )
+    }
+}

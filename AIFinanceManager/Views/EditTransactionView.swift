@@ -384,3 +384,26 @@ struct EditTransactionView: View {
         dismiss()
     }
 }
+
+#Preview {
+    let viewModel = TransactionsViewModel()
+    let dateFormatter = DateFormatters.dateFormatter
+    let sampleTransaction = Transaction(
+        id: "test",
+        date: dateFormatter.string(from: Date()),
+        description: "Test transaction",
+        amount: 1000,
+        currency: "KZT",
+        type: .expense,
+        category: "Food",
+        accountId: viewModel.accounts.first?.id ?? ""
+    )
+    NavigationView {
+        EditTransactionView(
+            transaction: sampleTransaction,
+            viewModel: viewModel,
+            accounts: viewModel.accounts,
+            customCategories: viewModel.customCategories
+        )
+    }
+}

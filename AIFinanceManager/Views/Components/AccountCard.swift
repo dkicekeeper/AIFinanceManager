@@ -15,7 +15,7 @@ struct AccountCard: View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.sm) {
                 account.bankLogo.image(size: AppIconSize.xl)
-                    .foregroundStyle(.primary.opacity(0.7))
+//                    .foregroundStyle(.primary.opacity(0.7))
                 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
@@ -28,24 +28,8 @@ struct AccountCard: View {
                 }
             }
             .padding(AppSpacing.lg)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppRadius.lg))
-            .overlay {
-                RoundedRectangle(cornerRadius: AppRadius.lg)
-                    .stroke(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color.white.opacity(0.3),
-                                Color.white.opacity(0.1)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            }
-            .shadowStyle(AppShadow.md)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.glass)
     }
 }
 

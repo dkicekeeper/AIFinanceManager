@@ -245,3 +245,9 @@ struct SettingsView: View {
         viewModel.objectWillChange.send()
     }
 }
+
+#Preview {
+    NavigationView {
+        SettingsView(viewModel: TransactionsViewModel())
+    }
+}

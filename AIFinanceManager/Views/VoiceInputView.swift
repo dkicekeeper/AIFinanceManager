@@ -134,3 +134,7 @@ struct RecordingIndicatorView: View {
         }
     }
 }
+
+#Preview {
+    VoiceInputView(voiceService: VoiceInputService()) { _ in }
+}

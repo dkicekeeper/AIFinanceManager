@@ -219,3 +219,19 @@ struct CSVColumnMappingView: View {
         }
     }
 }
+
+#Preview {
+    let viewModel = TransactionsViewModel()
+    let sampleCSV = CSVFile(
+        headers: ["Date", "Amount", "Description", "Category"],
+        rows: [
+            ["2024-01-01", "1000", "Test", "Food"]
+        ],
+        preview: [
+            ["2024-01-01", "1000", "Test", "Food"]
+        ]
+    )
+    NavigationView {
+        CSVColumnMappingView(csvFile: sampleCSV, viewModel: viewModel)
+    }
+}
