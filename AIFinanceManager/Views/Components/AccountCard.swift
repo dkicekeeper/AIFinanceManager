@@ -20,16 +20,16 @@ struct AccountCard: View {
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
                         .font(AppTypography.h4)
-                        .foregroundStyle(.primary)
+                        .foregroundColor(.primary)
                     Text(Formatting.formatCurrency(account.balance, currency: account.currency))
                         .font(AppTypography.bodySmall)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
+                        .foregroundColor(.primary)
                 }
             }
             .padding(AppSpacing.lg)
         }
-        .buttonStyle(.glass)
+        .glassEffect(in: .rect(cornerRadius: AppRadius.lg))
     }
 }
 

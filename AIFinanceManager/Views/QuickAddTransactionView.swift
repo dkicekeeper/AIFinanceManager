@@ -316,28 +316,6 @@ struct AddTransactionModal: View {
                         searchText: $subcategorySearchText
                     )
                 }
-                
-                // Кнопки даты внизу
-                DateButtonsView(
-                    selectedDate: $selectedDate,
-                    isDisabled: isSaving,
-                    onSave: { date in
-                        saveTransaction(date: date)
-                    }
-                )
-                .padding()
-                .background(Color(.systemBackground))
-                .overlay(
-                    Group {
-                        if isSaving {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle())
-                                .scaleEffect(1.5)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .background(Color.black.opacity(0.2))
-                        }
-                    }
-                )
             }
             .navigationTitle(category)
             .navigationBarTitleDisplayMode(.inline)
@@ -355,6 +333,24 @@ struct AddTransactionModal: View {
                     }
                 }
             }
+            .dateButtonsToolbar(
+                selectedDate: $selectedDate,
+                isDisabled: isSaving,
+                onSave: { date in
+                    saveTransaction(date: date)
+                }
+            )
+            .overlay(
+                Group {
+                    if isSaving {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(1.5)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color.black.opacity(0.2))
+                    }
+                }
+            )
             .sheet(isPresented: $showingCategoryHistory) {
                 NavigationView {
                     HistoryView(viewModel: viewModel, initialCategory: category)
@@ -546,39 +542,6 @@ struct DatePickerSheet: View {
         }
     }
 }
-
-
-struct AccountRadioButton: View {
-    let account: Account
-    let isSelected: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 8) {
-                account.bankLogo.image(size: 18)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(account.name)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                }
-            }
-            .padding(10)
-            .background(isSelected ? Color.blue.opacity(0.2) : Color(.systemGray6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
-            )
-            .cornerRadius(10)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
 #Preview {
     QuickAddTransactionView(viewModel: TransactionsViewModel())
         .environmentObject(TimeFilterManager())

@@ -52,65 +52,62 @@ struct AccountActionView: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .padding(.horizontal)
-                    .padding(.vertical, 12)
-//                    .background(Color(UIColor.systemBackground))
-
+                    .padding(.top, AppSpacing.md)
+                    .padding(.bottom, AppSpacing.md)
                 }
-                
-                Form {
-                
+            
                 if selectedAction == .income && !account.isDeposit {
                     if incomeCategories.isEmpty {
-                        Section {
-                            Text("Нет доступных категорий дохода. Создайте категории сначала.")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
+                        Text("Нет доступных категорий дохода. Создайте категории сначала.")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                            .padding(.horizontal)
+                            .padding(.vertical, AppSpacing.md)
                     } else {
-                        Section(header: Text("Категория дохода")) {
-                            LazyVGrid(columns: gridColumns, spacing: AppSpacing.md) {
-                                ForEach(incomeCategories, id: \.self) { category in
-                                    CategoryChip(
-                                        category: category,
-                                        type: .income,
-                                        customCategories: viewModel.customCategories,
-                                        isSelected: selectedCategory == category,
+                        LazyVGrid(columns: gridColumns, spacing: AppSpacing.md) {
+                            ForEach(incomeCategories, id: \.self) { category in
+                                CategoryChip(
+                                    category: category,
+                                    type: .income,
+                                    customCategories: viewModel.customCategories,
+                                    isSelected: selectedCategory == category,
+                                    onTap: {
+                                        selectedCategory = category
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, AppSpacing.md)
+                    }
+                } else {
+                    if availableAccounts.isEmpty {
+                        Text("Нет других счетов для перевода")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                            .padding(.horizontal)
+                            .padding(.vertical, AppSpacing.md)
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: AppSpacing.md) {
+                                ForEach(availableAccounts) { targetAccount in
+                                    AccountRadioButton(
+                                        account: targetAccount,
+                                        isSelected: selectedTargetAccountId == targetAccount.id,
                                         onTap: {
-                                            selectedCategory = category
+                                            selectedTargetAccountId = targetAccount.id
                                         }
                                     )
                                 }
                             }
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 4)
                         }
-                    }
-                } else {
-                    if availableAccounts.isEmpty {
-                        Section {
-                            Text("Нет других счетов для перевода")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                    } else {
-                        Section(header: Text(headerForAccountSelection)) {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: AppSpacing.md) {
-                                    ForEach(availableAccounts) { targetAccount in
-                                        AccountRadioButton(
-                                            account: targetAccount,
-                                            isSelected: selectedTargetAccountId == targetAccount.id,
-                                            onTap: {
-                                                selectedTargetAccountId = targetAccount.id
-                                            }
-                                        )
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, AppSpacing.md)
                     }
                 }
                 
+                Form {
                 Section(header: Text("Сумма")) {
                     HStack {
                         TextField("0.00", text: $amountText)
@@ -133,13 +130,6 @@ struct AccountActionView: View {
                 }
                 }
                 .padding(.bottom, 0)
-                
-                // Кнопки даты внизу - сохраняют транзакцию при выборе даты
-                DateButtonsView(selectedDate: $selectedDate) { date in
-                    saveTransaction(date: date)
-                }
-                .padding()
-                .background(Color(.systemBackground))
             }
             .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
@@ -159,6 +149,9 @@ struct AccountActionView: View {
                     }
                 }
             }
+            .dateButtonsToolbar(selectedDate: $selectedDate, onSave: { date in
+                saveTransaction(date: date)
+            })
             .sheet(isPresented: $showingAccountHistory) {
                 NavigationView {
                     HistoryView(viewModel: viewModel, initialAccountId: account.id)

@@ -591,27 +591,6 @@ struct RecognizedTextView: View {
     }
 }
 
-struct SummaryCard: View {
-    let title: String
-    let amount: Double
-    let currency: String
-    let color: Color
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            Text(Formatting.formatCurrency(amount, currency: currency))
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(color)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle()
-    }
-}
-
 struct ErrorMessageView: View {
     let message: String
 

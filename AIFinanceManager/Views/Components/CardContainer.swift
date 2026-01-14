@@ -9,23 +9,15 @@ import SwiftUI
 
 struct CardContainer<Content: View>: View {
     let content: Content
-//    let cornerRadius: CGFloat
-//    let padding: CGFloat
-    
     init(
-//        cornerRadius: CGFloat = AppRadius.lg,
-//        padding: CGFloat = AppSpacing.xs,
         @ViewBuilder content: () -> Content
     ) {
-//        self.cornerRadius = cornerRadius
-//        self.padding = padding
         self.content = content()
     }
-    
     var body: some View {
         content
-            .padding(AppSpacing.md)
-            .glassEffect(in: .rect(cornerRadius: AppRadius.md))
+            .padding(AppSpacing.lg)
+            .glassEffect(in: .rect(cornerRadius: AppRadius.lg))
     }
 }
 

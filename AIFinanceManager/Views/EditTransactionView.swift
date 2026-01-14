@@ -212,13 +212,6 @@ struct EditTransactionView: View {
                         searchText: $subcategorySearchText
                     )
                 }
-                
-                // Кнопки даты внизу
-                DateButtonsView(selectedDate: $selectedDate) { date in
-                    saveTransaction(date: date)
-                }
-                .padding()
-                .background(Color(.systemBackground))
             }
             .navigationTitle("Edit Transaction")
             .navigationBarTitleDisplayMode(.inline)
@@ -237,6 +230,9 @@ struct EditTransactionView: View {
                         Image(systemName: "checkmark")
                     }
                 }
+            }
+            .dateButtonsToolbar(selectedDate: $selectedDate) { date in
+                saveTransaction(date: date)
             }
             .onAppear {
                 amountText = String(format: "%.2f", transaction.amount)
