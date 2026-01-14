@@ -30,7 +30,7 @@ struct AccountsManagementView: View {
             }
         }
         .listStyle(PlainListStyle())
-        .navigationTitle("Accounts")
+        .navigationTitle("Счета")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             // Пересчитываем проценты депозитов при открытии экрана

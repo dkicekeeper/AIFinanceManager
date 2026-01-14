@@ -29,12 +29,12 @@ struct AccountRadioButton: View {
             }
             .padding(AppSpacing.lg)
             .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.pill, style: .continuous)
                     .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
             )
         }
 //        .buttonStyle(.glass)
-        .glassEffect(in: .rect(cornerRadius: AppRadius.lg))
+        .glassEffect(in: .rect(cornerRadius: AppRadius.pill))
     }
 }
 

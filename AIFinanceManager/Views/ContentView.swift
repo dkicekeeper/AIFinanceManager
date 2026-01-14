@@ -73,7 +73,7 @@ struct ContentView: View {
                 }
                 .padding(.vertical, AppSpacing.md)
             }
-            .scrollContentBackground(.hidden)
+//            .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom) {
                 // Primary actions: голос и загрузка выписок (liquid glass стиль iOS 16+)
                 HStack(spacing: AppSpacing.xl) {

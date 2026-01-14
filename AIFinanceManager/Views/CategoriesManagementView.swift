@@ -17,44 +17,33 @@ struct CategoriesManagementView: View {
     @State private var showingDeleteDialog = false
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Picker прикреплен к navigation bar
-            Picker("", selection: $selectedType) {
-                Text("Расходы").tag(TransactionType.expense)
-                Text("Доходы").tag(TransactionType.income)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.vertical, 12)
-            
-            Divider()
-            
-            // Список категорий
-            List {
+        List {
+            Section {
                 ForEach(filteredCategories) { category in
                     CategoryRow(
                         category: category,
                         isDefault: false,
-                        onEdit: {
-                            editingCategory = category
-                        },
+                        onEdit: { editingCategory = category },
                         onDelete: {
                             categoryToDelete = category
                             showingDeleteDialog = true
                         }
                     )
-                    .padding(.horizontal)
-                    .padding(.vertical, 4)
-                    .listRowInsets(.init())
+                    .padding(.vertical, AppSpacing.xs)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     .listRowSeparator(.hidden)
                 }
+            } header: {
+                Picker("", selection: $selectedType) {
+                    Text("Расходы").tag(TransactionType.expense)
+                    Text("Доходы").tag(TransactionType.income)
+                }
+                .pickerStyle(.segmented)
+                .padding(.vertical, AppSpacing.lg)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
         }
         .navigationTitle("Categories")
         .navigationBarTitleDisplayMode(.inline)
-//        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showingAddCategory = true } label: { Image(systemName: "plus") }

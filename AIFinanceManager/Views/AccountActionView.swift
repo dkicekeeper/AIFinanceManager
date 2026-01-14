@@ -50,10 +50,9 @@ struct AccountActionView: View {
                         Text("Перевод").tag(ActionType.transfer)
                         Text("Пополнение").tag(ActionType.income)
                     }
-                    .pickerStyle(SegmentedPickerStyle())
+                    .pickerStyle(.segmented)
                     .padding(.horizontal)
-                    .padding(.top, AppSpacing.md)
-                    .padding(.bottom, AppSpacing.md)
+                    .padding(.vertical, AppSpacing.md)
                 }
             
                 if selectedAction == .income && !account.isDeposit {

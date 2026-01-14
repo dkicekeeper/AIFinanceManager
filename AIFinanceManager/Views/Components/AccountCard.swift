@@ -29,7 +29,7 @@ struct AccountCard: View {
             }
             .padding(AppSpacing.lg)
         }
-        .glassEffect(in: .rect(cornerRadius: AppRadius.lg))
+        .glassEffect(in: .rect(cornerRadius: AppRadius.pill))
     }
 }
 

@@ -49,21 +49,22 @@ struct QuickAddTransactionView: View {
             }
         }
         .padding(AppSpacing.lg)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppRadius.lg))
-        .overlay {
-            RoundedRectangle(cornerRadius: AppRadius.lg)
-                .stroke(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.white.opacity(0.3),
-                            Color.white.opacity(0.1)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        }
+        
+//        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppRadius.lg))
+//        .overlay {
+//            RoundedRectangle(cornerRadius: AppRadius.lg)
+//                .stroke(
+//                    LinearGradient(
+//                        gradient: Gradient(colors: [
+//                            Color.white.opacity(0.3),
+//                            Color.white.opacity(0.1)
+//                        ]),
+//                        startPoint: .topLeading,
+//                        endPoint: .bottomTrailing
+//                    ),
+//                    lineWidth: 1
+//                )
+//        }
         .overlay(Color.white.opacity(0.001).allowsHitTesting(false))
         .sheet(isPresented: Binding(
             get: { selectedCategory != nil },

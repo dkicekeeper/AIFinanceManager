@@ -37,25 +37,26 @@ struct CategoryChip: View {
                     )
                     .scaleEffect(isPressed ? 0.9 : 1.0)
                     .animation(.easeInOut(duration: AppAnimation.fast), value: isPressed)
-                    .glassEffect()
+//                    .glassEffect()
                 
                 Text(category)
                     .font(AppTypography.caption)
-                    .foregroundStyle(.primary)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
             }
         }
-        .contentShape(Rectangle())
-        .buttonStyle(PlainButtonStyle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    isPressed = true
-                }
-                .onEnded { _ in
-                    isPressed = false
-                }
-        )
+        
+//        .contentShape(Rectangle())
+//        .buttonStyle(PlainButtonStyle())
+//        .simultaneousGesture(
+//            DragGesture(minimumDistance: 0)
+//                .onChanged { _ in
+//                    isPressed = true
+//                }
+//                .onEnded { _ in
+//                    isPressed = false
+//                }
+//        )
         .accessibilityLabel("\(category) category")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
