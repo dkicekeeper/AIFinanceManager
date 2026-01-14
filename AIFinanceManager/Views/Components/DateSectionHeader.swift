@@ -29,6 +29,8 @@ struct DateSectionHeader: View {
             }
         }
         .textCase(nil)
+        .padding(AppSpacing.md)
+        .glassEffect(in: .rect(cornerRadius: AppRadius.pill))
     }
 }
 
