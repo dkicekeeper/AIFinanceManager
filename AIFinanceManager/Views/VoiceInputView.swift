@@ -27,7 +27,7 @@ struct VoiceInputView: View {
                 
                 // Live транскрипция
                 ScrollView {
-                    Text(voiceService.transcribedText.isEmpty ? "Говорите..." : voiceService.transcribedText)
+                    Text(voiceService.transcribedText.isEmpty ? String(localized: "voice.speak") : voiceService.transcribedText)
                         .font(.title3)
                         .foregroundColor(voiceService.transcribedText.isEmpty ? .secondary : .primary)
                         .multilineTextAlignment(.center)
@@ -68,7 +68,7 @@ struct VoiceInputView: View {
                 .padding(.bottom, 40)
                 
                 // Кнопка отмены
-                Button("Отмена") {
+                Button(String(localized: "quickAdd.cancel")) {
                     voiceService.stopRecording()
                     dismiss()
                 }
@@ -76,14 +76,14 @@ struct VoiceInputView: View {
                 .padding(.bottom, 20)
             }
             .padding()
-            .navigationTitle("Голосовой ввод")
+            .navigationTitle(String(localized: "voice.title"))
             .navigationBarTitleDisplayMode(.inline)
-            .alert("Ошибка", isPresented: $showingPermissionAlert) {
-                Button("OK") {
+            .alert(String(localized: "voice.error"), isPresented: $showingPermissionAlert) {
+                Button(String(localized: "voice.ok")) {
                     dismiss()
                 }
             } message: {
-                Text(permissionMessage.isEmpty ? "Не удалось начать запись" : permissionMessage)
+                Text(permissionMessage.isEmpty ? String(localized: "voice.errorMessage") : permissionMessage)
             }
             .onAppear {
                 // Автоматически запускаем запись при открытии
@@ -125,7 +125,7 @@ struct RecordingIndicatorView: View {
                 .opacity(isAnimating ? 0.3 : 1.0)
                 .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isAnimating)
             
-            Text("Идет запись...")
+            Text(String(localized: "voice.recording"))
                 .font(.headline)
                 .foregroundColor(.red)
         }

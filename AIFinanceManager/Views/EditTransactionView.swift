@@ -9,7 +9,8 @@ import SwiftUI
 
 struct EditTransactionView: View {
     let transaction: Transaction
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
     let accounts: [Account]
     let customCategories: [CustomCategory]
     @Environment(\.dismiss) var dismiss
@@ -40,7 +41,7 @@ struct EditTransactionView: View {
         }
         
         // Добавляем категории из существующих транзакций того же типа
-        for tx in viewModel.allTransactions where tx.type == transactionType {
+        for tx in transactionsViewModel.allTransactions where tx.type == transactionType {
             if !tx.category.isEmpty && tx.category != "Uncategorized" {
                 categories.insert(tx.category)
             }
@@ -65,7 +66,7 @@ struct EditTransactionView: View {
     
     private var availableSubcategories: [Subcategory] {
         guard let categoryId = categoryId else { return [] }
-        return viewModel.getSubcategoriesForCategory(categoryId)
+        return categoriesViewModel.getSubcategoriesForCategory(categoryId)
     }
     
     var body: some View {
@@ -206,7 +207,7 @@ struct EditTransactionView: View {
                 }
                 .sheet(isPresented: $showingSubcategorySearch) {
                     SubcategorySearchView(
-                        viewModel: viewModel,
+                        categoriesViewModel: categoriesViewModel,
                         categoryId: categoryId ?? "",
                         selectedSubcategoryIds: $selectedSubcategoryIds,
                         searchText: $subcategorySearchText
@@ -231,7 +232,7 @@ struct EditTransactionView: View {
                     }
                 }
             }
-            .dateButtonsToolbar(selectedDate: $selectedDate) { date in
+            .dateButtonsSafeArea(selectedDate: $selectedDate) { date in
                 saveTransaction(date: date)
             }
             .onAppear {
@@ -242,13 +243,14 @@ struct EditTransactionView: View {
                 selectedTargetAccountId = transaction.targetAccountId
                 
                 // Загружаем подкатегории из transactionSubcategoryLinks
-                let linkedSubcategories = viewModel.getSubcategoriesForTransaction(transaction.id)
+                let linkedSubcategories = categoriesViewModel.getSubcategoriesForTransaction(transaction.id)
                 selectedSubcategoryIds = Set(linkedSubcategories.map { $0.id })
                 
                 // Проверяем recurring
+                // Note: recurringSeries should be accessed through SubscriptionsViewModel
                 isRecurring = transaction.recurringSeriesId != nil
                 if let seriesId = transaction.recurringSeriesId,
-                   let series = viewModel.recurringSeries.first(where: { $0.id == seriesId }) {
+                   let series = transactionsViewModel.recurringSeries.first(where: { $0.id == seriesId }) {
                     selectedFrequency = series.frequency
                 }
                 
@@ -262,8 +264,9 @@ struct EditTransactionView: View {
             .onChange(of: isRecurring) { oldValue, newValue in
                 if !newValue && transaction.recurringSeriesId != nil {
                     // Если выключаем recurring, отключаем все будущие без подтверждения
+                    // Note: stopRecurringSeries should be in SubscriptionsViewModel
                     if let seriesId = transaction.recurringSeriesId {
-                        viewModel.stopRecurringSeries(seriesId)
+                        transactionsViewModel.stopRecurringSeries(seriesId)
                     }
                 }
             }
@@ -317,8 +320,9 @@ struct EditTransactionView: View {
         if isRecurring {
             if transaction.recurringSeriesId == nil {
                 // Создаем новую recurring серию
+                // Note: createRecurringSeries should be in SubscriptionsViewModel
                 let amountDecimal = Decimal(amount)
-                let series = viewModel.createRecurringSeries(
+                let series = transactionsViewModel.createRecurringSeries(
                     amount: amountDecimal,
                     currency: transaction.currency,
                     category: selectedCategory,
@@ -332,9 +336,10 @@ struct EditTransactionView: View {
                 finalRecurringSeriesId = series.id
             } else {
                 // Обновляем существующую серию
+                // Note: recurringSeries should be accessed through SubscriptionsViewModel
                 if let seriesId = transaction.recurringSeriesId,
-                   let seriesIndex = viewModel.recurringSeries.firstIndex(where: { $0.id == seriesId }) {
-                    var series = viewModel.recurringSeries[seriesIndex]
+                   let seriesIndex = transactionsViewModel.recurringSeries.firstIndex(where: { $0.id == seriesId }) {
+                    var series = transactionsViewModel.recurringSeries[seriesIndex]
                     series.amount = Decimal(amount)
                     series.category = selectedCategory
                     series.description = descriptionText.isEmpty ? selectedCategory : descriptionText
@@ -342,7 +347,7 @@ struct EditTransactionView: View {
                     series.targetAccountId = selectedTargetAccountId
                     series.frequency = selectedFrequency
                     series.isActive = true // Активируем если была отключена
-                    viewModel.updateRecurringSeries(series)
+                    transactionsViewModel.updateRecurringSeries(series)
                 }
             }
         } else {
@@ -368,10 +373,10 @@ struct EditTransactionView: View {
             createdAt: transaction.createdAt // Сохраняем оригинальный createdAt при редактировании
         )
         
-        viewModel.updateTransaction(updatedTransaction)
+        transactionsViewModel.updateTransaction(updatedTransaction)
         
         // Обновляем подкатегории
-        viewModel.linkSubcategoriesToTransaction(
+        categoriesViewModel.linkSubcategoriesToTransaction(
             transactionId: transaction.id,
             subcategoryIds: Array(selectedSubcategoryIds)
         )
@@ -382,7 +387,7 @@ struct EditTransactionView: View {
 }
 
 #Preview {
-    let viewModel = TransactionsViewModel()
+    let coordinator = AppCoordinator()
     let dateFormatter = DateFormatters.dateFormatter
     let sampleTransaction = Transaction(
         id: "test",
@@ -392,14 +397,15 @@ struct EditTransactionView: View {
         currency: "KZT",
         type: .expense,
         category: "Food",
-        accountId: viewModel.accounts.first?.id ?? ""
+        accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
     )
     NavigationView {
         EditTransactionView(
             transaction: sampleTransaction,
-            viewModel: viewModel,
-            accounts: viewModel.accounts,
-            customCategories: viewModel.customCategories
+            transactionsViewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            accounts: coordinator.accountsViewModel.accounts,
+            customCategories: coordinator.categoriesViewModel.customCategories
         )
     }
 }

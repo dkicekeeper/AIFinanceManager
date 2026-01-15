@@ -203,10 +203,41 @@ extension View {
             .background(isSelected ? Color.blue.opacity(0.2) : AppColors.secondaryBackground)
             .cornerRadius(AppRadius.pill)
     }
+    
+    /// Применяет стандартный стиль для фильтров (FilterChip, AccountFilterMenu, CategoryFilterButton)
+    /// - Parameters:
+    ///   - isSelected: Если true, применяет выделенный стиль (синий фон)
+    func filterChipStyle(isSelected: Bool = false) -> some View {
+        self
+            .font(AppTypography.bodySmall)
+            .fontWeight(.medium)
+            .foregroundColor(.primary)
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.vertical, AppSpacing.sm)
+            .background(isSelected ? Color.blue.opacity(0.2) : Color(.systemGray5))
+            .cornerRadius(AppRadius.pill)
+    }
 
     /// Применяет тень
     func shadowStyle(_ shadow: Shadow) -> some View {
         self.shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
+    }
+    
+    /// Применяет glass effect с стандартным cornerRadius для карточек
+    /// - Parameter radius: Corner radius (по умолчанию .pill)
+    func glassCardStyle(radius: CGFloat = AppRadius.pill) -> some View {
+        self.glassEffect(in: .rect(cornerRadius: radius))
+    }
+    
+    /// Применяет стиль для fallback иконок (используется в BrandLogoView, SubscriptionCard)
+    /// - Parameter size: Размер иконки
+    func fallbackIconStyle(size: CGFloat) -> some View {
+        self
+            .font(.system(size: size * 0.6))
+            .foregroundColor(.secondary)
+            .frame(width: size, height: size)
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
     }
 }
 

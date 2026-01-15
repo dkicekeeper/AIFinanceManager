@@ -9,7 +9,8 @@ import SwiftUI
 
 struct SubscriptionCard: View {
     let subscription: RecurringSeries
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     
     var body: some View {
         HStack(spacing: AppSpacing.md) {
@@ -21,19 +22,11 @@ struct SubscriptionCard: View {
                 if brandId.hasPrefix("sf:") {
                     let iconName = String(brandId.dropFirst(3))
                     Image(systemName: iconName)
-                        .font(.system(size: AppIconSize.xxl * 0.6))
-                        .foregroundColor(.secondary)
-                        .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
-                        .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: AppIconSize.xxl * 0.2))
+                        .fallbackIconStyle(size: AppIconSize.xxl)
                 } else if brandId.hasPrefix("icon:") {
                     let iconName = String(brandId.dropFirst(5))
                     Image(systemName: iconName)
-                        .font(.system(size: AppIconSize.xxl * 0.6))
-                        .foregroundColor(.secondary)
-                        .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
-                        .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: AppIconSize.xxl * 0.2))
+                        .fallbackIconStyle(size: AppIconSize.xxl)
                 } else {
                     // Если есть brandId (название бренда), показываем через BrandLogoView
                     BrandLogoView(brandName: brandId, size: AppIconSize.xxl)
@@ -42,11 +35,7 @@ struct SubscriptionCard: View {
             } else {
                 // Fallback
                 Image(systemName: "creditcard")
-                    .font(.system(size: AppIconSize.xxl * 0.6))
-                    .foregroundColor(.secondary)
-                    .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: AppIconSize.xxl * 0.2))
+                    .fallbackIconStyle(size: AppIconSize.xxl)
             }
             
             // Info
@@ -61,7 +50,7 @@ struct SubscriptionCard: View {
                 .font(AppTypography.body)
                 .foregroundColor(.secondary)
                 
-                if let nextChargeDate = viewModel.nextChargeDate(for: subscription.id) {
+                if let nextChargeDate = subscriptionsViewModel.nextChargeDate(for: subscription.id) {
                     Text("Следующее списание: \(formatDate(nextChargeDate))")
                         .font(AppTypography.caption)
                         .foregroundColor(.secondary)
@@ -70,10 +59,12 @@ struct SubscriptionCard: View {
             
             Spacer()
             
+            
             // Status indicator
             statusIndicator
         }
-        .cardStyle()
+        .padding(AppSpacing.lg)
+        .glassCardStyle()
     }
     
     private var statusIndicator: some View {
@@ -101,6 +92,7 @@ struct SubscriptionCard: View {
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     SubscriptionCard(
         subscription: RecurringSeries(
             id: "1",
@@ -115,7 +107,8 @@ struct SubscriptionCard: View {
             brandId: "Netflix",
             status: .active
         ),
-        viewModel: TransactionsViewModel()
+        subscriptionsViewModel: coordinator.subscriptionsViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel
     )
     .padding()
 }

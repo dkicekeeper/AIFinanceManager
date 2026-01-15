@@ -14,7 +14,8 @@ class CSVImportService {
         csvFile: CSVFile,
         columnMapping: CSVColumnMapping,
         entityMapping: EntityMapping,
-        viewModel: TransactionsViewModel
+        transactionsViewModel: TransactionsViewModel,
+        categoriesViewModel: CategoriesViewModel
     ) async -> ImportResult {
         var importedCount = 0
         var skippedCount = 0
@@ -86,7 +87,7 @@ class CSVImportService {
                !accountValue.isEmpty {
                 if let mappedAccountId = entityMapping.accountMappings[accountValue] {
                     accountId = mappedAccountId
-                } else if let account = viewModel.accounts.first(where: { $0.name == accountValue }) {
+                } else if let account = transactionsViewModel.accounts.first(where: { $0.name == accountValue }) {
                     accountId = account.id
                 }
             }
@@ -100,14 +101,14 @@ class CSVImportService {
                 if let mappedCategory = entityMapping.categoryMappings[categoryValue] {
                     categoryName = mappedCategory
                     // Находим ID категории по имени
-                    categoryId = viewModel.customCategories.first(where: { $0.name == mappedCategory })?.id
-                } else if let existingCategory = viewModel.customCategories.first(where: { $0.name == categoryValue }) {
+                    categoryId = categoriesViewModel.customCategories.first(where: { $0.name == mappedCategory })?.id
+                } else if let existingCategory = categoriesViewModel.customCategories.first(where: { $0.name == categoryValue }) {
                     categoryName = categoryValue
                     categoryId = existingCategory.id
                 } else {
                     // Создаем категорию с автоматическим подбором иконки и цвета
-                    let iconName = CategoryIcon.iconName(for: categoryValue, type: type, customCategories: viewModel.customCategories)
-                    let colorHex = CategoryColors.hexColor(for: categoryValue, customCategories: viewModel.customCategories)
+                    let iconName = CategoryIcon.iconName(for: categoryValue, type: type, customCategories: categoriesViewModel.customCategories)
+                    let colorHex = CategoryColors.hexColor(for: categoryValue, customCategories: categoriesViewModel.customCategories)
                     // Конвертируем Color в hex строку
                     let hexString = colorToHex(colorHex)
                     
@@ -117,7 +118,7 @@ class CSVImportService {
                         colorHex: hexString,
                         type: type
                     )
-                    viewModel.addCategory(newCategory)
+                    categoriesViewModel.addCategory(newCategory)
                     categoryName = categoryValue
                     categoryId = newCategory.id
                     createdCategories += 1
@@ -138,19 +139,19 @@ class CSVImportService {
                 if let catId = categoryId {
                     for subcategoryNameValue in subcategories {
                         // Проверяем, существует ли уже такая подкатегория
-                        let existingSubcategory = viewModel.subcategories.first { $0.name.lowercased() == subcategoryNameValue.lowercased() }
+                        let existingSubcategory = categoriesViewModel.subcategories.first { $0.name.lowercased() == subcategoryNameValue.lowercased() }
                         
                         let subcategory: Subcategory
                         if let existing = existingSubcategory {
                             subcategory = existing
                         } else {
                             // Создаем новую подкатегорию
-                            subcategory = viewModel.addSubcategory(name: subcategoryNameValue)
+                            subcategory = categoriesViewModel.addSubcategory(name: subcategoryNameValue)
                             createdSubcategories += 1
                         }
                         
                         // Привязываем подкатегорию к категории, если еще не привязана
-                        viewModel.linkSubcategoryToCategory(subcategoryId: subcategory.id, categoryId: catId)
+                        categoriesViewModel.linkSubcategoryToCategory(subcategoryId: subcategory.id, categoryId: catId)
                         subcategoryIds.append(subcategory.id)
                     }
                 }
@@ -205,7 +206,9 @@ class CSVImportService {
             
             // Привязываем подкатегории к транзакции
             if !subcategoryIds.isEmpty {
-                viewModel.linkSubcategoriesToTransaction(transactionId: transactionId, subcategoryIds: subcategoryIds)
+                await MainActor.run {
+                    categoriesViewModel.linkSubcategoriesToTransaction(transactionId: transactionId, subcategoryIds: subcategoryIds)
+                }
             }
             
             importedCount += 1
@@ -213,7 +216,7 @@ class CSVImportService {
         
         // Добавляем транзакции батчами
         await MainActor.run {
-            viewModel.addTransactions(transactions)
+            transactionsViewModel.addTransactions(transactions)
         }
         
         return ImportResult(

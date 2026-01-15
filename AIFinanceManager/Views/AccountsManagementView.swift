@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct AccountsManagementView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
+    @ObservedObject var depositsViewModel: DepositsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     @Environment(\.dismiss) var dismiss
     @State private var showingAddAccount = false
     @State private var showingAddDeposit = false
@@ -16,12 +18,19 @@ struct AccountsManagementView: View {
     
     var body: some View {
         List {
-            ForEach(viewModel.accounts) { account in
+            ForEach(accountsViewModel.accounts) { account in
                 AccountRow(
                     account: account,
-                    currency: viewModel.appSettings.baseCurrency,
+                    currency: transactionsViewModel.appSettings.baseCurrency,
                     onEdit: { editingAccount = account },
-                    onDelete: { viewModel.deleteAccount(account) }
+                    onDelete: { 
+                        accountsViewModel.deleteAccount(account)
+                        // Also delete related transactions
+                        transactionsViewModel.allTransactions.removeAll { 
+                            $0.accountId == account.id || $0.targetAccountId == account.id 
+                        }
+                        transactionsViewModel.recalculateAccountBalances()
+                    }
                 )
                 .padding(.horizontal)
                 .padding(.vertical, 4)
@@ -30,11 +39,16 @@ struct AccountsManagementView: View {
             }
         }
         .listStyle(PlainListStyle())
-        .navigationTitle("Счета")
+        .navigationTitle(String(localized: "settings.accounts"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             // Пересчитываем проценты депозитов при открытии экрана
-            viewModel.reconcileAllDeposits()
+            depositsViewModel.reconcileAllDeposits(
+                allTransactions: transactionsViewModel.allTransactions,
+                onTransactionCreated: { transaction in
+                    transactionsViewModel.addTransaction(transaction)
+                }
+            )
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -52,10 +66,12 @@ struct AccountsManagementView: View {
         }
         .sheet(isPresented: $showingAddAccount) {
             AccountEditView(
-                viewModel: viewModel,
+                accountsViewModel: accountsViewModel,
+                transactionsViewModel: transactionsViewModel,
                 account: nil,
                 onSave: { account in
-                    viewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
+                    accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
+                    transactionsViewModel.recalculateAccountBalances()
                     showingAddAccount = false
                 },
                 onCancel: { showingAddAccount = false }
@@ -63,11 +79,12 @@ struct AccountsManagementView: View {
         }
         .sheet(isPresented: $showingAddDeposit) {
             DepositEditView(
-                viewModel: viewModel,
+                depositsViewModel: depositsViewModel,
+                transactionsViewModel: transactionsViewModel,
                 account: nil,
                 onSave: { account in
                     if let depositInfo = account.depositInfo {
-                        viewModel.addDeposit(
+                        depositsViewModel.addDeposit(
                             name: account.name,
                             currency: account.currency,
                             bankName: depositInfo.bankName,
@@ -76,6 +93,13 @@ struct AccountsManagementView: View {
                             interestRateAnnual: depositInfo.interestRateAnnual,
                             interestPostingDay: depositInfo.interestPostingDay,
                             capitalizationEnabled: depositInfo.capitalizationEnabled
+                        )
+                        // Reconcile deposits after adding
+                        depositsViewModel.reconcileAllDeposits(
+                            allTransactions: transactionsViewModel.allTransactions,
+                            onTransactionCreated: { transaction in
+                                transactionsViewModel.addTransaction(transaction)
+                            }
                         )
                     }
                     showingAddDeposit = false
@@ -87,20 +111,24 @@ struct AccountsManagementView: View {
             Group {
                 if account.isDeposit {
                     DepositEditView(
-                        viewModel: viewModel,
+                        depositsViewModel: depositsViewModel,
+                        transactionsViewModel: transactionsViewModel,
                         account: account,
                         onSave: { updatedAccount in
-                            viewModel.updateDeposit(updatedAccount)
+                            depositsViewModel.updateDeposit(updatedAccount)
+                            transactionsViewModel.recalculateAccountBalances()
                             editingAccount = nil
                         },
                         onCancel: { editingAccount = nil }
                     )
                 } else {
                     AccountEditView(
-                        viewModel: viewModel,
+                        accountsViewModel: accountsViewModel,
+                        transactionsViewModel: transactionsViewModel,
                         account: account,
                         onSave: { updatedAccount in
-                            viewModel.updateAccount(updatedAccount)
+                            accountsViewModel.updateAccount(updatedAccount)
+                            transactionsViewModel.recalculateAccountBalances()
                             editingAccount = nil
                         },
                         onCancel: { editingAccount = nil }
@@ -134,14 +162,16 @@ struct AccountRow: View {
                 if let depositInfo = account.depositInfo {
                     let interestToToday = DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
                     if interestToToday > 0 {
-                        Text("Проценты на сегодня: \(Formatting.formatCurrency(NSDecimalNumber(decimal: interestToToday).doubleValue, currency: account.currency))")
+                        let formattedAmount = Formatting.formatCurrency(NSDecimalNumber(decimal: interestToToday).doubleValue, currency: account.currency)
+                        Text(String(localized: "account.interestToday", defaultValue: "Interest today: \(formattedAmount)"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    
+
                     if let nextPosting = DepositInterestService.nextPostingDate(depositInfo: depositInfo) {
                         let formatter = DateFormatters.displayDateFormatter
-                        Text("Начисление: \(formatter.string(from: nextPosting))")
+                        let dateString = formatter.string(from: nextPosting)
+                        Text(String(localized: "account.nextPosting", defaultValue: "Next posting: \(dateString)"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -170,7 +200,8 @@ struct AccountRow: View {
 }
 
 struct AccountEditView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     let account: Account?
     let onSave: (Account) -> Void
     let onCancel: () -> Void
@@ -187,15 +218,15 @@ struct AccountEditView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Название")) {
+                Section(header: Text(String(localized: "common.name"))) {
                     TextField("Название счёта", text: $name)
                         .focused($isNameFocused)
                 }
-                
-                Section(header: Text("Логотип банка")) {
+
+                Section(header: Text(String(localized: "common.logo"))) {
                     Button(action: { showingBankLogoPicker = true }) {
                         HStack {
-                            Text("Выбрать логотип")
+                            Text(String(localized: "account.selectLogo"))
                             Spacer()
                             selectedBankLogo.image(size: 24)
                             Image(systemName: "chevron.right")
@@ -204,8 +235,8 @@ struct AccountEditView: View {
                         }
                     }
                 }
-                
-                Section(header: Text("Баланс")) {
+
+                Section(header: Text(String(localized: "common.balance"))) {
                     HStack {
                         TextField("0.00", text: $balanceText)
                             .keyboardType(.decimalPad)
@@ -219,7 +250,7 @@ struct AccountEditView: View {
                     }
                 }
             }
-            .navigationTitle(account == nil ? "Новый счёт" : "Редактировать счёт")
+            .navigationTitle(account == nil ? String(localized: "modal.newAccount") : String(localized: "modal.editAccount"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -261,7 +292,7 @@ struct AccountEditView: View {
                     selectedBankLogo = account.bankLogo
                     isNameFocused = false
                 } else {
-                    currency = viewModel.appSettings.baseCurrency
+                    currency = transactionsViewModel.appSettings.baseCurrency
                     selectedBankLogo = .none
                     balanceText = ""
                     // Активируем поле названия при создании нового счета
@@ -293,7 +324,7 @@ struct BankLogoPickerView: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Популярные банки")) {
+                Section(header: Text(String(localized: "account.popularBanks"))) {
                     ForEach(popularBanks) { bank in
                         BankLogoRow(
                             bank: bank,
@@ -305,8 +336,8 @@ struct BankLogoPickerView: View {
                         )
                     }
                 }
-                
-                Section(header: Text("Другие банки")) {
+
+                Section(header: Text(String(localized: "account.otherBanks"))) {
                     ForEach(otherBanks) { bank in
                         BankLogoRow(
                             bank: bank,
@@ -330,11 +361,11 @@ struct BankLogoPickerView: View {
                     )
                 }
             }
-            .navigationTitle("Выбрать логотип")
+            .navigationTitle(String(localized: "navigation.selectLogo"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Готово") {
+                    Button(String(localized: "button.done")) {
                         dismiss()
                     }
                 }
@@ -369,5 +400,10 @@ struct BankLogoRow: View {
 }
 
 #Preview {
-    AccountsManagementView(viewModel: TransactionsViewModel())
+    let coordinator = AppCoordinator()
+    AccountsManagementView(
+        accountsViewModel: coordinator.accountsViewModel,
+        depositsViewModel: coordinator.depositsViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel
+    )
 }

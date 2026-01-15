@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 class StatementTextParser {
     /// Парсит распознанный текст выписки Alatau City Bank в CSVFile формат

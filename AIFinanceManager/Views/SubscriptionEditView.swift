@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct SubscriptionEditView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     let subscription: RecurringSeries?
     let onSave: (RecurringSeries) -> Void
     let onCancel: () -> Void
@@ -33,10 +34,10 @@ struct SubscriptionEditView: View {
     
     private var availableCategories: [String] {
         var categories: Set<String> = []
-        for customCategory in viewModel.customCategories where customCategory.type == .expense {
+        for customCategory in transactionsViewModel.customCategories where customCategory.type == .expense {
             categories.insert(customCategory.name)
         }
-        for tx in viewModel.allTransactions where tx.type == .expense {
+        for tx in transactionsViewModel.allTransactions where tx.type == .expense {
             if !tx.category.isEmpty && tx.category != "Uncategorized" {
                 categories.insert(tx.category)
             }
@@ -146,11 +147,11 @@ struct SubscriptionEditView: View {
                     }
                 }
                 
-                if !viewModel.accounts.isEmpty {
+                if !transactionsViewModel.accounts.isEmpty {
                     Section(header: Text("Счёт оплаты")) {
                         Picker("Счёт", selection: $selectedAccountId) {
                             Text("Без счёта").tag(nil as String?)
-                            ForEach(viewModel.accounts) { account in
+                            ForEach(transactionsViewModel.accounts) { account in
                                 Text(account.name).tag(account.id as String?)
                             }
                         }
@@ -225,7 +226,7 @@ struct SubscriptionEditView: View {
                     }
                     selectedReminderOffsets = Set(subscription.reminderOffsets ?? [])
                 } else {
-                    currency = viewModel.appSettings.baseCurrency
+                    currency = transactionsViewModel.appSettings.baseCurrency
                     if !availableCategories.isEmpty {
                         selectedCategory = availableCategories[0]
                     }
@@ -299,8 +300,10 @@ struct SubscriptionEditView: View {
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     SubscriptionEditView(
-        viewModel: TransactionsViewModel(),
+        subscriptionsViewModel: coordinator.subscriptionsViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel,
         subscription: nil,
         onSave: { _ in },
         onCancel: {}

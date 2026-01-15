@@ -9,7 +9,7 @@ import SwiftUI
 
 struct CSVPreviewView: View {
     let csvFile: CSVFile
-    let viewModel: TransactionsViewModel
+    let transactionsViewModel: TransactionsViewModel
     @Environment(\.dismiss) var dismiss
     @State private var showingMapping = false
     
@@ -124,7 +124,7 @@ struct CSVPreviewView: View {
             .sheet(isPresented: $showingMapping) {
                 CSVColumnMappingView(
                     csvFile: csvFile,
-                    viewModel: viewModel,
+                    transactionsViewModel: transactionsViewModel,
                     onComplete: {
                         // Закрываем все модалки после успешного импорта
                         dismiss()

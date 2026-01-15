@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct TransactionPreviewView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
     let transactions: [Transaction]
     @Environment(\.dismiss) var dismiss
     @State private var selectedTransactions: Set<String> = Set()
@@ -36,7 +37,7 @@ struct TransactionPreviewView: View {
                             transaction: transaction,
                             isSelected: selectedTransactions.contains(transaction.id),
                             selectedAccountId: accountMapping[transaction.id],
-                            availableAccounts: viewModel.accounts.filter { $0.currency == transaction.currency },
+                            availableAccounts: accountsViewModel.accounts.filter { $0.currency == transaction.currency },
                             onToggle: {
                                 if selectedTransactions.contains(transaction.id) {
                                     selectedTransactions.remove(transaction.id)
@@ -44,7 +45,7 @@ struct TransactionPreviewView: View {
                                 } else {
                                     selectedTransactions.insert(transaction.id)
                                     // Автоматически выбираем первый подходящий счет
-                                    if let account = viewModel.accounts.first(where: { $0.currency == transaction.currency }) {
+                                    if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
                                         accountMapping[transaction.id] = account.id
                                     }
                                 }
@@ -63,7 +64,7 @@ struct TransactionPreviewView: View {
                         selectedTransactions = Set(transactions.map { $0.id })
                         // Автоматически выбираем счета для всех
                         for transaction in transactions {
-                            if let account = viewModel.accounts.first(where: { $0.currency == transaction.currency }) {
+                            if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
                                 accountMapping[transaction.id] = account.id
                             }
                         }
@@ -122,7 +123,7 @@ struct TransactionPreviewView: View {
                 selectedTransactions = Set(transactions.map { $0.id })
                 // Автоматически выбираем счета для всех транзакций
                 for transaction in transactions {
-                    if let account = viewModel.accounts.first(where: { $0.currency == transaction.currency }) {
+                    if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
                         accountMapping[transaction.id] = account.id
                     }
                 }
@@ -151,7 +152,7 @@ struct TransactionPreviewView: View {
                 recurringOccurrenceId: transaction.recurringOccurrenceId,
                 createdAt: transaction.createdAt // Сохраняем оригинальный createdAt
             )
-            viewModel.addTransaction(updatedTransaction)
+            transactionsViewModel.addTransaction(updatedTransaction)
         }
         
         dismiss()
@@ -227,8 +228,10 @@ struct TransactionPreviewRow: View {
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     TransactionPreviewView(
-        viewModel: TransactionsViewModel(),
+        transactionsViewModel: coordinator.transactionsViewModel,
+        accountsViewModel: coordinator.accountsViewModel,
         transactions: []
     )
 }

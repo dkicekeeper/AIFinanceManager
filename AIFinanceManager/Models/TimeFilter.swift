@@ -8,16 +8,41 @@
 import Foundation
 
 enum TimeFilterPreset: String, CaseIterable, Codable {
-    case today = "Сегодня"
-    case yesterday = "Вчера"
-    case thisWeek = "Эта неделя"
-    case last30Days = "Последние 30 дней"
-    case thisMonth = "Этот месяц"
-    case lastMonth = "Прошлый месяц"
-    case thisYear = "Этот год"
-    case lastYear = "Прошлый год"
-    case allTime = "Всё время"
-    case custom = "Пользовательский период"
+    case today
+    case yesterday
+    case thisWeek
+    case last30Days
+    case thisMonth
+    case lastMonth
+    case thisYear
+    case lastYear
+    case allTime
+    case custom
+
+    var localizedName: String {
+        switch self {
+        case .today:
+            return String(localized: "timeFilter.today")
+        case .yesterday:
+            return String(localized: "timeFilter.yesterday")
+        case .thisWeek:
+            return String(localized: "timeFilter.thisWeek")
+        case .last30Days:
+            return String(localized: "timeFilter.last30Days")
+        case .thisMonth:
+            return String(localized: "timeFilter.thisMonth")
+        case .lastMonth:
+            return String(localized: "timeFilter.lastMonth")
+        case .thisYear:
+            return String(localized: "timeFilter.thisYear")
+        case .lastYear:
+            return String(localized: "timeFilter.lastYear")
+        case .allTime:
+            return String(localized: "timeFilter.allTime")
+        case .custom:
+            return String(localized: "timeFilter.custom")
+        }
+    }
     
     func dateRange() -> (start: Date, end: Date) {
         let calendar = Calendar.current
@@ -113,9 +138,9 @@ struct TimeFilter: Codable, Equatable {
         if preset == .custom {
             let formatter = DateFormatter()
             formatter.dateFormat = "d MMM"
-            formatter.locale = Locale(identifier: "ru_RU")
+            formatter.locale = Locale.current // Use system locale instead of hardcoded "ru_RU"
             return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
         }
-        return preset.rawValue
+        return preset.localizedName
     }
 }

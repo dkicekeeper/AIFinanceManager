@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct SubscriptionsListView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var showingEditView = false
     @State private var editingSubscription: RecurringSeries?
@@ -16,7 +17,7 @@ struct SubscriptionsListView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
-                if viewModel.subscriptions.isEmpty {
+                if subscriptionsViewModel.subscriptions.isEmpty {
                     emptyState
                         .screenPadding()
                 } else {
@@ -26,7 +27,7 @@ struct SubscriptionsListView: View {
             }
             .padding(.vertical, AppSpacing.md)
         }
-        .navigationTitle("Подписки")
+        .navigationTitle(String(localized: "subscriptions.title"))
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -41,10 +42,13 @@ struct SubscriptionsListView: View {
             .sheet(isPresented: $showingEditView) {
                 if let subscription = editingSubscription {
                     SubscriptionEditView(
-                        viewModel: viewModel,
+                        subscriptionsViewModel: subscriptionsViewModel,
+                        transactionsViewModel: transactionsViewModel,
                         subscription: subscription,
                         onSave: { updatedSubscription in
-                            viewModel.updateSubscription(updatedSubscription)
+                            subscriptionsViewModel.updateSubscription(updatedSubscription)
+                            // Regenerate recurring transactions
+                            transactionsViewModel.generateRecurringTransactions()
                             showingEditView = false
                         },
                         onCancel: {
@@ -53,10 +57,11 @@ struct SubscriptionsListView: View {
                     )
                 } else {
                     SubscriptionEditView(
-                        viewModel: viewModel,
+                        subscriptionsViewModel: subscriptionsViewModel,
+                        transactionsViewModel: transactionsViewModel,
                         subscription: nil,
                         onSave: { newSubscription in
-                            _ = viewModel.createSubscription(
+                            _ = subscriptionsViewModel.createSubscription(
                                 amount: newSubscription.amount,
                                 currency: newSubscription.currency,
                                 category: newSubscription.category,
@@ -69,6 +74,8 @@ struct SubscriptionsListView: View {
                                 brandId: newSubscription.brandId,
                                 reminderOffsets: newSubscription.reminderOffsets
                             )
+                            // Regenerate recurring transactions
+                            transactionsViewModel.generateRecurringTransactions()
                             showingEditView = false
                         },
                         onCancel: {
@@ -85,19 +92,19 @@ struct SubscriptionsListView: View {
                 .font(.system(size: 64))
                 .foregroundColor(.secondary)
             
-            Text("Нет подписок")
+            Text(String(localized: "subscriptions.empty"))
                 .font(AppTypography.h3)
-            
-            Text("Добавьте подписку, чтобы отслеживать регулярные платежи")
+
+            Text(String(localized: "subscriptions.emptyDescription"))
                 .font(AppTypography.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-            
+
             Button {
                 editingSubscription = nil
                 showingEditView = true
             } label: {
-                Text("Добавить подписку")
+                Text(String(localized: "subscriptions.addSubscription"))
             }
             .primaryButton()
             .padding(.top, AppSpacing.md)
@@ -107,10 +114,14 @@ struct SubscriptionsListView: View {
     
     private var subscriptionsList: some View {
         VStack(spacing: AppSpacing.md) {
-            ForEach(viewModel.subscriptions) { subscription in
-                NavigationLink(destination: SubscriptionDetailView(viewModel: viewModel, subscription: subscription)
+            ForEach(subscriptionsViewModel.subscriptions) { subscription in
+                NavigationLink(destination: SubscriptionDetailView(
+                    subscriptionsViewModel: subscriptionsViewModel,
+                    transactionsViewModel: transactionsViewModel,
+                    subscription: subscription
+                )
                     .environmentObject(timeFilterManager)) {
-                    SubscriptionCard(subscription: subscription, viewModel: viewModel)
+                    SubscriptionCard(subscription: subscription, subscriptionsViewModel: subscriptionsViewModel, transactionsViewModel: transactionsViewModel)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
@@ -119,5 +130,9 @@ struct SubscriptionsListView: View {
 }
 
 #Preview {
-    SubscriptionsListView(viewModel: TransactionsViewModel())
+    let coordinator = AppCoordinator()
+    SubscriptionsListView(
+        subscriptionsViewModel: coordinator.subscriptionsViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel
+    )
 }

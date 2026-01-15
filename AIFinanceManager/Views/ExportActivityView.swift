@@ -9,11 +9,15 @@ import SwiftUI
 import UIKit
 
 struct ExportActivityView: UIViewControllerRepresentable {
-    let viewModel: TransactionsViewModel
+    let transactionsViewModel: TransactionsViewModel
     @Environment(\.dismiss) var dismiss
     
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        let csvContent = CSVExporter.exportTransactions(viewModel.allTransactions, accounts: viewModel.accounts)
+        // Note: Need accounts from AccountsViewModel, but for now using transactionsViewModel.accounts
+        let csvContent = CSVExporter.exportTransactions(
+            transactionsViewModel.allTransactions,
+            accounts: transactionsViewModel.accounts
+        )
         
         // Создаем временный файл
         let fileName = "transactions_export_\(DateFormatter.exportFileNameFormatter.string(from: Date())).csv"
@@ -45,5 +49,6 @@ struct ExportActivityView: UIViewControllerRepresentable {
 #Preview {
     // Note: ExportActivityView is a UIViewControllerRepresentable, 
     // so it requires a real device/simulator to preview properly
-    ExportActivityView(viewModel: TransactionsViewModel())
+    let coordinator = AppCoordinator()
+    ExportActivityView(transactionsViewModel: coordinator.transactionsViewModel)
 }

@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct QuickAddTransactionView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var selectedCategory: String? = nil
     @State private var selectedType: TransactionType = .expense
@@ -24,14 +26,14 @@ struct QuickAddTransactionView: View {
         LazyVGrid(columns: gridColumns, spacing: AppSpacing.lg) {
             ForEach(categories, id: \.self) { category in
                 let total = categoryExpenses[category]?.total ?? 0
-                let currency = viewModel.appSettings.baseCurrency
+                let currency = transactionsViewModel.appSettings.baseCurrency
                 let totalText = total != 0 ? Formatting.formatCurrency(total, currency: currency) : nil
 
                 VStack(spacing: AppSpacing.xs) {
                     CategoryChip(
                         category: category,
                         type: .expense,
-                        customCategories: viewModel.customCategories,
+                        customCategories: categoriesViewModel.customCategories,
                         isSelected: false,
                         onTap: {
                             selectedCategory = category
@@ -50,21 +52,6 @@ struct QuickAddTransactionView: View {
         }
         .padding(AppSpacing.lg)
         
-//        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppRadius.lg))
-//        .overlay {
-//            RoundedRectangle(cornerRadius: AppRadius.lg)
-//                .stroke(
-//                    LinearGradient(
-//                        gradient: Gradient(colors: [
-//                            Color.white.opacity(0.3),
-//                            Color.white.opacity(0.1)
-//                        ]),
-//                        startPoint: .topLeading,
-//                        endPoint: .bottomTrailing
-//                    ),
-//                    lineWidth: 1
-//                )
-//        }
         .overlay(Color.white.opacity(0.001).allowsHitTesting(false))
         .sheet(isPresented: Binding(
             get: { selectedCategory != nil },
@@ -74,9 +61,10 @@ struct QuickAddTransactionView: View {
                 AddTransactionModal(
                     category: category,
                     type: selectedType,
-                    currency: viewModel.appSettings.baseCurrency,
-                    accounts: viewModel.accounts,
-                    viewModel: viewModel,
+                    currency: transactionsViewModel.appSettings.baseCurrency,
+                    accounts: accountsViewModel.accounts,
+                    transactionsViewModel: transactionsViewModel,
+                    categoriesViewModel: categoriesViewModel,
                     onDismiss: {
                         selectedCategory = nil
                     }
@@ -86,13 +74,13 @@ struct QuickAddTransactionView: View {
         .onAppear {
             updateCachedData()
         }
-        .onChange(of: viewModel.allTransactions.count) { _, _ in
+        .onChange(of: transactionsViewModel.allTransactions.count) { _, _ in
             updateCachedData()
         }
         .onChange(of: timeFilterManager.currentFilter) { _, _ in
             updateCachedData()
         }
-        .onChange(of: viewModel.customCategories.count) { _, _ in
+        .onChange(of: categoriesViewModel.customCategories.count) { _, _ in
             updateCachedData()
         }
     }
@@ -100,7 +88,7 @@ struct QuickAddTransactionView: View {
     // Обновление кешированных данных
     private func updateCachedData() {
         PerformanceProfiler.start("QuickAddTransactionView.updateCachedData")
-        cachedCategoryExpenses = viewModel.categoryExpenses(timeFilterManager: timeFilterManager)
+        cachedCategoryExpenses = transactionsViewModel.categoryExpenses(timeFilterManager: timeFilterManager)
         cachedCategories = popularCategories()
         PerformanceProfiler.end("QuickAddTransactionView.updateCachedData")
     }
@@ -114,18 +102,18 @@ struct QuickAddTransactionView: View {
         var allCategories = Set<String>()
         
         // Добавляем пользовательские категории расходов
-        for customCategory in viewModel.customCategories where customCategory.type == .expense {
+        for customCategory in categoriesViewModel.customCategories where customCategory.type == .expense {
             allCategories.insert(customCategory.name)
         }
         
         // Добавляем категории из транзакций (с учетом фильтра по времени)
-        let popularFromTransactions = viewModel.popularCategories(timeFilterManager: timeFilterManager)
+        let popularFromTransactions = transactionsViewModel.popularCategories(timeFilterManager: timeFilterManager)
         for category in popularFromTransactions {
             allCategories.insert(category)
         }
         
         // Сортируем по популярности (сумме расходов с учетом фильтра)
-        let categoryExpenses = viewModel.categoryExpenses(timeFilterManager: timeFilterManager)
+        let categoryExpenses = transactionsViewModel.categoryExpenses(timeFilterManager: timeFilterManager)
         return Array(allCategories).sorted { category1, category2 in
             let total1 = categoryExpenses[category1]?.total ?? 0
             let total2 = categoryExpenses[category2]?.total ?? 0
@@ -145,7 +133,8 @@ struct AddTransactionModal: View {
     let type: TransactionType
     let currency: String
     let accounts: [Account]
-    let viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     let onDismiss: () -> Void
     
@@ -164,41 +153,48 @@ struct AddTransactionModal: View {
     @State private var validationError: String?
     @FocusState private var isAmountFocused: Bool
     
-    init(category: String, type: TransactionType, currency: String, accounts: [Account], viewModel: TransactionsViewModel, onDismiss: @escaping () -> Void) {
+    init(
+        category: String,
+        type: TransactionType,
+        currency: String,
+        accounts: [Account],
+        transactionsViewModel: TransactionsViewModel,
+        categoriesViewModel: CategoriesViewModel,
+        onDismiss: @escaping () -> Void
+    ) {
         self.category = category
         self.type = type
         self.currency = currency
         self.accounts = accounts
-        self.viewModel = viewModel
+        self.transactionsViewModel = transactionsViewModel
+        self.categoriesViewModel = categoriesViewModel
         self.onDismiss = onDismiss
         _selectedCurrency = State(initialValue: currency)
     }
     
     private var categoryId: String? {
-        viewModel.customCategories.first { $0.name == category }?.id
+        categoriesViewModel.customCategories.first { $0.name == category }?.id
     }
     
     private var availableSubcategories: [Subcategory] {
         guard let categoryId = categoryId else { return [] }
-        return viewModel.getSubcategoriesForCategory(categoryId)
+        return categoriesViewModel.getSubcategoriesForCategory(categoryId)
     }
     
     private var searchResults: [Subcategory] {
         if subcategorySearchText.isEmpty {
-            return viewModel.subcategories
+            return categoriesViewModel.subcategories
         }
-        return viewModel.searchSubcategories(query: subcategorySearchText)
+        return categoriesViewModel.searchSubcategories(query: subcategorySearchText)
     }
     
     // Убрано computed property formattedAmount - оно вызывалось при каждом обновлении view
     // Форматирование теперь происходит только при сохранении
     
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                Form {
+    private var formContent: some View {
+        Form {
                     if !accounts.isEmpty {
-                        Section(header: Text("Счёт")) {
+                        Section(header: Text(String(localized: "quickAdd.account"))) {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     ForEach(accounts) { account in
@@ -216,7 +212,7 @@ struct AddTransactionModal: View {
                         }
                     }
                     
-                    Section(header: Text("Сумма")) {
+                    Section(header: Text(String(localized: "quickAdd.amount"))) {
                         VStack(alignment: .leading, spacing: AppSpacing.xs) {
                             HStack {
                                 TextField("0.00", text: $amountText)
@@ -245,16 +241,16 @@ struct AddTransactionModal: View {
                         }
                     }
                     
-                    Section(header: Text("Описание")) {
-                        TextField("Описание (необязательно)", text: $descriptionText, axis: .vertical)
+                    Section(header: Text(String(localized: "quickAdd.description"))) {
+                        TextField(String(localized: "quickAdd.descriptionPlaceholder"), text: $descriptionText, axis: .vertical)
                             .lineLimit(3...6)
                     }
                     
-                    Section(header: Text("Повторяющаяся операция")) {
-                        Toggle("Сделать повторяющейся", isOn: $isRecurring)
-                        
+                    Section(header: Text(String(localized: "quickAdd.recurring"))) {
+                        Toggle(String(localized: "quickAdd.makeRecurring"), isOn: $isRecurring)
+
                         if isRecurring {
-                            Picker("Частота", selection: $selectedFrequency) {
+                            Picker(String(localized: "quickAdd.frequency"), selection: $selectedFrequency) {
                                 ForEach(RecurringFrequency.allCases, id: \.self) { frequency in
                                     Text(frequency.displayName).tag(frequency)
                                 }
@@ -265,7 +261,7 @@ struct AddTransactionModal: View {
                     
                     // Подкатегории
                     if categoryId != nil, !availableSubcategories.isEmpty {
-                        Section(header: Text("Подкатегории")) {
+                        Section(header: Text(String(localized: "quickAdd.subcategories"))) {
                             ForEach(availableSubcategories) { subcategory in
                                 HStack {
                                     Text(subcategory.name)
@@ -290,118 +286,144 @@ struct AddTransactionModal: View {
                             }) {
                                 HStack {
                                     Image(systemName: "magnifyingglass")
-                                    Text("Поиск подкатегорий")
+                                    Text(String(localized: "quickAdd.searchSubcategories"))
                                 }
                                 .foregroundColor(.blue)
                             }
                         }
                     } else if categoryId != nil {
-                        Section(header: Text("Подкатегории")) {
+                        Section(header: Text(String(localized: "quickAdd.subcategories"))) {
                             Button(action: {
                                 showingSubcategorySearch = true
                             }) {
                                 HStack {
                                     Image(systemName: "magnifyingglass")
-                                    Text("Поиск и добавление подкатегорий")
+                                    Text(String(localized: "quickAdd.searchAndAddSubcategories"))
                                 }
                                 .foregroundColor(.blue)
                             }
                         }
                     }
                 }
-                .sheet(isPresented: $showingSubcategorySearch) {
-                    SubcategorySearchView(
-                        viewModel: viewModel,
-                        categoryId: categoryId ?? "",
-                        selectedSubcategoryIds: $selectedSubcategoryIds,
-                        searchText: $subcategorySearchText
-                    )
-                }
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                formContent
+                    .sheet(isPresented: $showingSubcategorySearch) {
+                        SubcategorySearchView(
+                            categoriesViewModel: categoriesViewModel,
+                            categoryId: categoryId ?? "",
+                            selectedSubcategoryIds: $selectedSubcategoryIds,
+                            searchText: $subcategorySearchText
+                        )
+                    }
             }
             .navigationTitle(category)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingCategoryHistory = true
-                    }) {
-                        Image(systemName: "clock.arrow.circlepath")
-                    }
-                }
+                toolbarContent
             }
-            .dateButtonsToolbar(
+            .dateButtonsSafeArea(
                 selectedDate: $selectedDate,
                 isDisabled: isSaving,
                 onSave: { date in
                     saveTransaction(date: date)
                 }
             )
-            .overlay(
-                Group {
-                    if isSaving {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle())
-                            .scaleEffect(1.5)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color.black.opacity(0.2))
-                    }
-                }
-            )
+            .overlay(overlayContent)
             .sheet(isPresented: $showingCategoryHistory) {
-                NavigationView {
-                    HistoryView(viewModel: viewModel, initialCategory: category)
-                        .environmentObject(timeFilterManager)
-                }
+                categoryHistorySheet
             }
             .onAppear {
-                isAmountFocused = true
-                if selectedAccountId == nil {
-                    selectedAccountId = accounts.first?.id
-                }
-                // Устанавливаем валюту счета, если счет выбран
-                if let accountId = selectedAccountId,
-                   let account = accounts.first(where: { $0.id == accountId }) {
-                    selectedCurrency = account.currency
-                }
+                setupOnAppear()
             }
             .onChange(of: selectedAccountId) {
-                // Обновляем валюту при выборе счета
-                if let accountId = selectedAccountId,
-                   let account = accounts.first(where: { $0.id == accountId }) {
-                    selectedCurrency = account.currency
+                updateCurrencyForSelectedAccount()
+            }
+        }
+    }
+    
+    private var toolbarContent: some ToolbarContent {
+        Group {
+            ToolbarItem(placement: .cancellationAction) {
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
                 }
             }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    showingCategoryHistory = true
+                }) {
+                    Image(systemName: "clock.arrow.circlepath")
+                }
+            }
+        }
+    }
+    
+    private var overlayContent: some View {
+        Group {
+            if isSaving {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .scaleEffect(1.5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.black.opacity(0.2))
+            }
+        }
+    }
+    
+    private var categoryHistorySheet: some View {
+        NavigationView {
+            HistoryView(
+                transactionsViewModel: transactionsViewModel,
+                accountsViewModel: AccountsViewModel(repository: transactionsViewModel.repository),
+                categoriesViewModel: categoriesViewModel,
+                initialCategory: category
+            )
+                .environmentObject(timeFilterManager)
+        }
+    }
+    
+    private func setupOnAppear() {
+        isAmountFocused = true
+        if selectedAccountId == nil {
+            selectedAccountId = accounts.first?.id
+        }
+        updateCurrencyForSelectedAccount()
+    }
+    
+    private func updateCurrencyForSelectedAccount() {
+        if let accountId = selectedAccountId,
+           let account = accounts.first(where: { $0.id == accountId }) {
+            selectedCurrency = account.currency
         }
     }
     
     private func saveTransaction(date: Date) {
         // Валидация суммы
         guard let decimalAmount = AmountFormatter.parse(amountText) else {
-            validationError = "Введите корректную сумму"
+            validationError = String(localized: "error.validation.enterAmount")
             HapticManager.error()
             return
         }
 
         guard decimalAmount > 0 else {
-            validationError = "Сумма должна быть больше нуля"
+            validationError = String(localized: "error.validation.amountGreaterThanZero")
             HapticManager.error()
             return
         }
-        
+
         // Валидация: проверяем, что счет выбран
         guard let accountId = selectedAccountId else {
-            validationError = "Выберите счёт"
+            validationError = String(localized: "error.validation.selectAccount")
             HapticManager.error()
             return
         }
-        
+
         guard let account = accounts.first(where: { $0.id == accountId }) else {
-            validationError = "Счёт не найден"
+            validationError = String(localized: "error.validation.accountNotFound")
             HapticManager.error()
             return
         }
@@ -422,8 +444,10 @@ struct AddTransactionModal: View {
         let isFutureDate = transactionDate > today
         
         // Если это recurring, создаем серию
+        // Note: createRecurringSeries should be in SubscriptionsViewModel
+        // For now, keeping in TransactionsViewModel for backward compatibility
         if isRecurring {
-            _ = viewModel.createRecurringSeries(
+            _ = transactionsViewModel.createRecurringSeries(
                 amount: decimalAmount,
                 currency: selectedCurrency,
                 category: category,
@@ -486,18 +510,18 @@ struct AddTransactionModal: View {
                 targetAccountId: nil
             )
             
-            viewModel.addTransaction(transaction)
+            transactionsViewModel.addTransaction(transaction)
             
             // Связываем подкатегории с транзакцией
             if !selectedSubcategoryIds.isEmpty {
-                let addedTransaction = viewModel.allTransactions.first { tx in
+                let addedTransaction = transactionsViewModel.allTransactions.first { tx in
                     tx.date == dateString &&
                     tx.description == finalDescription &&
                     tx.amount == amountDouble
                 }
 
                 if let transactionId = addedTransaction?.id {
-                    viewModel.linkSubcategoriesToTransaction(
+                    categoriesViewModel.linkSubcategoriesToTransaction(
                         transactionId: transactionId,
                         subcategoryIds: Array(selectedSubcategoryIds)
                     )
@@ -519,22 +543,22 @@ struct DatePickerSheet: View {
     var body: some View {
         NavigationView {
             VStack {
-                DatePicker("Выберите дату", selection: $selectedDate, displayedComponents: .date)
+                DatePicker(String(localized: "quickAdd.selectDate"), selection: $selectedDate, displayedComponents: .date)
                     .datePickerStyle(.graphical)
                     .padding()
-                
+
                 Spacer()
             }
-            .navigationTitle("Выберите дату")
+            .navigationTitle(String(localized: "quickAdd.selectDate"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
+                    Button(String(localized: "quickAdd.cancel")) {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") {
+                    Button(String(localized: "quickAdd.done")) {
                         onDateSelected(selectedDate)
                         dismiss()
                     }
@@ -544,6 +568,11 @@ struct DatePickerSheet: View {
     }
 }
 #Preview {
-    QuickAddTransactionView(viewModel: TransactionsViewModel())
+    let coordinator = AppCoordinator()
+    QuickAddTransactionView(
+        transactionsViewModel: coordinator.transactionsViewModel,
+        categoriesViewModel: coordinator.categoriesViewModel,
+        accountsViewModel: coordinator.accountsViewModel
+    )
         .environmentObject(TimeFilterManager())
 }

@@ -24,7 +24,7 @@ struct CategoryChip: View {
         Button(action: onTap) {
             VStack(spacing: AppSpacing.sm) {
                 Circle()
-//                    .fill(isSelected ? styleHelper.coinColor : styleHelper.coinColor.opacity(0.5))
+                    .foregroundStyle(.clear)
                     .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                     .overlay(
                         Image(systemName: styleHelper.iconName)
@@ -35,28 +35,18 @@ struct CategoryChip: View {
                         Circle()
                             .stroke(isSelected ? styleHelper.coinBorderColor : Color.clear, lineWidth: 3)
                     )
-                    .scaleEffect(isPressed ? 0.9 : 1.0)
-                    .animation(.easeInOut(duration: AppAnimation.fast), value: isPressed)
-//                    .glassEffect()
+                    .glassEffect(.regular
+                           .tint(isSelected ? styleHelper.coinColor : styleHelper.coinColor.opacity(1.0))
+                           .interactive()
+                       )
                 
                 Text(category)
-                    .font(AppTypography.caption)
+                    .font(AppTypography.bodySmall)
                     .foregroundColor(.primary)
                     .lineLimit(1)
             }
         }
         
-//        .contentShape(Rectangle())
-//        .buttonStyle(PlainButtonStyle())
-//        .simultaneousGesture(
-//            DragGesture(minimumDistance: 0)
-//                .onChanged { _ in
-//                    isPressed = true
-//                }
-//                .onEnded { _ in
-//                    isPressed = false
-//                }
-//        )
         .accessibilityLabel("\(category) category")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }

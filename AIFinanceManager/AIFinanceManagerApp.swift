@@ -11,6 +11,7 @@ import UIKit
 @main
 struct AIFinanceManagerApp: App {
     @StateObject private var timeFilterManager = TimeFilterManager()
+    @StateObject private var coordinator = AppCoordinator()
     
     init() {
         // Глобальная настройка navigation bar для прозрачного фона
@@ -28,6 +29,7 @@ struct AIFinanceManagerApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(timeFilterManager)
+                .environmentObject(coordinator)
         }
     }
 }

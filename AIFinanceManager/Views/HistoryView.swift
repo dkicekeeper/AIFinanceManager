@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct HistoryView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var selectedAccountFilter: String? = nil // nil = все счета
     @State private var searchText = ""
@@ -23,8 +25,16 @@ struct HistoryView: View {
     @State private var cachedSortedKeys: [String] = []
     @State private var searchTask: Task<Void, Never>?
     
-    init(viewModel: TransactionsViewModel, initialCategory: String? = nil, initialAccountId: String? = nil) {
-        self.viewModel = viewModel
+    init(
+        transactionsViewModel: TransactionsViewModel,
+        accountsViewModel: AccountsViewModel,
+        categoriesViewModel: CategoriesViewModel,
+        initialCategory: String? = nil,
+        initialAccountId: String? = nil
+    ) {
+        self.transactionsViewModel = transactionsViewModel
+        self.accountsViewModel = accountsViewModel
+        self.categoriesViewModel = categoriesViewModel
         self.initialCategory = initialCategory
         self.initialAccountId = initialAccountId
     }
@@ -33,7 +43,9 @@ struct HistoryView: View {
         VStack(spacing: 0) {
             // Фильтры
             HistoryFilterSection(
-                viewModel: viewModel,
+                transactionsViewModel: transactionsViewModel,
+                accountsViewModel: accountsViewModel,
+                categoriesViewModel: categoriesViewModel,
                 selectedAccountFilter: $selectedAccountFilter,
                 showingCategoryFilter: $showingCategoryFilter
             )
@@ -41,15 +53,15 @@ struct HistoryView: View {
             // Список транзакций
             transactionsList
         }
-        .navigationTitle("History")
+        .navigationTitle(String(localized: "navigation.history"))
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, isPresented: $isSearchActive, prompt: "Search by amount, category, or description")
+        .searchable(text: $searchText, isPresented: $isSearchActive, prompt: String(localized: "search.placeholder"))
         .task {
             // Устанавливаем фильтр по категории до onAppear, чтобы гарантировать применение
             if let category = initialCategory {
-                viewModel.selectedCategories = [category]
+                transactionsViewModel.selectedCategories = [category]
             } else {
-                viewModel.selectedCategories = nil
+                transactionsViewModel.selectedCategories = nil
             }
         }
         .onAppear {
@@ -87,23 +99,23 @@ struct HistoryView: View {
                 }
             }
         }
-        .onChange(of: viewModel.accounts) { _, _ in
+        .onChange(of: transactionsViewModel.accounts) { _, _ in
             updateCachedTransactions()
         }
-        .onChange(of: viewModel.selectedCategories) { _, _ in
+        .onChange(of: transactionsViewModel.selectedCategories) { _, _ in
             updateCachedTransactions()
         }
-        .onChange(of: viewModel.allTransactions) { _, _ in
+        .onChange(of: transactionsViewModel.allTransactions) { _, _ in
             // Обновляем кеш при изменении транзакций (например, после редактирования)
             updateCachedTransactions()
         }
         .onDisappear {
             // Сбрасываем фильтры при выходе из истории
             selectedAccountFilter = nil
-            viewModel.selectedCategories = nil
+            transactionsViewModel.selectedCategories = nil
         }
         .sheet(isPresented: $showingCategoryFilter) {
-            CategoryFilterView(viewModel: viewModel)
+            CategoryFilterView(viewModel: transactionsViewModel)
         }
     }
     
@@ -116,18 +128,18 @@ struct HistoryView: View {
             // Определяем контекстное сообщение в зависимости от активных фильтров
             let emptyMessage: String = {
                 if !debouncedSearchText.isEmpty {
-                    return "Попробуйте изменить поисковый запрос"
-                } else if selectedAccountFilter != nil || viewModel.selectedCategories != nil {
-                    return "Попробуйте изменить фильтры или добавьте новую операцию"
+                    return String(localized: "emptyState.tryDifferentSearch")
+                } else if selectedAccountFilter != nil || transactionsViewModel.selectedCategories != nil {
+                    return String(localized: "emptyState.tryDifferentFilters")
                 } else {
-                    return "Начните добавлять операции, чтобы отслеживать ваши финансы"
+                    return String(localized: "emptyState.startTracking")
                 }
             }()
 
             return AnyView(
                 EmptyStateView(
                     icon: !debouncedSearchText.isEmpty ? "magnifyingglass" : "doc.text",
-                    title: !debouncedSearchText.isEmpty ? "Ничего не найдено" : "Нет операций",
+                    title: !debouncedSearchText.isEmpty ? String(localized: "emptyState.searchNoResults") : String(localized: "emptyState.noTransactions"),
                     description: emptyMessage
                 )
                 .padding(.top, AppSpacing.xxxl)
@@ -142,10 +154,10 @@ struct HistoryView: View {
                             ForEach(grouped[dateKey] ?? []) { transaction in
                                 TransactionCard(
                                     transaction: transaction,
-                                    currency: viewModel.appSettings.baseCurrency,
-                                    customCategories: viewModel.customCategories,
-                                    accounts: viewModel.accounts,
-                                    viewModel: viewModel
+                                    currency: transactionsViewModel.appSettings.baseCurrency,
+                                    customCategories: categoriesViewModel.customCategories,
+                                    accounts: accountsViewModel.accounts,
+                                    viewModel: transactionsViewModel
                                 )
                             }
                         }
@@ -206,14 +218,14 @@ struct HistoryView: View {
         PerformanceProfiler.start("HistoryView.updateCachedTransactions")
         
         // Фильтруем транзакции
-        let filtered = viewModel.filterTransactionsForHistory(
+        let filtered = transactionsViewModel.filterTransactionsForHistory(
             timeFilterManager: timeFilterManager,
             accountId: selectedAccountFilter,
             searchText: debouncedSearchText
         )
         
         // Группируем и сортируем
-        let result = viewModel.groupAndSortTransactionsByDate(filtered)
+        let result = transactionsViewModel.groupAndSortTransactionsByDate(filtered)
         cachedGroupedTransactions = result.grouped
         cachedSortedKeys = result.sortedKeys
         
@@ -222,8 +234,8 @@ struct HistoryView: View {
     
     
     private func dateHeader(for dateKey: String, transactions: [Transaction]) -> some View {
-        let currency = viewModel.appSettings.baseCurrency
-        let baseCurrency = viewModel.appSettings.baseCurrency
+        let currency = transactionsViewModel.appSettings.baseCurrency
+        let baseCurrency = transactionsViewModel.appSettings.baseCurrency
         
         // Конвертируем все расходы в базовую валюту перед суммированием
         let dayExpenses = transactions
@@ -349,6 +361,8 @@ struct TransactionCard: View {
             Button("Прекратить повторение", role: .destructive) {
                 HapticManager.warning()
                 if let viewModel = viewModel, let seriesId = transaction.recurringSeriesId {
+                    // Note: stopRecurringSeries should be in SubscriptionsViewModel
+                    // For now, keeping in TransactionsViewModel for backward compatibility
                     viewModel.stopRecurringSeries(seriesId)
                     // После остановки серии нужно удалить будущие транзакции и перегенерировать список
                     let dateFormatter = DateFormatters.dateFormatter
@@ -356,6 +370,7 @@ struct TransactionCard: View {
                     let today = Calendar.current.startOfDay(for: Date())
                     
                     // Удаляем все будущие транзакции этой серии (начиная со следующего дня после текущей транзакции)
+                    // Note: recurringOccurrences should be accessed through SubscriptionsViewModel
                     let futureOccurrences = viewModel.recurringOccurrences.filter { occurrence in
                         guard occurrence.seriesId == seriesId,
                               let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
@@ -384,7 +399,8 @@ struct TransactionCard: View {
             if let viewModel = viewModel {
                 EditTransactionView(
                     transaction: transaction,
-                    viewModel: viewModel,
+                    transactionsViewModel: viewModel,
+                    categoriesViewModel: CategoriesViewModel(repository: viewModel.repository),
                     accounts: accounts,
                     customCategories: customCategories
                 )
@@ -704,7 +720,7 @@ struct CategoryFilterView: View {
                     }
                 }
             }
-            .navigationTitle("Фильтр по категориям")
+            .navigationTitle(String(localized: "navigation.categoryFilter"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -745,7 +761,12 @@ struct CategoryFilterView: View {
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     NavigationView {
-        HistoryView(viewModel: TransactionsViewModel())
+        HistoryView(
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel
+        )
     }
 }

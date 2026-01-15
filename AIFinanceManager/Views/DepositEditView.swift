@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct DepositEditView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var depositsViewModel: DepositsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     let account: Account?
     let onSave: (Account) -> Void
     let onCancel: () -> Void
@@ -160,8 +161,10 @@ struct DepositEditView: View {
 
 #Preview {
     NavigationView {
+        let coordinator = AppCoordinator()
         DepositEditView(
-            viewModel: TransactionsViewModel(),
+            depositsViewModel: coordinator.depositsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
             account: nil,
             onSave: { _ in },
             onCancel: {}

@@ -17,7 +17,7 @@ struct CardContainer<Content: View>: View {
     var body: some View {
         content
             .padding(AppSpacing.lg)
-            .glassEffect(in: .rect(cornerRadius: AppRadius.pill))
+            .glassCardStyle()
     }
 }
 

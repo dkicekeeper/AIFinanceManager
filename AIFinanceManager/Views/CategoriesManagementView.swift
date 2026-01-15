@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct CategoriesManagementView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     @Environment(\.dismiss) var dismiss
     @State private var selectedType: TransactionType = .expense
     @State private var showingAddCategory = false
@@ -18,44 +19,48 @@ struct CategoriesManagementView: View {
     
     var body: some View {
         List {
-            Section {
-                ForEach(filteredCategories) { category in
-                    CategoryRow(
-                        category: category,
-                        isDefault: false,
-                        onEdit: { editingCategory = category },
-                        onDelete: {
-                            categoryToDelete = category
-                            showingDeleteDialog = true
-                        }
-                    )
-                    .padding(.vertical, AppSpacing.xs)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                    .listRowSeparator(.hidden)
-                }
-            } header: {
-                Picker("", selection: $selectedType) {
-                    Text("Расходы").tag(TransactionType.expense)
-                    Text("Доходы").tag(TransactionType.income)
-                }
-                .pickerStyle(.segmented)
-                .padding(.vertical, AppSpacing.lg)
+            ForEach(filteredCategories) { category in
+                CategoryRow(
+                    category: category,
+                    isDefault: false,
+                    onEdit: { editingCategory = category },
+                    onDelete: {
+                        categoryToDelete = category
+                        showingDeleteDialog = true
+                    }
+                )
+                .padding(.vertical, AppSpacing.xs)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                .listRowSeparator(.hidden)
             }
         }
-        .navigationTitle("Categories")
+        .listStyle(PlainListStyle())
+        .navigationTitle(String(localized: "navigation.categories"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button { showingAddCategory = true } label: { Image(systemName: "plus") }
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            Picker("", selection: $selectedType) {
+                Text("Расходы").tag(TransactionType.expense)
+                Text("Доходы").tag(TransactionType.income)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.vertical, AppSpacing.md)
+            .background(Color(.systemBackground))
+        }
         .sheet(isPresented: $showingAddCategory) {
             CategoryEditView(
-                viewModel: viewModel,
+                categoriesViewModel: categoriesViewModel,
+                transactionsViewModel: transactionsViewModel,
                 category: nil,
                 type: selectedType,
                 onSave: { category in
-                    viewModel.addCategory(category)
+                    categoriesViewModel.addCategory(category)
+                    transactionsViewModel.invalidateCaches()
                     showingAddCategory = false
                 },
                 onCancel: { showingAddCategory = false }
@@ -63,11 +68,13 @@ struct CategoriesManagementView: View {
         }
         .sheet(item: $editingCategory) { category in
             CategoryEditView(
-                viewModel: viewModel,
+                categoriesViewModel: categoriesViewModel,
+                transactionsViewModel: transactionsViewModel,
                 category: category,
                 type: category.type,
                 onSave: { updatedCategory in
-                    viewModel.updateCategory(updatedCategory)
+                    categoriesViewModel.updateCategory(updatedCategory)
+                    transactionsViewModel.invalidateCaches()
                     editingCategory = nil
                 },
                 onCancel: { editingCategory = nil }
@@ -79,12 +86,20 @@ struct CategoriesManagementView: View {
             }
             Button("Удалить только категорию", role: .destructive) {
                 HapticManager.warning()
-                viewModel.deleteCategory(category, deleteTransactions: false)
+                // Update transactions to use "Uncategorized" if needed
+                categoriesViewModel.deleteCategory(category, deleteTransactions: false)
+                transactionsViewModel.invalidateCaches()
                 categoryToDelete = nil
             }
             Button("Удалить категорию и операции", role: .destructive) {
                 HapticManager.warning()
-                viewModel.deleteCategory(category, deleteTransactions: true)
+                // Delete transactions with this category
+                transactionsViewModel.allTransactions.removeAll { 
+                    $0.category == category.name && $0.type == category.type 
+                }
+                transactionsViewModel.recalculateAccountBalances()
+                categoriesViewModel.deleteCategory(category, deleteTransactions: true)
+                transactionsViewModel.invalidateCaches()
                 categoryToDelete = nil
             }
         } message: { category in
@@ -94,7 +109,7 @@ struct CategoriesManagementView: View {
     
     private var filteredCategories: [CustomCategory] {
         // Только пользовательские категории выбранного типа
-        return viewModel.customCategories
+        return categoriesViewModel.customCategories
             .filter { $0.type == selectedType }
             .sorted { $0.name < $1.name }
     }
@@ -145,7 +160,8 @@ struct CategoryRow: View {
 }
 
 struct CategoryEditView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     let category: CustomCategory?
     let type: TransactionType
     let onSave: (CustomCategory) -> Void
@@ -218,14 +234,14 @@ struct CategoryEditView: View {
                 if let category = category {
                     Section(header: Text("Подкатегории")) {
                         let categoryId = category.id
-                        let linkedSubcategories = viewModel.getSubcategoriesForCategory(categoryId)
+                        let linkedSubcategories = categoriesViewModel.getSubcategoriesForCategory(categoryId)
                         
                         ForEach(linkedSubcategories) { subcategory in
                             HStack {
                                 Text(subcategory.name)
                                 Spacer()
                                 Button(action: {
-                                    viewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: categoryId)
+                                    categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: categoryId)
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundColor(.red)
@@ -245,17 +261,17 @@ struct CategoryEditView: View {
             }
             .sheet(isPresented: $showingSubcategoryPicker) {
                 SubcategoryPickerView(
-                    viewModel: viewModel,
+                    categoriesViewModel: categoriesViewModel,
                     categoryId: category?.id ?? "",
                     onSelect: { subcategoryId in
                         if let categoryId = category?.id {
-                            viewModel.linkSubcategoryToCategory(subcategoryId: subcategoryId, categoryId: categoryId)
+                            categoriesViewModel.linkSubcategoryToCategory(subcategoryId: subcategoryId, categoryId: categoryId)
                         }
                         showingSubcategoryPicker = false
                     }
                 )
             }
-            .navigationTitle(category == nil ? "Новая категория" : "Редактировать")
+            .navigationTitle(category == nil ? String(localized: "modal.newCategory") : String(localized: "modal.editCategory"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -368,7 +384,7 @@ struct IconPickerView: View {
                 }
                 .padding(.vertical, 20)
             }
-            .navigationTitle("Выберите иконку")
+            .navigationTitle(String(localized: "navigation.selectIcon"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -382,5 +398,9 @@ struct IconPickerView: View {
 }
 
 #Preview {
-    CategoriesManagementView(viewModel: TransactionsViewModel())
+    let coordinator = AppCoordinator()
+    CategoriesManagementView(
+        categoriesViewModel: coordinator.categoriesViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel
+    )
 }

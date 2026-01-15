@@ -19,10 +19,10 @@ struct AccountRadioButton: View {
                 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
-                        .font(.caption)
+                        .font(AppTypography.caption)
                         .foregroundColor(.secondary)
                     Text(Formatting.formatCurrency(account.balance, currency: account.currency))
-                        .font(.subheadline)
+                        .font(AppTypography.bodySmall)
                         .foregroundColor(.primary)
                         .fontWeight(.semibold)
                 }
@@ -33,8 +33,7 @@ struct AccountRadioButton: View {
                     .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
             )
         }
-//        .buttonStyle(.glass)
-        .glassEffect(in: .rect(cornerRadius: AppRadius.pill))
+        .glassCardStyle()
     }
 }
 

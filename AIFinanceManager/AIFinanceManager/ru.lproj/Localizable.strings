@@ -1,0 +1,225 @@
+/*
+   Localizable.strings (Russian)
+   AIFinanceManager
+*/
+
+// MARK: - Navigation Titles
+"navigation.home" = "Главная";
+"navigation.history" = "История";
+"navigation.categories" = "Категории";
+"navigation.settings" = "Настройки";
+"navigation.accounts" = "Счета";
+"navigation.subscriptions" = "Подписки";
+"navigation.categoryFilter" = "Фильтр по категориям";
+"navigation.logoSearch" = "Поиск логотипа";
+"navigation.entityMapping" = "Сопоставление сущностей";
+"navigation.csvPreview" = "Превью CSV";
+"navigation.transactionPreview" = "Предпросмотр транзакций";
+"navigation.statementText" = "Текст выписки";
+"navigation.voiceInput" = "Голосовой ввод";
+"navigation.subcategorySearch" = "Поиск подкатегорий";
+"navigation.selectDate" = "Выберите дату";
+"navigation.selectIcon" = "Выберите иконку";
+"navigation.selectLogo" = "Выбрать логотип";
+"navigation.importResult" = "Результат импорта";
+
+// MARK: - Time Filters
+"timeFilter.today" = "Сегодня";
+"timeFilter.yesterday" = "Вчера";
+"timeFilter.thisWeek" = "Эта неделя";
+"timeFilter.last30Days" = "Последние 30 дней";
+"timeFilter.thisMonth" = "Этот месяц";
+"timeFilter.lastMonth" = "Прошлый месяц";
+"timeFilter.thisYear" = "Этот год";
+"timeFilter.lastYear" = "Прошлый год";
+"timeFilter.allTime" = "Всё время";
+"timeFilter.custom" = "Пользовательский период";
+
+// MARK: - Buttons
+"button.save" = "Сохранить";
+"button.cancel" = "Отмена";
+"button.delete" = "Удалить";
+"button.close" = "Закрыть";
+"button.import" = "Импорт";
+"button.export" = "Экспорт";
+"button.copy" = "Копировать";
+"button.add" = "Добавить";
+"button.edit" = "Редактировать";
+"button.done" = "Готово";
+"button.ok" = "ОК";
+"button.retry" = "Повторить";
+"button.change" = "Изменить";
+"button.select" = "Выбрать";
+
+// MARK: - Empty States
+"emptyState.noTransactions" = "Нет операций";
+"emptyState.noAccounts" = "Нет счетов";
+"emptyState.searchNoResults" = "Ничего не найдено";
+"emptyState.startTracking" = "Начните добавлять операции, чтобы отслеживать ваши финансы";
+"emptyState.tryDifferentSearch" = "Попробуйте изменить поисковый запрос";
+"emptyState.tryDifferentFilters" = "Попробуйте изменить фильтры или добавьте новую операцию";
+
+// MARK: - Settings
+"settings.title" = "Настройки";
+"settings.general" = "Общие настройки";
+"settings.baseCurrency" = "Базовая валюта";
+"settings.wallpaper" = "Обои на главной";
+"settings.dataManagement" = "Управление данными";
+"settings.categories" = "Категории";
+"settings.accounts" = "Счета";
+"settings.exportImport" = "Экспорт и импорт";
+"settings.exportData" = "Экспорт данных";
+"settings.importData" = "Импорт данных";
+"settings.dangerZone" = "Опасные действия";
+"settings.resetData" = "Полный сброс данных";
+
+// MARK: - Alerts
+"alert.deleteAllData.title" = "Удалить все данные?";
+"alert.deleteAllData.message" = "Все операции, счета и категории будут удалены без возможности восстановления.";
+"alert.deleteAllData.confirm" = "Удалить";
+"alert.deleteAllData.cancel" = "Отмена";
+"alert.textCopied.title" = "Текст скопирован";
+"alert.textCopied.message" = "Распознанный текст скопирован в буфер обмена.";
+"alert.parseError.title" = "Ошибка парсинга";
+"alert.importError.title" = "Ошибка импорта";
+"alert.errorTitle" = "Ошибка";
+
+// MARK: - Progress
+"progress.processingPDF" = "Обработка PDF...";
+"progress.recognizingText" = "Распознавание текста: страница %d из %d";
+"progress.page" = "Страница %d из %d";
+"progress.parsingStatement" = "Парсинг выписки...";
+
+// MARK: - Errors
+"error.loadTextFailed" = "Ошибка загрузки текста";
+"error.tryAgain" = "Попробуйте еще раз";
+"error.noTransactionsFound" = "Не удалось найти транзакции в распознанном тексте. Убедитесь, что текст содержит таблицу транзакций выписки.";
+"error.noTransactionsStructured" = "Не удалось найти транзакции в структурированных данных. Возможно, формат выписки отличается от ожидаемого.";
+"error.pdfExtraction" = "Не удалось извлечь текст из PDF. Возможно, документ поврежден или пуст.";
+"error.importFailed" = "Ошибка импорта";
+
+// MARK: - Account Actions
+"account.transfer" = "Перевод";
+"account.topUp" = "Пополнение";
+"account.withdrawal" = "Снятие";
+
+// MARK: - Analytics
+"analytics.history" = "История";
+"analytics.planned" = "В планах";
+
+// MARK: - Transaction Form
+"transaction.account" = "Счёт";
+"transaction.amount" = "Сумма";
+"transaction.description" = "Описание";
+"transaction.date" = "Дата";
+"transaction.recurring" = "Повторяющаяся";
+"transaction.frequency" = "Частота";
+"transaction.category" = "Категория";
+"transaction.subcategories" = "Подкатегории";
+"transaction.currency" = "Валюта";
+
+// MARK: - Transaction Actions
+"transaction.importTransactions" = "Импортировать транзакции";
+"transaction.addNew" = "Добавить операцию";
+"transaction.edit" = "Редактировать операцию";
+"transaction.new" = "Новая операция";
+
+// MARK: - Search
+"search.placeholder" = "Поиск по сумме, категории или описанию";
+"search.subcategories" = "Поиск подкатегорий";
+
+// MARK: - Modals
+"modal.recognizedText.title" = "Распознанный текст";
+"modal.recognizedText.message" = "Текст успешно распознан. Вы можете импортировать транзакции или скопировать текст.";
+"modal.newAccount" = "Новый счёт";
+"modal.editAccount" = "Редактировать счёт";
+"modal.newCategory" = "Новая категория";
+"modal.editCategory" = "Редактировать";
+
+// MARK: - Common
+"common.name" = "Название";
+"common.balance" = "Баланс";
+"common.type" = "Тип";
+"common.icon" = "Иконка";
+"common.color" = "Цвет";
+"common.logo" = "Логотип";
+"common.all" = "Все";
+"common.selected" = "Выбрано";
+"common.none" = "Нет";
+
+// MARK: - Date Labels
+"date.today" = "Сегодня";
+"date.yesterday" = "Вчера";
+"date.tomorrow" = "Завтра";
+
+// MARK: - Transaction Types
+"transactionType.income" = "Доход";
+"transactionType.expense" = "Расход";
+"transactionType.transfer" = "Перевод";
+
+// MARK: - Accounts Management
+"account.interestToday" = "Проценты на сегодня: %@";
+"account.nextPosting" = "Начисление: %@";
+"account.selectLogo" = "Выбрать логотип";
+"account.popularBanks" = "Популярные банки";
+"account.otherBanks" = "Другие банки";
+
+// MARK: - Accessibility Labels
+"accessibility.voiceInput" = "Голосовой ввод";
+"accessibility.voiceInputHint" = "Записать транзакцию голосом";
+"accessibility.importStatement" = "Импорт выписки";
+"accessibility.importStatementHint" = "Импортировать транзакции из PDF или CSV файла";
+"accessibility.calendar" = "Календарь";
+"accessibility.calendarHint" = "Выбрать диапазон дат для фильтрации транзакций";
+"accessibility.settings" = "Настройки";
+"accessibility.settingsHint" = "Открыть настройки приложения";
+
+// MARK: - Quick Add Transaction / Add Transaction Modal
+"quickAdd.account" = "Счёт";
+"quickAdd.amount" = "Сумма";
+"quickAdd.description" = "Описание";
+"quickAdd.descriptionPlaceholder" = "Описание (необязательно)";
+"quickAdd.recurring" = "Повторяющаяся операция";
+"quickAdd.makeRecurring" = "Сделать повторяющейся";
+"quickAdd.frequency" = "Частота";
+"quickAdd.subcategories" = "Подкатегории";
+"quickAdd.searchSubcategories" = "Поиск подкатегорий";
+"quickAdd.searchAndAddSubcategories" = "Поиск и добавление подкатегорий";
+"quickAdd.selectDate" = "Выберите дату";
+"quickAdd.done" = "Готово";
+"quickAdd.cancel" = "Отмена";
+
+// MARK: - Validation Errors
+"error.validation.enterAmount" = "Введите корректную сумму";
+"error.validation.amountGreaterThanZero" = "Сумма должна быть больше нуля";
+"error.validation.selectAccount" = "Выберите счёт";
+"error.validation.accountNotFound" = "Счёт не найден";
+
+// MARK: - Voice Input
+"voice.title" = "Голосовой ввод";
+"voice.speak" = "Говорите...";
+"voice.recording" = "Идет запись...";
+"voice.error" = "Ошибка";
+"voice.errorMessage" = "Не удалось начать запись";
+"voice.ok" = "OK";
+
+// MARK: - Subscriptions
+"subscriptions.title" = "Подписки";
+"subscriptions.empty" = "Нет подписок";
+"subscriptions.emptyDescription" = "Добавьте подписку, чтобы отслеживать регулярные платежи";
+"subscriptions.addSubscription" = "Добавить подписку";
+"subscriptions.deleteConfirmTitle" = "Удалить подписку?";
+"subscriptions.deleteConfirmMessage" = "Все данные подписки и связанные транзакции будут удалены.";
+"subscriptions.delete" = "Удалить";
+"subscriptions.pause" = "Приостановить";
+"subscriptions.resume" = "Возобновить";
+"subscriptions.transactionHistory" = "История транзакций";
+"subscriptions.category" = "Категория";
+"subscriptions.frequency" = "Частота";
+"subscriptions.nextCharge" = "Следующее списание";
+"subscriptions.account" = "Счёт";
+"subscriptions.status" = "Статус";
+"subscriptions.status.active" = "Активна";
+"subscriptions.status.paused" = "Приостановлена";
+"subscriptions.status.archived" = "В архиве";
+"subscriptions.status.unknown" = "Неизвестно";

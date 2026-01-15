@@ -13,6 +13,8 @@ struct BrandLogoView: View {
     let size: CGFloat
     
     @State private var logoURL: URL?
+    @State private var cachedImage: UIImage?
+    @State private var isLoading = false
     
     init(brandName: String?, size: CGFloat = 32) {
         self.brandName = brandName
@@ -21,8 +23,14 @@ struct BrandLogoView: View {
     
     var body: some View {
         Group {
-            if let url = logoURL {
-                // Используем AsyncImage для прямой загрузки из logo.dev
+            if let cachedImage = cachedImage {
+                Image(uiImage: cachedImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
+            } else if let url = logoURL {
+                // Используем AsyncImage для быстрого отображения, пока LogoService кеширует
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .empty:
@@ -48,19 +56,17 @@ struct BrandLogoView: View {
         }
         .onAppear {
             updateURL()
+            loadLogoIfNeeded()
         }
         .onChange(of: brandName) { _, _ in
             updateURL()
+            loadLogoIfNeeded()
         }
     }
     
     private var fallbackIcon: some View {
         Image(systemName: "creditcard")
-            .font(.system(size: size * 0.6))
-            .foregroundColor(.secondary)
-            .frame(width: size, height: size)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
+            .fallbackIconStyle(size: size)
     }
     
     private func updateURL() {
@@ -68,6 +74,7 @@ struct BrandLogoView: View {
               !brandName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               LogoDevConfig.isAvailable else {
             logoURL = nil
+            cachedImage = nil
             return
         }
         
@@ -80,6 +87,23 @@ struct BrandLogoView: View {
         }
         #endif
         logoURL = url
+    }
+
+    private func loadLogoIfNeeded() {
+        guard let brandName = brandName,
+              !brandName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              LogoDevConfig.isAvailable else {
+            return
+        }
+
+        guard !isLoading else { return }
+        isLoading = true
+
+        Task { @MainActor in
+            let image = try? await LogoService.shared.logoImage(brandName: brandName)
+            cachedImage = image
+            isLoading = false
+        }
     }
 }
 

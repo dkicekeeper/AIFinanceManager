@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SubcategoryPickerView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
     let categoryId: String
     let onSelect: (String) -> Void
     @Environment(\.dismiss) var dismiss
@@ -18,13 +18,13 @@ struct SubcategoryPickerView: View {
     @State private var newSubcategoryName = ""
     
     private var availableSubcategories: [Subcategory] {
-        let linkedSubcategoryIds = viewModel.categorySubcategoryLinks
+        let linkedSubcategoryIds = categoriesViewModel.categorySubcategoryLinks
             .filter { $0.categoryId == categoryId }
             .map { $0.subcategoryId }
         
         let allSubcategories = searchText.isEmpty
-            ? viewModel.subcategories
-            : viewModel.searchSubcategories(query: searchText)
+            ? categoriesViewModel.subcategories
+            : categoriesViewModel.searchSubcategories(query: searchText)
         
         return allSubcategories.filter { !linkedSubcategoryIds.contains($0.id) }
     }
@@ -66,7 +66,7 @@ struct SubcategoryPickerView: View {
                 }
             }
             .sheet(isPresented: $showingCreateSubcategory) {
-                CreateSubcategoryView(viewModel: viewModel) { subcategory in
+                CreateSubcategoryView(categoriesViewModel: categoriesViewModel) { subcategory in
                     onSelect(subcategory.id)
                     showingCreateSubcategory = false
                 }
@@ -76,7 +76,7 @@ struct SubcategoryPickerView: View {
 }
 
 struct CreateSubcategoryView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
     let onSave: (Subcategory) -> Void
     @Environment(\.dismiss) var dismiss
     
@@ -101,7 +101,7 @@ struct CreateSubcategoryView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        let subcategory = viewModel.addSubcategory(name: name)
+                        let subcategory = categoriesViewModel.addSubcategory(name: name)
                         onSave(subcategory)
                         dismiss()
                     } label: {
@@ -115,5 +115,6 @@ struct CreateSubcategoryView: View {
 }
 
 #Preview {
-    SubcategoryPickerView(viewModel: TransactionsViewModel(), categoryId: "", onSelect: { _ in })
+    let coordinator = AppCoordinator()
+    SubcategoryPickerView(categoriesViewModel: coordinator.categoriesViewModel, categoryId: "", onSelect: { _ in })
 }

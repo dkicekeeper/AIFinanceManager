@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct SubscriptionDetailView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     let subscription: RecurringSeries
     @State private var showingEditView = false
@@ -17,7 +18,8 @@ struct SubscriptionDetailView: View {
     
     private var subscriptionTransactions: [Transaction] {
         // Получаем существующие транзакции
-        let existingTransactions = viewModel.transactions(for: subscription.id)
+        let existingTransactions = transactionsViewModel.allTransactions.filter { $0.recurringSeriesId == subscription.id }
+            .sorted { $0.date > $1.date }
         
         // Получаем диапазон дат из фильтра
         let dateRange = timeFilterManager.currentFilter.dateRange()
@@ -125,7 +127,7 @@ struct SubscriptionDetailView: View {
     }
     
     private var nextChargeDate: Date? {
-        viewModel.nextChargeDate(for: subscription.id)
+        subscriptionsViewModel.nextChargeDate(for: subscription.id)
     }
     
     var body: some View {
@@ -160,10 +162,12 @@ struct SubscriptionDetailView: View {
         }
         .sheet(isPresented: $showingEditView) {
             SubscriptionEditView(
-                viewModel: viewModel,
+                subscriptionsViewModel: subscriptionsViewModel,
+                transactionsViewModel: transactionsViewModel,
                 subscription: subscription,
                 onSave: { updatedSubscription in
-                    viewModel.updateSubscription(updatedSubscription)
+                    subscriptionsViewModel.updateSubscription(updatedSubscription)
+                    transactionsViewModel.generateRecurringTransactions()
                     showingEditView = false
                 },
                 onCancel: {
@@ -171,15 +175,18 @@ struct SubscriptionDetailView: View {
                 }
             )
         }
-        .alert("Удалить подписку?", isPresented: $showingDeleteConfirmation) {
-            Button("Удалить", role: .destructive) {
-                viewModel.deleteRecurringSeries(subscription.id)
+        .alert(String(localized: "subscriptions.deleteConfirmTitle"), isPresented: $showingDeleteConfirmation) {
+            Button(String(localized: "subscriptions.delete"), role: .destructive) {
+                subscriptionsViewModel.deleteRecurringSeries(subscription.id)
+                // Also delete related transactions
+                transactionsViewModel.allTransactions.removeAll { $0.recurringSeriesId == subscription.id }
+                transactionsViewModel.recalculateAccountBalances()
                 // Закрываем модалку после удаления
                 dismiss()
             }
-            Button("Отмена", role: .cancel) {}
+            Button(String(localized: "quickAdd.cancel"), role: .cancel) {}
         } message: {
-            Text("Все данные подписки и связанные транзакции будут удалены.")
+            Text(String(localized: "subscriptions.deleteConfirmMessage"))
         }
     }
     
@@ -194,19 +201,11 @@ struct SubscriptionDetailView: View {
                     if brandId.hasPrefix("sf:") {
                         let iconName = String(brandId.dropFirst(3))
                         Image(systemName: iconName)
-                            .font(.system(size: AppIconSize.xxxl * 0.6))
-                            .foregroundColor(.secondary)
-                            .frame(width: AppIconSize.xxxl, height: AppIconSize.xxxl)
-                            .background(Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: AppIconSize.xxxl * 0.2))
+                            .fallbackIconStyle(size: AppIconSize.xxxl)
                     } else if brandId.hasPrefix("icon:") {
                         let iconName = String(brandId.dropFirst(5))
                         Image(systemName: iconName)
-                            .font(.system(size: AppIconSize.xxxl * 0.6))
-                            .foregroundColor(.secondary)
-                            .frame(width: AppIconSize.xxxl, height: AppIconSize.xxxl)
-                            .background(Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: AppIconSize.xxxl * 0.2))
+                            .fallbackIconStyle(size: AppIconSize.xxxl)
                     } else {
                         // Если есть brandId (название бренда), показываем через BrandLogoView
                         BrandLogoView(brandName: brandId, size: AppIconSize.xxxl)
@@ -215,11 +214,7 @@ struct SubscriptionDetailView: View {
                 } else {
                     // Fallback
                     Image(systemName: "creditcard")
-                        .font(.system(size: AppIconSize.xxxl * 0.6))
-                        .foregroundColor(.secondary)
-                        .frame(width: AppIconSize.xxxl, height: AppIconSize.xxxl)
-                        .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: AppIconSize.xxxl * 0.2))
+                        .fallbackIconStyle(size: AppIconSize.xxxl)
                 }
                 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
@@ -240,19 +235,19 @@ struct SubscriptionDetailView: View {
             Divider()
             
             VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                InfoRow(label: "Категория", value: subscription.category)
-                InfoRow(label: "Частота", value: subscription.frequency.displayName)
-                
+                InfoRow(label: String(localized: "subscriptions.category"), value: subscription.category)
+                InfoRow(label: String(localized: "subscriptions.frequency"), value: subscription.frequency.displayName)
+
                 if let nextDate = nextChargeDate {
-                    InfoRow(label: "Следующее списание", value: formatDate(nextDate))
+                    InfoRow(label: String(localized: "subscriptions.nextCharge"), value: formatDate(nextDate))
                 }
-                
+
                 if let accountId = subscription.accountId,
-                   let account = viewModel.accounts.first(where: { $0.id == accountId }) {
-                    InfoRow(label: "Счёт", value: account.name)
+                   let account = transactionsViewModel.accounts.first(where: { $0.id == accountId }) {
+                    InfoRow(label: String(localized: "subscriptions.account"), value: account.name)
                 }
-                
-                InfoRow(label: "Статус", value: statusText)
+
+                InfoRow(label: String(localized: "subscriptions.status"), value: statusText)
             }
         }
         .cardStyle()
@@ -261,13 +256,13 @@ struct SubscriptionDetailView: View {
     private var statusText: String {
         switch subscription.subscriptionStatus {
         case .active:
-            return "Активна"
+            return String(localized: "subscriptions.status.active")
         case .paused:
-            return "Приостановлена"
+            return String(localized: "subscriptions.status.paused")
         case .archived:
-            return "В архиве"
+            return String(localized: "subscriptions.status.archived")
         case .none:
-            return "Неизвестно"
+            return String(localized: "subscriptions.status.unknown")
         }
     }
     
@@ -275,26 +270,27 @@ struct SubscriptionDetailView: View {
         VStack(spacing: AppSpacing.sm) {
             if subscription.subscriptionStatus == .active {
                 Button {
-                    viewModel.pauseSubscription(subscription.id)
+                    subscriptionsViewModel.pauseSubscription(subscription.id)
                 } label: {
-                    Label("Приостановить", systemImage: "pause.circle")
+                    Label(String(localized: "subscriptions.pause"), systemImage: "pause.circle")
                         .frame(maxWidth: .infinity)
                 }
                 .secondaryButton()
             } else if subscription.subscriptionStatus == .paused {
                 Button {
-                    viewModel.resumeSubscription(subscription.id)
+                    subscriptionsViewModel.resumeSubscription(subscription.id)
+                    transactionsViewModel.generateRecurringTransactions()
                 } label: {
-                    Label("Возобновить", systemImage: "play.circle")
+                    Label(String(localized: "subscriptions.resume"), systemImage: "play.circle")
                         .frame(maxWidth: .infinity)
                 }
                 .primaryButton()
             }
-            
+
             Button(role: .destructive) {
                 showingDeleteConfirmation = true
             } label: {
-                Label("Удалить", systemImage: "trash")
+                Label(String(localized: "subscriptions.delete"), systemImage: "trash")
                     .frame(maxWidth: .infinity)
             }
             .destructiveButton()
@@ -303,12 +299,12 @@ struct SubscriptionDetailView: View {
     
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            Text("История транзакций")
+            Text(String(localized: "subscriptions.transactionHistory"))
                 .font(AppTypography.h4)
             
             VStack(spacing: AppSpacing.sm) {
                 ForEach(subscriptionTransactions) { transaction in
-                    TransactionRow(transaction: transaction, viewModel: viewModel, isPlanned: transaction.id.hasPrefix("planned-"))
+                    TransactionRow(transaction: transaction, viewModel: transactionsViewModel, isPlanned: transaction.id.hasPrefix("planned-"))
                 }
             }
         }
@@ -319,21 +315,6 @@ struct SubscriptionDetailView: View {
     }
 }
 
-struct InfoRow: View {
-    let label: String
-    let value: String
-    
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(AppTypography.body)
-                .foregroundColor(.secondary)
-            Spacer()
-            Text(value)
-                .font(AppTypography.body)
-        }
-    }
-}
 
 struct TransactionRow: View {
     let transaction: Transaction
@@ -379,9 +360,11 @@ struct TransactionRow: View {
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     NavigationView {
         SubscriptionDetailView(
-            viewModel: TransactionsViewModel(),
+            subscriptionsViewModel: coordinator.subscriptionsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
             subscription: RecurringSeries(
                 amount: 9.99,
                 currency: "USD",

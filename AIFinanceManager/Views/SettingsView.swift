@@ -11,7 +11,11 @@ import Combine
 import PhotosUI
 
 struct SettingsView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    @ObservedObject var depositsViewModel: DepositsViewModel
     @State private var showingResetConfirmation = false
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
@@ -21,40 +25,40 @@ struct SettingsView: View {
     
     var body: some View {
         List {
-            Section(header: Text("Общие настройки")) {
+            Section(header: Text(String(localized: "settings.general"))) {
                 HStack {
                     Image(systemName: "dollarsign.circle")
-                    Text("Базовая валюта")
+                    Text(String(localized: "settings.baseCurrency"))
                     Spacer()
-                    Picker("", selection: $viewModel.appSettings.baseCurrency) {
+                    Picker("", selection: $transactionsViewModel.appSettings.baseCurrency) {
                         ForEach(AppSettings.availableCurrencies, id: \.self) { currency in
                             Text(Formatting.currencySymbol(for: currency)).tag(currency)
                         }
                     }
                     .pickerStyle(MenuPickerStyle())
-                    .onChange(of: viewModel.appSettings.baseCurrency) {
-                        viewModel.appSettings.save()
+                    .onChange(of: transactionsViewModel.appSettings.baseCurrency) {
+                        transactionsViewModel.appSettings.save()
                         // Инвалидируем кеш summary и categoryExpenses для пересчета в новой валюте
-                        viewModel.invalidateCaches()
+                        transactionsViewModel.invalidateCaches()
                         // Принудительно обновляем UI
-                        viewModel.objectWillChange.send()
+                        transactionsViewModel.objectWillChange.send()
                     }
                 }
                 
                 HStack {
                     Image(systemName: "photo")
-                    Text("Обои на главной")
+                    Text(String(localized: "settings.wallpaper"))
                     Spacer()
-                    
-                    let hasWallpaper = viewModel.appSettings.wallpaperImageName?.isEmpty == false
-                    
+
+                    let hasWallpaper = transactionsViewModel.appSettings.wallpaperImageName?.isEmpty == false
+
                     PhotosPicker(selection: $selectedPhoto, matching: .images) {
                         HStack(spacing: 4) {
                             if hasWallpaper {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
                             }
-                            Text(hasWallpaper ? "Изменить" : "Выбрать")
+                            Text(hasWallpaper ? String(localized: "button.change") : String(localized: "button.select"))
                                 .font(.subheadline)
                         }
                     }
@@ -77,66 +81,75 @@ struct SettingsView: View {
                 }
             }
 
-            Section(header: Text("Управление данными")) {
-                NavigationLink(destination: CategoriesManagementView(viewModel: viewModel)) {
+            Section(header: Text(String(localized: "settings.dataManagement"))) {
+                NavigationLink(destination: CategoriesManagementView(
+                    categoriesViewModel: categoriesViewModel,
+                    transactionsViewModel: transactionsViewModel
+                )) {
                     HStack {
                         Image(systemName: "tag")
-                        Text("Категории")
+                        Text(String(localized: "settings.categories"))
                     }
                 }
 
-                NavigationLink(destination: AccountsManagementView(viewModel: viewModel)) {
+                NavigationLink(destination: AccountsManagementView(
+                    accountsViewModel: accountsViewModel,
+                    depositsViewModel: depositsViewModel,
+                    transactionsViewModel: transactionsViewModel
+                )) {
                     HStack {
                         Image(systemName: "creditcard")
-                        Text("Счета")
+                        Text(String(localized: "settings.accounts"))
                     }
                 }
             }
-            
-            Section(header: Text("Экспорт и импорт")) {
+
+            Section(header: Text(String(localized: "settings.exportImport"))) {
                 Button(action: {
                     showingExportSheet = true
                 }) {
                     HStack {
                         Image(systemName: "square.and.arrow.up")
-                        Text("Экспорт данных")
+                        Text(String(localized: "settings.exportData"))
                     }
                 }
-                
+
                 Button(action: {
                     showingImportPicker = true
                 }) {
                     HStack {
                         Image(systemName: "square.and.arrow.down")
-                        Text("Импорт данных")
+                        Text(String(localized: "settings.importData"))
                     }
                 }
             }
-            
-            Section(header: Text("Опасные действия")) {
+
+            Section(header: Text(String(localized: "settings.dangerZone"))) {
                 Button(role: .destructive, action: {
                     showingResetConfirmation = true
                 }) {
                     HStack {
                         Image(systemName: "trash")
-                        Text("Полный сброс данных")
+                        Text(String(localized: "settings.resetData"))
                     }
                 }
             }
         }
-        .navigationTitle("Настройки")
+        .navigationTitle(String(localized: "settings.title"))
         .navigationBarTitleDisplayMode(.large)
-        .alert("Удалить все данные?", isPresented: $showingResetConfirmation) {
-            Button("Удалить", role: .destructive) {
+        .alert(String(localized: "alert.deleteAllData.title"), isPresented: $showingResetConfirmation) {
+            Button(String(localized: "alert.deleteAllData.confirm"), role: .destructive) {
                 HapticManager.warning()
-                viewModel.resetAllData()
+                // Reset all data across all ViewModels
+                transactionsViewModel.resetAllData()
+                // Note: Other ViewModels will reload from repository on next access
             }
-            Button("Отмена", role: .cancel) {}
+            Button(String(localized: "alert.deleteAllData.cancel"), role: .cancel) {}
         } message: {
-            Text("Все операции, счета и категории будут удалены без возможности восстановления.")
+            Text(String(localized: "alert.deleteAllData.message"))
         }
         .sheet(isPresented: $showingExportSheet) {
-            ExportActivityView(viewModel: viewModel)
+            ExportActivityView(transactionsViewModel: transactionsViewModel)
         }
         .sheet(isPresented: $showingImportPicker) {
             DocumentPicker(contentTypes: [.commaSeparatedText, .text]) { url in
@@ -150,7 +163,7 @@ struct SettingsView: View {
             set: { showingPreview = $0 }
         )) {
             if let csvFile = csvFile {
-                CSVPreviewView(csvFile: csvFile, viewModel: viewModel)
+                CSVPreviewView(csvFile: csvFile, transactionsViewModel: transactionsViewModel)
             } else {
                 // Fallback view если csvFile стал nil
                 VStack {
@@ -159,8 +172,8 @@ struct SettingsView: View {
                 }
             }
         }
-        .alert("Ошибка импорта", isPresented: $showingError) {
-            Button("OK", role: .cancel) {}
+        .alert(String(localized: "alert.importError.title"), isPresented: $showingError) {
+            Button(String(localized: "button.ok"), role: .cancel) {}
         } message: {
             if let error = importError {
                 Text(error)
@@ -213,17 +226,17 @@ struct SettingsView: View {
                 try jpegData.write(to: fileURL)
                 
                 // Удаляем старое изображение, если есть
-                if let oldFileName = viewModel.appSettings.wallpaperImageName,
+                if let oldFileName = transactionsViewModel.appSettings.wallpaperImageName,
                    oldFileName.hasPrefix("wallpaper_") {
                     let oldURL = documentsPath.appendingPathComponent(oldFileName)
                     try? FileManager.default.removeItem(at: oldURL)
                 }
                 
                 await MainActor.run {
-                    viewModel.appSettings.wallpaperImageName = fileName
-                    viewModel.appSettings.save()
+                    transactionsViewModel.appSettings.wallpaperImageName = fileName
+                    transactionsViewModel.appSettings.save()
                     // Принудительно обновляем UI
-                    viewModel.objectWillChange.send()
+                    transactionsViewModel.objectWillChange.send()
                 }
             } catch {
                 print("❌ Ошибка сохранения обоев: \(error)")
@@ -233,21 +246,28 @@ struct SettingsView: View {
     
     private func removeWallpaper() {
         // Удаляем файл изображения
-        if let fileName = viewModel.appSettings.wallpaperImageName {
+        if let fileName = transactionsViewModel.appSettings.wallpaperImageName {
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsPath.appendingPathComponent(fileName)
             try? FileManager.default.removeItem(at: fileURL)
         }
         
-        viewModel.appSettings.wallpaperImageName = nil
-        viewModel.appSettings.save()
+        transactionsViewModel.appSettings.wallpaperImageName = nil
+        transactionsViewModel.appSettings.save()
         // Принудительно обновляем UI
-        viewModel.objectWillChange.send()
+        transactionsViewModel.objectWillChange.send()
     }
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     NavigationView {
-        SettingsView(viewModel: TransactionsViewModel())
+        SettingsView(
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            subscriptionsViewModel: coordinator.subscriptionsViewModel,
+            depositsViewModel: coordinator.depositsViewModel
+        )
     }
 }

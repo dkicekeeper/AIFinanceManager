@@ -1,0 +1,72 @@
+//
+//  AnalyticsCard.swift
+//  AIFinanceManager
+//
+//  Analytics card component showing expense/income summary with progress bar
+//
+
+import SwiftUI
+
+struct AnalyticsCard: View {
+    let summary: Summary
+    let currency: String
+    
+    var body: some View {
+        CardContainer {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                // Header
+                HStack {
+                    Text(String(localized: "analytics.history"))
+                        .font(AppTypography.h3)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+//                    Image(systemName: "chevron.right")
+//                        .font(.system(size: AppIconSize.sm))
+//                        .foregroundStyle(.primary)
+                }
+
+                // Progress bar with amounts
+                ExpenseIncomeProgressBar(
+                    expenseAmount: summary.totalExpenses,
+                    incomeAmount: summary.totalIncome,
+                    currency: currency
+                )
+
+                // Planned amount
+                if summary.plannedAmount > 0 {
+                    HStack {
+                        Text(String(localized: "analytics.planned"))
+                            .font(AppTypography.bodySmall)
+                            .foregroundStyle(.primary)
+
+                        Spacer()
+
+                        Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
+                            .font(AppTypography.bodySmall)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.primary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+#Preview {
+    AnalyticsCard(
+        summary: Summary(
+            totalIncome: 10000,
+            totalExpenses: 5000,
+            totalInternalTransfers: 0,
+            netFlow: 5000,
+            currency: "KZT",
+            startDate: "2024-01-01",
+            endDate: "2024-01-31",
+            plannedAmount: 2000
+        ),
+        currency: "KZT"
+    )
+    .padding()
+}

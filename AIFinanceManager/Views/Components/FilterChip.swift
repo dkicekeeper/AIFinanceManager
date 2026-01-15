@@ -28,16 +28,11 @@ struct FilterChip: View {
                         .font(.system(size: AppIconSize.sm))
                 }
                 Text(title)
-                    .font(AppTypography.bodySmall)
-                    .fontWeight(.medium)
             }
-            .foregroundColor(.primary)
-            .padding(.horizontal, AppSpacing.lg)
-            .padding(.vertical, AppSpacing.sm)
-            .background(isSelected ? Color.blue.opacity(0.2) : Color(.systemGray5))
-            .cornerRadius(AppRadius.pill)
+            .filterChipStyle(isSelected: isSelected)
         }
-        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 

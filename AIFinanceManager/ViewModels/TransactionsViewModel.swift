@@ -45,17 +45,14 @@ class TransactionsViewModel: ObservableObject {
         categoryExpensesCacheInvalidated = true
     }
     
-    private let storageKeyTransactions = "allTransactions"
-    private let storageKeyRules = "categoryRules"
-    private let storageKeyAccounts = "accounts"
-    private let storageKeyCustomCategories = "customCategories"
-    private let storageKeyRecurringSeries = "recurringSeries"
-    private let storageKeyRecurringOccurrences = "recurringOccurrences"
-    private let storageKeySubcategories = "subcategories"
-    private let storageKeyCategorySubcategoryLinks = "categorySubcategoryLinks"
-    private let storageKeyTransactionSubcategoryLinks = "transactionSubcategoryLinks"
+    // MARK: - Repository
     
-    init() {
+    let repository: DataRepositoryProtocol
+    
+    // MARK: - Initialization
+    
+    init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
+        self.repository = repository
         PerformanceProfiler.start("ViewModel.init")
         loadFromStorage()
         // Генерируем recurring транзакции асинхронно, чтобы не блокировать UI при запуске
@@ -67,8 +64,8 @@ class TransactionsViewModel: ObservableObject {
             generateRecurringTransactions()
             PerformanceProfiler.end("generateRecurringTransactions")
             
-            // Пересчитываем проценты депозитов после генерации recurring транзакций
-            reconcileAllDeposits()
+            // Note: Deposit reconciliation should be handled by DepositsViewModel
+            // This is now deprecated and should be removed after full migration
         }
         PerformanceProfiler.end("ViewModel.init")
     }
@@ -1199,19 +1196,8 @@ class TransactionsViewModel: ObservableObject {
         // Очищаем кеши
         invalidateCaches()
         
-        // Удаляем все данные из UserDefaults
-        UserDefaults.standard.removeObject(forKey: storageKeyTransactions)
-        UserDefaults.standard.removeObject(forKey: storageKeyRules)
-        UserDefaults.standard.removeObject(forKey: storageKeyAccounts)
-        UserDefaults.standard.removeObject(forKey: storageKeyCustomCategories)
-        UserDefaults.standard.removeObject(forKey: storageKeyRecurringSeries)
-        UserDefaults.standard.removeObject(forKey: storageKeyRecurringOccurrences)
-        UserDefaults.standard.removeObject(forKey: storageKeySubcategories)
-        UserDefaults.standard.removeObject(forKey: storageKeyCategorySubcategoryLinks)
-        UserDefaults.standard.removeObject(forKey: storageKeyTransactionSubcategoryLinks)
-        
-        // Синхронизируем изменения
-        UserDefaults.standard.synchronize()
+        // Удаляем все данные через repository
+        repository.clearAllData()
         
         print("✅ Все данные приложения обнулены")
     }
@@ -1242,12 +1228,16 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Custom Categories
     
+    /// ⚠️ DEPRECATED: Use CategoriesViewModel.addCategory instead
+    @available(*, deprecated, message: "Use CategoriesViewModel.addCategory instead")
     func addCategory(_ category: CustomCategory) {
         customCategories.append(category)
         invalidateCaches()
         saveToStorage()
     }
     
+    /// ⚠️ DEPRECATED: Use CategoriesViewModel.updateCategory instead
+    @available(*, deprecated, message: "Use CategoriesViewModel.updateCategory instead")
     func updateCategory(_ category: CustomCategory) {
         guard let index = customCategories.firstIndex(where: { $0.id == category.id }) else {
             // Если категория не найдена, возможно это новая категория с существующим id
@@ -1301,6 +1291,8 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
     }
     
+    /// ⚠️ DEPRECATED: Use CategoriesViewModel.deleteCategory instead
+    @available(*, deprecated, message: "Use CategoriesViewModel.deleteCategory instead")
     func deleteCategory(_ category: CustomCategory, deleteTransactions: Bool = false) {
         if deleteTransactions {
             // Удаляем все операции с этой категорией
@@ -1371,6 +1363,8 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Accounts
 
+    /// ⚠️ DEPRECATED: Use AccountsViewModel.addAccount instead
+    @available(*, deprecated, message: "Use AccountsViewModel.addAccount instead")
     func addAccount(name: String, balance: Double, currency: String, bankLogo: BankLogo = .none) {
         let account = Account(name: name, balance: balance, currency: currency, bankLogo: bankLogo)
         accounts.append(account)
@@ -1380,6 +1374,8 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
     }
 
+    /// ⚠️ DEPRECATED: Use AccountsViewModel.updateAccount instead
+    @available(*, deprecated, message: "Use AccountsViewModel.updateAccount instead")
     func updateAccount(_ account: Account) {
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
             accounts[index] = account
@@ -1390,6 +1386,8 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
+    /// ⚠️ DEPRECATED: Use AccountsViewModel.deleteAccount instead
+    @available(*, deprecated, message: "Use AccountsViewModel.deleteAccount instead")
     func deleteAccount(_ account: Account) {
         // Удаляем все операции, связанные с этим счетом
         allTransactions.removeAll { transaction in
@@ -1504,6 +1502,8 @@ class TransactionsViewModel: ObservableObject {
     
     // MARK: - Deposits
     
+    /// ⚠️ DEPRECATED: Use DepositsViewModel.addDeposit instead
+    @available(*, deprecated, message: "Use DepositsViewModel.addDeposit instead")
     func addDeposit(
         name: String,
         currency: String,
@@ -1537,9 +1537,12 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
         
         // Сразу делаем reconcile для расчета процентов до сегодня
-        reconcileAllDeposits()
+        // Note: Deposit reconciliation should be handled by DepositsViewModel
+        // This deprecated method call has been removed
     }
     
+    /// ⚠️ DEPRECATED: Use DepositsViewModel.updateDeposit instead
+    @available(*, deprecated, message: "Use DepositsViewModel.updateDeposit instead")
     func updateDeposit(_ account: Account) {
         guard account.isDeposit else { return }
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
@@ -1553,10 +1556,14 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
+    /// ⚠️ DEPRECATED: Use DepositsViewModel.deleteDeposit instead
+    @available(*, deprecated, message: "Use DepositsViewModel.deleteDeposit instead")
     func deleteDeposit(_ account: Account) {
         deleteAccount(account) // Используем существующий метод deleteAccount
     }
     
+    /// ⚠️ DEPRECATED: Use DepositsViewModel.addDepositRateChange instead
+    @available(*, deprecated, message: "Use DepositsViewModel.addDepositRateChange instead")
     func addDepositRateChange(accountId: String, effectiveFrom: String, annualRate: Decimal, note: String? = nil) {
         guard let index = accounts.firstIndex(where: { $0.id == accountId }),
               var depositInfo = accounts[index].depositInfo else {
@@ -1575,9 +1582,12 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
         
         // Пересчитываем проценты после изменения ставки
-        reconcileAllDeposits()
+        // Note: Deposit reconciliation should be handled by DepositsViewModel
+        // This deprecated method call has been removed
     }
     
+    /// ⚠️ DEPRECATED: Use DepositsViewModel.reconcileAllDeposits instead
+    @available(*, deprecated, message: "Use DepositsViewModel.reconcileAllDeposits instead")
     func reconcileAllDeposits() {
         for index in accounts.indices where accounts[index].isDeposit {
             DepositInterestService.reconcileDepositInterest(
@@ -1653,11 +1663,9 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func saveToStorage() {
-        // Выполняем сохранение асинхронно на background queue
+        // Используем repository для сохранения всех данных
         Task.detached(priority: .utility) {
             PerformanceProfiler.start("saveToStorage")
-
-            let encoder = JSONEncoder()
 
             // Создаём копии данных на main thread
             let transactions = await MainActor.run { self.allTransactions }
@@ -1670,33 +1678,17 @@ class TransactionsViewModel: ObservableObject {
             let catLinks = await MainActor.run { self.categorySubcategoryLinks }
             let txLinks = await MainActor.run { self.transactionSubcategoryLinks }
 
-            // Кодируем на background thread
-            if let encoded = try? encoder.encode(transactions) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyTransactions)
-            }
-            if let encoded = try? encoder.encode(rules) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyRules)
-            }
-            if let encoded = try? encoder.encode(accs) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyAccounts)
-            }
-            if let encoded = try? encoder.encode(categories) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyCustomCategories)
-            }
-            if let encoded = try? encoder.encode(series) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyRecurringSeries)
-            }
-            if let encoded = try? encoder.encode(occurrences) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyRecurringOccurrences)
-            }
-            if let encoded = try? encoder.encode(subcats) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeySubcategories)
-            }
-            if let encoded = try? encoder.encode(catLinks) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyCategorySubcategoryLinks)
-            }
-            if let encoded = try? encoder.encode(txLinks) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyTransactionSubcategoryLinks)
+            // Сохраняем через repository
+            await MainActor.run {
+                self.repository.saveTransactions(transactions)
+                self.repository.saveCategoryRules(rules)
+                self.repository.saveAccounts(accs)
+                self.repository.saveCategories(categories)
+                self.repository.saveRecurringSeries(series)
+                self.repository.saveRecurringOccurrences(occurrences)
+                self.repository.saveSubcategories(subcats)
+                self.repository.saveCategorySubcategoryLinks(catLinks)
+                self.repository.saveTransactionSubcategoryLinks(txLinks)
             }
 
             PerformanceProfiler.end("saveToStorage")
@@ -1704,48 +1696,25 @@ class TransactionsViewModel: ObservableObject {
     }
     
     private func loadFromStorage() {
-        if let data = UserDefaults.standard.data(forKey: storageKeyTransactions),
-           let decoded = try? JSONDecoder().decode([Transaction].self, from: data) {
-            allTransactions = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: storageKeyRules),
-           let decoded = try? JSONDecoder().decode([CategoryRule].self, from: data) {
-            categoryRules = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: storageKeyAccounts),
-           let decoded = try? JSONDecoder().decode([Account].self, from: data) {
-            accounts = decoded
-            // Инициализируем начальные балансы из загруженных счетов
-            for account in accounts {
-                if initialAccountBalances[account.id] == nil {
-                    initialAccountBalances[account.id] = account.balance
-                }
+        // Загружаем данные через repository
+        allTransactions = repository.loadTransactions()
+        categoryRules = repository.loadCategoryRules()
+        accounts = repository.loadAccounts()
+        
+        // Инициализируем начальные балансы из загруженных счетов
+        for account in accounts {
+            if initialAccountBalances[account.id] == nil {
+                initialAccountBalances[account.id] = account.balance
             }
         }
-        if let data = UserDefaults.standard.data(forKey: storageKeyCustomCategories),
-           let decoded = try? JSONDecoder().decode([CustomCategory].self, from: data) {
-            customCategories = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: storageKeyRecurringSeries),
-           let decoded = try? JSONDecoder().decode([RecurringSeries].self, from: data) {
-            recurringSeries = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: storageKeyRecurringOccurrences),
-           let decoded = try? JSONDecoder().decode([RecurringOccurrence].self, from: data) {
-            recurringOccurrences = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: storageKeySubcategories),
-           let decoded = try? JSONDecoder().decode([Subcategory].self, from: data) {
-            subcategories = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: storageKeyCategorySubcategoryLinks),
-           let decoded = try? JSONDecoder().decode([CategorySubcategoryLink].self, from: data) {
-            categorySubcategoryLinks = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: storageKeyTransactionSubcategoryLinks),
-           let decoded = try? JSONDecoder().decode([TransactionSubcategoryLink].self, from: data) {
-            transactionSubcategoryLinks = decoded
-        }
+        
+        customCategories = repository.loadCategories()
+        recurringSeries = repository.loadRecurringSeries()
+        recurringOccurrences = repository.loadRecurringOccurrences()
+        subcategories = repository.loadSubcategories()
+        categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
+        transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
+        
         recalculateAccountBalances()
         // reconcileAllDeposits вызывается асинхронно в init() после generateRecurringTransactions
     }
@@ -1987,6 +1956,8 @@ class TransactionsViewModel: ObservableObject {
     }
     
     /// Create a new subscription
+    /// ⚠️ DEPRECATED: Use SubscriptionsViewModel.createSubscription instead
+    @available(*, deprecated, message: "Use SubscriptionsViewModel.createSubscription instead")
     func createSubscription(
         amount: Decimal,
         currency: String,
@@ -2031,6 +2002,8 @@ class TransactionsViewModel: ObservableObject {
     }
     
     /// Update a subscription
+    /// ⚠️ DEPRECATED: Use SubscriptionsViewModel.updateSubscription instead
+    @available(*, deprecated, message: "Use SubscriptionsViewModel.updateSubscription instead")
     func updateSubscription(_ series: RecurringSeries) {
         if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
             let oldSeries = recurringSeries[index]
@@ -2077,6 +2050,8 @@ class TransactionsViewModel: ObservableObject {
     }
     
     /// Pause a subscription
+    /// ⚠️ DEPRECATED: Use SubscriptionsViewModel.pauseSubscription instead
+    @available(*, deprecated, message: "Use SubscriptionsViewModel.pauseSubscription instead")
     func pauseSubscription(_ seriesId: String) {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
             recurringSeries[index].status = .paused
@@ -2091,6 +2066,8 @@ class TransactionsViewModel: ObservableObject {
     }
     
     /// Resume a subscription
+    /// ⚠️ DEPRECATED: Use SubscriptionsViewModel.resumeSubscription instead
+    @available(*, deprecated, message: "Use SubscriptionsViewModel.resumeSubscription instead")
     func resumeSubscription(_ seriesId: String) {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
             recurringSeries[index].status = .active
@@ -2399,6 +2376,8 @@ class TransactionsViewModel: ObservableObject {
     
     // MARK: - Subcategories
     
+    /// ⚠️ DEPRECATED: Use CategoriesViewModel.addSubcategory instead
+    @available(*, deprecated, message: "Use CategoriesViewModel.addSubcategory instead")
     func addSubcategory(name: String) -> Subcategory {
         let subcategory = Subcategory(name: name)
         subcategories.append(subcategory)
@@ -2423,6 +2402,8 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
     }
     
+    /// ⚠️ DEPRECATED: Use CategoriesViewModel.linkSubcategoryToCategory instead
+    @available(*, deprecated, message: "Use CategoriesViewModel.linkSubcategoryToCategory instead")
     func linkSubcategoryToCategory(subcategoryId: String, categoryId: String) {
         // Проверяем, нет ли уже такой связи
         let existingLink = categorySubcategoryLinks.first { link in
@@ -2436,6 +2417,8 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
+    /// ⚠️ DEPRECATED: Use CategoriesViewModel.unlinkSubcategoryFromCategory instead
+    @available(*, deprecated, message: "Use CategoriesViewModel.unlinkSubcategoryFromCategory instead")
     func unlinkSubcategoryFromCategory(subcategoryId: String, categoryId: String) {
         categorySubcategoryLinks.removeAll { link in
             link.categoryId == categoryId && link.subcategoryId == subcategoryId
@@ -2443,6 +2426,8 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
     }
     
+    /// ⚠️ DEPRECATED: Use CategoriesViewModel.getSubcategoriesForCategory instead
+    @available(*, deprecated, message: "Use CategoriesViewModel.getSubcategoriesForCategory instead")
     func getSubcategoriesForCategory(_ categoryId: String) -> [Subcategory] {
         let linkedSubcategoryIds = categorySubcategoryLinks
             .filter { $0.categoryId == categoryId }

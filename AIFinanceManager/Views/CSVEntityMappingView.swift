@@ -11,7 +11,9 @@ import UIKit
 struct CSVEntityMappingView: View {
     let csvFile: CSVFile
     let mapping: CSVColumnMapping
-    let viewModel: TransactionsViewModel
+    let transactionsViewModel: TransactionsViewModel
+    let accountsViewModel: AccountsViewModel
+    let categoriesViewModel: CategoriesViewModel
     let onComplete: (EntityMapping) -> Void
     @Environment(\.dismiss) var dismiss
     
@@ -33,7 +35,7 @@ struct CSVEntityMappingView: View {
                         ForEach(uniqueAccounts, id: \.self) { accountValue in
                             NavigationLink(destination: AccountMappingDetailView(
                                 csvValue: accountValue,
-                                accounts: viewModel.accounts,
+                                accounts: accountsViewModel.accounts,
                                 selectedAccountId: Binding(
                                     get: { accountMappings[accountValue] },
                                     set: { accountMappings[accountValue] = $0 }
@@ -46,7 +48,7 @@ struct CSVEntityMappingView: View {
                                     Text(accountValue)
                                     Spacer()
                                     if let accountId = accountMappings[accountValue],
-                                       let account = viewModel.accounts.first(where: { $0.id == accountId }) {
+                                       let account = accountsViewModel.accounts.first(where: { $0.id == accountId }) {
                                         Text(account.name)
                                             .foregroundColor(.secondary)
                                     } else {
@@ -64,7 +66,7 @@ struct CSVEntityMappingView: View {
                         ForEach(uniqueCategories, id: \.self) { categoryValue in
                             NavigationLink(destination: CategoryMappingDetailView(
                                 csvValue: categoryValue,
-                                categories: viewModel.customCategories,
+                                categories: categoriesViewModel.customCategories,
                                 selectedCategoryName: Binding(
                                     get: { categoryMappings[categoryValue] },
                                     set: { categoryMappings[categoryValue] = $0 }
@@ -139,8 +141,8 @@ struct CSVEntityMappingView: View {
     }
     
     private func createAccount(name: String) {
-        viewModel.addAccount(name: name, balance: 0, currency: "KZT", bankLogo: .none)
-        if let account = viewModel.accounts.first(where: { $0.name == name }) {
+        accountsViewModel.addAccount(name: name, balance: 0, currency: "KZT", bankLogo: .none)
+        if let account = accountsViewModel.accounts.first(where: { $0.name == name }) {
             accountMappings[name] = account.id
         }
     }
@@ -148,8 +150,8 @@ struct CSVEntityMappingView: View {
     private func createCategory(name: String) {
         // Определяем тип категории по умолчанию (expense)
         // Используем автоматический подбор иконки и цвета
-        let iconName = CategoryIcon.iconName(for: name, type: .expense, customCategories: viewModel.customCategories)
-        let colorHex = CategoryColors.hexColor(for: name, customCategories: viewModel.customCategories)
+        let iconName = CategoryIcon.iconName(for: name, type: .expense, customCategories: categoriesViewModel.customCategories)
+        let colorHex = CategoryColors.hexColor(for: name, customCategories: categoriesViewModel.customCategories)
         // Конвертируем Color в hex строку
         let hexString = colorToHex(colorHex)
         
@@ -159,7 +161,7 @@ struct CSVEntityMappingView: View {
             colorHex: hexString,
             type: .expense
         )
-        viewModel.addCategory(newCategory)
+        categoriesViewModel.addCategory(newCategory)
         categoryMappings[name] = name
     }
     

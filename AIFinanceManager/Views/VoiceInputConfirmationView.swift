@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct VoiceInputConfirmationView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
     @Environment(\.dismiss) var dismiss
     
     let parsedOperation: ParsedOperation
@@ -27,8 +29,16 @@ struct VoiceInputConfirmationView: View {
     @State private var amountWarning: String?
     @State private var categoryWarning: String?
     
-    init(viewModel: TransactionsViewModel, parsedOperation: ParsedOperation, originalText: String) {
-        self.viewModel = viewModel
+    init(
+        transactionsViewModel: TransactionsViewModel,
+        accountsViewModel: AccountsViewModel,
+        categoriesViewModel: CategoriesViewModel,
+        parsedOperation: ParsedOperation,
+        originalText: String
+    ) {
+        self.transactionsViewModel = transactionsViewModel
+        self.accountsViewModel = accountsViewModel
+        self.categoriesViewModel = categoriesViewModel
         self.parsedOperation = parsedOperation
         self.originalText = originalText
         
@@ -46,9 +56,9 @@ struct VoiceInputConfirmationView: View {
             formatter.usesGroupingSeparator = false
             return formatter.string(from: NSNumber(value: amountValue)) ?? String(format: "%.2f", amountValue)
         } ?? "")
-        _selectedCurrency = State(initialValue: parsedOperation.currencyCode ?? viewModel.accounts.first?.currency ?? "KZT")
+        _selectedCurrency = State(initialValue: parsedOperation.currencyCode ?? accountsViewModel.accounts.first?.currency ?? "KZT")
         // Устанавливаем счет - сначала из parsedOperation, потом по умолчанию
-        let initialAccountId = parsedOperation.accountId ?? viewModel.accounts.first?.id
+        let initialAccountId = parsedOperation.accountId ?? accountsViewModel.accounts.first?.id
         _selectedAccountId = State(initialValue: initialAccountId)
         _selectedCategoryName = State(initialValue: parsedOperation.categoryName)
         _selectedSubcategoryNames = State(initialValue: Set(parsedOperation.subcategoryNames))
@@ -97,13 +107,13 @@ struct VoiceInputConfirmationView: View {
                 }
                 
                 Section(header: Text("Счёт"), footer: accountWarning.map { Text($0).foregroundColor(.orange) }) {
-                    if viewModel.accounts.isEmpty {
+                    if accountsViewModel.accounts.isEmpty {
                         Text("Нет доступных счетов")
                             .foregroundColor(.secondary)
                     } else {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
-                                ForEach(viewModel.accounts) { account in
+                                ForEach(accountsViewModel.accounts) { account in
                                     AccountRadioButton(
                                         account: account,
                                         isSelected: selectedAccountId == account.id,
@@ -126,7 +136,7 @@ struct VoiceInputConfirmationView: View {
                 Section(header: Text("Категория"), footer: categoryWarning.map { Text($0).foregroundColor(.orange) }) {
                     Picker("Категория", selection: $selectedCategoryName) {
                         Text("Выберите категорию").tag(nil as String?)
-                        ForEach(viewModel.customCategories.filter { $0.type == selectedType }, id: \.name) { category in
+                        ForEach(categoriesViewModel.customCategories.filter { $0.type == selectedType }, id: \.name) { category in
                             Text(category.name).tag(category.name as String?)
                         }
                     }
@@ -137,10 +147,10 @@ struct VoiceInputConfirmationView: View {
                 }
                 
                 if let categoryName = selectedCategoryName,
-                   let category = viewModel.customCategories.first(where: { $0.name == categoryName }),
-                   !viewModel.getSubcategoriesForCategory(category.id).isEmpty {
+                   let category = categoriesViewModel.customCategories.first(where: { $0.name == categoryName }),
+                   !categoriesViewModel.getSubcategoriesForCategory(category.id).isEmpty {
                     Section(header: Text("Подкатегории")) {
-                        ForEach(viewModel.getSubcategoriesForCategory(category.id), id: \.id) { subcategory in
+                        ForEach(categoriesViewModel.getSubcategoriesForCategory(category.id), id: \.id) { subcategory in
                             Toggle(subcategory.name, isOn: Binding(
                                 get: { selectedSubcategoryNames.contains(subcategory.name) },
                                 set: { isOn in
@@ -181,8 +191,8 @@ struct VoiceInputConfirmationView: View {
             }
             .onAppear {
                 // Убеждаемся, что счет выбран правильно при появлении
-                if selectedAccountId == nil && !viewModel.accounts.isEmpty {
-                    selectedAccountId = parsedOperation.accountId ?? viewModel.accounts.first?.id
+                if selectedAccountId == nil && !accountsViewModel.accounts.isEmpty {
+                    selectedAccountId = parsedOperation.accountId ?? accountsViewModel.accounts.first?.id
                 }
                 validateFields()
             }
@@ -208,19 +218,19 @@ struct VoiceInputConfirmationView: View {
     private func validateAccount() {
         // Проверяем, что выбранный счет существует
         if let accountId = selectedAccountId {
-            if viewModel.accounts.contains(where: { $0.id == accountId }) {
+            if accountsViewModel.accounts.contains(where: { $0.id == accountId }) {
                 accountWarning = nil
             } else {
                 // Счет не найден, выбираем по умолчанию
                 accountWarning = "Счёт не найден — выбран по умолчанию"
-                if let defaultAccount = viewModel.accounts.first {
+                if let defaultAccount = accountsViewModel.accounts.first {
                     selectedAccountId = defaultAccount.id
                 }
             }
         } else {
             accountWarning = "Счёт не распознан — выбран по умолчанию"
             // Устанавливаем счет по умолчанию (первый счет)
-            if let defaultAccount = viewModel.accounts.first {
+            if let defaultAccount = accountsViewModel.accounts.first {
                 selectedAccountId = defaultAccount.id
             }
         }
@@ -250,12 +260,12 @@ struct VoiceInputConfirmationView: View {
         if selectedCategoryName == nil {
             categoryWarning = "Категория не распознана — выбрана по умолчанию"
             // Устанавливаем категорию "Другое"
-            if let otherCategory = viewModel.customCategories.first(where: { $0.name == "Другое" && $0.type == selectedType }) {
+            if let otherCategory = categoriesViewModel.customCategories.first(where: { $0.name == "Другое" && $0.type == selectedType }) {
                 selectedCategoryName = otherCategory.name
             } else {
                 // Создаем категорию "Другое" если её нет
                 let otherCategory = CustomCategory(name: "Другое", iconName: "banknote.fill", colorHex: "#3b82f6", type: selectedType)
-                viewModel.addCategory(otherCategory)
+                categoriesViewModel.addCategory(otherCategory)
                 // Ждем обновления списка категорий
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     selectedCategoryName = "Другое"
@@ -286,10 +296,10 @@ struct VoiceInputConfirmationView: View {
             return
         }
         
-        guard let accountId = selectedAccountId, viewModel.accounts.contains(where: { $0.id == accountId }) else {
+        guard let accountId = selectedAccountId, accountsViewModel.accounts.contains(where: { $0.id == accountId }) else {
             accountWarning = "Выберите счёт"
             // Устанавливаем счет по умолчанию, если не выбран
-            if let defaultAccount = viewModel.accounts.first {
+            if let defaultAccount = accountsViewModel.accounts.first {
                 selectedAccountId = defaultAccount.id
                 accountWarning = "Счёт не выбран — использован по умолчанию"
             }
@@ -299,12 +309,12 @@ struct VoiceInputConfirmationView: View {
         // Проверяем и устанавливаем категорию
         var categoryName: String
         if let selectedCategory = selectedCategoryName, 
-           viewModel.customCategories.contains(where: { $0.name == selectedCategory && $0.type == selectedType }) {
+           categoriesViewModel.customCategories.contains(where: { $0.name == selectedCategory && $0.type == selectedType }) {
             categoryName = selectedCategory
         } else {
             categoryWarning = "Выберите категорию"
             // Устанавливаем категорию "Другое", если не выбрана
-            if let otherCategory = viewModel.customCategories.first(where: { $0.name == "Другое" && $0.type == selectedType }) {
+            if let otherCategory = categoriesViewModel.customCategories.first(where: { $0.name == "Другое" && $0.type == selectedType }) {
                 selectedCategoryName = otherCategory.name
                 categoryName = otherCategory.name
                 categoryWarning = "Категория не выбрана — использована по умолчанию"
@@ -315,7 +325,7 @@ struct VoiceInputConfirmationView: View {
         }
         
         // Получаем валюту счета
-        guard let account = viewModel.accounts.first(where: { $0.id == accountId }) else {
+        guard let account = accountsViewModel.accounts.first(where: { $0.id == accountId }) else {
             return
         }
         let accountCurrency = account.currency
@@ -325,7 +335,7 @@ struct VoiceInputConfirmationView: View {
         
         // Получаем ID подкатегорий (берем первую выбранную)
         var subcategoryId: String? = nil
-        if viewModel.customCategories.contains(where: { $0.name == categoryName }),
+        if categoriesViewModel.customCategories.contains(where: { $0.name == categoryName }),
            let firstSubcategoryName = selectedSubcategoryNames.first {
             subcategoryId = firstSubcategoryName
         }
@@ -358,7 +368,7 @@ struct VoiceInputConfirmationView: View {
             )
             
             await MainActor.run {
-                viewModel.addTransaction(transaction)
+                transactionsViewModel.addTransaction(transaction)
                 dismiss()
             }
         }
@@ -366,7 +376,7 @@ struct VoiceInputConfirmationView: View {
 }
 
 #Preview {
-    let viewModel = TransactionsViewModel()
+    let coordinator = AppCoordinator()
     let parsedOperation = ParsedOperation(
         type: .expense,
         amount: Decimal(1000),
@@ -377,7 +387,9 @@ struct VoiceInputConfirmationView: View {
     )
     NavigationView {
         VoiceInputConfirmationView(
-            viewModel: viewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
             parsedOperation: parsedOperation,
             originalText: "Test"
         )

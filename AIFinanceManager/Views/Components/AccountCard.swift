@@ -16,7 +16,7 @@ struct AccountCard: View {
             HStack(spacing: AppSpacing.sm) {
                 account.bankLogo.image(size: AppIconSize.xl)
 //                    .foregroundStyle(.primary.opacity(0.7))
-                
+
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
                         .font(AppTypography.h4)
@@ -29,7 +29,9 @@ struct AccountCard: View {
             }
             .padding(AppSpacing.lg)
         }
-        .glassEffect(in: .rect(cornerRadius: AppRadius.pill))
+        .glassCardStyle()
+        .accessibilityLabel("\(account.name), balance \(Formatting.formatCurrency(account.balance, currency: account.currency))")
+        .accessibilityHint("Tap to view account details")
     }
 }
 

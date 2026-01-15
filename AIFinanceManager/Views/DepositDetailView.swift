@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct DepositDetailView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var depositsViewModel: DepositsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
     let accountId: String
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var showingEditView = false
@@ -20,7 +21,7 @@ struct DepositDetailView: View {
     @Environment(\.dismiss) var dismiss
     
     private var account: Account? {
-        viewModel.accounts.first(where: { $0.id == accountId })
+        depositsViewModel.getDeposit(by: accountId)
     }
     
     private var depositInfo: DepositInfo? {
@@ -89,7 +90,14 @@ struct DepositDetailView: View {
         .sheet(isPresented: $showingHistory) {
             if let account = account {
                 NavigationView {
-                    HistoryView(viewModel: viewModel, initialAccountId: account.id)
+                    // Note: Need to pass CategoriesViewModel from coordinator
+                    // For now using transactionsViewModel directly
+                    HistoryView(
+                        transactionsViewModel: transactionsViewModel,
+                        accountsViewModel: depositsViewModel.accountsViewModel,
+                        categoriesViewModel: CategoriesViewModel(repository: depositsViewModel.repository),
+                        initialAccountId: account.id
+                    )
                         .environmentObject(timeFilterManager)
                 }
             }
@@ -97,10 +105,12 @@ struct DepositDetailView: View {
         .sheet(isPresented: $showingEditView) {
             if let account = account {
                 DepositEditView(
-                    viewModel: viewModel,
+                    depositsViewModel: depositsViewModel,
+                    transactionsViewModel: transactionsViewModel,
                     account: account,
                     onSave: { updatedAccount in
-                        viewModel.updateDeposit(updatedAccount)
+                        depositsViewModel.updateDeposit(updatedAccount)
+                        transactionsViewModel.recalculateAccountBalances()
                         showingEditView = false
                     },
                     onCancel: {
@@ -111,20 +121,30 @@ struct DepositDetailView: View {
         }
         .sheet(isPresented: $showingTransferTo) {
             if let account = account {
-                AccountActionView(viewModel: viewModel, account: account, transferDirection: .toDeposit)
+                AccountActionView(
+                    transactionsViewModel: transactionsViewModel,
+                    accountsViewModel: depositsViewModel.accountsViewModel,
+                    account: account,
+                    transferDirection: .toDeposit
+                )
                     .environmentObject(timeFilterManager)
             }
         }
         .sheet(isPresented: $showingTransferFrom) {
             if let account = account {
-                AccountActionView(viewModel: viewModel, account: account, transferDirection: .fromDeposit)
+                AccountActionView(
+                    transactionsViewModel: transactionsViewModel,
+                    accountsViewModel: depositsViewModel.accountsViewModel,
+                    account: account,
+                    transferDirection: .fromDeposit
+                )
                     .environmentObject(timeFilterManager)
             }
         }
         .sheet(isPresented: $showingRateChange) {
             if let account = account {
                 DepositRateChangeView(
-                    viewModel: viewModel,
+                    depositsViewModel: depositsViewModel,
                     account: account,
                     onComplete: {
                         showingRateChange = false
@@ -135,7 +155,12 @@ struct DepositDetailView: View {
         .alert("Удалить депозит?", isPresented: $showingDeleteConfirmation) {
             Button("Удалить", role: .destructive) {
                 if let account = account {
-                    viewModel.deleteDeposit(account)
+                    depositsViewModel.deleteDeposit(account)
+                    // Also delete related transactions
+                    transactionsViewModel.allTransactions.removeAll { 
+                        $0.accountId == account.id || $0.targetAccountId == account.id 
+                    }
+                    transactionsViewModel.recalculateAccountBalances()
                 }
                 dismiss()
             }
@@ -145,7 +170,12 @@ struct DepositDetailView: View {
         }
         .onAppear {
             // Пересчитываем проценты при открытии
-            viewModel.reconcileAllDeposits()
+            depositsViewModel.reconcileAllDeposits(
+                allTransactions: transactionsViewModel.allTransactions,
+                onTransactionCreated: { transaction in
+                    transactionsViewModel.addTransaction(transaction)
+                }
+            )
         }
     }
     
@@ -239,7 +269,8 @@ enum DepositTransferDirection {
 }
 
 struct DepositTransferView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
     let depositAccount: Account
     let transferDirection: DepositTransferDirection
     let onComplete: () -> Void
@@ -253,7 +284,7 @@ struct DepositTransferView: View {
     @FocusState private var isAmountFocused: Bool
     
     private var availableAccounts: [Account] {
-        viewModel.accounts.filter { $0.id != depositAccount.id }
+        accountsViewModel.accounts.filter { $0.id != depositAccount.id }
     }
     
     var body: some View {
@@ -341,7 +372,8 @@ struct DepositTransferView: View {
         
         if transferDirection == .toDeposit {
             // Перевод на депозит (с выбранного счета на депозит)
-            viewModel.transfer(
+            // Note: transfer method should be in TransactionsViewModel
+            transactionsViewModel.transfer(
                 from: sourceAccountId,
                 to: depositAccount.id,
                 amount: amountDouble,
@@ -350,7 +382,7 @@ struct DepositTransferView: View {
             )
         } else {
             // Перевод с депозита (с депозита на выбранный счет)
-            viewModel.transfer(
+            transactionsViewModel.transfer(
                 from: depositAccount.id,
                 to: sourceAccountId,
                 amount: amountDouble,
@@ -364,7 +396,7 @@ struct DepositTransferView: View {
 }
 
 struct DepositRateChangeView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var depositsViewModel: DepositsViewModel
     let account: Account
     let onComplete: () -> Void
     
@@ -427,7 +459,7 @@ struct DepositRateChangeView: View {
         let dateString = DateFormatters.dateFormatter.string(from: effectiveFromDate)
         let note = noteText.isEmpty ? nil : noteText
         
-        viewModel.addDepositRateChange(
+        depositsViewModel.addDepositRateChange(
             accountId: account.id,
             effectiveFrom: dateString,
             annualRate: rate,
@@ -518,8 +550,13 @@ struct DepositTransactionRow: View {
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     NavigationView {
-        DepositDetailView(viewModel: TransactionsViewModel(), accountId: "test")
+        DepositDetailView(
+            depositsViewModel: coordinator.depositsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountId: coordinator.depositsViewModel.deposits.first?.id ?? "test"
+        )
             .environmentObject(TimeFilterManager())
     }
 }

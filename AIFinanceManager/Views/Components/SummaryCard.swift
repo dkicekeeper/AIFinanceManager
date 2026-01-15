@@ -14,12 +14,12 @@ struct SummaryCard: View {
     let color: Color
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Text(title)
-                .font(.subheadline)
+                .font(AppTypography.bodySmall)
                 .foregroundColor(.secondary)
             Text(Formatting.formatCurrency(amount, currency: currency))
-                .font(.headline)
+                .font(AppTypography.h4)
                 .fontWeight(.bold)
                 .foregroundColor(color)
         }

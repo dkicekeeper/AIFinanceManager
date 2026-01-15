@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SubcategorySearchView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var categoriesViewModel: CategoriesViewModel
     let categoryId: String
     @Binding var selectedSubcategoryIds: Set<String>
     @Binding var searchText: String
@@ -19,9 +19,9 @@ struct SubcategorySearchView: View {
     
     private var searchResults: [Subcategory] {
         if searchText.isEmpty {
-            return viewModel.subcategories
+            return categoriesViewModel.subcategories
         }
-        return viewModel.searchSubcategories(query: searchText)
+        return categoriesViewModel.searchSubcategories(query: searchText)
     }
     
     var body: some View {
@@ -44,7 +44,7 @@ struct SubcategorySearchView: View {
                             selectedSubcategoryIds.insert(subcategory.id)
                             // Автоматически привязываем к категории, если еще не привязана
                             if !categoryId.isEmpty {
-                                viewModel.linkSubcategoryToCategory(
+                                categoriesViewModel.linkSubcategoryToCategory(
                                     subcategoryId: subcategory.id,
                                     categoryId: categoryId
                                 )
@@ -54,7 +54,7 @@ struct SubcategorySearchView: View {
                     .onLongPressGesture {
                         // Лонгтап для удаления привязки
                         if !categoryId.isEmpty {
-                            viewModel.unlinkSubcategoryFromCategory(
+                            categoriesViewModel.unlinkSubcategoryFromCategory(
                                 subcategoryId: subcategory.id,
                                 categoryId: categoryId
                             )
@@ -88,11 +88,11 @@ struct SubcategorySearchView: View {
                 }
             }
             .sheet(isPresented: $showingCreateSubcategory) {
-                CreateSubcategoryView(viewModel: viewModel) { subcategory in
+                CreateSubcategoryView(categoriesViewModel: categoriesViewModel) { subcategory in
                     selectedSubcategoryIds.insert(subcategory.id)
                     // Автоматически привязываем к категории
                     if !categoryId.isEmpty {
-                        viewModel.linkSubcategoryToCategory(
+                        categoriesViewModel.linkSubcategoryToCategory(
                             subcategoryId: subcategory.id,
                             categoryId: categoryId
                         )
@@ -105,8 +105,9 @@ struct SubcategorySearchView: View {
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     SubcategorySearchView(
-        viewModel: TransactionsViewModel(),
+        categoriesViewModel: coordinator.categoriesViewModel,
         categoryId: "",
         selectedSubcategoryIds: .constant([]),
         searchText: .constant("")

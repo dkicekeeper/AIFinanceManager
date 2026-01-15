@@ -1,0 +1,225 @@
+/*
+   Localizable.strings (English)
+   AIFinanceManager
+*/
+
+// MARK: - Navigation Titles
+"navigation.home" = "Home";
+"navigation.history" = "History";
+"navigation.categories" = "Categories";
+"navigation.settings" = "Settings";
+"navigation.accounts" = "Accounts";
+"navigation.subscriptions" = "Subscriptions";
+"navigation.categoryFilter" = "Filter by Categories";
+"navigation.logoSearch" = "Search Logo";
+"navigation.entityMapping" = "Entity Mapping";
+"navigation.csvPreview" = "CSV Preview";
+"navigation.transactionPreview" = "Transaction Preview";
+"navigation.statementText" = "Statement Text";
+"navigation.voiceInput" = "Voice Input";
+"navigation.subcategorySearch" = "Search Subcategories";
+"navigation.selectDate" = "Select Date";
+"navigation.selectIcon" = "Select Icon";
+"navigation.selectLogo" = "Select Logo";
+"navigation.importResult" = "Import Result";
+
+// MARK: - Time Filters
+"timeFilter.today" = "Today";
+"timeFilter.yesterday" = "Yesterday";
+"timeFilter.thisWeek" = "This Week";
+"timeFilter.last30Days" = "Last 30 Days";
+"timeFilter.thisMonth" = "This Month";
+"timeFilter.lastMonth" = "Last Month";
+"timeFilter.thisYear" = "This Year";
+"timeFilter.lastYear" = "Last Year";
+"timeFilter.allTime" = "All Time";
+"timeFilter.custom" = "Custom Period";
+
+// MARK: - Buttons
+"button.save" = "Save";
+"button.cancel" = "Cancel";
+"button.delete" = "Delete";
+"button.close" = "Close";
+"button.import" = "Import";
+"button.export" = "Export";
+"button.copy" = "Copy";
+"button.add" = "Add";
+"button.edit" = "Edit";
+"button.done" = "Done";
+"button.ok" = "OK";
+"button.retry" = "Retry";
+"button.change" = "Change";
+"button.select" = "Select";
+
+// MARK: - Empty States
+"emptyState.noTransactions" = "No transactions";
+"emptyState.noAccounts" = "No accounts";
+"emptyState.searchNoResults" = "Nothing found";
+"emptyState.startTracking" = "Start adding transactions to track your finances";
+"emptyState.tryDifferentSearch" = "Try changing your search query";
+"emptyState.tryDifferentFilters" = "Try changing filters or add a new transaction";
+
+// MARK: - Settings
+"settings.title" = "Settings";
+"settings.general" = "General Settings";
+"settings.baseCurrency" = "Base Currency";
+"settings.wallpaper" = "Home Wallpaper";
+"settings.dataManagement" = "Data Management";
+"settings.categories" = "Categories";
+"settings.accounts" = "Accounts";
+"settings.exportImport" = "Export & Import";
+"settings.exportData" = "Export Data";
+"settings.importData" = "Import Data";
+"settings.dangerZone" = "Danger Zone";
+"settings.resetData" = "Full Data Reset";
+
+// MARK: - Alerts
+"alert.deleteAllData.title" = "Delete all data?";
+"alert.deleteAllData.message" = "All transactions, accounts, and categories will be permanently deleted.";
+"alert.deleteAllData.confirm" = "Delete";
+"alert.deleteAllData.cancel" = "Cancel";
+"alert.textCopied.title" = "Text copied";
+"alert.textCopied.message" = "Recognized text has been copied to clipboard.";
+"alert.parseError.title" = "Parse Error";
+"alert.importError.title" = "Import Error";
+"alert.errorTitle" = "Error";
+
+// MARK: - Progress
+"progress.processingPDF" = "Processing PDF...";
+"progress.recognizingText" = "Recognizing text: page %d of %d";
+"progress.page" = "Page %d of %d";
+"progress.parsingStatement" = "Parsing statement...";
+
+// MARK: - Errors
+"error.loadTextFailed" = "Failed to load text";
+"error.tryAgain" = "Try again";
+"error.noTransactionsFound" = "No transactions found in recognized text. Make sure the text contains a transaction table.";
+"error.noTransactionsStructured" = "No transactions found in structured data. The statement format may differ from expected.";
+"error.pdfExtraction" = "Failed to extract text from PDF. The document may be corrupted or empty.";
+"error.importFailed" = "Import failed";
+
+// MARK: - Account Actions
+"account.transfer" = "Transfer";
+"account.topUp" = "Top Up";
+"account.withdrawal" = "Withdrawal";
+
+// MARK: - Analytics
+"analytics.history" = "History";
+"analytics.planned" = "Planned";
+
+// MARK: - Transaction Form
+"transaction.account" = "Account";
+"transaction.amount" = "Amount";
+"transaction.description" = "Description";
+"transaction.date" = "Date";
+"transaction.recurring" = "Recurring";
+"transaction.frequency" = "Frequency";
+"transaction.category" = "Category";
+"transaction.subcategories" = "Subcategories";
+"transaction.currency" = "Currency";
+
+// MARK: - Transaction Actions
+"transaction.importTransactions" = "Import Transactions";
+"transaction.addNew" = "Add Transaction";
+"transaction.edit" = "Edit Transaction";
+"transaction.new" = "New Transaction";
+
+// MARK: - Search
+"search.placeholder" = "Search by amount, category, or description";
+"search.subcategories" = "Search subcategories";
+
+// MARK: - Modals
+"modal.recognizedText.title" = "Recognized Text";
+"modal.recognizedText.message" = "Text has been successfully recognized. You can import transactions or copy the text.";
+"modal.newAccount" = "New Account";
+"modal.editAccount" = "Edit Account";
+"modal.newCategory" = "New Category";
+"modal.editCategory" = "Edit Category";
+
+// MARK: - Common
+"common.name" = "Name";
+"common.balance" = "Balance";
+"common.type" = "Type";
+"common.icon" = "Icon";
+"common.color" = "Color";
+"common.logo" = "Logo";
+"common.all" = "All";
+"common.selected" = "Selected";
+"common.none" = "None";
+
+// MARK: - Date Labels
+"date.today" = "Today";
+"date.yesterday" = "Yesterday";
+"date.tomorrow" = "Tomorrow";
+
+// MARK: - Transaction Types
+"transactionType.income" = "Income";
+"transactionType.expense" = "Expense";
+"transactionType.transfer" = "Transfer";
+
+// MARK: - Accounts Management
+"account.interestToday" = "Interest today: %@";
+"account.nextPosting" = "Next posting: %@";
+"account.selectLogo" = "Select Logo";
+"account.popularBanks" = "Popular Banks";
+"account.otherBanks" = "Other Banks";
+
+// MARK: - Accessibility Labels
+"accessibility.voiceInput" = "Voice input";
+"accessibility.voiceInputHint" = "Record a transaction using voice";
+"accessibility.importStatement" = "Import bank statement";
+"accessibility.importStatementHint" = "Import transactions from PDF or CSV file";
+"accessibility.calendar" = "Calendar";
+"accessibility.calendarHint" = "Select date range for filtering transactions";
+"accessibility.settings" = "Settings";
+"accessibility.settingsHint" = "Open application settings";
+
+// MARK: - Quick Add Transaction / Add Transaction Modal
+"quickAdd.account" = "Account";
+"quickAdd.amount" = "Amount";
+"quickAdd.description" = "Description";
+"quickAdd.descriptionPlaceholder" = "Description (optional)";
+"quickAdd.recurring" = "Recurring Transaction";
+"quickAdd.makeRecurring" = "Make recurring";
+"quickAdd.frequency" = "Frequency";
+"quickAdd.subcategories" = "Subcategories";
+"quickAdd.searchSubcategories" = "Search Subcategories";
+"quickAdd.searchAndAddSubcategories" = "Search and Add Subcategories";
+"quickAdd.selectDate" = "Select Date";
+"quickAdd.done" = "Done";
+"quickAdd.cancel" = "Cancel";
+
+// MARK: - Validation Errors
+"error.validation.enterAmount" = "Enter a valid amount";
+"error.validation.amountGreaterThanZero" = "Amount must be greater than zero";
+"error.validation.selectAccount" = "Select an account";
+"error.validation.accountNotFound" = "Account not found";
+
+// MARK: - Voice Input
+"voice.title" = "Voice Input";
+"voice.speak" = "Speak...";
+"voice.recording" = "Recording...";
+"voice.error" = "Error";
+"voice.errorMessage" = "Failed to start recording";
+"voice.ok" = "OK";
+
+// MARK: - Subscriptions
+"subscriptions.title" = "Subscriptions";
+"subscriptions.empty" = "No Subscriptions";
+"subscriptions.emptyDescription" = "Add a subscription to track recurring payments";
+"subscriptions.addSubscription" = "Add Subscription";
+"subscriptions.deleteConfirmTitle" = "Delete subscription?";
+"subscriptions.deleteConfirmMessage" = "All subscription data and related transactions will be deleted.";
+"subscriptions.delete" = "Delete";
+"subscriptions.pause" = "Pause";
+"subscriptions.resume" = "Resume";
+"subscriptions.transactionHistory" = "Transaction History";
+"subscriptions.category" = "Category";
+"subscriptions.frequency" = "Frequency";
+"subscriptions.nextCharge" = "Next Charge";
+"subscriptions.account" = "Account";
+"subscriptions.status" = "Status";
+"subscriptions.status.active" = "Active";
+"subscriptions.status.paused" = "Paused";
+"subscriptions.status.archived" = "Archived";
+"subscriptions.status.unknown" = "Unknown";

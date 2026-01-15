@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct AccountActionView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
     let account: Account
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var timeFilterManager: TimeFilterManager
@@ -26,8 +27,14 @@ struct AccountActionView: View {
     
     let transferDirection: DepositTransferDirection? // nil для обычных счетов, .toDeposit для пополнения, .fromDeposit для вывода
     
-    init(viewModel: TransactionsViewModel, account: Account, transferDirection: DepositTransferDirection? = nil) {
-        self.viewModel = viewModel
+    init(
+        transactionsViewModel: TransactionsViewModel,
+        accountsViewModel: AccountsViewModel,
+        account: Account,
+        transferDirection: DepositTransferDirection? = nil
+    ) {
+        self.transactionsViewModel = transactionsViewModel
+        self.accountsViewModel = accountsViewModel
         self.account = account
         self.transferDirection = transferDirection
         _selectedCurrency = State(initialValue: account.currency)
@@ -42,71 +49,76 @@ struct AccountActionView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
+            Form {
                 // Picker для выбора типа действия (перевод/пополнение)
                 // Для депозитов Picker скрыт - доступен только перевод
                 if !account.isDeposit {
-                    Picker("Тип", selection: $selectedAction) {
-                        Text("Перевод").tag(ActionType.transfer)
-                        Text("Пополнение").tag(ActionType.income)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
-                    .padding(.vertical, AppSpacing.md)
-                }
-            
-                if selectedAction == .income && !account.isDeposit {
-                    if incomeCategories.isEmpty {
-                        Text("Нет доступных категорий дохода. Создайте категории сначала.")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                            .padding(.horizontal)
-                            .padding(.vertical, AppSpacing.md)
-                    } else {
-                        LazyVGrid(columns: gridColumns, spacing: AppSpacing.md) {
-                            ForEach(incomeCategories, id: \.self) { category in
-                                CategoryChip(
-                                    category: category,
-                                    type: .income,
-                                    customCategories: viewModel.customCategories,
-                                    isSelected: selectedCategory == category,
-                                    onTap: {
-                                        selectedCategory = category
-                                    }
-                                )
-                            }
+                    Section {
+                        Picker("Тип", selection: $selectedAction) {
+                            Text("Перевод").tag(ActionType.transfer)
+                            Text("Пополнение").tag(ActionType.income)
                         }
-                        .padding(.horizontal)
-                        .padding(.vertical, AppSpacing.md)
+                        .pickerStyle(.segmented)
+                        .listRowInsets(.init())
+                        .listRowBackground(Color.clear)
                     }
-                } else {
-                    if availableAccounts.isEmpty {
-                        Text("Нет других счетов для перевода")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                            .padding(.horizontal)
-                            .padding(.vertical, AppSpacing.md)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: AppSpacing.md) {
-                                ForEach(availableAccounts) { targetAccount in
-                                    AccountRadioButton(
-                                        account: targetAccount,
-                                        isSelected: selectedTargetAccountId == targetAccount.id,
+                }
+                
+                if selectedAction == .income && !account.isDeposit {
+                    Section(header: Text("Категория")) {
+                        if incomeCategories.isEmpty {
+                            Text("Нет доступных категорий дохода. Создайте категории сначала.")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                                .padding(.vertical, AppSpacing.sm)
+                        } else {
+                            LazyVGrid(columns: gridColumns, spacing: AppSpacing.md) {
+                                ForEach(incomeCategories, id: \.self) { category in
+                                    CategoryChip(
+                                        category: category,
+                                        type: .income,
+                                        customCategories: transactionsViewModel.customCategories,
+                                        isSelected: selectedCategory == category,
                                         onTap: {
-                                            selectedTargetAccountId = targetAccount.id
+                                            selectedCategory = category
                                         }
                                     )
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, AppSpacing.sm)
                         }
-                        .padding(.horizontal)
-                        .padding(.vertical, AppSpacing.md)
+                    }
+                } else {
+                    Section(header: Text(headerForAccountSelection)) {
+                        if availableAccounts.isEmpty {
+                            Text("Нет других счетов для перевода")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                                .padding(.vertical, AppSpacing.sm)
+                            
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: AppSpacing.md) {
+                                    ForEach(availableAccounts) { targetAccount in
+                                        AccountRadioButton(
+                                            account: targetAccount,
+                                            isSelected: selectedTargetAccountId == targetAccount.id,
+                                            onTap: {
+                                                selectedTargetAccountId = targetAccount.id
+                                            }
+                                        )
+                                    }
+                                }
+                                .scrollClipDisabled()
+                                .padding(.vertical, AppSpacing.xs)
+                            }
+                            .padding(.vertical, AppSpacing.sm)
+                            .listRowInsets(.init())
+                            .listRowBackground(Color.clear)
+                        }
                     }
                 }
                 
-                Form {
                 Section(header: Text("Сумма")) {
                     HStack {
                         TextField("0.00", text: $amountText)
@@ -127,8 +139,6 @@ struct AccountActionView: View {
                     TextField("Описание (необязательно)", text: $descriptionText, axis: .vertical)
                         .lineLimit(3...6)
                 }
-                }
-                .padding(.bottom, 0)
             }
             .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
@@ -148,12 +158,17 @@ struct AccountActionView: View {
                     }
                 }
             }
-            .dateButtonsToolbar(selectedDate: $selectedDate, onSave: { date in
+            .dateButtonsSafeArea(selectedDate: $selectedDate, onSave: { date in
                 saveTransaction(date: date)
             })
             .sheet(isPresented: $showingAccountHistory) {
                 NavigationView {
-                    HistoryView(viewModel: viewModel, initialAccountId: account.id)
+                    HistoryView(
+                        transactionsViewModel: transactionsViewModel,
+                        accountsViewModel: accountsViewModel,
+                        categoriesViewModel: CategoriesViewModel(repository: transactionsViewModel.repository),
+                        initialAccountId: account.id
+                    )
                         .environmentObject(timeFilterManager)
                 }
             }
@@ -169,14 +184,14 @@ struct AccountActionView: View {
     }
     
     private var incomeCategories: [String] {
-        viewModel.customCategories
+        transactionsViewModel.customCategories
             .filter { $0.type == .income }
             .map { $0.name }
             .sorted()
     }
     
     private var availableAccounts: [Account] {
-        viewModel.accounts.filter { $0.id != account.id }
+        accountsViewModel.accounts.filter { $0.id != account.id }
     }
     
     private var headerForAccountSelection: String {
@@ -265,12 +280,12 @@ struct AccountActionView: View {
                             return account.currency
                         } else if let sourceId = selectedTargetAccountId {
                             // Для пополнения депозита источник - выбранный счет
-                            return viewModel.accounts.first(where: { $0.id == sourceId })?.currency
+                            return accountsViewModel.accounts.first(where: { $0.id == sourceId })?.currency
                         } else {
                             return account.currency
                         }
                     } else if account.isDeposit, let sourceId = sourceAccountId {
-                        return viewModel.accounts.first(where: { $0.id == sourceId })?.currency
+                        return accountsViewModel.accounts.first(where: { $0.id == sourceId })?.currency
                     } else {
                         return account.currency
                     }
@@ -297,7 +312,7 @@ struct AccountActionView: View {
                 // Получаем информацию о целевом счете для предзагрузки курсов
                 if let targetAccountId = selectedTargetAccountId {
                     let targetAccountCurrency: String? = await MainActor.run {
-                        viewModel.accounts.first(where: { $0.id == targetAccountId })?.currency
+                        accountsViewModel.accounts.first(where: { $0.id == targetAccountId })?.currency
                     }
 
                     if let targetCurrency = targetAccountCurrency {
@@ -399,7 +414,7 @@ struct AccountActionView: View {
                         accountId: account.id,
                         targetAccountId: nil
                     )
-                    viewModel.addTransaction(transaction)
+                    transactionsViewModel.addTransaction(transaction)
                     HapticManager.success()
                     dismiss()
                 } else {
@@ -420,7 +435,7 @@ struct AccountActionView: View {
                     }
                     
                     // Проверяем существование счета получателя
-                    guard viewModel.accounts.contains(where: { $0.id == targetAccountId }) else {
+                    guard accountsViewModel.accounts.contains(where: { $0.id == targetAccountId }) else {
                         errorMessage = "Счет получателя не найден"
                         showingError = true
                         HapticManager.error()
@@ -473,13 +488,13 @@ struct AccountActionView: View {
                             accountId: sourceId,
                             targetAccountId: targetId
                         )
-                        viewModel.addTransaction(transaction)
+                        transactionsViewModel.addTransaction(transaction)
                         
                         // После добавления транзакции пересчитываем балансы, чтобы применить конвертацию для получателя
-                        viewModel.recalculateAccountBalances()
+                        transactionsViewModel.recalculateAccountBalances()
                     } else {
                         // Для обычных счетов с одинаковыми валютами - используем transfer()
-                        viewModel.transfer(
+                        transactionsViewModel.transfer(
                             from: sourceId,
                             to: targetId,
                             amount: amount,
@@ -499,8 +514,10 @@ struct AccountActionView: View {
 // CategoryRadioButton is now replaced by CategoryChip
 
 #Preview {
+    let coordinator = AppCoordinator()
     AccountActionView(
-        viewModel: TransactionsViewModel(),
+        transactionsViewModel: coordinator.transactionsViewModel,
+        accountsViewModel: coordinator.accountsViewModel,
         account: Account(name: "Main", balance: 1000, currency: "USD", bankLogo: .none)
     )
 }

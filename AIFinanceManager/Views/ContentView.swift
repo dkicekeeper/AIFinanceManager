@@ -2,8 +2,22 @@ import SwiftUI
 import PDFKit
 
 struct ContentView: View {
-    @StateObject private var viewModel = TransactionsViewModel()
+    @EnvironmentObject var coordinator: AppCoordinator
     @EnvironmentObject var timeFilterManager: TimeFilterManager
+    
+    // Computed properties for easier access
+    private var viewModel: TransactionsViewModel {
+        coordinator.transactionsViewModel
+    }
+    private var accountsViewModel: AccountsViewModel {
+        coordinator.accountsViewModel
+    }
+    private var categoriesViewModel: CategoriesViewModel {
+        coordinator.categoriesViewModel
+    }
+    private var subscriptionsViewModel: SubscriptionsViewModel {
+        coordinator.subscriptionsViewModel
+    }
     @State private var showingFilePicker = false
     @State private var selectedAccount: Account?
     @State private var showingVoiceInput = false
@@ -22,82 +36,117 @@ struct ContentView: View {
     @State private var cachedSummary: Summary?
     @State private var wallpaperImage: UIImage? = nil
     
+    private var scrollContent: some View {
+        VStack(spacing: AppSpacing.lg) {
+            accountsSection
+                .screenPadding()
+
+            if !viewModel.allTransactions.isEmpty {
+                historyNavigationLink
+            }
+            
+            subscriptionsNavigationLink
+
+            QuickAddTransactionView(
+                transactionsViewModel: viewModel,
+                categoriesViewModel: categoriesViewModel,
+                accountsViewModel: accountsViewModel
+            )
+                .screenPadding()
+
+            if viewModel.isLoading {
+                loadingProgressView
+            }
+
+            if let error = viewModel.errorMessage {
+                ErrorMessageView(message: error)
+                    .screenPadding()
+            }
+        }
+        .padding(.vertical, AppSpacing.md)
+    }
+    
+    private var historyNavigationLink: some View {
+        NavigationLink(destination: HistoryView(
+            transactionsViewModel: viewModel,
+            accountsViewModel: accountsViewModel,
+            categoriesViewModel: categoriesViewModel,
+            initialCategory: nil
+        )
+            .environmentObject(timeFilterManager)) {
+            analyticsCard
+                .screenPadding()
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var subscriptionsNavigationLink: some View {
+        NavigationLink(destination: SubscriptionsListView(
+            subscriptionsViewModel: subscriptionsViewModel,
+            transactionsViewModel: viewModel
+        )
+            .environmentObject(timeFilterManager)) {
+            subscriptionsCard
+                .screenPadding()
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var loadingProgressView: some View {
+        VStack(spacing: AppSpacing.md) {
+            if let progress = ocrProgress {
+                ProgressView(value: Double(progress.current), total: Double(progress.total)) {
+                    Text(String(localized: "progress.recognizingText", defaultValue: "Recognizing text: page \(progress.current) of \(progress.total)"))
+                        .font(AppTypography.bodySmall)
+                        .foregroundColor(.secondary)
+                }
+                Text(String(localized: "progress.page", defaultValue: "Page \(progress.current) of \(progress.total)"))
+                    .font(AppTypography.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                ProgressView(String(localized: "progress.processingPDF"))
+            }
+        }
+        .padding(AppSpacing.md)
+    }
+    
+    private var bottomActions: some View {
+        HStack(spacing: AppSpacing.xl) {
+            // Кнопка голосового ввода
+            Button(action: {
+                showingVoiceInput = true
+            }) {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .frame(width: 64, height: 64)
+            }
+            .buttonStyle(.glass)
+            .accessibilityLabel(String(localized: "accessibility.voiceInput"))
+            .accessibilityHint(String(localized: "accessibility.voiceInputHint"))
+            
+            // Кнопка загрузки выписок
+            Button(action: {
+                showingFilePicker = true
+            }) {
+                Image(systemName: "doc.badge.plus")
+                    .font(.system(size: 24, weight: .semibold))
+                    .frame(width: 64, height: 64)
+            }
+            .buttonStyle(.glass)
+            .accessibilityLabel(String(localized: "accessibility.importStatement"))
+            .accessibilityHint(String(localized: "accessibility.importStatementHint"))
+        }
+        .padding(.horizontal, AppSpacing.lg)
+        .padding(.bottom, AppSpacing.xl)
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: AppSpacing.lg) {
-                    accountsSection
-                        .screenPadding()
-
-                    if !viewModel.allTransactions.isEmpty {
-                        NavigationLink(destination: HistoryView(viewModel: viewModel, initialCategory: nil)
-                            .environmentObject(timeFilterManager)) {
-                            analyticsCard
-                                .screenPadding()
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    
-                    NavigationLink(destination: SubscriptionsListView(viewModel: viewModel)
-                        .environmentObject(timeFilterManager)) {
-                        subscriptionsCard
-                            .screenPadding()
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                        QuickAddTransactionView(viewModel: viewModel)
-                            .screenPadding()
-
-                    if viewModel.isLoading {
-                        VStack(spacing: AppSpacing.md) {
-                            if let progress = ocrProgress {
-                                ProgressView(value: Double(progress.current), total: Double(progress.total)) {
-                                    Text("Распознавание текста: страница \(progress.current) из \(progress.total)")
-                                        .font(AppTypography.bodySmall)
-                                        .foregroundColor(.secondary)
-                                }
-                                Text("Страница \(progress.current) из \(progress.total)")
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(.secondary)
-                            } else {
-                                ProgressView("Обработка PDF...")
-                            }
-                        }
-                        .padding(AppSpacing.md)
-                    }
-
-                    if let error = viewModel.errorMessage {
-                        ErrorMessageView(message: error)
-                            .screenPadding()
-                    }
-                }
-                .padding(.vertical, AppSpacing.md)
+                scrollContent
             }
-//            .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom) {
-                // Primary actions: голос и загрузка выписок (liquid glass стиль iOS 16+)
-                HStack(spacing: AppSpacing.xl) {
-                    // Кнопка голосового ввода
-                    Button(action: {
-                        showingVoiceInput = true
-                    }) {
-                        Image(systemName: "mic.fill")
-                            .font(.system(size: 24, weight: .semibold))
-                            .frame(width: 64, height: 64)
-                    }
-                    .buttonStyle(.glass)
-                    // Кнопка загрузки выписок
-                    Button(action: {
-                        showingFilePicker = true
-                    }) {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 24, weight: .semibold))
-                            .frame(width: 64, height: 64)
-                    }
-                    .buttonStyle(.glass)
-                }
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.bottom, AppSpacing.xl)
+                bottomActions
             }
             .navigationBarTitleDisplayMode(.inline)
             .background {
@@ -144,9 +193,9 @@ struct ContentView: View {
                     // Fallback - показываем пустой экран, если текст не загружен
                     NavigationView {
                         VStack {
-                            Text("Ошибка загрузки текста")
+                            Text(String(localized: "error.loadTextFailed"))
                                 .font(.headline)
-                            Text("Попробуйте еще раз")
+                            Text(String(localized: "error.tryAgain"))
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -155,68 +204,20 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingCSVPreview) {
                 if let csvFile = parsedCSVFile {
-                    CSVPreviewView(csvFile: csvFile, viewModel: viewModel)
+                    CSVPreviewView(csvFile: csvFile, transactionsViewModel: viewModel)
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        showingTimeFilter = true
-                    }) {
-                        HStack(spacing: AppSpacing.xs) {
-                            Image(systemName: "calendar")
-                            Text(timeFilterManager.currentFilter.displayName)
-                                .font(AppTypography.bodySmall)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(.primary)
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: SettingsView(viewModel: viewModel)) {
-                        Image(systemName: "gearshape")
-                    }
-                }
+                toolbarContent
             }
             .sheet(item: $selectedAccount) { account in
-                Group {
-                    if account.isDeposit {
-                        NavigationView {
-                            DepositDetailView(viewModel: viewModel, accountId: account.id)
-                                .environmentObject(timeFilterManager)
-                        }
-                    } else {
-                        AccountActionView(viewModel: viewModel, account: account)
-                            .environmentObject(timeFilterManager)
-                    }
-                }
+                accountSheet(for: account)
             }
             .sheet(isPresented: $showingVoiceInput) {
-                VoiceInputView(voiceService: voiceService) { transcribedText in
-                    showingVoiceInput = false
-                    // Парсим текст синхронно
-                    let parser = VoiceInputParser(
-                        accounts: viewModel.accounts,
-                        categories: viewModel.customCategories,
-                        subcategories: viewModel.subcategories,
-                        defaultAccount: viewModel.accounts.first
-                    )
-                    let parsed = parser.parse(transcribedText)
-                    // Устанавливаем parsedOperation синхронно перед открытием sheet
-                    parsedOperation = parsed
-                    // Открываем sheet сразу после установки parsedOperation
-                    showingVoiceConfirmation = true
-                }
+                voiceInputSheet
             }
             .sheet(isPresented: $showingVoiceConfirmation) {
-                if let parsed = parsedOperation {
-                    VoiceInputConfirmationView(
-                        viewModel: viewModel,
-                        parsedOperation: parsed,
-                        originalText: voiceService.getFinalText()
-                    )
-                }
+                voiceConfirmationSheet
             }
             .sheet(isPresented: $showingTimeFilter) {
                 TimeFilterView(filterManager: timeFilterManager)
@@ -236,6 +237,94 @@ struct ContentView: View {
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
                 loadWallpaper()
             }
+        }
+    }
+    
+    private var toolbarContent: some ToolbarContent {
+        Group {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    showingTimeFilter = true
+                }) {
+                    HStack(spacing: AppSpacing.xs) {
+                        Image(systemName: "calendar")
+                        Text(timeFilterManager.currentFilter.displayName)
+                            .font(AppTypography.bodySmall)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(.primary)
+                }
+                .accessibilityLabel(String(localized: "accessibility.calendar"))
+                .accessibilityHint(String(localized: "accessibility.calendarHint"))
+            }
+
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink(destination: SettingsView(
+                    transactionsViewModel: viewModel,
+                    accountsViewModel: accountsViewModel,
+                    categoriesViewModel: categoriesViewModel,
+                    subscriptionsViewModel: subscriptionsViewModel,
+                    depositsViewModel: coordinator.depositsViewModel
+                )) {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel(String(localized: "accessibility.settings"))
+                .accessibilityHint(String(localized: "accessibility.settingsHint"))
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func accountSheet(for account: Account) -> some View {
+        Group {
+            if account.isDeposit {
+                NavigationView {
+                    DepositDetailView(
+                        depositsViewModel: coordinator.depositsViewModel,
+                        transactionsViewModel: viewModel,
+                        accountId: account.id
+                    )
+                        .environmentObject(timeFilterManager)
+                }
+            } else {
+                AccountActionView(
+                    transactionsViewModel: viewModel,
+                    accountsViewModel: accountsViewModel,
+                    account: account
+                )
+                    .environmentObject(timeFilterManager)
+            }
+        }
+    }
+    
+    private var voiceInputSheet: some View {
+        VoiceInputView(voiceService: voiceService) { transcribedText in
+            showingVoiceInput = false
+            // Парсим текст синхронно
+            let parser = VoiceInputParser(
+                accounts: accountsViewModel.accounts,
+                categories: categoriesViewModel.customCategories,
+                subcategories: categoriesViewModel.subcategories,
+                defaultAccount: accountsViewModel.accounts.first
+            )
+            let parsed = parser.parse(transcribedText)
+            // Устанавливаем parsedOperation синхронно перед открытием sheet
+            parsedOperation = parsed
+            // Открываем sheet сразу после установки parsedOperation
+            showingVoiceConfirmation = true
+        }
+    }
+    
+    @ViewBuilder
+    private var voiceConfirmationSheet: some View {
+        if let parsed = parsedOperation {
+            VoiceInputConfirmationView(
+                transactionsViewModel: viewModel,
+                accountsViewModel: accountsViewModel,
+                categoriesViewModel: categoriesViewModel,
+                parsedOperation: parsed,
+                originalText: voiceService.getFinalText()
+            )
         }
     }
 
@@ -278,8 +367,8 @@ struct ContentView: View {
 
     private var accountsSection: some View {
         HStack {
-            if viewModel.accounts.isEmpty {
-                Text("Нет счетов")
+            if accountsViewModel.accounts.isEmpty {
+                Text(String(localized: "emptyState.noAccounts"))
                     .font(AppTypography.bodySmall)
                     .foregroundStyle(.primary)
                     .padding(AppSpacing.md)
@@ -287,7 +376,7 @@ struct ContentView: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: AppSpacing.md) {
-                        ForEach(viewModel.accounts) { account in
+                        ForEach(accountsViewModel.accounts) { account in
                             AccountCard(
                                 account: account,
                                 onTap: {
@@ -303,7 +392,10 @@ struct ContentView: View {
         }
     }
     private var subscriptionsCard: some View {
-        SubscriptionsCardView(viewModel: viewModel)
+        SubscriptionsCardView(
+            subscriptionsViewModel: subscriptionsViewModel,
+            transactionsViewModel: viewModel
+        )
     }
     
     private var analyticsCard: some View {
@@ -313,80 +405,12 @@ struct ContentView: View {
         }
 
         let currency = viewModel.appSettings.baseCurrency
-        let total = summary.totalExpenses + summary.totalIncome
-        let expensePercent = total > 0 ? (summary.totalExpenses / total) : 0.0
-        let incomePercent = total > 0 ? (summary.totalIncome / total) : 0.0
 
         return AnyView(
-            CardContainer {
-                VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                    HStack {
-                        Text("История")
-                            .font(AppTypography.h3)
-                            .foregroundStyle(.primary)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: AppIconSize.sm))
-                            .foregroundStyle(.primary)
-                    }
-                    
-                    // Progress bar with amounts
-                    VStack(spacing: AppSpacing.sm) {
-                        GeometryReader { geometry in
-                            HStack(spacing: 0) {
-                                if expensePercent > 0 {
-                                    Rectangle()
-                                        .fill(Color.red)
-                                        .frame(width: geometry.size.width * expensePercent)
-                                }
-                                
-                                if incomePercent > 0 {
-                                    Rectangle()
-                                        .fill(Color.green)
-                                        .frame(width: geometry.size.width * incomePercent)
-                                }
-                                
-                                Spacer()
-                            }
-                            .cornerRadius(AppRadius.sm)
-                        }
-                        .frame(height: 12)
-                        
-                        // Amounts below progress bar
-                        HStack {
-                            Text(Formatting.formatCurrency(summary.totalExpenses, currency: currency))
-                                .font(AppTypography.bodySmall)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.red)
-                            
-                            Spacer()
-                            
-                            Text(Formatting.formatCurrency(summary.totalIncome, currency: currency))
-                                .font(AppTypography.bodySmall)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.green)
-                        }
-                    }
-                    
-                    // Planned amount
-                    if summary.plannedAmount > 0 {
-                        HStack {
-                            Text("В планах")
-                                .font(AppTypography.bodySmall)
-                                .foregroundStyle(.primary)
-                            
-                            Spacer()
-                            
-                            Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
-                                .font(AppTypography.bodySmall)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.blue)
-                        }
-                    }
-                }
-            }
+            AnalyticsCard(
+                summary: summary,
+                currency: currency
+            )
         )
     }
     
@@ -483,9 +507,9 @@ struct RecognizedTextView: View {
             VStack(spacing: 0) {
                 // Заголовок
                 VStack(spacing: 8) {
-                    Text("Распознанный текст")
+                    Text(String(localized: "modal.recognizedText.title"))
                         .font(.headline)
-                    Text("Текст успешно распознан. Вы можете импортировать транзакции или скопировать текст.")
+                    Text(String(localized: "modal.recognizedText.message"))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -519,9 +543,9 @@ struct RecognizedTextView: View {
                         if csvFile.rows.isEmpty {
                             // Если не найдено транзакций, показываем ошибку
                             if structuredRows != nil {
-                                parseErrorMessage = "Не удалось найти транзакции в структурированных данных. Возможно, формат выписки отличается от ожидаемого."
+                                parseErrorMessage = String(localized: "error.noTransactionsStructured")
                             } else {
-                                parseErrorMessage = "Не удалось найти транзакции в распознанном тексте. Убедитесь, что текст содержит таблицу транзакций выписки."
+                                parseErrorMessage = String(localized: "error.noTransactionsFound")
                             }
                             showingParseError = true
                         } else {
@@ -530,7 +554,7 @@ struct RecognizedTextView: View {
                             onImport(csvFile)
                         }
                     }) {
-                        Label("Импортировать транзакции", systemImage: "square.and.arrow.down")
+                        Label(String(localized: "transaction.importTransactions"), systemImage: "square.and.arrow.down")
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.blue)
@@ -538,23 +562,23 @@ struct RecognizedTextView: View {
                             .cornerRadius(10)
                     }
                     .disabled(isParsing)
-                    
+
                     HStack(spacing: 12) {
                         Button(action: {
                             UIPasteboard.general.string = recognizedText
                             showingCopyAlert = true
                             HapticManager.success()
                         }) {
-                            Label("Копировать", systemImage: "doc.on.doc")
+                            Label(String(localized: "button.copy"), systemImage: "doc.on.doc")
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color.gray.opacity(0.2))
                                 .foregroundColor(.primary)
                                 .cornerRadius(10)
                         }
-                        
+
                         Button(action: onCancel) {
-                            Text("Закрыть")
+                            Text(String(localized: "button.close"))
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color.gray.opacity(0.2))
@@ -565,25 +589,25 @@ struct RecognizedTextView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Текст выписки")
+            .navigationTitle(String(localized: "navigation.statementText"))
             .navigationBarTitleDisplayMode(.inline)
             .overlay {
                 if isParsing {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
-                    ProgressView("Парсинг выписки...")
+                    ProgressView(String(localized: "progress.parsingStatement"))
                         .padding()
                         .background(Color(.systemBackground))
                         .cornerRadius(10)
                 }
             }
-            .alert("Текст скопирован", isPresented: $showingCopyAlert) {
-                Button("OK", role: .cancel) {}
+            .alert(String(localized: "alert.textCopied.title"), isPresented: $showingCopyAlert) {
+                Button(String(localized: "button.ok"), role: .cancel) {}
             } message: {
-                Text("Распознанный текст скопирован в буфер обмена.")
+                Text(String(localized: "alert.textCopied.message"))
             }
-            .alert("Ошибка парсинга", isPresented: $showingParseError) {
-                Button("OK", role: .cancel) {}
+            .alert(String(localized: "alert.parseError.title"), isPresented: $showingParseError) {
+                Button(String(localized: "button.ok"), role: .cancel) {}
             } message: {
                 Text(parseErrorMessage)
             }

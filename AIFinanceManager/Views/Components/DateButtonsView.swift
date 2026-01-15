@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+// MARK: - Main DateButtonsView
 struct DateButtonsView: View {
     @Binding var selectedDate: Date
     var isDisabled: Bool = false
@@ -14,36 +15,57 @@ struct DateButtonsView: View {
     @State private var showingDatePicker = false
 
     var body: some View {
-        buttonsContent
+        DateButtonsContent(
+            selectedDate: $selectedDate,
+            isDisabled: isDisabled,
+            onSave: onSave,
+            showingDatePicker: $showingDatePicker
+        )
+    }
+}
+
+// MARK: - Shared Buttons Content
+private struct DateButtonsContent: View {
+    @Binding var selectedDate: Date
+    var isDisabled: Bool = false
+    let onSave: (Date) -> Void
+    @Binding var showingDatePicker: Bool
+    
+    // Кешируем вычисление вчерашней даты
+    private var yesterday: Date? {
+        Calendar.current.date(byAdding: .day, value: -1, to: Date())
     }
     
-    // Контент кнопок для переиспользования
-    @ViewBuilder
-    var buttonsContent: some View {
-        HStack(spacing: 0) {
+    private var today: Date {
+        Date()
+    }
+    
+    var body: some View {
+        HStack(spacing: AppSpacing.md) {
             // Вчера - слева
             Button(action: {
-                if let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) {
+                if let yesterday = yesterday {
                     selectedDate = yesterday
                     onSave(yesterday)
                 }
             }) {
                 Text("Вчера")
+                    .padding(AppSpacing.sm)
+                    .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
-            .padding(AppSpacing.md)
+            .buttonStyle(.glass)
             .disabled(isDisabled)
 
             // Сегодня - в центре
             Button(action: {
-                let today = Date()
                 selectedDate = today
                 onSave(today)
             }) {
                 Text("Сегодня")
+                    .padding(AppSpacing.sm)
+                    .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
-            .padding(AppSpacing.md)
+            .buttonStyle(.glass)
             .disabled(isDisabled)
 
             // Календарь - справа
@@ -51,136 +73,96 @@ struct DateButtonsView: View {
                 showingDatePicker = true
             }) {
                 Text("Календарь")
+                    .padding(AppSpacing.sm)
+                    .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
-            .padding(AppSpacing.md)
+            .buttonStyle(.glass)
+            .padding(.vertical, AppSpacing.md)
             .disabled(isDisabled)
         }
         .sheet(isPresented: $showingDatePicker) {
-            NavigationView {
-                VStack {
-                    DatePicker("Выберите дату", selection: $selectedDate, displayedComponents: .date)
-                        .datePickerStyle(.graphical)
-                        .padding()
-                    
-                    Spacer()
+            DateButtonsDatePickerSheet(
+                selectedDate: $selectedDate,
+                onDateSelected: { date in
+                    onSave(date)
+                    showingDatePicker = false
                 }
-                .navigationTitle("Выберите дату")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button {
-                            showingDatePicker = false
-                        } label: {
-                            Image(systemName: "xmark")
-                        }
+            )
+        }
+    }
+}
+
+// MARK: - DatePicker Sheet Component
+private struct DateButtonsDatePickerSheet: View {
+    @Binding var selectedDate: Date
+    let onDateSelected: (Date) -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                DatePicker("Выберите дату", selection: $selectedDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .padding()
+                
+                Spacer()
+            }
+            .navigationTitle("Выберите дату")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") {
+                        dismiss()
                     }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button {
-                            onSave(selectedDate)
-                            showingDatePicker = false
-                        } label: {
-                            Image(systemName: "checkmark")
-                        }
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    Button("Выбрать") {
+                        onDateSelected(selectedDate)
+                        dismiss()
                     }
+                    .frame(maxWidth: .infinity)
                 }
             }
         }
     }
 }
 
-// MARK: - View Extension для использования в toolbar как нативный bottom bar
+// MARK: - View Extension для использования через safeAreaInset
 extension View {
-    /// Добавляет DateButtonsView в toolbar как нативный bottom bar (iOS 16+)
-    func dateButtonsToolbar(
+    /// Добавляет DateButtonsView через safeAreaInset, чтобы компонент поднимался вместе с клавиатурой
+    /// Используется в формах с текстовыми полями (AccountActionView, EditTransactionView, QuickAddTransactionView)
+    func dateButtonsSafeArea(
         selectedDate: Binding<Date>,
         isDisabled: Bool = false,
         onSave: @escaping (Date) -> Void
     ) -> some View {
-        self.toolbar {
-            ToolbarItemGroup(placement: .bottomBar) {
-                DateButtonsToolbarContent(
-                    selectedDate: selectedDate,
-                    isDisabled: isDisabled,
-                    onSave: onSave
-                )
-            }
+        self.safeAreaInset(edge: .bottom) {
+            DateButtonsContentWrapper(
+                selectedDate: selectedDate,
+                isDisabled: isDisabled,
+                onSave: onSave
+            )
+//            .padding(.horizontal, AppSpacing.lg)
+//            .padding(.vertical, AppSpacing.md)
+//            .background(Color(.systemBackground))
         }
-        .toolbarBackground(.visible, for: .bottomBar)
     }
 }
 
-// Вспомогательная структура для использования в toolbar
-private struct DateButtonsToolbarContent: View {
+// MARK: - Wrapper для использования в safeAreaInset
+private struct DateButtonsContentWrapper: View {
     @Binding var selectedDate: Date
     var isDisabled: Bool = false
     let onSave: (Date) -> Void
     @State private var showingDatePicker = false
     
     var body: some View {
-        HStack(spacing: 0) {
-            // Вчера - слева
-            Button(action: {
-                if let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) {
-                    selectedDate = yesterday
-                    onSave(yesterday)
-                }
-            }) {
-                Text("Вчера")
-            }
-            .frame(maxWidth: .infinity)
-            .disabled(isDisabled)
-
-            // Сегодня - в центре
-            Button(action: {
-                let today = Date()
-                selectedDate = today
-                onSave(today)
-            }) {
-                Text("Сегодня")
-            }
-            .frame(maxWidth: .infinity)
-            .disabled(isDisabled)
-
-            // Календарь - справа
-            Button(action: {
-                showingDatePicker = true
-            }) {
-                Text("Календарь")
-            }
-            .frame(maxWidth: .infinity)
-            .disabled(isDisabled)
-        }
-        .sheet(isPresented: $showingDatePicker) {
-            NavigationView {
-                VStack {
-                    DatePicker("Выберите дату", selection: $selectedDate, displayedComponents: .date)
-                        .datePickerStyle(.graphical)
-                        .padding()
-                    
-                    Spacer()
-                }
-                .navigationTitle("Выберите дату")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button {
-                            showingDatePicker = false
-                        } label: {
-                            Image(systemName: "xmark")
-                        }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button {
-                            onSave(selectedDate)
-                            showingDatePicker = false
-                        } label: {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        }
+        DateButtonsContent(
+            selectedDate: $selectedDate,
+            isDisabled: isDisabled,
+            onSave: onSave,
+            showingDatePicker: $showingDatePicker
+        )
     }
 }
 
