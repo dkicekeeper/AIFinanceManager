@@ -16,6 +16,8 @@ struct CategoriesManagementView: View {
     @State private var editingCategory: CustomCategory?
     @State private var categoryToDelete: CustomCategory?
     @State private var showingDeleteDialog = false
+    @State private var categoryForBudget: CustomCategory?
+    @State private var showingBudgetSheet = false
     
     var body: some View {
         List {
@@ -23,10 +25,15 @@ struct CategoriesManagementView: View {
                 CategoryRow(
                     category: category,
                     isDefault: false,
+                    budgetProgress: category.type == .expense ? categoriesViewModel.budgetProgress(for: category, transactions: transactionsViewModel.allTransactions) : nil,
                     onEdit: { editingCategory = category },
                     onDelete: {
                         categoryToDelete = category
                         showingDeleteDialog = true
+                    },
+                    onSetBudget: {
+                        categoryForBudget = category
+                        showingBudgetSheet = true
                     }
                 )
                 .padding(.vertical, AppSpacing.xs)
@@ -94,8 +101,8 @@ struct CategoriesManagementView: View {
             Button("Удалить категорию и операции", role: .destructive) {
                 HapticManager.warning()
                 // Delete transactions with this category
-                transactionsViewModel.allTransactions.removeAll { 
-                    $0.category == category.name && $0.type == category.type 
+                transactionsViewModel.allTransactions.removeAll {
+                    $0.category == category.name && $0.type == category.type
                 }
                 transactionsViewModel.recalculateAccountBalances()
                 categoriesViewModel.deleteCategory(category, deleteTransactions: true)
@@ -104,6 +111,15 @@ struct CategoriesManagementView: View {
             }
         } message: { category in
             Text("Выберите, что делать с операциями категории \"\(category.name)\".")
+        }
+        .sheet(isPresented: $showingBudgetSheet) {
+            if let category = categoryForBudget {
+                SetBudgetSheet(
+                    category: category,
+                    viewModel: categoriesViewModel,
+                    isPresented: $showingBudgetSheet
+                )
+            }
         }
     }
     
@@ -118,31 +134,78 @@ struct CategoriesManagementView: View {
 struct CategoryRow: View {
     let category: CustomCategory
     let isDefault: Bool
+    let budgetProgress: BudgetProgress?
     let onEdit: () -> Void
     let onDelete: () -> Void
-    
+    let onSetBudget: () -> Void
+
     var body: some View {
         HStack(spacing: 12) {
-            // Иконка
-            Circle()
-                .fill(category.color.opacity(0.2))
-                .frame(width: 44, height: 44)
-                .overlay(
-                    Image(systemName: category.iconName)
-                        .font(.system(size: 20))
-                        .foregroundColor(category.color)
-                )
-                .overlay(
+            // Иконка с бюджетным прогрессом
+            ZStack {
+                // Budget progress stroke (if budget exists)
+                if let progress = budgetProgress {
                     Circle()
-                        .stroke(category.color, lineWidth: 2)
-                )
-            
-            // Название
-            Text(category.name)
-                .font(.title3)
-                .fontWeight(.medium)
-            
+                        .trim(from: 0, to: min(progress.percentage / 100, 1.0))
+                        .stroke(
+                            progress.isOverBudget ? Color.red : Color.green,
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 50, height: 50)
+                        .animation(.easeInOut(duration: 0.3), value: progress.percentage)
+                }
+
+                // Иконка
+                Circle()
+                    .fill(category.color.opacity(0.2))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Image(systemName: category.iconName)
+                            .font(.system(size: 20))
+                            .foregroundColor(category.color)
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(category.color, lineWidth: 2)
+                    )
+            }
+
+            // Название и бюджет
+            VStack(alignment: .leading, spacing: 4) {
+                Text(category.name)
+                    .font(.title3)
+                    .fontWeight(.medium)
+
+                if let progress = budgetProgress {
+                    HStack(spacing: 4) {
+                        Text("\(formatAmount(progress.spent)) / \(formatAmount(progress.budgetAmount))₸")
+                            .font(.caption)
+                            .foregroundColor(progress.isOverBudget ? .red : .secondary)
+
+                        Text("(\(Int(progress.percentage))%)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                } else if category.type == .expense {
+                    Text(String(localized: "No budget set"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
             Spacer()
+
+            // Кнопка настройки бюджета (только для расходных категорий)
+            if category.type == .expense {
+                Button(action: onSetBudget) {
+                    Image(systemName: budgetProgress == nil ? "plus.circle" : "pencil.circle")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 22))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(budgetProgress == nil ? "Set budget" : "Edit budget")
+            }
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
@@ -155,6 +218,14 @@ struct CategoryRow: View {
                     Label("Delete", systemImage: "trash")
                 }
             }
+        }
+    }
+
+    private func formatAmount(_ amount: Double) -> String {
+        if amount >= 1000 {
+            return String(format: "%.0f", amount)
+        } else {
+            return String(format: "%.0f", amount)
         }
     }
 }
@@ -174,6 +245,11 @@ struct CategoryEditView: View {
     @State private var showingColorPicker = false
     @State private var showingSubcategoryPicker = false
     @FocusState private var isNameFocused: Bool
+    
+    // Budget fields (only for expense categories)
+    @State private var budgetAmount: String = ""
+    @State private var selectedPeriod: CustomCategory.BudgetPeriod = .monthly
+    @State private var resetDay: Int = 1
     
     private let defaultColors: [String] = [
         "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
@@ -230,6 +306,39 @@ struct CategoryEditView: View {
                     }
                 }
                 
+                // Budget section (only for expense categories)
+                if type == .expense {
+                    Section {
+                        TextField(String(localized: "budget_amount"), text: $budgetAmount)
+                            .keyboardType(.decimalPad)
+                            .accessibilityLabel(String(localized: "budget_amount"))
+                        
+                        Picker(String(localized: "budget_period"), selection: $selectedPeriod) {
+                            Text(String(localized: "weekly")).tag(CustomCategory.BudgetPeriod.weekly)
+                            Text(String(localized: "monthly")).tag(CustomCategory.BudgetPeriod.monthly)
+                            Text(String(localized: "yearly")).tag(CustomCategory.BudgetPeriod.yearly)
+                        }
+                        .accessibilityLabel(String(localized: "budget_period"))
+                        
+                        if selectedPeriod == .monthly {
+                            Stepper(
+                                String(localized: "budget_reset_day") + " \(resetDay)",
+                                value: $resetDay,
+                                in: 1...31
+                            )
+                            .accessibilityLabel(String(localized: "budget_reset_day"))
+                            .accessibilityValue("\(resetDay)")
+                        }
+                    } header: {
+                        Text(String(localized: "budget_settings"))
+                    } footer: {
+                        if selectedPeriod == .monthly {
+                            Text(String(localized: "budget_reset_day_description"))
+                                .font(.caption)
+                        }
+                    }
+                }
+                
                 // Подкатегории
                 if let category = category {
                     Section(header: Text("Подкатегории")) {
@@ -281,12 +390,22 @@ struct CategoryEditView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        let budget: Double? = {
+                            if type == .expense, !budgetAmount.isEmpty, let amount = Double(budgetAmount), amount > 0 {
+                                return amount
+                            }
+                            return nil
+                        }()
+                        
                         let newCategory = CustomCategory(
                             id: category?.id ?? UUID().uuidString,
                             name: name,
                             iconName: iconName,
                             colorHex: selectedColor,
-                            type: type
+                            type: type,
+                            budgetAmount: budget,
+                            budgetPeriod: selectedPeriod,
+                            budgetResetDay: resetDay
                         )
                         onSave(newCategory)
                     } label: {
@@ -304,6 +423,15 @@ struct CategoryEditView: View {
                     iconName = category.iconName
                     selectedColor = category.colorHex
                     isNameFocused = false
+                    
+                    // Load budget fields if exists
+                    if let amount = category.budgetAmount {
+                        budgetAmount = String(Int(amount))
+                    } else {
+                        budgetAmount = ""
+                    }
+                    selectedPeriod = category.budgetPeriod
+                    resetDay = category.budgetResetDay
                 } else {
                     // Активируем поле названия при создании новой категории
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

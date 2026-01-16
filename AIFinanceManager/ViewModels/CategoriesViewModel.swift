@@ -176,4 +176,93 @@ class CategoriesViewModel: ObservableObject {
         let queryLower = query.lowercased()
         return subcategories.filter { $0.name.lowercased().contains(queryLower) }
     }
+
+    // MARK: - Budget Management
+
+    func setBudget(
+        for categoryId: String,
+        amount: Double,
+        period: CustomCategory.BudgetPeriod = .monthly,
+        resetDay: Int = 1
+    ) {
+        guard let index = customCategories.firstIndex(where: { $0.id == categoryId }) else { return }
+
+        var category = customCategories[index]
+        category.budgetAmount = amount
+        category.budgetPeriod = period
+        category.budgetStartDate = Date()
+        category.budgetResetDay = resetDay
+
+        updateCategory(category)
+    }
+
+    func removeBudget(for categoryId: String) {
+        guard let index = customCategories.firstIndex(where: { $0.id == categoryId }) else { return }
+
+        var category = customCategories[index]
+        category.budgetAmount = nil
+        category.budgetStartDate = nil
+
+        updateCategory(category)
+    }
+
+    func budgetProgress(for category: CustomCategory, transactions: [Transaction]) -> BudgetProgress? {
+        // Only expense categories can have budgets
+        guard let budgetAmount = category.budgetAmount,
+              category.type == .expense else { return nil }
+
+        // Calculate spent amount for current period
+        let spent = calculateSpent(for: category, transactions: transactions)
+
+        return BudgetProgress(budgetAmount: budgetAmount, spent: spent)
+    }
+
+    private func calculateSpent(for category: CustomCategory, transactions: [Transaction]) -> Double {
+        let periodStart = budgetPeriodStart(for: category)
+        let periodEnd = Date()
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        return transactions
+            .filter { transaction in
+                guard transaction.category == category.name,
+                      transaction.type == .expense,
+                      let transactionDate = dateFormatter.date(from: transaction.date) else {
+                    return false
+                }
+                return transactionDate >= periodStart && transactionDate <= periodEnd
+            }
+            .reduce(0) { $0 + $1.amount }
+    }
+
+    private func budgetPeriodStart(for category: CustomCategory) -> Date {
+        guard category.budgetStartDate != nil else { return Date() }
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        switch category.budgetPeriod {
+        case .weekly:
+            // Start of current week
+            return calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        case .monthly:
+            // Reset on specific day of month
+            let components = calendar.dateComponents([.year, .month], from: now)
+            var startComponents = components
+            startComponents.day = category.budgetResetDay
+
+            if let resetDate = calendar.date(from: startComponents) {
+                // If reset day hasn't happened this month yet, use previous month
+                if resetDate > now {
+                    return calendar.date(byAdding: .month, value: -1, to: resetDate) ?? resetDate
+                }
+                return resetDate
+            }
+            return now
+        case .yearly:
+            // Start of current year
+            return calendar.dateInterval(of: .year, for: now)?.start ?? now
+        }
+    }
 }

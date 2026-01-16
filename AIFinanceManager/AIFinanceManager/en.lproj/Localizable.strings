@@ -223,3 +223,20 @@
 "subscriptions.status.paused" = "Paused";
 "subscriptions.status.archived" = "Archived";
 "subscriptions.status.unknown" = "Unknown";
+
+// MARK: - Budget Management
+"budget_amount" = "Budget Amount";
+"budget_period" = "Period";
+"weekly" = "Weekly";
+"monthly" = "Monthly";
+"yearly" = "Yearly";
+"budget_reset_day" = "Reset on day";
+"budget_reset_day_description" = "The day of the month when the budget resets (1-31)";
+"budget_settings" = "Budget Settings";
+"current_budget" = "Current Budget";
+"current_settings" = "Current Settings";
+"remove_budget" = "Remove Budget";
+"set_budget_for" = "Set Budget for";
+"save" = "Save";
+"cancel" = "Cancel";
+"No budget set" = "No budget set";

@@ -81,7 +81,9 @@ struct AccountActionView: View {
                                         isSelected: selectedCategory == category,
                                         onTap: {
                                             selectedCategory = category
-                                        }
+                                        },
+                                        budgetProgress: nil,
+                                        budgetAmount: nil
                                     )
                                 }
                             }

@@ -223,3 +223,20 @@
 "subscriptions.status.paused" = "Приостановлена";
 "subscriptions.status.archived" = "В архиве";
 "subscriptions.status.unknown" = "Неизвестно";
+
+// MARK: - Budget Management
+"budget_amount" = "Сумма бюджета";
+"budget_period" = "Период";
+"weekly" = "Еженедельно";
+"monthly" = "Ежемесячно";
+"yearly" = "Ежегодно";
+"budget_reset_day" = "Сброс в день";
+"budget_reset_day_description" = "День месяца, когда бюджет обнуляется (1-31)";
+"budget_settings" = "Настройки бюджета";
+"current_budget" = "Текущий бюджет";
+"current_settings" = "Текущие настройки";
+"remove_budget" = "Удалить бюджет";
+"set_budget_for" = "Установить бюджет для";
+"save" = "Сохранить";
+"cancel" = "Отмена";
+"No budget set" = "Бюджет не установлен";

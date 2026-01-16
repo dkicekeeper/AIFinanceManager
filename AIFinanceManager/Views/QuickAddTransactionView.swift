@@ -28,6 +28,22 @@ struct QuickAddTransactionView: View {
                 let total = categoryExpenses[category]?.total ?? 0
                 let currency = transactionsViewModel.appSettings.baseCurrency
                 let totalText = total != 0 ? Formatting.formatCurrency(total, currency: currency) : nil
+                
+                // Get custom category for budget info
+                let customCategory = categoriesViewModel.customCategories.first { 
+                    $0.name.lowercased() == category.lowercased() && $0.type == .expense 
+                }
+                
+                // Calculate budget progress
+                let budgetProgress: BudgetProgress? = {
+                    if let customCategory = customCategory {
+                        return categoriesViewModel.budgetProgress(
+                            for: customCategory,
+                            transactions: transactionsViewModel.allTransactions
+                        )
+                    }
+                    return nil
+                }()
 
                 VStack(spacing: AppSpacing.xs) {
                     CategoryChip(
@@ -38,13 +54,23 @@ struct QuickAddTransactionView: View {
                         onTap: {
                             selectedCategory = category
                             selectedType = .expense
-                        }
+                        },
+                        budgetProgress: budgetProgress,
+                        budgetAmount: customCategory?.budgetAmount
                     )
                     
                     if let totalText = totalText {
                         Text(totalText)
                             .font(AppTypography.caption2)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    
+                    // Show budget amount if exists
+                    if let budgetAmount = customCategory?.budgetAmount {
+                        Text(Formatting.formatCurrency(budgetAmount, currency: currency))
+                            .font(AppTypography.caption2)
+                            .foregroundStyle(.tertiary)
                             .lineLimit(1)
                     }
                 }
