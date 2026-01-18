@@ -163,8 +163,8 @@ class VoiceInputService: NSObject, ObservableObject {
         
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
-        
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
+
+        inputNode.installTap(onBus: 0, bufferSize: VoiceInputConstants.audioBufferSize, format: recordingFormat) { buffer, _ in
             recognitionRequest.append(buffer)
         }
         
@@ -215,38 +215,47 @@ class VoiceInputService: NSObject, ObservableObject {
     }
     
     // Синхронная остановка записи
+    // @MainActor гарантирует thread-safety, так как все вызовы происходят на главном потоке
     private func stopRecordingSync() async {
         // Предотвращаем множественные вызовы
         guard !isStopping else { return }
         guard isRecording else { return }
-        
+
         isStopping = true
         isRecording = false
-        
+
+        // Сохраняем ссылки на объекты перед очисткой
+        let currentAudioEngine = audioEngine
+        let currentRecognitionRequest = recognitionRequest
+        let currentRecognitionTask = recognitionTask
+
         // Завершаем запрос на распознавание
-        recognitionRequest?.endAudio()
-        
-        // Даем 300мс на финализацию результата
-        try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
-        
+        currentRecognitionRequest?.endAudio()
+
+        // Даем время на финализацию результата
+        try? await Task.sleep(nanoseconds: VoiceInputConstants.audioEngineStopDelayMs * 1_000_000)
+
         // Останавливаем аудио engine
-        audioEngine?.stop()
-        audioEngine?.inputNode.removeTap(onBus: 0)
+        if let engine = currentAudioEngine, engine.isRunning {
+            engine.stop()
+            engine.inputNode.removeTap(onBus: 0)
+        }
         audioEngine = nil
-        
+
         recognitionRequest = nil
-        
+
         // Отменяем задачу распознавания
-        recognitionTask?.cancel()
+        currentRecognitionTask?.cancel()
         recognitionTask = nil
-        
+
         // Деактивируем аудио сессию
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
             print("Ошибка при деактивации аудио сессии: \(error)")
         }
-        
+
+        // Сбрасываем флаг остановки
         isStopping = false
     }
     

@@ -13,7 +13,35 @@ class VoiceInputParser {
     private let categories: [CustomCategory]
     private let subcategories: [Subcategory]
     private let defaultAccount: Account?
-    
+
+    // MARK: - Pre-compiled регулярные выражения для производительности
+
+    private let amountRegexes: [NSRegularExpression] = {
+        let patterns = [
+            // Число с валютой перед числом
+            #"(?:тенге|тг|₸|доллар|долларов|\$|usd|евро|eur|€|рубл|rub|₽)\s*(\d{1,3}(?:\s*\d{3})*(?:[.,]\d{1,2})?)"#,
+            // Число с валютой после числа
+            #"(\d{1,3}(?:\s*\d{3})*(?:[.,]\d{1,2})?)\s*(?:тенге|тг|₸|доллар|долларов|\$|usd|евро|eur|€|рубл|rub|₽)"#,
+            // Просто число (ищем самое большое число)
+            #"\b(\d{1,3}(?:\s*\d{3})*(?:[.,]\d{1,2})?)\b"#
+        ]
+        return patterns.compactMap { try? NSRegularExpression(pattern: $0, options: .caseInsensitive) }
+    }()
+
+    private let accountPatternRegexes: [NSRegularExpression] = {
+        let patterns = [
+            #"со\s+счета\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
+            #"со\s+счёта\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
+            #"с\s+карты\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
+            #"с\s+([^,\s]+(?:\s+[^,\s]+)*)\s+счета"#,
+            #"с\s+([^,\s]+(?:\s+[^,\s]+)*)\s+счёта"#,
+            #"карта\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
+            #"счет\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
+            #"счёт\s+([^,\s]+(?:\s+[^,\s]+)*)"#
+        ]
+        return patterns.compactMap { try? NSRegularExpression(pattern: $0, options: .caseInsensitive) }
+    }()
+
     // Словарь замен для нормализации
     private let textReplacements: [String: String] = [
         // Варианты "со счета"
@@ -105,13 +133,17 @@ class VoiceInputParser {
     
     func parse(_ text: String) -> ParsedOperation {
         #if DEBUG
-        print("🔍 [VoiceInputParser] Исходный текст: \"\(text)\"")
+        if VoiceInputConstants.enableParsingDebugLogs {
+            print("\(VoiceInputConstants.debugLogPrefix) Исходный текст: \"\(text)\"")
+        }
         #endif
-        
+
         let normalizedText = normalizeText(text)
-        
+
         #if DEBUG
-        print("🔍 [VoiceInputParser] Нормализованный текст: \"\(normalizedText)\"")
+        if VoiceInputConstants.enableParsingDebugLogs {
+            print("\(VoiceInputConstants.debugLogPrefix) Нормализованный текст: \"\(normalizedText)\"")
+        }
         #endif
         
         var operation = ParsedOperation(note: text)
@@ -126,46 +158,54 @@ class VoiceInputParser {
         operation.amount = parseAmount(from: normalizedText)
         
         #if DEBUG
-        if let amount = operation.amount {
-            print("🔍 [VoiceInputParser] Распознанная сумма: \(amount)")
-        } else {
-            print("🔍 [VoiceInputParser] Сумма не распознана")
+        if VoiceInputConstants.enableParsingDebugLogs {
+            if let amount = operation.amount {
+                print("\(VoiceInputConstants.debugLogPrefix) Распознанная сумма: \(amount)")
+            } else {
+                print("\(VoiceInputConstants.debugLogPrefix) Сумма не распознана")
+            }
         }
         #endif
-        
+
         // 4. Извлекаем валюту
         operation.currencyCode = parseCurrency(from: normalizedText)
-        
+
         #if DEBUG
-        if let currency = operation.currencyCode {
-            print("🔍 [VoiceInputParser] Распознанная валюта: \(currency)")
+        if VoiceInputConstants.enableParsingDebugLogs {
+            if let currency = operation.currencyCode {
+                print("\(VoiceInputConstants.debugLogPrefix) Распознанная валюта: \(currency)")
+            }
         }
         #endif
-        
+
         // 5. Ищем счет
         let accountResult = findAccount(from: normalizedText)
         operation.accountId = accountResult.accountId
-        
+
         #if DEBUG
-        if let accountId = accountResult.accountId,
-           let account = accounts.first(where: { $0.id == accountId }) {
-            print("🔍 [VoiceInputParser] Выбранный счет: \(account.name) (ID: \(accountId))")
-            print("🔍 [VoiceInputParser] Причина выбора: \(accountResult.reason)")
-        } else {
-            print("🔍 [VoiceInputParser] Счет не распознан")
+        if VoiceInputConstants.enableParsingDebugLogs {
+            if let accountId = accountResult.accountId,
+               let account = accounts.first(where: { $0.id == accountId }) {
+                print("\(VoiceInputConstants.debugLogPrefix) Выбранный счет: \(account.name) (ID: \(accountId))")
+                print("\(VoiceInputConstants.debugLogPrefix) Причина выбора: \(accountResult.reason)")
+            } else {
+                print("\(VoiceInputConstants.debugLogPrefix) Счет не распознан")
+            }
         }
         #endif
-        
+
         // 6. Определяем категорию и подкатегории
         let (category, subcats) = parseCategory(from: normalizedText)
         operation.categoryName = category
         operation.subcategoryNames = subcats
-        
+
         #if DEBUG
-        if let categoryName = category {
-            print("🔍 [VoiceInputParser] Выбранная категория: \(categoryName)")
-            if !subcats.isEmpty {
-                print("🔍 [VoiceInputParser] Выбранные подкатегории: \(subcats.joined(separator: ", "))")
+        if VoiceInputConstants.enableParsingDebugLogs {
+            if let categoryName = category {
+                print("\(VoiceInputConstants.debugLogPrefix) Выбранная категория: \(categoryName)")
+                if !subcats.isEmpty {
+                    print("\(VoiceInputConstants.debugLogPrefix) Выбранные подкатегории: \(subcats.joined(separator: ", "))")
+                }
             }
         }
         #endif
@@ -240,7 +280,9 @@ class VoiceInputParser {
             "доход", "доходы",
             "пополнил", "пополнила", "пополнили",
             "пополнение", "пополнения",
-            "начислил", "начислила", "начислили"
+            "начислил", "начислила", "начислили",
+            "зарплата", "зарплату", "зарплаты",
+            "оклад", "премия", "премию"
         ]
         
         for keyword in expenseKeywords {
@@ -260,41 +302,55 @@ class VoiceInputParser {
     
     // 3. Парсинг суммы (с поддержкой слов)
     private func parseAmount(from text: String) -> Decimal? {
-        // Сначала пытаемся найти число через regex
-        let patterns = [
-            // Число с валютой перед числом
-            #"(?:тенге|тг|₸|доллар|долларов|\$|usd|евро|eur|€|рубл|rub|₽)\s*(\d{1,3}(?:\s*\d{3})*(?:[.,]\d{1,2})?)"#,
-            // Число с валютой после числа
-            #"(\d{1,3}(?:\s*\d{3})*(?:[.,]\d{1,2})?)\s*(?:тенге|тг|₸|доллар|долларов|\$|usd|евро|eur|€|рубл|rub|₽)"#,
-            // Просто число (ищем самое большое число)
-            #"\b(\d{1,3}(?:\s*\d{3})*(?:[.,]\d{1,2})?)\b"#
-        ]
-        
-        var foundAmounts: [(Decimal, Int)] = [] // (amount, length) для сортировки
-        
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-                let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count))
-                for match in matches {
-                    if match.numberOfRanges > 1,
-                       let range = Range(match.range(at: 1), in: text) {
-                        let amountString = String(text[range])
-                            .replacingOccurrences(of: ",", with: ".")
-                            .replacingOccurrences(of: " ", with: "") // Убираем пробелы в числах типа "10 000"
-                            .trimmingCharacters(in: .whitespaces)
-                        
-                        if let amount = Decimal(string: amountString) {
-                            foundAmounts.append((amount, amountString.count))
+        // Структура для хранения найденных сумм с приоритетом
+        struct AmountMatch {
+            let amount: Decimal
+            let priority: Int  // 0 = с валютой (высший), 1 = без валюты (низший)
+            let position: Int  // Позиция в тексте для разрешения конфликтов
+        }
+
+        var foundAmounts: [AmountMatch] = []
+
+        // Используем pre-compiled regex для производительности
+        for (index, regex) in amountRegexes.enumerated() {
+            let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count))
+            for match in matches {
+                if match.numberOfRanges > 1,
+                   let range = Range(match.range(at: 1), in: text) {
+                    let amountString = String(text[range])
+                        .replacingOccurrences(of: ",", with: ".")
+                        .replacingOccurrences(of: " ", with: "") // Убираем пробелы в числах типа "10 000"
+                        .trimmingCharacters(in: .whitespaces)
+
+                    if let amount = Decimal(string: amountString) {
+                        // Приоритет: паттерны с валютой (0-1) имеют больший приоритет, чем просто числа (2)
+                        let priority = index <= 1 ? 0 : 1
+                        let position = match.range(at: 1).location
+
+                        // Фильтруем явно неправильные суммы (например, годы)
+                        if amount >= VoiceInputConstants.minAmountValue && amount <= VoiceInputConstants.maxAmountValue {
+                            // Годы обычно 2000-2099 и не имеют валюты
+                            let looksLikeYear = amount >= 1900 && amount <= 2100 && priority == 1
+                            if !looksLikeYear {
+                                foundAmounts.append(AmountMatch(amount: amount, priority: priority, position: position))
+                            }
                         }
                     }
                 }
             }
         }
-        
-        // Если нашли числа через regex, выбираем самое большое
-        if let largestAmount = foundAmounts.max(by: { $0.0 < $1.0 }) {
-            let amount = largestAmount.0
-            let rounded = (amount as NSDecimalNumber).rounding(accordingToBehavior: NSDecimalNumberHandler(
+
+        // Сортируем: сначала по приоритету (меньше = лучше), потом по сумме (больше = лучше)
+        foundAmounts.sort { lhs, rhs in
+            if lhs.priority != rhs.priority {
+                return lhs.priority < rhs.priority
+            }
+            return lhs.amount > rhs.amount
+        }
+
+        // Берем лучший результат
+        if let bestMatch = foundAmounts.first {
+            let rounded = (bestMatch.amount as NSDecimalNumber).rounding(accordingToBehavior: NSDecimalNumberHandler(
                 roundingMode: .plain,
                 scale: 2,
                 raiseOnExactness: false,
@@ -302,9 +358,16 @@ class VoiceInputParser {
                 raiseOnUnderflow: false,
                 raiseOnDivideByZero: false
             ))
+
+            #if DEBUG
+            if VoiceInputConstants.enableParsingDebugLogs {
+                print("\(VoiceInputConstants.debugLogPrefix) Выбрана сумма: \(rounded) (приоритет: \(bestMatch.priority))")
+            }
+            #endif
+
             return rounded as Decimal
         }
-        
+
         // Если не нашли через regex, пытаемся распознать словами
         return parseAmountFromWords(text)
     }
@@ -370,10 +433,10 @@ class VoiceInputParser {
             }
         }
         
-        if result > 0 && result <= 9999 {
+        if result > 0 && result <= VoiceInputConstants.maxWordNumberValue {
             return Decimal(result)
         }
-        
+
         return nil
     }
     
@@ -411,24 +474,11 @@ class VoiceInputParser {
     
     // 5. Поиск счета по тексту (с токенизацией и скорингом)
     private func findAccount(from text: String) -> AccountSearchResult {
-        // Паттерны для поиска счета
-        let patterns = [
-            #"со\s+счета\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
-            #"со\s+счёта\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
-            #"с\s+карты\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
-            #"с\s+([^,\s]+(?:\s+[^,\s]+)*)\s+счета"#,
-            #"с\s+([^,\s]+(?:\s+[^,\s]+)*)\s+счёта"#,
-            #"карта\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
-            #"счет\s+([^,\s]+(?:\s+[^,\s]+)*)"#,
-            #"счёт\s+([^,\s]+(?:\s+[^,\s]+)*)"#
-        ]
-        
         var accountName: String?
-        
-        // Пытаемся найти по паттернам
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-               let match = regex.firstMatch(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count)),
+
+        // Используем pre-compiled regex для производительности
+        for regex in accountPatternRegexes {
+            if let match = regex.firstMatch(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count)),
                match.numberOfRanges > 1,
                let range = Range(match.range(at: 1), in: text) {
                 accountName = String(text[range]).trimmingCharacters(in: .whitespaces)
@@ -454,36 +504,36 @@ class VoiceInputParser {
                 if normalizedAccountName.contains(key) {
                     for alias in aliases {
                         if text.contains(alias) {
-                            score += 10
+                            score += VoiceInputConstants.accountAliasMatchScore
                             reason = "Найден по алиасу '\(alias)'"
                             break
                         }
                     }
                 }
             }
-            
+
             // Точное совпадение имени
             if text.contains(normalizedAccountName) {
-                score += 20
+                score += VoiceInputConstants.accountExactMatchScore
                 if reason.isEmpty {
                     reason = "Точное совпадение имени"
                 }
             }
-            
+
             // Совпадение токенов
             let matchingTokens = accountTokens.filter { token in
                 textTokens.contains(token) && !stopWords.contains(token)
             }
             if !matchingTokens.isEmpty {
-                score += matchingTokens.count * 5
+                score += matchingTokens.count * VoiceInputConstants.accountTokenMatchScore
                 if reason.isEmpty {
                     reason = "Совпадение токенов: \(matchingTokens.joined(separator: ", "))"
                 }
             }
-            
+
             // Если нашли по паттерну
             if let accountName = accountName, normalizedAccountName.contains(normalizeText(accountName)) {
-                score += 30
+                score += VoiceInputConstants.accountPatternMatchScore
                 reason = "Найден по паттерну: '\(accountName)'"
             }
             
@@ -495,11 +545,11 @@ class VoiceInputParser {
         // Сортируем по скору
         accountScores.sort { $0.1 > $1.1 }
         
-        // Если есть несколько кандидатов с близким скором (разница < 5), возвращаем nil для выбора на confirm
+        // Если есть несколько кандидатов с близким скором, возвращаем nil для выбора на confirm
         if accountScores.count >= 2 {
             let bestScore = accountScores[0].1
             let secondScore = accountScores[1].1
-            if bestScore - secondScore < 5 {
+            if bestScore - secondScore < VoiceInputConstants.accountScoreAmbiguityThreshold {
                 return AccountSearchResult(
                     accountId: nil,
                     reason: "Несколько кандидатов с близким скором: \(accountScores[0].0.name) (\(bestScore)) vs \(accountScores[1].0.name) (\(secondScore))"
@@ -524,75 +574,82 @@ class VoiceInputParser {
     // 6. Парсинг категории и подкатегорий (сначала подкатегории, потом категории)
     private func parseCategory(from text: String) -> (category: String?, subcategories: [String]) {
         // Словарь синонимов для категорий и подкатегорий
+        // Используем русские названия категорий
         let categoryMap: [String: (category: String, subcategory: String?)] = [
             // Транспорт - сначала подкатегории
-            "такси": ("Transport", "Taxi"),
-            "uber": ("Transport", "Taxi"),
-            "yandex": ("Transport", "Taxi"),
-            "яндекс": ("Transport", "Taxi"),
-            "бензин": ("Transport", "Gas"),
-            "заправка": ("Transport", "Gas"),
-            "парковка": ("Transport", "Parking"),
-            "автобус": ("Transport", nil),
-            "метро": ("Transport", nil),
-            "проезд": ("Transport", nil),
-            "транспорт": ("Transport", nil),
-            
+            "такси": ("Транспорт", "Такси"),
+            "uber": ("Транспорт", "Такси"),
+            "yandex": ("Транспорт", "Такси"),
+            "яндекс": ("Транспорт", "Такси"),
+            "бензин": ("Транспорт", "Бензин"),
+            "заправка": ("Транспорт", "Бензин"),
+            "парковка": ("Транспорт", "Парковка"),
+            "автобус": ("Транспорт", nil),
+            "метро": ("Транспорт", nil),
+            "проезд": ("Транспорт", nil),
+            "транспорт": ("Транспорт", nil),
+
             // Еда - синонимы
-            "кафе": ("Food", nil),
-            "кофе": ("Food", "Coffee"), // Синоним кафе
-            "ресторан": ("Food", nil),
-            "обед": ("Food", nil),
-            "ужин": ("Food", nil),
-            "завтрак": ("Food", nil),
-            "еда": ("Food", nil),
-            "столовая": ("Food", nil),
-            "доставка": ("Food", "Delivery"),
-            "еда доставка": ("Food", "Delivery"),
-            
+            "кафе": ("Еда", nil),
+            "кофе": ("Еда", "Кофе"),
+            "ресторан": ("Еда", nil),
+            "обед": ("Еда", nil),
+            "ужин": ("Еда", nil),
+            "завтрак": ("Еда", nil),
+            "еда": ("Еда", nil),
+            "столовая": ("Еда", nil),
+            "доставка": ("Еда", "Доставка"),
+            "еда доставка": ("Еда", "Доставка"),
+
             // Продукты
-            "продукты": ("Groceries", nil),
-            "магазин": ("Shopping", nil),
-            "супермаркет": ("Groceries", nil),
-            "гипермаркет": ("Groceries", nil),
-            
+            "продукты": ("Продукты", nil),
+            "магазин": ("Покупки", nil),
+            "супермаркет": ("Продукты", nil),
+            "гипермаркет": ("Продукты", nil),
+
             // Покупки
-            "покупка": ("Shopping", nil),
-            "шопинг": ("Shopping", nil),
-            "одежда": ("Shopping", "Clothing"),
-            "обувь": ("Shopping", "Clothing"),
-            
+            "покупка": ("Покупки", nil),
+            "шопинг": ("Покупки", nil),
+            "одежда": ("Покупки", "Одежда"),
+            "обувь": ("Покупки", "Одежда"),
+
             // Развлечения
-            "кино": ("Entertainment", nil),
-            "театр": ("Entertainment", nil),
-            "концерт": ("Entertainment", nil),
-            "развлечения": ("Entertainment", nil),
-            
+            "кино": ("Развлечения", nil),
+            "театр": ("Развлечения", nil),
+            "концерт": ("Развлечения", nil),
+            "развлечения": ("Развлечения", nil),
+
             // Здоровье
-            "аптека": ("Health", "Pharmacy"),
-            "лекарство": ("Health", "Pharmacy"),
-            "врач": ("Health", "Doctor"),
-            "больница": ("Health", "Doctor"),
-            "стоматолог": ("Health", "Dentist"),
-            
+            "аптека": ("Здоровье", "Аптека"),
+            "лекарство": ("Здоровье", "Аптека"),
+            "врач": ("Здоровье", "Врач"),
+            "больница": ("Здоровье", "Врач"),
+            "стоматолог": ("Здоровье", "Стоматолог"),
+
             // Коммунальные
-            "коммунальные": ("Utilities", nil),
-            "квартплата": ("Utilities", nil),
-            "электричество": ("Utilities", "Electricity"),
-            "вода": ("Utilities", "Water"),
-            "газ": ("Utilities", "Gas"),
-            "интернет": ("Utilities", "Internet"),
-            "телефон": ("Utilities", "Phone"),
-            
+            "коммунальные": ("Коммунальные", nil),
+            "квартплата": ("Коммунальные", nil),
+            "электричество": ("Коммунальные", "Электричество"),
+            "вода": ("Коммунальные", "Вода"),
+            "газ": ("Коммунальные", "Газ"),
+            "интернет": ("Коммунальные", "Интернет"),
+            "телефон": ("Коммунальные", "Телефон"),
+
             // Образование
-            "образование": ("Education", nil),
-            "школа": ("Education", nil),
-            "университет": ("Education", nil),
-            "курсы": ("Education", nil),
-            
+            "образование": ("Образование", nil),
+            "школа": ("Образование", nil),
+            "университет": ("Образование", nil),
+            "курсы": ("Образование", nil),
+
+            // Зарплата (доход)
+            "зарплата": ("Зарплата", nil),
+            "зарплату": ("Зарплата", nil),
+            "оклад": ("Зарплата", nil),
+            "премия": ("Зарплата", nil),
+
             // Другое
-            "услуги": ("Services", nil),
-            "ремонт": ("Services", nil)
+            "услуги": ("Услуги", nil),
+            "ремонт": ("Услуги", nil)
         ]
         
         // Сначала ищем подкатегории, потом категории

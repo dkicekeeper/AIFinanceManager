@@ -240,3 +240,10 @@
 "save" = "Save";
 "cancel" = "Cancel";
 "No budget set" = "No budget set";
+
+// MARK: - Calendar
+"calendar.upcomingPayments" = "Upcoming Payments";
+"calendar.month" = "Month";
+"calendar.halfYear" = "6 Months";
+"calendar.year" = "Year";
+"calendar.noUpcomingPayments" = "No upcoming payments";

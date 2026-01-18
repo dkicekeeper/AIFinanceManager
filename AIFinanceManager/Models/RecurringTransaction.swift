@@ -140,6 +140,51 @@ struct RecurringSeries: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(reminderOffsets, forKey: .reminderOffsets)
         try container.encodeIfPresent(status, forKey: .status)
     }
+    
+    /// Calculate all occurrences of this recurring transaction within a given date interval
+    func occurrences(in interval: DateInterval) -> [Date] {
+        guard isActive else { return [] }
+        
+        let calendar = Calendar.current
+        let dateFormatter = DateFormatters.dateFormatter
+        
+        guard let start = dateFormatter.date(from: startDate) else {
+            return []
+        }
+        
+        var current = start
+        var results: [Date] = []
+        
+        // Find the first occurrence within or after the interval's start
+        while current < interval.start {
+            guard let next = nextDate(after: current, calendar: calendar) else { break }
+            current = next
+        }
+        
+        // Collect all occurrences within the interval
+        while current <= interval.end {
+            if current >= interval.start {
+                results.append(current)
+            }
+            guard let next = nextDate(after: current, calendar: calendar) else { break }
+            current = next
+        }
+        
+        return results
+    }
+    
+    private func nextDate(after date: Date, calendar: Calendar) -> Date? {
+        switch frequency {
+        case .daily:
+            return calendar.date(byAdding: .day, value: 1, to: date)
+        case .weekly:
+            return calendar.date(byAdding: .day, value: 7, to: date)
+        case .monthly:
+            return calendar.date(byAdding: .month, value: 1, to: date)
+        case .yearly:
+            return calendar.date(byAdding: .year, value: 1, to: date)
+        }
+    }
 }
 
 enum RecurringFrequency: String, Codable, CaseIterable {

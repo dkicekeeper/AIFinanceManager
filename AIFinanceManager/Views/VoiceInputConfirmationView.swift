@@ -28,6 +28,11 @@ struct VoiceInputConfirmationView: View {
     @State private var accountWarning: String?
     @State private var amountWarning: String?
     @State private var categoryWarning: String?
+
+    // Debounce tasks для предотвращения избыточных вызовов валидации
+    @State private var amountValidationTask: Task<Void, Never>?
+    @State private var accountValidationTask: Task<Void, Never>?
+    @State private var categoryValidationTask: Task<Void, Never>?
     
     init(
         transactionsViewModel: TransactionsViewModel,
@@ -84,11 +89,23 @@ struct VoiceInputConfirmationView: View {
                     HStack {
                         TextField("0.00", text: $amountText)
                             .keyboardType(.decimalPad)
-                            // Убрано onChange - валидация только при сохранении или потере фокуса
                             .onChange(of: amountText) {
-                                // Очищаем предупреждение при вводе
-                                if amountWarning != nil {
-                                    amountWarning = nil
+                                // Очищаем предупреждение сразу при вводе
+                                amountWarning = nil
+
+                                // Отменяем предыдущую задачу валидации
+                                amountValidationTask?.cancel()
+
+                                // Создаем новую задачу с debounce
+                                amountValidationTask = Task {
+                                    try? await Task.sleep(nanoseconds: VoiceInputConstants.validationDebounceMs * 1_000_000)
+
+                                    // Проверяем, не была ли задача отменена
+                                    guard !Task.isCancelled else { return }
+
+                                    await MainActor.run {
+                                        validateAmount()
+                                    }
                                 }
                             }
                             .overlay(
@@ -167,7 +184,7 @@ struct VoiceInputConfirmationView: View {
                 
                 Section(header: Text("Описание")) {
                     TextField("Описание (необязательно)", text: $noteText, axis: .vertical)
-                        .lineLimit(3...6)
+                        .lineLimit(VoiceInputConstants.descriptionMinLines...VoiceInputConstants.descriptionMaxLines)
                 }
             }
             .navigationTitle("Проверьте операцию")
@@ -197,14 +214,44 @@ struct VoiceInputConfirmationView: View {
                 validateFields()
             }
             .onChange(of: selectedAccountId) {
-                validateAccount()
+                // Отменяем предыдущую задачу валидации
+                accountValidationTask?.cancel()
+
+                // Создаем новую задачу с debounce
+                accountValidationTask = Task {
+                    try? await Task.sleep(nanoseconds: VoiceInputConstants.validationDebounceMs * 1_000_000)
+
+                    guard !Task.isCancelled else { return }
+
+                    await MainActor.run {
+                        validateAccount()
+                    }
+                }
             }
             .onChange(of: selectedCategoryName) {
-                validateCategory()
+                // Отменяем предыдущую задачу валидации
+                categoryValidationTask?.cancel()
+
+                // Создаем новую задачу с debounce
+                categoryValidationTask = Task {
+                    try? await Task.sleep(nanoseconds: VoiceInputConstants.validationDebounceMs * 1_000_000)
+
+                    guard !Task.isCancelled else { return }
+
+                    await MainActor.run {
+                        validateCategory()
+                    }
+                }
+            }
+            .onDisappear {
+                // Отменяем все задачи валидации при закрытии view
+                amountValidationTask?.cancel()
+                accountValidationTask?.cancel()
+                categoryValidationTask?.cancel()
             }
         }
     }
-    
+
     private var canSave: Bool {
         !amountText.isEmpty && selectedAccountId != nil && selectedCategoryName != nil
     }

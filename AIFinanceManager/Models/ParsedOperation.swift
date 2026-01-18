@@ -7,7 +7,8 @@
 
 import Foundation
 
-struct ParsedOperation {
+struct ParsedOperation: Identifiable {
+    let id = UUID()
     var type: TransactionType
     var amount: Decimal?
     var currencyCode: String?

@@ -240,3 +240,10 @@
 "save" = "Сохранить";
 "cancel" = "Отмена";
 "No budget set" = "Бюджет не установлен";
+
+// MARK: - Calendar
+"calendar.upcomingPayments" = "Ближайшие платежи";
+"calendar.month" = "Месяц";
+"calendar.halfYear" = "Полгода";
+"calendar.year" = "Год";
+"calendar.noUpcomingPayments" = "Нет ближайших платежей";

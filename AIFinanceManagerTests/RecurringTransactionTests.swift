@@ -66,4 +66,33 @@ struct RecurringTransactionTests {
         #expect(occurrence.occurrenceDate == "2024-01-15")
         #expect(occurrence.transactionId == "tx-1")
     }
+
+    @Test("RecurringSeries occurrences calculation")
+    func testOccurrencesInInterval() {
+        let series = RecurringSeries(
+            amount: Decimal(10.0),
+            currency: "USD",
+            category: "Entertainment",
+            description: "Netflix",
+            frequency: .monthly,
+            startDate: "2024-01-01"
+        )
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        guard let start = dateFormatter.date(from: "2024-01-01"),
+              let end = dateFormatter.date(from: "2024-03-31") else {
+            #expect(Bool(false), "Failed to create dates")
+            return
+        }
+        
+        let interval = DateInterval(start: start, end: end)
+        let occurrences = series.occurrences(in: interval)
+        
+        #expect(occurrences.count == 3)
+        #expect(dateFormatter.string(from: occurrences[0]) == "2024-01-01")
+        #expect(dateFormatter.string(from: occurrences[1]) == "2024-02-01")
+        #expect(dateFormatter.string(from: occurrences[2]) == "2024-03-01")
+    }
 }

@@ -21,7 +21,6 @@ struct ContentView: View {
     @State private var showingFilePicker = false
     @State private var selectedAccount: Account?
     @State private var showingVoiceInput = false
-    @State private var showingVoiceConfirmation = false
     @State private var parsedOperation: ParsedOperation?
     @StateObject private var voiceService = VoiceInputService()
     @State private var showingTimeFilter = false
@@ -216,8 +215,14 @@ struct ContentView: View {
             .sheet(isPresented: $showingVoiceInput) {
                 voiceInputSheet
             }
-            .sheet(isPresented: $showingVoiceConfirmation) {
-                voiceConfirmationSheet
+            .sheet(item: $parsedOperation) { parsed in
+                VoiceInputConfirmationView(
+                    transactionsViewModel: viewModel,
+                    accountsViewModel: accountsViewModel,
+                    categoriesViewModel: categoriesViewModel,
+                    parsedOperation: parsed,
+                    originalText: voiceService.getFinalText()
+                )
             }
             .sheet(isPresented: $showingTimeFilter) {
                 TimeFilterView(filterManager: timeFilterManager)
@@ -308,23 +313,8 @@ struct ContentView: View {
                 defaultAccount: accountsViewModel.accounts.first
             )
             let parsed = parser.parse(transcribedText)
-            // Устанавливаем parsedOperation синхронно перед открытием sheet
+            // Устанавливаем parsedOperation - sheet откроется автоматически через .sheet(item:)
             parsedOperation = parsed
-            // Открываем sheet сразу после установки parsedOperation
-            showingVoiceConfirmation = true
-        }
-    }
-    
-    @ViewBuilder
-    private var voiceConfirmationSheet: some View {
-        if let parsed = parsedOperation {
-            VoiceInputConfirmationView(
-                transactionsViewModel: viewModel,
-                accountsViewModel: accountsViewModel,
-                categoriesViewModel: categoriesViewModel,
-                parsedOperation: parsed,
-                originalText: voiceService.getFinalText()
-            )
         }
     }
 

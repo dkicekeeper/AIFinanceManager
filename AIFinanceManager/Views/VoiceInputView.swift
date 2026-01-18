@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct VoiceInputView: View {
     @ObservedObject var voiceService: VoiceInputService
@@ -33,7 +34,7 @@ struct VoiceInputView: View {
                         .multilineTextAlignment(.center)
                         .padding()
                 }
-                .frame(maxHeight: 200)
+                .frame(maxHeight: VoiceInputConstants.transcriptionMaxHeight)
                 
                 Spacer()
                 
@@ -43,13 +44,19 @@ struct VoiceInputView: View {
                         voiceService.stopRecording()
                         // Даем время на финализацию перед вызовом onComplete
                         Task {
-                            try? await Task.sleep(nanoseconds: 350_000_000) // 350ms
+                            try? await Task.sleep(nanoseconds: VoiceInputConstants.finalizationDelayMs * 1_000_000)
                             let finalText = voiceService.getFinalText()
                             if !finalText.isEmpty {
-                                onComplete(finalText)
-                            }
-                            await MainActor.run {
-                                dismiss()
+                                await MainActor.run {
+                                    onComplete(finalText)
+                                    // onComplete closure в ContentView уже закрывает этот view через showingVoiceInput = false
+                                    // поэтому не нужно вызывать dismiss() здесь
+                                }
+                            } else {
+                                // Если текст пустой, закрываем view
+                                await MainActor.run {
+                                    dismiss()
+                                }
                             }
                         }
                     }
@@ -82,6 +89,17 @@ struct VoiceInputView: View {
                 Button(String(localized: "voice.ok")) {
                     dismiss()
                 }
+                // Добавляем кнопку "Открыть Настройки" если ошибка связана с разрешениями
+                if permissionMessage.contains("Доступ") || permissionMessage.contains("разрешени") {
+                    Button("Открыть Настройки") {
+                        if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                            if UIApplication.shared.canOpenURL(settingsUrl) {
+                                UIApplication.shared.open(settingsUrl)
+                            }
+                        }
+                        dismiss()
+                    }
+                }
             } message: {
                 Text(permissionMessage.isEmpty ? String(localized: "voice.errorMessage") : permissionMessage)
             }
@@ -89,7 +107,7 @@ struct VoiceInputView: View {
                 // Автоматически запускаем запись при открытии
                 Task {
                     // Небольшая задержка, чтобы убедиться, что view полностью появился
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                    try? await Task.sleep(nanoseconds: VoiceInputConstants.autoStartDelayMs * 1_000_000)
                     
                     let authorized = await voiceService.requestAuthorization()
                     if authorized {
