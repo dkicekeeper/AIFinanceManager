@@ -49,98 +49,62 @@ struct AccountActionView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                // Picker для выбора типа действия (перевод/пополнение)
-                // Для депозитов Picker скрыт - доступен только перевод
-                if !account.isDeposit {
-                    Section {
-                        Picker("Тип", selection: $selectedAction) {
-                            Text("Перевод").tag(ActionType.transfer)
-                            Text("Пополнение").tag(ActionType.income)
-                        }
-                        .pickerStyle(.segmented)
-                        .listRowInsets(.init())
-                        .listRowBackground(Color.clear)
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // 1. Picker типа действия (если есть)
+                    if !account.isDeposit {
+                        SegmentedPickerView(
+                            title: String(localized: "common.type"),
+                            selection: $selectedAction,
+                            options: [
+                                (label: String(localized: "transactionForm.transfer"), value: ActionType.transfer),
+                                (label: String(localized: "transactionForm.topUp"), value: ActionType.income)
+                            ]
+                        )
                     }
-                }
-                
-                if selectedAction == .income && !account.isDeposit {
-                    Section(header: Text("Категория")) {
-                        if incomeCategories.isEmpty {
-                            Text("Нет доступных категорий дохода. Создайте категории сначала.")
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                                .padding(.vertical, AppSpacing.sm)
-                        } else {
-                            LazyVGrid(columns: gridColumns, spacing: AppSpacing.md) {
-                                ForEach(incomeCategories, id: \.self) { category in
-                                    CategoryChip(
-                                        category: category,
-                                        type: .income,
-                                        customCategories: transactionsViewModel.customCategories,
-                                        isSelected: selectedCategory == category,
-                                        onTap: {
-                                            selectedCategory = category
-                                        },
-                                        budgetProgress: nil,
-                                        budgetAmount: nil
-                                    )
-                                }
-                            }
-                            .padding(.vertical, AppSpacing.sm)
-                        }
+                    
+                    // 2. Сумма с выбором валюты
+                    AmountInputView(
+                        amount: $amountText,
+                        selectedCurrency: $selectedCurrency,
+                        errorMessage: showingError ? errorMessage : nil
+                    )
+                    .padding(.horizontal, AppSpacing.lg)
+                    
+                    // 3. Счет
+                    if selectedAction == .income && !account.isDeposit {
+                        // Для пополнения счет не нужен
+                        EmptyView()
+                    } else {
+                        AccountSelectorView(
+                            accounts: availableAccounts,
+                            selectedAccountId: $selectedTargetAccountId,
+                            emptyStateMessage: String(localized: "transactionForm.noAccountsForTransfer")
+                        )
                     }
-                } else {
-                    Section(header: Text(headerForAccountSelection)) {
-                        if availableAccounts.isEmpty {
-                            Text("Нет других счетов для перевода")
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                                .padding(.vertical, AppSpacing.sm)
-                            
-                        } else {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: AppSpacing.md) {
-                                    ForEach(availableAccounts) { targetAccount in
-                                        AccountRadioButton(
-                                            account: targetAccount,
-                                            isSelected: selectedTargetAccountId == targetAccount.id,
-                                            onTap: {
-                                                selectedTargetAccountId = targetAccount.id
-                                            }
-                                        )
-                                    }
-                                }
-                                .scrollClipDisabled()
-                                .padding(.vertical, AppSpacing.xs)
-                            }
-                            .padding(.vertical, AppSpacing.sm)
-                            .listRowInsets(.init())
-                            .listRowBackground(Color.clear)
-                        }
+                    
+                    // 4. Категория (только для пополнения)
+                    if selectedAction == .income && !account.isDeposit {
+                        CategorySelectorView(
+                            categories: incomeCategories,
+                            type: .income,
+                            customCategories: transactionsViewModel.customCategories,
+                            selectedCategory: $selectedCategory,
+                            emptyStateMessage: String(localized: "transactionForm.noCategories")
+                        )
                     }
+                    
+                    // 5. Подкатегории (нет в AccountActionView)
+                    
+                    // 6. Повтор операции (нет в AccountActionView)
+                    
+                    // 7. Описание
+                    DescriptionTextField(
+                        text: $descriptionText,
+                        placeholder: String(localized: "transactionForm.descriptionPlaceholder")
+                    )
                 }
-                
-                Section(header: Text("Сумма")) {
-                    HStack {
-                        TextField("0.00", text: $amountText)
-                            .keyboardType(.decimalPad)
-                            .focused($isAmountFocused)
-                        
-                        Picker("", selection: $selectedCurrency) {
-                            ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
-                                Text(Formatting.currencySymbol(for: currency)).tag(currency)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(width: 80)
-                    }
-                }
-                
-                Section(header: Text("Описание")) {
-                    TextField("Описание (необязательно)", text: $descriptionText, axis: .vertical)
-                        .lineLimit(3...6)
-                }
+                .padding(.vertical, AppSpacing.lg)
             }
             .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
@@ -175,10 +139,10 @@ struct AccountActionView: View {
                 }
             }
             .onAppear {
-                isAmountFocused = true
+                // Фокус теперь управляется внутри AmountInputView
             }
-            .alert("Ошибка", isPresented: $showingError) {
-                Button("OK", role: .cancel) {}
+            .alert(String(localized: "voice.error"), isPresented: $showingError) {
+                Button(String(localized: "voice.ok"), role: .cancel) {}
             } message: {
                 Text(errorMessage)
             }
@@ -199,33 +163,30 @@ struct AccountActionView: View {
     private var headerForAccountSelection: String {
         if account.isDeposit {
             if let direction = transferDirection {
-                return direction == .toDeposit ? "Счет источника" : "Счет получателя"
+                return direction == .toDeposit ? String(localized: "transactionForm.fromAccount") : String(localized: "transactionForm.toAccount")
             }
-            return "Счет источника"
+            return String(localized: "transactionForm.fromAccount")
         }
-        return "Счет получателя"
+        return String(localized: "transactionForm.toAccount")
     }
     
     private var navigationTitleText: String {
         if account.isDeposit {
             if let direction = transferDirection {
-                return direction == .toDeposit ? "Пополнение депозита" : "Перевод с депозита"
+                return direction == .toDeposit ? String(localized: "transactionForm.depositTopUp") : String(localized: "transactionForm.depositWithdrawal")
             }
-            return "Пополнение депозита"
+            return String(localized: "transactionForm.depositTopUp")
         }
-        return selectedAction == .income ? "Пополнение счета" : "Перевод"
+        return selectedAction == .income ? String(localized: "transactionForm.accountTopUp") : String(localized: "transactionForm.transfer")
     }
     
-    private var gridColumns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: AppSpacing.md), count: 4)
-    }
     
     private func saveTransaction(date: Date) {
         // Валидация: проверяем, что сумма введена и положительна
         guard !amountText.isEmpty,
               let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")),
               amount > 0 else {
-            errorMessage = "Введите положительную сумму"
+            errorMessage = String(localized: "transactionForm.enterPositiveAmount")
             showingError = true
             HapticManager.warning()
             return
@@ -235,7 +196,7 @@ struct AccountActionView: View {
         let transactionDate = dateFormatter.string(from: date)
         
         // Для переводов не устанавливаем дефолтное описание, если оно не заполнено
-        let finalDescription = descriptionText.isEmpty ? (selectedAction == .income ? "Пополнение счета" : "") : descriptionText
+        let finalDescription = descriptionText.isEmpty ? (selectedAction == .income ? String(localized: "transactionForm.accountTopUp") : "") : descriptionText
         
         // Конвертируем валюту, если она отличается от валюты счета
         Task {
@@ -398,7 +359,7 @@ struct AccountActionView: View {
                 if selectedAction == .income {
                     // Пополнение счета
                     guard let category = selectedCategory, !incomeCategories.isEmpty else {
-                        errorMessage = "Выберите категорию дохода"
+                        errorMessage = String(localized: "transactionForm.selectCategoryIncome")
                         showingError = true
                         HapticManager.warning()
                         return
@@ -430,7 +391,7 @@ struct AccountActionView: View {
                     
                     // Валидация: предотвращаем перевод самому себе
                     guard targetAccountId != account.id else {
-                        errorMessage = "Нельзя перевести средства на тот же счет"
+                        errorMessage = String(localized: "transactionForm.cannotTransferToSame")
                         showingError = true
                         HapticManager.warning()
                         return
@@ -438,7 +399,7 @@ struct AccountActionView: View {
                     
                     // Проверяем существование счета получателя
                     guard accountsViewModel.accounts.contains(where: { $0.id == targetAccountId }) else {
-                        errorMessage = "Счет получателя не найден"
+                        errorMessage = String(localized: "transactionForm.accountNotFound")
                         showingError = true
                         HapticManager.error()
                         return

@@ -72,6 +72,26 @@ enum VoiceInputConstants {
     /// Размер буфера для аудио (семплы)
     static let audioBufferSize: AVAudioFrameCount = 1024
 
+    // MARK: - Voice Activity Detection (VAD)
+
+    /// Порог тишины в децибелах (dB)
+    /// Значения ниже этого порога считаются тишиной
+    /// Типичный диапазон: от -50 (очень чувствительный) до -30 (менее чувствительный)
+    static let vadSilenceThresholdDb: Float = -40.0
+
+    /// Продолжительность тишины для автоматической остановки (секунды)
+    /// Запись остановится после этой продолжительности непрерывной тишины
+    static let vadSilenceDuration: TimeInterval = 2.5
+
+    /// Минимальная продолжительность речи перед включением VAD (секунды)
+    /// Предотвращает ложные срабатывания в начале записи
+    static let vadMinimumSpeechDuration: TimeInterval = 1.0
+
+    /// Включить/выключить Voice Activity Detection
+    /// Если true, запись автоматически остановится после тишины
+    /// Если false, пользователь должен вручную остановить запись
+    static let vadEnabled: Bool = true
+
     // MARK: - Debug
 
     /// Флаг для включения детального логирования парсинга

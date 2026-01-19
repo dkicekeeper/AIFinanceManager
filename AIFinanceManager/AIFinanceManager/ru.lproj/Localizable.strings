@@ -201,7 +201,26 @@
 "voice.recording" = "Идет запись...";
 "voice.error" = "Ошибка";
 "voice.errorMessage" = "Не удалось начать запись";
+"voice.emptyText" = "Текст не распознан. Попробуйте еще раз.";
 "voice.ok" = "OK";
+"voice.vadToggle" = "Авто-остановка при тишине";
+"voice.vadDescription" = "Запись остановится автоматически после 2.5 секунд тишины";
+
+// MARK: - Voice Input Confirmation
+"voiceConfirmation.title" = "Проверьте операцию";
+"voiceConfirmation.type" = "Тип операции";
+"voiceConfirmation.noAccounts" = "Нет доступных счетов";
+"voiceConfirmation.selectCategory" = "Выберите категорию";
+"voiceConfirmation.warning.accountNotFound" = "Счёт не найден — выбран по умолчанию";
+"voiceConfirmation.warning.accountNotRecognized" = "Счёт не распознан — выбран по умолчанию";
+"voiceConfirmation.warning.enterAmount" = "Введите сумму";
+"voiceConfirmation.warning.enterValidAmount" = "Введите корректную сумму";
+"voiceConfirmation.warning.selectAccount" = "Выберите счёт";
+"voiceConfirmation.warning.accountNotSelected" = "Счёт не выбран — использован по умолчанию";
+"voiceConfirmation.warning.categoryNotRecognized" = "Категория не распознана — выбрана по умолчанию";
+"voiceConfirmation.warning.selectCategory" = "Выберите категорию";
+"voiceConfirmation.warning.categoryNotSelected" = "Категория не выбрана — использована по умолчанию";
+"voiceConfirmation.warning.categoryNotFound" = "Не удалось найти категорию";
 
 // MARK: - Subscriptions
 "subscriptions.title" = "Подписки";
@@ -247,3 +266,28 @@
 "calendar.halfYear" = "Полгода";
 "calendar.year" = "Год";
 "calendar.noUpcomingPayments" = "Нет ближайших платежей";
+
+// MARK: - Transaction Forms
+"transactionForm.amount" = "Сумма";
+"transactionForm.description" = "Описание";
+"transactionForm.descriptionPlaceholder" = "Описание (необязательно)";
+"transactionForm.category" = "Категория";
+"transactionForm.selectCategory" = "Выберите категорию";
+"transactionForm.noCategories" = "Нет доступных категорий. Создайте категории сначала.";
+"transactionForm.transfer" = "Перевод";
+"transactionForm.topUp" = "Пополнение";
+"transactionForm.toAccount" = "Счет получателя";
+"transactionForm.fromAccount" = "Счет источника";
+"transactionForm.noAccountsForTransfer" = "Нет других счетов для перевода";
+"transactionForm.enterPositiveAmount" = "Введите положительную сумму";
+"transactionForm.selectCategoryIncome" = "Выберите категорию дохода";
+"transactionForm.cannotTransferToSame" = "Нельзя перевести средства на тот же счет";
+"transactionForm.accountNotFound" = "Счет не найден";
+"transactionForm.depositTopUp" = "Пополнение депозита";
+"transactionForm.depositWithdrawal" = "Перевод с депозита";
+"transactionForm.accountTopUp" = "Пополнение счета";
+"transactionForm.editTransaction" = "Редактировать операцию";
+"transactionForm.recurring" = "Повторяющаяся";
+"transactionForm.makeRecurring" = "Сделать повторяющейся";
+"transactionForm.searchSubcategories" = "Поиск подкатегорий";
+"transactionForm.searchAndAddSubcategories" = "Поиск и добавление подкатегорий";

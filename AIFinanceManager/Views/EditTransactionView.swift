@@ -22,6 +22,7 @@ struct EditTransactionView: View {
     @State private var selectedAccountId: String? = nil
     @State private var selectedTargetAccountId: String? = nil
     @State private var selectedDate: Date = Date()
+    @State private var selectedCurrency: String = ""
     @State private var isRecurring: Bool = false
     @State private var selectedFrequency: RecurringFrequency = .monthly
     @State private var showingSubcategorySearch = false
@@ -29,7 +30,6 @@ struct EditTransactionView: View {
     @State private var showingRecurringDisableDialog = false
     @State private var showingError = false
     @State private var errorMessage = ""
-    @FocusState private var isAmountFocused: Bool
     
     private var availableCategories: [String] {
         var categories: Set<String> = []
@@ -69,152 +69,111 @@ struct EditTransactionView: View {
         return categoriesViewModel.getSubcategoriesForCategory(categoryId)
     }
     
+    
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                Form {
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // 1. Picker (нет в EditTransactionView - тип транзакции не меняется)
+                    
+                    // 2. Сумма с выбором валюты
+                    AmountInputView(
+                        amount: $amountText,
+                        selectedCurrency: $selectedCurrency,
+                        errorMessage: showingError ? errorMessage : nil
+                    )
+                    .padding(.horizontal, AppSpacing.lg)
+                    
+                    // 3. Счет
                     if !accounts.isEmpty {
-                        Section(header: Text("Account")) {
-                            if transaction.type == .internalTransfer {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 12) {
-                                        ForEach(accounts) { account in
-                                            AccountRadioButton(
-                                                account: account,
-                                                isSelected: selectedAccountId == account.id,
-                                                onTap: {
-                                                    selectedAccountId = account.id
+                        if transaction.type == .internalTransfer {
+                            AccountSelectorView(
+                                accounts: accounts,
+                                selectedAccountId: $selectedAccountId
+                            )
+                            
+                            AccountSelectorView(
+                                accounts: accounts,
+                                selectedAccountId: $selectedTargetAccountId
+                            )
+                            .padding(.top, AppSpacing.md)
+                        } else {
+                            AccountSelectorView(
+                                accounts: accounts,
+                                selectedAccountId: $selectedAccountId
+                            )
+                        }
+                    }
+                    
+                    // 4. Категория
+                    if transaction.type != .internalTransfer {
+                        CategorySelectorView(
+                            categories: availableCategories,
+                            type: transaction.type,
+                            customCategories: customCategories,
+                            selectedCategory: Binding(
+                                get: { selectedCategory.isEmpty ? nil : selectedCategory },
+                                set: { selectedCategory = $0 ?? "" }
+                            ),
+                            emptyStateMessage: String(localized: "transactionForm.noCategories")
+                        )
+                        
+                        // 5. Подкатегории
+                        if categoryId != nil, !availableSubcategories.isEmpty {
+                            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                                ForEach(availableSubcategories) { subcategory in
+                                    SubcategoryRow(
+                                        subcategory: subcategory,
+                                        isSelected: Binding(
+                                            get: { selectedSubcategoryIds.contains(subcategory.id) },
+                                            set: { isSelected in
+                                                if isSelected {
+                                                    selectedSubcategoryIds.insert(subcategory.id)
+                                                } else {
+                                                    selectedSubcategoryIds.remove(subcategory.id)
                                                 }
-                                            )
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-                                
-                                Section(header: Text("To Account")) {
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 12) {
-                                            ForEach(accounts) { account in
-                                                AccountRadioButton(
-                                                    account: account,
-                                                    isSelected: selectedTargetAccountId == account.id,
-                                                    onTap: {
-                                                        selectedTargetAccountId = account.id
-                                                    }
-                                                )
+                                            }
+                                        ),
+                                        onToggle: {
+                                            if selectedSubcategoryIds.contains(subcategory.id) {
+                                                selectedSubcategoryIds.remove(subcategory.id)
+                                            } else {
+                                                selectedSubcategoryIds.insert(subcategory.id)
                                             }
                                         }
-                                        .padding(.vertical, 4)
-                                    }
-                                }
-                            } else {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 12) {
-                                        ForEach(accounts) { account in
-                                            AccountRadioButton(
-                                                account: account,
-                                                isSelected: selectedAccountId == account.id,
-                                                onTap: {
-                                                    selectedAccountId = account.id
-                                                }
-                                            )
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-                            }
-                        }
-                    }
-                    
-                    Section(header: Text("Amount")) {
-                        TextField("0.00", text: $amountText)
-                            .keyboardType(.decimalPad)
-                            .focused($isAmountFocused)
-                    }
-                    
-                    Section(header: Text("Description")) {
-                        TextField("What was this for? (optional)", text: $descriptionText)
-                    }
-                    
-                    if transaction.type != .internalTransfer {
-                        Section(header: Text("Category")) {
-                            Picker("Category", selection: $selectedCategory) {
-                                ForEach(availableCategories, id: \.self) { category in
-                                    Text(category).tag(category)
-                                }
-                            }
-                        }
-                        
-                        // Подкатегории
-                        if categoryId != nil, !availableSubcategories.isEmpty {
-                            Section(header: Text("Подкатегории")) {
-                                ForEach(availableSubcategories) { subcategory in
-                                    HStack {
-                                        Text(subcategory.name)
-                                        Spacer()
-                                        if selectedSubcategoryIds.contains(subcategory.id) {
-                                            Image(systemName: "checkmark")
-                                                .foregroundColor(.blue)
-                                        }
-                                    }
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        if selectedSubcategoryIds.contains(subcategory.id) {
-                                            selectedSubcategoryIds.remove(subcategory.id)
-                                        } else {
-                                            selectedSubcategoryIds.insert(subcategory.id)
-                                        }
-                                    }
+                                    )
                                 }
                                 
-                                Button(action: {
+                                SubcategorySearchButton {
                                     showingSubcategorySearch = true
-                                }) {
-                                    HStack {
-                                        Image(systemName: "magnifyingglass")
-                                        Text("Поиск подкатегорий")
-                                    }
-                                    .foregroundColor(.blue)
                                 }
                             }
+                            .padding(.horizontal, AppSpacing.lg)
                         } else if categoryId != nil {
-                            Section(header: Text("Подкатегории")) {
-                                Button(action: {
-                                    showingSubcategorySearch = true
-                                }) {
-                                    HStack {
-                                        Image(systemName: "magnifyingglass")
-                                        Text("Поиск и добавление подкатегорий")
-                                    }
-                                    .foregroundColor(.blue)
-                                }
+                            SubcategorySearchButton(
+                                title: String(localized: "transactionForm.searchAndAddSubcategories")
+                            ) {
+                                showingSubcategorySearch = true
                             }
+                            .padding(.horizontal, AppSpacing.lg)
                         }
                     }
                     
-                    Section(header: Text("Recurring")) {
-                        Toggle("Make this recurring", isOn: $isRecurring)
-                        
-                        if isRecurring {
-                            Picker("Frequency", selection: $selectedFrequency) {
-                                ForEach(RecurringFrequency.allCases, id: \.self) { frequency in
-                                    Text(frequency.displayName).tag(frequency)
-                                }
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
-                        }
-                    }
-                }
-                .sheet(isPresented: $showingSubcategorySearch) {
-                    SubcategorySearchView(
-                        categoriesViewModel: categoriesViewModel,
-                        categoryId: categoryId ?? "",
-                        selectedSubcategoryIds: $selectedSubcategoryIds,
-                        searchText: $subcategorySearchText
+                    // 6. Повтор операции
+                    RecurringToggleView(
+                        isRecurring: $isRecurring,
+                        selectedFrequency: $selectedFrequency
+                    )
+                    
+                    // 7. Описание
+                    DescriptionTextField(
+                        text: $descriptionText,
+                        placeholder: String(localized: "transactionForm.descriptionPlaceholder")
                     )
                 }
+                .padding(.vertical, AppSpacing.lg)
             }
-            .navigationTitle("Edit Transaction")
+            .navigationTitle(String(localized: "transactionForm.editTransaction"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -235,12 +194,21 @@ struct EditTransactionView: View {
             .dateButtonsSafeArea(selectedDate: $selectedDate) { date in
                 saveTransaction(date: date)
             }
+            .sheet(isPresented: $showingSubcategorySearch) {
+                SubcategorySearchView(
+                    categoriesViewModel: categoriesViewModel,
+                    categoryId: categoryId ?? "",
+                    selectedSubcategoryIds: $selectedSubcategoryIds,
+                    searchText: $subcategorySearchText
+                )
+            }
             .onAppear {
                 amountText = String(format: "%.2f", transaction.amount)
                 descriptionText = transaction.description
                 selectedCategory = transaction.category
                 selectedAccountId = transaction.accountId
                 selectedTargetAccountId = transaction.targetAccountId
+                selectedCurrency = transaction.currency
                 
                 // Загружаем подкатегории из transactionSubcategoryLinks
                 let linkedSubcategories = categoriesViewModel.getSubcategoriesForTransaction(transaction.id)
@@ -258,8 +226,6 @@ struct EditTransactionView: View {
                 if let date = dateFormatter.date(from: transaction.date) {
                     selectedDate = date
                 }
-                
-                isAmountFocused = false
             }
             .onChange(of: isRecurring) { oldValue, newValue in
                 if !newValue && transaction.recurringSeriesId != nil {
@@ -270,8 +236,8 @@ struct EditTransactionView: View {
                     }
                 }
             }
-            .alert("Ошибка", isPresented: $showingError) {
-                Button("OK", role: .cancel) {}
+            .alert(String(localized: "voice.error"), isPresented: $showingError) {
+                Button(String(localized: "voice.ok"), role: .cancel) {}
             } message: {
                 Text(errorMessage)
             }
@@ -283,7 +249,7 @@ struct EditTransactionView: View {
         guard !amountText.isEmpty,
               let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")),
               amount > 0 else {
-            errorMessage = "Введите положительную сумму"
+            errorMessage = String(localized: "transactionForm.enterPositiveAmount")
             showingError = true
             HapticManager.warning()
             return
@@ -294,7 +260,7 @@ struct EditTransactionView: View {
             guard let sourceId = selectedAccountId,
                   let targetId = selectedTargetAccountId,
                   sourceId != targetId else {
-                errorMessage = "Нельзя перевести средства на тот же счет"
+                errorMessage = String(localized: "transactionForm.cannotTransferToSame")
                 showingError = true
                 HapticManager.warning()
                 return
@@ -303,7 +269,7 @@ struct EditTransactionView: View {
             // Проверяем, что оба счета существуют
             guard accounts.contains(where: { $0.id == sourceId }),
                   accounts.contains(where: { $0.id == targetId }) else {
-                errorMessage = "Один из счетов не найден"
+                errorMessage = String(localized: "transactionForm.accountNotFound")
                 showingError = true
                 HapticManager.error()
                 return
@@ -324,7 +290,7 @@ struct EditTransactionView: View {
                 let amountDecimal = Decimal(amount)
                 let series = transactionsViewModel.createRecurringSeries(
                     amount: amountDecimal,
-                    currency: transaction.currency,
+                    currency: selectedCurrency,
                     category: selectedCategory,
                     subcategory: nil,
                     description: descriptionText.isEmpty ? selectedCategory : descriptionText,
@@ -357,32 +323,49 @@ struct EditTransactionView: View {
             finalRecurringOccurrenceId = nil
         }
         
-        let updatedTransaction = Transaction(
-            id: transaction.id,
-            date: dateString,
-            description: descriptionText,
-            amount: amount,
-            currency: transaction.currency,
-            type: transaction.type,
-            category: selectedCategory,
-            subcategory: nil,
-            accountId: selectedAccountId,
-            targetAccountId: selectedTargetAccountId,
-            recurringSeriesId: finalRecurringSeriesId,
-            recurringOccurrenceId: finalRecurringOccurrenceId,
-            createdAt: transaction.createdAt // Сохраняем оригинальный createdAt при редактировании
-        )
-        
-        transactionsViewModel.updateTransaction(updatedTransaction)
-        
-        // Обновляем подкатегории
-        categoriesViewModel.linkSubcategoriesToTransaction(
-            transactionId: transaction.id,
-            subcategoryIds: Array(selectedSubcategoryIds)
-        )
-        
-        HapticManager.success()
-        dismiss()
+        // Конвертируем валюту, если она изменилась
+        Task {
+            var convertedAmount: Double? = nil
+            let accountCurrency = accounts.first(where: { $0.id == selectedAccountId })?.currency ?? transaction.currency
+            
+            if selectedCurrency != accountCurrency {
+                convertedAmount = await CurrencyConverter.convert(
+                    amount: amount,
+                    from: selectedCurrency,
+                    to: accountCurrency
+                )
+            }
+            
+            await MainActor.run {
+                let updatedTransaction = Transaction(
+                    id: transaction.id,
+                    date: dateString,
+                    description: descriptionText,
+                    amount: amount,
+                    currency: selectedCurrency,
+                    convertedAmount: convertedAmount,
+                    type: transaction.type,
+                    category: selectedCategory,
+                    subcategory: nil,
+                    accountId: selectedAccountId,
+                    targetAccountId: selectedTargetAccountId,
+                    recurringSeriesId: finalRecurringSeriesId,
+                    recurringOccurrenceId: finalRecurringOccurrenceId,
+                    createdAt: transaction.createdAt // Сохраняем оригинальный createdAt при редактировании
+                )
+                
+                transactionsViewModel.updateTransaction(updatedTransaction)
+                
+                // Обновляем подкатегории
+                categoriesViewModel.linkSubcategoriesToTransaction(
+                    transactionId: transaction.id,
+                    subcategoryIds: Array(selectedSubcategoryIds)
+                )
+                
+                HapticManager.success()
+                dismiss()
+            }
+        }
     }
 }
 

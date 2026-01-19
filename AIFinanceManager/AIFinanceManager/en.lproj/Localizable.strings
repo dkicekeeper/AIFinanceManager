@@ -201,7 +201,26 @@
 "voice.recording" = "Recording...";
 "voice.error" = "Error";
 "voice.errorMessage" = "Failed to start recording";
+"voice.emptyText" = "No text was recognized. Please try again.";
 "voice.ok" = "OK";
+"voice.vadToggle" = "Auto-stop on silence";
+"voice.vadDescription" = "Recording will stop automatically after 2.5 seconds of silence";
+
+// MARK: - Voice Input Confirmation
+"voiceConfirmation.title" = "Review Operation";
+"voiceConfirmation.type" = "Operation Type";
+"voiceConfirmation.noAccounts" = "No available accounts";
+"voiceConfirmation.selectCategory" = "Select category";
+"voiceConfirmation.warning.accountNotFound" = "Account not found — selected by default";
+"voiceConfirmation.warning.accountNotRecognized" = "Account not recognized — selected by default";
+"voiceConfirmation.warning.enterAmount" = "Enter amount";
+"voiceConfirmation.warning.enterValidAmount" = "Enter a valid amount";
+"voiceConfirmation.warning.selectAccount" = "Select an account";
+"voiceConfirmation.warning.accountNotSelected" = "Account not selected — using default";
+"voiceConfirmation.warning.categoryNotRecognized" = "Category not recognized — selected by default";
+"voiceConfirmation.warning.selectCategory" = "Select category";
+"voiceConfirmation.warning.categoryNotSelected" = "Category not selected — using default";
+"voiceConfirmation.warning.categoryNotFound" = "Failed to find category";
 
 // MARK: - Subscriptions
 "subscriptions.title" = "Subscriptions";
@@ -247,3 +266,28 @@
 "calendar.halfYear" = "6 Months";
 "calendar.year" = "Year";
 "calendar.noUpcomingPayments" = "No upcoming payments";
+
+// MARK: - Transaction Forms
+"transactionForm.amount" = "Amount";
+"transactionForm.description" = "Description";
+"transactionForm.descriptionPlaceholder" = "Description (optional)";
+"transactionForm.category" = "Category";
+"transactionForm.selectCategory" = "Select category";
+"transactionForm.noCategories" = "No available categories. Create categories first.";
+"transactionForm.transfer" = "Transfer";
+"transactionForm.topUp" = "Top Up";
+"transactionForm.toAccount" = "To Account";
+"transactionForm.fromAccount" = "From Account";
+"transactionForm.noAccountsForTransfer" = "No other accounts for transfer";
+"transactionForm.enterPositiveAmount" = "Enter a positive amount";
+"transactionForm.selectCategoryIncome" = "Select income category";
+"transactionForm.cannotTransferToSame" = "Cannot transfer to the same account";
+"transactionForm.accountNotFound" = "Account not found";
+"transactionForm.depositTopUp" = "Top Up Deposit";
+"transactionForm.depositWithdrawal" = "Withdraw from Deposit";
+"transactionForm.accountTopUp" = "Top Up Account";
+"transactionForm.editTransaction" = "Edit Transaction";
+"transactionForm.recurring" = "Recurring";
+"transactionForm.makeRecurring" = "Make this recurring";
+"transactionForm.searchSubcategories" = "Search subcategories";
+"transactionForm.searchAndAddSubcategories" = "Search and add subcategories";

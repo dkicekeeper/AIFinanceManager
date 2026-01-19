@@ -8,11 +8,163 @@
 import Foundation
 import Combine
 
+// MARK: - Recognized Entity
+
+/// Represents a recognized entity in the transcribed text
+struct RecognizedEntity {
+    /// Type of entity
+    enum EntityType {
+        case amount
+        case currency
+        case category
+        case subcategory
+        case account
+        case date
+        case transactionType // income/expense keywords
+    }
+
+    /// Type of the recognized entity
+    let type: EntityType
+
+    /// Range of the entity in the original text
+    let range: NSRange
+
+    /// Extracted value
+    let value: String
+
+    /// Confidence level (0.0 - 1.0)
+    let confidence: Double
+}
+
 class VoiceInputParser {
-    private let accounts: [Account]
-    private let categories: [CustomCategory]
-    private let subcategories: [Subcategory]
-    private let defaultAccount: Account?
+    // MARK: - Dynamic Data Sources (Weak References)
+
+    /// Reference to CategoriesViewModel for live category data
+    private weak var categoriesViewModel: CategoriesViewModel?
+
+    /// Reference to AccountsViewModel for live account data
+    private weak var accountsViewModel: AccountsViewModel?
+
+    /// Reference to TransactionsViewModel for usage statistics
+    private weak var transactionsViewModel: TransactionsViewModel?
+
+    // MARK: - Computed Properties for Live Data
+
+    /// Live categories from ViewModel
+    private var liveCategories: [CustomCategory] {
+        categoriesViewModel?.customCategories ?? []
+    }
+
+    /// Live subcategories from ViewModel
+    private var liveSubcategories: [Subcategory] {
+        categoriesViewModel?.subcategories ?? []
+    }
+
+    /// Live accounts from ViewModel
+    private var liveAccounts: [Account] {
+        accountsViewModel?.accounts ?? []
+    }
+
+    /// Smart default account based on usage statistics
+    /// Falls back to first account if no transactions exist
+    private var defaultAccount: Account? {
+        getSmartDefaultAccount()
+    }
+
+    /// Live transactions for usage analysis
+    private var liveTransactions: [Transaction] {
+        transactionsViewModel?.allTransactions ?? []
+    }
+
+    /// Category keyword mapping for entity detection
+    private var categoryMap: [String: (category: String, subcategory: String?)] {
+        [
+            // Транспорт - сначала подкатегории
+            "такси": ("Транспорт", "Такси"),
+            "uber": ("Транспорт", "Такси"),
+            "yandex": ("Транспорт", "Такси"),
+            "яндекс": ("Транспорт", "Такси"),
+            "бензин": ("Транспорт", "Бензин"),
+            "заправка": ("Транспорт", "Бензин"),
+            "парковка": ("Транспорт", "Парковка"),
+            "автобус": ("Транспорт", nil),
+            "метро": ("Транспорт", nil),
+            "проезд": ("Транспорт", nil),
+            "транспорт": ("Транспорт", nil),
+
+            // Еда - синонимы
+            "кафе": ("Еда", nil),
+            "кофе": ("Еда", "Кофе"),
+            "ресторан": ("Еда", nil),
+            "обед": ("Еда", nil),
+            "ужин": ("Еда", nil),
+            "завтрак": ("Еда", nil),
+            "еда": ("Еда", nil),
+            "столовая": ("Еда", nil),
+            "доставка": ("Еда", "Доставка"),
+            "еда доставка": ("Еда", "Доставка"),
+
+            // Продукты
+            "продукты": ("Продукты", nil),
+            "магазин": ("Покупки", nil),
+            "супермаркет": ("Продукты", nil),
+            "гипермаркет": ("Продукты", nil),
+
+            // Покупки
+            "покупка": ("Покупки", nil),
+            "шопинг": ("Покупки", nil),
+            "одежда": ("Покупки", "Одежда"),
+            "обувь": ("Покупки", "Одежда"),
+
+            // Развлечения
+            "кино": ("Развлечения", nil),
+            "театр": ("Развлечения", nil),
+            "концерт": ("Развлечения", nil),
+            "развлечения": ("Развлечения", nil),
+
+            // Здоровье
+            "аптека": ("Здоровье", "Аптека"),
+            "лекарство": ("Здоровье", "Аптека"),
+            "врач": ("Здоровье", "Врач"),
+            "больница": ("Здоровье", "Врач"),
+            "стоматолог": ("Здоровье", "Стоматолог"),
+
+            // Коммунальные
+            "коммунальные": ("Коммунальные", nil),
+            "квартплата": ("Коммунальные", nil),
+            "электричество": ("Коммунальные", "Электричество"),
+            "вода": ("Коммунальные", "Вода"),
+            "газ": ("Коммунальные", "Газ"),
+            "интернет": ("Коммунальные", "Интернет"),
+            "телефон": ("Коммунальные", "Телефон"),
+
+            // Образование
+            "образование": ("Образование", nil),
+            "школа": ("Образование", nil),
+            "университет": ("Образование", nil),
+            "курсы": ("Образование", nil),
+
+            // Зарплата (доход)
+            "зарплата": ("Зарплата", nil),
+            "зарплату": ("Зарплата", nil),
+            "оклад": ("Зарплата", nil),
+            "премия": ("Зарплата", nil),
+
+            // Другое
+            "услуги": ("Услуги", nil),
+            "ремонт": ("Услуги", nil)
+        ]
+    }
+
+    /// Income keywords for entity detection
+    private var incomeKeywords: [String] {
+        ["пришло", "пришел", "пришла", "получил", "получила", "получил", "зачисление", "доход", "зарплата"]
+    }
+
+    /// Expense keywords for entity detection
+    private var expenseKeywords: [String] {
+        ["потратил", "потратила", "купил", "купила", "оплатил", "оплатила", "расход", "списали"]
+    }
 
     // MARK: - Pre-compiled регулярные выражения для производительности
 
@@ -124,11 +276,21 @@ class VoiceInputParser {
         "тысяча": 1000, "тысячи": 1000, "тысяч": 1000
     ]
     
-    init(accounts: [Account], categories: [CustomCategory], subcategories: [Subcategory], defaultAccount: Account?) {
-        self.accounts = accounts
-        self.categories = categories
-        self.subcategories = subcategories
-        self.defaultAccount = defaultAccount
+    // MARK: - Initialization
+
+    /// Initializes parser with live references to ViewModels
+    /// - Parameters:
+    ///   - categoriesViewModel: ViewModel managing categories and subcategories
+    ///   - accountsViewModel: ViewModel managing accounts
+    ///   - transactionsViewModel: ViewModel managing transactions (for smart defaults)
+    init(
+        categoriesViewModel: CategoriesViewModel,
+        accountsViewModel: AccountsViewModel,
+        transactionsViewModel: TransactionsViewModel
+    ) {
+        self.categoriesViewModel = categoriesViewModel
+        self.accountsViewModel = accountsViewModel
+        self.transactionsViewModel = transactionsViewModel
     }
     
     func parse(_ text: String) -> ParsedOperation {
@@ -185,7 +347,7 @@ class VoiceInputParser {
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
             if let accountId = accountResult.accountId,
-               let account = accounts.first(where: { $0.id == accountId }) {
+               let account = liveAccounts.first(where: { $0.id == accountId }) {
                 print("\(VoiceInputConstants.debugLogPrefix) Выбранный счет: \(account.name) (ID: \(accountId))")
                 print("\(VoiceInputConstants.debugLogPrefix) Причина выбора: \(accountResult.reason)")
             } else {
@@ -213,7 +375,7 @@ class VoiceInputParser {
         // Если валюта не найдена, используем валюту найденного счета или счета по умолчанию
         if operation.currencyCode == nil {
             if let accountId = operation.accountId,
-               let account = accounts.first(where: { $0.id == accountId }) {
+               let account = liveAccounts.first(where: { $0.id == accountId }) {
                 operation.currencyCode = account.currency
             } else if let defaultAccount = defaultAccount {
                 operation.currencyCode = defaultAccount.currency
@@ -491,8 +653,8 @@ class VoiceInputParser {
         
         // Скоринг счетов
         var accountScores: [(Account, Int, String)] = [] // (account, score, reason)
-        
-        for account in accounts {
+
+        for account in liveAccounts {
             let normalizedAccountName = normalizeText(account.name)
             let accountTokens = tokenize(normalizedAccountName)
             
@@ -573,85 +735,6 @@ class VoiceInputParser {
     
     // 6. Парсинг категории и подкатегорий (сначала подкатегории, потом категории)
     private func parseCategory(from text: String) -> (category: String?, subcategories: [String]) {
-        // Словарь синонимов для категорий и подкатегорий
-        // Используем русские названия категорий
-        let categoryMap: [String: (category: String, subcategory: String?)] = [
-            // Транспорт - сначала подкатегории
-            "такси": ("Транспорт", "Такси"),
-            "uber": ("Транспорт", "Такси"),
-            "yandex": ("Транспорт", "Такси"),
-            "яндекс": ("Транспорт", "Такси"),
-            "бензин": ("Транспорт", "Бензин"),
-            "заправка": ("Транспорт", "Бензин"),
-            "парковка": ("Транспорт", "Парковка"),
-            "автобус": ("Транспорт", nil),
-            "метро": ("Транспорт", nil),
-            "проезд": ("Транспорт", nil),
-            "транспорт": ("Транспорт", nil),
-
-            // Еда - синонимы
-            "кафе": ("Еда", nil),
-            "кофе": ("Еда", "Кофе"),
-            "ресторан": ("Еда", nil),
-            "обед": ("Еда", nil),
-            "ужин": ("Еда", nil),
-            "завтрак": ("Еда", nil),
-            "еда": ("Еда", nil),
-            "столовая": ("Еда", nil),
-            "доставка": ("Еда", "Доставка"),
-            "еда доставка": ("Еда", "Доставка"),
-
-            // Продукты
-            "продукты": ("Продукты", nil),
-            "магазин": ("Покупки", nil),
-            "супермаркет": ("Продукты", nil),
-            "гипермаркет": ("Продукты", nil),
-
-            // Покупки
-            "покупка": ("Покупки", nil),
-            "шопинг": ("Покупки", nil),
-            "одежда": ("Покупки", "Одежда"),
-            "обувь": ("Покупки", "Одежда"),
-
-            // Развлечения
-            "кино": ("Развлечения", nil),
-            "театр": ("Развлечения", nil),
-            "концерт": ("Развлечения", nil),
-            "развлечения": ("Развлечения", nil),
-
-            // Здоровье
-            "аптека": ("Здоровье", "Аптека"),
-            "лекарство": ("Здоровье", "Аптека"),
-            "врач": ("Здоровье", "Врач"),
-            "больница": ("Здоровье", "Врач"),
-            "стоматолог": ("Здоровье", "Стоматолог"),
-
-            // Коммунальные
-            "коммунальные": ("Коммунальные", nil),
-            "квартплата": ("Коммунальные", nil),
-            "электричество": ("Коммунальные", "Электричество"),
-            "вода": ("Коммунальные", "Вода"),
-            "газ": ("Коммунальные", "Газ"),
-            "интернет": ("Коммунальные", "Интернет"),
-            "телефон": ("Коммунальные", "Телефон"),
-
-            // Образование
-            "образование": ("Образование", nil),
-            "школа": ("Образование", nil),
-            "университет": ("Образование", nil),
-            "курсы": ("Образование", nil),
-
-            // Зарплата (доход)
-            "зарплата": ("Зарплата", nil),
-            "зарплату": ("Зарплата", nil),
-            "оклад": ("Зарплата", nil),
-            "премия": ("Зарплата", nil),
-
-            // Другое
-            "услуги": ("Услуги", nil),
-            "ремонт": ("Услуги", nil)
-        ]
-        
         // Сначала ищем подкатегории, потом категории
         var foundSubcategories: [String] = []
         var foundCategory: String?
@@ -660,7 +743,7 @@ class VoiceInputParser {
             if text.contains(keyword) {
                 // Сначала проверяем подкатегорию
                 if let subcategory = subcategory {
-                    let matchingSubcategory = subcategories.first { normalizeText($0.name) == normalizeText(subcategory) }
+                    let matchingSubcategory = liveSubcategories.first { normalizeText($0.name) == normalizeText(subcategory) }
                     if let matchingSubcategory = matchingSubcategory {
                         foundSubcategories.append(matchingSubcategory.name)
                     }
@@ -668,7 +751,7 @@ class VoiceInputParser {
                 
                 // Затем категорию
                 if foundCategory == nil {
-                    let matchingCategory = categories.first { normalizeText($0.name) == normalizeText(category) }
+                    let matchingCategory = liveCategories.first { normalizeText($0.name) == normalizeText(category) }
                     foundCategory = matchingCategory?.name ?? category
                 }
                 
@@ -681,9 +764,194 @@ class VoiceInputParser {
         
         // Если не нашли, возвращаем "Другое"
         if foundCategory == nil {
-            foundCategory = categories.first { normalizeText($0.name) == normalizeText("Другое") }?.name ?? "Другое"
+            foundCategory = liveCategories.first { normalizeText($0.name) == normalizeText("Другое") }?.name ?? "Другое"
         }
         
         return (foundCategory, foundSubcategories)
+    }
+
+    // MARK: - Live Entity Recognition
+
+    /// Parse entities from text in real-time for UI highlighting
+    /// - Parameter text: Text to parse
+    /// - Returns: Array of recognized entities with positions and confidence
+    func parseEntitiesLive(from text: String) -> [RecognizedEntity] {
+        var entities: [RecognizedEntity] = []
+        let nsText = text as NSString
+
+        // 1. Detect Amount
+        if let amountEntity = detectAmountEntity(in: text, nsText: nsText) {
+            entities.append(amountEntity)
+        }
+
+        // 2. Detect Currency
+        if let currencyEntity = detectCurrencyEntity(in: text, nsText: nsText) {
+            entities.append(currencyEntity)
+        }
+
+        // 3. Detect Category
+        if let categoryEntity = detectCategoryEntity(in: text, nsText: nsText) {
+            entities.append(categoryEntity)
+        }
+
+        // 4. Detect Account
+        if let accountEntity = detectAccountEntity(in: text, nsText: nsText) {
+            entities.append(accountEntity)
+        }
+
+        // 5. Detect Transaction Type (income/expense keywords)
+        if let typeEntity = detectTransactionTypeEntity(in: text, nsText: nsText) {
+            entities.append(typeEntity)
+        }
+
+        return entities
+    }
+
+    // MARK: - Entity Detection Methods
+
+    private func detectAmountEntity(in text: String, nsText: NSString) -> RecognizedEntity? {
+        // Try to find amount with currency first (high confidence)
+        for regex in amountRegexes.prefix(2) { // First 2 patterns have currency
+            if let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: nsText.length)) {
+                let matchedText = nsText.substring(with: match.range)
+                let hasCurrency = matchedText.lowercased().contains("тенге") ||
+                                 matchedText.lowercased().contains("тг") ||
+                                 matchedText.contains("₸")
+
+                return RecognizedEntity(
+                    type: .amount,
+                    range: match.range,
+                    value: matchedText,
+                    confidence: hasCurrency ? 0.9 : 0.7
+                )
+            }
+        }
+
+        return nil
+    }
+
+    private func detectCurrencyEntity(in text: String, nsText: NSString) -> RecognizedEntity? {
+        let currencyPattern = #"(тенге|тг|₸|доллар|евро|рубл)"#
+        guard let regex = try? NSRegularExpression(pattern: currencyPattern, options: .caseInsensitive) else {
+            return nil
+        }
+
+        if let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: nsText.length)) {
+            return RecognizedEntity(
+                type: .currency,
+                range: match.range,
+                value: nsText.substring(with: match.range),
+                confidence: 0.95
+            )
+        }
+
+        return nil
+    }
+
+    private func detectCategoryEntity(in text: String, nsText: NSString) -> RecognizedEntity? {
+        let normalizedText = normalizeText(text)
+
+        // Check categoryMap for known keywords
+        for (keyword, categoryInfo) in categoryMap {
+            if normalizedText.contains(keyword) {
+                // Find position of keyword
+                if let range = text.lowercased().range(of: keyword) {
+                    let nsRange = NSRange(range, in: text)
+                    return RecognizedEntity(
+                        type: .category,
+                        range: nsRange,
+                        value: categoryInfo.category,
+                        confidence: 0.8
+                    )
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private func detectAccountEntity(in text: String, nsText: NSString) -> RecognizedEntity? {
+        // Try account patterns
+        for regex in accountPatternRegexes {
+            if let match = regex.firstMatch(in: text, range: NSRange(location: 0, length: nsText.length)) {
+                let matchedText = nsText.substring(with: match.range)
+                return RecognizedEntity(
+                    type: .account,
+                    range: match.range,
+                    value: matchedText,
+                    confidence: 0.75
+                )
+            }
+        }
+
+        return nil
+    }
+
+    private func detectTransactionTypeEntity(in text: String, nsText: NSString) -> RecognizedEntity? {
+        let normalizedText = normalizeText(text)
+
+        // Check for income keywords
+        for keyword in incomeKeywords {
+            if normalizedText.contains(keyword) {
+                if let range = text.lowercased().range(of: keyword) {
+                    let nsRange = NSRange(range, in: text)
+                    return RecognizedEntity(
+                        type: .transactionType,
+                        range: nsRange,
+                        value: "income",
+                        confidence: 0.85
+                    )
+                }
+            }
+        }
+
+        // Check for expense keywords
+        for keyword in expenseKeywords {
+            if normalizedText.contains(keyword) {
+                if let range = text.lowercased().range(of: keyword) {
+                    let nsRange = NSRange(range, in: text)
+                    return RecognizedEntity(
+                        type: .transactionType,
+                        range: nsRange,
+                        value: "expense",
+                        confidence: 0.85
+                    )
+                }
+            }
+        }
+
+        return nil
+    }
+
+    // MARK: - Smart Default Account Selection
+
+    /// Get smart default account based on usage statistics
+    /// - Returns: Account with highest usage score, or first account as fallback
+    private func getSmartDefaultAccount() -> Account? {
+        guard !liveAccounts.isEmpty else { return nil }
+
+        // If no transactions, use first account
+        guard !liveTransactions.isEmpty else {
+            #if DEBUG
+            if VoiceInputConstants.enableParsingDebugLogs {
+                print("\(VoiceInputConstants.debugLogPrefix) No transactions found, using first account as default")
+            }
+            #endif
+            return liveAccounts.first
+        }
+
+        // Use AccountUsageTracker to get smart default
+        let tracker = AccountUsageTracker(transactions: liveTransactions, accounts: liveAccounts)
+        let smartDefault = tracker.getSmartDefaultAccount()
+
+        #if DEBUG
+        if VoiceInputConstants.enableParsingDebugLogs {
+            if let account = smartDefault {
+                print("\(VoiceInputConstants.debugLogPrefix) Smart default account selected: \(account.name)")
+            }
+        }
+        #endif
+
+        return smartDefault
     }
 }

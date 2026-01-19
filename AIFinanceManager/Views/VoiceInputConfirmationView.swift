@@ -72,122 +72,106 @@ struct VoiceInputConfirmationView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Тип операции")) {
-                    Picker("Тип", selection: $selectedType) {
-                        Text("Расход").tag(TransactionType.expense)
-                        Text("Доход").tag(TransactionType.income)
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                }
-                
-                Section(header: Text("Дата")) {
-                    DatePicker("Дата", selection: $selectedDate, displayedComponents: .date)
-                }
-                
-                Section(header: Text("Сумма"), footer: amountWarning.map { Text($0).foregroundColor(.red) }) {
-                    HStack {
-                        TextField("0.00", text: $amountText)
-                            .keyboardType(.decimalPad)
-                            .onChange(of: amountText) {
-                                // Очищаем предупреждение сразу при вводе
-                                amountWarning = nil
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // 1. Picker типа операции
+                    SegmentedPickerView(
+                        title: String(localized: "common.type"),
+                        selection: $selectedType,
+                        options: [
+                            (label: String(localized: "transactionType.expense"), value: TransactionType.expense),
+                            (label: String(localized: "transactionType.income"), value: TransactionType.income)
+                        ]
+                    )
+                    
+                    // 2. Сумма с выбором валюты
+                    AmountInputView(
+                        amount: $amountText,
+                        selectedCurrency: $selectedCurrency,
+                        errorMessage: amountWarning,
+                        onAmountChange: { _ in
+                            // Очищаем предупреждение сразу при вводе
+                            amountWarning = nil
 
-                                // Отменяем предыдущую задачу валидации
-                                amountValidationTask?.cancel()
+                            // Отменяем предыдущую задачу валидации
+                            amountValidationTask?.cancel()
 
-                                // Создаем новую задачу с debounce
-                                amountValidationTask = Task {
-                                    try? await Task.sleep(nanoseconds: VoiceInputConstants.validationDebounceMs * 1_000_000)
+                            // Создаем новую задачу с debounce
+                            amountValidationTask = Task {
+                                try? await Task.sleep(nanoseconds: VoiceInputConstants.validationDebounceMs * 1_000_000)
 
-                                    // Проверяем, не была ли задача отменена
-                                    guard !Task.isCancelled else { return }
+                                // Проверяем, не была ли задача отменена
+                                guard !Task.isCancelled else { return }
 
-                                    await MainActor.run {
-                                        validateAmount()
-                                    }
+                                await MainActor.run {
+                                    validateAmount()
                                 }
                             }
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(amountWarning != nil ? Color.red : Color.clear, lineWidth: 1)
-                            )
-                        
-                        Picker("", selection: $selectedCurrency) {
-                            ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
-                                Text(Formatting.currencySymbol(for: currency)).tag(currency)
-                            }
                         }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(width: 80)
-                    }
-                }
-                
-                Section(header: Text("Счёт"), footer: accountWarning.map { Text($0).foregroundColor(.orange) }) {
-                    if accountsViewModel.accounts.isEmpty {
-                        Text("Нет доступных счетов")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(accountsViewModel.accounts) { account in
-                                    AccountRadioButton(
-                                        account: account,
-                                        isSelected: selectedAccountId == account.id,
-                                        onTap: {
-                                            selectedAccountId = account.id
-                                            validateAccount()
+                    )
+                    .padding(.horizontal, AppSpacing.lg)
+                    
+                    // 3. Счет
+                    AccountSelectorView(
+                        accounts: accountsViewModel.accounts,
+                        selectedAccountId: $selectedAccountId,
+                        onSelectionChange: { _ in
+                            validateAccount()
+                        },
+                        emptyStateMessage: String(localized: "voiceConfirmation.noAccounts"),
+                        warningMessage: accountWarning
+                    )
+                    
+                    // 4. Категория
+                    CategorySelectorView(
+                        categories: categoriesViewModel.customCategories.filter { $0.type == selectedType }.map { $0.name },
+                        type: selectedType,
+                        customCategories: categoriesViewModel.customCategories,
+                        selectedCategory: $selectedCategoryName,
+                        onSelectionChange: { _ in
+                            validateCategory()
+                        },
+                        emptyStateMessage: String(localized: "transactionForm.noCategories"),
+                        warningMessage: categoryWarning
+                    )
+                    
+                    // 5. Подкатегории
+                    if let categoryName = selectedCategoryName,
+                       let category = categoriesViewModel.customCategories.first(where: { $0.name == categoryName }),
+                       !categoriesViewModel.getSubcategoriesForCategory(category.id).isEmpty {
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            ForEach(categoriesViewModel.getSubcategoriesForCategory(category.id), id: \.id) { subcategory in
+                                Toggle(subcategory.name, isOn: Binding(
+                                    get: { selectedSubcategoryNames.contains(subcategory.name) },
+                                    set: { isOn in
+                                        if isOn {
+                                            selectedSubcategoryNames.insert(subcategory.name)
+                                        } else {
+                                            selectedSubcategoryNames.remove(subcategory.name)
                                         }
-                                    )
-                                }
+                                    }
+                                ))
                             }
-                            .padding(.vertical, 4)
                         }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(accountWarning != nil ? Color.orange : Color.clear, lineWidth: 1)
-                        )
+                        .padding(.horizontal, AppSpacing.lg)
                     }
-                }
-                
-                Section(header: Text("Категория"), footer: categoryWarning.map { Text($0).foregroundColor(.orange) }) {
-                    Picker("Категория", selection: $selectedCategoryName) {
-                        Text("Выберите категорию").tag(nil as String?)
-                        ForEach(categoriesViewModel.customCategories.filter { $0.type == selectedType }, id: \.name) { category in
-                            Text(category.name).tag(category.name as String?)
-                        }
-                    }
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(categoryWarning != nil ? Color.orange : Color.clear, lineWidth: 1)
+                    
+                    // 6. Дата (скрыта, но оставляем для DatePicker)
+                    DatePicker(String(localized: "transaction.date"), selection: $selectedDate, displayedComponents: .date)
+                        .opacity(0)
+                        .frame(height: 0)
+                    
+                    // 7. Описание
+                    DescriptionTextField(
+                        text: $noteText,
+                        placeholder: String(localized: "quickAdd.descriptionPlaceholder"),
+                        minLines: VoiceInputConstants.descriptionMinLines,
+                        maxLines: VoiceInputConstants.descriptionMaxLines
                     )
                 }
-                
-                if let categoryName = selectedCategoryName,
-                   let category = categoriesViewModel.customCategories.first(where: { $0.name == categoryName }),
-                   !categoriesViewModel.getSubcategoriesForCategory(category.id).isEmpty {
-                    Section(header: Text("Подкатегории")) {
-                        ForEach(categoriesViewModel.getSubcategoriesForCategory(category.id), id: \.id) { subcategory in
-                            Toggle(subcategory.name, isOn: Binding(
-                                get: { selectedSubcategoryNames.contains(subcategory.name) },
-                                set: { isOn in
-                                    if isOn {
-                                        selectedSubcategoryNames.insert(subcategory.name)
-                                    } else {
-                                        selectedSubcategoryNames.remove(subcategory.name)
-                                    }
-                                }
-                            ))
-                        }
-                    }
-                }
-                
-                Section(header: Text("Описание")) {
-                    TextField("Описание (необязательно)", text: $noteText, axis: .vertical)
-                        .lineLimit(VoiceInputConstants.descriptionMinLines...VoiceInputConstants.descriptionMaxLines)
-                }
+                .padding(.vertical, AppSpacing.lg)
             }
-            .navigationTitle("Проверьте операцию")
+            .navigationTitle(String(localized: "voiceConfirmation.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -256,6 +240,7 @@ struct VoiceInputConfirmationView: View {
         !amountText.isEmpty && selectedAccountId != nil && selectedCategoryName != nil
     }
     
+    
     private func validateFields() {
         validateAccount()
         validateAmount()
@@ -269,13 +254,13 @@ struct VoiceInputConfirmationView: View {
                 accountWarning = nil
             } else {
                 // Счет не найден, выбираем по умолчанию
-                accountWarning = "Счёт не найден — выбран по умолчанию"
+                accountWarning = String(localized: "voiceConfirmation.warning.accountNotFound")
                 if let defaultAccount = accountsViewModel.accounts.first {
                     selectedAccountId = defaultAccount.id
                 }
             }
         } else {
-            accountWarning = "Счёт не распознан — выбран по умолчанию"
+            accountWarning = String(localized: "voiceConfirmation.warning.accountNotRecognized")
             // Устанавливаем счет по умолчанию (первый счет)
             if let defaultAccount = accountsViewModel.accounts.first {
                 selectedAccountId = defaultAccount.id
@@ -295,7 +280,7 @@ struct VoiceInputConfirmationView: View {
             .trimmingCharacters(in: .whitespaces)
         
         if cleanedAmountText.isEmpty || Double(cleanedAmountText) == nil {
-            amountWarning = "Введите сумму"
+            amountWarning = String(localized: "voiceConfirmation.warning.enterAmount")
         } else {
             amountWarning = nil
             // НЕ обновляем amountText автоматически - это вызывает бесконечный цикл обновлений
@@ -305,17 +290,18 @@ struct VoiceInputConfirmationView: View {
     
     private func validateCategory() {
         if selectedCategoryName == nil {
-            categoryWarning = "Категория не распознана — выбрана по умолчанию"
+            categoryWarning = String(localized: "voiceConfirmation.warning.categoryNotRecognized")
             // Устанавливаем категорию "Другое"
-            if let otherCategory = categoriesViewModel.customCategories.first(where: { $0.name == "Другое" && $0.type == selectedType }) {
+            let otherCategoryName = selectedType == .expense ? "Другое" : "Другое"
+            if let otherCategory = categoriesViewModel.customCategories.first(where: { $0.name == otherCategoryName && $0.type == selectedType }) {
                 selectedCategoryName = otherCategory.name
             } else {
                 // Создаем категорию "Другое" если её нет
-                let otherCategory = CustomCategory(name: "Другое", iconName: "banknote.fill", colorHex: "#3b82f6", type: selectedType)
+                let otherCategory = CustomCategory(name: otherCategoryName, iconName: "banknote.fill", colorHex: "#3b82f6", type: selectedType)
                 categoriesViewModel.addCategory(otherCategory)
                 // Ждем обновления списка категорий
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    selectedCategoryName = "Другое"
+                    selectedCategoryName = otherCategoryName
                 }
             }
         } else {
@@ -339,16 +325,16 @@ struct VoiceInputConfirmationView: View {
         
         // Проверяем, что все поля заполнены
         guard let amount = Double(cleanedAmountText), amount > 0 else {
-            amountWarning = "Введите корректную сумму"
+            amountWarning = String(localized: "voiceConfirmation.warning.enterValidAmount")
             return
         }
         
         guard let accountId = selectedAccountId, accountsViewModel.accounts.contains(where: { $0.id == accountId }) else {
-            accountWarning = "Выберите счёт"
+            accountWarning = String(localized: "voiceConfirmation.warning.selectAccount")
             // Устанавливаем счет по умолчанию, если не выбран
             if let defaultAccount = accountsViewModel.accounts.first {
                 selectedAccountId = defaultAccount.id
-                accountWarning = "Счёт не выбран — использован по умолчанию"
+                accountWarning = String(localized: "voiceConfirmation.warning.accountNotSelected")
             }
             return
         }
@@ -359,14 +345,15 @@ struct VoiceInputConfirmationView: View {
            categoriesViewModel.customCategories.contains(where: { $0.name == selectedCategory && $0.type == selectedType }) {
             categoryName = selectedCategory
         } else {
-            categoryWarning = "Выберите категорию"
+            categoryWarning = String(localized: "voiceConfirmation.warning.selectCategory")
             // Устанавливаем категорию "Другое", если не выбрана
-            if let otherCategory = categoriesViewModel.customCategories.first(where: { $0.name == "Другое" && $0.type == selectedType }) {
+            let otherCategoryName = "Другое"
+            if let otherCategory = categoriesViewModel.customCategories.first(where: { $0.name == otherCategoryName && $0.type == selectedType }) {
                 selectedCategoryName = otherCategory.name
                 categoryName = otherCategory.name
-                categoryWarning = "Категория не выбрана — использована по умолчанию"
+                categoryWarning = String(localized: "voiceConfirmation.warning.categoryNotSelected")
             } else {
-                categoryWarning = "Не удалось найти категорию"
+                categoryWarning = String(localized: "voiceConfirmation.warning.categoryNotFound")
                 return
             }
         }

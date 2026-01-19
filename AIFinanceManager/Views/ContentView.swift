@@ -231,6 +231,11 @@ struct ContentView: View {
                 PerformanceProfiler.start("ContentView.onAppear")
                 updateSummary()
                 loadWallpaper()
+
+                // Setup VoiceInputService with ViewModels for contextual strings (iOS 17+)
+                voiceService.categoriesViewModel = categoriesViewModel
+                voiceService.accountsViewModel = accountsViewModel
+
                 PerformanceProfiler.end("ContentView.onAppear")
             }
             .onChange(of: viewModel.allTransactions.count) { _, _ in
@@ -303,19 +308,30 @@ struct ContentView: View {
     }
     
     private var voiceInputSheet: some View {
-        VoiceInputView(voiceService: voiceService) { transcribedText in
-            showingVoiceInput = false
-            // Парсим текст синхронно
-            let parser = VoiceInputParser(
-                accounts: accountsViewModel.accounts,
-                categories: categoriesViewModel.customCategories,
-                subcategories: categoriesViewModel.subcategories,
-                defaultAccount: accountsViewModel.accounts.first
-            )
-            let parsed = parser.parse(transcribedText)
-            // Устанавливаем parsedOperation - sheet откроется автоматически через .sheet(item:)
-            parsedOperation = parsed
-        }
+        // Создаем parser один раз для всего sheet
+        let parser = VoiceInputParser(
+            categoriesViewModel: categoriesViewModel,
+            accountsViewModel: accountsViewModel,
+            transactionsViewModel: viewModel
+        )
+
+        return VoiceInputView(
+            voiceService: voiceService,
+            onComplete: { transcribedText in
+                // Проверяем, что текст не пустой
+                guard !transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    // Если текст пустой, просто закрываем voice input
+                    showingVoiceInput = false
+                    return
+                }
+                
+                showingVoiceInput = false
+                let parsed = parser.parse(transcribedText)
+                // Устанавливаем parsedOperation - sheet откроется автоматически через .sheet(item:)
+                parsedOperation = parsed
+            },
+            parser: parser
+        )
     }
 
     // Обновление кешированного summary

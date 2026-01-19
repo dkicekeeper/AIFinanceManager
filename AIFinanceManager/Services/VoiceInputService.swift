@@ -39,13 +39,27 @@ class VoiceInputService: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var transcribedText = ""
     @Published var errorMessage: String?
-    
+
     private var audioEngine: AVAudioEngine?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let speechRecognizer: SFSpeechRecognizer?
     private var finalTranscription: String = ""
     private var isStopping: Bool = false // Флаг для предотвращения множественных вызовов stop
+
+    // MARK: - Voice Activity Detection
+
+    /// Silence detector for automatic stop
+    private var silenceDetector: SilenceDetector?
+
+    /// VAD enabled flag (can be toggled by user)
+    @Published var isVADEnabled: Bool = VoiceInputConstants.vadEnabled
+
+    // MARK: - Dynamic Context (iOS 17+)
+
+    /// Weak references to ViewModels for contextual strings
+    weak var categoriesViewModel: CategoriesViewModel?
+    weak var accountsViewModel: AccountsViewModel?
     
     override init() {
         // Инициализируем распознаватель для русского языка
@@ -108,13 +122,29 @@ class VoiceInputService: NSObject, ObservableObject {
     
     // Начать запись
     func startRecording() async throws {
+        #if DEBUG
+        if VoiceInputConstants.enableParsingDebugLogs {
+            print("\(VoiceInputConstants.debugLogPrefix) 🎤 Starting recording...")
+        }
+        #endif
+
         // Проверяем доступность
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
+            #if DEBUG
+            if VoiceInputConstants.enableParsingDebugLogs {
+                print("\(VoiceInputConstants.debugLogPrefix) ❌ Speech recognizer not available")
+            }
+            #endif
             throw VoiceInputError.speechRecognitionNotAvailable
         }
-        
+
         // Если уже записываем, не делаем ничего
         if isRecording {
+            #if DEBUG
+            if VoiceInputConstants.enableParsingDebugLogs {
+                print("\(VoiceInputConstants.debugLogPrefix) ⚠️ Already recording")
+            }
+            #endif
             return
         }
         
@@ -126,6 +156,25 @@ class VoiceInputService: NSObject, ObservableObject {
         finalTranscription = ""
         errorMessage = nil
         isStopping = false
+
+        // Initialize silence detector if VAD is enabled
+        if isVADEnabled {
+            silenceDetector = SilenceDetector()
+
+            #if DEBUG
+            if VoiceInputConstants.enableParsingDebugLogs {
+                print("\(VoiceInputConstants.debugLogPrefix) VAD enabled - silence detector initialized")
+            }
+            #endif
+        } else {
+            silenceDetector = nil
+
+            #if DEBUG
+            if VoiceInputConstants.enableParsingDebugLogs {
+                print("\(VoiceInputConstants.debugLogPrefix) VAD disabled")
+            }
+            #endif
+        }
         
         // Настраиваем аудио сессию
         let audioSession = AVAudioSession.sharedInstance()
@@ -154,6 +203,18 @@ class VoiceInputService: NSObject, ObservableObject {
                 recognitionRequest.requiresOnDeviceRecognition = true
             }
         }
+
+        // Dynamic Context Injection (iOS 17+)
+        if #available(iOS 17.0, *) {
+            let contextualStrings = buildContextualStrings()
+            recognitionRequest.contextualStrings = contextualStrings
+
+            #if DEBUG
+            if VoiceInputConstants.enableParsingDebugLogs {
+                print("\(VoiceInputConstants.debugLogPrefix) Added \(contextualStrings.count) contextual strings")
+            }
+            #endif
+        }
         
         // Настраиваем аудио engine
         audioEngine = AVAudioEngine()
@@ -164,8 +225,27 @@ class VoiceInputService: NSObject, ObservableObject {
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
 
-        inputNode.installTap(onBus: 0, bufferSize: VoiceInputConstants.audioBufferSize, format: recordingFormat) { buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: VoiceInputConstants.audioBufferSize, format: recordingFormat) { [weak self] buffer, _ in
+            // Send buffer to speech recognition
             recognitionRequest.append(buffer)
+
+            // Analyze for silence detection if VAD is enabled
+            if let self = self, self.isVADEnabled, let detector = self.silenceDetector {
+                Task { @MainActor in
+                    let silenceDetected = detector.analyzeSample(buffer)
+
+                    if silenceDetected {
+                        #if DEBUG
+                        if VoiceInputConstants.enableParsingDebugLogs {
+                            print("\(VoiceInputConstants.debugLogPrefix) 🛑 VAD triggered - stopping recording")
+                        }
+                        #endif
+
+                        // Auto-stop recording
+                        self.stopRecording()
+                    }
+                }
+            }
         }
         
         // Запускаем аудио engine
@@ -179,20 +259,33 @@ class VoiceInputService: NSObject, ObservableObject {
         // Запускаем распознавание
         recognitionTask = recognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
             guard let self = self else { return }
-            
+
             if let result = result {
                 Task { @MainActor in
                     let transcription = result.bestTranscription.formattedString
                     self.transcribedText = transcription
-                    
+
+                    #if DEBUG
+                    if VoiceInputConstants.enableParsingDebugLogs {
+                        print("\(VoiceInputConstants.debugLogPrefix) Transcription: \(transcription)")
+                        print("\(VoiceInputConstants.debugLogPrefix) isFinal: \(result.isFinal)")
+                    }
+                    #endif
+
                     // Сохраняем финальную транскрипцию
                     if result.isFinal {
                         self.finalTranscription = transcription
                     }
                 }
             }
-            
+
             if let error = error {
+                #if DEBUG
+                if VoiceInputConstants.enableParsingDebugLogs {
+                    print("\(VoiceInputConstants.debugLogPrefix) Recognition error: \(error.localizedDescription)")
+                }
+                #endif
+
                 Task { @MainActor in
                     if !self.isRecording {
                         // Игнорируем ошибки после остановки
@@ -203,8 +296,14 @@ class VoiceInputService: NSObject, ObservableObject {
                 }
             }
         }
-        
+
         isRecording = true
+
+        #if DEBUG
+        if VoiceInputConstants.enableParsingDebugLogs {
+            print("\(VoiceInputConstants.debugLogPrefix) ✅ Recording started successfully")
+        }
+        #endif
     }
     
     // Остановить запись (асинхронная версия для UI)
@@ -255,6 +354,10 @@ class VoiceInputService: NSObject, ObservableObject {
             print("Ошибка при деактивации аудио сессии: \(error)")
         }
 
+        // Reset silence detector
+        silenceDetector?.reset()
+        silenceDetector = nil
+
         // Сбрасываем флаг остановки
         isStopping = false
     }
@@ -263,6 +366,67 @@ class VoiceInputService: NSObject, ObservableObject {
     func getFinalText() -> String {
         // Используем финальную транскрипцию, если доступна, иначе текущую
         return finalTranscription.isEmpty ? transcribedText : finalTranscription
+    }
+
+    // MARK: - Dynamic Context Injection (iOS 17+)
+
+    /// Build contextual strings for improved Speech Recognition
+    /// - Returns: Array of contextual strings for better recognition of custom categories, accounts, etc.
+    @available(iOS 17.0, *)
+    private func buildContextualStrings() -> [String] {
+        var context: [String] = []
+
+        // 1. Account names with common patterns
+        if let accountsVM = accountsViewModel {
+            let accountNames = accountsVM.accounts.map { $0.name.lowercased() }
+            context.append(contentsOf: accountNames)
+
+            // Add variations: "карта X", "счет X", "со счета X"
+            for name in accountNames {
+                context.append("карта \(name)")
+                context.append("счет \(name)")
+                context.append("счёт \(name)")
+                context.append("с карты \(name)")
+                context.append("со счета \(name)")
+                context.append("со счёта \(name)")
+            }
+        }
+
+        // 2. Category names with common patterns
+        if let categoriesVM = categoriesViewModel {
+            let categoryNames = categoriesVM.customCategories.map { $0.name.lowercased() }
+            context.append(contentsOf: categoryNames)
+
+            // Add variations: "на X", "для X", "в X"
+            for name in categoryNames {
+                context.append("на \(name)")
+                context.append("для \(name)")
+                context.append("в \(name)")
+            }
+        }
+
+        // 3. Subcategories
+        if let categoriesVM = categoriesViewModel {
+            let subcategoryNames = categoriesVM.subcategories.map { $0.name.lowercased() }
+            context.append(contentsOf: subcategoryNames)
+        }
+
+        // 4. Common financial phrases
+        let commonPhrases = [
+            // Currencies
+            "тенге", "тг", "доллар", "долларов", "евро", "рубль", "рублей",
+            // Transaction types
+            "пополнение", "расход", "доход", "перевод", "оплата", "покупка",
+            "зачисление", "списание", "возврат",
+            // Amount words
+            "тысяча", "тысяч", "миллион",
+            // Time words
+            "вчера", "сегодня", "позавчера"
+        ]
+        context.append(contentsOf: commonPhrases)
+
+        // Remove duplicates and return
+        return Array(Set(context))
     }
 }
 

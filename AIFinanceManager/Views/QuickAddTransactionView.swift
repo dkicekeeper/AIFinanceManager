@@ -177,7 +177,6 @@ struct AddTransactionModal: View {
     @State private var showingCategoryHistory = false
     @State private var isSaving = false
     @State private var validationError: String?
-    @FocusState private var isAmountFocused: Bool
     
     init(
         category: String,
@@ -218,119 +217,90 @@ struct AddTransactionModal: View {
     // Форматирование теперь происходит только при сохранении
     
     private var formContent: some View {
-        Form {
-                    if !accounts.isEmpty {
-                        Section(header: Text(String(localized: "quickAdd.account"))) {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(accounts) { account in
-                                        AccountRadioButton(
-                                            account: account,
-                                            isSelected: selectedAccountId == account.id,
-                                            onTap: {
-                                                selectedAccountId = account.id
-                                            }
-                                        )
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        }
+        ScrollView {
+            VStack(spacing: AppSpacing.lg) {
+                // 1. Picker (нет - категория уже выбрана)
+                
+                // 2. Сумма с выбором валюты
+                AmountInputView(
+                    amount: $amountText,
+                    selectedCurrency: $selectedCurrency,
+                    errorMessage: validationError,
+                    onAmountChange: { _ in
+                        // Сбросить ошибку при вводе
+                        validationError = nil
                     }
-                    
-                    Section(header: Text(String(localized: "quickAdd.amount"))) {
-                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                            HStack {
-                                TextField("0.00", text: $amountText)
-                                    .keyboardType(.decimalPad)
-                                    .focused($isAmountFocused)
-                                    .onChange(of: amountText) {
-                                        // Сбросить ошибку при вводе
-                                        validationError = nil
+                )
+                .padding(.horizontal, AppSpacing.lg)
+                
+                // 3. Счет
+                if !accounts.isEmpty {
+                    AccountSelectorView(
+                        accounts: accounts,
+                        selectedAccountId: $selectedAccountId
+                    )
+                }
+                
+                // 4. Категория (уже выбрана, не показываем)
+                
+                // 5. Подкатегории
+                if categoryId != nil, !availableSubcategories.isEmpty {
+                    VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                        ForEach(availableSubcategories) { subcategory in
+                            SubcategoryRow(
+                                subcategory: subcategory,
+                                isSelected: Binding(
+                                    get: { selectedSubcategoryIds.contains(subcategory.id) },
+                                    set: { isSelected in
+                                        if isSelected {
+                                            selectedSubcategoryIds.insert(subcategory.id)
+                                        } else {
+                                            selectedSubcategoryIds.remove(subcategory.id)
+                                        }
                                     }
-
-                                Picker("", selection: $selectedCurrency) {
-                                    ForEach(["KZT", "USD", "EUR", "RUB", "GBP"], id: \.self) { currency in
-                                        Text(Formatting.currencySymbol(for: currency)).tag(currency)
-                                    }
-                                }
-                                .pickerStyle(MenuPickerStyle())
-                                .frame(width: 80)
-                                .disabled(isSaving)
-                            }
-
-                            if let error = validationError {
-                                Text(error)
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(.red)
-                            }
-                        }
-                    }
-                    
-                    Section(header: Text(String(localized: "quickAdd.description"))) {
-                        TextField(String(localized: "quickAdd.descriptionPlaceholder"), text: $descriptionText, axis: .vertical)
-                            .lineLimit(3...6)
-                    }
-                    
-                    Section(header: Text(String(localized: "quickAdd.recurring"))) {
-                        Toggle(String(localized: "quickAdd.makeRecurring"), isOn: $isRecurring)
-
-                        if isRecurring {
-                            Picker(String(localized: "quickAdd.frequency"), selection: $selectedFrequency) {
-                                ForEach(RecurringFrequency.allCases, id: \.self) { frequency in
-                                    Text(frequency.displayName).tag(frequency)
-                                }
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
-                        }
-                    }
-                    
-                    // Подкатегории
-                    if categoryId != nil, !availableSubcategories.isEmpty {
-                        Section(header: Text(String(localized: "quickAdd.subcategories"))) {
-                            ForEach(availableSubcategories) { subcategory in
-                                HStack {
-                                    Text(subcategory.name)
-                                    Spacer()
-                                    if selectedSubcategoryIds.contains(subcategory.id) {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(.blue)
-                                    }
-                                }
-                                .contentShape(Rectangle())
-                                .onTapGesture {
+                                ),
+                                onToggle: {
                                     if selectedSubcategoryIds.contains(subcategory.id) {
                                         selectedSubcategoryIds.remove(subcategory.id)
                                     } else {
                                         selectedSubcategoryIds.insert(subcategory.id)
                                     }
                                 }
-                            }
-                            
-                            Button(action: {
-                                showingSubcategorySearch = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "magnifyingglass")
-                                    Text(String(localized: "quickAdd.searchSubcategories"))
-                                }
-                                .foregroundColor(.blue)
-                            }
+                            )
                         }
-                    } else if categoryId != nil {
-                        Section(header: Text(String(localized: "quickAdd.subcategories"))) {
-                            Button(action: {
-                                showingSubcategorySearch = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "magnifyingglass")
-                                    Text(String(localized: "quickAdd.searchAndAddSubcategories"))
-                                }
-                                .foregroundColor(.blue)
-                            }
+                        
+                        SubcategorySearchButton(
+                            title: String(localized: "quickAdd.searchSubcategories")
+                        ) {
+                            showingSubcategorySearch = true
                         }
                     }
+                    .padding(.horizontal, AppSpacing.lg)
+                } else if categoryId != nil {
+                    SubcategorySearchButton(
+                        title: String(localized: "quickAdd.searchAndAddSubcategories")
+                    ) {
+                        showingSubcategorySearch = true
+                    }
+                    .padding(.horizontal, AppSpacing.lg)
                 }
+                
+                // 6. Повтор операции
+                RecurringToggleView(
+                    isRecurring: $isRecurring,
+                    selectedFrequency: $selectedFrequency,
+                    toggleTitle: String(localized: "quickAdd.makeRecurring"),
+                    frequencyTitle: String(localized: "quickAdd.frequency")
+                )
+                
+                // 7. Описание
+                DescriptionTextField(
+                    text: $descriptionText,
+                    placeholder: String(localized: "quickAdd.descriptionPlaceholder")
+                )
+            }
+            .padding(.vertical, AppSpacing.lg)
+        }
     }
     
     var body: some View {
@@ -413,7 +383,6 @@ struct AddTransactionModal: View {
     }
     
     private func setupOnAppear() {
-        isAmountFocused = true
         if selectedAccountId == nil {
             selectedAccountId = accounts.first?.id
         }

@@ -12,79 +12,131 @@ struct VoiceInputView: View {
     @ObservedObject var voiceService: VoiceInputService
     @Environment(\.dismiss) var dismiss
     let onComplete: (String) -> Void
-    
+    let parser: VoiceInputParser
+
     @State private var showingPermissionAlert = false
     @State private var permissionMessage = ""
+    @State private var recognizedEntities: [RecognizedEntity] = []
+    @State private var showingErrorAlert = false
+    @State private var errorAlertMessage = ""
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 32) {
+            VStack(spacing: 0) {
                 Spacer()
                 
-                // Индикатор записи
-                if voiceService.isRecording {
-                    RecordingIndicatorView()
-                }
-                
-                // Live транскрипция
+                // Live транскрипция с подсветкой сущностей (по центру)
                 ScrollView {
-                    Text(voiceService.transcribedText.isEmpty ? String(localized: "voice.speak") : voiceService.transcribedText)
-                        .font(.title3)
-                        .foregroundColor(voiceService.transcribedText.isEmpty ? .secondary : .primary)
-                        .multilineTextAlignment(.center)
-                        .padding()
+                    VStack {
+                        Spacer()
+                        
+                        if voiceService.transcribedText.isEmpty {
+                            Text(String(localized: "voice.speak"))
+                                .font(AppTypography.h4)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, AppSpacing.lg)
+                        } else {
+                            HighlightedText(
+                                text: voiceService.transcribedText,
+                                entities: recognizedEntities,
+                                font: AppTypography.h4
+                            )
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, AppSpacing.lg)
+                        }
+                        
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .frame(maxHeight: VoiceInputConstants.transcriptionMaxHeight)
-                
-                Spacer()
-                
-                // Кнопка записи/стоп
-                Button(action: {
-                    if voiceService.isRecording {
-                        voiceService.stopRecording()
-                        // Даем время на финализацию перед вызовом onComplete
-                        Task {
-                            try? await Task.sleep(nanoseconds: VoiceInputConstants.finalizationDelayMs * 1_000_000)
-                            let finalText = voiceService.getFinalText()
-                            if !finalText.isEmpty {
+
+                // VAD Toggle (показываем только когда НЕ записываем)
+                if !voiceService.isRecording {
+                    VStack(spacing: AppSpacing.sm) {
+                        Toggle(String(localized: "voice.vadToggle"), isOn: $voiceService.isVADEnabled)
+                            .font(AppTypography.caption)
+                            .padding(.horizontal, AppSpacing.lg)
+
+                        Text(String(localized: "voice.vadDescription"))
+                            .font(AppTypography.caption2)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, AppSpacing.lg)
+                    }
+                    .padding(.vertical, AppSpacing.md)
+                }
+
+                // Индикатор записи (Siri-like wave animation) - чуть выше bottom toolbar
+                if voiceService.isRecording {
+                    SiriWaveRecordingView()
+                        .padding(.bottom, AppSpacing.xl)
+                }
+
+                // Bottom toolbar с кнопкой стоп
+                if voiceService.isRecording {
+                    HStack {
+                        Spacer()
+                        
+                        Button(action: {
+                            voiceService.stopRecording()
+                            // Даем время на финализацию перед вызовом onComplete
+                            Task {
+                                try? await Task.sleep(nanoseconds: VoiceInputConstants.finalizationDelayMs * 1_000_000)
+                                
                                 await MainActor.run {
-                                    onComplete(finalText)
-                                    // onComplete closure в ContentView уже закрывает этот view через showingVoiceInput = false
-                                    // поэтому не нужно вызывать dismiss() здесь
-                                }
-                            } else {
-                                // Если текст пустой, закрываем view
-                                await MainActor.run {
-                                    dismiss()
+                                    // Проверяем наличие ошибки
+                                    if let errorMsg = voiceService.errorMessage, !errorMsg.isEmpty {
+                                        errorAlertMessage = errorMsg
+                                        showingErrorAlert = true
+                                        // Не закрываем view при ошибке - показываем alert
+                                        return
+                                    }
+                                    
+                                    let finalText = voiceService.getFinalText()
+                                    if !finalText.isEmpty {
+                                        onComplete(finalText)
+                                        // onComplete closure в ContentView уже закрывает этот view через showingVoiceInput = false
+                                        // поэтому не нужно вызывать dismiss() здесь
+                                    } else {
+                                        // Если текст пустой, показываем сообщение
+                                        errorAlertMessage = String(localized: "voice.emptyText")
+                                        showingErrorAlert = true
+                                    }
                                 }
                             }
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.red)
+                                    .frame(width: 80, height: 80)
+                                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                                
+                                Image(systemName: "stop.fill")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(.white)
+                            }
                         }
-                    }
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(voiceService.isRecording ? Color.red : Color.blue)
-                            .frame(width: 80, height: 80)
-                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
                         
-                        Image(systemName: voiceService.isRecording ? "stop.fill" : "mic.fill")
-                            .font(.system(size: 32))
-                            .foregroundColor(.white)
+                        Spacer()
                     }
+                    .padding(.bottom, AppSpacing.xl)
+                    .background(Color(.systemBackground))
                 }
-                .padding(.bottom, 40)
-                
-                // Кнопка отмены
-                Button(String(localized: "quickAdd.cancel")) {
-                    voiceService.stopRecording()
-                    dismiss()
-                }
-                .foregroundColor(.secondary)
-                .padding(.bottom, 20)
             }
-            .padding()
             .navigationTitle(String(localized: "voice.title"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        voiceService.stopRecording()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                }
+            }
             .alert(String(localized: "voice.error"), isPresented: $showingPermissionAlert) {
                 Button(String(localized: "voice.ok")) {
                     dismiss()
@@ -102,6 +154,38 @@ struct VoiceInputView: View {
                 }
             } message: {
                 Text(permissionMessage.isEmpty ? String(localized: "voice.errorMessage") : permissionMessage)
+            }
+            .alert(String(localized: "voice.error"), isPresented: $showingErrorAlert) {
+                Button(String(localized: "voice.ok")) {
+                    // Закрываем view только после подтверждения ошибки
+                    dismiss()
+                }
+            } message: {
+                Text(errorAlertMessage.isEmpty ? String(localized: "voice.errorMessage") : errorAlertMessage)
+            }
+            .onChange(of: voiceService.errorMessage) { _, newError in
+                // Обрабатываем ошибки из VoiceInputService
+                // Проверяем, что это новая ошибка (не пустая) и мы еще не показывали alert
+                if let error = newError, !error.isEmpty, !showingErrorAlert {
+                    #if DEBUG
+                    print("🔴 VoiceInputView: Error detected - \(error)")
+                    #endif
+                    errorAlertMessage = error
+                    showingErrorAlert = true
+                }
+            }
+            .onChange(of: voiceService.isRecording) { oldValue, newValue in
+                // Если запись остановилась из-за ошибки, проверяем errorMessage
+                if oldValue && !newValue {
+                    // Запись только что остановилась
+                    if let error = voiceService.errorMessage, !error.isEmpty {
+                        #if DEBUG
+                        print("🔴 VoiceInputView: Recording stopped with error - \(error)")
+                        #endif
+                        errorAlertMessage = error
+                        showingErrorAlert = true
+                    }
+                }
             }
             .onAppear {
                 // Автоматически запускаем запись при открытии
@@ -121,6 +205,10 @@ struct VoiceInputView: View {
                         showingPermissionAlert = true
                     }
                 }
+            }
+            .onChange(of: voiceService.transcribedText) { _, newText in
+                // Update recognized entities in real-time
+                recognizedEntities = parser.parseEntitiesLive(from: newText)
             }
             .onDisappear {
                 // Останавливаем запись только если она активна
@@ -154,5 +242,15 @@ struct RecordingIndicatorView: View {
 }
 
 #Preview {
-    VoiceInputView(voiceService: VoiceInputService()) { _ in }
+    @Previewable @State var isPresented = true
+
+    VoiceInputView(
+        voiceService: VoiceInputService(),
+        onComplete: { _ in },
+        parser: VoiceInputParser(
+            categoriesViewModel: CategoriesViewModel(),
+            accountsViewModel: AccountsViewModel(),
+            transactionsViewModel: TransactionsViewModel()
+        )
+    )
 }

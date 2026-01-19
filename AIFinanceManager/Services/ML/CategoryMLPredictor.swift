@@ -38,7 +38,7 @@ class CategoryMLPredictor {
     ///   - type: Тип операции (расход/доход)
     /// - Returns: Кортеж (категория, уверенность 0-1)
     func predict(text: String, amount: Decimal? = nil, type: TransactionType = .expense) -> (category: String?, confidence: Double) {
-        guard let model = model else {
+        guard model != nil else {
             return (nil, 0.0)
         }
 
