@@ -23,6 +23,8 @@ struct VoiceInputConfirmationView: View {
     @State private var selectedAccountId: String?
     @State private var selectedCategoryName: String?
     @State private var selectedSubcategoryNames: Set<String>
+    @State private var selectedSubcategoryIds: Set<String> = []
+    @State private var showingSubcategorySearch = false
     @State private var noteText: String
     
     @State private var accountWarning: String?
@@ -109,7 +111,6 @@ struct VoiceInputConfirmationView: View {
                             }
                         }
                     )
-                    .padding(.horizontal, AppSpacing.lg)
                     
                     // 3. Счет
                     AccountSelectorView(
@@ -137,23 +138,15 @@ struct VoiceInputConfirmationView: View {
                     
                     // 5. Подкатегории
                     if let categoryName = selectedCategoryName,
-                       let category = categoriesViewModel.customCategories.first(where: { $0.name == categoryName }),
-                       !categoriesViewModel.getSubcategoriesForCategory(category.id).isEmpty {
-                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                            ForEach(categoriesViewModel.getSubcategoriesForCategory(category.id), id: \.id) { subcategory in
-                                Toggle(subcategory.name, isOn: Binding(
-                                    get: { selectedSubcategoryNames.contains(subcategory.name) },
-                                    set: { isOn in
-                                        if isOn {
-                                            selectedSubcategoryNames.insert(subcategory.name)
-                                        } else {
-                                            selectedSubcategoryNames.remove(subcategory.name)
-                                        }
-                                    }
-                                ))
+                       let category = categoriesViewModel.customCategories.first(where: { $0.name == categoryName }) {
+                        SubcategorySelectorView(
+                            categoriesViewModel: categoriesViewModel,
+                            categoryId: category.id,
+                            selectedSubcategoryIds: $selectedSubcategoryIds,
+                            onSearchTap: {
+                                showingSubcategorySearch = true
                             }
-                        }
-                        .padding(.horizontal, AppSpacing.lg)
+                        )
                     }
                     
                     // 6. Дата (скрыта, но оставляем для DatePicker)
@@ -169,7 +162,6 @@ struct VoiceInputConfirmationView: View {
                         maxLines: VoiceInputConstants.descriptionMaxLines
                     )
                 }
-                .padding(.vertical, AppSpacing.lg)
             }
             .navigationTitle(String(localized: "voiceConfirmation.title"))
             .navigationBarTitleDisplayMode(.inline)
@@ -190,10 +182,27 @@ struct VoiceInputConfirmationView: View {
                     .disabled(!canSave)
                 }
             }
+            .sheet(isPresented: $showingSubcategorySearch) {
+                if let categoryName = selectedCategoryName,
+                   let category = categoriesViewModel.customCategories.first(where: { $0.name == categoryName }) {
+                    SubcategorySearchView(
+                        categoriesViewModel: categoriesViewModel,
+                        categoryId: category.id,
+                        selectedSubcategoryIds: $selectedSubcategoryIds,
+                        searchText: .constant("")
+                    )
+                }
+            }
             .onAppear {
                 // Убеждаемся, что счет выбран правильно при появлении
                 if selectedAccountId == nil && !accountsViewModel.accounts.isEmpty {
                     selectedAccountId = parsedOperation.accountId ?? accountsViewModel.accounts.first?.id
+                }
+                // Конвертируем имена подкатегорий в ID
+                if !selectedSubcategoryNames.isEmpty {
+                    selectedSubcategoryIds = Set(categoriesViewModel.subcategories
+                        .filter { selectedSubcategoryNames.contains($0.name) }
+                        .map { $0.id })
                 }
                 validateFields()
             }
@@ -367,11 +376,11 @@ struct VoiceInputConfirmationView: View {
         let dateFormatter = DateFormatters.dateFormatter
         let dateString = dateFormatter.string(from: selectedDate)
         
-        // Получаем ID подкатегорий (берем первую выбранную)
+        // Получаем первую подкатегорию для обратной совместимости (subcategory поле)
         var subcategoryId: String? = nil
-        if categoriesViewModel.customCategories.contains(where: { $0.name == categoryName }),
-           let firstSubcategoryName = selectedSubcategoryNames.first {
-            subcategoryId = firstSubcategoryName
+        if !selectedSubcategoryIds.isEmpty {
+            let firstSubcategory = categoriesViewModel.subcategories.first(where: { selectedSubcategoryIds.contains($0.id) })
+            subcategoryId = firstSubcategory?.name
         }
         
         // Конвертируем валюту, если она отличается от валюты счета
@@ -403,6 +412,24 @@ struct VoiceInputConfirmationView: View {
             
             await MainActor.run {
                 transactionsViewModel.addTransaction(transaction)
+                // Получаем ID транзакции после добавления
+                // Ищем транзакцию по более точным критериям
+                let addedTransaction = transactionsViewModel.allTransactions.first { tx in
+                    tx.date == dateString &&
+                    tx.description == (noteText.isEmpty ? originalText : noteText) &&
+                    tx.amount == amount &&
+                    tx.category == categoryName &&
+                    tx.accountId == accountId &&
+                    tx.type == selectedType
+                }
+                
+                // Связываем подкатегории с транзакцией
+                if let transactionId = addedTransaction?.id, !selectedSubcategoryIds.isEmpty {
+                    categoriesViewModel.linkSubcategoriesToTransaction(
+                        transactionId: transactionId,
+                        subcategoryIds: Array(selectedSubcategoryIds)
+                    )
+                }
                 dismiss()
             }
         }

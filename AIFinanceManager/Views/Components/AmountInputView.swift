@@ -56,8 +56,6 @@ struct AmountInputView: View {
                 .minimumScaleFactor(0.3)
                 Spacer()
             }
-//            .frame(height: 80)
-//            .contentShape(Rectangle())
             .onTapGesture {
                 isFocused = true
             }
@@ -74,23 +72,19 @@ struct AmountInputView: View {
                 }
             
             // Выбор валюты (центрированный)
-            HStack {
-                Spacer()
-                CurrencySelectorView(selectedCurrency: $selectedCurrency)
-                Spacer()
-            }
-            
+            CurrencySelectorView(selectedCurrency: $selectedCurrency)
+
             // Ошибка (по центру)
             if let error = errorMessage {
                 Text(error)
                     .font(AppTypography.caption)
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, AppSpacing.xs)
+//                    .frame(maxWidth: .infinity)
+//                    .padding(.top, AppSpacing.xs)
             }
         }
-//        .padding(AppSpacing.lg)
+        .padding(AppSpacing.lg)
         .background(
             GeometryReader { geometry in
                 Color.clear

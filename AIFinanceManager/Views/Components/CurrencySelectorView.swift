@@ -2,7 +2,7 @@
 //  CurrencySelectorView.swift
 //  AIFinanceManager
 //
-//  Currency selector using FilterChip components
+//  Currency selector using Menu picker style
 //
 
 import SwiftUI
@@ -20,20 +20,28 @@ struct CurrencySelectorView: View {
     }
     
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: AppSpacing.md) {
-                ForEach(availableCurrencies, id: \.self) { currency in
-                    FilterChip(
-                        title: Formatting.currencySymbol(for: currency),
-                        isSelected: selectedCurrency == currency,
-                        onTap: {
-                            selectedCurrency = currency
-                            HapticManager.selection()
+        Menu {
+            ForEach(availableCurrencies, id: \.self) { currency in
+                Button(action: {
+                    selectedCurrency = currency
+                    HapticManager.selection()
+                }) {
+                    HStack {
+                        Text(Formatting.currencySymbol(for: currency))
+                        Spacer()
+                        if selectedCurrency == currency {
+                            Image(systemName: "checkmark")
                         }
-                    )
+                    }
                 }
             }
-//            .padding(.horizontal, AppSpacing.lg)
+        } label: {
+            HStack(spacing: AppSpacing.sm) {
+                Text(Formatting.currencySymbol(for: selectedCurrency))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: AppIconSize.sm))
+            }
+            .filterChipStyle()
         }
     }
 }

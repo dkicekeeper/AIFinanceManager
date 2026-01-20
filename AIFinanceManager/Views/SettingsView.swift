@@ -91,6 +91,15 @@ struct SettingsView: View {
                         Text(String(localized: "settings.categories"))
                     }
                 }
+                
+                NavigationLink(destination: SubcategoriesManagementView(
+                    categoriesViewModel: categoriesViewModel
+                )) {
+                    HStack {
+                        Image(systemName: "tag.fill")
+                        Text(String(localized: "settings.subcategories"))
+                    }
+                }
 
                 NavigationLink(destination: AccountsManagementView(
                     accountsViewModel: accountsViewModel,

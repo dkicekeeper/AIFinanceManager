@@ -41,7 +41,8 @@ struct RecurringToggleView: View {
                 .padding(.top, AppSpacing.sm)
             }
         }
-        .padding(.horizontal, AppSpacing.lg)
+        .padding(AppSpacing.lg)
+//        .background(.primary .opacity(0.05))
     }
 }
 

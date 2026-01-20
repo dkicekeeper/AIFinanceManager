@@ -19,12 +19,7 @@ struct AnalyticsCard: View {
                     Text(String(localized: "analytics.history"))
                         .font(AppTypography.h3)
                         .foregroundStyle(.primary)
-
                     Spacer()
-
-//                    Image(systemName: "chevron.right")
-//                        .font(.system(size: AppIconSize.sm))
-//                        .foregroundStyle(.primary)
                 }
 
                 // Progress bar with amounts
@@ -40,9 +35,7 @@ struct AnalyticsCard: View {
                         Text(String(localized: "analytics.planned"))
                             .font(AppTypography.bodySmall)
                             .foregroundStyle(.primary)
-
                         Spacer()
-
                         Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
                             .font(AppTypography.bodySmall)
                             .fontWeight(.semibold)

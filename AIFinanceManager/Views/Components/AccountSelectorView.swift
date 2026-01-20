@@ -33,10 +33,10 @@ struct AccountSelectorView: View {
             if accounts.isEmpty {
                 if let message = emptyStateMessage {
                     Text(message)
-                        .font(AppTypography.bodySmall)
+                        .font(AppTypography.bodyLarge)
                         .foregroundColor(.secondary)
-                        .padding(.vertical, AppSpacing.sm)
-                        .padding(.horizontal, AppSpacing.lg)
+                        .frame(maxWidth: .infinity)
+                        .padding(AppSpacing.lg)
                 }
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -52,22 +52,17 @@ struct AccountSelectorView: View {
                             )
                         }
                     }
-                    .padding(.vertical, AppSpacing.xs)
-                    .padding(.horizontal, AppSpacing.lg)
+                    
                 }
+                .padding(AppSpacing.lg)
                 .scrollClipDisabled()
-                .frame(maxWidth: .infinity)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.sm)
-                        .stroke(warningMessage != nil ? Color.orange : Color.clear, lineWidth: 1)
-                        .padding(.horizontal, AppSpacing.lg)
-                )
             }
             
             if let warning = warningMessage {
                 WarningMessageView(message: warning)
             }
         }
+//        .background(.primary .opacity(0.05))
     }
 }
 

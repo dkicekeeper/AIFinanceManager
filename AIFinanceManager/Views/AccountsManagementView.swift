@@ -32,13 +32,13 @@ struct AccountsManagementView: View {
                         transactionsViewModel.recalculateAccountBalances()
                     }
                 )
-                .padding(.horizontal)
-                .padding(.vertical, 4)
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
+//                .padding(.horizontal, AppSpacing.lg)
+//                .padding(.vertical, AppSpacing.xs)
+//                .listRowInsets(EdgeInsets())
+//                .listRowSeparator(.hidden)
             }
         }
-        .listStyle(PlainListStyle())
+//        .listStyle(PlainListStyle())
         .navigationTitle(String(localized: "settings.accounts"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -51,7 +51,7 @@ struct AccountsManagementView: View {
             )
         }
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .bottomBar) {
                 Menu {
                     Button(action: { showingAddAccount = true }) {
                         Label("Новый счёт", systemImage: "creditcard")
@@ -62,6 +62,7 @@ struct AccountsManagementView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .tint(.blue)
             }
         }
         .sheet(isPresented: $showingAddAccount) {
@@ -134,66 +135,6 @@ struct AccountsManagementView: View {
                         onCancel: { editingAccount = nil }
                     )
                 }
-            }
-        }
-    }
-}
-
-struct AccountRow: View {
-    let account: Account
-    let currency: String
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            // Логотип банка
-            account.bankLogo.image(size: 32)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(account.name)
-                    .font(.title3)
-                    .fontWeight(.medium)
-                
-                Text(Formatting.formatCurrency(account.balance, currency: account.currency))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                if let depositInfo = account.depositInfo {
-                    let interestToToday = DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
-                    if interestToToday > 0 {
-                        let formattedAmount = Formatting.formatCurrency(NSDecimalNumber(decimal: interestToToday).doubleValue, currency: account.currency)
-                        Text(String(localized: "account.interestToday", defaultValue: "Interest today: \(formattedAmount)"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    if let nextPosting = DepositInterestService.nextPostingDate(depositInfo: depositInfo) {
-                        let formatter = DateFormatters.displayDateFormatter
-                        let dateString = formatter.string(from: nextPosting)
-                        Text(String(localized: "account.nextPosting", defaultValue: "Next posting: \(dateString)"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            
-            Spacer()
-            
-            if account.isDeposit {
-                Image(systemName: "banknote")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-            }
-        }
-        .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            onEdit()
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive, action: onDelete) {
-                Label("Delete", systemImage: "trash")
             }
         }
     }
@@ -399,11 +340,38 @@ struct BankLogoRow: View {
     }
 }
 
-#Preview {
+#Preview("Accounts Management") {
     let coordinator = AppCoordinator()
-    AccountsManagementView(
-        accountsViewModel: coordinator.accountsViewModel,
-        depositsViewModel: coordinator.depositsViewModel,
-        transactionsViewModel: coordinator.transactionsViewModel
+    NavigationView {
+        AccountsManagementView(
+            accountsViewModel: coordinator.accountsViewModel,
+            depositsViewModel: coordinator.depositsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel
+        )
+    }
+}
+
+#Preview("Account Row") {
+    let coordinator = AppCoordinator()
+    let sampleAccount = coordinator.accountsViewModel.accounts.first ?? Account(
+        id: "preview",
+        name: "Sample Account",
+        balance: 10000,
+        currency: "KZT",
+        bankLogo: .kaspi
     )
+    
+    List {
+        AccountRow(
+            account: sampleAccount,
+            currency: "KZT",
+            onEdit: {},
+            onDelete: {}
+        )
+        .padding(.horizontal, AppSpacing.lg)
+        .padding(.vertical, AppSpacing.xs)
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+    }
+    .listStyle(PlainListStyle())
 }

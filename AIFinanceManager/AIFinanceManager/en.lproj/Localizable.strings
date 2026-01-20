@@ -66,6 +66,7 @@
 "settings.wallpaper" = "Home Wallpaper";
 "settings.dataManagement" = "Data Management";
 "settings.categories" = "Categories";
+"settings.subcategories" = "Subcategories";
 "settings.accounts" = "Accounts";
 "settings.exportImport" = "Export & Import";
 "settings.exportData" = "Export Data";
@@ -135,6 +136,8 @@
 "modal.editAccount" = "Edit Account";
 "modal.newCategory" = "New Category";
 "modal.editCategory" = "Edit Category";
+"modal.newSubcategory" = "New Subcategory";
+"modal.editSubcategory" = "Edit Subcategory";
 
 // MARK: - Common
 "common.name" = "Name";
@@ -156,6 +159,16 @@
 "transactionType.income" = "Income";
 "transactionType.expense" = "Expense";
 "transactionType.transfer" = "Transfer";
+
+// MARK: - Transaction Recurring
+"transaction.stopRecurring.title" = "Stop Recurring?";
+"transaction.stopRecurring.message" = "This will stop the recurring transaction. All future transactions will be deleted.";
+"transaction.stopRecurring.confirm" = "Stop Recurring";
+"transaction.stopRecurring.cancel" = "Cancel";
+"transaction.recurring" = "Recurring";
+"accessibility.deleteTransaction" = "Delete transaction";
+"accessibility.stopRecurring" = "Stop recurring transaction";
+"accessibility.swipeForOptions" = "Swipe left for options";
 
 // MARK: - Accounts Management
 "account.interestToday" = "Interest today: %@";
@@ -290,4 +303,7 @@
 "transactionForm.recurring" = "Recurring";
 "transactionForm.makeRecurring" = "Make this recurring";
 "transactionForm.searchSubcategories" = "Search subcategories";
+"transactionForm.addSubcategory" = "Add subcategory";
+"transactionForm.createSubcategory" = "Create \"%@\"";
 "transactionForm.searchAndAddSubcategories" = "Search and add subcategories";
+"transactionForm.searchOrCreateSubcategory" = "Find or create subcategory";

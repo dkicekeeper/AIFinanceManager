@@ -231,7 +231,6 @@ struct AddTransactionModal: View {
                         validationError = nil
                     }
                 )
-                .padding(.horizontal, AppSpacing.lg)
                 
                 // 3. Счет
                 if !accounts.isEmpty {
@@ -244,45 +243,15 @@ struct AddTransactionModal: View {
                 // 4. Категория (уже выбрана, не показываем)
                 
                 // 5. Подкатегории
-                if categoryId != nil, !availableSubcategories.isEmpty {
-                    VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                        ForEach(availableSubcategories) { subcategory in
-                            SubcategoryRow(
-                                subcategory: subcategory,
-                                isSelected: Binding(
-                                    get: { selectedSubcategoryIds.contains(subcategory.id) },
-                                    set: { isSelected in
-                                        if isSelected {
-                                            selectedSubcategoryIds.insert(subcategory.id)
-                                        } else {
-                                            selectedSubcategoryIds.remove(subcategory.id)
-                                        }
-                                    }
-                                ),
-                                onToggle: {
-                                    if selectedSubcategoryIds.contains(subcategory.id) {
-                                        selectedSubcategoryIds.remove(subcategory.id)
-                                    } else {
-                                        selectedSubcategoryIds.insert(subcategory.id)
-                                    }
-                                }
-                            )
-                        }
-                        
-                        SubcategorySearchButton(
-                            title: String(localized: "quickAdd.searchSubcategories")
-                        ) {
+                if categoryId != nil {
+                    SubcategorySelectorView(
+                        categoriesViewModel: categoriesViewModel,
+                        categoryId: categoryId,
+                        selectedSubcategoryIds: $selectedSubcategoryIds,
+                        onSearchTap: {
                             showingSubcategorySearch = true
                         }
-                    }
-                    .padding(.horizontal, AppSpacing.lg)
-                } else if categoryId != nil {
-                    SubcategorySearchButton(
-                        title: String(localized: "quickAdd.searchAndAddSubcategories")
-                    ) {
-                        showingSubcategorySearch = true
-                    }
-                    .padding(.horizontal, AppSpacing.lg)
+                    )
                 }
                 
                 // 6. Повтор операции
@@ -299,7 +268,6 @@ struct AddTransactionModal: View {
                     placeholder: String(localized: "quickAdd.descriptionPlaceholder")
                 )
             }
-            .padding(.vertical, AppSpacing.lg)
         }
     }
     
@@ -314,6 +282,10 @@ struct AddTransactionModal: View {
                             selectedSubcategoryIds: $selectedSubcategoryIds,
                             searchText: $subcategorySearchText
                         )
+                        .onAppear {
+                            // Сбрасываем поиск при открытии, чтобы показать все подкатегории
+                            subcategorySearchText = ""
+                        }
                     }
             }
             .navigationTitle(category)
@@ -509,10 +481,14 @@ struct AddTransactionModal: View {
             
             // Связываем подкатегории с транзакцией
             if !selectedSubcategoryIds.isEmpty {
+                // Ищем транзакцию по более точным критериям
                 let addedTransaction = transactionsViewModel.allTransactions.first { tx in
                     tx.date == dateString &&
                     tx.description == finalDescription &&
-                    tx.amount == amountDouble
+                    tx.amount == amountDouble &&
+                    tx.category == category &&
+                    tx.accountId == accountId &&
+                    tx.type == type
                 }
 
                 if let transactionId = addedTransaction?.id {

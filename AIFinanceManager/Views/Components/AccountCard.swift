@@ -15,7 +15,6 @@ struct AccountCard: View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.sm) {
                 account.bankLogo.image(size: AppIconSize.xl)
-//                    .foregroundStyle(.primary.opacity(0.7))
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)

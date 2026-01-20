@@ -27,9 +27,9 @@ struct TransactionIconView: View {
             // Recurring badge
             if transaction.recurringSeriesId != nil {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 12))
+                    .font(.system(size: AppIconSize.sm))
                     .foregroundColor(.blue)
-                    .padding(4)
+                    .padding(AppSpacing.xs)
                     .background(Color.white)
                     .clipShape(Circle())
                     .offset(x: 14, y: 14)
@@ -86,21 +86,21 @@ struct TransferAccountInfo: View {
             if let sourceId = transaction.accountId,
                let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
                 HStack(spacing: AppSpacing.xs) {
-                    sourceAccount.bankLogo.image(size: 14)
+                    sourceAccount.bankLogo.image(size: AppIconSize.sm)
                     Text(sourceAccount.name)
-                        .font(AppTypography.body)
+                        .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
                 }
             }
             Image(systemName: "arrow.right")
-                .font(.system(size: 12))
+                .font(.system(size: AppIconSize.sm))
                 .foregroundColor(.secondary)
             if let targetId = transaction.targetAccountId,
                let targetAccount = accounts.first(where: { $0.id == targetId }) {
                 HStack(spacing: AppSpacing.xs) {
-                    targetAccount.bankLogo.image(size: 14)
+                    targetAccount.bankLogo.image(size: AppIconSize.sm)
                     Text(targetAccount.name)
-                        .font(AppTypography.body)
+                        .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
                 }
             }
@@ -118,9 +118,9 @@ struct RegularAccountInfo: View {
         if let accountId = transaction.accountId,
            let account = accounts.first(where: { $0.id == accountId }) {
             HStack(spacing: AppSpacing.xs) {
-                account.bankLogo.image(size: 14)
+                account.bankLogo.image(size: AppIconSize.sm)
                 Text(account.name)
-                    .font(AppTypography.body)
+                    .font(AppTypography.bodySmall)
                     .foregroundColor(.secondary)
             }
         }

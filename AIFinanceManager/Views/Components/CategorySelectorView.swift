@@ -49,10 +49,9 @@ struct CategorySelectorView: View {
             if categories.isEmpty {
                 if let message = emptyStateMessage {
                     Text(message)
-                        .font(AppTypography.bodySmall)
+                        .font(AppTypography.bodyLarge)
                         .foregroundColor(.secondary)
-                        .padding(.vertical, AppSpacing.sm)
-                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(AppSpacing.lg)
                 }
             } else {
                 LazyVGrid(columns: gridColumns, spacing: AppSpacing.md) {
@@ -71,8 +70,7 @@ struct CategorySelectorView: View {
                         )
                     }
                 }
-                .padding(.vertical, AppSpacing.sm)
-                .padding(.horizontal, AppSpacing.lg)
+                .padding(AppSpacing.lg)
                 .overlay(
                     RoundedRectangle(cornerRadius: AppRadius.sm)
                         .stroke(warningMessage != nil ? Color.orange : Color.clear, lineWidth: 1)

@@ -66,6 +66,7 @@
 "settings.wallpaper" = "Обои на главной";
 "settings.dataManagement" = "Управление данными";
 "settings.categories" = "Категории";
+"settings.subcategories" = "Подкатегории";
 "settings.accounts" = "Счета";
 "settings.exportImport" = "Экспорт и импорт";
 "settings.exportData" = "Экспорт данных";
@@ -135,6 +136,8 @@
 "modal.editAccount" = "Редактировать счёт";
 "modal.newCategory" = "Новая категория";
 "modal.editCategory" = "Редактировать";
+"modal.newSubcategory" = "Новая подкатегория";
+"modal.editSubcategory" = "Редактировать подкатегорию";
 
 // MARK: - Common
 "common.name" = "Название";
@@ -156,6 +159,16 @@
 "transactionType.income" = "Доход";
 "transactionType.expense" = "Расход";
 "transactionType.transfer" = "Перевод";
+
+// MARK: - Transaction Recurring
+"transaction.stopRecurring.title" = "Прекратить повторение?";
+"transaction.stopRecurring.message" = "Это прекратит повторение операции. Все будущие транзакции будут удалены.";
+"transaction.stopRecurring.confirm" = "Прекратить повторение";
+"transaction.stopRecurring.cancel" = "Отмена";
+"transaction.recurring" = "Повторяющаяся";
+"accessibility.deleteTransaction" = "Удалить транзакцию";
+"accessibility.stopRecurring" = "Прекратить повторение транзакции";
+"accessibility.swipeForOptions" = "Смахните влево для опций";
 
 // MARK: - Accounts Management
 "account.interestToday" = "Проценты на сегодня: %@";
@@ -290,4 +303,7 @@
 "transactionForm.recurring" = "Повторяющаяся";
 "transactionForm.makeRecurring" = "Сделать повторяющейся";
 "transactionForm.searchSubcategories" = "Поиск подкатегорий";
+"transactionForm.addSubcategory" = "Добавить подкатегорию";
+"transactionForm.createSubcategory" = "Создать \"%@\"";
 "transactionForm.searchAndAddSubcategories" = "Поиск и добавление подкатегорий";
+"transactionForm.searchOrCreateSubcategory" = "Найти или создать подкатегорию";

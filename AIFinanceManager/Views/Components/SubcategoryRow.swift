@@ -15,18 +15,21 @@ struct SubcategoryRow: View {
     var body: some View {
         HStack {
             Text(subcategory.name)
-                .font(AppTypography.body)
+                .font(AppTypography.bodyLarge)
             Spacer()
             if isSelected {
                 Image(systemName: "checkmark")
                     .foregroundColor(.blue)
-                    .font(AppTypography.body)
+                    .font(AppTypography.bodyLarge)
             }
         }
         .contentShape(Rectangle())
         .onTapGesture {
             onToggle()
         }
+//        .padding(AppSpacing.md)
+//        .background(.primary .opacity(0.05))
+        .padding(AppSpacing.lg)
     }
 }
 

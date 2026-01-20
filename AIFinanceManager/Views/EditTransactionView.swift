@@ -42,19 +42,14 @@ struct EditTransactionView: View {
         
         // Добавляем категории из существующих транзакций того же типа
         for tx in transactionsViewModel.allTransactions where tx.type == transactionType {
-            if !tx.category.isEmpty && tx.category != "Uncategorized" {
+            if !tx.category.isEmpty {
                 categories.insert(tx.category)
             }
         }
         
         // Если категория текущей транзакции не найдена, добавляем её
-        if !transaction.category.isEmpty && transaction.category != "Uncategorized" {
+        if !transaction.category.isEmpty {
             categories.insert(transaction.category)
-        }
-        
-        // Добавляем "Uncategorized" если нет категорий
-        if categories.isEmpty {
-            categories.insert("Uncategorized")
         }
         
         return Array(categories).sorted()
@@ -69,6 +64,15 @@ struct EditTransactionView: View {
         return categoriesViewModel.getSubcategoriesForCategory(categoryId)
     }
     
+    private var canSave: Bool {
+        // Для переводов категория не нужна
+        if transaction.type == .internalTransfer {
+            return true
+        }
+        // Для остальных типов категория обязательна
+        return !selectedCategory.isEmpty &&
+               availableCategories.contains(selectedCategory)
+    }
     
     var body: some View {
         NavigationView {
@@ -82,7 +86,6 @@ struct EditTransactionView: View {
                         selectedCurrency: $selectedCurrency,
                         errorMessage: showingError ? errorMessage : nil
                     )
-                    .padding(.horizontal, AppSpacing.lg)
                     
                     // 3. Счет
                     if !accounts.isEmpty {
@@ -119,43 +122,15 @@ struct EditTransactionView: View {
                         )
                         
                         // 5. Подкатегории
-                        if categoryId != nil, !availableSubcategories.isEmpty {
-                            VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                                ForEach(availableSubcategories) { subcategory in
-                                    SubcategoryRow(
-                                        subcategory: subcategory,
-                                        isSelected: Binding(
-                                            get: { selectedSubcategoryIds.contains(subcategory.id) },
-                                            set: { isSelected in
-                                                if isSelected {
-                                                    selectedSubcategoryIds.insert(subcategory.id)
-                                                } else {
-                                                    selectedSubcategoryIds.remove(subcategory.id)
-                                                }
-                                            }
-                                        ),
-                                        onToggle: {
-                                            if selectedSubcategoryIds.contains(subcategory.id) {
-                                                selectedSubcategoryIds.remove(subcategory.id)
-                                            } else {
-                                                selectedSubcategoryIds.insert(subcategory.id)
-                                            }
-                                        }
-                                    )
-                                }
-                                
-                                SubcategorySearchButton {
+                        if categoryId != nil {
+                            SubcategorySelectorView(
+                                categoriesViewModel: categoriesViewModel,
+                                categoryId: categoryId,
+                                selectedSubcategoryIds: $selectedSubcategoryIds,
+                                onSearchTap: {
                                     showingSubcategorySearch = true
                                 }
-                            }
-                            .padding(.horizontal, AppSpacing.lg)
-                        } else if categoryId != nil {
-                            SubcategorySearchButton(
-                                title: String(localized: "transactionForm.searchAndAddSubcategories")
-                            ) {
-                                showingSubcategorySearch = true
-                            }
-                            .padding(.horizontal, AppSpacing.lg)
+                            )
                         }
                     }
                     
@@ -171,7 +146,6 @@ struct EditTransactionView: View {
                         placeholder: String(localized: "transactionForm.descriptionPlaceholder")
                     )
                 }
-                .padding(.vertical, AppSpacing.lg)
             }
             .navigationTitle(String(localized: "transactionForm.editTransaction"))
             .navigationBarTitleDisplayMode(.inline)
@@ -189,6 +163,7 @@ struct EditTransactionView: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
+                    .disabled(canSave == false)
                 }
             }
             .dateButtonsSafeArea(selectedDate: $selectedDate) { date in
@@ -201,11 +176,21 @@ struct EditTransactionView: View {
                     selectedSubcategoryIds: $selectedSubcategoryIds,
                     searchText: $subcategorySearchText
                 )
+                .onAppear {
+                    // Сбрасываем поиск при открытии, чтобы показать все подкатегории
+                    subcategorySearchText = ""
+                }
             }
             .onAppear {
                 amountText = String(format: "%.2f", transaction.amount)
                 descriptionText = transaction.description
-                selectedCategory = transaction.category
+                // Устанавливаем категорию только если она существует в доступных
+                if availableCategories.contains(transaction.category) {
+                    selectedCategory = transaction.category
+                } else {
+                    // Если категория не найдена, оставляем пустой (пользователь должен выбрать)
+                    selectedCategory = ""
+                }
                 selectedAccountId = transaction.accountId
                 selectedTargetAccountId = transaction.targetAccountId
                 selectedCurrency = transaction.currency
@@ -253,6 +238,17 @@ struct EditTransactionView: View {
             showingError = true
             HapticManager.warning()
             return
+        }
+        
+        // Валидация: категория обязательна (только для не-переводов)
+        if transaction.type != .internalTransfer {
+            guard !selectedCategory.isEmpty,
+                  availableCategories.contains(selectedCategory) else {
+                errorMessage = String(localized: "transactionForm.selectCategory")
+                showingError = true
+                HapticManager.warning()
+                return
+            }
         }
         
         // Валидация для переводов: предотвращаем перевод самому себе

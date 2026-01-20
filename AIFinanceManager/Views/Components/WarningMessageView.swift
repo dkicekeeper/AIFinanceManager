@@ -18,10 +18,10 @@ struct WarningMessageView: View {
     
     var body: some View {
         Text(message)
-            .font(AppTypography.caption)
-            .foregroundColor(color)
-            .padding(.top, AppSpacing.xs)
-            .padding(.horizontal, AppSpacing.lg)
+            .font(AppTypography.body)
+            .foregroundStyle(color)
+//            .background(.primary .opacity(0.05))
+            .padding(AppSpacing.lg)
     }
 }
 

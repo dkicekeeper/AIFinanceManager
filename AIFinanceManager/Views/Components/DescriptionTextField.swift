@@ -16,7 +16,7 @@ struct DescriptionTextField: View {
     init(
         text: Binding<String>,
         placeholder: String = String(localized: "quickAdd.descriptionPlaceholder"),
-        minLines: Int = 3,
+        minLines: Int = 2,
         maxLines: Int = 6
     ) {
         self._text = text
@@ -29,7 +29,10 @@ struct DescriptionTextField: View {
         TextField(placeholder, text: $text, axis: .vertical)
             .font(AppTypography.body)
             .lineLimit(minLines...maxLines)
-            .padding(.horizontal, AppSpacing.lg)
+            .padding(AppSpacing.lg)
+            .background(.primary .opacity(0.03))
+            .cornerRadius(AppSpacing.md)
+            .padding(AppSpacing.lg)
     }
 }
 

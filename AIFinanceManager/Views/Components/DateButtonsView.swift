@@ -72,14 +72,14 @@ private struct DateButtonsContent: View {
             Button(action: {
                 showingDatePicker = true
             }) {
-                Text("Календарь")
+                Text("Дата")
                     .padding(AppSpacing.sm)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
-            .padding(.vertical, AppSpacing.md)
             .disabled(isDisabled)
         }
+        .padding(AppSpacing.md)
         .sheet(isPresented: $showingDatePicker) {
             DateButtonsDatePickerSheet(
                 selectedDate: $selectedDate,
@@ -142,9 +142,6 @@ extension View {
                 isDisabled: isDisabled,
                 onSave: onSave
             )
-//            .padding(.horizontal, AppSpacing.lg)
-//            .padding(.vertical, AppSpacing.md)
-//            .background(Color(.systemBackground))
         }
     }
 }

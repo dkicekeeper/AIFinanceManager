@@ -69,7 +69,6 @@ struct AccountActionView: View {
                         selectedCurrency: $selectedCurrency,
                         errorMessage: showingError ? errorMessage : nil
                     )
-                    .padding(.horizontal, AppSpacing.lg)
                     
                     // 3. Счет
                     if selectedAction == .income && !account.isDeposit {
@@ -104,7 +103,6 @@ struct AccountActionView: View {
                         placeholder: String(localized: "transactionForm.descriptionPlaceholder")
                     )
                 }
-                .padding(.vertical, AppSpacing.lg)
             }
             .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
