@@ -12,88 +12,43 @@ struct SubcategoriesManagementView: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingAddSubcategory = false
     @State private var editingSubcategory: Subcategory?
-    @State private var subcategoryToDelete: Subcategory?
-    @State private var showingDeleteDialog = false
-    @State private var searchText = ""
-    
-    private var filteredSubcategories: [Subcategory] {
-        if searchText.isEmpty {
-            return categoriesViewModel.subcategories
-        }
-        return categoriesViewModel.searchSubcategories(query: searchText)
-    }
-    
-    // Проверяем, можно ли создать новую подкатегорию из текста поиска
-    private var canCreateFromSearch: Bool {
-        let trimmedSearch = searchText.trimmingCharacters(in: .whitespaces)
-        guard !trimmedSearch.isEmpty else { return false }
-        
-        // Проверяем, что такой подкатегории еще нет
-        let searchLower = trimmedSearch.lowercased()
-        let exists = categoriesViewModel.subcategories.contains { subcategory in
-            subcategory.name.lowercased() == searchLower
-        }
-        
-        return !exists
-    }
     
     var body: some View {
         Group {
-            if !searchText.isEmpty && filteredSubcategories.isEmpty {
-                // Empty state когда поиск не нашел результатов
+            if categoriesViewModel.subcategories.isEmpty {
                 EmptyStateView(
-                    icon: "magnifyingglass",
-                    title: String(localized: "emptyState.searchNoResults"),
-                    description: String(localized: "emptyState.tryDifferentSearch")
+                    icon: "list.bullet",
+                    title: String(localized: "emptyState.noSubcategories"),
+                    description: String(localized: "emptyState.startTracking"),
+                    actionTitle: String(localized: "subcategory.new"),
+                    action: {
+                        showingAddSubcategory = true
+                    }
                 )
             } else {
                 List {
-                    ForEach(filteredSubcategories) { subcategory in
+                    ForEach(categoriesViewModel.subcategories) { subcategory in
                         SubcategoryManagementRow(
                             subcategory: subcategory,
                             onEdit: { editingSubcategory = subcategory },
-                            onDelete: {
-                                subcategoryToDelete = subcategory
-                                showingDeleteDialog = true
+                            onDelete: { 
+                                HapticManager.warning()
+                                categoriesViewModel.deleteSubcategory(subcategory.id)
                             }
                         )
-                        .padding(.vertical, AppSpacing.xs)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                        .listRowSeparator(.hidden)
                     }
                 }
-                .listStyle(PlainListStyle())
             }
         }
         .navigationTitle(String(localized: "settings.subcategories"))
-        .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $searchText, prompt: String(localized: "transactionForm.searchOrCreateSubcategory"))
-        .safeAreaInset(edge: .bottom) {
-            // Кнопка создания внизу над полем поиска
-            if canCreateFromSearch {
-                VStack(spacing: 0) {
-                    Button(action: {
-                        createSubcategoryFromSearch()
-                    }) {
-                        HStack(spacing: AppSpacing.sm) {
-                            Image(systemName: "plus.circle.fill")
-                            let subcategoryName = searchText.trimmingCharacters(in: .whitespaces)
-                            Text(String(format: String(localized: "transactionForm.createSubcategory"), subcategoryName))
-                                .font(AppTypography.body)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(AppSpacing.lg)
-                    }
-                    .foregroundStyle(.primary)
-                }
-                .glassEffect()
-                .padding(.horizontal, AppSpacing.lg)
-            }
-        }
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showingAddSubcategory = true } label: { 
-                    Image(systemName: "plus") 
+                Button(action: { 
+                    HapticManager.light()
+                    showingAddSubcategory = true 
+                }) {
+                    Image(systemName: "plus")
                 }
             }
         }
@@ -102,6 +57,7 @@ struct SubcategoriesManagementView: View {
                 categoriesViewModel: categoriesViewModel,
                 subcategory: nil,
                 onSave: { subcategory in
+                    HapticManager.success()
                     _ = categoriesViewModel.addSubcategory(name: subcategory.name)
                     showingAddSubcategory = false
                 },
@@ -113,33 +69,13 @@ struct SubcategoriesManagementView: View {
                 categoriesViewModel: categoriesViewModel,
                 subcategory: subcategory,
                 onSave: { updatedSubcategory in
+                    HapticManager.success()
                     categoriesViewModel.updateSubcategory(updatedSubcategory)
                     editingSubcategory = nil
                 },
                 onCancel: { editingSubcategory = nil }
             )
         }
-        .alert("Удалить подкатегорию?", isPresented: $showingDeleteDialog, presenting: subcategoryToDelete) { subcategory in
-            Button("Отмена", role: .cancel) {
-                subcategoryToDelete = nil
-            }
-            Button("Удалить", role: .destructive) {
-                HapticManager.warning()
-                categoriesViewModel.deleteSubcategory(subcategory.id)
-                subcategoryToDelete = nil
-            }
-        } message: { subcategory in
-            Text("Подкатегория \"\(subcategory.name)\" будет удалена из всех связанных категорий и транзакций.")
-        }
-    }
-    
-    private func createSubcategoryFromSearch() {
-        let trimmedName = searchText.trimmingCharacters(in: .whitespaces)
-        guard !trimmedName.isEmpty else { return }
-        
-        _ = categoriesViewModel.addSubcategory(name: trimmedName)
-        // Очищаем поле поиска после создания
-        searchText = ""
     }
 }
 
@@ -149,22 +85,19 @@ struct SubcategoryManagementRow: View {
     let onDelete: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Название
+        HStack {
             Text(subcategory.name)
-                .font(.title3)
-                .fontWeight(.medium)
-            
+                .font(AppTypography.body)
             Spacer()
         }
-        .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture {
+            HapticManager.selection()
             onEdit()
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive, action: onDelete) {
-                Label("Delete", systemImage: "trash")
+                Label(String(localized: "button.delete"), systemImage: "trash")
             }
         }
     }
@@ -177,46 +110,117 @@ struct SubcategoryEditView: View {
     let onCancel: () -> Void
     
     @State private var name: String = ""
-    @Environment(\.dismiss) var dismiss
+    @FocusState private var isNameFocused: Bool
     
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text(String(localized: "common.name"))) {
-                    TextField(String(localized: "common.name"), text: $name)
+                    TextField(String(localized: "subcategory.namePlaceholder"), text: $name)
+                        .focused($isNameFocused)
                 }
             }
             .navigationTitle(subcategory == nil ? String(localized: "modal.newSubcategory") : String(localized: "modal.editSubcategory"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(String(localized: "button.cancel")) {
-                        onCancel()
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(String(localized: "button.save")) {
+                    Button {
+                        HapticManager.light()
                         let subcategoryToSave = Subcategory(
                             id: subcategory?.id ?? UUID().uuidString,
                             name: name
                         )
                         onSave(subcategoryToSave)
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             .onAppear {
-                name = subcategory?.name ?? ""
+                if let subcategory = subcategory {
+                    name = subcategory.name
+                    isNameFocused = false
+                } else {
+                    name = ""
+                    // Активируем поле названия при создании новой подкатегории
+                    Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                        isNameFocused = true
+                    }
+                }
             }
         }
     }
 }
 
-#Preview {
+#Preview("Subcategories Management") {
     let coordinator = AppCoordinator()
     NavigationView {
         SubcategoriesManagementView(
             categoriesViewModel: coordinator.categoriesViewModel
         )
     }
+}
+
+#Preview("Subcategories Management - Empty") {
+    let coordinator = AppCoordinator()
+    coordinator.categoriesViewModel.subcategories = []
+    
+    return NavigationView {
+        SubcategoriesManagementView(
+            categoriesViewModel: coordinator.categoriesViewModel
+        )
+    }
+}
+
+#Preview("Subcategory Row") {
+    let sampleSubcategories = [
+        Subcategory(id: "preview-1", name: "Groceries"),
+        Subcategory(id: "preview-2", name: "Restaurants"),
+        Subcategory(id: "preview-3", name: "Fast Food"),
+        Subcategory(id: "preview-4", name: "Coffee Shops")
+    ]
+    
+    return List {
+        ForEach(sampleSubcategories) { subcategory in
+            SubcategoryManagementRow(
+                subcategory: subcategory,
+                onEdit: {},
+                onDelete: {}
+            )
+        }
+    }
+    .listStyle(PlainListStyle())
+}
+
+#Preview("Subcategory Edit View - New") {
+    let coordinator = AppCoordinator()
+    
+    return SubcategoryEditView(
+        categoriesViewModel: coordinator.categoriesViewModel,
+        subcategory: nil,
+        onSave: { _ in },
+        onCancel: {}
+    )
+}
+
+#Preview("Subcategory Edit View - Edit") {
+    let coordinator = AppCoordinator()
+    let sampleSubcategory = Subcategory(
+        id: "preview",
+        name: "Test Subcategory"
+    )
+    
+    return SubcategoryEditView(
+        categoriesViewModel: coordinator.categoriesViewModel,
+        subcategory: sampleSubcategory,
+        onSave: { _ in },
+        onCancel: {}
+    )
 }

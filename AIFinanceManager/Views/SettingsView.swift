@@ -151,6 +151,15 @@ struct SettingsView: View {
                 HapticManager.warning()
                 // Reset all data across all ViewModels
                 transactionsViewModel.resetAllData()
+                
+                // Перезагружаем данные в других ViewModels
+                accountsViewModel.reloadFromStorage()
+                categoriesViewModel.reloadFromStorage()
+                
+                // Принудительно обновляем UI
+                accountsViewModel.objectWillChange.send()
+                categoriesViewModel.objectWillChange.send()
+                
                 // Note: Other ViewModels will reload from repository on next access
             }
             Button(String(localized: "alert.deleteAllData.cancel"), role: .cancel) {}
@@ -162,6 +171,7 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingImportPicker) {
             DocumentPicker(contentTypes: [.commaSeparatedText, .text]) { url in
+                // Передаем categoriesViewModel для синхронизации после импорта
                 Task {
                     await handleCSVImport(url: url)
                 }
@@ -172,7 +182,11 @@ struct SettingsView: View {
             set: { showingPreview = $0 }
         )) {
             if let csvFile = csvFile {
-                CSVPreviewView(csvFile: csvFile, transactionsViewModel: transactionsViewModel)
+                CSVPreviewView(
+                    csvFile: csvFile,
+                    transactionsViewModel: transactionsViewModel,
+                    categoriesViewModel: categoriesViewModel
+                )
             } else {
                 // Fallback view если csvFile стал nil
                 VStack {

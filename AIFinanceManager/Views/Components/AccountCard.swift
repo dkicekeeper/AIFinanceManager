@@ -26,7 +26,6 @@ struct AccountCard: View {
                         .foregroundColor(.primary)
                 }
             }
-            .padding(AppSpacing.lg)
         }
         .glassCardStyle()
         .accessibilityLabel("\(account.name), balance \(Formatting.formatCurrency(account.balance, currency: account.currency))")

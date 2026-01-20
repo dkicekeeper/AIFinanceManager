@@ -715,6 +715,42 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
+    /// Добавляет транзакции без сохранения и пересчета балансов (для массового импорта)
+    func addTransactionsForImport(_ newTransactions: [Transaction]) {
+        let processedTransactions = newTransactions.map { transaction -> Transaction in
+            let formattedDescription = formatMerchantName(transaction.description)
+            let matchedCategory = matchCategory(transaction.category, type: transaction.type)
+            
+            return Transaction(
+                id: transaction.id,
+                date: transaction.date,
+                description: formattedDescription,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                convertedAmount: transaction.convertedAmount,
+                type: transaction.type,
+                category: matchedCategory,
+                subcategory: transaction.subcategory,
+                accountId: transaction.accountId,
+                targetAccountId: transaction.targetAccountId,
+                recurringSeriesId: transaction.recurringSeriesId,
+                recurringOccurrenceId: transaction.recurringOccurrenceId,
+                createdAt: transaction.createdAt
+            )
+        }
+        
+        let transactionsWithRules = applyRules(to: processedTransactions)
+        let existingIDs = Set(allTransactions.map { $0.id })
+        let uniqueNew = transactionsWithRules.filter { !existingIDs.contains($0.id) }
+        
+        if !uniqueNew.isEmpty {
+            createCategoriesForTransactions(uniqueNew)
+            insertTransactionsSorted(uniqueNew)
+            // НЕ вызываем invalidateCaches(), recalculateAccountBalances() и saveToStorage()
+            // Это будет сделано в конце импорта
+        }
+    }
+    
     private func formatMerchantName(_ description: String) -> String {
         var cleaned = description
         
@@ -1025,6 +1061,10 @@ class TransactionsViewModel: ObservableObject {
         selectedCategories = nil
         invalidateCaches()
         repository.clearAllData()
+        
+        // Принудительно уведомляем об изменении для обновления UI
+        objectWillChange.send()
+        
         print("✅ Все данные приложения обнулены")
     }
     

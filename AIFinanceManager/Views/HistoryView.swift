@@ -25,6 +25,21 @@ struct HistoryView: View {
     @State private var cachedSortedKeys: [String] = []
     @State private var searchTask: Task<Void, Never>?
     
+    // Локализованные ключи для дат (используются ViewModel для группировки)
+    // TODO: Исправить ViewModel для использования локализованных ключей
+    private var todayKey: String {
+        String(localized: "date.today")
+    }
+    
+    private var yesterdayKey: String {
+        String(localized: "date.yesterday")
+    }
+    
+    // Кешируем baseCurrency для оптимизации
+    private var baseCurrency: String {
+        transactionsViewModel.appSettings.baseCurrency
+    }
+    
     init(
         transactionsViewModel: TransactionsViewModel,
         accountsViewModel: AccountsViewModel,
@@ -40,22 +55,24 @@ struct HistoryView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Фильтры
-            HistoryFilterSection(
-                transactionsViewModel: transactionsViewModel,
-                accountsViewModel: accountsViewModel,
-                categoriesViewModel: categoriesViewModel,
-                selectedAccountFilter: $selectedAccountFilter,
-                showingCategoryFilter: $showingCategoryFilter
-            )
-            
-            // Список транзакций
-            transactionsList
-        }
-        .navigationTitle(String(localized: "navigation.history"))
-        .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, isPresented: $isSearchActive, prompt: String(localized: "search.placeholder"))
+        transactionsList
+            .safeAreaInset(edge: .top) {
+                VStack(spacing: 0) {
+                    // Фильтры
+                    HistoryFilterSection(
+                        transactionsViewModel: transactionsViewModel,
+                        accountsViewModel: accountsViewModel,
+                        categoriesViewModel: categoriesViewModel,
+                        selectedAccountFilter: $selectedAccountFilter,
+                        showingCategoryFilter: $showingCategoryFilter
+                    )
+                }
+                .background(Color(.clear))
+            }
+            .navigationTitle(String(localized: "navigation.history"))
+            .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(Color(.clear), for: .navigationBar)
+            .searchable(text: $searchText, isPresented: $isSearchActive, prompt: String(localized: "search.placeholder"))
         .task {
             // Устанавливаем фильтр по категории до onAppear, чтобы гарантировать применение
             if let category = initialCategory {
@@ -77,9 +94,11 @@ struct HistoryView: View {
             PerformanceProfiler.end("HistoryView.onAppear")
         }
         .onChange(of: timeFilterManager.currentFilter) { _, _ in
+            HapticManager.selection()
             updateCachedTransactions()
         }
         .onChange(of: selectedAccountFilter) { _, _ in
+            HapticManager.selection()
             updateCachedTransactions()
         }
         .onChange(of: searchText) { oldValue, newValue in
@@ -103,6 +122,7 @@ struct HistoryView: View {
             updateCachedTransactions()
         }
         .onChange(of: transactionsViewModel.selectedCategories) { _, _ in
+            HapticManager.selection()
             updateCachedTransactions()
         }
         .onChange(of: transactionsViewModel.allTransactions) { _, _ in
@@ -154,7 +174,7 @@ struct HistoryView: View {
                             ForEach(grouped[dateKey] ?? []) { transaction in
                                 TransactionCard(
                                     transaction: transaction,
-                                    currency: transactionsViewModel.appSettings.baseCurrency,
+                                    currency: baseCurrency,
                                     customCategories: categoriesViewModel.customCategories,
                                     accounts: accountsViewModel.accounts,
                                     viewModel: transactionsViewModel,
@@ -166,26 +186,28 @@ struct HistoryView: View {
                     }
                 }
                 .listStyle(PlainListStyle())
-                .onAppear {
+                .task {
                     // Скроллим к первой не-будущей секции (Сегодня, Вчера, или первая прошлая)
-                    // sortedKeys содержит: futureKeys, затем "Сегодня", "Вчера", затем прошлые
+                    // sortedKeys содержит: futureKeys, затем локализованные "Сегодня"/"Вчера", затем прошлые
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                    
                     let calendar = Calendar.current
                     let today = calendar.startOfDay(for: Date())
                     let dateFormatter = DateFormatters.dateFormatter
                     
                     // Находим индекс первой не-будущей секции
                     let scrollTarget: String? = {
-                        // Сначала проверяем "Сегодня"
-                        if sortedKeys.contains("Сегодня") {
-                            return "Сегодня"
+                        // Сначала проверяем "Сегодня" (используем локализованный ключ)
+                        if sortedKeys.contains(todayKey) {
+                            return todayKey
                         }
-                        // Затем проверяем "Вчера"
-                        if sortedKeys.contains("Вчера") {
-                            return "Вчера"
+                        // Затем проверяем "Вчера" (используем локализованный ключ)
+                        if sortedKeys.contains(yesterdayKey) {
+                            return yesterdayKey
                         }
                         // Ищем первую прошлую секцию (не будущую)
                         for key in sortedKeys {
-                            if key == "Сегодня" || key == "Вчера" {
+                            if key == todayKey || key == yesterdayKey {
                                 continue
                             }
                             // Проверяем, является ли эта секция будущей
@@ -203,10 +225,8 @@ struct HistoryView: View {
                     }()
                     
                     if let target = scrollTarget {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation {
-                                proxy.scrollTo(target, anchor: .top)
-                            }
+                        withAnimation {
+                            proxy.scrollTo(target, anchor: .top)
                         }
                     }
                 }
@@ -235,9 +255,6 @@ struct HistoryView: View {
     
     
     private func dateHeader(for dateKey: String, transactions: [Transaction]) -> some View {
-        let currency = transactionsViewModel.appSettings.baseCurrency
-        let baseCurrency = transactionsViewModel.appSettings.baseCurrency
-        
         // Конвертируем все расходы в базовую валюту перед суммированием
         let dayExpenses = transactions
             .filter { $0.type == .expense }
@@ -263,135 +280,14 @@ struct HistoryView: View {
         return DateSectionHeader(
             dateKey: dateKey,
             dayExpenses: dayExpenses,
-            currency: currency
+            currency: baseCurrency
         )
     }
 }
 
-// View для фильтрации по категориям
-struct CategoryFilterView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
-    @Environment(\.dismiss) var dismiss
-    @State private var selectedExpenseCategories: Set<String> = []
-    @State private var selectedIncomeCategories: Set<String> = []
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                // Опция "Все категории"
-                Section {
-                    HStack {
-                        Text("Все категории")
-                            .fontWeight(.medium)
-                        Spacer()
-                        if viewModel.selectedCategories == nil {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedExpenseCategories.removeAll()
-                        selectedIncomeCategories.removeAll()
-                        viewModel.selectedCategories = nil
-                    }
-                }
-                
-                // Категории расходов
-                Section(header: Text("Расходы")) {
-                    if viewModel.expenseCategories.isEmpty {
-                        Text("Нет категорий расходов")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(viewModel.expenseCategories, id: \.self) { category in
-                            HStack {
-                                Text(category)
-                                Spacer()
-                                if selectedExpenseCategories.contains(category) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if selectedExpenseCategories.contains(category) {
-                                    selectedExpenseCategories.remove(category)
-                                } else {
-                                    selectedExpenseCategories.insert(category)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Категории доходов
-                Section(header: Text("Доходы")) {
-                    if viewModel.incomeCategories.isEmpty {
-                        Text("Нет категорий доходов")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(viewModel.incomeCategories, id: \.self) { category in
-                            HStack {
-                                Text(category)
-                                Spacer()
-                                if selectedIncomeCategories.contains(category) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if selectedIncomeCategories.contains(category) {
-                                    selectedIncomeCategories.remove(category)
-                                } else {
-                                    selectedIncomeCategories.insert(category)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle(String(localized: "navigation.categoryFilter"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        applyFilter()
-                        dismiss()
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                }
-            }
-            .onAppear {
-                // Загружаем текущий фильтр
-                if let currentFilter = viewModel.selectedCategories {
-                    selectedExpenseCategories = Set(viewModel.expenseCategories.filter { currentFilter.contains($0) })
-                    selectedIncomeCategories = Set(viewModel.incomeCategories.filter { currentFilter.contains($0) })
-                }
-            }
-        }
-    }
-    
-    private func applyFilter() {
-        let allSelected = selectedExpenseCategories.union(selectedIncomeCategories)
-        if allSelected.isEmpty {
-            // Если ничего не выбрано, показываем все категории
-            viewModel.selectedCategories = nil
-        } else {
-            viewModel.selectedCategories = allSelected
-        }
-    }
-}
+// MARK: - Previews
 
-#Preview {
+#Preview("History View") {
     let coordinator = AppCoordinator()
     NavigationView {
         HistoryView(
@@ -399,5 +295,36 @@ struct CategoryFilterView: View {
             accountsViewModel: coordinator.accountsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel
         )
+        .environmentObject(TimeFilterManager())
+    }
+}
+
+#Preview("History View - Empty") {
+    let coordinator = AppCoordinator()
+    coordinator.transactionsViewModel.allTransactions = []
+    
+    return NavigationView {
+        HistoryView(
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel
+        )
+        .environmentObject(TimeFilterManager())
+    }
+}
+
+#Preview("History View - With Filters") {
+    let coordinator = AppCoordinator()
+    coordinator.transactionsViewModel.selectedCategories = ["Food", "Transport"]
+    
+    return NavigationView {
+        HistoryView(
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            initialCategory: "Food",
+            initialAccountId: coordinator.accountsViewModel.accounts.first?.id
+        )
+        .environmentObject(TimeFilterManager())
     }
 }

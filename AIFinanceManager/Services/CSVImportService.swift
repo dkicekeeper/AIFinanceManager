@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import UIKit
+import Combine
 
 class CSVImportService {
     static func importTransactions(
@@ -15,14 +16,18 @@ class CSVImportService {
         columnMapping: CSVColumnMapping,
         entityMapping: EntityMapping,
         transactionsViewModel: TransactionsViewModel,
-        categoriesViewModel: CategoriesViewModel
+        categoriesViewModel: CategoriesViewModel,
+        accountsViewModel: AccountsViewModel? = nil,
+        progressCallback: ((Double) -> Void)? = nil
     ) async -> ImportResult {
         var importedCount = 0
         var skippedCount = 0
-        let createdAccounts = 0 // Создание счетов происходит в CSVEntityMappingView
+        var createdAccounts = 0 // Создание счетов при импорте
         var createdCategories = 0
         var createdSubcategories = 0
         var errors: [String] = []
+        
+        let totalRows = csvFile.rows.count
         
         // Получаем индексы колонок
         let dateIndex = columnMapping.dateColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
@@ -30,6 +35,9 @@ class CSVImportService {
         let amountIndex = columnMapping.amountColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
         let currencyIndex = columnMapping.currencyColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
         let accountIndex = columnMapping.accountColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
+        let targetAccountIndex = columnMapping.targetAccountColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
+        let targetCurrencyIndex = columnMapping.targetCurrencyColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
+        let targetAmountIndex = columnMapping.targetAmountColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
         let categoryIndex = columnMapping.categoryColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
         let subcategoriesIndex = columnMapping.subcategoriesColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
         let noteIndex = columnMapping.noteColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
@@ -47,9 +55,84 @@ class CSVImportService {
             )
         }
         
-        var transactions: [Transaction] = []
+        // Синхронизируем счета перед началом импорта
+        await MainActor.run {
+            if let accountsVM = accountsViewModel {
+                transactionsViewModel.accounts = accountsVM.accounts
+            }
+        }
+        
+        // Батчинг для экономии памяти: обрабатываем транзакции порциями
+        let batchSize = 100 // Уменьшен размер батча для экономии памяти
+        var transactionsBatch: [Transaction] = []
+        var transactionSubcategoryLinksBatch: [String: [String]] = [:]
+        var allTransactionSubcategoryLinks: [String: [String]] = [:] // Накапливаем все связи для сохранения в конце
+        
+        // Словарь для отслеживания созданных счетов во время импорта (чтобы избежать дублей)
+        var createdAccountsDuringImport: [String: String] = [:] // [accountName.lowercased(): accountId]
+        
+        // Функция для поиска счета по имени (case-insensitive)
+        func findAccount(by name: String, in accountsVM: AccountsViewModel?, in transactionsVM: TransactionsViewModel) -> Account? {
+            let normalizedName = name.trimmingCharacters(in: .whitespaces).lowercased()
+            
+            // Проверяем в созданных во время импорта (самый быстрый способ)
+            if let accountId = createdAccountsDuringImport[normalizedName],
+               let accountsVM = accountsVM {
+                return accountsVM.accounts.first(where: { $0.id == accountId })
+            }
+            
+            // Сначала проверяем в accountsViewModel
+            if let accountsVM = accountsVM {
+                if let account = accountsVM.accounts.first(where: { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedName }) {
+                    // Сохраняем в кэш для быстрого поиска
+                    createdAccountsDuringImport[normalizedName] = account.id
+                    return account
+                }
+            }
+            
+            // Затем проверяем в transactionsViewModel
+            if let account = transactionsVM.accounts.first(where: { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedName }) {
+                // Сохраняем в кэш для быстрого поиска
+                createdAccountsDuringImport[normalizedName] = account.id
+                return account
+            }
+            
+            return nil
+        }
+        
+        func processBatch() async {
+            guard !transactionsBatch.isEmpty else { return }
+            
+            await MainActor.run {
+                // Синхронизируем счета из accountsViewModel в transactionsViewModel (на случай создания новых)
+                if let accountsVM = accountsViewModel {
+                    transactionsViewModel.accounts = accountsVM.accounts
+                }
+                
+                // Добавляем транзакции БЕЗ сохранения и пересчета балансов
+                transactionsViewModel.addTransactionsForImport(transactionsBatch)
+                
+                // Накапливаем связи для сохранения в конце
+                allTransactionSubcategoryLinks.merge(transactionSubcategoryLinksBatch) { (_, new) in new }
+            }
+            
+            // Очищаем батч для освобождения памяти
+            transactionsBatch.removeAll(keepingCapacity: false)
+            transactionSubcategoryLinksBatch.removeAll(keepingCapacity: false)
+            
+            // Принудительная очистка памяти
+            autoreleasepool {}
+        }
         
         for (rowIndex, row) in csvFile.rows.enumerated() {
+            // Обновляем прогресс
+            if let progressCallback = progressCallback, totalRows > 0 {
+                let progress = Double(rowIndex) / Double(totalRows)
+                await MainActor.run {
+                    progressCallback(progress)
+                }
+            }
+            
             // Парсим дату
             guard let dateString = row[safe: dateIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                   !dateString.isEmpty,
@@ -85,11 +168,99 @@ class CSVImportService {
             if let accountIdx = accountIndex,
                let accountValue = row[safe: accountIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                !accountValue.isEmpty {
+                let normalizedAccountName = accountValue.lowercased()
+                
+                // Сначала проверяем маппинг
                 if let mappedAccountId = entityMapping.accountMappings[accountValue] {
                     accountId = mappedAccountId
-                } else if let account = transactionsViewModel.accounts.first(where: { $0.name == accountValue }) {
+                } else if let account = findAccount(by: accountValue, in: accountsViewModel, in: transactionsViewModel) {
+                    // Счет уже существует
                     accountId = account.id
+                    // Сохраняем в словарь для быстрого поиска
+                    createdAccountsDuringImport[normalizedAccountName] = account.id
+                } else if let accountsVM = accountsViewModel {
+                    // Автоматически создаем счет, если не выбран в маппинге (как категории)
+                    await MainActor.run {
+                        // Проверяем еще раз перед созданием (на случай параллельного создания)
+                        if let existingAccount = findAccount(by: accountValue, in: accountsVM, in: transactionsViewModel) {
+                            accountId = existingAccount.id
+                            createdAccountsDuringImport[normalizedAccountName] = existingAccount.id
+                        } else {
+                            accountsVM.addAccount(
+                                name: accountValue,
+                                balance: 0.0,
+                                currency: currency,
+                                bankLogo: .none
+                            )
+                            createdAccounts += 1
+                            
+                            // Получаем ID только что созданного счета
+                            if let newAccount = accountsVM.accounts.first(where: { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedAccountName }) {
+                                accountId = newAccount.id
+                                createdAccountsDuringImport[normalizedAccountName] = newAccount.id
+                            }
+                        }
+                    }
                 }
+            }
+            
+            // Парсим валюту счета получателя (делаем это до парсинга счета получателя, чтобы использовать при создании)
+            var targetCurrency: String? = nil
+            if let targetCurrencyIdx = targetCurrencyIndex,
+               let targetCurrencyValue = row[safe: targetCurrencyIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
+               !targetCurrencyValue.isEmpty {
+                targetCurrency = targetCurrencyValue
+            }
+            
+            // Парсим счет получателя
+            var targetAccountId: String? = nil
+            let targetAccountCurrency = targetCurrency ?? currency // Используем валюту получателя или валюту операции
+            if let targetAccountIdx = targetAccountIndex,
+               let targetAccountValue = row[safe: targetAccountIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
+               !targetAccountValue.isEmpty {
+                let normalizedTargetAccountName = targetAccountValue.lowercased()
+                
+                // Сначала проверяем маппинг
+                if let mappedAccountId = entityMapping.accountMappings[targetAccountValue] {
+                    targetAccountId = mappedAccountId
+                } else if let account = findAccount(by: targetAccountValue, in: accountsViewModel, in: transactionsViewModel) {
+                    // Счет уже существует
+                    targetAccountId = account.id
+                    // Сохраняем в словарь для быстрого поиска
+                    createdAccountsDuringImport[normalizedTargetAccountName] = account.id
+                } else if let accountsVM = accountsViewModel {
+                    // Автоматически создаем счет получателя, если не выбран в маппинге
+                    await MainActor.run {
+                        // Проверяем еще раз перед созданием (на случай параллельного создания)
+                        if let existingAccount = findAccount(by: targetAccountValue, in: accountsVM, in: transactionsViewModel) {
+                            targetAccountId = existingAccount.id
+                            createdAccountsDuringImport[normalizedTargetAccountName] = existingAccount.id
+                        } else {
+                            accountsVM.addAccount(
+                                name: targetAccountValue,
+                                balance: 0.0,
+                                currency: targetAccountCurrency,
+                                bankLogo: .none
+                            )
+                            createdAccounts += 1
+                            
+                            // Получаем ID только что созданного счета
+                            if let newAccount = accountsVM.accounts.first(where: { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedTargetAccountName }) {
+                                targetAccountId = newAccount.id
+                                createdAccountsDuringImport[normalizedTargetAccountName] = newAccount.id
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Парсим сумму счета получателя
+            var targetAmount: Double? = nil
+            if let targetAmountIdx = targetAmountIndex,
+               let targetAmountString = row[safe: targetAmountIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
+               !targetAmountString.isEmpty,
+               let parsedTargetAmount = parseAmount(targetAmountString) {
+                targetAmount = parsedTargetAmount
             }
             
             // Парсим категорию
@@ -196,28 +367,63 @@ class CSVImportService {
                 category: categoryName,
                 subcategory: subcategoryName,
                 accountId: accountId,
-                targetAccountId: nil,
+                targetAccountId: targetAccountId,
+                targetCurrency: targetCurrency,
+                targetAmount: targetAmount,
                 recurringSeriesId: nil,
                 recurringOccurrenceId: nil,
                 createdAt: createdAt // Используем дату транзакции + небольшое смещение для сохранения порядка
             )
             
-            transactions.append(transaction)
+            transactionsBatch.append(transaction)
             
-            // Привязываем подкатегории к транзакции
+            // Накапливаем связи подкатегорий с транзакцией для текущего батча
             if !subcategoryIds.isEmpty {
-                await MainActor.run {
-                    categoriesViewModel.linkSubcategoriesToTransaction(transactionId: transactionId, subcategoryIds: subcategoryIds)
-                }
+                transactionSubcategoryLinksBatch[transactionId] = subcategoryIds
             }
             
             importedCount += 1
+            
+            // Обрабатываем батч, если достигли размера батча или это последняя строка
+            if transactionsBatch.count >= batchSize || rowIndex == totalRows - 1 {
+                await processBatch()
+            }
         }
         
-        // Добавляем транзакции батчами
-        await MainActor.run {
-            transactionsViewModel.addTransactions(transactions)
+        // Обновляем прогресс до 100%
+        if let progressCallback = progressCallback {
+            await MainActor.run {
+                progressCallback(1.0)
+            }
         }
+        
+        // Финальная обработка: сохраняем все связи и пересчитываем балансы
+        await MainActor.run {
+            // Синхронизируем счета из accountsViewModel в transactionsViewModel
+            if let accountsVM = accountsViewModel {
+                transactionsViewModel.accounts = accountsVM.accounts
+            }
+            
+            // Сохраняем все связи транзакций с подкатегориями одним батчем
+            if !allTransactionSubcategoryLinks.isEmpty {
+                categoriesViewModel.batchLinkSubcategoriesToTransaction(allTransactionSubcategoryLinks)
+            }
+            
+            // Пересчитываем балансы один раз в конце
+            transactionsViewModel.recalculateAccountBalances()
+            
+            // Сохраняем все данные один раз в конце
+            transactionsViewModel.saveToStorage()
+            
+            // Принудительно уведомляем об изменении для обновления UI
+            transactionsViewModel.objectWillChange.send()
+            if let accountsVM = accountsViewModel {
+                accountsVM.objectWillChange.send()
+            }
+        }
+        
+        // Очищаем накопленные данные
+        allTransactionSubcategoryLinks.removeAll(keepingCapacity: false)
         
         return ImportResult(
             importedCount: importedCount,

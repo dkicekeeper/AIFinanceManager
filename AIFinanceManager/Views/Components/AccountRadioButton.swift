@@ -27,13 +27,13 @@ struct AccountRadioButton: View {
                         .fontWeight(.semibold)
                 }
             }
-            .padding(AppSpacing.lg)
+            .glassCardStyle()
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.pill, style: .continuous)
                     .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
             )
         }
-        .glassCardStyle()
+//        .glassCardStyle()
     }
 }
 

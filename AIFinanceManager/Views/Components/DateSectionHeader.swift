@@ -29,7 +29,6 @@ struct DateSectionHeader: View {
             }
         }
         .textCase(nil)
-        .padding(AppSpacing.md)
         .glassCardStyle()
     }
 }

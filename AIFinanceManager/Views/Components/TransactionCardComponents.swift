@@ -32,7 +32,7 @@ struct TransactionIconView: View {
                     .padding(AppSpacing.xs)
                     .background(Color.white)
                     .clipShape(Circle())
-                    .offset(x: 14, y: 14)
+                    .offset(x: 16, y: 16)
             }
         }
     }
@@ -54,8 +54,8 @@ struct TransactionInfoView: View {
             // Subcategories
             if !linkedSubcategories.isEmpty {
                 Text(linkedSubcategories.map { $0.name }.joined(separator: ", "))
-                    .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
+                    .font(AppTypography.bodySmall)
+                    .foregroundColor(.primary)
             }
             
             // Account info or transfer info

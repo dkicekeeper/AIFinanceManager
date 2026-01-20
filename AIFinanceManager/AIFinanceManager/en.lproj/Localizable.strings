@@ -54,6 +54,8 @@
 // MARK: - Empty States
 "emptyState.noTransactions" = "No transactions";
 "emptyState.noAccounts" = "No accounts";
+"emptyState.noCategories" = "No categories";
+"emptyState.noSubcategories" = "No subcategories";
 "emptyState.searchNoResults" = "Nothing found";
 "emptyState.startTracking" = "Start adding transactions to track your finances";
 "emptyState.tryDifferentSearch" = "Try changing your search query";
@@ -176,6 +178,90 @@
 "account.selectLogo" = "Select Logo";
 "account.popularBanks" = "Popular Banks";
 "account.otherBanks" = "Other Banks";
+"account.newAccount" = "New Account";
+"account.newDeposit" = "New Deposit";
+"account.namePlaceholder" = "Account name";
+"common.currency" = "Currency";
+"common.balancePlaceholder" = "0.00";
+"common.error" = "Error";
+
+// MARK: - Deposits
+"deposit.notFound" = "Deposit not found";
+"deposit.title" = "Deposit";
+"deposit.edit" = "Edit";
+"deposit.changeRate" = "Change Rate";
+"deposit.delete" = "Delete Deposit";
+"deposit.deleteTitle" = "Delete deposit?";
+"deposit.deleteMessage" = "All deposit data and related transactions will be deleted.";
+"deposit.balance" = "Balance";
+"deposit.interestToday" = "Interest today";
+"deposit.rate" = "Rate";
+"deposit.rateAnnual" = "% per annum";
+"deposit.capitalization" = "Capitalization";
+"deposit.capitalizationEnabled" = "Enabled";
+"deposit.capitalizationDisabled" = "Disabled";
+"deposit.postingDay" = "Posting Day";
+"deposit.nextPosting" = "Next Posting";
+"deposit.topUp" = "Top Up";
+"deposit.transferToAccount" = "Transfer to Account";
+"deposit.topUpTitle" = "Top Up Deposit";
+"deposit.transferFromTitle" = "Transfer from Deposit";
+"deposit.sourceAccount" = "Source Account";
+"deposit.targetAccount" = "Target Account";
+"deposit.noOtherAccounts" = "No other accounts for transfer";
+"deposit.amount" = "Amount";
+"deposit.description" = "Description";
+"deposit.descriptionOptional" = "Description (optional)";
+"deposit.date" = "Date";
+"deposit.topUpDescription" = "Deposit top-up";
+"deposit.transferFromDescription" = "Transfer from deposit";
+"deposit.newRate" = "New Interest Rate";
+"deposit.effectiveDate" = "Effective Date";
+"deposit.note" = "Note (optional)";
+"deposit.changeRateTitle" = "Change Rate";
+"deposit.name" = "Deposit Name";
+"deposit.namePlaceholder" = "Name";
+"deposit.bank" = "Bank";
+"deposit.bankName" = "Bank Name";
+"deposit.bankNamePlaceholder" = "Bank name";
+"deposit.selectLogo" = "Select Logo";
+"deposit.initialAmount" = "Initial Amount";
+"deposit.interestRate" = "Interest Rate";
+"deposit.postingDayTitle" = "Interest Posting Day";
+"deposit.dayOfMonth" = "Day of Month";
+"deposit.postingDayHint" = "If the month has fewer days, posting will occur on the last day of the month";
+"deposit.capitalizationTitle" = "Capitalization";
+"deposit.enableCapitalization" = "Enable Capitalization";
+"deposit.capitalizationHint" = "When capitalization is enabled, interest is added to the principal amount each month";
+"deposit.new" = "New Deposit";
+"deposit.editTitle" = "Edit Deposit";
+
+// MARK: - Categories Management
+"category.deleteTitle" = "Delete category?";
+"category.deleteOnlyCategory" = "Delete category only";
+"category.deleteCategoryAndTransactions" = "Delete category and transactions";
+"category.deleteMessage" = "Choose what to do with transactions in category \"%@\".";
+"category.namePlaceholder" = "Category name";
+"category.tapToSelect" = "Tap to select";
+"category.subcategories" = "Subcategories";
+"category.addSubcategory" = "Add subcategory";
+
+// MARK: - Subcategories Management
+"subcategory.new" = "New Subcategory";
+"subcategory.namePlaceholder" = "Subcategory name";
+"iconPicker.frequentlyUsed" = "Frequently Used";
+"iconPicker.foodAndDrinks" = "Food & Drinks";
+"iconPicker.transport" = "Transport";
+"iconPicker.shopping" = "Shopping";
+"iconPicker.entertainment" = "Entertainment";
+"iconPicker.health" = "Health";
+"iconPicker.homeAndUtilities" = "Home & Utilities";
+"iconPicker.moneyAndFinance" = "Money & Finance";
+
+// MARK: - Category Filter
+"categoryFilter.allCategories" = "All Categories";
+"categoryFilter.noExpenseCategories" = "No expense categories";
+"categoryFilter.noIncomeCategories" = "No income categories";
 
 // MARK: - Accessibility Labels
 "accessibility.voiceInput" = "Voice input";
@@ -248,7 +334,7 @@
 "subscriptions.transactionHistory" = "Transaction History";
 "subscriptions.category" = "Category";
 "subscriptions.frequency" = "Frequency";
-"subscriptions.nextCharge" = "Next Charge";
+"subscriptions.nextCharge" = "Next Charge: %@";
 "subscriptions.account" = "Account";
 "subscriptions.status" = "Status";
 "subscriptions.status.active" = "Active";

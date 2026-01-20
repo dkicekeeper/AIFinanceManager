@@ -14,6 +14,9 @@ struct CSVColumnMapping {
     var amountColumn: String?
     var currencyColumn: String?
     var accountColumn: String?
+    var targetAccountColumn: String? // Счет получателя
+    var targetCurrencyColumn: String? // Валюта счета получателя
+    var targetAmountColumn: String? // Сумма на счете получателя
     var categoryColumn: String?
     var subcategoriesColumn: String?
     var subcategoriesSeparator: String = ","
@@ -32,7 +35,13 @@ struct CSVColumnMapping {
         "доход": .income,
         "доходы": .income,
         "+": .income,
-        "in": .income
+        "in": .income,
+        "transfer": .internalTransfer,
+        "перевод": .internalTransfer,
+        "переводы": .internalTransfer,
+        "трансфер": .internalTransfer,
+        "internal": .internalTransfer,
+        "internaltransfer": .internalTransfer
     ]
 }
 

@@ -64,7 +64,6 @@ struct SubscriptionsCardView: View {
                 }
             }
         }
-        .padding(AppSpacing.lg)
         .glassCardStyle(radius: AppRadius.pill)
         .task {
             await calculateTotal()

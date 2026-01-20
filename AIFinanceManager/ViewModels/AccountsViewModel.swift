@@ -35,6 +35,18 @@ class AccountsViewModel: ObservableObject {
         }
     }
     
+    /// Перезагружает все данные из хранилища (используется после импорта)
+    func reloadFromStorage() {
+        accounts = repository.loadAccounts()
+        
+        // Обновляем начальные балансы
+        for account in accounts {
+            if initialAccountBalances[account.id] == nil {
+                initialAccountBalances[account.id] = account.balance
+            }
+        }
+    }
+    
     // MARK: - Account CRUD Operations
     
     func addAccount(name: String, balance: Double, currency: String, bankLogo: BankLogo = .none) {

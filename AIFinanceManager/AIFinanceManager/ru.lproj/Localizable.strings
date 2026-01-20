@@ -54,6 +54,8 @@
 // MARK: - Empty States
 "emptyState.noTransactions" = "Нет операций";
 "emptyState.noAccounts" = "Нет счетов";
+"emptyState.noCategories" = "Нет категорий";
+"emptyState.noSubcategories" = "Нет подкатегорий";
 "emptyState.searchNoResults" = "Ничего не найдено";
 "emptyState.startTracking" = "Начните добавлять операции, чтобы отслеживать ваши финансы";
 "emptyState.tryDifferentSearch" = "Попробуйте изменить поисковый запрос";
@@ -176,6 +178,90 @@
 "account.selectLogo" = "Выбрать логотип";
 "account.popularBanks" = "Популярные банки";
 "account.otherBanks" = "Другие банки";
+"account.newAccount" = "Новый счёт";
+"account.newDeposit" = "Новый депозит";
+"account.namePlaceholder" = "Название счёта";
+"common.currency" = "Валюта";
+"common.balancePlaceholder" = "0.00";
+"common.error" = "Ошибка";
+
+// MARK: - Deposits
+"deposit.notFound" = "Депозит не найден";
+"deposit.title" = "Депозит";
+"deposit.edit" = "Редактировать";
+"deposit.changeRate" = "Изменить ставку";
+"deposit.delete" = "Удалить депозит";
+"deposit.deleteTitle" = "Удалить депозит?";
+"deposit.deleteMessage" = "Все данные депозита и связанные транзакции будут удалены.";
+"deposit.balance" = "Баланс";
+"deposit.interestToday" = "Проценты на сегодня";
+"deposit.rate" = "Ставка";
+"deposit.rateAnnual" = "% годовых";
+"deposit.capitalization" = "Капитализация";
+"deposit.capitalizationEnabled" = "Включена";
+"deposit.capitalizationDisabled" = "Выключена";
+"deposit.postingDay" = "День начисления";
+"deposit.nextPosting" = "Следующее начисление";
+"deposit.topUp" = "Пополнить";
+"deposit.transferToAccount" = "Перевести на счет";
+"deposit.topUpTitle" = "Пополнить депозит";
+"deposit.transferFromTitle" = "Перевести с депозита";
+"deposit.sourceAccount" = "Счет источника";
+"deposit.targetAccount" = "Счет получателя";
+"deposit.noOtherAccounts" = "Нет других счетов для перевода";
+"deposit.amount" = "Сумма";
+"deposit.description" = "Описание";
+"deposit.descriptionOptional" = "Описание (необязательно)";
+"deposit.date" = "Дата";
+"deposit.topUpDescription" = "Пополнение депозита";
+"deposit.transferFromDescription" = "Перевод с депозита";
+"deposit.newRate" = "Новая процентная ставка";
+"deposit.effectiveDate" = "Дата вступления в силу";
+"deposit.note" = "Примечание (необязательно)";
+"deposit.changeRateTitle" = "Изменить ставку";
+"deposit.name" = "Название депозита";
+"deposit.namePlaceholder" = "Название";
+"deposit.bank" = "Банк";
+"deposit.bankName" = "Название банка";
+"deposit.bankNamePlaceholder" = "Название банка";
+"deposit.selectLogo" = "Выбрать логотип";
+"deposit.initialAmount" = "Начальная сумма";
+"deposit.interestRate" = "Процентная ставка";
+"deposit.postingDayTitle" = "День начисления процентов";
+"deposit.dayOfMonth" = "День месяца";
+"deposit.postingDayHint" = "Если в месяце меньше дней, начисление произойдет в последний день месяца";
+"deposit.capitalizationTitle" = "Капитализация";
+"deposit.enableCapitalization" = "Включить капитализацию";
+"deposit.capitalizationHint" = "При включенной капитализации проценты добавляются к основной сумме каждый месяц";
+"deposit.new" = "Новый депозит";
+"deposit.editTitle" = "Редактировать депозит";
+
+// MARK: - Categories Management
+"category.deleteTitle" = "Удалить категорию?";
+"category.deleteOnlyCategory" = "Удалить только категорию";
+"category.deleteCategoryAndTransactions" = "Удалить категорию и операции";
+"category.deleteMessage" = "Выберите, что делать с операциями категории \"%@\".";
+"category.namePlaceholder" = "Название категории";
+"category.tapToSelect" = "Нажмите для выбора";
+"category.subcategories" = "Подкатегории";
+"category.addSubcategory" = "Добавить подкатегорию";
+
+// MARK: - Subcategories Management
+"subcategory.new" = "Новая подкатегория";
+"subcategory.namePlaceholder" = "Название подкатегории";
+"iconPicker.frequentlyUsed" = "Часто используемые";
+"iconPicker.foodAndDrinks" = "Еда и напитки";
+"iconPicker.transport" = "Транспорт";
+"iconPicker.shopping" = "Покупки";
+"iconPicker.entertainment" = "Развлечения";
+"iconPicker.health" = "Здоровье";
+"iconPicker.homeAndUtilities" = "Дом и коммунальные";
+"iconPicker.moneyAndFinance" = "Деньги и финансы";
+
+// MARK: - Category Filter
+"categoryFilter.allCategories" = "Все категории";
+"categoryFilter.noExpenseCategories" = "Нет категорий расходов";
+"categoryFilter.noIncomeCategories" = "Нет категорий доходов";
 
 // MARK: - Accessibility Labels
 "accessibility.voiceInput" = "Голосовой ввод";
@@ -248,7 +334,7 @@
 "subscriptions.transactionHistory" = "История транзакций";
 "subscriptions.category" = "Категория";
 "subscriptions.frequency" = "Частота";
-"subscriptions.nextCharge" = "Следующее списание";
+"subscriptions.nextCharge" = "Следующее списание: %@";
 "subscriptions.account" = "Счёт";
 "subscriptions.status" = "Статус";
 "subscriptions.status.active" = "Активна";

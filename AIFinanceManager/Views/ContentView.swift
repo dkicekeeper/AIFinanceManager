@@ -5,7 +5,11 @@ struct ContentView: View {
     @EnvironmentObject var coordinator: AppCoordinator
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     
-    // Computed properties for easier access
+    // @State для принудительного обновления UI при изменении данных
+    @State private var refreshTrigger: Int = 0
+    
+    // Computed properties для доступа к ViewModels из coordinator
+    // Используем их напрямую для отслеживания изменений через onChange
     private var viewModel: TransactionsViewModel {
         coordinator.transactionsViewModel
     }
@@ -203,7 +207,11 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingCSVPreview) {
                 if let csvFile = parsedCSVFile {
-                    CSVPreviewView(csvFile: csvFile, transactionsViewModel: viewModel)
+                    CSVPreviewView(
+                        csvFile: csvFile,
+                        transactionsViewModel: viewModel,
+                        categoriesViewModel: categoriesViewModel
+                    )
                 }
             }
             .toolbar {
@@ -240,7 +248,24 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.allTransactions.count) { _, _ in
                 updateSummary()
+                refreshTrigger += 1
             }
+            .onChange(of: accountsViewModel.accounts.count) { _, _ in
+                refreshTrigger += 1
+            }
+            .onChange(of: viewModel.allTransactions) { _, _ in
+                updateSummary()
+            }
+            .onChange(of: accountsViewModel.accounts) { _, _ in
+                refreshTrigger += 1
+            }
+            .onChange(of: timeFilterManager.currentFilter) { _, _ in
+                updateSummary()
+            }
+            .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
+                loadWallpaper()
+            }
+            .id(refreshTrigger) // Принудительное обновление всего view при изменении refreshTrigger
             .onChange(of: timeFilterManager.currentFilter) { _, _ in
                 updateSummary()
             }

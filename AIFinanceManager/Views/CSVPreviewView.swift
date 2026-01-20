@@ -10,8 +10,15 @@ import SwiftUI
 struct CSVPreviewView: View {
     let csvFile: CSVFile
     let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel?
     @Environment(\.dismiss) var dismiss
     @State private var showingMapping = false
+    
+    init(csvFile: CSVFile, transactionsViewModel: TransactionsViewModel, categoriesViewModel: CategoriesViewModel? = nil) {
+        self.csvFile = csvFile
+        self.transactionsViewModel = transactionsViewModel
+        self.categoriesViewModel = categoriesViewModel
+    }
     
     var body: some View {
         NavigationView {
@@ -125,6 +132,7 @@ struct CSVPreviewView: View {
                 CSVColumnMappingView(
                     csvFile: csvFile,
                     transactionsViewModel: transactionsViewModel,
+                    categoriesViewModel: categoriesViewModel,
                     onComplete: {
                         // Закрываем все модалки после успешного импорта
                         dismiss()

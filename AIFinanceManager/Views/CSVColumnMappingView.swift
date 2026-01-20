@@ -6,17 +6,30 @@
 //
 
 import SwiftUI
+import Combine
 
 struct CSVColumnMappingView: View {
     let csvFile: CSVFile
     let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel?
     let onComplete: (() -> Void)?
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var coordinator: AppCoordinator
     
-    init(csvFile: CSVFile, transactionsViewModel: TransactionsViewModel, onComplete: (() -> Void)? = nil) {
+    init(csvFile: CSVFile, transactionsViewModel: TransactionsViewModel, categoriesViewModel: CategoriesViewModel? = nil, onComplete: (() -> Void)? = nil) {
         self.csvFile = csvFile
         self.transactionsViewModel = transactionsViewModel
+        self.categoriesViewModel = categoriesViewModel
         self.onComplete = onComplete
+    }
+    
+    // Получаем основной CategoriesViewModel из coordinator, если не передан
+    private var mainCategoriesViewModel: CategoriesViewModel {
+        if let passedViewModel = categoriesViewModel {
+            return passedViewModel
+        }
+        // Если не передан, используем из coordinator (должен быть доступен через @EnvironmentObject)
+        return coordinator.categoriesViewModel
     }
     
     @State private var mapping = CSVColumnMapping()
@@ -24,6 +37,7 @@ struct CSVColumnMappingView: View {
     @State private var showingImportResult = false
     @State private var importResult: ImportResult?
     @State private var isImporting = false
+    @State private var importProgress: Double = 0.0
     
     private var requiredFieldsSection: some View {
         Section(header: Text("Обязательные поля")) {
@@ -40,6 +54,9 @@ struct CSVColumnMappingView: View {
         Section(header: Text("Опциональные поля")) {
             currencyPicker
             accountPicker
+            targetAccountPicker
+            targetCurrencyPicker
+            targetAmountPicker
             categoryPicker
             subcategoriesPicker
             if mapping.subcategoriesColumn != nil {
@@ -109,6 +126,42 @@ struct CSVColumnMappingView: View {
         Picker("Счёт", selection: Binding(
             get: { mapping.accountColumn ?? "" },
             set: { mapping.accountColumn = $0.isEmpty ? nil : $0 }
+        )) {
+            Text("— не использовать —").tag("")
+            ForEach(csvFile.headers, id: \.self) { header in
+                Text(header).tag(header)
+            }
+        }
+    }
+    
+    private var targetAccountPicker: some View {
+        Picker("Счёт получателя", selection: Binding(
+            get: { mapping.targetAccountColumn ?? "" },
+            set: { mapping.targetAccountColumn = $0.isEmpty ? nil : $0 }
+        )) {
+            Text("— не использовать —").tag("")
+            ForEach(csvFile.headers, id: \.self) { header in
+                Text(header).tag(header)
+            }
+        }
+    }
+    
+    private var targetCurrencyPicker: some View {
+        Picker("Валюта счета получателя", selection: Binding(
+            get: { mapping.targetCurrencyColumn ?? "" },
+            set: { mapping.targetCurrencyColumn = $0.isEmpty ? nil : $0 }
+        )) {
+            Text("— не использовать —").tag("")
+            ForEach(csvFile.headers, id: \.self) { header in
+                Text(header).tag(header)
+            }
+        }
+    }
+    
+    private var targetAmountPicker: some View {
+        Picker("Сумма счета получателя", selection: Binding(
+            get: { mapping.targetAmountColumn ?? "" },
+            set: { mapping.targetAmountColumn = $0.isEmpty ? nil : $0 }
         )) {
             Text("— не использовать —").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
@@ -215,7 +268,7 @@ struct CSVColumnMappingView: View {
             mapping: mapping,
             transactionsViewModel: transactionsViewModel,
             accountsViewModel: AccountsViewModel(repository: transactionsViewModel.repository),
-            categoriesViewModel: CategoriesViewModel(repository: transactionsViewModel.repository),
+            categoriesViewModel: mainCategoriesViewModel,
             onComplete: { entityMapping in
                 Task {
                     await performImport(entityMapping: entityMapping)
@@ -240,10 +293,15 @@ struct CSVColumnMappingView: View {
         if isImporting {
             Color.black.opacity(0.3)
                 .ignoresSafeArea()
-            ProgressView("Импорт данных...")
-                .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(10)
+            VStack(spacing: AppSpacing.md) {
+                ProgressView(value: importProgress, total: 1.0)
+                    .progressViewStyle(LinearProgressViewStyle())
+                Text("Импорт данных... \(Int(importProgress * 100))%")
+                    .font(AppTypography.body)
+            }
+            .padding(AppSpacing.lg)
+            .background(Color(.systemBackground))
+            .cornerRadius(AppRadius.md)
         }
     }
     
@@ -256,22 +314,45 @@ struct CSVColumnMappingView: View {
     private func performImport(entityMapping: EntityMapping) async {
         await MainActor.run {
             isImporting = true
+            importProgress = 0.0
         }
         
-        // Note: Need CategoriesViewModel - for now using transactionsViewModel.customCategories
-        // This should be passed from parent view
-        let categoriesViewModel = CategoriesViewModel(repository: transactionsViewModel.repository)
+        // Используем основной CategoriesViewModel (из coordinator или переданный)
+        let importCategoriesViewModel = await MainActor.run {
+            mainCategoriesViewModel
+        }
+        let accountsViewModel = AccountsViewModel(repository: transactionsViewModel.repository)
+        
         let result = await CSVImportService.importTransactions(
             csvFile: csvFile,
             columnMapping: mapping,
             entityMapping: entityMapping,
             transactionsViewModel: transactionsViewModel,
-            categoriesViewModel: categoriesViewModel
+            categoriesViewModel: importCategoriesViewModel,
+            accountsViewModel: accountsViewModel,
+            progressCallback: { progress in
+                Task { @MainActor in
+                    importProgress = progress
+                }
+            }
         )
         
         await MainActor.run {
             isImporting = false
+            importProgress = 1.0
             importResult = result
+            
+            // Перезагружаем данные в основном CategoriesViewModel после импорта
+            mainCategoriesViewModel.reloadFromStorage()
+            
+            // Перезагружаем данные в AccountsViewModel из coordinator
+            coordinator.accountsViewModel.reloadFromStorage()
+            
+            // Принудительно обновляем UI во всех ViewModels
+            transactionsViewModel.objectWillChange.send()
+            coordinator.accountsViewModel.objectWillChange.send()
+            mainCategoriesViewModel.objectWillChange.send()
+            
             showingImportResult = true
         }
     }

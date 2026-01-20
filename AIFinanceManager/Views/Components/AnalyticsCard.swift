@@ -12,38 +12,37 @@ struct AnalyticsCard: View {
     let currency: String
     
     var body: some View {
-        CardContainer {
-            VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                // Header
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
+            // Header
+            HStack {
+                Text(String(localized: "analytics.history"))
+                    .font(AppTypography.h3)
+                    .foregroundStyle(.primary)
+                Spacer()
+            }
+
+            // Progress bar with amounts
+            ExpenseIncomeProgressBar(
+                expenseAmount: summary.totalExpenses,
+                incomeAmount: summary.totalIncome,
+                currency: currency
+            )
+
+            // Planned amount
+            if summary.plannedAmount > 0 {
                 HStack {
-                    Text(String(localized: "analytics.history"))
-                        .font(AppTypography.h3)
+                    Text(String(localized: "analytics.planned"))
+                        .font(AppTypography.bodySmall)
                         .foregroundStyle(.primary)
                     Spacer()
-                }
-
-                // Progress bar with amounts
-                ExpenseIncomeProgressBar(
-                    expenseAmount: summary.totalExpenses,
-                    incomeAmount: summary.totalIncome,
-                    currency: currency
-                )
-
-                // Planned amount
-                if summary.plannedAmount > 0 {
-                    HStack {
-                        Text(String(localized: "analytics.planned"))
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
-                            .font(AppTypography.bodySmall)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.primary)
-                    }
+                    Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
+                        .font(AppTypography.bodySmall)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
                 }
             }
         }
+        .glassCardStyle()
     }
 }
 

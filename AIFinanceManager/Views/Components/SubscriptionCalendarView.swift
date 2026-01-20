@@ -52,7 +52,6 @@ struct SubscriptionCalendarView: View {
             }
             .frame(maxHeight: viewType == .month ? 350 : 500)
         }
-        .padding(AppSpacing.lg)
         .glassCardStyle()
     }
     

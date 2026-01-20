@@ -92,29 +92,16 @@ struct SubscriptionsListView: View {
     }
     
     private var emptyState: some View {
-        VStack(spacing: AppSpacing.lg) {
-            Image(systemName: "creditcard")
-                .font(.system(size: 64))
-                .foregroundColor(.secondary)
-            
-            Text(String(localized: "subscriptions.empty"))
-                .font(AppTypography.h3)
-
-            Text(String(localized: "subscriptions.emptyDescription"))
-                .font(AppTypography.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button {
+        EmptyStateView(
+            icon: "creditcard",
+            title: String(localized: "subscriptions.empty"),
+            description: String(localized: "subscriptions.emptyDescription"),
+            actionTitle: String(localized: "subscriptions.addSubscription"),
+            action: {
                 editingSubscription = nil
                 showingEditView = true
-            } label: {
-                Text(String(localized: "subscriptions.addSubscription"))
             }
-            .primaryButton()
-            .padding(.top, AppSpacing.md)
-        }
-        .padding(AppSpacing.xxl)
+        )
     }
     
     private var subscriptionsList: some View {
@@ -134,10 +121,105 @@ struct SubscriptionsListView: View {
     }
 }
 
-#Preview {
+// MARK: - Previews
+
+#Preview("Subscriptions List - Empty") {
     let coordinator = AppCoordinator()
-    SubscriptionsListView(
+    return NavigationView {
+        SubscriptionsListView(
+            subscriptionsViewModel: coordinator.subscriptionsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel
+        )
+        .environmentObject(TimeFilterManager())
+    }
+}
+
+#Preview("Subscriptions List - With Data") {
+    let coordinator = AppCoordinator()
+    let subscriptionsViewModel = coordinator.subscriptionsViewModel
+    let transactionsViewModel = coordinator.transactionsViewModel
+    
+    // Add sample subscriptions for preview
+    let dateFormatter = DateFormatters.dateFormatter
+    let today = dateFormatter.string(from: Date())
+    
+    let sampleSubscriptions = [
+        RecurringSeries(
+            id: "preview-1",
+            amount: Decimal(9.99),
+            currency: "USD",
+            category: "Entertainment",
+            description: "Netflix",
+            accountId: "preview-account",
+            frequency: .monthly,
+            startDate: today,
+            kind: .subscription,
+            brandId: "Netflix",
+            status: .active
+        ),
+        RecurringSeries(
+            id: "preview-2",
+            amount: Decimal(15.00),
+            currency: "USD",
+            category: "Entertainment",
+            description: "Spotify Premium",
+            accountId: "preview-account",
+            frequency: .monthly,
+            startDate: today,
+            kind: .subscription,
+            brandId: "Spotify",
+            status: .active
+        ),
+        RecurringSeries(
+            id: "preview-3",
+            amount: Decimal(99.00),
+            currency: "USD",
+            category: "Software",
+            description: "Adobe Creative Cloud",
+            accountId: "preview-account",
+            frequency: .monthly,
+            startDate: today,
+            kind: .subscription,
+            brandId: "Adobe",
+            status: .paused
+        )
+    ]
+    
+    // Temporarily add subscriptions for preview
+    subscriptionsViewModel.recurringSeries = sampleSubscriptions
+    
+    return NavigationView {
+        SubscriptionsListView(
+            subscriptionsViewModel: subscriptionsViewModel,
+            transactionsViewModel: transactionsViewModel
+        )
+        .environmentObject(TimeFilterManager())
+    }
+}
+
+#Preview("Subscription Card") {
+    let coordinator = AppCoordinator()
+    let dateFormatter = DateFormatters.dateFormatter
+    let today = dateFormatter.string(from: Date())
+    
+    let sampleSubscription = RecurringSeries(
+        id: "preview-card",
+        amount: Decimal(9.99),
+        currency: "USD",
+        category: "Entertainment",
+        description: "Netflix",
+        accountId: "preview-account",
+        frequency: .monthly,
+        startDate: today,
+        kind: .subscription,
+        brandId: "Netflix",
+        status: .active
+    )
+    
+    return SubscriptionCard(
+        subscription: sampleSubscription,
         subscriptionsViewModel: coordinator.subscriptionsViewModel,
         transactionsViewModel: coordinator.transactionsViewModel
     )
+    .padding()
 }

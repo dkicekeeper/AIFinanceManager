@@ -17,41 +17,66 @@ struct CategoriesManagementView: View {
     @State private var categoryToDelete: CustomCategory?
     @State private var showingDeleteDialog = false
     
+    // Кешируем отфильтрованные категории для оптимизации
+    private var filteredCategories: [CustomCategory] {
+        categoriesViewModel.customCategories
+            .filter { $0.type == selectedType }
+            .sorted { $0.name < $1.name }
+    }
+    
     var body: some View {
-        List {
-            ForEach(filteredCategories) { category in
-                CategoryRow(
-                    category: category,
-                    isDefault: false,
-                    budgetProgress: category.type == .expense ? categoriesViewModel.budgetProgress(for: category, transactions: transactionsViewModel.allTransactions) : nil,
-                    onEdit: { editingCategory = category },
-                    onDelete: {
-                        categoryToDelete = category
-                        showingDeleteDialog = true
+        Group {
+            if filteredCategories.isEmpty {
+                EmptyStateView(
+                    icon: "folder",
+                    title: String(localized: "emptyState.noCategories"),
+                    description: String(localized: "emptyState.startTracking"),
+                    actionTitle: String(localized: "button.add"),
+                    action: {
+                        showingAddCategory = true
                     }
                 )
-                .padding(.vertical, AppSpacing.xs)
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                .listRowSeparator(.hidden)
+            } else {
+                List {
+                    ForEach(filteredCategories) { category in
+                        CategoryRow(
+                            category: category,
+                            isDefault: false,
+                            budgetProgress: category.type == .expense ? categoriesViewModel.budgetProgress(for: category, transactions: transactionsViewModel.allTransactions) : nil,
+                            onEdit: { editingCategory = category },
+                            onDelete: {
+                                categoryToDelete = category
+                                showingDeleteDialog = true
+                            }
+                        )
+                    }
+                }
             }
         }
-        .listStyle(PlainListStyle())
         .navigationTitle(String(localized: "navigation.categories"))
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showingAddCategory = true } label: { Image(systemName: "plus") }
+                Button {
+                    HapticManager.light()
+                    showingAddCategory = true 
+                } label: { 
+                    Image(systemName: "plus")
+                }
             }
         }
-        .safeAreaInset(edge: .bottom) {
+        .safeAreaInset(edge: .top) {
             Picker("", selection: $selectedType) {
-                Text("Расходы").tag(TransactionType.expense)
-                Text("Доходы").tag(TransactionType.income)
+                Text(String(localized: "transactionType.expense")).tag(TransactionType.expense)
+                Text(String(localized: "transactionType.income")).tag(TransactionType.income)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.md)
-            .background(Color(.systemBackground))
+            .background(Color(.clear))
+            .onChange(of: selectedType) { _, _ in
+                HapticManager.selection()
+            }
         }
         .sheet(isPresented: $showingAddCategory) {
             CategoryEditView(
@@ -60,6 +85,7 @@ struct CategoriesManagementView: View {
                 category: nil,
                 type: selectedType,
                 onSave: { category in
+                    HapticManager.success()
                     categoriesViewModel.addCategory(category)
                     transactionsViewModel.invalidateCaches()
                     showingAddCategory = false
@@ -74,6 +100,7 @@ struct CategoriesManagementView: View {
                 category: category,
                 type: category.type,
                 onSave: { updatedCategory in
+                    HapticManager.success()
                     categoriesViewModel.updateCategory(updatedCategory)
                     transactionsViewModel.invalidateCaches()
                     editingCategory = nil
@@ -81,18 +108,18 @@ struct CategoriesManagementView: View {
                 onCancel: { editingCategory = nil }
             )
         }
-        .alert("Удалить категорию?", isPresented: $showingDeleteDialog, presenting: categoryToDelete) { category in
-            Button("Отмена", role: .cancel) {
+        .alert(String(localized: "category.deleteTitle"), isPresented: $showingDeleteDialog, presenting: categoryToDelete) { category in
+            Button(String(localized: "button.cancel"), role: .cancel) {
                 categoryToDelete = nil
             }
-            Button("Удалить только категорию", role: .destructive) {
+            Button(String(localized: "category.deleteOnlyCategory"), role: .destructive) {
                 HapticManager.warning()
                 // Update transactions to use "Uncategorized" if needed
                 categoriesViewModel.deleteCategory(category, deleteTransactions: false)
                 transactionsViewModel.invalidateCaches()
                 categoryToDelete = nil
             }
-            Button("Удалить категорию и операции", role: .destructive) {
+            Button(String(localized: "category.deleteCategoryAndTransactions"), role: .destructive) {
                 HapticManager.warning()
                 // Delete transactions with this category
                 transactionsViewModel.allTransactions.removeAll {
@@ -104,15 +131,8 @@ struct CategoriesManagementView: View {
                 categoryToDelete = nil
             }
         } message: { category in
-            Text("Выберите, что делать с операциями категории \"\(category.name)\".")
+            Text(String(format: String(localized: "category.deleteMessage"), category.name))
         }
-    }
-    
-    private var filteredCategories: [CustomCategory] {
-        // Только пользовательские категории выбранного типа
-        return categoriesViewModel.customCategories
-            .filter { $0.type == selectedType }
-            .sorted { $0.name < $1.name }
     }
 }
 
@@ -152,35 +172,41 @@ struct CategoryEditView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Название")) {
-                    TextField("Название категории", text: $name)
+                Section(header: Text(String(localized: "common.name"))) {
+                    TextField(String(localized: "category.namePlaceholder"), text: $name)
                         .focused($isNameFocused)
                 }
                 
-                Section(header: Text("Иконка")) {
+                Section(header: Text(String(localized: "common.icon"))) {
                     HStack {
-                        Button(action: { showingIconPicker.toggle() }) {
+                        Button(action: { 
+                            HapticManager.light()
+                            showingIconPicker.toggle() 
+                        }) {
                             Image(systemName: iconName)
-                                .font(.system(size: 30))
-                                .foregroundColor(hexToColor(selectedColor))
-                                .frame(width: 60, height: 60)
+                                .font(.system(size: AppIconSize.xxl))
+                                .foregroundColor(colorFromHex(selectedColor))
+                                .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                                 .background(Color(.systemGray6))
-                                .cornerRadius(12)
+                                .cornerRadius(AppRadius.lg)
                         }
                         
-                        Text("Нажмите для выбора")
+                        Text(String(localized: "category.tapToSelect"))
                             .foregroundColor(.secondary)
                     }
                 }
                 
-                Section(header: Text("Цвет")) {
+                Section(header: Text(String(localized: "common.color"))) {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
+                        HStack(spacing: AppSpacing.lg) {
                             ForEach(defaultColors, id: \.self) { colorHex in
-                                Button(action: { selectedColor = colorHex }) {
+                                Button(action: { 
+                                    HapticManager.selection()
+                                    selectedColor = colorHex 
+                                }) {
                                     Circle()
-                                        .fill(hexToColor(colorHex))
-                                        .frame(width: 44, height: 44)
+                                        .fill(colorFromHex(colorHex))
+                                        .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
                                         .overlay(
                                             Circle()
                                                 .stroke(Color.primary, lineWidth: selectedColor == colorHex ? 3 : 0)
@@ -188,7 +214,7 @@ struct CategoryEditView: View {
                                 }
                             }
                         }
-                        .padding(.vertical, 8)
+                        .padding(.vertical, AppSpacing.sm)
                     }
                 }
                 
@@ -227,7 +253,7 @@ struct CategoryEditView: View {
                 
                 // Подкатегории
                 if let category = category {
-                    Section(header: Text("Подкатегории")) {
+                    Section(header: Text(String(localized: "category.subcategories"))) {
                         let categoryId = category.id
                         let linkedSubcategories = categoriesViewModel.getSubcategoriesForCategory(categoryId)
                         
@@ -236,6 +262,7 @@ struct CategoryEditView: View {
                                 Text(subcategory.name)
                                 Spacer()
                                 Button(action: {
+                                    HapticManager.light()
                                     categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: categoryId)
                                 }) {
                                     Image(systemName: "xmark.circle.fill")
@@ -244,10 +271,13 @@ struct CategoryEditView: View {
                             }
                         }
                         
-                        Button(action: { showingSubcategoryPicker = true }) {
+                        Button(action: { 
+                            HapticManager.light()
+                            showingSubcategoryPicker = true 
+                        }) {
                             HStack {
                                 Image(systemName: "plus.circle.fill")
-                                Text("Добавить подкатегорию")
+                                Text(String(localized: "category.addSubcategory"))
                             }
                             .foregroundColor(.blue)
                         }
@@ -279,6 +309,7 @@ struct CategoryEditView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        HapticManager.light()
                         let budget: Double? = {
                             if type == .expense, !budgetAmount.isEmpty, let amount = Double(budgetAmount), amount > 0 {
                                 return amount
@@ -323,7 +354,8 @@ struct CategoryEditView: View {
                     resetDay = category.budgetResetDay
                 } else {
                     // Активируем поле названия при создании новой категории
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                         isNameFocused = true
                     }
                 }
@@ -331,7 +363,8 @@ struct CategoryEditView: View {
         }
     }
     
-    private func hexToColor(_ hex: String) -> Color {
+    // Используем метод из CustomCategory для конвертации hex в Color
+    private func colorFromHex(_ hex: String) -> Color {
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
         
@@ -346,77 +379,24 @@ struct CategoryEditView: View {
     }
 }
 
-struct IconPickerView: View {
-    @Binding var selectedIconName: String
-    @Environment(\.dismiss) var dismiss
-    
-    private let iconCategories: [(String, [String])] = [
-        ("Часто используемые", ["banknote.fill", "cart.fill", "car.fill", "bag.fill", "fork.knife", "house.fill", "briefcase.fill", "heart.fill", "airplane", "gift.fill", "creditcard.fill", "tv.fill", "book.fill", "star.fill", "bolt.fill", "flame.fill"]),
-        ("Еда и напитки", ["fork.knife", "cup.and.saucer.fill", "birthday.cake.fill", "takeoutbag.and.cup.and.straw.fill", "carrot.fill", "fish.fill", "leaf.fill", "mug.fill"]),
-        ("Транспорт", ["car.fill", "bus.fill", "airplane", "tram.fill", "bicycle", "scooter", "ferry.fill", "fuelpump.fill"]),
-        ("Покупки", ["bag.fill", "cart.fill", "creditcard.fill", "handbag.fill", "tshirt.fill", "giftcard.fill", "basket.fill", "tag.fill"]),
-        ("Развлечения", ["film.fill", "gamecontroller.fill", "music.note", "theatermasks.fill", "paintpalette.fill", "book.fill", "sportscourt.fill", "figure.walk"]),
-        ("Здоровье", ["cross.case.fill", "heart.text.square.fill", "bandage.fill", "syringe.fill", "cross.fill", "eye.fill", "waveform.path.ecg", "figure.run"]),
-        ("Дом и коммунальные", ["house.fill", "key.fill", "chair.fill", "bed.double.fill", "lightbulb.fill", "sparkles", "sofa.fill", "shower.fill"]),
-        ("Деньги и финансы", ["banknote.fill", "dollarsign.circle.fill", "creditcard.fill", "building.columns.fill", "chart.bar.fill", "rublesign.circle.fill", "eurosign.circle.fill"])
-    ]
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    ForEach(iconCategories, id: \.0) { category in
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text(category.0)
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 20)
 
-                            LazyVGrid(
-                                columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 6),
-                                spacing: 16
-                            ) {
-                                ForEach(category.1, id: \.self) { iconName in
-                                    Button(action: {
-                                        selectedIconName = iconName
-                                        dismiss()
-                                    }) {
-                                        Image(systemName: iconName)
-                                            .font(.system(size: 26))
-                                            .foregroundColor(selectedIconName == iconName ? .white : .primary)
-                                            .frame(width: 52, height: 52)
-                                            .background(
-                                                selectedIconName == iconName
-                                                    ? Color.blue
-                                                    : Color(.systemGray6)
-                                            )
-                                            .cornerRadius(12)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                }
-                .padding(.vertical, 20)
-            }
-            .navigationTitle(String(localized: "navigation.selectIcon"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Готово") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
+// MARK: - Previews
 
 #Preview("Categories Management") {
     let coordinator = AppCoordinator()
     NavigationView {
+        CategoriesManagementView(
+            categoriesViewModel: coordinator.categoriesViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel
+        )
+    }
+}
+
+#Preview("Categories Management - Empty") {
+    let coordinator = AppCoordinator()
+    coordinator.categoriesViewModel.customCategories = []
+    
+    return NavigationView {
         CategoriesManagementView(
             categoriesViewModel: coordinator.categoriesViewModel,
             transactionsViewModel: coordinator.transactionsViewModel
@@ -436,7 +416,7 @@ struct IconPickerView: View {
         budgetResetDay: 1
     )
     
-    List {
+    return List {
         CategoryRow(
             category: sampleCategory,
             isDefault: false,
@@ -449,4 +429,40 @@ struct IconPickerView: View {
         .listRowSeparator(.hidden)
     }
     .listStyle(PlainListStyle())
+}
+
+#Preview("Category Edit View - New") {
+    let coordinator = AppCoordinator()
+    
+    return CategoryEditView(
+        categoriesViewModel: coordinator.categoriesViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel,
+        category: nil,
+        type: .expense,
+        onSave: { _ in },
+        onCancel: {}
+    )
+}
+
+#Preview("Category Edit View - Edit") {
+    let coordinator = AppCoordinator()
+    let sampleCategory = CustomCategory(
+        id: "preview",
+        name: "Food",
+        iconName: "fork.knife",
+        colorHex: "#3b82f6",
+        type: .expense,
+        budgetAmount: 10000,
+        budgetPeriod: .monthly,
+        budgetResetDay: 1
+    )
+    
+    return CategoryEditView(
+        categoriesViewModel: coordinator.categoriesViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel,
+        category: sampleCategory,
+        type: .expense,
+        onSave: { _ in },
+        onCancel: {}
+    )
 }

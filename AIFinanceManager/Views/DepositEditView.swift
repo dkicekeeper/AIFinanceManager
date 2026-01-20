@@ -30,67 +30,70 @@ struct DepositEditView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Название депозита")) {
-                    TextField("Название", text: $name)
+                Section(header: Text(String(localized: "deposit.name"))) {
+                    TextField(String(localized: "deposit.namePlaceholder"), text: $name)
                         .focused($isNameFocused)
                 }
                 
-                Section(header: Text("Банк")) {
-                    TextField("Название банка", text: $bankName)
+                Section(header: Text(String(localized: "deposit.bank"))) {
+                    TextField(String(localized: "deposit.bankNamePlaceholder"), text: $bankName)
                     
-                    Button(action: { showingBankLogoPicker = true }) {
+                    Button(action: { 
+                        HapticManager.selection()
+                        showingBankLogoPicker = true 
+                    }) {
                         HStack {
-                            Text("Выбрать логотип")
+                            Text(String(localized: "deposit.selectLogo"))
                             Spacer()
-                            selectedBankLogo.image(size: 24)
+                            selectedBankLogo.image(size: AppIconSize.lg)
                             Image(systemName: "chevron.right")
                                 .foregroundColor(.secondary)
-                                .font(.caption)
+                                .font(AppTypography.caption)
                         }
                     }
                 }
                 
-                Section(header: Text("Валюта")) {
-                    Picker("Валюта", selection: $currency) {
+                Section(header: Text(String(localized: "common.currency"))) {
+                    Picker(String(localized: "common.currency"), selection: $currency) {
                         ForEach(depositCurrencies, id: \.self) { curr in
                             Text("\(Formatting.currencySymbol(for: curr)) \(curr)").tag(curr)
                         }
                     }
                 }
                 
-                Section(header: Text("Начальная сумма")) {
-                    TextField("0.00", text: $principalBalanceText)
+                Section(header: Text(String(localized: "deposit.initialAmount"))) {
+                    TextField(String(localized: "common.balancePlaceholder"), text: $principalBalanceText)
                         .keyboardType(.decimalPad)
                 }
                 
-                Section(header: Text("Процентная ставка")) {
+                Section(header: Text(String(localized: "deposit.interestRate"))) {
                     HStack {
                         TextField("0.0", text: $interestRateText)
                             .keyboardType(.decimalPad)
-                        Text("% годовых")
+                        Text(String(localized: "deposit.rateAnnual"))
                             .foregroundColor(.secondary)
                     }
                 }
                 
-                Section(header: Text("День начисления процентов")) {
-                    Picker("День месяца", selection: $interestPostingDay) {
+                Section(header: Text(String(localized: "deposit.postingDayTitle"))) {
+                    Picker(String(localized: "deposit.dayOfMonth"), selection: $interestPostingDay) {
                         ForEach(1...31, id: \.self) { day in
                             Text("\(day)").tag(day)
                         }
                     }
-                    Text("Если в месяце меньше дней, начисление произойдет в последний день месяца")
-                        .font(.caption)
+                    Text(String(localized: "deposit.postingDayHint"))
+                        .font(AppTypography.caption)
                         .foregroundColor(.secondary)
                 }
                 
-                Section(header: Text("Капитализация")) {
-                    Toggle("Включить капитализацию", isOn: $capitalizationEnabled)
-                    Text("При включенной капитализации проценты добавляются к основной сумме каждый месяц")
-                        .font(.caption)
+                Section(header: Text(String(localized: "deposit.capitalizationTitle"))) {
+                    Toggle(String(localized: "deposit.enableCapitalization"), isOn: $capitalizationEnabled)
+                    Text(String(localized: "deposit.capitalizationHint"))
+                        .font(AppTypography.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle(account == nil ? "Новый депозит" : "Редактировать депозит")
+            .navigationTitle(account == nil ? String(localized: "deposit.new") : String(localized: "deposit.editTitle"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -100,6 +103,7 @@ struct DepositEditView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        HapticManager.light()
                         guard let principalBalance = AmountFormatter.parse(principalBalanceText),
                               let interestRate = AmountFormatter.parse(interestRateText) else {
                             return
@@ -122,6 +126,7 @@ struct DepositEditView: View {
                             bankLogo: selectedBankLogo,
                             depositInfo: depositInfo
                         )
+                        HapticManager.success()
                         onSave(newAccount)
                     } label: {
                         Image(systemName: "checkmark")
@@ -147,7 +152,9 @@ struct DepositEditView: View {
                     interestRateText = ""
                     interestPostingDay = 1
                     capitalizationEnabled = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Активируем поле названия при создании нового депозита
+                    Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                         isNameFocused = true
                     }
                 }
@@ -159,13 +166,43 @@ struct DepositEditView: View {
     }
 }
 
-#Preview {
+// MARK: - Previews
+
+#Preview("Deposit Edit View - New") {
+    let coordinator = AppCoordinator()
     NavigationView {
-        let coordinator = AppCoordinator()
         DepositEditView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
             account: nil,
+            onSave: { _ in },
+            onCancel: {}
+        )
+    }
+}
+
+#Preview("Deposit Edit View - Edit") {
+    let coordinator = AppCoordinator()
+    let sampleAccount = Account(
+        id: "test",
+        name: "Halyk Deposit",
+        balance: 1000000,
+        currency: "KZT",
+        bankLogo: .halykBank,
+        depositInfo: DepositInfo(
+            bankName: "Halyk Bank",
+            principalBalance: Decimal(1000000),
+            capitalizationEnabled: true,
+            interestRateAnnual: Decimal(12.5),
+            interestPostingDay: 15
+        )
+    )
+    
+    return NavigationView {
+        DepositEditView(
+            depositsViewModel: coordinator.depositsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            account: sampleAccount,
             onSave: { _ in },
             onCancel: {}
         )

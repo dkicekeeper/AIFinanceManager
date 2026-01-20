@@ -14,7 +14,6 @@ struct AccountRow: View {
     let onDelete: () -> Void
     
     var body: some View {
-        CardContainer {
             HStack(spacing: AppSpacing.md) {
                 // Логотип банка
                 account.bankLogo.image(size: AppIconSize.xl)
@@ -65,10 +64,8 @@ struct AccountRow: View {
             }
         }
     }
-}
 
 #Preview {
-    let coordinator = AppCoordinator()
     let sampleAccount = Account(
         id: "test",
         name: "Test Account",

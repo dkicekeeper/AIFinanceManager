@@ -47,14 +47,19 @@ struct DepositDetailView: View {
                 }
                 .navigationTitle(account.name)
             } else {
-                Text("Депозит не найден")
-                    .navigationTitle("Депозит")
+                EmptyStateView(
+                    icon: "banknote",
+                    title: String(localized: "deposit.notFound"),
+                    description: String(localized: "emptyState.tryDifferentSearch")
+                )
+                .navigationTitle(String(localized: "deposit.title"))
             }
         }
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
+                    HapticManager.selection()
                     showingHistory = true
                 } label: {
                     Image(systemName: "clock.arrow.circlepath")
@@ -64,23 +69,26 @@ struct DepositDetailView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Button {
+                        HapticManager.selection()
                         showingEditView = true
                     } label: {
-                        Label("Редактировать", systemImage: "pencil")
+                        Label(String(localized: "deposit.edit"), systemImage: "pencil")
                     }
                     
                     Button {
+                        HapticManager.selection()
                         showingRateChange = true
                     } label: {
-                        Label("Изменить ставку", systemImage: "chart.line.uptrend.xyaxis")
+                        Label(String(localized: "deposit.changeRate"), systemImage: "chart.line.uptrend.xyaxis")
                     }
                     
                     Divider()
                     
                     Button(role: .destructive) {
+                        HapticManager.warning()
                         showingDeleteConfirmation = true
                     } label: {
-                        Label("Удалить депозит", systemImage: "trash")
+                        Label(String(localized: "deposit.delete"), systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -109,6 +117,7 @@ struct DepositDetailView: View {
                     transactionsViewModel: transactionsViewModel,
                     account: account,
                     onSave: { updatedAccount in
+                        HapticManager.success()
                         depositsViewModel.updateDeposit(updatedAccount)
                         transactionsViewModel.recalculateAccountBalances()
                         showingEditView = false
@@ -147,14 +156,16 @@ struct DepositDetailView: View {
                     depositsViewModel: depositsViewModel,
                     account: account,
                     onComplete: {
+                        HapticManager.success()
                         showingRateChange = false
                     }
                 )
             }
         }
-        .alert("Удалить депозит?", isPresented: $showingDeleteConfirmation) {
-            Button("Удалить", role: .destructive) {
+        .alert(String(localized: "deposit.deleteTitle"), isPresented: $showingDeleteConfirmation) {
+            Button(String(localized: "button.delete"), role: .destructive) {
                 if let account = account {
+                    HapticManager.warning()
                     depositsViewModel.deleteDeposit(account)
                     // Also delete related transactions
                     transactionsViewModel.allTransactions.removeAll { 
@@ -164,11 +175,11 @@ struct DepositDetailView: View {
                 }
                 dismiss()
             }
-            Button("Отмена", role: .cancel) {}
+            Button(String(localized: "button.cancel"), role: .cancel) {}
         } message: {
-            Text("Все данные депозита и связанные транзакции будут удалены.")
+            Text(String(localized: "deposit.deleteMessage"))
         }
-        .onAppear {
+        .task {
             // Пересчитываем проценты при открытии
             depositsViewModel.reconcileAllDeposits(
                 allTransactions: transactionsViewModel.allTransactions,
@@ -180,72 +191,87 @@ struct DepositDetailView: View {
     }
     
     private func depositInfoCard(depositInfo: DepositInfo, account: Account) -> some View {
-        CardContainer {
-            VStack(alignment: .leading, spacing: AppSpacing.md) {
-                // Header
-                HStack {
-                    account.bankLogo.image(size: 40)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(account.name)
-                            .font(AppTypography.h3)
-                        Text(depositInfo.bankName)
-                            .font(AppTypography.bodySmall)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                }
-                
-                Divider()
-                
-                // Balance
+        // Кешируем вычисления для оптимизации
+        let interestToToday = DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
+        let nextPosting = DepositInterestService.nextPostingDate(depositInfo: depositInfo)
+        
+        return VStack(alignment: .leading, spacing: AppSpacing.md) {
+            // Header
+            HStack {
+                account.bankLogo.image(size: AppIconSize.xxl)
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                    Text("Баланс")
+                    Text(account.name)
+                        .font(AppTypography.h3)
+                    Text(depositInfo.bankName)
                         .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
-                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
-                        .font(AppTypography.h2)
                 }
-                
-                // Interest info
-                let interestToToday = DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
-                VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                    Text("Проценты на сегодня")
-                        .font(AppTypography.bodySmall)
-                        .foregroundColor(.secondary)
-                    Text(Formatting.formatCurrency(NSDecimalNumber(decimal: interestToToday).doubleValue, currency: account.currency))
-                        .font(AppTypography.h4)
-                        .foregroundColor(.blue)
-                }
-                
-                Divider()
-                
-                // Details
-                InfoRow(label: "Ставка", value: "\(formatRate(depositInfo.interestRateAnnual))% годовых")
-                InfoRow(label: "Капитализация", value: depositInfo.capitalizationEnabled ? "Включена" : "Выключена")
-                InfoRow(label: "День начисления", value: "\(depositInfo.interestPostingDay)")
-                
-                if let nextPosting = DepositInterestService.nextPostingDate(depositInfo: depositInfo) {
-                    InfoRow(label: "Следующее начисление", value: formatDate(nextPosting))
-                }
+                Spacer()
             }
-            .padding(AppSpacing.md)
+            
+            Divider()
+            
+            // Balance
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text(String(localized: "deposit.balance"))
+                    .font(AppTypography.bodySmall)
+                    .foregroundColor(.secondary)
+                Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                    .font(AppTypography.h2)
+            }
+            
+            // Interest info
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text(String(localized: "deposit.interestToday"))
+                    .font(AppTypography.bodySmall)
+                    .foregroundColor(.secondary)
+                Text(Formatting.formatCurrency(NSDecimalNumber(decimal: interestToToday).doubleValue, currency: account.currency))
+                    .font(AppTypography.h4)
+                    .foregroundColor(.blue)
+            }
+            
+            Divider()
+            
+            // Details
+            InfoRow(
+                label: String(localized: "deposit.rate"),
+                value: String(format: String(localized: "deposit.rateAnnual"), formatRate(depositInfo.interestRateAnnual))
+            )
+            InfoRow(
+                label: String(localized: "deposit.capitalization"),
+                value: depositInfo.capitalizationEnabled ? String(localized: "deposit.capitalizationEnabled") : String(localized: "deposit.capitalizationDisabled")
+            )
+            InfoRow(
+                label: String(localized: "deposit.postingDay"),
+                value: "\(depositInfo.interestPostingDay)"
+            )
+            
+            if let nextPosting = nextPosting {
+                InfoRow(
+                    label: String(localized: "deposit.nextPosting"),
+                    value: formatDate(nextPosting)
+                )
+            }
         }
+        .glassCardStyle()
     }
     
     private var actionsSection: some View {
         VStack(spacing: AppSpacing.sm) {
             Button {
+                HapticManager.light()
                 showingTransferTo = true
             } label: {
-                Label("Пополнить", systemImage: "arrow.down.circle.fill")
+                Label(String(localized: "deposit.topUp"), systemImage: "arrow.down.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .primaryButton()
             
             Button {
+                HapticManager.light()
                 showingTransferFrom = true
             } label: {
-                Label("Перевести на счет", systemImage: "arrow.up.circle.fill")
+                Label(String(localized: "deposit.transferToAccount"), systemImage: "arrow.up.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -261,295 +287,10 @@ struct DepositDetailView: View {
     }
 }
 
-// MARK: - Deposit Transfer View
 
-enum DepositTransferDirection {
-    case toDeposit  // Перевод на депозит (пополнение)
-    case fromDeposit // Перевод с депозита (снятие)
-}
+// MARK: - Previews
 
-struct DepositTransferView: View {
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    let depositAccount: Account
-    let transferDirection: DepositTransferDirection
-    let onComplete: () -> Void
-    
-    @State private var selectedSourceAccountId: String? = nil
-    @State private var amountText: String = ""
-    @State private var descriptionText: String = ""
-    @State private var selectedDate: Date = Date()
-    @State private var showingError = false
-    @State private var errorMessage = ""
-    @FocusState private var isAmountFocused: Bool
-    
-    private var availableAccounts: [Account] {
-        accountsViewModel.accounts.filter { $0.id != depositAccount.id }
-    }
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Счет \(transferDirection == .toDeposit ? "источника" : "получателя")")) {
-                    if availableAccounts.isEmpty {
-                        Text("Нет других счетов для перевода")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: AppSpacing.md) {
-                                ForEach(availableAccounts) { sourceAccount in
-                                    AccountRadioButton(
-                                        account: sourceAccount,
-                                        isSelected: selectedSourceAccountId == sourceAccount.id,
-                                        onTap: {
-                                            selectedSourceAccountId = sourceAccount.id
-                                        }
-                                    )
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                }
-                
-                Section(header: Text("Сумма")) {
-                    TextField("0.00", text: $amountText)
-                        .keyboardType(.decimalPad)
-                        .focused($isAmountFocused)
-                }
-                
-                Section(header: Text("Описание")) {
-                    TextField("Описание (необязательно)", text: $descriptionText, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-                
-                Section(header: Text("Дата")) {
-                    DatePicker("Дата", selection: $selectedDate, displayedComponents: .date)
-                }
-            }
-            .navigationTitle(transferDirection == .toDeposit ? "Пополнить депозит" : "Перевести с депозита")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена") {
-                        onComplete()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Сохранить") {
-                        saveTransfer()
-                    }
-                    .disabled(amountText.isEmpty || selectedSourceAccountId == nil)
-                }
-            }
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    isAmountFocused = true
-                }
-                descriptionText = transferDirection == .toDeposit ? "Пополнение депозита" : "Перевод с депозита"
-            }
-            .alert("Ошибка", isPresented: $showingError) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(errorMessage)
-            }
-        }
-    }
-    
-    private func saveTransfer() {
-        guard let sourceAccountId = selectedSourceAccountId,
-              let amount = AmountFormatter.parse(amountText) else {
-            return
-        }
-        
-        let dateString = DateFormatters.dateFormatter.string(from: selectedDate)
-        let description = descriptionText.isEmpty 
-            ? (transferDirection == .toDeposit ? "Пополнение депозита" : "Перевод с депозита")
-            : descriptionText
-        
-        let amountDouble = NSDecimalNumber(decimal: amount).doubleValue
-        
-        if transferDirection == .toDeposit {
-            // Перевод на депозит (с выбранного счета на депозит)
-            // Note: transfer method should be in TransactionsViewModel
-            transactionsViewModel.transfer(
-                from: sourceAccountId,
-                to: depositAccount.id,
-                amount: amountDouble,
-                date: dateString,
-                description: description
-            )
-        } else {
-            // Перевод с депозита (с депозита на выбранный счет)
-            transactionsViewModel.transfer(
-                from: depositAccount.id,
-                to: sourceAccountId,
-                amount: amountDouble,
-                date: dateString,
-                description: description
-            )
-        }
-        
-        onComplete()
-    }
-}
-
-struct DepositRateChangeView: View {
-    @ObservedObject var depositsViewModel: DepositsViewModel
-    let account: Account
-    let onComplete: () -> Void
-    
-    @State private var rateText: String = ""
-    @State private var effectiveFromDate: Date = Date()
-    @State private var noteText: String = ""
-    @FocusState private var isRateFocused: Bool
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Новая процентная ставка")) {
-                    HStack {
-                        TextField("0.0", text: $rateText)
-                            .keyboardType(.decimalPad)
-                            .focused($isRateFocused)
-                        Text("% годовых")
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Section(header: Text("Дата вступления в силу")) {
-                    DatePicker("Дата", selection: $effectiveFromDate, displayedComponents: .date)
-                }
-                
-                Section(header: Text("Примечание (необязательно)")) {
-                    TextField("Примечание", text: $noteText, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-            }
-            .navigationTitle("Изменить ставку")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена") {
-                        onComplete()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Сохранить") {
-                        saveRateChange()
-                    }
-                    .disabled(rateText.isEmpty)
-                }
-            }
-            .onAppear {
-                if let depositInfo = account.depositInfo {
-                    rateText = String(format: "%.2f", NSDecimalNumber(decimal: depositInfo.interestRateAnnual).doubleValue)
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    isRateFocused = true
-                }
-            }
-        }
-    }
-    
-    private func saveRateChange() {
-        guard let rate = AmountFormatter.parse(rateText) else { return }
-        
-        let dateString = DateFormatters.dateFormatter.string(from: effectiveFromDate)
-        let note = noteText.isEmpty ? nil : noteText
-        
-        depositsViewModel.addDepositRateChange(
-            accountId: account.id,
-            effectiveFrom: dateString,
-            annualRate: rate,
-            note: note
-        )
-        
-        onComplete()
-    }
-}
-
-
-struct DepositTransactionRow: View {
-    let transaction: Transaction
-    let currency: String
-    let depositAccountId: String
-    
-    var body: some View {
-        HStack {
-            // Icon
-            Image(systemName: iconForTransactionType(transaction.type))
-                .foregroundColor(colorForTransactionType(transaction.type))
-                .font(.caption)
-                .frame(width: 20)
-            
-            // Date and description
-            VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.description)
-                    .font(AppTypography.body)
-                Text(formatDate(transaction.date))
-                    .font(AppTypography.bodySmall)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            // Amount
-            Text(formatAmount(transaction))
-                .font(AppTypography.body)
-                .fontWeight(.semibold)
-                .foregroundColor(colorForTransactionType(transaction.type))
-        }
-        .padding(AppSpacing.sm)
-        .background(Color(.systemGray6))
-        .cornerRadius(AppRadius.sm)
-    }
-    
-    private func iconForTransactionType(_ type: TransactionType) -> String {
-        switch type {
-        case .internalTransfer:
-            return "arrow.left.arrow.right.circle.fill"
-        case .depositInterestAccrual:
-            return "percent"
-        default:
-            return "circle"
-        }
-    }
-    
-    private func colorForTransactionType(_ type: TransactionType) -> Color {
-        switch type {
-        case .internalTransfer:
-            return .blue
-        case .depositInterestAccrual:
-            return .green
-        default:
-            return .primary
-        }
-    }
-    
-    private func formatAmount(_ transaction: Transaction) -> String {
-        // Для переводов определяем направление на основе depositAccountId
-        if transaction.type == .depositInterestAccrual {
-            return "+\(Formatting.formatCurrency(transaction.amount, currency: currency))"
-        } else if transaction.type == .internalTransfer {
-            // Если депозит - получатель, это пополнение (+)
-            let isIncoming = transaction.targetAccountId == depositAccountId
-            let sign = isIncoming ? "+" : "-"
-            return "\(sign)\(Formatting.formatCurrency(transaction.amount, currency: currency))"
-        }
-        return Formatting.formatCurrency(transaction.amount, currency: currency)
-    }
-    
-    private func formatDate(_ dateString: String) -> String {
-        guard let date = DateFormatters.dateFormatter.date(from: dateString) else {
-            return dateString
-        }
-        return DateFormatters.displayDateFormatter.string(from: date)
-    }
-}
-
-#Preview {
+#Preview("Deposit Detail View") {
     let coordinator = AppCoordinator()
     NavigationView {
         DepositDetailView(
@@ -557,6 +298,18 @@ struct DepositTransactionRow: View {
             transactionsViewModel: coordinator.transactionsViewModel,
             accountId: coordinator.depositsViewModel.deposits.first?.id ?? "test"
         )
-            .environmentObject(TimeFilterManager())
+        .environmentObject(TimeFilterManager())
+    }
+}
+
+#Preview("Deposit Detail View - Not Found") {
+    let coordinator = AppCoordinator()
+    NavigationView {
+        DepositDetailView(
+            depositsViewModel: coordinator.depositsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountId: "non-existent"
+        )
+        .environmentObject(TimeFilterManager())
     }
 }

@@ -35,6 +35,15 @@ class CategoriesViewModel: ObservableObject {
         self.transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
     }
     
+    /// Перезагружает все данные из хранилища (используется после импорта)
+    func reloadFromStorage() {
+        customCategories = repository.loadCategories()
+        categoryRules = repository.loadCategoryRules()
+        subcategories = repository.loadSubcategories()
+        categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
+        transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
+    }
+    
     // MARK: - Category CRUD Operations
     
     func addCategory(_ category: CustomCategory) {
@@ -169,6 +178,43 @@ class CategoriesViewModel: ObservableObject {
             transactionSubcategoryLinks.append(link)
         }
         
+        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
+    }
+    
+    /// Связывает подкатегории с транзакцией без немедленного сохранения (для массового импорта)
+    func linkSubcategoriesToTransactionWithoutSaving(transactionId: String, subcategoryIds: [String]) {
+        // Удаляем старые связи
+        transactionSubcategoryLinks.removeAll { $0.transactionId == transactionId }
+        
+        // Добавляем новые связи
+        for subcategoryId in subcategoryIds {
+            let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
+            transactionSubcategoryLinks.append(link)
+        }
+        // НЕ сохраняем - сохранение будет выполнено в конце импорта
+    }
+    
+    /// Массовое связывание подкатегорий с транзакциями (для импорта)
+    /// - Parameter links: Словарь [transactionId: [subcategoryIds]]
+    func batchLinkSubcategoriesToTransaction(_ links: [String: [String]]) {
+        // Удаляем старые связи для всех транзакций
+        let transactionIds = Set(links.keys)
+        transactionSubcategoryLinks.removeAll { transactionIds.contains($0.transactionId) }
+        
+        // Добавляем новые связи
+        for (transactionId, subcategoryIds) in links {
+            for subcategoryId in subcategoryIds {
+                let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
+                transactionSubcategoryLinks.append(link)
+            }
+        }
+        
+        // Сохраняем один раз в конце
+        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
+    }
+    
+    /// Принудительно сохраняет связи транзакций с подкатегориями (для использования после массового импорта)
+    func saveTransactionSubcategoryLinks() {
         repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
     }
     

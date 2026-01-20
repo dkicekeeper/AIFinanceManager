@@ -224,9 +224,14 @@ extension View {
     }
     
     /// Применяет glass effect с стандартным cornerRadius для карточек
+    /// Автоматически добавляет padding и contentShape
     /// - Parameter radius: Corner radius (по умолчанию .pill)
     func glassCardStyle(radius: CGFloat = AppRadius.pill) -> some View {
-        self.glassEffect(in: .rect(cornerRadius: radius))
+        self
+            .padding(AppSpacing.lg)
+            .contentShape(Rectangle())
+            .glassEffect(in: .rect(cornerRadius: radius))
+//        self.glassEffect(.regular .interactive())
     }
     
     /// Применяет стиль для fallback иконок (используется в BrandLogoView, SubscriptionCard)

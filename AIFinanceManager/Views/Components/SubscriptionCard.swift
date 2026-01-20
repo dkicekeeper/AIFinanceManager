@@ -51,7 +51,7 @@ struct SubscriptionCard: View {
                 .foregroundColor(.secondary)
                 
                 if let nextChargeDate = subscriptionsViewModel.nextChargeDate(for: subscription.id) {
-                    Text("Следующее списание: \(formatDate(nextChargeDate))")
+                    Text(String(format: String(localized: "subscriptions.nextCharge"), formatDate(nextChargeDate)))
                         .font(AppTypography.caption)
                         .foregroundColor(.secondary)
                 }
@@ -63,7 +63,6 @@ struct SubscriptionCard: View {
             // Status indicator
             statusIndicator
         }
-        .padding(AppSpacing.lg)
         .glassCardStyle()
     }
     

@@ -16,33 +16,48 @@ struct AccountsManagementView: View {
     @State private var showingAddDeposit = false
     @State private var editingAccount: Account?
     
+    // Кешируем baseCurrency для оптимизации
+    private var baseCurrency: String {
+        transactionsViewModel.appSettings.baseCurrency
+    }
+    
     var body: some View {
-        List {
-            ForEach(accountsViewModel.accounts) { account in
-                AccountRow(
-                    account: account,
-                    currency: transactionsViewModel.appSettings.baseCurrency,
-                    onEdit: { editingAccount = account },
-                    onDelete: { 
-                        accountsViewModel.deleteAccount(account)
-                        // Also delete related transactions
-                        transactionsViewModel.allTransactions.removeAll { 
-                            $0.accountId == account.id || $0.targetAccountId == account.id 
-                        }
-                        transactionsViewModel.recalculateAccountBalances()
+        Group {
+            if accountsViewModel.accounts.isEmpty {
+                EmptyStateView(
+                    icon: "creditcard",
+                    title: String(localized: "emptyState.noAccounts"),
+                    description: String(localized: "emptyState.startTracking"),
+                    actionTitle: String(localized: "account.newAccount"),
+                    action: {
+                        showingAddAccount = true
                     }
                 )
-//                .padding(.horizontal, AppSpacing.lg)
-//                .padding(.vertical, AppSpacing.xs)
-//                .listRowInsets(EdgeInsets())
-//                .listRowSeparator(.hidden)
+            } else {
+                List {
+                    ForEach(accountsViewModel.accounts) { account in
+                        AccountRow(
+                            account: account,
+                            currency: baseCurrency,
+                            onEdit: { editingAccount = account },
+                            onDelete: { 
+                                HapticManager.warning()
+                                accountsViewModel.deleteAccount(account)
+                                // Also delete related transactions
+                                transactionsViewModel.allTransactions.removeAll { 
+                                    $0.accountId == account.id || $0.targetAccountId == account.id 
+                                }
+                                transactionsViewModel.recalculateAccountBalances()
+                            }
+                        )
+                    }
+                }
             }
         }
-//        .listStyle(PlainListStyle())
         .navigationTitle(String(localized: "settings.accounts"))
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            // Пересчитываем проценты депозитов при открытии экрана
+        .navigationBarTitleDisplayMode(.large)
+        .task {
+            // Пересчитываем проценты депозитов при открытии экрана (асинхронно)
             depositsViewModel.reconcileAllDeposits(
                 allTransactions: transactionsViewModel.allTransactions,
                 onTransactionCreated: { transaction in
@@ -51,18 +66,23 @@ struct AccountsManagementView: View {
             )
         }
         .toolbar {
-            ToolbarItem(placement: .bottomBar) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button(action: { showingAddAccount = true }) {
-                        Label("Новый счёт", systemImage: "creditcard")
+                    Button(action: { 
+                        HapticManager.light()
+                        showingAddAccount = true 
+                    }) {
+                        Label(String(localized: "account.newAccount"), systemImage: "creditcard")
                     }
-                    Button(action: { showingAddDeposit = true }) {
-                        Label("Новый депозит", systemImage: "banknote")
+                    Button(action: { 
+                        HapticManager.light()
+                        showingAddDeposit = true 
+                    }) {
+                        Label(String(localized: "account.newDeposit"), systemImage: "banknote")
                     }
                 } label: {
                     Image(systemName: "plus")
                 }
-                .tint(.blue)
             }
         }
         .sheet(isPresented: $showingAddAccount) {
@@ -71,6 +91,7 @@ struct AccountsManagementView: View {
                 transactionsViewModel: transactionsViewModel,
                 account: nil,
                 onSave: { account in
+                    HapticManager.success()
                     accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
                     transactionsViewModel.recalculateAccountBalances()
                     showingAddAccount = false
@@ -85,6 +106,7 @@ struct AccountsManagementView: View {
                 account: nil,
                 onSave: { account in
                     if let depositInfo = account.depositInfo {
+                        HapticManager.success()
                         depositsViewModel.addDeposit(
                             name: account.name,
                             currency: account.currency,
@@ -116,6 +138,7 @@ struct AccountsManagementView: View {
                         transactionsViewModel: transactionsViewModel,
                         account: account,
                         onSave: { updatedAccount in
+                            HapticManager.success()
                             depositsViewModel.updateDeposit(updatedAccount)
                             transactionsViewModel.recalculateAccountBalances()
                             editingAccount = nil
@@ -128,6 +151,7 @@ struct AccountsManagementView: View {
                         transactionsViewModel: transactionsViewModel,
                         account: account,
                         onSave: { updatedAccount in
+                            HapticManager.success()
                             accountsViewModel.updateAccount(updatedAccount)
                             transactionsViewModel.recalculateAccountBalances()
                             editingAccount = nil
@@ -160,7 +184,7 @@ struct AccountEditView: View {
         NavigationView {
             Form {
                 Section(header: Text(String(localized: "common.name"))) {
-                    TextField("Название счёта", text: $name)
+                    TextField(String(localized: "account.namePlaceholder"), text: $name)
                         .focused($isNameFocused)
                 }
 
@@ -179,10 +203,10 @@ struct AccountEditView: View {
 
                 Section(header: Text(String(localized: "common.balance"))) {
                     HStack {
-                        TextField("0.00", text: $balanceText)
+                        TextField(String(localized: "common.balancePlaceholder"), text: $balanceText)
                             .keyboardType(.decimalPad)
                         
-                        Picker("Валюта", selection: $currency) {
+                        Picker(String(localized: "common.currency"), selection: $currency) {
                             ForEach(currencies, id: \.self) { curr in
                                 Text(Formatting.currencySymbol(for: curr)).tag(curr)
                             }
@@ -201,6 +225,7 @@ struct AccountEditView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
+                        HapticManager.light()
                         // Если balanceText пустой, используем 0 по умолчанию
                         let balance: Double
                         if balanceText.isEmpty {
@@ -237,7 +262,8 @@ struct AccountEditView: View {
                     selectedBankLogo = .none
                     balanceText = ""
                     // Активируем поле названия при создании нового счета
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
                         isNameFocused = true
                     }
                 }
@@ -315,31 +341,6 @@ struct BankLogoPickerView: View {
     }
 }
 
-struct BankLogoRow: View {
-    let bank: BankLogo
-    let isSelected: Bool
-    let onSelect: () -> Void
-    
-    var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 12) {
-                bank.image(size: 40)
-                    .frame(width: 40, height: 40)
-                
-                Text(bank.displayName)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
 #Preview("Accounts Management") {
     let coordinator = AppCoordinator()
     NavigationView {
@@ -351,27 +352,119 @@ struct BankLogoRow: View {
     }
 }
 
-#Preview("Account Row") {
+#Preview("Accounts Management - Empty") {
     let coordinator = AppCoordinator()
-    let sampleAccount = coordinator.accountsViewModel.accounts.first ?? Account(
+    coordinator.accountsViewModel.accounts = []
+    
+    return NavigationView {
+        AccountsManagementView(
+            accountsViewModel: coordinator.accountsViewModel,
+            depositsViewModel: coordinator.depositsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel
+        )
+    }
+}
+
+#Preview("Account Row") {
+    // Sample accounts with different characteristics
+    let sampleAccounts = [
+        Account(
+            id: "preview-1",
+            name: "Kaspi Gold",
+            balance: 500000,
+            currency: "KZT",
+            bankLogo: .kaspi
+        ),
+        Account(
+            id: "preview-2",
+            name: "Main Savings",
+            balance: 15000,
+            currency: "USD",
+            bankLogo: .halykBank
+        ),
+        Account(
+            id: "preview-3",
+            name: "Halyk Deposit",
+            balance: 1000000,
+            currency: "KZT",
+            bankLogo: .halykBank,
+            depositInfo: DepositInfo(
+                bankName: "Halyk Bank",
+                principalBalance: Decimal(1000000),
+                capitalizationEnabled: true,
+                interestRateAnnual: Decimal(12.5),
+                interestPostingDay: 15
+            )
+        ),
+        Account(
+            id: "preview-4",
+            name: "EUR Account",
+            balance: 2500,
+            currency: "EUR",
+            bankLogo: .alatauCityBank
+        ),
+        Account(
+            id: "preview-5",
+            name: "Jusan Deposit",
+            balance: 2000000,
+            currency: "KZT",
+            bankLogo: .jusan,
+            depositInfo: DepositInfo(
+                bankName: "Jusan Bank",
+                principalBalance: Decimal(2000000),
+                capitalizationEnabled: false,
+                interestRateAnnual: Decimal(10.0),
+                interestPostingDay: 1
+            )
+        )
+    ]
+    
+    return List {
+        ForEach(sampleAccounts) { account in
+            AccountRow(
+                account: account,
+                currency: account.currency,
+                onEdit: {},
+                onDelete: {}
+            )
+        }
+    }
+    .listStyle(PlainListStyle())
+}
+
+#Preview("Account Edit View - New") {
+    let coordinator = AppCoordinator()
+    
+    return AccountEditView(
+        accountsViewModel: coordinator.accountsViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel,
+        account: nil,
+        onSave: { _ in },
+        onCancel: {}
+    )
+}
+
+#Preview("Account Edit View - Edit") {
+    let coordinator = AppCoordinator()
+    let sampleAccount = Account(
         id: "preview",
-        name: "Sample Account",
+        name: "Test Account",
         balance: 10000,
-        currency: "KZT",
+        currency: "USD",
         bankLogo: .kaspi
     )
     
-    List {
-        AccountRow(
-            account: sampleAccount,
-            currency: "KZT",
-            onEdit: {},
-            onDelete: {}
-        )
-        .padding(.horizontal, AppSpacing.lg)
-        .padding(.vertical, AppSpacing.xs)
-        .listRowInsets(EdgeInsets())
-        .listRowSeparator(.hidden)
-    }
-    .listStyle(PlainListStyle())
+    return AccountEditView(
+        accountsViewModel: coordinator.accountsViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel,
+        account: sampleAccount,
+        onSave: { _ in },
+        onCancel: {}
+    )
+}
+
+#Preview("Bank Logo Picker") {
+    @Previewable @State var selectedLogo: BankLogo = .kaspi
+    
+    return BankLogoPickerView(selectedLogo: $selectedLogo)
 }
