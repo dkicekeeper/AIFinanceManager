@@ -131,6 +131,13 @@ class CategoriesViewModel: ObservableObject {
     // MARK: - Category-Subcategory Links
     
     func linkSubcategoryToCategory(subcategoryId: String, categoryId: String) {
+        linkSubcategoryToCategoryWithoutSaving(subcategoryId: subcategoryId, categoryId: categoryId)
+        // Сохраняем сразу для обычных операций (не массовый импорт)
+        repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
+    }
+    
+    /// Связывает подкатегорию с категорией без немедленного сохранения (для массового импорта)
+    func linkSubcategoryToCategoryWithoutSaving(subcategoryId: String, categoryId: String) {
         // Проверяем, нет ли уже такой связи
         let existingLink = categorySubcategoryLinks.first { link in
             link.categoryId == categoryId && link.subcategoryId == subcategoryId
@@ -139,7 +146,6 @@ class CategoriesViewModel: ObservableObject {
         if existingLink == nil {
             let link = CategorySubcategoryLink(categoryId: categoryId, subcategoryId: subcategoryId)
             categorySubcategoryLinks.append(link)
-            repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
         }
     }
     
@@ -221,6 +227,15 @@ class CategoriesViewModel: ObservableObject {
     func searchSubcategories(query: String) -> [Subcategory] {
         let queryLower = query.lowercased()
         return subcategories.filter { $0.name.lowercased().contains(queryLower) }
+    }
+    
+    /// Сохраняет все данные CategoriesViewModel (используется после массового импорта)
+    func saveAllData() {
+        // Сохраняем в правильном порядке: сначала подкатегории, потом связи
+        repository.saveSubcategories(subcategories)
+        repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
+        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
+        repository.saveCategories(customCategories)
     }
 
     // MARK: - Budget Management

@@ -164,7 +164,10 @@ class CSVImportService {
             let currency = currencyIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: CharacterSet.whitespaces) } ?? "KZT"
             
             // Парсим счет
+            // Для доходов: счет используется как accountId (куда поступают деньги, увеличивает баланс), НЕ создаем счет автоматически
+            // Для расходов и переводов: счет используется как accountId (откуда списываются деньги), создаем если нужно
             var accountId: String? = nil
+            
             if let accountIdx = accountIndex,
                let accountValue = row[safe: accountIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                !accountValue.isEmpty {
@@ -174,12 +177,14 @@ class CSVImportService {
                 if let mappedAccountId = entityMapping.accountMappings[accountValue] {
                     accountId = mappedAccountId
                 } else if let account = findAccount(by: accountValue, in: accountsViewModel, in: transactionsViewModel) {
-                    // Счет уже существует
+                    // Счет уже существует - используем его для всех типов транзакций
                     accountId = account.id
-                    // Сохраняем в словарь для быстрого поиска
-                    createdAccountsDuringImport[normalizedAccountName] = account.id
-                } else if let accountsVM = accountsViewModel {
-                    // Автоматически создаем счет, если не выбран в маппинге (как категории)
+                    // Сохраняем в словарь для быстрого поиска (только для не-доходов, чтобы не считать созданными)
+                    if type != .income {
+                        createdAccountsDuringImport[normalizedAccountName] = account.id
+                    }
+                } else if type != .income, let accountsVM = accountsViewModel {
+                    // Автоматически создаем счет только для расходов и переводов (НЕ для доходов)
                     await MainActor.run {
                         // Проверяем еще раз перед созданием (на случай параллельного создания)
                         if let existingAccount = findAccount(by: accountValue, in: accountsVM, in: transactionsViewModel) {
@@ -202,6 +207,8 @@ class CSVImportService {
                         }
                     }
                 }
+                // Для доходов: если счет не найден и не создан, accountId остается nil
+                // Это означает, что счет должен быть создан вручную или указан в маппинге
             }
             
             // Парсим валюту счета получателя (делаем это до парсинга счета получателя, чтобы использовать при создании)
@@ -212,10 +219,12 @@ class CSVImportService {
                 targetCurrency = targetCurrencyValue
             }
             
-            // Парсим счет получателя
+            // Парсим счет получателя (только для переводов, не для доходов)
             var targetAccountId: String? = nil
             let targetAccountCurrency = targetCurrency ?? currency // Используем валюту получателя или валюту операции
-            if let targetAccountIdx = targetAccountIndex,
+            
+            // Для доходов не используем targetAccountId - счет указан в accountId
+            if type != .income, let targetAccountIdx = targetAccountIndex,
                let targetAccountValue = row[safe: targetAccountIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
                !targetAccountValue.isEmpty {
                 let normalizedTargetAccountName = targetAccountValue.lowercased()
@@ -264,7 +273,8 @@ class CSVImportService {
             }
             
             // Парсим категорию
-            var categoryName = "Другое"
+            // Для переводов используем локализованное название "Перевод", для остальных - "Другое"
+            var categoryName = type == .internalTransfer ? String(localized: "transactionForm.transfer") : "Другое"
             var categoryId: String? = nil
             if let categoryIdx = categoryIndex,
                let categoryValue = row[safe: categoryIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
@@ -272,8 +282,25 @@ class CSVImportService {
                 if let mappedCategory = entityMapping.categoryMappings[categoryValue] {
                     categoryName = mappedCategory
                     // Находим ID категории по имени
-                    categoryId = categoriesViewModel.customCategories.first(where: { $0.name == mappedCategory })?.id
-                } else if let existingCategory = categoriesViewModel.customCategories.first(where: { $0.name == categoryValue }) {
+                    if let existingCategory = categoriesViewModel.customCategories.first(where: { $0.name == mappedCategory && $0.type == type }) {
+                        categoryId = existingCategory.id
+                    } else {
+                        // Категория из маппинга не существует - создаем её
+                        let iconName = CategoryIcon.iconName(for: mappedCategory, type: type, customCategories: categoriesViewModel.customCategories)
+                        let colorHex = CategoryColors.hexColor(for: mappedCategory, customCategories: categoriesViewModel.customCategories)
+                        let hexString = colorToHex(colorHex)
+                        
+                        let newCategory = CustomCategory(
+                            name: mappedCategory,
+                            iconName: iconName,
+                            colorHex: hexString,
+                            type: type
+                        )
+                        categoriesViewModel.addCategory(newCategory)
+                        categoryId = newCategory.id
+                        createdCategories += 1
+                    }
+                } else if let existingCategory = categoriesViewModel.customCategories.first(where: { $0.name == categoryValue && $0.type == type }) {
                     categoryName = categoryValue
                     categoryId = existingCategory.id
                 } else {
@@ -296,6 +323,30 @@ class CSVImportService {
                 }
             }
             
+            // Если categoryId все еще nil (категория не указана), находим или создаем дефолтную категорию
+            if categoryId == nil {
+                // Ищем дефолтную категорию для данного типа транзакции
+                if let defaultCategory = categoriesViewModel.customCategories.first(where: { $0.name == categoryName && $0.type == type }) {
+                    categoryId = defaultCategory.id
+                } else {
+                    // Создаем дефолтную категорию если её нет
+                    // Для переводов это "Перевод", для остальных - "Другое"
+                    let iconName = CategoryIcon.iconName(for: categoryName, type: type, customCategories: categoriesViewModel.customCategories)
+                    let colorHex = CategoryColors.hexColor(for: categoryName, customCategories: categoriesViewModel.customCategories)
+                    let hexString = colorToHex(colorHex)
+                    
+                    let defaultCategory = CustomCategory(
+                        name: categoryName,
+                        iconName: iconName,
+                        colorHex: hexString,
+                        type: type
+                    )
+                    categoriesViewModel.addCategory(defaultCategory)
+                    categoryId = defaultCategory.id
+                    createdCategories += 1
+                }
+            }
+            
             // Парсим подкатегории
             var subcategoryName: String? = nil
             var subcategoryIds: [String] = []
@@ -306,25 +357,36 @@ class CSVImportService {
                     .map { $0.trimmingCharacters(in: CharacterSet.whitespaces) }
                     .filter { !$0.isEmpty }
                 
-                // Создаем и привязываем подкатегории
+                // Создаем и привязываем подкатегории (CategoriesViewModel требует MainActor)
                 if let catId = categoryId {
-                    for subcategoryNameValue in subcategories {
-                        // Проверяем, существует ли уже такая подкатегория
-                        let existingSubcategory = categoriesViewModel.subcategories.first { $0.name.lowercased() == subcategoryNameValue.lowercased() }
+                    let (newSubcategoryIds, newCreatedCount) = await MainActor.run { () -> ([String], Int) in
+                        var ids: [String] = []
+                        var created = 0
                         
-                        let subcategory: Subcategory
-                        if let existing = existingSubcategory {
-                            subcategory = existing
-                        } else {
-                            // Создаем новую подкатегорию
-                            subcategory = categoriesViewModel.addSubcategory(name: subcategoryNameValue)
-                            createdSubcategories += 1
+                        for subcategoryNameValue in subcategories {
+                            // Проверяем, существует ли уже такая подкатегория
+                            let existingSubcategory = categoriesViewModel.subcategories.first { $0.name.lowercased() == subcategoryNameValue.lowercased() }
+                            
+                            let subcategory: Subcategory
+                            if let existing = existingSubcategory {
+                                subcategory = existing
+                            } else {
+                                // Создаем новую подкатегорию
+                                subcategory = categoriesViewModel.addSubcategory(name: subcategoryNameValue)
+                                created += 1
+                            }
+                            
+                            // Привязываем подкатегорию к категории без немедленного сохранения
+                            // (сохранение будет выполнено в конце через saveAllData())
+                            categoriesViewModel.linkSubcategoryToCategoryWithoutSaving(subcategoryId: subcategory.id, categoryId: catId)
+                            ids.append(subcategory.id)
                         }
                         
-                        // Привязываем подкатегорию к категории, если еще не привязана
-                        categoriesViewModel.linkSubcategoryToCategory(subcategoryId: subcategory.id, categoryId: catId)
-                        subcategoryIds.append(subcategory.id)
+                        return (ids, created)
                     }
+                    
+                    subcategoryIds = newSubcategoryIds
+                    createdSubcategories += newCreatedCount
                 }
                 
                 // Используем первую подкатегорию для обратной совместимости с полем subcategory
@@ -409,14 +471,41 @@ class CSVImportService {
                 categoriesViewModel.batchLinkSubcategoriesToTransaction(allTransactionSubcategoryLinks)
             }
             
+            // Синхронизируем подкатегории и связи из CategoriesViewModel в TransactionsViewModel
+            // перед сохранением, чтобы TransactionsViewModel.saveToStorage() не перезаписал устаревшие данные
+            transactionsViewModel.subcategories = categoriesViewModel.subcategories
+            transactionsViewModel.categorySubcategoryLinks = categoriesViewModel.categorySubcategoryLinks
+            transactionsViewModel.transactionSubcategoryLinks = categoriesViewModel.transactionSubcategoryLinks
+            
+            // Явно сохраняем все данные CategoriesViewModel (подкатегории, связи и т.д.)
+            // чтобы убедиться, что все данные сохранены после импорта
+            categoriesViewModel.saveAllData()
+            
             // Пересчитываем балансы один раз в конце
             transactionsViewModel.recalculateAccountBalances()
             
+            // Синхронизируем обновленные балансы обратно в accountsViewModel и сохраняем их
+            if let accountsVM = accountsViewModel {
+                // Обновляем балансы в accountsViewModel на основе пересчитанных балансов
+                for (index, account) in accountsVM.accounts.enumerated() {
+                    if let updatedAccount = transactionsViewModel.accounts.first(where: { $0.id == account.id }) {
+                        // Обновляем счет с новым балансом
+                        accountsVM.accounts[index].balance = updatedAccount.balance
+                        // Обновляем начальный баланс, чтобы он соответствовал текущему балансу после пересчета
+                        accountsVM.setInitialBalance(updatedAccount.balance, for: account.id)
+                    }
+                }
+                // Сохраняем обновленные балансы счетов одним батчем
+                accountsVM.saveAllAccounts()
+            }
+            
             // Сохраняем все данные один раз в конце
+            // Теперь подкатегории и связи синхронизированы с CategoriesViewModel
             transactionsViewModel.saveToStorage()
             
             // Принудительно уведомляем об изменении для обновления UI
             transactionsViewModel.objectWillChange.send()
+            categoriesViewModel.objectWillChange.send()
             if let accountsVM = accountsViewModel {
                 accountsVM.objectWillChange.send()
             }

@@ -93,14 +93,10 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     
     func saveCategories(_ categories: [CustomCategory]) {
         Task.detached(priority: .utility) {
-            PerformanceProfiler.start("saveCategories")
-            
             let encoder = JSONEncoder()
             if let encoded = try? encoder.encode(categories) {
                 UserDefaults.standard.set(encoded, forKey: self.storageKeyCustomCategories)
             }
-            
-            PerformanceProfiler.end("saveCategories")
         }
     }
     
@@ -184,15 +180,10 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     }
     
     func saveSubcategories(_ subcategories: [Subcategory]) {
-        Task.detached(priority: .utility) {
-            PerformanceProfiler.start("saveSubcategories")
-            
-            let encoder = JSONEncoder()
-            if let encoded = try? encoder.encode(subcategories) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeySubcategories)
-            }
-            
-            PerformanceProfiler.end("saveSubcategories")
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(subcategories) {
+            userDefaults.set(encoded, forKey: storageKeySubcategories)
+            userDefaults.synchronize() // Гарантируем немедленное сохранение
         }
     }
     
@@ -207,15 +198,10 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     }
     
     func saveCategorySubcategoryLinks(_ links: [CategorySubcategoryLink]) {
-        Task.detached(priority: .utility) {
-            PerformanceProfiler.start("saveCategorySubcategoryLinks")
-            
-            let encoder = JSONEncoder()
-            if let encoded = try? encoder.encode(links) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyCategorySubcategoryLinks)
-            }
-            
-            PerformanceProfiler.end("saveCategorySubcategoryLinks")
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(links) {
+            userDefaults.set(encoded, forKey: storageKeyCategorySubcategoryLinks)
+            userDefaults.synchronize() // Гарантируем немедленное сохранение
         }
     }
     
@@ -230,15 +216,10 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     }
     
     func saveTransactionSubcategoryLinks(_ links: [TransactionSubcategoryLink]) {
-        Task.detached(priority: .utility) {
-            PerformanceProfiler.start("saveTransactionSubcategoryLinks")
-            
-            let encoder = JSONEncoder()
-            if let encoded = try? encoder.encode(links) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyTransactionSubcategoryLinks)
-            }
-            
-            PerformanceProfiler.end("saveTransactionSubcategoryLinks")
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(links) {
+            userDefaults.set(encoded, forKey: storageKeyTransactionSubcategoryLinks)
+            userDefaults.synchronize() // Гарантируем немедленное сохранение
         }
     }
     

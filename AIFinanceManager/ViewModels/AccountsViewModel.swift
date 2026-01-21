@@ -173,4 +173,9 @@ class AccountsViewModel: ObservableObject {
     var regularAccounts: [Account] {
         return accounts.filter { !$0.isDeposit }
     }
+    
+    /// Сохранить все счета (используется после массового обновления балансов)
+    func saveAllAccounts() {
+        repository.saveAccounts(accounts)
+    }
 }

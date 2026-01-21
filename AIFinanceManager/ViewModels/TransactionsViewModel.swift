@@ -1274,9 +1274,10 @@ class TransactionsViewModel: ObservableObject {
             let categories = await MainActor.run { self.customCategories }
             let series = await MainActor.run { self.recurringSeries }
             let occurrences = await MainActor.run { self.recurringOccurrences }
-            let subcats = await MainActor.run { self.subcategories }
-            let catLinks = await MainActor.run { self.categorySubcategoryLinks }
-            let txLinks = await MainActor.run { self.transactionSubcategoryLinks }
+            // НЕ сохраняем подкатегории и связи здесь - они управляются CategoriesViewModel
+            // let subcats = await MainActor.run { self.subcategories }
+            // let catLinks = await MainActor.run { self.categorySubcategoryLinks }
+            // let txLinks = await MainActor.run { self.transactionSubcategoryLinks }
 
             await MainActor.run {
                 self.repository.saveTransactions(transactions)
@@ -1285,9 +1286,10 @@ class TransactionsViewModel: ObservableObject {
                 self.repository.saveCategories(categories)
                 self.repository.saveRecurringSeries(series)
                 self.repository.saveRecurringOccurrences(occurrences)
-                self.repository.saveSubcategories(subcats)
-                self.repository.saveCategorySubcategoryLinks(catLinks)
-                self.repository.saveTransactionSubcategoryLinks(txLinks)
+                // Подкатегории и связи сохраняются через CategoriesViewModel
+                // self.repository.saveSubcategories(subcats)
+                // self.repository.saveCategorySubcategoryLinks(catLinks)
+                // self.repository.saveTransactionSubcategoryLinks(txLinks)
             }
 
             PerformanceProfiler.end("saveToStorage")
