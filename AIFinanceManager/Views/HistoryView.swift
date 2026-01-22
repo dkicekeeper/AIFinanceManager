@@ -24,6 +24,7 @@ struct HistoryView: View {
     @State private var cachedGroupedTransactions: [String: [Transaction]] = [:]
     @State private var cachedSortedKeys: [String] = []
     @State private var searchTask: Task<Void, Never>?
+    @State private var filterTask: Task<Void, Never>?
 
     // Pagination manager for efficient loading
     @StateObject private var paginationManager = TransactionPaginationManager()
@@ -98,11 +99,20 @@ struct HistoryView: View {
         }
         .onChange(of: timeFilterManager.currentFilter) { _, _ in
             HapticManager.selection()
+            // Time filter change should be immediate (no debounce)
             updateCachedTransactions()
         }
-        .onChange(of: selectedAccountFilter) { _, _ in
+        .onChange(of: selectedAccountFilter) { oldValue, newValue in
             HapticManager.selection()
-            updateCachedTransactions()
+            // Debounce filter changes to avoid excessive updates
+            filterTask?.cancel()
+            filterTask = Task {
+                try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    updateCachedTransactions()
+                }
+            }
         }
         .onChange(of: searchText) { oldValue, newValue in
             // Отменяем предыдущий поиск
@@ -122,11 +132,20 @@ struct HistoryView: View {
             }
         }
         .onChange(of: transactionsViewModel.accounts) { _, _ in
+            // Account changes should trigger immediate update
             updateCachedTransactions()
         }
-        .onChange(of: transactionsViewModel.selectedCategories) { _, _ in
+        .onChange(of: transactionsViewModel.selectedCategories) { oldValue, newValue in
             HapticManager.selection()
-            updateCachedTransactions()
+            // Debounce category filter changes
+            filterTask?.cancel()
+            filterTask = Task {
+                try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    updateCachedTransactions()
+                }
+            }
         }
         .onChange(of: transactionsViewModel.allTransactions) { _, _ in
             // Обновляем кеш при изменении транзакций (например, после редактирования)

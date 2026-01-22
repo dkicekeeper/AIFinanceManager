@@ -7,6 +7,7 @@ struct ContentView: View {
 
     // @State для принудительного обновления UI при изменении данных
     @State private var refreshTrigger: Int = 0
+    @State private var isInitializing = true
 
     // Computed properties для доступа к ViewModels из coordinator
     // CRITICAL: SwiftUI не отслеживает изменения в nested computed properties автоматически!
@@ -146,11 +147,27 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                scrollContent
-            }
-            .safeAreaInset(edge: .bottom) {
-                bottomActions
+            ZStack {
+                // Main content
+                ScrollView {
+                    scrollContent
+                }
+                .safeAreaInset(edge: .bottom) {
+                    bottomActions
+                }
+                .opacity(isInitializing ? 0 : 1)
+                
+                // Simple loading overlay
+                if isInitializing {
+                    VStack(spacing: AppSpacing.lg) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
+                            .font(AppTypography.body)
+                            .foregroundColor(.secondary)
+                    }
+                    .transition(.opacity)
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .background {
@@ -163,6 +180,15 @@ struct ContentView: View {
                 } else {
                     // Базовый фон как везде
                     Color.clear
+                }
+            }
+            .task {
+                // Initialize coordinator asynchronously on first appearance
+                if isInitializing {
+                    await coordinator.initialize()
+                    withAnimation {
+                        isInitializing = false
+                    }
                 }
             }
             .sheet(isPresented: $showingFilePicker) {

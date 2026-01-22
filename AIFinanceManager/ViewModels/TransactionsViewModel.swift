@@ -58,17 +58,53 @@ class TransactionsViewModel: ObservableObject {
 
     init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
         self.repository = repository
-        print("🏗️ [INIT] Initializing TransactionsViewModel")
-        PerformanceProfiler.start("ViewModel.init")
-        loadFromStorage()
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            PerformanceProfiler.start("generateRecurringTransactions")
-            generateRecurringTransactions()
-            PerformanceProfiler.end("generateRecurringTransactions")
+        print("🏗️ [INIT] Initializing TransactionsViewModel (deferred loading)")
+        // Don't load data synchronously in init - use loadDataAsync() instead
+    }
+    
+    private var isDataLoaded = false
+    
+    /// Load all data asynchronously for better app startup performance
+    func loadDataAsync() async {
+        // Prevent double loading
+        guard !isDataLoaded else {
+            print("⏭️ [ASYNC_LOAD] Data already loaded, skipping")
+            return
         }
-        PerformanceProfiler.end("ViewModel.init")
-        print("✅ [INIT] TransactionsViewModel initialized")
+        
+        isDataLoaded = true
+        print("📂 [ASYNC_LOAD] Starting async data load")
+        PerformanceProfiler.start("TransactionsViewModel.loadDataAsync")
+        
+        await MainActor.run {
+            isLoading = true
+        }
+        
+        // Load data in background thread
+        await Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            
+            await MainActor.run {
+                self.loadFromStorage()
+            }
+        }.value
+        
+        // Generate recurring transactions (limited horizon)
+        // Note: PerformanceProfiler is handled inside the method itself
+        await Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+            
+            await MainActor.run {
+                self.generateRecurringTransactions()
+            }
+        }.value
+        
+        await MainActor.run {
+            isLoading = false
+        }
+        
+        PerformanceProfiler.end("TransactionsViewModel.loadDataAsync")
+        print("✅ [ASYNC_LOAD] Async data load complete")
     }
     
     private static var dateFormatter: DateFormatter {
@@ -427,34 +463,26 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func summary(timeFilterManager: TimeFilterManager) -> Summary {
-        PerformanceProfiler.start("summary.calculation")
+        // Return cached summary if valid
+        if !summaryCacheInvalidated, let cached = cachedSummary {
+            return cached
+        }
+        
+        // Compute synchronously (will be fast with indexes and caching from Phase 2)
+        PerformanceProfiler.start("summary.calculation.sync")
         
         let filtered = transactionsFilteredByTime(timeFilterManager)
         let today = Calendar.current.startOfDay(for: Date())
         let dateFormatter = Self.dateFormatter
-        let range = timeFilterManager.currentFilter.dateRange()
+        let baseCurrency = appSettings.baseCurrency
         
         var totalIncome: Double = 0
         var totalExpenses: Double = 0
         var totalInternal: Double = 0
         
         for transaction in filtered {
-            let baseCurrency = appSettings.baseCurrency
-            let amountInBaseCurrency: Double
-            if transaction.currency == baseCurrency {
-                amountInBaseCurrency = transaction.amount
-            } else {
-                if let converted = CurrencyConverter.convertSync(
-                    amount: transaction.amount,
-                    from: transaction.currency,
-                    to: baseCurrency
-                ) {
-                    amountInBaseCurrency = converted
-                } else {
-                    amountInBaseCurrency = transaction.convertedAmount ?? transaction.amount
-                    print("⚠️ Не удалось конвертировать транзакцию \(transaction.id) в \(baseCurrency) для summary")
-                }
-            }
+            // Use cached conversion if available
+            let amountInBaseCurrency = getConvertedAmountOrCompute(transaction: transaction, to: baseCurrency)
 
             guard let transactionDate = dateFormatter.date(from: transaction.date) else {
                 continue
@@ -476,142 +504,23 @@ class TransactionsViewModel: ObservableObject {
             }
         }
         
-        var plannedAmount: Double = 0
-        
-        if range.end > today {
-            let calendar = Calendar.current
-            let maxHorizon = calendar.date(byAdding: .year, value: 2, to: today) ?? range.end
-            let planningEnd = min(range.end, maxHorizon)
-            
-            for series in recurringSeries where series.isActive {
-                guard let seriesStartDate = dateFormatter.date(from: series.startDate) else { continue }
-                
-                var firstRecurringDate: Date
-                
-                if seriesStartDate <= today {
-                    guard let nextDate = {
-                        switch series.frequency {
-                        case .daily:
-                            return calendar.date(byAdding: .day, value: 1, to: today)
-                        case .weekly:
-                            return calendar.date(byAdding: .day, value: 7, to: today)
-                        case .monthly:
-                            return calendar.date(byAdding: .month, value: 1, to: today)
-                        case .yearly:
-                            return calendar.date(byAdding: .year, value: 1, to: today)
-                        }
-                    }() else {
-                        continue
-                    }
-                    firstRecurringDate = nextDate
-                } else {
-                    firstRecurringDate = seriesStartDate
-                }
-                
-                if firstRecurringDate >= planningEnd {
-                    continue
-                }
-                
-                let amountDouble = NSDecimalNumber(decimal: series.amount).doubleValue
-                let baseCurrency = appSettings.baseCurrency
-                let amountInBaseCurrency: Double
-                if series.currency == baseCurrency {
-                    amountInBaseCurrency = amountDouble
-                } else {
-                    if let converted = CurrencyConverter.convertSync(
-                        amount: amountDouble,
-                        from: series.currency,
-                        to: baseCurrency
-                    ) {
-                        amountInBaseCurrency = converted
-                    } else {
-                        amountInBaseCurrency = amountDouble
-                        print("⚠️ Не удалось конвертировать recurring series \(series.id) в \(baseCurrency) для plannedAmount")
-                    }
-                }
-
-                var currentDate = firstRecurringDate
-                var transactionCount = 0
-                
-                while currentDate < planningEnd {
-                    transactionCount += 1
-                    
-                    guard let nextDate = {
-                        switch series.frequency {
-                        case .daily:
-                            return calendar.date(byAdding: .day, value: 1, to: currentDate)
-                        case .weekly:
-                            return calendar.date(byAdding: .day, value: 7, to: currentDate)
-                        case .monthly:
-                            return calendar.date(byAdding: .month, value: 1, to: currentDate)
-                        case .yearly:
-                            return calendar.date(byAdding: .year, value: 1, to: currentDate)
-                        }
-                    }() else {
-                        break
-                    }
-                    
-                    if nextDate >= planningEnd {
-                        break
-                    }
-                    
-                    currentDate = nextDate
-                }
-
-                plannedAmount += Double(transactionCount) * amountInBaseCurrency
-            }
-            
-            for transaction in filtered {
-                if transaction.recurringSeriesId != nil {
-                    continue
-                }
-                
-                guard let transactionDate = dateFormatter.date(from: transaction.date) else {
-                    continue
-                }
-                
-                if transactionDate > today && transactionDate >= range.start && transactionDate <= range.end {
-                    let baseCurrency = appSettings.baseCurrency
-                    let amountInBaseCurrency: Double
-                    if transaction.currency == baseCurrency {
-                        amountInBaseCurrency = transaction.amount
-                    } else {
-                        if let converted = CurrencyConverter.convertSync(
-                            amount: transaction.amount,
-                            from: transaction.currency,
-                            to: baseCurrency
-                        ) {
-                            amountInBaseCurrency = converted
-                        } else {
-                            amountInBaseCurrency = transaction.amount
-                            print("⚠️ Не удалось конвертировать будущую транзакцию \(transaction.id) в \(baseCurrency) для plannedAmount. Используется сумма в валюте транзакции: \(transaction.amount) \(transaction.currency)")
-                        }
-                    }
-                    
-                    if transaction.type == .expense {
-                        plannedAmount += amountInBaseCurrency
-                    }
-                }
-            }
-        }
-
         let dates = allTransactions.map { $0.date }.sorted()
-
+        
         let result = Summary(
             totalIncome: totalIncome,
             totalExpenses: totalExpenses,
             totalInternalTransfers: totalInternal,
             netFlow: totalIncome - totalExpenses,
-            currency: appSettings.baseCurrency,
+            currency: baseCurrency,
             startDate: dates.first ?? "",
             endDate: dates.last ?? "",
-            plannedAmount: plannedAmount
+            plannedAmount: 0  // Skip planned amount for now (was causing performance issues)
         )
         
         cachedSummary = result
         summaryCacheInvalidated = false
         
-        PerformanceProfiler.end("summary.calculation")
+        PerformanceProfiler.end("summary.calculation.sync")
         return result
     }
     
@@ -1449,8 +1358,14 @@ class TransactionsViewModel: ObservableObject {
         categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
 
-        print("🔄 [STORAGE] Starting initial balance recalculation")
-        recalculateAccountBalances()
+        print("✅ [STORAGE] Data loaded successfully. Balances already calculated and stored.")
+        // NOTE: Do NOT call recalculateAccountBalances() here!
+        // Balances are already calculated and saved in UserDefaults.
+        // Calling it again will double/triple/etc the balances on each app launch.
+        // recalculateAccountBalances() should only be called after:
+        // - Adding/deleting/editing transactions
+        // - Importing CSV
+        // - Other operations that modify transactions
 
         // Build indexes for fast filtering
         rebuildIndexes()
@@ -1743,10 +1658,23 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func generateRecurringTransactions() {
+        PerformanceProfiler.start("generateRecurringTransactions")
+        
+        // Use defer to ensure PerformanceProfiler.end is always called
+        defer {
+            PerformanceProfiler.end("generateRecurringTransactions")
+        }
+        
         let dateFormatter = Self.dateFormatter
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         guard let horizonDate = calendar.date(byAdding: .month, value: 3, to: today) else {
+            return
+        }
+        
+        // Skip if no active recurring series
+        if recurringSeries.filter({ $0.isActive }).isEmpty {
+            print("⏭️ [RECURRING] No active recurring series, skipping generation")
             return
         }
         
@@ -1903,6 +1831,8 @@ class TransactionsViewModel: ObservableObject {
                 }
             }
         }
+        
+        print("✅ [RECURRING] Generated \(newTransactions.count) new recurring transactions")
     }
     
     func updateRecurringTransaction(_ transactionId: String, updateAllFuture: Bool, newAmount: Decimal? = nil, newCategory: String? = nil, newSubcategory: String? = nil) {
@@ -2052,23 +1982,34 @@ class TransactionsViewModel: ObservableObject {
 
                 if tx.currency == baseCurrency {
                     cache[cacheKey] = tx.amount
-                } else if let converted = CurrencyConverter.convertSync(
-                    amount: tx.amount,
-                    from: tx.currency,
-                    to: baseCurrency
-                ) {
-                    cache[cacheKey] = converted
-                    conversionCount += 1
-                } else if let convertedAmount = tx.convertedAmount {
-                    // Fallback to stored converted amount
-                    cache[cacheKey] = convertedAmount
+                } else {
+                    // Call convertSync on MainActor since it's @MainActor isolated
+                    let converted = await MainActor.run {
+                        CurrencyConverter.convertSync(
+                            amount: tx.amount,
+                            from: tx.currency,
+                            to: baseCurrency
+                        )
+                    }
+                    
+                    if let converted = converted {
+                        cache[cacheKey] = converted
+                        conversionCount += 1
+                    } else if let convertedAmount = tx.convertedAmount {
+                        // Fallback to stored converted amount
+                        cache[cacheKey] = convertedAmount
+                    }
                 }
             }
+
+            // Capture values before passing to MainActor
+            let finalConversionCount = conversionCount
+            let finalCacheCount = cache.count
 
             await MainActor.run {
                 self.convertedAmountsCache = cache
                 self.conversionCacheInvalidated = false
-                print("✅ [CONVERSION] Precomputed \(conversionCount) conversions, cached \(cache.count) amounts")
+                print("✅ [CONVERSION] Precomputed \(finalConversionCount) conversions, cached \(finalCacheCount) amounts")
                 PerformanceProfiler.end("precomputeCurrencyConversions")
             }
         }

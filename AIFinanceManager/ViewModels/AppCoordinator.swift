@@ -62,6 +62,30 @@ class AppCoordinator: ObservableObject {
         // This will be refactored in Phase 6
     }
 
+    // MARK: - Public Methods
+    
+    private var isInitialized = false
+    
+    /// Initialize all ViewModels asynchronously
+    /// Should be called once after AppCoordinator is created
+    func initialize() async {
+        // Prevent double initialization
+        guard !isInitialized else {
+            print("⏭️ [APP_COORDINATOR] Already initialized, skipping")
+            return
+        }
+        
+        isInitialized = true
+        print("🚀 [APP_COORDINATOR] Starting initialization")
+        PerformanceProfiler.start("AppCoordinator.initialize")
+        
+        // Load data asynchronously - this is non-blocking
+        await transactionsViewModel.loadDataAsync()
+        
+        PerformanceProfiler.end("AppCoordinator.initialize")
+        print("✅ [APP_COORDINATOR] Initialization complete")
+    }
+
     // MARK: - Private Methods
 
     /// Настройка наблюдателей за изменениями в дочерних ViewModels
