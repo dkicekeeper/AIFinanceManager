@@ -73,24 +73,36 @@ class SubscriptionsViewModel: ObservableObject {
     func updateRecurringSeries(_ series: RecurringSeries) {
         if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
             let oldSeries = recurringSeries[index]
-            
+
             // Если изменилась частота, нужно удалить все будущие транзакции и перегенерировать
             let _ = oldSeries.frequency != series.frequency
             let _ = oldSeries.startDate != series.startDate
-            
-            // Обновляем серию
-            recurringSeries[index] = series
-            
+
+            // Создаем новый массив вместо модификации элемента на месте
+            var newSeries = recurringSeries
+            newSeries[index] = series
+
+            // Переприсваиваем весь массив для триггера @Published
+            recurringSeries = newSeries
+            objectWillChange.send()
+
             // Note: Deleting future transactions should be handled by TransactionsViewModel
             // This method only updates the series
-            
+
             repository.saveRecurringSeries(recurringSeries)
         }
     }
     
     func stopRecurringSeries(_ seriesId: String) {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId }) {
-            recurringSeries[index].isActive = false
+            // Создаем новый массив и модифицируем элемент
+            var newSeries = recurringSeries
+            newSeries[index].isActive = false
+
+            // Переприсваиваем весь массив для триггера @Published
+            recurringSeries = newSeries
+            objectWillChange.send()
+
             repository.saveRecurringSeries(recurringSeries)
         }
     }
@@ -158,15 +170,21 @@ class SubscriptionsViewModel: ObservableObject {
     func updateSubscription(_ series: RecurringSeries) {
         if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
             let oldSeries = recurringSeries[index]
-            
+
             // If frequency or start date changed, remove future transactions
             let _ = oldSeries.frequency != series.frequency
             let _ = oldSeries.startDate != series.startDate
-            
-            recurringSeries[index] = series
-            
+
+            // Создаем новый массив вместо модификации элемента на месте
+            var newSeries = recurringSeries
+            newSeries[index] = series
+
+            // Переприсваиваем весь массив для триггера @Published
+            recurringSeries = newSeries
+            objectWillChange.send()
+
             // Note: Future transaction deletion should be handled by TransactionsViewModel
-            
+
             repository.saveRecurringSeries(recurringSeries)
             
             // Update notifications
@@ -185,10 +203,17 @@ class SubscriptionsViewModel: ObservableObject {
     /// Pause a subscription
     func pauseSubscription(_ seriesId: String) {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
-            recurringSeries[index].status = .paused
-            recurringSeries[index].isActive = false
+            // Создаем новый массив и модифицируем элемент
+            var newSeries = recurringSeries
+            newSeries[index].status = .paused
+            newSeries[index].isActive = false
+
+            // Переприсваиваем весь массив для триггера @Published
+            recurringSeries = newSeries
+            objectWillChange.send()
+
             repository.saveRecurringSeries(recurringSeries)
-            
+
             // Cancel notifications
             Task {
                 await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
@@ -199,10 +224,17 @@ class SubscriptionsViewModel: ObservableObject {
     /// Resume a subscription
     func resumeSubscription(_ seriesId: String) {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
-            recurringSeries[index].status = .active
-            recurringSeries[index].isActive = true
+            // Создаем новый массив и модифицируем элемент
+            var newSeries = recurringSeries
+            newSeries[index].status = .active
+            newSeries[index].isActive = true
+
+            // Переприсваиваем весь массив для триггера @Published
+            recurringSeries = newSeries
+            objectWillChange.send()
+
             repository.saveRecurringSeries(recurringSeries)
-            
+
             // Schedule notifications
             Task {
                 if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: recurringSeries[index]) {
@@ -215,10 +247,17 @@ class SubscriptionsViewModel: ObservableObject {
     /// Archive a subscription
     func archiveSubscription(_ seriesId: String) {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
-            recurringSeries[index].status = .archived
-            recurringSeries[index].isActive = false
+            // Создаем новый массив и модифицируем элемент
+            var newSeries = recurringSeries
+            newSeries[index].status = .archived
+            newSeries[index].isActive = false
+
+            // Переприсваиваем весь массив для триггера @Published
+            recurringSeries = newSeries
+            objectWillChange.send()
+
             repository.saveRecurringSeries(recurringSeries)
-            
+
             // Cancel notifications
             Task {
                 await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)

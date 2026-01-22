@@ -10,7 +10,7 @@ import SwiftUI
 struct AccountCard: View {
     let account: Account
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.sm) {
@@ -30,6 +30,9 @@ struct AccountCard: View {
         .glassCardStyle()
         .accessibilityLabel("\(account.name), balance \(Formatting.formatCurrency(account.balance, currency: account.currency))")
         .accessibilityHint("Tap to view account details")
+        .onAppear {
+            print("👁️ [UI] AccountCard appeared for '\(account.name)': balance = \(account.balance)")
+        }
     }
 }
 

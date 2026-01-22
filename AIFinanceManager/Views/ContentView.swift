@@ -4,12 +4,13 @@ import PDFKit
 struct ContentView: View {
     @EnvironmentObject var coordinator: AppCoordinator
     @EnvironmentObject var timeFilterManager: TimeFilterManager
-    
+
     // @State для принудительного обновления UI при изменении данных
     @State private var refreshTrigger: Int = 0
-    
+
     // Computed properties для доступа к ViewModels из coordinator
-    // Используем их напрямую для отслеживания изменений через onChange
+    // CRITICAL: SwiftUI не отслеживает изменения в nested computed properties автоматически!
+    // Поэтому мы используем onChange observers и refreshTrigger для принудительного обновления
     private var viewModel: TransactionsViewModel {
         coordinator.transactionsViewModel
     }
@@ -246,18 +247,29 @@ struct ContentView: View {
 
                 PerformanceProfiler.end("ContentView.onAppear")
             }
-            .onChange(of: viewModel.allTransactions.count) { _, _ in
+            .onChange(of: viewModel.allTransactions.count) { oldValue, newValue in
+                print("🔔 [UI] allTransactions.count changed: \(oldValue) -> \(newValue)")
                 updateSummary()
                 refreshTrigger += 1
+                print("🔄 [UI] refreshTrigger incremented to \(refreshTrigger)")
             }
-            .onChange(of: accountsViewModel.accounts.count) { _, _ in
+            .onChange(of: accountsViewModel.accounts.count) { oldValue, newValue in
+                print("🔔 [UI] accounts.count changed: \(oldValue) -> \(newValue)")
                 refreshTrigger += 1
+                print("🔄 [UI] refreshTrigger incremented to \(refreshTrigger)")
             }
             .onChange(of: viewModel.allTransactions) { _, _ in
+                print("🔔 [UI] allTransactions array changed")
                 updateSummary()
             }
-            .onChange(of: accountsViewModel.accounts) { _, _ in
+            .onChange(of: accountsViewModel.accounts) { _, newAccounts in
+                print("🔔 [UI] accounts array changed")
+                print("📊 [UI] New accounts balances:")
+                for account in newAccounts {
+                    print("   💰 '\(account.name)': \(account.balance)")
+                }
                 refreshTrigger += 1
+                print("🔄 [UI] refreshTrigger incremented to \(refreshTrigger)")
             }
             .onChange(of: timeFilterManager.currentFilter) { _, _ in
                 updateSummary()
@@ -414,6 +426,7 @@ struct ContentView: View {
                                     selectedAccount = account
                                 }
                             )
+                            .id("\(account.id)-\(account.balance)")
                         }
                     }
                     .padding(.vertical, AppSpacing.xs)

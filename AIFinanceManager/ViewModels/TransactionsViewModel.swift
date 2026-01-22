@@ -35,15 +35,20 @@ class TransactionsViewModel: ObservableObject {
         summaryCacheInvalidated = true
         categoryExpensesCacheInvalidated = true
     }
-    
+
+    // MARK: - Dependencies
+
+    weak var accountsViewModel: AccountsViewModel?
+
     // MARK: - Repository
-    
+
     let repository: DataRepositoryProtocol
-    
+
     // MARK: - Initialization
-    
+
     init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
         self.repository = repository
+        print("🏗️ [INIT] Initializing TransactionsViewModel")
         PerformanceProfiler.start("ViewModel.init")
         loadFromStorage()
         Task { @MainActor in
@@ -53,6 +58,7 @@ class TransactionsViewModel: ObservableObject {
             PerformanceProfiler.end("generateRecurringTransactions")
         }
         PerformanceProfiler.end("ViewModel.init")
+        print("✅ [INIT] TransactionsViewModel initialized")
     }
     
     private static var dateFormatter: DateFormatter {
@@ -847,6 +853,12 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func addTransaction(_ transaction: Transaction) {
+        print("➕ [TRANSACTION] Adding transaction: \(transaction.description), amount: \(transaction.amount), type: \(transaction.type.rawValue)")
+        if let accountId = transaction.accountId {
+            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
+            print("📍 [TRANSACTION] Account: \(accountName) (ID: \(accountId))")
+        }
+
         let formattedDescription = formatMerchantName(transaction.description)
         let matchedCategory = matchCategory(transaction.category, type: transaction.type)
         
@@ -917,12 +929,19 @@ class TransactionsViewModel: ObservableObject {
             
             createCategoriesForTransactions(transactionsWithRules)
             insertTransactionsSorted(transactionsWithRules)
+            print("🔄 [TRANSACTION] Invalidating caches and recalculating balances")
             invalidateCaches()
             recalculateAccountBalances()
+            print("💾 [TRANSACTION] Saving to storage")
             saveToStorage()
+            print("✅ [TRANSACTION] Transaction added successfully")
+        } else {
+            print("⚠️ [TRANSACTION] Transaction with ID \(transactionWithID.id) already exists, skipping")
         }
     }
     
+    /// ⚠️ DEPRECATED: This method modifies accounts in-place but changes are overwritten by recalculateAccountBalances()
+    /// Consider refactoring to avoid redundant calculations
     private func updateDepositBalancesForTransfer(transaction: Transaction, sourceId: String, targetId: String) {
         guard let sourceIndex = accounts.firstIndex(where: { $0.id == sourceId }),
               let targetIndex = accounts.firstIndex(where: { $0.id == targetId }) else {
@@ -1069,22 +1088,37 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func deleteTransaction(_ transaction: Transaction) {
+        print("🗑️ [TRANSACTION] Deleting transaction: \(transaction.description), amount: \(transaction.amount)")
+
+        // removeAll уже создает новый массив, что правильно триггерит @Published
         allTransactions.removeAll { $0.id == transaction.id }
-        
+        print("📢 [TRANSACTION] allTransactions updated after delete, count: \(allTransactions.count)")
+
         if let occurrenceId = transaction.recurringOccurrenceId {
             recurringOccurrences.removeAll { $0.id == occurrenceId }
         }
-        
+
+        print("🔄 [TRANSACTION] Recalculating balances after delete")
         invalidateCaches()
         recalculateAccountBalances()
         saveToStorage()
     }
-    
+
     func updateTransaction(_ transaction: Transaction) {
         guard let index = allTransactions.firstIndex(where: { $0.id == transaction.id }) else {
             return
         }
-        allTransactions[index] = transaction
+
+        print("✏️ [TRANSACTION] Updating transaction: \(transaction.description), amount: \(transaction.amount)")
+
+        // Создаем новый массив вместо модификации элемента на месте
+        var newTransactions = allTransactions
+        newTransactions[index] = transaction
+
+        // Переприсваиваем весь массив для триггера @Published
+        print("📢 [TRANSACTION] Reassigning allTransactions array to trigger @Published")
+        allTransactions = newTransactions
+
         invalidateCaches()
         recalculateAccountBalances()
         saveToStorage()
@@ -1218,20 +1252,32 @@ class TransactionsViewModel: ObservableObject {
     private func insertTransactionsSorted(_ newTransactions: [Transaction]) {
         guard !newTransactions.isEmpty else { return }
 
+        print("📝 [TRANSACTION] Inserting \(newTransactions.count) transactions into allTransactions")
+
         let sortedNew = newTransactions.sorted { $0.date > $1.date }
 
         if allTransactions.isEmpty {
+            print("📝 [TRANSACTION] allTransactions is empty, setting to new transactions")
             allTransactions = sortedNew
             return
         }
 
+        // Создаем новый массив вместо модификации существующего
+        // Это необходимо для корректной работы @Published property wrapper
+        var newAllTransactions = allTransactions
+
         for newTransaction in sortedNew {
-            if let insertIndex = allTransactions.firstIndex(where: { $0.date <= newTransaction.date }) {
-                allTransactions.insert(newTransaction, at: insertIndex)
+            if let insertIndex = newAllTransactions.firstIndex(where: { $0.date <= newTransaction.date }) {
+                newAllTransactions.insert(newTransaction, at: insertIndex)
             } else {
-                allTransactions.append(newTransaction)
+                newAllTransactions.append(newTransaction)
             }
         }
+
+        // Переприсваиваем весь массив для триггера @Published
+        print("📢 [TRANSACTION] Reassigning allTransactions array to trigger @Published")
+        allTransactions = newAllTransactions
+        print("✅ [TRANSACTION] allTransactions now has \(allTransactions.count) transactions")
     }
 
     private func applyRules(to transactions: [Transaction]) -> [Transaction] {
@@ -1267,6 +1313,7 @@ class TransactionsViewModel: ObservableObject {
     func saveToStorage() {
         Task.detached(priority: .utility) {
             PerformanceProfiler.start("saveToStorage")
+            print("💾 [STORAGE] Starting async save in TransactionsViewModel")
 
             let transactions = await MainActor.run { self.allTransactions }
             let rules = await MainActor.run { self.categoryRules }
@@ -1274,6 +1321,12 @@ class TransactionsViewModel: ObservableObject {
             let categories = await MainActor.run { self.customCategories }
             let series = await MainActor.run { self.recurringSeries }
             let occurrences = await MainActor.run { self.recurringOccurrences }
+
+            print("💾 [STORAGE] Saving \(accs.count) accounts from TransactionsViewModel")
+            for account in accs {
+                print("   💰 '\(account.name)': balance = \(account.balance)")
+            }
+
             // НЕ сохраняем подкатегории и связи здесь - они управляются CategoriesViewModel
             // let subcats = await MainActor.run { self.subcategories }
             // let catLinks = await MainActor.run { self.categorySubcategoryLinks }
@@ -1292,6 +1345,7 @@ class TransactionsViewModel: ObservableObject {
                 // self.repository.saveTransactionSubcategoryLinks(txLinks)
             }
 
+            print("✅ [STORAGE] Async save completed in TransactionsViewModel")
             PerformanceProfiler.end("saveToStorage")
         }
     }
@@ -1364,28 +1418,43 @@ class TransactionsViewModel: ObservableObject {
     }
     
     private func loadFromStorage() {
+        print("📂 [STORAGE] Loading data from storage in TransactionsViewModel")
         allTransactions = repository.loadTransactions()
         categoryRules = repository.loadCategoryRules()
         accounts = repository.loadAccounts()
-        
+
+        print("📊 [STORAGE] Loaded \(accounts.count) accounts in TransactionsViewModel")
         for account in accounts {
+            print("   💰 '\(account.name)': balance = \(account.balance)")
             if initialAccountBalances[account.id] == nil {
                 initialAccountBalances[account.id] = account.balance
             }
         }
-        
+
         customCategories = repository.loadCategories()
         recurringSeries = repository.loadRecurringSeries()
         recurringOccurrences = repository.loadRecurringOccurrences()
         subcategories = repository.loadSubcategories()
         categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
-        
+
+        print("🔄 [STORAGE] Starting initial balance recalculation")
         recalculateAccountBalances()
     }
     
     func recalculateAccountBalances() {
-        guard !accounts.isEmpty else { return }
+        guard !accounts.isEmpty else {
+            print("⚠️ [BALANCE] recalculateAccountBalances: accounts is empty, returning")
+            return
+        }
+
+        print("🔄 [BALANCE] Starting recalculateAccountBalances")
+        print("📊 [BALANCE] Current accounts count: \(accounts.count)")
+
+        // Логируем текущие балансы до пересчета
+        for account in accounts {
+            print("💰 [BALANCE] BEFORE - Account '\(account.name)' (ID: \(account.id)): balance = \(account.balance)")
+        }
 
         currencyConversionWarning = nil
         var balanceChanges: [String: Double] = [:]
@@ -1393,6 +1462,9 @@ class TransactionsViewModel: ObservableObject {
             balanceChanges[account.id] = 0
             if initialAccountBalances[account.id] == nil {
                 initialAccountBalances[account.id] = account.balance
+                print("📝 [BALANCE] Set initial balance for '\(account.name)': \(account.balance)")
+            } else {
+                print("📝 [BALANCE] Initial balance for '\(account.name)': \(initialAccountBalances[account.id] ?? 0)")
             }
         }
 
@@ -1466,22 +1538,56 @@ class TransactionsViewModel: ObservableObject {
             }
         }
 
-        for index in accounts.indices {
-            let accountId = accounts[index].id
-            
-            if accounts[index].isDeposit {
-                if let depositInfo = accounts[index].depositInfo {
+        print("📊 [BALANCE] Processing balance changes for \(accounts.count) accounts")
+        for (accountId, change) in balanceChanges {
+            if change != 0 {
+                let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
+                print("💸 [BALANCE] Balance change for '\(accountName)': \(change)")
+            }
+        }
+
+        // Создаем новый массив вместо модификации элементов на месте
+        // Это необходимо для корректной работы @Published property wrapper
+        var newAccounts = accounts
+
+        for index in newAccounts.indices {
+            let accountId = newAccounts[index].id
+            let accountName = newAccounts[index].name
+            let oldBalance = newAccounts[index].balance
+
+            if newAccounts[index].isDeposit {
+                if let depositInfo = newAccounts[index].depositInfo {
                     var totalBalance: Decimal = depositInfo.principalBalance
                     if !depositInfo.capitalizationEnabled {
                         totalBalance += depositInfo.interestAccruedNotCapitalized
                     }
-                    accounts[index].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+                    newAccounts[index].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+                    print("🏦 [BALANCE] DEPOSIT '\(accountName)': \(oldBalance) -> \(newAccounts[index].balance)")
                 }
             } else {
-                let initialBalance = initialAccountBalances[accountId] ?? accounts[index].balance
+                let initialBalance = initialAccountBalances[accountId] ?? newAccounts[index].balance
                 let changes = balanceChanges[accountId] ?? 0
-                accounts[index].balance = initialBalance + changes
+                newAccounts[index].balance = initialBalance + changes
+                print("💳 [BALANCE] REGULAR '\(accountName)': \(oldBalance) -> \(newAccounts[index].balance) (initial: \(initialBalance), changes: \(changes))")
             }
+        }
+
+        // Переприсваиваем весь массив для триггера @Published
+        print("📢 [BALANCE] Reassigning accounts array to trigger @Published")
+        accounts = newAccounts
+
+        print("✅ [BALANCE] Finished recalculateAccountBalances")
+        // Логируем финальные балансы после пересчета
+        for account in accounts {
+            print("💰 [BALANCE] AFTER - Account '\(account.name)' (ID: \(account.id)): balance = \(account.balance)")
+        }
+
+        // Синхронизируем обновленные балансы с AccountsViewModel
+        if let accountsVM = accountsViewModel {
+            print("🔗 [BALANCE] Syncing balances with AccountsViewModel")
+            accountsVM.syncAccountBalances(accounts)
+        } else {
+            print("⚠️ [BALANCE] AccountsViewModel is nil, skipping balance sync")
         }
 
         if hasConversionIssues {

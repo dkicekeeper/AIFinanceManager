@@ -33,31 +33,21 @@ class CategoriesViewModel: ObservableObject {
         self.subcategories = repository.loadSubcategories()
         self.categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         self.transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
-
-        print("🟢 CategoriesViewModel.init() - Loaded \(subcategories.count) subcategories")
-        print("🟢 CategoriesViewModel.init() - Loaded \(categorySubcategoryLinks.count) category-subcategory links")
-        print("🟢 CategoriesViewModel.init() - Links: \(categorySubcategoryLinks.map { "cat:\($0.categoryId) -> sub:\($0.subcategoryId)" }.joined(separator: ", "))")
     }
 
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
-        print("🟡 CategoriesViewModel.reloadFromStorage() - BEFORE: \(categorySubcategoryLinks.count) links")
-
         customCategories = repository.loadCategories()
         categoryRules = repository.loadCategoryRules()
         subcategories = repository.loadSubcategories()
         categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
-
-        print("🟡 CategoriesViewModel.reloadFromStorage() - AFTER: \(categorySubcategoryLinks.count) links")
-        print("🟡 CategoriesViewModel.reloadFromStorage() - Links: \(categorySubcategoryLinks.map { "cat:\($0.categoryId) -> sub:\($0.subcategoryId)" }.joined(separator: ", "))")
     }
     
     // MARK: - Category CRUD Operations
     
     func addCategory(_ category: CustomCategory) {
         customCategories.append(category)
-        print("⚠️ CategoriesViewModel.addCategory() - Calling repository.saveCategories (ASYNC)")
         repository.saveCategories(customCategories)
     }
     
@@ -65,14 +55,19 @@ class CategoriesViewModel: ObservableObject {
         guard let index = customCategories.firstIndex(where: { $0.id == category.id }) else {
             // Если категория не найдена, возможно это новая категория с существующим id
             // В этом случае добавляем её
-            print("Warning: Category with id \(category.id) not found, adding as new")
             customCategories.append(category)
-            print("⚠️ CategoriesViewModel.updateCategory() - Calling repository.saveCategories (ASYNC) - category not found case")
             repository.saveCategories(customCategories)
             return
         }
-        customCategories[index] = category
-        print("⚠️ CategoriesViewModel.updateCategory() - Calling repository.saveCategories (ASYNC)")
+
+        // Создаем новый массив вместо модификации элемента на месте
+        var newCategories = customCategories
+        newCategories[index] = category
+
+        // Переприсваиваем весь массив для триггера @Published
+        customCategories = newCategories
+        objectWillChange.send()
+
         repository.saveCategories(customCategories)
     }
     
@@ -102,7 +97,14 @@ class CategoriesViewModel: ObservableObject {
     func updateRule(_ rule: CategoryRule) {
         // CategoryRule не имеет id, поэтому ищем по description
         if let index = categoryRules.firstIndex(where: { $0.description.lowercased() == rule.description.lowercased() }) {
-            categoryRules[index] = rule
+            // Создаем новый массив вместо модификации элемента на месте
+            var newRules = categoryRules
+            newRules[index] = rule
+
+            // Переприсваиваем весь массив для триггера @Published
+            categoryRules = newRules
+            objectWillChange.send()
+
             repository.saveCategoryRules(categoryRules)
         }
     }
@@ -123,7 +125,14 @@ class CategoriesViewModel: ObservableObject {
     
     func updateSubcategory(_ subcategory: Subcategory) {
         if let index = subcategories.firstIndex(where: { $0.id == subcategory.id }) {
-            subcategories[index] = subcategory
+            // Создаем новый массив вместо модификации элемента на месте
+            var newSubcategories = subcategories
+            newSubcategories[index] = subcategory
+
+            // Переприсваиваем весь массив для триггера @Published
+            subcategories = newSubcategories
+            objectWillChange.send()
+
             repository.saveSubcategories(subcategories)
         }
     }
@@ -144,8 +153,6 @@ class CategoriesViewModel: ObservableObject {
     
     func linkSubcategoryToCategory(subcategoryId: String, categoryId: String) {
         linkSubcategoryToCategoryWithoutSaving(subcategoryId: subcategoryId, categoryId: categoryId)
-        // Сохраняем сразу для обычных операций (не массовый импорт)
-        print("🟠 CategoriesViewModel.linkSubcategoryToCategory() - Saving \(categorySubcategoryLinks.count) links")
         repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
     }
     
@@ -166,34 +173,15 @@ class CategoriesViewModel: ObservableObject {
         categorySubcategoryLinks.removeAll { link in
             link.categoryId == categoryId && link.subcategoryId == subcategoryId
         }
-        print("🟠 CategoriesViewModel.unlinkSubcategoryFromCategory() - Saving \(categorySubcategoryLinks.count) links")
         repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
     }
     
     func getSubcategoriesForCategory(_ categoryId: String) -> [Subcategory] {
-        print("🔍 getSubcategoriesForCategory(\(categoryId))")
-        print("🔍 Total categorySubcategoryLinks: \(categorySubcategoryLinks.count)")
-        print("🔍 Total subcategories: \(subcategories.count)")
-
-        // Показываем первые 5 category IDs из связей для отладки
-        let sampleCategoryIds = Array(Set(categorySubcategoryLinks.map { $0.categoryId })).prefix(5)
-        print("🔍 Sample category IDs in links: \(sampleCategoryIds)")
-
-        // Показываем первые 5 category IDs из текущих категорий
-        let currentCategoryIds = customCategories.prefix(5).map { "\($0.name): \($0.id)" }
-        print("🔍 Current categories: \(currentCategoryIds)")
-
         let linkedSubcategoryIds = categorySubcategoryLinks
             .filter { $0.categoryId == categoryId }
             .map { $0.subcategoryId }
 
-        print("🔍 Found \(linkedSubcategoryIds.count) linked subcategory IDs for category \(categoryId)")
-        print("🔍 Linked IDs: \(linkedSubcategoryIds)")
-
-        let result = subcategories.filter { linkedSubcategoryIds.contains($0.id) }
-        print("🔍 Returning \(result.count) subcategories: \(result.map { $0.name })")
-
-        return result
+        return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
     }
     
     // MARK: - Transaction-Subcategory Links
@@ -263,14 +251,6 @@ class CategoriesViewModel: ObservableObject {
     
     /// Сохраняет все данные CategoriesViewModel (используется после массового импорта)
     func saveAllData() {
-        // Сохраняем в правильном порядке: сначала подкатегории, потом связи
-        // Все сохранения должны быть синхронными, чтобы гарантировать
-        // что данные сохранены до того, как будет вызван reloadFromStorage()
-
-        print("🔵 CategoriesViewModel.saveAllData() - Saving \(subcategories.count) subcategories")
-        print("🔵 CategoriesViewModel.saveAllData() - Saving \(categorySubcategoryLinks.count) category-subcategory links")
-        print("🔵 CategoriesViewModel.saveAllData() - Links: \(categorySubcategoryLinks.map { "cat:\($0.categoryId) -> sub:\($0.subcategoryId)" }.joined(separator: ", "))")
-
         repository.saveSubcategories(subcategories)
         repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
         repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
@@ -278,15 +258,6 @@ class CategoriesViewModel: ObservableObject {
         // ВАЖНО: saveCategories использует Task.detached, но для импорта
         // нам нужно синхронное сохранение. Поэтому сохраняем категории напрямую.
         saveCategoriesSync(customCategories)
-
-        print("🔵 CategoriesViewModel.saveAllData() - COMPLETED")
-
-        // ПРОВЕРКА: Читаем связи обратно из UserDefaults для проверки
-        let savedLinks = repository.loadCategorySubcategoryLinks()
-        print("✅ VERIFICATION: Just saved \(categorySubcategoryLinks.count) links, loaded back \(savedLinks.count) links from UserDefaults")
-        if savedLinks.count != categorySubcategoryLinks.count {
-            print("❌ ERROR: Mismatch! Expected \(categorySubcategoryLinks.count) but got \(savedLinks.count)")
-        }
     }
 
     /// Синхронно сохраняет категории (используется для импорта)

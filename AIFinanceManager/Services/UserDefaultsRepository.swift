@@ -86,23 +86,16 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     func loadCategories() -> [CustomCategory] {
         guard let data = userDefaults.data(forKey: storageKeyCustomCategories),
               let decoded = try? JSONDecoder().decode([CustomCategory].self, from: data) else {
-            print("🔴 UserDefaultsRepository.loadCategories() - NO DATA or DECODE FAILED")
             return []
         }
-        print("🟢 UserDefaultsRepository.loadCategories() - Loaded \(decoded.count) categories")
-        print("🟢 UserDefaultsRepository.loadCategories() - First 5 categories: \(decoded.prefix(5).map { "\($0.name): \($0.id)" })")
         return decoded
     }
     
     func saveCategories(_ categories: [CustomCategory]) {
-        print("🔶 UserDefaultsRepository.saveCategories() - ASYNC save started for \(categories.count) categories")
         Task.detached(priority: .utility) {
             let encoder = JSONEncoder()
             if let encoded = try? encoder.encode(categories) {
                 UserDefaults.standard.set(encoded, forKey: self.storageKeyCustomCategories)
-                print("🔶 UserDefaultsRepository.saveCategories() - ASYNC save completed")
-            } else {
-                print("🔴 UserDefaultsRepository.saveCategories() - ASYNC save FAILED to encode")
             }
         }
     }
@@ -199,22 +192,16 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     func loadCategorySubcategoryLinks() -> [CategorySubcategoryLink] {
         guard let data = userDefaults.data(forKey: storageKeyCategorySubcategoryLinks),
               let decoded = try? JSONDecoder().decode([CategorySubcategoryLink].self, from: data) else {
-            print("🔴 UserDefaultsRepository.loadCategorySubcategoryLinks() - NO DATA or DECODE FAILED")
             return []
         }
-        print("🟣 UserDefaultsRepository.loadCategorySubcategoryLinks() - Loaded \(decoded.count) links from UserDefaults")
         return decoded
     }
 
     func saveCategorySubcategoryLinks(_ links: [CategorySubcategoryLink]) {
-        print("🟣 UserDefaultsRepository.saveCategorySubcategoryLinks() - Saving \(links.count) links to UserDefaults")
         let encoder = JSONEncoder()
         if let encoded = try? encoder.encode(links) {
             userDefaults.set(encoded, forKey: storageKeyCategorySubcategoryLinks)
-            userDefaults.synchronize() // Гарантируем немедленное сохранение
-            print("🟣 UserDefaultsRepository.saveCategorySubcategoryLinks() - SAVED successfully")
-        } else {
-            print("🔴 UserDefaultsRepository.saveCategorySubcategoryLinks() - ENCODE FAILED")
+            userDefaults.synchronize()
         }
     }
     
