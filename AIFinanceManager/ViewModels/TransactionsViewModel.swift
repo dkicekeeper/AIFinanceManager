@@ -1295,6 +1295,73 @@ class TransactionsViewModel: ObservableObject {
             PerformanceProfiler.end("saveToStorage")
         }
     }
+
+    /// Синхронная версия saveToStorage для использования при импорте
+    /// Гарантирует, что все данные сохранены до возврата из функции
+    func saveToStorageSync() {
+        PerformanceProfiler.start("saveToStorageSync")
+
+        // Синхронно сохраняем все данные
+        saveTransactionsSync(allTransactions)
+        saveCategoryRulesSync(categoryRules)
+        saveAccountsSync(accounts)
+        saveCategoriesSync(customCategories)
+        saveRecurringSeriesSync(recurringSeries)
+        saveRecurringOccurrencesSync(recurringOccurrences)
+        // Подкатегории и связи сохраняются через CategoriesViewModel
+
+        PerformanceProfiler.end("saveToStorageSync")
+    }
+
+    // MARK: - Синхронные методы сохранения для импорта
+
+    private func saveTransactionsSync(_ transactions: [Transaction]) {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(transactions) {
+            UserDefaults.standard.set(encoded, forKey: "allTransactions")
+            UserDefaults.standard.synchronize()
+        }
+    }
+
+    private func saveCategoryRulesSync(_ rules: [CategoryRule]) {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(rules) {
+            UserDefaults.standard.set(encoded, forKey: "categoryRules")
+            UserDefaults.standard.synchronize()
+        }
+    }
+
+    private func saveAccountsSync(_ accounts: [Account]) {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(accounts) {
+            UserDefaults.standard.set(encoded, forKey: "accounts")
+            UserDefaults.standard.synchronize()
+        }
+    }
+
+    private func saveCategoriesSync(_ categories: [CustomCategory]) {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(categories) {
+            UserDefaults.standard.set(encoded, forKey: "customCategories")
+            UserDefaults.standard.synchronize()
+        }
+    }
+
+    private func saveRecurringSeriesSync(_ series: [RecurringSeries]) {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(series) {
+            UserDefaults.standard.set(encoded, forKey: "recurringSeries")
+            UserDefaults.standard.synchronize()
+        }
+    }
+
+    private func saveRecurringOccurrencesSync(_ occurrences: [RecurringOccurrence]) {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(occurrences) {
+            UserDefaults.standard.set(encoded, forKey: "recurringOccurrences")
+            UserDefaults.standard.synchronize()
+        }
+    }
     
     private func loadFromStorage() {
         allTransactions = repository.loadTransactions()

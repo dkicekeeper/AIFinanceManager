@@ -163,36 +163,67 @@ class CSVImportService {
             // Парсим валюту
             let currency = currencyIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: CharacterSet.whitespaces) } ?? "KZT"
             
-            // Парсим счет
-            // Для доходов: счет используется как accountId (куда поступают деньги, увеличивает баланс), НЕ создаем счет автоматически
-            // Для расходов и переводов: счет используется как accountId (откуда списываются деньги), создаем если нужно
+            // ===== ПРИМЕНЯЕМ ПРАВИЛА ПАРСИНГА В ЗАВИСИМОСТИ ОТ ТИПА ОПЕРАЦИИ =====
+            // 1. Расход: счет = счет, категория = категория расхода (стандартное поведение)
+            // 2. Доход: счет = категория дохода, категория = счет пополнения (меняем местами)
+            // 3. Перевод: счет = счет, категория = счет получателя
+            
+            // Получаем сырые значения из CSV
+            let rawAccountValue = accountIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: CharacterSet.whitespaces) } ?? ""
+            let rawCategoryValue = categoryIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: CharacterSet.whitespaces) } ?? ""
+            let rawTargetAccountValue = targetAccountIndex.flatMap { row[safe: $0]?.trimmingCharacters(in: CharacterSet.whitespaces) } ?? ""
+            
+            // Применяем правила парсинга в зависимости от типа
+            let effectiveAccountValue: String
+            let effectiveCategoryValue: String
+            
+            switch type {
+            case .expense:
+                // Расход: счет = счет, категория = категория расхода
+                effectiveAccountValue = rawAccountValue
+                effectiveCategoryValue = rawCategoryValue
+            case .income:
+                // Доход: колонка "счет" = категория дохода, колонка "счет получателя" = счет пополнения
+                // Поэтому: счет транзакции = счет получателя, категория транзакции = счет (категория дохода)
+                effectiveAccountValue = rawTargetAccountValue
+                effectiveCategoryValue = rawAccountValue
+            case .internalTransfer:
+                // Перевод: счет = счет, категория всегда "Перевод" (локализованная)
+                effectiveAccountValue = rawAccountValue
+                effectiveCategoryValue = "" // Будет использована дефолтная категория "Перевод"
+            case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+                // Депозитные операции: стандартное поведение (как расход)
+                effectiveAccountValue = rawAccountValue
+                effectiveCategoryValue = rawCategoryValue
+            }
+            
+            // Парсим счет с учетом примененных правил
             var accountId: String? = nil
             
-            if let accountIdx = accountIndex,
-               let accountValue = row[safe: accountIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
-               !accountValue.isEmpty {
-                let normalizedAccountName = accountValue.lowercased()
+            // "Другое" — зарезервированное имя категории по умолчанию, никогда не создаём счёт с таким именем
+            let reservedCategoryNames = ["другое", "other"]
+            let isReservedCategoryName = reservedCategoryNames.contains(effectiveAccountValue.trimmingCharacters(in: .whitespaces).lowercased())
+            
+            if !effectiveAccountValue.isEmpty, !isReservedCategoryName {
+                let normalizedAccountName = effectiveAccountValue.lowercased()
                 
                 // Сначала проверяем маппинг
-                if let mappedAccountId = entityMapping.accountMappings[accountValue] {
+                if let mappedAccountId = entityMapping.accountMappings[effectiveAccountValue] {
                     accountId = mappedAccountId
-                } else if let account = findAccount(by: accountValue, in: accountsViewModel, in: transactionsViewModel) {
+                } else if let account = findAccount(by: effectiveAccountValue, in: accountsViewModel, in: transactionsViewModel) {
                     // Счет уже существует - используем его для всех типов транзакций
                     accountId = account.id
-                    // Сохраняем в словарь для быстрого поиска (только для не-доходов, чтобы не считать созданными)
-                    if type != .income {
-                        createdAccountsDuringImport[normalizedAccountName] = account.id
-                    }
-                } else if type != .income, let accountsVM = accountsViewModel {
-                    // Автоматически создаем счет только для расходов и переводов (НЕ для доходов)
+                    createdAccountsDuringImport[normalizedAccountName] = account.id
+                } else if let accountsVM = accountsViewModel {
+                    // Автоматически создаем счет
                     await MainActor.run {
                         // Проверяем еще раз перед созданием (на случай параллельного создания)
-                        if let existingAccount = findAccount(by: accountValue, in: accountsVM, in: transactionsViewModel) {
+                        if let existingAccount = findAccount(by: effectiveAccountValue, in: accountsVM, in: transactionsViewModel) {
                             accountId = existingAccount.id
                             createdAccountsDuringImport[normalizedAccountName] = existingAccount.id
                         } else {
                             accountsVM.addAccount(
-                                name: accountValue,
+                                name: effectiveAccountValue,
                                 balance: 0.0,
                                 currency: currency,
                                 bankLogo: .none
@@ -207,8 +238,6 @@ class CSVImportService {
                         }
                     }
                 }
-                // Для доходов: если счет не найден и не создан, accountId остается nil
-                // Это означает, что счет должен быть создан вручную или указан в маппинге
             }
             
             // Парсим валюту счета получателя (делаем это до парсинга счета получателя, чтобы использовать при создании)
@@ -272,14 +301,14 @@ class CSVImportService {
                 targetAmount = parsedTargetAmount
             }
             
-            // Парсим категорию
+            // Парсим категорию с учетом примененных правил парсинга
             // Для переводов используем локализованное название "Перевод", для остальных - "Другое"
             var categoryName = type == .internalTransfer ? String(localized: "transactionForm.transfer") : "Другое"
             var categoryId: String? = nil
-            if let categoryIdx = categoryIndex,
-               let categoryValue = row[safe: categoryIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
-               !categoryValue.isEmpty {
-                if let mappedCategory = entityMapping.categoryMappings[categoryValue] {
+            
+            // Используем effectiveCategoryValue (с учетом правил парсинга по типу операции)
+            if !effectiveCategoryValue.isEmpty {
+                if let mappedCategory = entityMapping.categoryMappings[effectiveCategoryValue] {
                     categoryName = mappedCategory
                     // Находим ID категории по имени
                     if let existingCategory = categoriesViewModel.customCategories.first(where: { $0.name == mappedCategory && $0.type == type }) {
@@ -296,28 +325,30 @@ class CSVImportService {
                             colorHex: hexString,
                             type: type
                         )
-                        categoriesViewModel.addCategory(newCategory)
+                        // Добавляем напрямую в массив, чтобы избежать async сохранения во время импорта
+                        categoriesViewModel.customCategories.append(newCategory)
                         categoryId = newCategory.id
                         createdCategories += 1
                     }
-                } else if let existingCategory = categoriesViewModel.customCategories.first(where: { $0.name == categoryValue && $0.type == type }) {
-                    categoryName = categoryValue
+                } else if let existingCategory = categoriesViewModel.customCategories.first(where: { $0.name == effectiveCategoryValue && $0.type == type }) {
+                    categoryName = effectiveCategoryValue
                     categoryId = existingCategory.id
                 } else {
                     // Создаем категорию с автоматическим подбором иконки и цвета
-                    let iconName = CategoryIcon.iconName(for: categoryValue, type: type, customCategories: categoriesViewModel.customCategories)
-                    let colorHex = CategoryColors.hexColor(for: categoryValue, customCategories: categoriesViewModel.customCategories)
+                    let iconName = CategoryIcon.iconName(for: effectiveCategoryValue, type: type, customCategories: categoriesViewModel.customCategories)
+                    let colorHex = CategoryColors.hexColor(for: effectiveCategoryValue, customCategories: categoriesViewModel.customCategories)
                     // Конвертируем Color в hex строку
                     let hexString = colorToHex(colorHex)
                     
                     let newCategory = CustomCategory(
-                        name: categoryValue,
+                        name: effectiveCategoryValue,
                         iconName: iconName,
                         colorHex: hexString,
                         type: type
                     )
-                    categoriesViewModel.addCategory(newCategory)
-                    categoryName = categoryValue
+                    // Добавляем напрямую в массив, чтобы избежать async сохранения во время импорта
+                    categoriesViewModel.customCategories.append(newCategory)
+                    categoryName = effectiveCategoryValue
                     categoryId = newCategory.id
                     createdCategories += 1
                 }
@@ -341,7 +372,8 @@ class CSVImportService {
                         colorHex: hexString,
                         type: type
                     )
-                    categoriesViewModel.addCategory(defaultCategory)
+                    // Добавляем напрямую в массив, чтобы избежать async сохранения во время импорта
+                    categoriesViewModel.customCategories.append(defaultCategory)
                     categoryId = defaultCategory.id
                     createdCategories += 1
                 }
@@ -471,8 +503,9 @@ class CSVImportService {
                 categoriesViewModel.batchLinkSubcategoriesToTransaction(allTransactionSubcategoryLinks)
             }
             
-            // Синхронизируем подкатегории и связи из CategoriesViewModel в TransactionsViewModel
+            // Синхронизируем категории, подкатегории и связи из CategoriesViewModel в TransactionsViewModel
             // перед сохранением, чтобы TransactionsViewModel.saveToStorage() не перезаписал устаревшие данные
+            transactionsViewModel.customCategories = categoriesViewModel.customCategories
             transactionsViewModel.subcategories = categoriesViewModel.subcategories
             transactionsViewModel.categorySubcategoryLinks = categoriesViewModel.categorySubcategoryLinks
             transactionsViewModel.transactionSubcategoryLinks = categoriesViewModel.transactionSubcategoryLinks
@@ -495,13 +528,15 @@ class CSVImportService {
                         accountsVM.setInitialBalance(updatedAccount.balance, for: account.id)
                     }
                 }
-                // Сохраняем обновленные балансы счетов одним батчем
-                accountsVM.saveAllAccounts()
+                // Сохраняем обновленные балансы счетов одним батчем (синхронно для импорта)
+                accountsVM.saveAllAccountsSync()
             }
             
-            // Сохраняем все данные один раз в конце
+            // Сохраняем все данные один раз в конце (синхронно для импорта)
             // Теперь подкатегории и связи синхронизированы с CategoriesViewModel
-            transactionsViewModel.saveToStorage()
+            // Используем синхронную версию, чтобы гарантировать сохранение
+            // до вызова reloadFromStorage() в UI
+            transactionsViewModel.saveToStorageSync()
             
             // Принудительно уведомляем об изменении для обновления UI
             transactionsViewModel.objectWillChange.send()

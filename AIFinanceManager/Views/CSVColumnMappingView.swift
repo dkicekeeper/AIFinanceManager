@@ -341,18 +341,21 @@ struct CSVColumnMappingView: View {
             isImporting = false
             importProgress = 1.0
             importResult = result
-            
-            // Перезагружаем данные в основном CategoriesViewModel после импорта
-            mainCategoriesViewModel.reloadFromStorage()
-            
+
+            // НЕ перезагружаем данные в CategoriesViewModel - они уже актуальны
+            // после импорта и синхронно сохранены в UserDefaults
+            // Перезагрузка только затрет изменения в памяти!
+            // mainCategoriesViewModel.reloadFromStorage()
+
             // Перезагружаем данные в AccountsViewModel из coordinator
+            // потому что импорт использует ДРУГОЙ экземпляр AccountsViewModel
             coordinator.accountsViewModel.reloadFromStorage()
-            
+
             // Принудительно обновляем UI во всех ViewModels
             transactionsViewModel.objectWillChange.send()
             coordinator.accountsViewModel.objectWillChange.send()
             mainCategoriesViewModel.objectWillChange.send()
-            
+
             showingImportResult = true
         }
     }

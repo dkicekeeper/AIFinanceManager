@@ -20,6 +20,7 @@ struct CSVEntityMappingView: View {
     @State private var entityMapping = EntityMapping()
     @State private var uniqueAccounts: [String] = []
     @State private var uniqueCategories: [String] = []
+    @State private var uniqueIncomeCategories: [String] = []
     @State private var accountMappings: [String: String] = [:] // CSV значение -> Account ID
     @State private var categoryMappings: [String: String] = [:] // CSV значение -> Category name
     @State private var showingAccountCreation = false
@@ -30,7 +31,7 @@ struct CSVEntityMappingView: View {
     var body: some View {
         NavigationView {
             Form {
-                if mapping.accountColumn != nil {
+                if !uniqueAccounts.isEmpty {
                     Section(header: Text("Сопоставление счетов")) {
                         ForEach(uniqueAccounts, id: \.self) { accountValue in
                             NavigationLink(destination: AccountMappingDetailView(
@@ -61,18 +62,50 @@ struct CSVEntityMappingView: View {
                     }
                 }
                 
-                if mapping.categoryColumn != nil {
+                if mapping.categoryColumn != nil, !uniqueCategories.isEmpty {
                     Section(header: Text("Сопоставление категорий")) {
                         ForEach(uniqueCategories, id: \.self) { categoryValue in
                             NavigationLink(destination: CategoryMappingDetailView(
                                 csvValue: categoryValue,
-                                categories: categoriesViewModel.customCategories,
+                                categories: categoriesViewModel.customCategories.filter { $0.type == .expense },
+                                categoryType: .expense,
                                 selectedCategoryName: Binding(
                                     get: { categoryMappings[categoryValue] },
                                     set: { categoryMappings[categoryValue] = $0 }
                                 ),
                                 onCreateNew: {
-                                    createCategory(name: categoryValue)
+                                    createCategory(name: categoryValue, type: .expense)
+                                }
+                            )) {
+                                HStack {
+                                    Text(categoryValue)
+                                    Spacer()
+                                    if let categoryName = categoryMappings[categoryValue] {
+                                        Text(categoryName)
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        Text("Не выбрано")
+                                            .foregroundColor(.orange)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if !uniqueIncomeCategories.isEmpty {
+                    Section(header: Text("Сопоставление категорий доходов")) {
+                        ForEach(uniqueIncomeCategories, id: \.self) { categoryValue in
+                            NavigationLink(destination: CategoryMappingDetailView(
+                                csvValue: categoryValue,
+                                categories: categoriesViewModel.customCategories.filter { $0.type == .income },
+                                categoryType: .income,
+                                selectedCategoryName: Binding(
+                                    get: { categoryMappings[categoryValue] },
+                                    set: { categoryMappings[categoryValue] = $0 }
+                                ),
+                                onCreateNew: {
+                                    createCategory(name: categoryValue, type: .income)
                                 }
                             )) {
                                 HStack {
@@ -122,22 +155,51 @@ struct CSVEntityMappingView: View {
         }
     }
     
+    private func parseType(_ typeString: String) -> TransactionType? {
+        let n = typeString.lowercased().trimmingCharacters(in: .whitespaces)
+        if let t = mapping.typeMappings[n] { return t }
+        for (key, type) in mapping.typeMappings {
+            if n.contains(key) || key.contains(n) { return type }
+        }
+        return nil
+    }
+    
     private func extractUniqueValues() {
-        // Извлекаем уникальные значения счетов
-        if let accountColumn = mapping.accountColumn,
-           let columnIndex = csvFile.headers.firstIndex(of: accountColumn) {
-            uniqueAccounts = Array(Set(csvFile.rows.compactMap { row in
-                row[safe: columnIndex]?.trimmingCharacters(in: .whitespaces)
-            }.filter { !$0.isEmpty })).sorted()
+        let headers = csvFile.headers
+        let typeIdx = mapping.typeColumn.flatMap { headers.firstIndex(of: $0) }
+        let accountIdx = mapping.accountColumn.flatMap { headers.firstIndex(of: $0) }
+        let targetIdx = mapping.targetAccountColumn.flatMap { headers.firstIndex(of: $0) }
+        let categoryIdx = mapping.categoryColumn.flatMap { headers.firstIndex(of: $0) }
+        
+        let reserved = ["другое", "other"]
+        
+        var accountSet: Set<String> = []
+        var expenseCategorySet: Set<String> = []
+        var incomeCategorySet: Set<String> = []
+        
+        for row in csvFile.rows {
+            let typeStr = typeIdx.flatMap { row[safe: $0]?.trimmingCharacters(in: .whitespaces) } ?? ""
+            let type = parseType(typeStr)
+            let accountVal = accountIdx.flatMap { row[safe: $0]?.trimmingCharacters(in: .whitespaces) } ?? ""
+            let targetVal = targetIdx.flatMap { row[safe: $0]?.trimmingCharacters(in: .whitespaces) } ?? ""
+            let categoryVal = categoryIdx.flatMap { row[safe: $0]?.trimmingCharacters(in: .whitespaces) } ?? ""
+            
+            switch type {
+            case .income:
+                if !targetVal.isEmpty { accountSet.insert(targetVal) }
+                if !accountVal.isEmpty { incomeCategorySet.insert(accountVal) }
+            case .expense, .internalTransfer, .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+                if !accountVal.isEmpty, !reserved.contains(accountVal.lowercased()) { accountSet.insert(accountVal) }
+                if type == .expense, !categoryVal.isEmpty { expenseCategorySet.insert(categoryVal) }
+            case .none:
+                if !accountVal.isEmpty, !reserved.contains(accountVal.lowercased()) { accountSet.insert(accountVal) }
+                if !categoryVal.isEmpty { expenseCategorySet.insert(categoryVal) }
+            }
         }
         
-        // Извлекаем уникальные значения категорий
-        if let categoryColumn = mapping.categoryColumn,
-           let columnIndex = csvFile.headers.firstIndex(of: categoryColumn) {
-            uniqueCategories = Array(Set(csvFile.rows.compactMap { row in
-                row[safe: columnIndex]?.trimmingCharacters(in: .whitespaces)
-            }.filter { !$0.isEmpty })).sorted()
-        }
+        uniqueAccounts = Array(accountSet).sorted()
+        uniqueCategories = Array(expenseCategorySet).sorted()
+        uniqueIncomeCategories = Array(incomeCategorySet).sorted()
     }
     
     private func createAccount(name: String) {
@@ -147,19 +209,16 @@ struct CSVEntityMappingView: View {
         }
     }
     
-    private func createCategory(name: String) {
-        // Определяем тип категории по умолчанию (expense)
-        // Используем автоматический подбор иконки и цвета
-        let iconName = CategoryIcon.iconName(for: name, type: .expense, customCategories: categoriesViewModel.customCategories)
+    private func createCategory(name: String, type: TransactionType = .expense) {
+        let iconName = CategoryIcon.iconName(for: name, type: type, customCategories: categoriesViewModel.customCategories)
         let colorHex = CategoryColors.hexColor(for: name, customCategories: categoriesViewModel.customCategories)
-        // Конвертируем Color в hex строку
         let hexString = colorToHex(colorHex)
         
         let newCategory = CustomCategory(
             name: name,
             iconName: iconName,
             colorHex: hexString,
-            type: .expense
+            type: type
         )
         categoriesViewModel.addCategory(newCategory)
         categoryMappings[name] = name
@@ -225,12 +284,17 @@ struct AccountMappingDetailView: View {
 struct CategoryMappingDetailView: View {
     let csvValue: String
     let categories: [CustomCategory]
+    var categoryType: TransactionType = .expense
     @Binding var selectedCategoryName: String?
     let onCreateNew: () -> Void
     
+    private var categoryLabel: String {
+        categoryType == .income ? "категорию дохода" : "категорию"
+    }
+    
     var body: some View {
         Form {
-            Section(header: Text("Выберите категорию для \"\(csvValue)\"")) {
+            Section(header: Text("Выберите \(categoryLabel) для \"\(csvValue)\"")) {
                 ForEach(categories, id: \.name) { category in
                     Button(action: {
                         selectedCategoryName = category.name
@@ -253,12 +317,12 @@ struct CategoryMappingDetailView: View {
                 Button(action: onCreateNew) {
                     HStack {
                         Image(systemName: "plus.circle")
-                        Text("Создать новую категорию \"\(csvValue)\"")
+                        Text("Создать новую \(categoryLabel) \"\(csvValue)\"")
                     }
                 }
             }
         }
-        .navigationTitle("Сопоставление категории")
+        .navigationTitle(categoryType == .income ? "Сопоставление категории дохода" : "Сопоставление категории")
     }
 }
 

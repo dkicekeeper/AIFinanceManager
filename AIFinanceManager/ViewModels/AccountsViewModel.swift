@@ -178,4 +178,13 @@ class AccountsViewModel: ObservableObject {
     func saveAllAccounts() {
         repository.saveAccounts(accounts)
     }
+
+    /// Синхронно сохранить все счета (используется при импорте)
+    func saveAllAccountsSync() {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(accounts) {
+            UserDefaults.standard.set(encoded, forKey: "accounts")
+            UserDefaults.standard.synchronize()
+        }
+    }
 }
