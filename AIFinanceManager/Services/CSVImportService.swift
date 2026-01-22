@@ -516,7 +516,13 @@ class CSVImportService {
             
             // Пересчитываем балансы один раз в конце
             transactionsViewModel.recalculateAccountBalances()
-            
+
+            // Перестраиваем индексы для быстрой фильтрации
+            transactionsViewModel.rebuildIndexes()
+
+            // Предварительно вычисляем конвертации валют в фоне для улучшения производительности UI
+            transactionsViewModel.precomputeCurrencyConversions()
+
             // Синхронизируем обновленные балансы обратно в accountsViewModel и сохраняем их
             if let accountsVM = accountsViewModel {
                 // Обновляем балансы в accountsViewModel на основе пересчитанных балансов

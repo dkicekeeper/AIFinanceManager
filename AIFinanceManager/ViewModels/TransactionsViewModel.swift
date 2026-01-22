@@ -31,9 +31,19 @@ class TransactionsViewModel: ObservableObject {
     private var summaryCacheInvalidated = true
     private var cachedCategoryExpenses: [String: CategoryExpense]?
     private var categoryExpensesCacheInvalidated = true
+
+    // Currency conversion cache: "txId_baseCurrency" -> converted amount
+    private var convertedAmountsCache: [String: Double] = [:]
+    private var conversionCacheInvalidated = true
+
+    // Transaction indexes for fast filtering
+    private let indexManager = TransactionIndexManager()
+
     func invalidateCaches() {
         summaryCacheInvalidated = true
         categoryExpensesCacheInvalidated = true
+        conversionCacheInvalidated = true
+        indexManager.invalidate()
     }
 
     // MARK: - Dependencies
@@ -716,6 +726,7 @@ class TransactionsViewModel: ObservableObject {
             createCategoriesForTransactions(uniqueNew)
             insertTransactionsSorted(uniqueNew)
             invalidateCaches()
+            rebuildIndexes()
             recalculateAccountBalances()
             saveToStorage()
         }
@@ -1440,6 +1451,12 @@ class TransactionsViewModel: ObservableObject {
 
         print("🔄 [STORAGE] Starting initial balance recalculation")
         recalculateAccountBalances()
+
+        // Build indexes for fast filtering
+        rebuildIndexes()
+
+        // Precompute currency conversions in background for better UI performance
+        precomputeCurrencyConversions()
     }
     
     func recalculateAccountBalances() {
@@ -1998,6 +2015,98 @@ class TransactionsViewModel: ObservableObject {
     func searchSubcategories(query: String) -> [Subcategory] {
         let queryLower = query.lowercased()
         return subcategories.filter { $0.name.lowercased().contains(queryLower) }
+    }
+
+    // MARK: - Transaction Indexes
+
+    /// Rebuild transaction indexes for fast filtering
+    func rebuildIndexes() {
+        print("📇 [INDEX] Rebuilding transaction indexes")
+        indexManager.buildIndexes(transactions: allTransactions)
+    }
+
+    // MARK: - Currency Conversion Cache
+
+    /// Precompute currency conversions for all transactions in background
+    /// This dramatically improves UI performance by avoiding sync conversions
+    func precomputeCurrencyConversions() {
+        guard conversionCacheInvalidated else {
+            print("💱 [CONVERSION] Cache is valid, skipping precomputation")
+            return
+        }
+
+        print("💱 [CONVERSION] Starting precomputation for \(allTransactions.count) transactions")
+        PerformanceProfiler.start("precomputeCurrencyConversions")
+
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+
+            let baseCurrency = await MainActor.run { self.appSettings.baseCurrency }
+            let transactions = await MainActor.run { self.allTransactions }
+
+            var cache: [String: Double] = [:]
+            var conversionCount = 0
+
+            for tx in transactions {
+                let cacheKey = "\(tx.id)_\(baseCurrency)"
+
+                if tx.currency == baseCurrency {
+                    cache[cacheKey] = tx.amount
+                } else if let converted = CurrencyConverter.convertSync(
+                    amount: tx.amount,
+                    from: tx.currency,
+                    to: baseCurrency
+                ) {
+                    cache[cacheKey] = converted
+                    conversionCount += 1
+                } else if let convertedAmount = tx.convertedAmount {
+                    // Fallback to stored converted amount
+                    cache[cacheKey] = convertedAmount
+                }
+            }
+
+            await MainActor.run {
+                self.convertedAmountsCache = cache
+                self.conversionCacheInvalidated = false
+                print("✅ [CONVERSION] Precomputed \(conversionCount) conversions, cached \(cache.count) amounts")
+                PerformanceProfiler.end("precomputeCurrencyConversions")
+            }
+        }
+    }
+
+    /// Get converted amount from cache
+    /// - Parameters:
+    ///   - transactionId: Transaction ID
+    ///   - baseCurrency: Target currency
+    /// - Returns: Converted amount or nil if not cached
+    func getConvertedAmount(transactionId: String, to baseCurrency: String) -> Double? {
+        let cacheKey = "\(transactionId)_\(baseCurrency)"
+        return convertedAmountsCache[cacheKey]
+    }
+
+    /// Get converted amount for a transaction, falling back to sync conversion if not cached
+    /// - Parameters:
+    ///   - transaction: The transaction
+    ///   - baseCurrency: Target currency
+    /// - Returns: Converted amount
+    func getConvertedAmountOrCompute(transaction: Transaction, to baseCurrency: String) -> Double {
+        // Try cache first
+        if let cached = getConvertedAmount(transactionId: transaction.id, to: baseCurrency) {
+            return cached
+        }
+
+        // Fallback to sync conversion (should be rare after precomputation)
+        if transaction.currency == baseCurrency {
+            return transaction.amount
+        } else if let converted = CurrencyConverter.convertSync(
+            amount: transaction.amount,
+            from: transaction.currency,
+            to: baseCurrency
+        ) {
+            return converted
+        } else {
+            return transaction.convertedAmount ?? transaction.amount
+        }
     }
 }
 

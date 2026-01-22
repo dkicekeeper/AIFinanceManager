@@ -24,6 +24,9 @@ struct HistoryView: View {
     @State private var cachedGroupedTransactions: [String: [Transaction]] = [:]
     @State private var cachedSortedKeys: [String] = []
     @State private var searchTask: Task<Void, Never>?
+
+    // Pagination manager for efficient loading
+    @StateObject private var paginationManager = TransactionPaginationManager()
     
     // Локализованные ключи для дат (используются ViewModel для группировки)
     // TODO: Исправить ViewModel для использования локализованных ключей
@@ -139,12 +142,13 @@ struct HistoryView: View {
         }
     }
     
-    
+
     private var transactionsList: some View {
-        let grouped = cachedGroupedTransactions
-        let sortedKeys = cachedSortedKeys
-        
-        if grouped.isEmpty {
+        // Use pagination manager's visible data instead of full cache
+        let grouped = paginationManager.groupedTransactions
+        let sortedKeys = paginationManager.visibleSections
+
+        if grouped.isEmpty && !paginationManager.isLoadingMore {
             // Определяем контекстное сообщение в зависимости от активных фильтров
             let emptyMessage: String = {
                 if !debouncedSearchText.isEmpty {
@@ -183,6 +187,24 @@ struct HistoryView: View {
                             }
                         }
                         .id(dateKey)
+                        .onAppear {
+                            // Load more when reaching near the end
+                            if paginationManager.shouldLoadMore(for: dateKey) {
+                                paginationManager.loadNextPage()
+                            }
+                        }
+                    }
+
+                    // Loading indicator at the bottom
+                    if paginationManager.isLoadingMore {
+                        Section {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .padding()
+                                Spacer()
+                            }
+                        }
                     }
                 }
                 .listStyle(PlainListStyle())
@@ -237,46 +259,40 @@ struct HistoryView: View {
     // Обновление кешированных транзакций
     private func updateCachedTransactions() {
         PerformanceProfiler.start("HistoryView.updateCachedTransactions")
-        
+
         // Фильтруем транзакции
         let filtered = transactionsViewModel.filterTransactionsForHistory(
             timeFilterManager: timeFilterManager,
             accountId: selectedAccountFilter,
             searchText: debouncedSearchText
         )
-        
+
         // Группируем и сортируем
         let result = transactionsViewModel.groupAndSortTransactionsByDate(filtered)
         cachedGroupedTransactions = result.grouped
         cachedSortedKeys = result.sortedKeys
-        
+
+        // Initialize pagination with new data
+        paginationManager.initialize(grouped: result.grouped, sortedKeys: result.sortedKeys)
+
         PerformanceProfiler.end("HistoryView.updateCachedTransactions")
+        print("📊 [HISTORY] Filtered \(filtered.count) transactions into \(result.sortedKeys.count) sections")
     }
     
     
     private func dateHeader(for dateKey: String, transactions: [Transaction]) -> some View {
-        // Конвертируем все расходы в базовую валюту перед суммированием
+        // Используем кешированные конвертации для лучшей производительности
         let dayExpenses = transactions
             .filter { $0.type == .expense }
             .reduce(0.0) { total, transaction in
-                let amountInBaseCurrency: Double
-                if transaction.currency == baseCurrency {
-                    amountInBaseCurrency = transaction.amount
-                } else {
-                    if let converted = CurrencyConverter.convertSync(
-                        amount: transaction.amount,
-                        from: transaction.currency,
-                        to: baseCurrency
-                    ) {
-                        amountInBaseCurrency = converted
-                    } else {
-                        // Если конвертация невозможна, используем convertedAmount или amount
-                        amountInBaseCurrency = transaction.convertedAmount ?? transaction.amount
-                    }
-                }
+                // Пытаемся получить из кеша, иначе вычисляем (но это должно быть редко)
+                let amountInBaseCurrency = transactionsViewModel.getConvertedAmountOrCompute(
+                    transaction: transaction,
+                    to: baseCurrency
+                )
                 return total + amountInBaseCurrency
             }
-        
+
         return DateSectionHeader(
             dateKey: dateKey,
             dayExpenses: dayExpenses,
