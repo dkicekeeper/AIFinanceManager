@@ -41,19 +41,19 @@ class AppCoordinator: ObservableObject {
 
         // Initialize ViewModels in dependency order
         // 1. Accounts (no dependencies)
-        self.accountsViewModel = AccountsViewModel(repository: repository)
+        self.accountsViewModel = AccountsViewModel(repository: self.repository)
 
         // 2. Categories (no dependencies)
-        self.categoriesViewModel = CategoriesViewModel(repository: repository)
+        self.categoriesViewModel = CategoriesViewModel(repository: self.repository)
 
         // 3. Subscriptions (no dependencies on other ViewModels)
-        self.subscriptionsViewModel = SubscriptionsViewModel(repository: repository)
+        self.subscriptionsViewModel = SubscriptionsViewModel(repository: self.repository)
 
         // 4. Deposits (depends on Accounts)
-        self.depositsViewModel = DepositsViewModel(repository: repository, accountsViewModel: accountsViewModel)
+        self.depositsViewModel = DepositsViewModel(repository: self.repository, accountsViewModel: accountsViewModel)
 
         // 5. Transactions (depends on Accounts and Categories)
-        self.transactionsViewModel = TransactionsViewModel(repository: repository)
+        self.transactionsViewModel = TransactionsViewModel(repository: self.repository)
 
         // Set up bidirectional dependency between TransactionsViewModel and AccountsViewModel
         self.transactionsViewModel.accountsViewModel = accountsViewModel

@@ -37,8 +37,7 @@ struct ContentView: View {
     @State private var showingCSVPreview = false
     @State private var parsedCSVFile: CSVFile? = nil
 
-    // Кешированные данные для производительности
-    @State private var cachedSummary: Summary?
+    // Wallpaper image
     @State private var wallpaperImage: UIImage? = nil
     
     private var scrollContent: some View {
@@ -178,8 +177,6 @@ struct ContentView: View {
                 // Initialize coordinator asynchronously on first appearance
                 if isInitializing {
                     await coordinator.initialize()
-                    // Update summary after data is loaded
-                    updateSummary()
                     withAnimation {
                         isInitializing = false
                     }
@@ -258,10 +255,6 @@ struct ContentView: View {
             }
             .onAppear {
                 PerformanceProfiler.start("ContentView.onAppear")
-                // Only update summary if not initializing (data already loaded)
-                if !isInitializing {
-                    updateSummary()
-                }
                 loadWallpaper()
 
                 // Setup VoiceInputService with ViewModels for contextual strings (iOS 17+)
@@ -272,7 +265,6 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.allTransactions.count) { oldValue, newValue in
                 print("🔔 [UI] allTransactions.count changed: \(oldValue) -> \(newValue)")
-                updateSummary()
                 refreshTrigger += 1
                 print("🔄 [UI] refreshTrigger incremented to \(refreshTrigger)")
             }
@@ -283,7 +275,6 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.allTransactions) { _, _ in
                 print("🔔 [UI] allTransactions array changed")
-                updateSummary()
             }
             .onChange(of: accountsViewModel.accounts) { _, newAccounts in
                 print("🔔 [UI] accounts array changed")
@@ -295,7 +286,8 @@ struct ContentView: View {
                 print("🔄 [UI] refreshTrigger incremented to \(refreshTrigger)")
             }
             .onChange(of: timeFilterManager.currentFilter) { _, _ in
-                updateSummary()
+                // Summary will be recomputed automatically in analyticsCard
+                refreshTrigger += 1
             }
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
                 loadWallpaper()
@@ -388,12 +380,6 @@ struct ContentView: View {
         )
     }
 
-    // Обновление кешированного summary
-    private func updateSummary() {
-        PerformanceProfiler.start("ContentView.updateSummary")
-        cachedSummary = viewModel.summary(timeFilterManager: timeFilterManager)
-        PerformanceProfiler.end("ContentView.updateSummary")
-    }
     
     // Загрузка обоев (асинхронно для производительности)
     private func loadWallpaper() {
@@ -480,7 +466,7 @@ struct ContentView: View {
     
     private var analyticsCard: some View {
         let currency = viewModel.appSettings.baseCurrency
-        
+
         if viewModel.allTransactions.isEmpty {
             return AnyView(
                 VStack(alignment: .leading, spacing: AppSpacing.lg) {
@@ -489,7 +475,7 @@ struct ContentView: View {
                             .font(AppTypography.h3)
                             .foregroundStyle(.primary)
                     }
-                    
+
                     Text(String(localized: "emptyState.noTransactions", defaultValue: "Нет транзакций"))
                         .font(AppTypography.bodySmall)
                         .foregroundStyle(.primary)
@@ -498,11 +484,9 @@ struct ContentView: View {
                 .glassCardStyle(radius: AppRadius.pill)
             )
         }
-        
-        // Используем кешированный summary вместо повторного вызова viewModel.summary()
-        guard let summary = cachedSummary else {
-            return AnyView(EmptyView())
-        }
+
+        // Compute summary directly - ViewModel has internal cache
+        let summary = viewModel.summary(timeFilterManager: timeFilterManager)
 
         return AnyView(
             AnalyticsCard(
