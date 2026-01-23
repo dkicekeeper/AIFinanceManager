@@ -166,23 +166,90 @@
 
 ## Шаг 6: Создание остальных Entities (опционально, можно позже)
 
-### CustomCategoryEntity
-- `id: String`
-- `name: String`
-- `type: String` (income/expense)
-- `iconName: String?`
-- `colorHex: String?`
+> **Примечание**: Эти Entity можно создать позже, когда они понадобятся. Если вы хотите создать их сейчас, следуйте инструкциям ниже.
 
-### CategoryRuleEntity
-- `id: String`
-- `pattern: String`
-- `category: String`
-- `isEnabled: Boolean`
+### 6.1. Создание Entity "CustomCategoryEntity"
 
-### SubcategoryEntity
-- `id: String`
-- `name: String`
-- `iconName: String?`
+1. **Добавить Entity**:
+   - Нажать **"Add Entity"** (кнопка + внизу)
+   - Назвать: `CustomCategoryEntity`
+   - В инспекторе справа:
+     - **Class**: `CustomCategoryEntity`
+     - **Module**: `AIFinanceManager`
+     - **Codegen**: **Manual/None**
+
+2. **Добавить Attributes**:
+   - Нажать **"+"** в секции **Attributes** и добавить:
+
+| Attribute | Type | Optional | Default |
+|-----------|------|----------|---------|
+| `id` | String | ❌ No | - |
+| `name` | String | ❌ No | - |
+| `type` | String | ❌ No | - |
+| `iconName` | String | ✅ Yes | - |
+| `colorHex` | String | ✅ Yes | - |
+
+---
+
+### 6.2. Создание Entity "CategoryRuleEntity"
+
+1. **Добавить Entity**:
+   - Нажать **"Add Entity"**
+   - Назвать: `CategoryRuleEntity`
+   - В инспекторе справа:
+     - **Class**: `CategoryRuleEntity`
+     - **Module**: `AIFinanceManager`
+     - **Codegen**: **Manual/None**
+
+2. **Добавить Attributes**:
+   - Нажать **"+"** в секции **Attributes** и добавить:
+
+| Attribute | Type | Optional | Default |
+|-----------|------|----------|---------|
+| `id` | String | ❌ No | - |
+| `pattern` | String | ❌ No | - |
+| `category` | String | ❌ No | - |
+| `isEnabled` | Boolean | ❌ No | true |
+
+---
+
+### 6.3. Создание Entity "SubcategoryEntity"
+
+1. **Добавить Entity**:
+   - Нажать **"Add Entity"**
+   - Назвать: `SubcategoryEntity`
+   - В инспекторе справа:
+     - **Class**: `SubcategoryEntity`
+     - **Module**: `AIFinanceManager`
+     - **Codegen**: **Manual/None**
+
+2. **Добавить Attributes**:
+   - Нажать **"+"** в секции **Attributes** и добавить:
+
+| Attribute | Type | Optional | Default |
+|-----------|------|----------|---------|
+| `id` | String | ❌ No | - |
+| `name` | String | ❌ No | - |
+| `iconName` | String | ✅ Yes | - |
+
+---
+
+### 6.4. Настройка Relationships (если нужно)
+
+Если эти Entity должны быть связаны с другими:
+
+- **CustomCategoryEntity ↔ TransactionEntity**: 
+  - Можно добавить relationship `transactions` (To Many) в `CustomCategoryEntity`
+  - Или использовать только строковое поле `category` в `TransactionEntity` (текущий подход)
+
+- **CategoryRuleEntity**: 
+  - Обычно не требует relationships, это правила для автоматической категоризации
+
+- **SubcategoryEntity ↔ TransactionEntity**:
+  - Можно добавить relationship `transactions` (To Many) в `SubcategoryEntity`
+  - Или использовать только строковое поле `subcategory` в `TransactionEntity` (текущий подход)
+
+> **Рекомендация**: Если вы не уверены, нужны ли relationships, оставьте их как строковые поля в `TransactionEntity` (как сейчас). Relationships можно добавить позже при необходимости.
 
 ---
 
@@ -335,17 +402,17 @@ func initialize() async {
 
 ## ✅ Checklist
 
-- [ ] Создан файл `AIFinanceManager.xcdatamodeld`
-- [ ] Создана Entity `TransactionEntity` со всеми attributes
-- [ ] Создана Entity `AccountEntity` со всеми attributes
-- [ ] Создана Entity `RecurringSeriesEntity` со всеми attributes
-- [ ] Настроены Relationships между entities
-- [ ] Добавлены Indexes для производительности
-- [ ] Сгенерированы NSManagedObject классы
-- [ ] Добавлены удобные методы (toTransaction, from)
-- [ ] CoreDataStack.swift добавлен в проект
-- [ ] Проект собирается без ошибок (⌘+B)
-- [ ] Тестовый код работает
+- [x] Создан файл `AIFinanceManager.xcdatamodeld`
+- [x] Создана Entity `TransactionEntity` со всеми attributes
+- [x] Создана Entity `AccountEntity` со всеми attributes
+- [x] Создана Entity `RecurringSeriesEntity` со всеми attributes
+- [x] Настроены Relationships между entities
+- [ ] Добавлены Indexes для производительности (опционально, можно добавить позже)
+- [x] Сгенерированы NSManagedObject классы
+- [x] Добавлены удобные методы (toTransaction, toAccount, from)
+- [x] CoreDataStack.swift добавлен в проект
+- [x] Проект собирается без ошибок (⌘+B)
+- [x] Тестовый код работает ✅
 
 ---
 
@@ -355,8 +422,18 @@ func initialize() async {
 - ✅ Core Data модель
 - ✅ CoreDataStack для управления
 - ✅ Базовые Entity классы
+- ✅ Методы конвертации между Entity и Domain моделями
+- ✅ Рабочий тест Core Data
+
+**✅ Фаза 1 завершена!**
 
 **Готовы к Фазе 2 (Repository слой)?**
+
+Следующие шаги:
+1. Создать `CoreDataRepository` который реализует `DataRepositoryProtocol`
+2. Реализовать методы для работы с TransactionEntity, AccountEntity, RecurringSeriesEntity
+3. Добавить миграцию данных из UserDefaults в Core Data
+4. Обновить ViewModels для использования нового Repository
 
 ---
 

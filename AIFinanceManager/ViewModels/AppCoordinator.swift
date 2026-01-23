@@ -9,6 +9,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import CoreData
 
 /// Coordinator that manages all ViewModels and their dependencies
 /// Provides a single point of initialization and dependency injection
@@ -29,11 +30,14 @@ class AppCoordinator: ObservableObject {
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
+    private let migrationService = DataMigrationService()
+    private var migrationCompleted = false
 
     // MARK: - Initialization
 
-    init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
+    init(repository: DataRepositoryProtocol = CoreDataRepository()) {
         self.repository = repository
+        print("🗄️ [APP_COORDINATOR] Using repository: CoreDataRepository")
 
         // Initialize ViewModels in dependency order
         // 1. Accounts (no dependencies)
@@ -79,13 +83,29 @@ class AppCoordinator: ObservableObject {
         print("🚀 [APP_COORDINATOR] Starting initialization")
         PerformanceProfiler.start("AppCoordinator.initialize")
         
-        // Load data asynchronously - this is non-blocking
+        // STEP 1: Check and perform migration if needed
+        if migrationService.isMigrationNeeded() {
+            print("🔄 [APP_COORDINATOR] Starting data migration...")
+            do {
+                try await migrationService.migrateAllData()
+                migrationCompleted = true
+                print("✅ [APP_COORDINATOR] Migration completed")
+            } catch {
+                print("❌ [APP_COORDINATOR] Migration failed: \(error)")
+                // Continue with UserDefaults fallback
+            }
+        } else {
+            print("✅ [APP_COORDINATOR] Data already migrated")
+            migrationCompleted = true
+        }
+        
+        // STEP 2: Load data asynchronously - this is non-blocking
         await transactionsViewModel.loadDataAsync()
         
         PerformanceProfiler.end("AppCoordinator.initialize")
         print("✅ [APP_COORDINATOR] Initialization complete")
     }
-
+    
     // MARK: - Private Methods
 
     /// Настройка наблюдателей за изменениями в дочерних ViewModels

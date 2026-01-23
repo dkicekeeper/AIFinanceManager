@@ -2005,9 +2005,10 @@ class TransactionsViewModel: ObservableObject {
             // Capture values before passing to MainActor
             let finalConversionCount = conversionCount
             let finalCacheCount = cache.count
+            let cacheCopy = cache // Create a copy to avoid concurrent access issues
 
             await MainActor.run {
-                self.convertedAmountsCache = cache
+                self.convertedAmountsCache = cacheCopy
                 self.conversionCacheInvalidated = false
                 print("✅ [CONVERSION] Precomputed \(finalConversionCount) conversions, cached \(finalCacheCount) amounts")
                 PerformanceProfiler.end("precomputeCurrencyConversions")

@@ -116,7 +116,7 @@ struct CoreDataIndexes {
             
             if !entity.indexes.isEmpty {
                 for index in entity.indexes {
-                    let elements = index.elements?.compactMap { $0.property?.name }.joined(separator: ", ") ?? ""
+                    let elements = index.elements.compactMap { $0.property?.name }.joined(separator: ", ")
                     print("      ✅ Index '\(index.name)': [\(elements)]")
                 }
             }
