@@ -167,58 +167,58 @@ final class CoreDataRepository: DataRepositoryProtocol {
     func saveAccounts(_ accounts: [Account]) {
         print("💾 [CORE_DATA_REPO] Saving \(accounts.count) accounts to Core Data")
         
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        // CRITICAL: Use viewContext for immediate save to prevent data loss
+        // This ensures data is persisted even if app terminates quickly
+        let context = stack.viewContext
+        
+        Task { @MainActor [weak self] in
             guard let self = self else { return }
             
             PerformanceProfiler.start("CoreDataRepository.saveAccounts")
             
-            let context = self.stack.newBackgroundContext()
-            
-            await context.perform {
-                do {
-                    // Fetch all existing accounts
-                    let fetchRequest = AccountEntity.fetchRequest()
-                    let existingEntities = try context.fetch(fetchRequest)
-                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+            do {
+                // Fetch all existing accounts
+                let fetchRequest = AccountEntity.fetchRequest()
+                let existingEntities = try context.fetch(fetchRequest)
+                let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                
+                var keptIds = Set<String>()
+                
+                // Update or create accounts
+                for account in accounts {
+                    keptIds.insert(account.id)
                     
-                    var keptIds = Set<String>()
-                    
-                    // Update or create accounts
-                    for account in accounts {
-                        keptIds.insert(account.id)
-                        
-                        if let existing = existingDict[account.id] {
-                            // Update existing
-                            existing.name = account.name
-                            existing.balance = account.balance
-                            existing.currency = account.currency
-                            existing.logo = account.bankLogo.rawValue
-                            existing.isDeposit = account.isDeposit
-                            existing.bankName = account.depositInfo?.bankName
-                        } else {
-                            // Create new
-                            _ = AccountEntity.from(account, context: context)
-                        }
+                    if let existing = existingDict[account.id] {
+                        // Update existing
+                        existing.name = account.name
+                        existing.balance = account.balance
+                        existing.currency = account.currency
+                        existing.logo = account.bankLogo.rawValue
+                        existing.isDeposit = account.isDeposit
+                        existing.bankName = account.depositInfo?.bankName
+                    } else {
+                        // Create new
+                        _ = AccountEntity.from(account, context: context)
                     }
-                    
-                    // Delete accounts that no longer exist
-                    for entity in existingEntities {
-                        if let id = entity.id, !keptIds.contains(id) {
-                            context.delete(entity)
-                        }
-                    }
-                    
-                    // Save if there are changes
-                    if context.hasChanges {
-                        try context.save()
-                    }
-                } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving accounts: \(error)")
                 }
+                
+                // Delete accounts that no longer exist
+                for entity in existingEntities {
+                    if let id = entity.id, !keptIds.contains(id) {
+                        context.delete(entity)
+                    }
+                }
+                
+                // Save if there are changes
+                if context.hasChanges {
+                    try context.save()
+                    print("✅ [CORE_DATA_REPO] Accounts saved successfully")
+                }
+            } catch {
+                print("❌ [CORE_DATA_REPO] Error saving accounts: \(error)")
             }
             
             PerformanceProfiler.end("CoreDataRepository.saveAccounts")
-            print("✅ [CORE_DATA_REPO] Accounts saved successfully")
         }
     }
     

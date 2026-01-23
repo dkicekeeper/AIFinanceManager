@@ -1072,10 +1072,14 @@ class TransactionsViewModel: ObservableObject {
         else { return }
 
         let currency = accounts[sourceIndex].currency
-
-        accounts[sourceIndex].balance -= amount
         
-        if var sourceDepositInfo = accounts[sourceIndex].depositInfo {
+        // CRITICAL: Создаем новый массив вместо модификации на месте
+        // Это необходимо для корректной работы @Published property wrapper
+        var newAccounts = accounts
+
+        newAccounts[sourceIndex].balance -= amount
+        
+        if var sourceDepositInfo = newAccounts[sourceIndex].depositInfo {
             let amountDecimal = Decimal(amount)
             if !sourceDepositInfo.capitalizationEnabled && sourceDepositInfo.interestAccruedNotCapitalized > 0 {
                 if amountDecimal <= sourceDepositInfo.interestAccruedNotCapitalized {
@@ -1088,15 +1092,15 @@ class TransactionsViewModel: ObservableObject {
             } else {
                 sourceDepositInfo.principalBalance -= amountDecimal
             }
-            accounts[sourceIndex].depositInfo = sourceDepositInfo
+            newAccounts[sourceIndex].depositInfo = sourceDepositInfo
             var totalBalance: Decimal = sourceDepositInfo.principalBalance
             if !sourceDepositInfo.capitalizationEnabled {
                 totalBalance += sourceDepositInfo.interestAccruedNotCapitalized
             }
-            accounts[sourceIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+            newAccounts[sourceIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
         }
         
-        let targetAccount = accounts[targetIndex]
+        let targetAccount = newAccounts[targetIndex]
         let targetAmount: Double
         if currency == targetAccount.currency {
             targetAmount = amount
@@ -1114,15 +1118,21 @@ class TransactionsViewModel: ObservableObject {
         if var targetDepositInfo = targetAccount.depositInfo {
             let amountDecimal = Decimal(targetAmount)
             targetDepositInfo.principalBalance += amountDecimal
-            accounts[targetIndex].depositInfo = targetDepositInfo
+            newAccounts[targetIndex].depositInfo = targetDepositInfo
             var totalBalance: Decimal = targetDepositInfo.principalBalance
             if !targetDepositInfo.capitalizationEnabled {
                 totalBalance += targetDepositInfo.interestAccruedNotCapitalized
             }
-            accounts[targetIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+            newAccounts[targetIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
         } else {
-            accounts[targetIndex].balance += targetAmount
+            newAccounts[targetIndex].balance += targetAmount
         }
+        
+        // Переприсваиваем весь массив для триггера @Published
+        print("📢 [TRANSFER] Reassigning accounts array to trigger @Published")
+        print("💰 [TRANSFER] Source '\(newAccounts[sourceIndex].name)': balance = \(newAccounts[sourceIndex].balance)")
+        print("💰 [TRANSFER] Target '\(newAccounts[targetIndex].name)': balance = \(newAccounts[targetIndex].balance)")
+        accounts = newAccounts
 
         let createdAt = Date().timeIntervalSince1970
         let id = TransactionIDGenerator.generateID(
@@ -1152,6 +1162,16 @@ class TransactionsViewModel: ObservableObject {
         )
 
         insertTransactionsSorted([transferTx])
+        
+        // CRITICAL: Синхронизируем обновленные балансы с AccountsViewModel
+        // Без этого UI не обновится, т.к. карточки счетов используют accountsViewModel.accounts
+        if let accountsVM = accountsViewModel {
+            print("🔗 [TRANSFER] Syncing balances with AccountsViewModel")
+            accountsVM.syncAccountBalances(accounts)
+        } else {
+            print("⚠️ [TRANSFER] AccountsViewModel is nil, skipping balance sync")
+        }
+        
         saveToStorage()
     }
     
@@ -1337,6 +1357,49 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
+    /// Calculate the balance change for a specific account from all transactions
+    /// This is used to determine the initial balance (starting capital) of an account
+    private func calculateTransactionsBalance(for accountId: String) -> Double {
+        let today = Calendar.current.startOfDay(for: Date())
+        let dateFormatter = Self.dateFormatter
+        var balance: Double = 0
+        
+        for tx in allTransactions {
+            guard let transactionDate = dateFormatter.date(from: tx.date),
+                  transactionDate <= today else {
+                continue
+            }
+            
+            switch tx.type {
+            case .income:
+                if tx.accountId == accountId {
+                    let amountToUse = tx.convertedAmount ?? tx.amount
+                    balance += amountToUse
+                }
+            case .expense:
+                if tx.accountId == accountId {
+                    let amountToUse = tx.convertedAmount ?? tx.amount
+                    balance -= amountToUse
+                }
+            case .internalTransfer:
+                if tx.accountId == accountId {
+                    // Money leaving this account
+                    let amountToUse = tx.convertedAmount ?? tx.amount
+                    balance -= amountToUse
+                } else if tx.targetAccountId == accountId {
+                    // Money coming to this account
+                    let amountToUse = tx.convertedAmount ?? tx.amount
+                    balance += amountToUse
+                }
+            case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+                // Skip deposit transactions for regular accounts
+                break
+            }
+        }
+        
+        return balance
+    }
+    
     private func loadFromStorage() {
         print("📂 [STORAGE] Loading data from storage in TransactionsViewModel")
         allTransactions = repository.loadTransactions()
@@ -1344,10 +1407,18 @@ class TransactionsViewModel: ObservableObject {
         accounts = repository.loadAccounts()
 
         print("📊 [STORAGE] Loaded \(accounts.count) accounts in TransactionsViewModel")
+        
+        // CRITICAL: Calculate initial balances by subtracting all transactions from current balance
+        // This ensures we have the true "starting capital" without any transactions
         for account in accounts {
-            print("   💰 '\(account.name)': balance = \(account.balance)")
+            print("   💰 '\(account.name)': current balance = \(account.balance)")
             if initialAccountBalances[account.id] == nil {
-                initialAccountBalances[account.id] = account.balance
+                // Calculate the sum of all transactions for this account
+                let transactionsSum = calculateTransactionsBalance(for: account.id)
+                // Initial balance = current balance - sum of all transactions
+                let initialBalance = account.balance - transactionsSum
+                initialAccountBalances[account.id] = initialBalance
+                print("   📝 '\(account.name)': initial balance (without transactions) = \(initialBalance), transactions sum = \(transactionsSum)")
             }
         }
 
@@ -1360,7 +1431,7 @@ class TransactionsViewModel: ObservableObject {
 
         print("✅ [STORAGE] Data loaded successfully. Balances already calculated and stored.")
         // NOTE: Do NOT call recalculateAccountBalances() here!
-        // Balances are already calculated and saved in UserDefaults.
+        // Balances are already calculated and saved in Core Data.
         // Calling it again will double/triple/etc the balances on each app launch.
         // recalculateAccountBalances() should only be called after:
         // - Adding/deleting/editing transactions
@@ -1372,6 +1443,39 @@ class TransactionsViewModel: ObservableObject {
 
         // Precompute currency conversions in background for better UI performance
         precomputeCurrencyConversions()
+    }
+    
+    /// Reset and recalculate all account balances from scratch
+    /// This is useful when balances are corrupted (e.g., from double-counting transactions)
+    /// Call this method from Settings to fix balance issues
+    func resetAndRecalculateAllBalances() {
+        print("🔄 [BALANCE] RESET: Starting complete balance reset and recalculation")
+        
+        // STEP 1: Clear all cached initial balances
+        let oldInitialBalances = initialAccountBalances
+        initialAccountBalances = [:]
+        print("✅ [BALANCE] RESET: Cleared initial balances cache")
+        
+        // STEP 2: Recalculate initial balances (starting capital without any transactions)
+        // Initial balance = current balance - sum of all transactions
+        for account in accounts {
+            let transactionsSum = calculateTransactionsBalance(for: account.id)
+            let initialBalance = account.balance - transactionsSum
+            initialAccountBalances[account.id] = initialBalance
+            print("📝 [BALANCE] RESET: '\(account.name)': current = \(account.balance), transactions = \(transactionsSum), initial (starting capital) = \(initialBalance)")
+            
+            if let oldInitial = oldInitialBalances[account.id] {
+                print("   🔍 Old initial balance was: \(oldInitial), difference: \(initialBalance - oldInitial)")
+            }
+        }
+        
+        // STEP 3: Recalculate current balances from scratch
+        recalculateAccountBalances()
+        
+        // STEP 4: Save to storage
+        saveToStorage()
+        
+        print("✅ [BALANCE] RESET: Complete! All balances recalculated from scratch.")
     }
     
     func recalculateAccountBalances() {
@@ -1393,8 +1497,12 @@ class TransactionsViewModel: ObservableObject {
         for account in accounts {
             balanceChanges[account.id] = 0
             if initialAccountBalances[account.id] == nil {
-                initialAccountBalances[account.id] = account.balance
-                print("📝 [BALANCE] Set initial balance for '\(account.name)': \(account.balance)")
+                // CRITICAL: Calculate initial balance by subtracting all transactions from current balance
+                // This ensures we don't double-count transactions
+                let transactionsSum = calculateTransactionsBalance(for: account.id)
+                let initialBalance = account.balance - transactionsSum
+                initialAccountBalances[account.id] = initialBalance
+                print("📝 [BALANCE] Set initial balance for '\(account.name)': \(initialBalance) (current: \(account.balance), transactions: \(transactionsSum))")
             } else {
                 print("📝 [BALANCE] Initial balance for '\(account.name)': \(initialAccountBalances[account.id] ?? 0)")
             }

@@ -44,20 +44,12 @@ struct ContentView: View {
     private var scrollContent: some View {
         VStack(spacing: AppSpacing.lg) {
             accountsSection
-                .screenPadding()
 
-            if !viewModel.allTransactions.isEmpty {
-                historyNavigationLink
-            }
+            historyNavigationLink
             
             subscriptionsNavigationLink
 
-            QuickAddTransactionView(
-                transactionsViewModel: viewModel,
-                categoriesViewModel: categoriesViewModel,
-                accountsViewModel: accountsViewModel
-            )
-                .screenPadding()
+            categoriesSection
 
             if viewModel.isLoading {
                 loadingProgressView
@@ -80,9 +72,9 @@ struct ContentView: View {
         )
             .environmentObject(timeFilterManager)) {
             analyticsCard
-                .screenPadding()
         }
         .buttonStyle(PlainButtonStyle())
+        .screenPadding()
     }
     
     private var subscriptionsNavigationLink: some View {
@@ -92,9 +84,9 @@ struct ContentView: View {
         )
             .environmentObject(timeFilterManager)) {
             subscriptionsCard
-                .screenPadding()
         }
         .buttonStyle(PlainButtonStyle())
+        .screenPadding()
     }
     
     private var loadingProgressView: some View {
@@ -186,6 +178,8 @@ struct ContentView: View {
                 // Initialize coordinator asynchronously on first appearance
                 if isInitializing {
                     await coordinator.initialize()
+                    // Update summary after data is loaded
+                    updateSummary()
                     withAnimation {
                         isInitializing = false
                     }
@@ -264,7 +258,10 @@ struct ContentView: View {
             }
             .onAppear {
                 PerformanceProfiler.start("ContentView.onAppear")
-                updateSummary()
+                // Only update summary if not initializing (data already loaded)
+                if !isInitializing {
+                    updateSummary()
+                }
                 loadWallpaper()
 
                 // Setup VoiceInputService with ViewModels for contextual strings (iOS 17+)
@@ -304,12 +301,6 @@ struct ContentView: View {
                 loadWallpaper()
             }
             .id(refreshTrigger) // Принудительное обновление всего view при изменении refreshTrigger
-            .onChange(of: timeFilterManager.currentFilter) { _, _ in
-                updateSummary()
-            }
-            .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
-                loadWallpaper()
-            }
         }
     }
     
@@ -435,13 +426,22 @@ struct ContentView: View {
     
 
     private var accountsSection: some View {
-        HStack {
+        Group {
             if accountsViewModel.accounts.isEmpty {
-                Text(String(localized: "emptyState.noAccounts"))
-                    .font(AppTypography.bodySmall)
-                    .foregroundStyle(.primary)
-                    .padding(AppSpacing.md)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                    HStack {
+                        Text(String(localized: "accounts.title", defaultValue: "Счета"))
+                            .font(AppTypography.h3)
+                            .foregroundStyle(.primary)
+                    }
+                    
+                    Text(String(localized: "emptyState.noAccounts", defaultValue: "Нет счетов"))
+                        .font(AppTypography.bodySmall)
+                        .foregroundStyle(.primary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glassCardStyle(radius: AppRadius.pill)
+                .screenPadding()
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: AppSpacing.md) {
@@ -458,6 +458,7 @@ struct ContentView: View {
                     .padding(.vertical, AppSpacing.xs)
                 }
                 .scrollClipDisabled()
+                .screenPadding()
             }
         }
     }
@@ -468,13 +469,40 @@ struct ContentView: View {
         )
     }
     
+    private var categoriesSection: some View {
+        QuickAddTransactionView(
+            transactionsViewModel: viewModel,
+            categoriesViewModel: categoriesViewModel,
+            accountsViewModel: accountsViewModel
+        )
+        .screenPadding()
+    }
+    
     private var analyticsCard: some View {
+        let currency = viewModel.appSettings.baseCurrency
+        
+        if viewModel.allTransactions.isEmpty {
+            return AnyView(
+                VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                    HStack {
+                        Text(String(localized: "analytics.history", defaultValue: "История"))
+                            .font(AppTypography.h3)
+                            .foregroundStyle(.primary)
+                    }
+                    
+                    Text(String(localized: "emptyState.noTransactions", defaultValue: "Нет транзакций"))
+                        .font(AppTypography.bodySmall)
+                        .foregroundStyle(.primary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glassCardStyle(radius: AppRadius.pill)
+            )
+        }
+        
         // Используем кешированный summary вместо повторного вызова viewModel.summary()
         guard let summary = cachedSummary else {
             return AnyView(EmptyView())
         }
-
-        let currency = viewModel.appSettings.baseCurrency
 
         return AnyView(
             AnalyticsCard(

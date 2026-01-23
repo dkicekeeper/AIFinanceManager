@@ -15,7 +15,7 @@ struct AnalyticsCard: View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
             // Header
             HStack {
-                Text(String(localized: "analytics.history"))
+                Text(String(localized: "analytics.history", defaultValue: "История"))
                     .font(AppTypography.h3)
                     .foregroundStyle(.primary)
                 Spacer()
@@ -42,7 +42,8 @@ struct AnalyticsCard: View {
                 }
             }
         }
-        .glassCardStyle()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCardStyle(radius: AppRadius.pill)
     }
 }
 

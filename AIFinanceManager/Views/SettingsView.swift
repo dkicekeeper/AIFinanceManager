@@ -17,6 +17,7 @@ struct SettingsView: View {
     @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
     @ObservedObject var depositsViewModel: DepositsViewModel
     @State private var showingResetConfirmation = false
+    @State private var showingRecalculateBalancesConfirmation = false
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
     @State private var showingCategoriesManagement = false
@@ -134,6 +135,16 @@ struct SettingsView: View {
             }
 
             Section(header: Text(String(localized: "settings.dangerZone"))) {
+                Button(action: {
+                    showingRecalculateBalancesConfirmation = true
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Пересчитать балансы счетов")
+                            .foregroundColor(.orange)
+                    }
+                }
+                
                 Button(role: .destructive, action: {
                     showingResetConfirmation = true
                 }) {
@@ -146,6 +157,23 @@ struct SettingsView: View {
         }
         .navigationTitle(String(localized: "settings.title"))
         .navigationBarTitleDisplayMode(.large)
+        .alert("Пересчитать балансы?", isPresented: $showingRecalculateBalancesConfirmation) {
+            Button("Пересчитать", role: .destructive) {
+                HapticManager.success()
+                // Reset and recalculate all balances from scratch
+                transactionsViewModel.resetAndRecalculateAllBalances()
+                
+                // Reload balances in AccountsViewModel
+                accountsViewModel.reloadFromStorage()
+                
+                // Принудительно обновляем UI
+                accountsViewModel.objectWillChange.send()
+                transactionsViewModel.objectWillChange.send()
+            }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Это пересчитает балансы всех счетов с нуля на основе транзакций. Используйте это, если балансы отображаются неправильно (например, после двойного учета транзакций).")
+        }
         .alert(String(localized: "alert.deleteAllData.title"), isPresented: $showingResetConfirmation) {
             Button(String(localized: "alert.deleteAllData.confirm"), role: .destructive) {
                 HapticManager.warning()

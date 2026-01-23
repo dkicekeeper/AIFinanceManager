@@ -24,13 +24,13 @@ struct SubscriptionsCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
             HStack {
-                Text("Подписки")
+                Text(String(localized: "subscriptions.title", defaultValue: "Подписки"))
                     .font(AppTypography.h3)
                     .foregroundStyle(.primary)
             }
             
             if subscriptions.isEmpty {
-                Text("Нет активных подписок")
+                Text(String(localized: "emptyState.noActiveSubscriptions", defaultValue: "Нет активных подписок"))
                     .font(AppTypography.bodySmall)
                     .foregroundStyle(.primary)
             } else {
@@ -64,6 +64,7 @@ struct SubscriptionsCardView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .glassCardStyle(radius: AppRadius.pill)
         .task {
             await calculateTotal()

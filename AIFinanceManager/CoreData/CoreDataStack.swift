@@ -9,6 +9,7 @@
 import Foundation
 import CoreData
 import Combine
+import UIKit
 
 /// Core Data Stack - Singleton for managing Core Data
 class CoreDataStack {
@@ -19,6 +20,57 @@ class CoreDataStack {
     
     private init() {
         print("🗄️ [CORE_DATA] Initializing CoreDataStack")
+        setupNotifications()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    // MARK: - Notifications
+    
+    private func setupNotifications() {
+        // Save context when app goes to background
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(saveOnBackground),
+            name: UIApplication.willResignActiveNotification,
+            object: nil
+        )
+        
+        // Save context before app terminates
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(saveOnTerminate),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func saveOnBackground() {
+        print("🔔 [CORE_DATA] App will resign active - saving context")
+        saveContextSync()
+    }
+    
+    @objc private func saveOnTerminate() {
+        print("🔔 [CORE_DATA] App will terminate - saving context")
+        saveContextSync()
+    }
+    
+    private func saveContextSync() {
+        let context = viewContext
+        guard context.hasChanges else {
+            print("⏭️ [CORE_DATA] No changes to save")
+            return
+        }
+        
+        do {
+            try context.save()
+            print("✅ [CORE_DATA] Context saved successfully on app lifecycle event")
+        } catch {
+            let nsError = error as NSError
+            print("❌ [CORE_DATA] Error saving context: \(nsError), \(nsError.userInfo)")
+        }
     }
     
     // MARK: - Persistent Container
