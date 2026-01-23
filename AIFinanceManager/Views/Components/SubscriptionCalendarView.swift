@@ -98,7 +98,7 @@ struct SubscriptionCalendarView: View {
             
             // Weekday headers
             LazyVGrid(columns: columns, spacing: 0) {
-                ForEach(weekdaySymbols, id: \.self) { symbol in
+                ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { index, symbol in
                     Text(symbol)
                         .font(AppTypography.caption2)
                         .foregroundColor(.secondary)

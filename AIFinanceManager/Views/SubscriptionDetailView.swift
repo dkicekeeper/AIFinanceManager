@@ -178,9 +178,11 @@ struct SubscriptionDetailView: View {
         .alert(String(localized: "subscriptions.deleteConfirmTitle"), isPresented: $showingDeleteConfirmation) {
             Button(String(localized: "subscriptions.delete"), role: .destructive) {
                 subscriptionsViewModel.deleteRecurringSeries(subscription.id)
-                // Also delete related transactions
+                // Also delete related transactions (only future ones - past ones are already converted to regular)
                 transactionsViewModel.allTransactions.removeAll { $0.recurringSeriesId == subscription.id }
                 transactionsViewModel.recalculateAccountBalances()
+                // CRITICAL: Save changes to storage to persist deletion
+                transactionsViewModel.saveToStorage()
                 // Закрываем модалку после удаления
                 dismiss()
             }

@@ -40,14 +40,17 @@ struct AccountsManagementView: View {
                             account: account,
                             currency: baseCurrency,
                             onEdit: { editingAccount = account },
-                            onDelete: { 
+                            onDelete: {
                                 HapticManager.warning()
                                 accountsViewModel.deleteAccount(account)
+                                // CRITICAL: Sync accounts between ViewModels to prevent data loss
+                                transactionsViewModel.accounts = accountsViewModel.accounts
                                 // Also delete related transactions
-                                transactionsViewModel.allTransactions.removeAll { 
-                                    $0.accountId == account.id || $0.targetAccountId == account.id 
+                                transactionsViewModel.allTransactions.removeAll {
+                                    $0.accountId == account.id || $0.targetAccountId == account.id
                                 }
                                 transactionsViewModel.recalculateAccountBalances()
+                                transactionsViewModel.saveToStorage()
                             }
                         )
                     }
@@ -93,7 +96,10 @@ struct AccountsManagementView: View {
                 onSave: { account in
                     HapticManager.success()
                     accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
+                    // CRITICAL: Sync accounts between ViewModels to prevent data loss
+                    transactionsViewModel.accounts = accountsViewModel.accounts
                     transactionsViewModel.recalculateAccountBalances()
+                    transactionsViewModel.saveToStorage()
                     showingAddAccount = false
                 },
                 onCancel: { showingAddAccount = false }
@@ -153,7 +159,10 @@ struct AccountsManagementView: View {
                         onSave: { updatedAccount in
                             HapticManager.success()
                             accountsViewModel.updateAccount(updatedAccount)
+                            // CRITICAL: Sync accounts between ViewModels to prevent data loss
+                            transactionsViewModel.accounts = accountsViewModel.accounts
                             transactionsViewModel.recalculateAccountBalances()
+                            transactionsViewModel.saveToStorage()
                             editingAccount = nil
                         },
                         onCancel: { editingAccount = nil }

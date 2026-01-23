@@ -230,29 +230,33 @@ struct HistoryView: View {
                 .task {
                     // Скроллим к первой не-будущей секции (Сегодня, Вчера, или первая прошлая)
                     // sortedKeys содержит: futureKeys, затем локализованные "Сегодня"/"Вчера", затем прошлые
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
-                    
+                    try? await Task.sleep(nanoseconds: 150_000_000) // 0.15 секунды - дать время на загрузку
+
                     let calendar = Calendar.current
                     let today = calendar.startOfDay(for: Date())
                     let dateFormatter = DateFormatters.dateFormatter
-                    
+
+                    // Use actual sortedKeys from pagination manager
+                    let actualSortedKeys = paginationManager.visibleSections
+                    let actualGrouped = paginationManager.groupedTransactions
+
                     // Находим индекс первой не-будущей секции
                     let scrollTarget: String? = {
                         // Сначала проверяем "Сегодня" (используем локализованный ключ)
-                        if sortedKeys.contains(todayKey) {
+                        if actualSortedKeys.contains(todayKey) {
                             return todayKey
                         }
                         // Затем проверяем "Вчера" (используем локализованный ключ)
-                        if sortedKeys.contains(yesterdayKey) {
+                        if actualSortedKeys.contains(yesterdayKey) {
                             return yesterdayKey
                         }
                         // Ищем первую прошлую секцию (не будущую)
-                        for key in sortedKeys {
+                        for key in actualSortedKeys {
                             if key == todayKey || key == yesterdayKey {
                                 continue
                             }
                             // Проверяем, является ли эта секция будущей
-                            if let transactions = grouped[key],
+                            if let transactions = actualGrouped[key],
                                let firstTransaction = transactions.first,
                                let date = dateFormatter.date(from: firstTransaction.date) {
                                 let transactionDay = calendar.startOfDay(for: date)
@@ -262,9 +266,9 @@ struct HistoryView: View {
                             }
                         }
                         // Если ничего не нашли, возвращаем первую секцию
-                        return sortedKeys.first
+                        return actualSortedKeys.first
                     }()
-                    
+
                     if let target = scrollTarget {
                         withAnimation {
                             proxy.scrollTo(target, anchor: .top)

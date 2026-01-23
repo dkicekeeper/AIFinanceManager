@@ -81,6 +81,8 @@ struct SubscriptionsListView: View {
                             )
                             // Regenerate recurring transactions
                             transactionsViewModel.generateRecurringTransactions()
+                            // Sync subscriptionsViewModel with latest data
+                            subscriptionsViewModel.recurringSeries = transactionsViewModel.recurringSeries
                             showingEditView = false
                         },
                         onCancel: {

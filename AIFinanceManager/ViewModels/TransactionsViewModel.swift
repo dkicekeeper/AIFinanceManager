@@ -170,20 +170,16 @@ class TransactionsViewModel: ObservableObject {
             guard let seriesTransactions = recurringTransactionsBySeries[series.id] else {
                 continue
             }
-            
-            let nextTransaction = seriesTransactions
-                .compactMap { transaction -> (Transaction, Date)? in
-                    guard let date = dateFormatter.date(from: transaction.date) else {
-                        return nil
-                    }
-                    return (transaction, date)
+
+            // Get ALL transactions in the time range, not just the first one
+            let transactionsInRange = seriesTransactions.filter { transaction in
+                guard let date = dateFormatter.date(from: transaction.date) else {
+                    return false
                 }
-                .min(by: { $0.1 < $1.1 })
-                .map { $0.0 }
-            
-            if let nextTransaction = nextTransaction {
-                recurringTransactions.append(nextTransaction)
+                return date >= range.start && date < range.end
             }
+
+            recurringTransactions.append(contentsOf: transactionsInRange)
         }
         
         return recurringTransactions + regularTransactions
@@ -192,12 +188,44 @@ class TransactionsViewModel: ObservableObject {
     // MARK: - History View Filtering and Grouping
     
     /// Фильтрует транзакции для HistoryView с учетом всех фильтров (время, категории, счет, поиск)
+    /// Для повторяющихся транзакций показывает только ближайшую
     func filterTransactionsForHistory(
         timeFilterManager: TimeFilterManager,
         accountId: String?,
         searchText: String
     ) -> [Transaction] {
         var transactions = transactionsFilteredByTimeAndCategory(timeFilterManager)
+
+        // For history view: show only the nearest transaction for each recurring series
+        var regularTransactions: [Transaction] = []
+        var recurringTransactionsBySeries: [String: [Transaction]] = [:]
+
+        for transaction in transactions {
+            if let seriesId = transaction.recurringSeriesId {
+                recurringTransactionsBySeries[seriesId, default: []].append(transaction)
+            } else {
+                regularTransactions.append(transaction)
+            }
+        }
+
+        // Get only the nearest (min date) transaction for each recurring series
+        let dateFormatter = Self.dateFormatter
+        var nearestRecurringTransactions: [Transaction] = []
+
+        for (_, seriesTransactions) in recurringTransactionsBySeries {
+            let transactionsWithDates = seriesTransactions.compactMap { transaction -> (Transaction, Date)? in
+                guard let date = dateFormatter.date(from: transaction.date) else {
+                    return nil
+                }
+                return (transaction, date)
+            }
+
+            if let nearest = transactionsWithDates.min(by: { $0.1 < $1.1 })?.0 {
+                nearestRecurringTransactions.append(nearest)
+            }
+        }
+
+        transactions = regularTransactions + nearestRecurringTransactions
         
         if let accountId = accountId {
             transactions = transactions.filter { $0.accountId == accountId || $0.targetAccountId == accountId }
@@ -1899,19 +1927,26 @@ class TransactionsViewModel: ObservableObject {
     
     func generateRecurringTransactions() {
         PerformanceProfiler.start("generateRecurringTransactions")
-        
+
         // Use defer to ensure PerformanceProfiler.end is always called
         defer {
             PerformanceProfiler.end("generateRecurringTransactions")
         }
-        
+
+        // CRITICAL: Reload recurringSeries and recurringOccurrences from repository to get latest data
+        // This ensures we have the latest subscriptions created by SubscriptionsViewModel
+        // and prevents deleted occurrences from being restored
+        recurringSeries = repository.loadRecurringSeries()
+        recurringOccurrences = repository.loadRecurringOccurrences()
+        print("🔄 [RECURRING] Reloaded \(recurringSeries.count) recurring series and \(recurringOccurrences.count) occurrences from storage")
+
         let dateFormatter = Self.dateFormatter
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         guard let horizonDate = calendar.date(byAdding: .month, value: 3, to: today) else {
             return
         }
-        
+
         // Skip if no active recurring series
         if recurringSeries.filter({ $0.isActive }).isEmpty {
             print("⏭️ [RECURRING] No active recurring series, skipping generation")
@@ -1926,59 +1961,17 @@ class TransactionsViewModel: ObservableObject {
         
         var newTransactions: [Transaction] = []
         var newOccurrences: [RecurringOccurrence] = []
-        var hasChanges = false
-        
-        for i in allTransactions.indices {
-            let transaction = allTransactions[i]
-            if let _ = transaction.recurringSeriesId,
-               let transactionDate = dateFormatter.date(from: transaction.date),
-               transactionDate <= today {
-                let updatedTransaction = Transaction(
-                    id: transaction.id,
-                    date: transaction.date,
-                    description: transaction.description,
-                    amount: transaction.amount,
-                    currency: transaction.currency,
-                    convertedAmount: transaction.convertedAmount,
-                    type: transaction.type,
-                    category: transaction.category,
-                    subcategory: transaction.subcategory,
-                    accountId: transaction.accountId,
-                    targetAccountId: transaction.targetAccountId,
-                    recurringSeriesId: nil,
-                    recurringOccurrenceId: nil,
-                    createdAt: transaction.createdAt
-                )
-                allTransactions[i] = updatedTransaction
-                hasChanges = true
-            }
-        }
         
         for series in recurringSeries where series.isActive {
             guard let startDate = dateFormatter.date(from: series.startDate) else { continue }
-            
-            var currentDate: Date
-            if startDate <= today {
-                guard let nextDate = {
-                    switch series.frequency {
-                    case .daily:
-                        return calendar.date(byAdding: .day, value: 1, to: today)
-                    case .weekly:
-                        return calendar.date(byAdding: .day, value: 7, to: today)
-                    case .monthly:
-                        return calendar.date(byAdding: .month, value: 1, to: today)
-                    case .yearly:
-                        return calendar.date(byAdding: .year, value: 1, to: today)
-                    }
-                }() else {
-                    continue
-                }
-                currentDate = nextDate
-            } else {
-                currentDate = startDate
-            }
-            
-            while currentDate <= horizonDate {
+
+            // Always start from the startDate to generate past transactions
+            var currentDate = startDate
+            var iterationCount = 0
+            let maxIterations = 10000 // Safety limit to prevent infinite loops
+
+            while currentDate <= horizonDate && iterationCount < maxIterations {
+                iterationCount += 1
                 let dateString = dateFormatter.string(from: currentDate)
                 let occurrenceKey = "\(series.id):\(dateString)"
                 
@@ -2042,27 +2035,70 @@ class TransactionsViewModel: ObservableObject {
                 }() else {
                     break
                 }
+
+                // Additional safety check: ensure we're actually moving forward in time
+                if nextDate <= currentDate {
+                    print("⚠️ [RECURRING] ERROR: nextDate (\(nextDate)) is not greater than currentDate (\(currentDate)) for series \(series.id). Breaking to prevent infinite loop.")
+                    break
+                }
+
                 currentDate = nextDate
+            }
+
+            if iterationCount >= maxIterations {
+                print("⚠️ [RECURRING] WARNING: Reached maximum iteration limit (\(maxIterations)) for series \(series.id). This may indicate a problem with date calculation.")
             }
         }
         
+        // First, insert new transactions if any
         if !newTransactions.isEmpty {
             insertTransactionsSorted(newTransactions)
             recurringOccurrences.append(contentsOf: newOccurrences)
-            recalculateAccountBalances()
-            saveToStorage()
-            
-            Task {
-                for series in recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
-                    if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
-                        await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
-                    }
-                }
+            print("✅ [RECURRING] Generated \(newTransactions.count) new recurring transactions")
+        }
+
+        // Now convert past recurring transactions to regular transactions
+        // This must happen AFTER insertion to catch newly created transactions with past dates
+        var updatedAllTransactions = allTransactions
+        var convertedCount = 0
+        for i in updatedAllTransactions.indices {
+            let transaction = updatedAllTransactions[i]
+            if let _ = transaction.recurringSeriesId,
+               let transactionDate = dateFormatter.date(from: transaction.date),
+               transactionDate <= today {
+                let updatedTransaction = Transaction(
+                    id: transaction.id,
+                    date: transaction.date,
+                    description: transaction.description,
+                    amount: transaction.amount,
+                    currency: transaction.currency,
+                    convertedAmount: transaction.convertedAmount,
+                    type: transaction.type,
+                    category: transaction.category,
+                    subcategory: transaction.subcategory,
+                    accountId: transaction.accountId,
+                    targetAccountId: transaction.targetAccountId,
+                    recurringSeriesId: nil,
+                    recurringOccurrenceId: nil,
+                    createdAt: transaction.createdAt
+                )
+                updatedAllTransactions[i] = updatedTransaction
+                convertedCount += 1
             }
-        } else if hasChanges {
+        }
+
+        // Reassign to trigger @Published if conversions happened
+        let needsSave = !newTransactions.isEmpty || convertedCount > 0
+        if convertedCount > 0 {
+            print("🔄 [RECURRING] Converted \(convertedCount) past recurring transactions to regular transactions")
+            allTransactions = updatedAllTransactions
+        }
+
+        // Recalculate and save if there were any changes
+        if needsSave {
             recalculateAccountBalances()
             saveToStorage()
-            
+
             Task {
                 for series in recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
                     if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
@@ -2071,8 +2107,6 @@ class TransactionsViewModel: ObservableObject {
                 }
             }
         }
-        
-        print("✅ [RECURRING] Generated \(newTransactions.count) new recurring transactions")
     }
     
     func updateRecurringTransaction(_ transactionId: String, updateAllFuture: Bool, newAmount: Decimal? = nil, newCategory: String? = nil, newSubcategory: String? = nil) {
