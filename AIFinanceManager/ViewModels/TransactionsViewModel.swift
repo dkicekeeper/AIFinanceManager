@@ -27,6 +27,9 @@ class TransactionsViewModel: ObservableObject {
     @Published var appSettings: AppSettings = AppSettings.load()
 
     private var initialAccountBalances: [String: Double] = [:]
+    // КРИТИЧЕСКИ ВАЖНО: Сохраняем, какие аккаунты имеют initialBalance, рассчитанный автоматически
+    // Для этих аккаунтов транзакции НЕ должны обрабатываться повторно
+    private var accountsWithCalculatedInitialBalance: Set<String> = []
     private var cachedSummary: Summary?
     private var summaryCacheInvalidated = true
     private var cachedCategoryExpenses: [String: CategoryExpense]?
@@ -1008,7 +1011,18 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func deleteTransaction(_ transaction: Transaction) {
-        print("🗑️ [TRANSACTION] Deleting transaction: \(transaction.description), amount: \(transaction.amount)")
+        print("🗑️ [TRANSACTION] ========== DELETING TRANSACTION ==========")
+        print("🗑️ [TRANSACTION] Description: \(transaction.description)")
+        print("🗑️ [TRANSACTION] Amount: \(transaction.amount) \(transaction.currency)")
+        print("🗑️ [TRANSACTION] Type: \(transaction.type)")
+        print("🗑️ [TRANSACTION] Account ID: \(transaction.accountId ?? "nil")")
+        
+        // Логируем балансы ДО удаления
+        print("💰 [TRANSACTION] BALANCES BEFORE DELETE:")
+        for account in accounts {
+            print("   💳 '\(account.name)': \(account.balance)")
+        }
+        print("📊 [TRANSACTION] Initial balances: \(initialAccountBalances)")
 
         // removeAll уже создает новый массив, что правильно триггерит @Published
         allTransactions.removeAll { $0.id == transaction.id }
@@ -1018,10 +1032,30 @@ class TransactionsViewModel: ObservableObject {
             recurringOccurrences.removeAll { $0.id == occurrenceId }
         }
 
+        // КРИТИЧЕСКИ ВАЖНО: Удаляем затронутые аккаунты из Set,
+        // чтобы их балансы были пересчитаны с новым списком транзакций
+        if let accountId = transaction.accountId {
+            accountsWithCalculatedInitialBalance.remove(accountId)
+            print("🔄 [TRANSACTION] Removed '\(accountId)' from accountsWithCalculatedInitialBalance - balance will be recalculated")
+        }
+        if let targetAccountId = transaction.targetAccountId {
+            accountsWithCalculatedInitialBalance.remove(targetAccountId)
+            print("🔄 [TRANSACTION] Removed '\(targetAccountId)' from accountsWithCalculatedInitialBalance - balance will be recalculated")
+        }
+
         print("🔄 [TRANSACTION] Recalculating balances after delete")
         invalidateCaches()
         recalculateAccountBalances()
+        
+        // Логируем балансы ПОСЛЕ пересчета
+        print("💰 [TRANSACTION] BALANCES AFTER RECALCULATE:")
+        for account in accounts {
+            print("   💳 '\(account.name)': \(account.balance)")
+        }
+        
         saveToStorage()
+        
+        print("✅ [TRANSACTION] ========== DELETE COMPLETED ==========")
     }
 
     func updateTransaction(_ transaction: Transaction) {
@@ -1030,6 +1064,25 @@ class TransactionsViewModel: ObservableObject {
         }
 
         print("✏️ [TRANSACTION] Updating transaction: \(transaction.description), amount: \(transaction.amount)")
+
+        // КРИТИЧЕСКИ ВАЖНО: Удаляем затронутые аккаунты из Set,
+        // чтобы их балансы были пересчитаны с новым списком транзакций
+        let oldTransaction = allTransactions[index]
+        if let accountId = oldTransaction.accountId {
+            accountsWithCalculatedInitialBalance.remove(accountId)
+            print("🔄 [TRANSACTION] Removed '\(accountId)' from accountsWithCalculatedInitialBalance - balance will be recalculated")
+        }
+        if let targetAccountId = oldTransaction.targetAccountId {
+            accountsWithCalculatedInitialBalance.remove(targetAccountId)
+            print("🔄 [TRANSACTION] Removed '\(targetAccountId)' from accountsWithCalculatedInitialBalance - balance will be recalculated")
+        }
+        // Также удаляем новые аккаунты, если они изменились
+        if let accountId = transaction.accountId, accountId != oldTransaction.accountId {
+            accountsWithCalculatedInitialBalance.remove(accountId)
+        }
+        if let targetAccountId = transaction.targetAccountId, targetAccountId != oldTransaction.targetAccountId {
+            accountsWithCalculatedInitialBalance.remove(targetAccountId)
+        }
 
         // Создаем новый массив вместо модификации элемента на месте
         var newTransactions = allTransactions
@@ -1253,7 +1306,7 @@ class TransactionsViewModel: ObservableObject {
     func saveToStorage() {
         Task.detached(priority: .utility) {
             PerformanceProfiler.start("saveToStorage")
-            print("💾 [STORAGE] Starting async save in TransactionsViewModel")
+            print("💾 [STORAGE] ========== STARTING ASYNC SAVE ==========")
 
             let transactions = await MainActor.run { self.allTransactions }
             let rules = await MainActor.run { self.categoryRules }
@@ -1262,10 +1315,11 @@ class TransactionsViewModel: ObservableObject {
             let series = await MainActor.run { self.recurringSeries }
             let occurrences = await MainActor.run { self.recurringOccurrences }
 
-            print("💾 [STORAGE] Saving \(accs.count) accounts from TransactionsViewModel")
+            print("💾 [STORAGE] Captured \(accs.count) accounts from TransactionsViewModel:")
             for account in accs {
                 print("   💰 '\(account.name)': balance = \(account.balance)")
             }
+            print("💾 [STORAGE] About to save to repository...")
 
             // НЕ сохраняем подкатегории и связи здесь - они управляются CategoriesViewModel
             // let subcats = await MainActor.run { self.subcategories }
@@ -1275,6 +1329,10 @@ class TransactionsViewModel: ObservableObject {
             await MainActor.run {
                 self.repository.saveTransactions(transactions)
                 self.repository.saveCategoryRules(rules)
+                print("💾 [STORAGE] Calling repository.saveAccounts() with:")
+                for account in accs {
+                    print("   💰 '\(account.name)': balance = \(account.balance)")
+                }
                 self.repository.saveAccounts(accs)
                 self.repository.saveCategories(categories)
                 self.repository.saveRecurringSeries(series)
@@ -1285,7 +1343,7 @@ class TransactionsViewModel: ObservableObject {
                 // self.repository.saveTransactionSubcategoryLinks(txLinks)
             }
 
-            print("✅ [STORAGE] Async save completed in TransactionsViewModel")
+            print("✅ [STORAGE] ========== ASYNC SAVE COMPLETED ==========")
             PerformanceProfiler.end("saveToStorage")
         }
     }
@@ -1310,51 +1368,81 @@ class TransactionsViewModel: ObservableObject {
     // MARK: - Синхронные методы сохранения для импорта
 
     private func saveTransactionsSync(_ transactions: [Transaction]) {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(transactions) {
-            UserDefaults.standard.set(encoded, forKey: "allTransactions")
-            UserDefaults.standard.synchronize()
+        if let coreDataRepo = repository as? CoreDataRepository {
+            do {
+                try coreDataRepo.saveTransactionsSync(transactions)
+            } catch {
+                print("❌ [STORAGE] Failed to save transactions to Core Data: \(error)")
+                // Fallback to UserDefaults
+                let encoder = JSONEncoder()
+                if let encoded = try? encoder.encode(transactions) {
+                    UserDefaults.standard.set(encoded, forKey: "allTransactions")
+                    UserDefaults.standard.synchronize()
+                }
+            }
+        } else {
+            let encoder = JSONEncoder()
+            if let encoded = try? encoder.encode(transactions) {
+                UserDefaults.standard.set(encoded, forKey: "allTransactions")
+                UserDefaults.standard.synchronize()
+            }
         }
     }
 
     private func saveCategoryRulesSync(_ rules: [CategoryRule]) {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(rules) {
-            UserDefaults.standard.set(encoded, forKey: "categoryRules")
-            UserDefaults.standard.synchronize()
-        }
+        repository.saveCategoryRules(rules)
     }
 
     private func saveAccountsSync(_ accounts: [Account]) {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(accounts) {
-            UserDefaults.standard.set(encoded, forKey: "accounts")
-            UserDefaults.standard.synchronize()
+        if let coreDataRepo = repository as? CoreDataRepository {
+            do {
+                try coreDataRepo.saveAccountsSync(accounts)
+            } catch {
+                print("❌ [STORAGE] Failed to save accounts to Core Data: \(error)")
+                // Fallback to UserDefaults
+                let encoder = JSONEncoder()
+                if let encoded = try? encoder.encode(accounts) {
+                    UserDefaults.standard.set(encoded, forKey: "accounts")
+                    UserDefaults.standard.synchronize()
+                }
+            }
+        } else {
+            let encoder = JSONEncoder()
+            if let encoded = try? encoder.encode(accounts) {
+                UserDefaults.standard.set(encoded, forKey: "accounts")
+                UserDefaults.standard.synchronize()
+            }
         }
     }
 
     private func saveCategoriesSync(_ categories: [CustomCategory]) {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(categories) {
-            UserDefaults.standard.set(encoded, forKey: "customCategories")
-            UserDefaults.standard.synchronize()
+        if let coreDataRepo = repository as? CoreDataRepository {
+            do {
+                try coreDataRepo.saveCategoriesSync(categories)
+            } catch {
+                print("❌ [STORAGE] Failed to save categories to Core Data: \(error)")
+                // Fallback to UserDefaults
+                let encoder = JSONEncoder()
+                if let encoded = try? encoder.encode(categories) {
+                    UserDefaults.standard.set(encoded, forKey: "customCategories")
+                    UserDefaults.standard.synchronize()
+                }
+            }
+        } else {
+            let encoder = JSONEncoder()
+            if let encoded = try? encoder.encode(categories) {
+                UserDefaults.standard.set(encoded, forKey: "customCategories")
+                UserDefaults.standard.synchronize()
+            }
         }
     }
 
     private func saveRecurringSeriesSync(_ series: [RecurringSeries]) {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(series) {
-            UserDefaults.standard.set(encoded, forKey: "recurringSeries")
-            UserDefaults.standard.synchronize()
-        }
+        repository.saveRecurringSeries(series)
     }
 
     private func saveRecurringOccurrencesSync(_ occurrences: [RecurringOccurrence]) {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(occurrences) {
-            UserDefaults.standard.set(encoded, forKey: "recurringOccurrences")
-            UserDefaults.standard.synchronize()
-        }
+        repository.saveRecurringOccurrences(occurrences)
     }
     
     /// Calculate the balance change for a specific account from all transactions
@@ -1494,17 +1582,28 @@ class TransactionsViewModel: ObservableObject {
 
         currencyConversionWarning = nil
         var balanceChanges: [String: Double] = [:]
+        
+        // Рассчитываем initialBalance для НОВЫХ аккаунтов
         for account in accounts {
             balanceChanges[account.id] = 0
             if initialAccountBalances[account.id] == nil {
-                // CRITICAL: Calculate initial balance by subtracting all transactions from current balance
-                // This ensures we don't double-count transactions
+                // Рассчитываем initialBalance = current - transactionsSum
+                // Это дает нам "начальный капитал", который привел к текущему балансу
                 let transactionsSum = calculateTransactionsBalance(for: account.id)
                 let initialBalance = account.balance - transactionsSum
                 initialAccountBalances[account.id] = initialBalance
-                print("📝 [BALANCE] Set initial balance for '\(account.name)': \(initialBalance) (current: \(account.balance), transactions: \(transactionsSum))")
+                print("📝 [BALANCE] FRESHLY CALCULATED initial balance for '\(account.name)': \(initialBalance) (current: \(account.balance), transactions: \(transactionsSum))")
+                
+                // КРИТИЧЕСКИ ВАЖНО: Сохраняем в instance property
+                // Транзакции УЖЕ УЧТЕНЫ в current balance, поэтому НЕ должны обрабатываться снова
+                accountsWithCalculatedInitialBalance.insert(account.id)
             } else {
-                print("📝 [BALANCE] Initial balance for '\(account.name)': \(initialAccountBalances[account.id] ?? 0)")
+                // initialBalance УЖЕ СУЩЕСТВУЕТ из предыдущих вызовов
+                if accountsWithCalculatedInitialBalance.contains(account.id) {
+                    print("📝 [BALANCE] EXISTING CALCULATED initial balance for '\(account.name)': \(initialAccountBalances[account.id] ?? 0) - will NOT process transactions (already included)")
+                } else {
+                    print("📝 [BALANCE] EXISTING MANUAL initial balance for '\(account.name)': \(initialAccountBalances[account.id] ?? 0) - will process transactions normally")
+                }
             }
         }
 
@@ -1521,11 +1620,15 @@ class TransactionsViewModel: ObservableObject {
             switch tx.type {
             case .income:
                 if let accountId = tx.accountId {
+                    // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
+                    guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
                     let amountToUse = tx.convertedAmount ?? tx.amount
                     balanceChanges[accountId, default: 0] += amountToUse
                 }
             case .expense:
                 if let accountId = tx.accountId {
+                    // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
+                    guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
                     let amountToUse = tx.convertedAmount ?? tx.amount
                     balanceChanges[accountId, default: 0] -= amountToUse
                 }
@@ -1534,6 +1637,36 @@ class TransactionsViewModel: ObservableObject {
             case .internalTransfer:
                 if let sourceId = tx.accountId,
                    let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
+                    // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
+                    guard !accountsWithCalculatedInitialBalance.contains(sourceId) else { 
+                        // Проверяем также target account перед continue
+                        if let targetId = tx.targetAccountId, !accountsWithCalculatedInitialBalance.contains(targetId) {
+                            // Source пропускаем, но обрабатываем target ниже
+                        } else {
+                            continue
+                        }
+                        // Если дошли сюда, значит target нужно обработать, пропускаем только source
+                        if let targetId = tx.targetAccountId,
+                           let targetAccount = accounts.first(where: { $0.id == targetId }) {
+                            let targetAmount: Double
+                            if tx.currency == targetAccount.currency {
+                                targetAmount = tx.amount
+                            } else if let converted = CurrencyConverter.convertSync(
+                                amount: tx.amount,
+                                from: tx.currency,
+                                to: targetAccount.currency
+                            ) {
+                                targetAmount = converted
+                            } else {
+                                print("⚠️ Не удалось конвертировать \(tx.amount) \(tx.currency) в \(targetAccount.currency) для счета-получателя. Баланс может быть неточным.")
+                                hasConversionIssues = true
+                                targetAmount = tx.amount
+                            }
+                            balanceChanges[targetId, default: 0] += targetAmount
+                        }
+                        continue
+                    }
+                    
                     let sourceAmount: Double
                     if tx.currency == sourceAccount.currency {
                         sourceAmount = tx.amount
@@ -1557,6 +1690,9 @@ class TransactionsViewModel: ObservableObject {
 
                 if let targetId = tx.targetAccountId,
                    let targetAccount = accounts.first(where: { $0.id == targetId }) {
+                    // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
+                    guard !accountsWithCalculatedInitialBalance.contains(targetId) else { continue }
+                    
                     let targetAmount: Double
                     if tx.currency == targetAccount.currency {
                         targetAmount = tx.amount
@@ -1625,7 +1761,18 @@ class TransactionsViewModel: ObservableObject {
         // Синхронизируем обновленные балансы с AccountsViewModel
         if let accountsVM = accountsViewModel {
             print("🔗 [BALANCE] Syncing balances with AccountsViewModel")
+            print("📊 [BALANCE] Accounts to sync:")
+            for account in accounts {
+                print("   💳 '\(account.name)': \(account.balance)")
+            }
+            
             accountsVM.syncAccountBalances(accounts)
+            
+            // ✅ Сохраняем обновленные балансы в Core Data
+            print("💾 [BALANCE] Saving updated balances to Core Data")
+            accountsVM.saveAllAccountsSync()
+            
+            print("✅ [BALANCE] Balance sync and save completed")
         } else {
             print("⚠️ [BALANCE] AccountsViewModel is nil, skipping balance sync")
         }

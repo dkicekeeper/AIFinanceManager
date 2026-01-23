@@ -262,10 +262,24 @@ class CategoriesViewModel: ObservableObject {
 
     /// Синхронно сохраняет категории (используется для импорта)
     private func saveCategoriesSync(_ categories: [CustomCategory]) {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(categories) {
-            UserDefaults.standard.set(encoded, forKey: "customCategories")
-            UserDefaults.standard.synchronize()
+        if let coreDataRepo = repository as? CoreDataRepository {
+            do {
+                try coreDataRepo.saveCategoriesSync(categories)
+            } catch {
+                print("❌ [CATEGORIES] Failed to save categories to Core Data: \(error)")
+                // Fallback to UserDefaults
+                let encoder = JSONEncoder()
+                if let encoded = try? encoder.encode(categories) {
+                    UserDefaults.standard.set(encoded, forKey: "customCategories")
+                    UserDefaults.standard.synchronize()
+                }
+            }
+        } else {
+            let encoder = JSONEncoder()
+            if let encoded = try? encoder.encode(categories) {
+                UserDefaults.standard.set(encoded, forKey: "customCategories")
+                UserDefaults.standard.synchronize()
+            }
         }
     }
 

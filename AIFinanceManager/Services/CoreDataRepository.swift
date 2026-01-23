@@ -67,7 +67,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     // First, fetch all existing transactions to update or delete
                     let fetchRequest = TransactionEntity.fetchRequest()
                     let existingEntities = try context.fetch(fetchRequest)
-                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    var existingDict: [String: TransactionEntity] = [:]
+                    for entity in existingEntities {
+                        let id = entity.id ?? ""
+                        if !id.isEmpty && existingDict[id] == nil {
+                            existingDict[id] = entity
+                        } else if !id.isEmpty {
+                            // Found duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found duplicate transaction entity with id: \(id), deleting duplicate")
+                            context.delete(entity)
+                        }
+                    }
                     
                     // Track which IDs we're keeping
                     var keptIds = Set<String>()
@@ -180,7 +192,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 // Fetch all existing accounts
                 let fetchRequest = AccountEntity.fetchRequest()
                 let existingEntities = try context.fetch(fetchRequest)
-                let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                
+                // Build dictionary safely, handling duplicates by keeping the first occurrence
+                var existingDict: [String: AccountEntity] = [:]
+                for entity in existingEntities {
+                    let id = entity.id ?? ""
+                    if !id.isEmpty && existingDict[id] == nil {
+                        existingDict[id] = entity
+                    } else if !id.isEmpty {
+                        // Found duplicate - delete the extra entity
+                        print("⚠️ [CORE_DATA_REPO] Found duplicate account entity with id: \(id), deleting duplicate")
+                        context.delete(entity)
+                    }
+                }
                 
                 var keptIds = Set<String>()
                 
@@ -219,6 +243,234 @@ final class CoreDataRepository: DataRepositoryProtocol {
             }
             
             PerformanceProfiler.end("CoreDataRepository.saveAccounts")
+        }
+    }
+    
+    /// Синхронно сохранить счета в Core Data (для импорта CSV)
+    func saveAccountsSync(_ accounts: [Account]) throws {
+        print("💾 [CORE_DATA_REPO] Saving \(accounts.count) accounts to Core Data synchronously")
+        
+        let context = stack.viewContext
+        
+        // Fetch all existing accounts
+        let fetchRequest = AccountEntity.fetchRequest()
+        let existingEntities = try context.fetch(fetchRequest)
+        
+        // Build dictionary safely, handling duplicates by keeping the first occurrence
+        var existingDict: [String: AccountEntity] = [:]
+        for entity in existingEntities {
+            let id = entity.id ?? ""
+            if !id.isEmpty && existingDict[id] == nil {
+                existingDict[id] = entity
+            } else if !id.isEmpty {
+                // Found duplicate - delete the extra entity
+                print("⚠️ [CORE_DATA_REPO] Found duplicate account entity with id: \(id), deleting duplicate")
+                context.delete(entity)
+            }
+        }
+        
+        var keptIds = Set<String>()
+        
+        // Update or create accounts
+        for account in accounts {
+            keptIds.insert(account.id)
+            
+            if let existing = existingDict[account.id] {
+                // Update existing
+                existing.name = account.name
+                existing.balance = account.balance
+                existing.currency = account.currency
+                existing.logo = account.bankLogo.rawValue
+                existing.isDeposit = account.isDeposit
+                existing.bankName = account.depositInfo?.bankName
+            } else {
+                // Create new
+                _ = AccountEntity.from(account, context: context)
+            }
+        }
+        
+        // Delete accounts that no longer exist
+        for entity in existingEntities {
+            if let id = entity.id, !keptIds.contains(id) {
+                context.delete(entity)
+            }
+        }
+        
+        // Save if there are changes
+        if context.hasChanges {
+            try context.save()
+            print("✅ [CORE_DATA_REPO] Accounts saved synchronously")
+        } else {
+            print("ℹ️ [CORE_DATA_REPO] No changes to save")
+        }
+    }
+    
+    /// Синхронно сохранить транзакции в Core Data (для импорта CSV)
+    func saveTransactionsSync(_ transactions: [Transaction]) throws {
+        print("💾 [CORE_DATA_REPO] Saving \(transactions.count) transactions to Core Data synchronously")
+        
+        let context = stack.viewContext
+        
+        // Fetch all existing transactions
+        let fetchRequest = TransactionEntity.fetchRequest()
+        let existingEntities = try context.fetch(fetchRequest)
+        
+        // Build dictionary safely
+        var existingDict: [String: TransactionEntity] = [:]
+        for entity in existingEntities {
+            let id = entity.id ?? ""
+            if !id.isEmpty && existingDict[id] == nil {
+                existingDict[id] = entity
+            } else if !id.isEmpty {
+                print("⚠️ [CORE_DATA_REPO] Found duplicate transaction entity with id: \(id), deleting duplicate")
+                context.delete(entity)
+            }
+        }
+        
+        // Fetch all existing accounts to establish relationships
+        let accountFetchRequest = AccountEntity.fetchRequest()
+        let accountEntities = try context.fetch(accountFetchRequest)
+        var accountDict: [String: AccountEntity] = [:]
+        for accountEntity in accountEntities {
+            if let id = accountEntity.id {
+                accountDict[id] = accountEntity
+            }
+        }
+        
+        // Fetch all existing recurring series to establish relationships
+        let seriesFetchRequest = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
+        let seriesEntities = try context.fetch(seriesFetchRequest)
+        var seriesDict: [String: RecurringSeriesEntity] = [:]
+        for seriesEntity in seriesEntities {
+            if let id = seriesEntity.id {
+                seriesDict[id] = seriesEntity
+            }
+        }
+        
+        var keptIds = Set<String>()
+        
+        // Update or create transactions
+        for transaction in transactions {
+            keptIds.insert(transaction.id)
+            
+            if let existing = existingDict[transaction.id] {
+                // Update existing
+                existing.date = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()
+                existing.descriptionText = transaction.description
+                existing.amount = transaction.amount
+                existing.currency = transaction.currency
+                existing.convertedAmount = transaction.convertedAmount ?? 0
+                existing.type = transaction.type.rawValue
+                existing.category = transaction.category
+                existing.subcategory = transaction.subcategory
+                existing.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
+                
+                // ✅ Установить relationships
+                if let accountId = transaction.accountId {
+                    existing.account = accountDict[accountId]
+                } else {
+                    existing.account = nil
+                }
+                
+                if let targetAccountId = transaction.targetAccountId {
+                    existing.targetAccount = accountDict[targetAccountId]
+                } else {
+                    existing.targetAccount = nil
+                }
+                
+                if let seriesId = transaction.recurringSeriesId {
+                    existing.recurringSeries = seriesDict[seriesId]
+                } else {
+                    existing.recurringSeries = nil
+                }
+            } else {
+                // Create new
+                let newEntity = TransactionEntity.from(transaction, context: context)
+                
+                // ✅ Установить relationships для новой транзакции
+                if let accountId = transaction.accountId {
+                    newEntity.account = accountDict[accountId]
+                }
+                
+                if let targetAccountId = transaction.targetAccountId {
+                    newEntity.targetAccount = accountDict[targetAccountId]
+                }
+                
+                if let seriesId = transaction.recurringSeriesId {
+                    newEntity.recurringSeries = seriesDict[seriesId]
+                }
+            }
+        }
+        
+        // Delete transactions that no longer exist
+        for entity in existingEntities {
+            if let id = entity.id, !keptIds.contains(id) {
+                context.delete(entity)
+            }
+        }
+        
+        // Save if there are changes
+        if context.hasChanges {
+            try context.save()
+            print("✅ [CORE_DATA_REPO] Transactions saved synchronously")
+        } else {
+            print("ℹ️ [CORE_DATA_REPO] No changes to save")
+        }
+    }
+    
+    /// Синхронно сохранить категории в Core Data (для импорта CSV)
+    func saveCategoriesSync(_ categories: [CustomCategory]) throws {
+        print("💾 [CORE_DATA_REPO] Saving \(categories.count) categories to Core Data synchronously")
+        
+        let context = stack.viewContext
+        
+        // Fetch all existing categories
+        let fetchRequest = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
+        let existingEntities = try context.fetch(fetchRequest)
+        
+        // Build dictionary safely
+        var existingDict: [String: CustomCategoryEntity] = [:]
+        for entity in existingEntities {
+            let id = entity.id ?? ""
+            if !id.isEmpty && existingDict[id] == nil {
+                existingDict[id] = entity
+            } else if !id.isEmpty {
+                print("⚠️ [CORE_DATA_REPO] Found duplicate category entity with id: \(id), deleting duplicate")
+                context.delete(entity)
+            }
+        }
+        
+        var keptIds = Set<String>()
+        
+        // Update or create categories
+        for category in categories {
+            keptIds.insert(category.id)
+            
+            if let existing = existingDict[category.id] {
+                // Update existing
+                existing.name = category.name
+                existing.type = category.type.rawValue
+                existing.iconName = category.iconName
+                existing.colorHex = category.colorHex
+            } else {
+                // Create new
+                _ = CustomCategoryEntity.from(category, context: context)
+            }
+        }
+        
+        // Delete categories that no longer exist
+        for entity in existingEntities {
+            if let id = entity.id, !keptIds.contains(id) {
+                context.delete(entity)
+            }
+        }
+        
+        // Save if there are changes
+        if context.hasChanges {
+            try context.save()
+            print("✅ [CORE_DATA_REPO] Categories saved synchronously")
+        } else {
+            print("ℹ️ [CORE_DATA_REPO] No changes to save")
         }
     }
     
@@ -265,7 +517,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     // Fetch all existing recurring series
                     let fetchRequest = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
                     let existingEntities = try context.fetch(fetchRequest)
-                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    var existingDict: [String: RecurringSeriesEntity] = [:]
+                    for entity in existingEntities {
+                        let id = entity.id ?? ""
+                        if !id.isEmpty && existingDict[id] == nil {
+                            existingDict[id] = entity
+                        } else if !id.isEmpty {
+                            // Found duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found duplicate recurring series entity with id: \(id), deleting duplicate")
+                            context.delete(entity)
+                        }
+                    }
                     
                     var keptIds = Set<String>()
                     
@@ -368,7 +632,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     // Fetch all existing categories
                     let fetchRequest = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
                     let existingEntities = try context.fetch(fetchRequest)
-                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    var existingDict: [String: CustomCategoryEntity] = [:]
+                    for entity in existingEntities {
+                        let id = entity.id ?? ""
+                        if !id.isEmpty && existingDict[id] == nil {
+                            existingDict[id] = entity
+                        } else if !id.isEmpty {
+                            // Found duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found duplicate category entity with id: \(id), deleting duplicate")
+                            context.delete(entity)
+                        }
+                    }
                     
                     var keptIds = Set<String>()
                     
@@ -504,7 +780,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     // Fetch all existing occurrences
                     let fetchRequest = NSFetchRequest<RecurringOccurrenceEntity>(entityName: "RecurringOccurrenceEntity")
                     let existingEntities = try context.fetch(fetchRequest)
-                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    var existingDict: [String: RecurringOccurrenceEntity] = [:]
+                    for entity in existingEntities {
+                        let id = entity.id ?? ""
+                        if !id.isEmpty && existingDict[id] == nil {
+                            existingDict[id] = entity
+                        } else if !id.isEmpty {
+                            // Found duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found duplicate recurring occurrence entity with id: \(id), deleting duplicate")
+                            context.delete(entity)
+                        }
+                    }
 
                     var keptIds = Set<String>()
 
@@ -583,7 +871,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     // Fetch all existing subcategories
                     let fetchRequest = NSFetchRequest<SubcategoryEntity>(entityName: "SubcategoryEntity")
                     let existingEntities = try context.fetch(fetchRequest)
-                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    var existingDict: [String: SubcategoryEntity] = [:]
+                    for entity in existingEntities {
+                        let id = entity.id ?? ""
+                        if !id.isEmpty && existingDict[id] == nil {
+                            existingDict[id] = entity
+                        } else if !id.isEmpty {
+                            // Found duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found duplicate subcategory entity with id: \(id), deleting duplicate")
+                            context.delete(entity)
+                        }
+                    }
                     
                     var keptIds = Set<String>()
                     
@@ -653,7 +953,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     // Fetch all existing links
                     let fetchRequest = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
                     let existingEntities = try context.fetch(fetchRequest)
-                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    var existingDict: [String: CategorySubcategoryLinkEntity] = [:]
+                    for entity in existingEntities {
+                        let id = entity.id ?? ""
+                        if !id.isEmpty && existingDict[id] == nil {
+                            existingDict[id] = entity
+                        } else if !id.isEmpty {
+                            // Found duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found duplicate category-subcategory link entity with id: \(id), deleting duplicate")
+                            context.delete(entity)
+                        }
+                    }
                     
                     var keptIds = Set<String>()
                     
@@ -724,7 +1036,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     // Fetch all existing links
                     let fetchRequest = NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
                     let existingEntities = try context.fetch(fetchRequest)
-                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    var existingDict: [String: TransactionSubcategoryLinkEntity] = [:]
+                    for entity in existingEntities {
+                        let id = entity.id ?? ""
+                        if !id.isEmpty && existingDict[id] == nil {
+                            existingDict[id] = entity
+                        } else if !id.isEmpty {
+                            // Found duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found duplicate transaction-subcategory link entity with id: \(id), deleting duplicate")
+                            context.delete(entity)
+                        }
+                    }
                     
                     var keptIds = Set<String>()
                     

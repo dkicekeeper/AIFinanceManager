@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftUI
+import CoreData
 import Combine
 
 @MainActor
@@ -234,13 +235,35 @@ class AccountsViewModel: ObservableObject {
     /// Синхронно сохранить все счета (используется при импорте)
     func saveAllAccountsSync() {
         print("💾 [ACCOUNT] Saving all accounts synchronously")
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(accounts) {
-            UserDefaults.standard.set(encoded, forKey: "accounts")
-            UserDefaults.standard.synchronize()
-            print("✅ [ACCOUNT] All accounts saved synchronously")
+        for account in accounts {
+            print("   💰 '\(account.name)': balance = \(account.balance)")
+        }
+        
+        // Use repository to save synchronously
+        if let coreDataRepo = repository as? CoreDataRepository {
+            do {
+                try coreDataRepo.saveAccountsSync(accounts)
+                print("✅ [ACCOUNT] All accounts saved synchronously to Core Data")
+            } catch {
+                print("❌ [ACCOUNT] Failed to save accounts to Core Data: \(error)")
+                // Fallback to UserDefaults on error
+                print("⚠️ [ACCOUNT] Falling back to UserDefaults")
+                let encoder = JSONEncoder()
+                if let encoded = try? encoder.encode(accounts) {
+                    UserDefaults.standard.set(encoded, forKey: "accounts")
+                    UserDefaults.standard.synchronize()
+                }
+            }
         } else {
-            print("❌ [ACCOUNT] Failed to encode accounts")
+            // Fallback for other repository types (UserDefaults)
+            let encoder = JSONEncoder()
+            if let encoded = try? encoder.encode(accounts) {
+                UserDefaults.standard.set(encoded, forKey: "accounts")
+                UserDefaults.standard.synchronize()
+                print("✅ [ACCOUNT] All accounts saved synchronously to UserDefaults")
+            } else {
+                print("❌ [ACCOUNT] Failed to encode accounts")
+            }
         }
     }
 
@@ -260,7 +283,9 @@ class AccountsViewModel: ObservableObject {
                 newAccounts[index] = updatedAccount
                 print("   🔄 '\(updatedAccount.name)': \(oldBalance) -> \(updatedAccount.balance)")
             } else {
-                print("   ⚠️ Account '\(updatedAccount.name)' (ID: \(updatedAccount.id)) not found in AccountsViewModel")
+                // Аккаунт не найден - добавляем его (например, при импорте CSV)
+                print("   ➕ Adding new account '\(updatedAccount.name)' (ID: \(updatedAccount.id)) with balance \(updatedAccount.balance)")
+                newAccounts.append(updatedAccount)
             }
         }
 
