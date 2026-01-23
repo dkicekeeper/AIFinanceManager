@@ -100,6 +100,29 @@ class TransactionsViewModel: ObservableObject {
     
     /// Setup observer for recurring series changes
     private func setupRecurringSeriesObserver() {
+        // Listen for NEW recurring series created
+        NotificationCenter.default.addObserver(
+            forName: .recurringSeriesCreated,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let seriesId = notification.userInfo?["seriesId"] as? String else {
+                return
+            }
+            
+            print("📢 [OBSERVER] Received recurringSeriesCreated for series: \(seriesId)")
+            print("🔄 [OBSERVER] Generating transactions for new series")
+            self.generateRecurringTransactions()
+            
+            // Recalculate balances and save
+            self.invalidateCaches()
+            self.rebuildIndexes()
+            self.scheduleBalanceRecalculation()
+            self.scheduleSave()
+        }
+        
+        // Listen for UPDATED recurring series (regenerate only affected series)
         NotificationCenter.default.addObserver(
             forName: .recurringSeriesChanged,
             object: nil,

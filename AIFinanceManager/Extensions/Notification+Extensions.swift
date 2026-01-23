@@ -12,6 +12,11 @@ extension Notification.Name {
     
     // MARK: - Recurring Series Events
     
+    /// Posted when a NEW recurring series is created
+    /// UserInfo keys:
+    /// - "seriesId": String - ID of the new series
+    static let recurringSeriesCreated = Notification.Name("recurringSeriesCreated")
+    
     /// Posted when a recurring series is changed in a way that requires regenerating transactions
     /// UserInfo keys:
     /// - "seriesId": String - ID of the changed series

@@ -65,8 +65,22 @@ class SubscriptionsViewModel: ObservableObject {
             frequency: frequency,
             startDate: startDate
         )
-        recurringSeries.append(series)
+        
+        // ✅ CRITICAL: Reassign array to trigger @Published
+        // Using append() doesn't always trigger SwiftUI updates
+        recurringSeries = recurringSeries + [series]
+        print("📝 [RECURRING] Created recurring series, total count: \(recurringSeries.count)")
+        
         saveRecurringSeries()  // ✅ Sync save
+        
+        // Notify TransactionsViewModel to generate transactions for new series
+        print("📢 [RECURRING] Notifying about new recurring series: \(series.id)")
+        NotificationCenter.default.post(
+            name: .recurringSeriesCreated,
+            object: nil,
+            userInfo: ["seriesId": series.id]
+        )
+        
         return series
     }
     
@@ -124,10 +138,14 @@ class SubscriptionsViewModel: ObservableObject {
     }
     
     func deleteRecurringSeries(_ seriesId: String) {
-        // Удаляем все occurrences
-        recurringOccurrences.removeAll { $0.seriesId == seriesId }
-        // Удаляем серию
-        recurringSeries.removeAll { $0.id == seriesId }
+        print("🗑️ [RECURRING] Deleting recurring series: \(seriesId)")
+        
+        // ✅ CRITICAL: Use filter to create new array for @Published trigger
+        recurringOccurrences = recurringOccurrences.filter { $0.seriesId != seriesId }
+        recurringSeries = recurringSeries.filter { $0.id != seriesId }
+        
+        print("📝 [RECURRING] After deletion, total count: \(recurringSeries.count)")
+        
         saveRecurringSeries()  // ✅ Sync save
         repository.saveRecurringOccurrences(recurringOccurrences)
         
@@ -169,8 +187,21 @@ class SubscriptionsViewModel: ObservableObject {
             reminderOffsets: reminderOffsets,
             status: .active
         )
-        recurringSeries.append(series)
+        
+        // ✅ CRITICAL: Reassign array to trigger @Published
+        // Using append() doesn't always trigger SwiftUI updates
+        recurringSeries = recurringSeries + [series]
+        print("📝 [SUBSCRIPTION] Created subscription, total count: \(recurringSeries.count)")
+        
         saveRecurringSeries()  // ✅ Sync save
+        
+        // Notify TransactionsViewModel to generate transactions for new subscription
+        print("📢 [SUBSCRIPTION] Notifying about new subscription: \(series.id)")
+        NotificationCenter.default.post(
+            name: .recurringSeriesCreated,
+            object: nil,
+            userInfo: ["seriesId": series.id]
+        )
         
         // Schedule notifications
         Task {
