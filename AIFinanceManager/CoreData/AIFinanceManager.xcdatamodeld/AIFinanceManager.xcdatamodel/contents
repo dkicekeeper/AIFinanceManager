@@ -19,6 +19,11 @@
         <attribute name="isEnabled" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="pattern" attributeType="String"/>
     </entity>
+    <entity name="CategorySubcategoryLinkEntity" representedClassName=".CategorySubcategoryLinkEntity" syncable="YES">
+        <attribute name="categoryId" attributeType="String"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="subcategoryId" attributeType="String"/>
+    </entity>
     <entity name="CustomCategoryEntity" representedClassName=".CustomCategoryEntity" syncable="YES">
         <attribute name="budgetAmount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="budgetPeriod" attributeType="String" defaultValueString="monthly"/>
@@ -67,5 +72,10 @@
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="transactions" inverseEntity="AccountEntity"/>
         <relationship name="recurringSeries" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecurringSeriesEntity" inverseName="transactions" inverseEntity="RecurringSeriesEntity"/>
         <relationship name="targetAccount" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="targetTransactions" inverseEntity="AccountEntity"/>
+    </entity>
+    <entity name="TransactionSubcategoryLinkEntity" representedClassName=".TransactionSubcategoryLinkEntity" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="subcategoryId" attributeType="String"/>
+        <attribute name="transactionId" attributeType="String"/>
     </entity>
 </model>

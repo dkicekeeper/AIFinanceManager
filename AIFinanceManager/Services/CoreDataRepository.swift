@@ -546,24 +546,146 @@ final class CoreDataRepository: DataRepositoryProtocol {
         }
     }
     
-    // MARK: - Category-Subcategory Links (Fallback to UserDefaults)
+    // MARK: - Category-Subcategory Links
     
     func loadCategorySubcategoryLinks() -> [CategorySubcategoryLink] {
-        return userDefaultsRepository.loadCategorySubcategoryLinks()
+        print("📂 [CORE_DATA_REPO] Loading category-subcategory links from Core Data")
+        
+        let context = stack.viewContext
+        let request = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
+        request.sortDescriptors = [NSSortDescriptor(key: "categoryId", ascending: true)]
+        
+        do {
+            let entities = try context.fetch(request)
+            let links = entities.map { $0.toCategorySubcategoryLink() }
+            print("✅ [CORE_DATA_REPO] Loaded \(links.count) category-subcategory links")
+            return links
+        } catch {
+            print("❌ [CORE_DATA_REPO] Error loading category-subcategory links: \(error)")
+            return userDefaultsRepository.loadCategorySubcategoryLinks()
+        }
     }
     
     func saveCategorySubcategoryLinks(_ links: [CategorySubcategoryLink]) {
-        userDefaultsRepository.saveCategorySubcategoryLinks(links)
+        print("💾 [CORE_DATA_REPO] Saving \(links.count) category-subcategory links to Core Data")
+        
+        Task.detached(priority: .utility) { @MainActor [weak self] in
+            guard let self = self else { return }
+            
+            let context = self.stack.newBackgroundContext()
+            
+            await context.perform {
+                do {
+                    // Fetch all existing links
+                    let fetchRequest = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
+                    let existingEntities = try context.fetch(fetchRequest)
+                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    var keptIds = Set<String>()
+                    
+                    // Update or create links
+                    for link in links {
+                        keptIds.insert(link.id)
+                        
+                        if let existing = existingDict[link.id] {
+                            // Update existing
+                            existing.categoryId = link.categoryId
+                            existing.subcategoryId = link.subcategoryId
+                        } else {
+                            // Create new
+                            _ = CategorySubcategoryLinkEntity.from(link, context: context)
+                        }
+                    }
+                    
+                    // Delete links that no longer exist
+                    for entity in existingEntities {
+                        if let id = entity.id, !keptIds.contains(id) {
+                            context.delete(entity)
+                        }
+                    }
+                    
+                    // Save if there are changes
+                    if context.hasChanges {
+                        try context.save()
+                    }
+                } catch {
+                    print("❌ [CORE_DATA_REPO] Error saving category-subcategory links: \(error)")
+                }
+            }
+            
+            print("✅ [CORE_DATA_REPO] Category-subcategory links saved successfully")
+        }
     }
     
-    // MARK: - Transaction-Subcategory Links (Fallback to UserDefaults)
+    // MARK: - Transaction-Subcategory Links
     
     func loadTransactionSubcategoryLinks() -> [TransactionSubcategoryLink] {
-        return userDefaultsRepository.loadTransactionSubcategoryLinks()
+        print("📂 [CORE_DATA_REPO] Loading transaction-subcategory links from Core Data")
+        
+        let context = stack.viewContext
+        let request = NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
+        request.sortDescriptors = [NSSortDescriptor(key: "transactionId", ascending: true)]
+        
+        do {
+            let entities = try context.fetch(request)
+            let links = entities.map { $0.toTransactionSubcategoryLink() }
+            print("✅ [CORE_DATA_REPO] Loaded \(links.count) transaction-subcategory links")
+            return links
+        } catch {
+            print("❌ [CORE_DATA_REPO] Error loading transaction-subcategory links: \(error)")
+            return userDefaultsRepository.loadTransactionSubcategoryLinks()
+        }
     }
     
     func saveTransactionSubcategoryLinks(_ links: [TransactionSubcategoryLink]) {
-        userDefaultsRepository.saveTransactionSubcategoryLinks(links)
+        print("💾 [CORE_DATA_REPO] Saving \(links.count) transaction-subcategory links to Core Data")
+        
+        Task.detached(priority: .utility) { @MainActor [weak self] in
+            guard let self = self else { return }
+            
+            let context = self.stack.newBackgroundContext()
+            
+            await context.perform {
+                do {
+                    // Fetch all existing links
+                    let fetchRequest = NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
+                    let existingEntities = try context.fetch(fetchRequest)
+                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+                    
+                    var keptIds = Set<String>()
+                    
+                    // Update or create links
+                    for link in links {
+                        keptIds.insert(link.id)
+                        
+                        if let existing = existingDict[link.id] {
+                            // Update existing
+                            existing.transactionId = link.transactionId
+                            existing.subcategoryId = link.subcategoryId
+                        } else {
+                            // Create new
+                            _ = TransactionSubcategoryLinkEntity.from(link, context: context)
+                        }
+                    }
+                    
+                    // Delete links that no longer exist
+                    for entity in existingEntities {
+                        if let id = entity.id, !keptIds.contains(id) {
+                            context.delete(entity)
+                        }
+                    }
+                    
+                    // Save if there are changes
+                    if context.hasChanges {
+                        try context.save()
+                    }
+                } catch {
+                    print("❌ [CORE_DATA_REPO] Error saving transaction-subcategory links: \(error)")
+                }
+            }
+            
+            print("✅ [CORE_DATA_REPO] Transaction-subcategory links saved successfully")
+        }
     }
     
     // MARK: - Clear All Data

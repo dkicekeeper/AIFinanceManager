@@ -21,7 +21,7 @@ class DataMigrationService {
     
     // MARK: - Migration Status Key
     
-    private let migrationCompletedKey = "coreDataMigrationCompleted_v3"
+    private let migrationCompletedKey = "coreDataMigrationCompleted_v4"
     
     // MARK: - Public Methods
     
@@ -60,6 +60,12 @@ class DataMigrationService {
             // Step 6: Migrate Subcategories
             try await migrateSubcategories()
             
+            // Step 7: Migrate Category-Subcategory Links
+            try await migrateCategorySubcategoryLinks()
+            
+            // Step 8: Migrate Transaction-Subcategory Links
+            try await migrateTransactionSubcategoryLinks()
+            
             // Mark migration as completed
             UserDefaults.standard.set(true, forKey: migrationCompletedKey)
             UserDefaults.standard.synchronize()
@@ -95,7 +101,9 @@ class DataMigrationService {
                 "RecurringSeriesEntity",
                 "CustomCategoryEntity",
                 "CategoryRuleEntity",
-                "SubcategoryEntity"
+                "SubcategoryEntity",
+                "CategorySubcategoryLinkEntity",
+                "TransactionSubcategoryLinkEntity"
             ]
             
             for entityName in entityNames {
@@ -193,6 +201,56 @@ class DataMigrationService {
             if context.hasChanges {
                 try context.save()
                 print("   ✅ [MIGRATION] Batch \(batchIndex) saved")
+            }
+        }
+    }
+    
+    private func migrateCategorySubcategoryLinks() async throws {
+        print("📦 [MIGRATION] Migrating category-subcategory links...")
+        
+        let links = userDefaultsRepo.loadCategorySubcategoryLinks()
+        print("📊 [MIGRATION] Found \(links.count) category-subcategory links to migrate")
+        
+        guard !links.isEmpty else {
+            print("⏭️ [MIGRATION] No category-subcategory links to migrate")
+            return
+        }
+        
+        let context = stack.newBackgroundContext()
+        
+        try await context.perform {
+            for link in links {
+                _ = CategorySubcategoryLinkEntity.from(link, context: context)
+            }
+            
+            if context.hasChanges {
+                try context.save()
+                print("✅ [MIGRATION] Saved \(links.count) category-subcategory links to Core Data")
+            }
+        }
+    }
+    
+    private func migrateTransactionSubcategoryLinks() async throws {
+        print("📦 [MIGRATION] Migrating transaction-subcategory links...")
+        
+        let links = userDefaultsRepo.loadTransactionSubcategoryLinks()
+        print("📊 [MIGRATION] Found \(links.count) transaction-subcategory links to migrate")
+        
+        guard !links.isEmpty else {
+            print("⏭️ [MIGRATION] No transaction-subcategory links to migrate")
+            return
+        }
+        
+        let context = stack.newBackgroundContext()
+        
+        try await context.perform {
+            for link in links {
+                _ = TransactionSubcategoryLinkEntity.from(link, context: context)
+            }
+            
+            if context.hasChanges {
+                try context.save()
+                print("✅ [MIGRATION] Saved \(links.count) transaction-subcategory links to Core Data")
             }
         }
     }
