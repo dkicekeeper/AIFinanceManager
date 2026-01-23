@@ -20,8 +20,8 @@ class DataMigrationService {
     private let stack = CoreDataStack.shared
     
     // MARK: - Migration Status Key
-    
-    private let migrationCompletedKey = "coreDataMigrationCompleted_v4"
+
+    private let migrationCompletedKey = "coreDataMigrationCompleted_v5"
     
     // MARK: - Public Methods
     
@@ -37,42 +37,45 @@ class DataMigrationService {
             print("✅ [MIGRATION] Data already migrated, skipping")
             return
         }
-        
+
         print("🔄 [MIGRATION] Starting data migration from UserDefaults to Core Data")
         PerformanceProfiler.start("DataMigration.migrateAllData")
-        
+
         do {
             // Step 1: Migrate Accounts first (since Transactions reference them)
             try await migrateAccounts()
-            
+
             // Step 2: Migrate Transactions
             try await migrateTransactions()
-            
+
             // Step 3: Migrate Recurring Series
             try await migrateRecurringSeries()
-            
+
             // Step 4: Migrate Custom Categories
             try await migrateCustomCategories()
-            
+
             // Step 5: Migrate Category Rules
             try await migrateCategoryRules()
-            
+
             // Step 6: Migrate Subcategories
             try await migrateSubcategories()
-            
+
             // Step 7: Migrate Category-Subcategory Links
             try await migrateCategorySubcategoryLinks()
-            
+
             // Step 8: Migrate Transaction-Subcategory Links
             try await migrateTransactionSubcategoryLinks()
-            
+
+            // Step 9: Migrate Recurring Occurrences
+            try await migrateRecurringOccurrences()
+
             // Mark migration as completed
             UserDefaults.standard.set(true, forKey: migrationCompletedKey)
             UserDefaults.standard.synchronize()
-            
+
             PerformanceProfiler.end("DataMigration.migrateAllData")
             print("✅ [MIGRATION] Data migration completed successfully")
-            
+
         } catch {
             PerformanceProfiler.end("DataMigration.migrateAllData")
             print("❌ [MIGRATION] Migration failed: \(error)")
@@ -103,7 +106,8 @@ class DataMigrationService {
                 "CategoryRuleEntity",
                 "SubcategoryEntity",
                 "CategorySubcategoryLinkEntity",
-                "TransactionSubcategoryLinkEntity"
+                "TransactionSubcategoryLinkEntity",
+                "RecurringOccurrenceEntity"
             ]
             
             for entityName in entityNames {
@@ -365,8 +369,40 @@ class DataMigrationService {
         }
     }
     
+    private func migrateRecurringOccurrences() async throws {
+        print("📦 [MIGRATION] Migrating recurring occurrences...")
+
+        let occurrences = userDefaultsRepo.loadRecurringOccurrences()
+        print("📊 [MIGRATION] Found \(occurrences.count) recurring occurrences to migrate")
+
+        guard !occurrences.isEmpty else {
+            print("⏭️ [MIGRATION] No recurring occurrences to migrate")
+            return
+        }
+
+        let context = stack.newBackgroundContext()
+
+        try await context.perform {
+            for occurrence in occurrences {
+                let entity = RecurringOccurrenceEntity.from(occurrence, context: context)
+
+                // Set series relationship if exists
+                if !occurrence.seriesId.isEmpty {
+                    entity.series = self.fetchRecurringSeries(id: occurrence.seriesId, context: context)
+                }
+
+                print("   ✓ Migrated occurrence for series: \(occurrence.seriesId)")
+            }
+
+            if context.hasChanges {
+                try context.save()
+                print("✅ [MIGRATION] Saved \(occurrences.count) recurring occurrences to Core Data")
+            }
+        }
+    }
+
     // MARK: - Helper Methods
-    
+
     private nonisolated func fetchAccount(id: String, context: NSManagedObjectContext) -> AccountEntity? {
         let request = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
         request.predicate = NSPredicate(format: "id == %@", id)

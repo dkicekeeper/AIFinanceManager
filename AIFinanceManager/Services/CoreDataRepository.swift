@@ -466,14 +466,88 @@ final class CoreDataRepository: DataRepositoryProtocol {
         }
     }
     
-    // MARK: - Recurring Occurrences (Fallback to UserDefaults)
-    
+    // MARK: - Recurring Occurrences
+
     func loadRecurringOccurrences() -> [RecurringOccurrence] {
-        return userDefaultsRepository.loadRecurringOccurrences()
+        print("📂 [CORE_DATA_REPO] Loading recurring occurrences from Core Data")
+
+        let context = stack.viewContext
+        let request = NSFetchRequest<RecurringOccurrenceEntity>(entityName: "RecurringOccurrenceEntity")
+        request.sortDescriptors = [NSSortDescriptor(key: "occurrenceDate", ascending: false)]
+
+        do {
+            let entities = try context.fetch(request)
+            let occurrences = entities.map { $0.toRecurringOccurrence() }
+            print("✅ [CORE_DATA_REPO] Loaded \(occurrences.count) recurring occurrences")
+            return occurrences
+        } catch {
+            print("❌ [CORE_DATA_REPO] Error loading recurring occurrences: \(error)")
+
+            // Fallback to UserDefaults if Core Data fails
+            print("⚠️ [CORE_DATA_REPO] Falling back to UserDefaults")
+            return userDefaultsRepository.loadRecurringOccurrences()
+        }
     }
-    
+
     func saveRecurringOccurrences(_ occurrences: [RecurringOccurrence]) {
-        userDefaultsRepository.saveRecurringOccurrences(occurrences)
+        print("💾 [CORE_DATA_REPO] Saving \(occurrences.count) recurring occurrences to Core Data")
+
+        Task.detached(priority: .utility) { @MainActor [weak self] in
+            guard let self = self else { return }
+
+            PerformanceProfiler.start("CoreDataRepository.saveRecurringOccurrences")
+
+            let context = self.stack.newBackgroundContext()
+
+            await context.perform {
+                do {
+                    // Fetch all existing occurrences
+                    let fetchRequest = NSFetchRequest<RecurringOccurrenceEntity>(entityName: "RecurringOccurrenceEntity")
+                    let existingEntities = try context.fetch(fetchRequest)
+                    let existingDict = Dictionary(uniqueKeysWithValues: existingEntities.map { ($0.id ?? "", $0) })
+
+                    var keptIds = Set<String>()
+
+                    // Update or create occurrences
+                    for occurrence in occurrences {
+                        keptIds.insert(occurrence.id)
+
+                        if let existing = existingDict[occurrence.id] {
+                            // Update existing
+                            existing.seriesId = occurrence.seriesId
+                            existing.occurrenceDate = occurrence.occurrenceDate
+                            existing.transactionId = occurrence.transactionId
+
+                            // Update series relationship if needed
+                            existing.series = self.fetchRecurringSeriesSync(id: occurrence.seriesId, context: context)
+                        } else {
+                            // Create new
+                            let entity = RecurringOccurrenceEntity.from(occurrence, context: context)
+
+                            // Set series relationship
+                            entity.series = self.fetchRecurringSeriesSync(id: occurrence.seriesId, context: context)
+                        }
+                    }
+
+                    // Delete occurrences that no longer exist
+                    for entity in existingEntities {
+                        if let id = entity.id, !keptIds.contains(id) {
+                            context.delete(entity)
+                        }
+                    }
+
+                    // Save if there are changes
+                    if context.hasChanges {
+                        try context.save()
+                    }
+                } catch {
+                    print("❌ [CORE_DATA_REPO] Error saving recurring occurrences: \(error)")
+                }
+            }
+
+            PerformanceProfiler.end("CoreDataRepository.saveRecurringOccurrences")
+            print("✅ [CORE_DATA_REPO] Recurring occurrences saved successfully")
+        }
     }
     
     // MARK: - Subcategories

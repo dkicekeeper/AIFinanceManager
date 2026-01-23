@@ -35,6 +35,13 @@
         <attribute name="name" attributeType="String"/>
         <attribute name="type" attributeType="String"/>
     </entity>
+    <entity name="RecurringOccurrenceEntity" representedClassName=".RecurringOccurrenceEntity" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="occurrenceDate" optional="YES" attributeType="String"/>
+        <attribute name="seriesId" optional="YES" attributeType="String"/>
+        <attribute name="transactionId" optional="YES" attributeType="String"/>
+        <relationship name="series" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecurringSeriesEntity" inverseName="occurrences" inverseEntity="RecurringSeriesEntity"/>
+    </entity>
     <entity name="RecurringSeriesEntity" representedClassName=".RecurringSeriesEntity" syncable="YES">
         <attribute name="amount" attributeType="Decimal" defaultValueString="0.0"/>
         <attribute name="brandId" optional="YES" attributeType="String"/>
@@ -51,6 +58,7 @@
         <attribute name="status" optional="YES" attributeType="String"/>
         <attribute name="subcategory" optional="YES" attributeType="String"/>
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="recurringSeries" inverseEntity="AccountEntity"/>
+        <relationship name="occurrences" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="RecurringOccurrenceEntity" inverseName="series" inverseEntity="RecurringOccurrenceEntity"/>
         <relationship name="transactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TransactionEntity" inverseName="recurringSeries" inverseEntity="TransactionEntity"/>
     </entity>
     <entity name="SubcategoryEntity" representedClassName=".SubcategoryEntity" syncable="YES">

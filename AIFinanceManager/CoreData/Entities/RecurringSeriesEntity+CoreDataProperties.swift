@@ -34,6 +34,7 @@ extension RecurringSeriesEntity {
     @NSManaged public var status: String?
     @NSManaged public var account: AccountEntity?
     @NSManaged public var transactions: NSSet?
+    @NSManaged public var occurrences: NSSet?
 
 }
 
@@ -51,6 +52,23 @@ extension RecurringSeriesEntity {
 
     @objc(removeTransactions:)
     @NSManaged public func removeFromTransactions(_ values: NSSet)
+
+}
+
+// MARK: Generated accessors for occurrences
+extension RecurringSeriesEntity {
+
+    @objc(addOccurrencesObject:)
+    @NSManaged public func addToOccurrences(_ value: RecurringOccurrenceEntity)
+
+    @objc(removeOccurrencesObject:)
+    @NSManaged public func removeFromOccurrences(_ value: RecurringOccurrenceEntity)
+
+    @objc(addOccurrences:)
+    @NSManaged public func addToOccurrences(_ values: NSSet)
+
+    @objc(removeOccurrences:)
+    @NSManaged public func removeFromOccurrences(_ values: NSSet)
 
 }
 
