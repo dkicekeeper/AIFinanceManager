@@ -246,24 +246,14 @@ class AccountsViewModel: ObservableObject {
                 print("✅ [ACCOUNT] All accounts saved synchronously to Core Data")
             } catch {
                 print("❌ [ACCOUNT] Failed to save accounts to Core Data: \(error)")
-                // Fallback to UserDefaults on error
-                print("⚠️ [ACCOUNT] Falling back to UserDefaults")
-                let encoder = JSONEncoder()
-                if let encoded = try? encoder.encode(accounts) {
-                    UserDefaults.standard.set(encoded, forKey: "accounts")
-                    UserDefaults.standard.synchronize()
-                }
+                // Critical error - log but don't fallback to UserDefaults
+                // This ensures data consistency with the primary storage
             }
         } else {
-            // Fallback for other repository types (UserDefaults)
-            let encoder = JSONEncoder()
-            if let encoded = try? encoder.encode(accounts) {
-                UserDefaults.standard.set(encoded, forKey: "accounts")
-                UserDefaults.standard.synchronize()
-                print("✅ [ACCOUNT] All accounts saved synchronously to UserDefaults")
-            } else {
-                print("❌ [ACCOUNT] Failed to encode accounts")
-            }
+            // For non-CoreData repositories (e.g., UserDefaultsRepository in tests)
+            // use the standard async save method
+            repository.saveAccounts(accounts)
+            print("✅ [ACCOUNT] Accounts save initiated through repository")
         }
     }
 

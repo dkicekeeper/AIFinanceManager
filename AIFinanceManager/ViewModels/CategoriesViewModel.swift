@@ -265,21 +265,17 @@ class CategoriesViewModel: ObservableObject {
         if let coreDataRepo = repository as? CoreDataRepository {
             do {
                 try coreDataRepo.saveCategoriesSync(categories)
+                print("✅ [CATEGORIES] Categories saved synchronously to Core Data")
             } catch {
                 print("❌ [CATEGORIES] Failed to save categories to Core Data: \(error)")
-                // Fallback to UserDefaults
-                let encoder = JSONEncoder()
-                if let encoded = try? encoder.encode(categories) {
-                    UserDefaults.standard.set(encoded, forKey: "customCategories")
-                    UserDefaults.standard.synchronize()
-                }
+                // Critical error - log but don't fallback to UserDefaults
+                // This ensures data consistency with the primary storage
             }
         } else {
-            let encoder = JSONEncoder()
-            if let encoded = try? encoder.encode(categories) {
-                UserDefaults.standard.set(encoded, forKey: "customCategories")
-                UserDefaults.standard.synchronize()
-            }
+            // For non-CoreData repositories (e.g., UserDefaultsRepository in tests)
+            // use the standard async save method
+            repository.saveCategories(categories)
+            print("✅ [CATEGORIES] Categories save initiated through repository")
         }
     }
 
