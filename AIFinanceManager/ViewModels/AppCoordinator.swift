@@ -35,8 +35,8 @@ class AppCoordinator: ObservableObject {
 
     // MARK: - Initialization
 
-    init(repository: DataRepositoryProtocol = CoreDataRepository()) {
-        self.repository = repository
+    init(repository: DataRepositoryProtocol? = nil) {
+        self.repository = repository ?? CoreDataRepository()
         print("🗄️ [APP_COORDINATOR] Using repository: CoreDataRepository")
 
         // Initialize ViewModels in dependency order

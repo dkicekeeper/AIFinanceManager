@@ -183,9 +183,7 @@ final class CoreDataRepository: DataRepositoryProtocol {
         // This ensures data is persisted even if app terminates quickly
         let context = stack.viewContext
         
-        Task { @MainActor [weak self] in
-            guard let self = self else { return }
-            
+        Task { @MainActor in
             PerformanceProfiler.start("CoreDataRepository.saveAccounts")
             
             do {
