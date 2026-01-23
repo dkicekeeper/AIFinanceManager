@@ -15,3 +15,23 @@ public typealias SubcategoryEntityCoreDataClassSet = NSSet
 public class SubcategoryEntity: NSManagedObject {
 
 }
+
+// MARK: - Conversion Methods
+extension SubcategoryEntity {
+    /// Convert to domain model
+    func toSubcategory() -> Subcategory {
+        return Subcategory(
+            id: id ?? UUID().uuidString,
+            name: name ?? ""
+        )
+    }
+    
+    /// Create from domain model
+    static func from(_ subcategory: Subcategory, context: NSManagedObjectContext) -> SubcategoryEntity {
+        let entity = SubcategoryEntity(context: context)
+        entity.id = subcategory.id
+        entity.name = subcategory.name
+        entity.iconName = ""
+        return entity
+    }
+}

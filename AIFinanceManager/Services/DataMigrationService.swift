@@ -21,7 +21,7 @@ class DataMigrationService {
     
     // MARK: - Migration Status Key
     
-    private let migrationCompletedKey = "coreDataMigrationCompleted_v1"
+    private let migrationCompletedKey = "coreDataMigrationCompleted_v2"
     
     // MARK: - Public Methods
     
@@ -49,7 +49,16 @@ class DataMigrationService {
             try await migrateTransactions()
             
             // Step 3: Migrate Recurring Series
-            // TODO: Implement when RecurringSeriesEntity is ready
+            try await migrateRecurringSeries()
+            
+            // Step 4: Migrate Custom Categories
+            try await migrateCustomCategories()
+            
+            // Step 5: Migrate Category Rules
+            try await migrateCategoryRules()
+            
+            // Step 6: Migrate Subcategories
+            try await migrateSubcategories()
             
             // Mark migration as completed
             UserDefaults.standard.set(true, forKey: migrationCompletedKey)
@@ -70,6 +79,36 @@ class DataMigrationService {
         UserDefaults.standard.removeObject(forKey: migrationCompletedKey)
         UserDefaults.standard.synchronize()
         print("⚠️ [MIGRATION] Migration status reset")
+    }
+    
+    // MARK: - Clear Core Data
+    
+    func clearAllCoreData() async throws {
+        print("🗑️ [MIGRATION] Clearing all Core Data...")
+        
+        let context = stack.newBackgroundContext()
+        
+        try await context.perform {
+            let entityNames = [
+                "TransactionEntity",
+                "AccountEntity",
+                "RecurringSeriesEntity",
+                "CustomCategoryEntity",
+                "CategoryRuleEntity",
+                "SubcategoryEntity"
+            ]
+            
+            for entityName in entityNames {
+                let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
+                let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+                
+                try context.execute(deleteRequest)
+                print("   ✓ Cleared \(entityName)")
+            }
+            
+            try context.save()
+            print("✅ [MIGRATION] All Core Data cleared")
+        }
     }
     
     // MARK: - Private Migration Methods
@@ -154,6 +193,116 @@ class DataMigrationService {
             if context.hasChanges {
                 try context.save()
                 print("   ✅ [MIGRATION] Batch \(batchIndex) saved")
+            }
+        }
+    }
+    
+    private func migrateSubcategories() async throws {
+        print("📦 [MIGRATION] Migrating subcategories...")
+        
+        let subcategories = userDefaultsRepo.loadSubcategories()
+        print("📊 [MIGRATION] Found \(subcategories.count) subcategories to migrate")
+        
+        guard !subcategories.isEmpty else {
+            print("⏭️ [MIGRATION] No subcategories to migrate")
+            return
+        }
+        
+        let context = stack.newBackgroundContext()
+        
+        try await context.perform {
+            for subcategory in subcategories {
+                _ = SubcategoryEntity.from(subcategory, context: context)
+                print("   ✓ Migrated subcategory: \(subcategory.name)")
+            }
+            
+            if context.hasChanges {
+                try context.save()
+                print("✅ [MIGRATION] Saved \(subcategories.count) subcategories to Core Data")
+            }
+        }
+    }
+    
+    private func migrateCategoryRules() async throws {
+        print("📦 [MIGRATION] Migrating category rules...")
+        
+        let rules = userDefaultsRepo.loadCategoryRules()
+        print("📊 [MIGRATION] Found \(rules.count) rules to migrate")
+        
+        guard !rules.isEmpty else {
+            print("⏭️ [MIGRATION] No category rules to migrate")
+            return
+        }
+        
+        let context = stack.newBackgroundContext()
+        
+        try await context.perform {
+            for rule in rules {
+                _ = CategoryRuleEntity.from(rule, context: context)
+                print("   ✓ Migrated rule: \(rule.description) → \(rule.category)")
+            }
+            
+            if context.hasChanges {
+                try context.save()
+                print("✅ [MIGRATION] Saved \(rules.count) category rules to Core Data")
+            }
+        }
+    }
+    
+    private func migrateCustomCategories() async throws {
+        print("📦 [MIGRATION] Migrating custom categories...")
+        
+        let categories = userDefaultsRepo.loadCategories()
+        print("📊 [MIGRATION] Found \(categories.count) categories to migrate")
+        
+        guard !categories.isEmpty else {
+            print("⏭️ [MIGRATION] No categories to migrate")
+            return
+        }
+        
+        let context = stack.newBackgroundContext()
+        
+        try await context.perform {
+            for category in categories {
+                _ = CustomCategoryEntity.from(category, context: context)
+                print("   ✓ Migrated category: \(category.name)")
+            }
+            
+            if context.hasChanges {
+                try context.save()
+                print("✅ [MIGRATION] Saved \(categories.count) categories to Core Data")
+            }
+        }
+    }
+    
+    private func migrateRecurringSeries() async throws {
+        print("📦 [MIGRATION] Migrating recurring series...")
+        
+        let series = userDefaultsRepo.loadRecurringSeries()
+        print("📊 [MIGRATION] Found \(series.count) recurring series to migrate")
+        
+        guard !series.isEmpty else {
+            print("⏭️ [MIGRATION] No recurring series to migrate")
+            return
+        }
+        
+        let context = stack.newBackgroundContext()
+        
+        try await context.perform {
+            for item in series {
+                let entity = RecurringSeriesEntity.from(item, context: context)
+                
+                // Set account relationship if exists
+                if let accountId = item.accountId {
+                    entity.account = self.fetchAccount(id: accountId, context: context)
+                }
+                
+                print("   ✓ Migrated recurring series: \(item.description)")
+            }
+            
+            if context.hasChanges {
+                try context.save()
+                print("✅ [MIGRATION] Saved \(series.count) recurring series to Core Data")
             }
         }
     }

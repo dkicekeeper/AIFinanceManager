@@ -30,7 +30,7 @@ class AppCoordinator: ObservableObject {
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
-    private let migrationService = DataMigrationService()
+    private lazy var migrationService = DataMigrationService()
     private var migrationCompleted = false
 
     // MARK: - Initialization
@@ -90,6 +90,11 @@ class AppCoordinator: ObservableObject {
                 try await migrationService.migrateAllData()
                 migrationCompleted = true
                 print("✅ [APP_COORDINATOR] Migration completed")
+                
+                // Reload all ViewModels after migration
+                print("🔄 [APP_COORDINATOR] Reloading ViewModels after migration...")
+                accountsViewModel.reloadFromStorage()
+                categoriesViewModel.reloadFromStorage()
             } catch {
                 print("❌ [APP_COORDINATOR] Migration failed: \(error)")
                 // Continue with UserDefaults fallback
