@@ -12,6 +12,17 @@ import Combine
 @MainActor
 class TransactionsViewModel: ObservableObject {
     @Published var allTransactions: [Transaction] = []
+    
+    /// Transactions optimized for UI display (recent 12 months by default)
+    /// Use this for lists and UI rendering for better performance
+    @Published var displayTransactions: [Transaction] = []
+    
+    /// Controls how many months to load for initial display (default: 12 months)
+    var displayMonthsRange: Int = 12
+    
+    /// Indicates if older transactions are available to load
+    @Published var hasOlderTransactions: Bool = false
+    
     @Published var categoryRules: [CategoryRule] = []
     @Published var accounts: [Account] = []
     @Published var customCategories: [CustomCategory] = []
@@ -41,6 +52,14 @@ class TransactionsViewModel: ObservableObject {
 
     // Transaction indexes for fast filtering
     private let indexManager = TransactionIndexManager()
+    
+    // MARK: - Batch Mode for Performance
+    
+    /// Batch mode delays expensive operations (balance recalculation, saving) until endBatch()
+    /// Use this when performing multiple operations at once (e.g., CSV import, bulk delete)
+    private var isBatchMode = false
+    private var pendingBalanceRecalculation = false
+    private var pendingSave = false
 
     func invalidateCaches() {
         summaryCacheInvalidated = true
@@ -51,7 +70,9 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Dependencies
 
-    weak var accountsViewModel: AccountsViewModel?
+    /// Account balance service for synchronizing balances
+    /// Strong reference prevents silent failures when updating balances
+    private let accountBalanceService: AccountBalanceServiceProtocol
 
     // MARK: - Repository
 
@@ -59,10 +80,39 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
+    init(
+        repository: DataRepositoryProtocol = UserDefaultsRepository(),
+        accountBalanceService: AccountBalanceServiceProtocol
+    ) {
         self.repository = repository
+        self.accountBalanceService = accountBalanceService
         print("🏗️ [INIT] Initializing TransactionsViewModel (deferred loading)")
+        print("🔗 [INIT] AccountBalanceService injected: \(type(of: accountBalanceService))")
         // Don't load data synchronously in init - use loadDataAsync() instead
+        
+        // Setup observers for recurring series changes
+        setupRecurringSeriesObserver()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    /// Setup observer for recurring series changes
+    private func setupRecurringSeriesObserver() {
+        NotificationCenter.default.addObserver(
+            forName: .recurringSeriesChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let seriesId = notification.userInfo?["seriesId"] as? String else {
+                return
+            }
+            
+            print("📢 [OBSERVER] Received recurringSeriesChanged for series: \(seriesId)")
+            self.regenerateRecurringTransactions(for: seriesId)
+        }
     }
     
     private var isDataLoaded = false
@@ -667,12 +717,18 @@ class TransactionsViewModel: ObservableObject {
             insertTransactionsSorted(uniqueNew)
             invalidateCaches()
             rebuildIndexes()
-            recalculateAccountBalances()
-            saveToStorage()
+            scheduleBalanceRecalculation()
+            scheduleSave()
         }
     }
     
-    /// Добавляет транзакции без сохранения и пересчета балансов (для массового импорта)
+    /// Добавляет транзакции для импорта (используйте beginBatch/endBatch для оптимизации)
+    /// Example:
+    /// ```
+    /// viewModel.beginBatch()
+    /// viewModel.addTransactionsForImport(transactions)
+    /// viewModel.endBatch() // Balance calculation happens once here
+    /// ```
     func addTransactionsForImport(_ newTransactions: [Transaction]) {
         let processedTransactions = newTransactions.map { transaction -> Transaction in
             let formattedDescription = formatMerchantName(transaction.description)
@@ -882,9 +938,9 @@ class TransactionsViewModel: ObservableObject {
             insertTransactionsSorted(transactionsWithRules)
             print("🔄 [TRANSACTION] Invalidating caches and recalculating balances")
             invalidateCaches()
-            recalculateAccountBalances()
+            scheduleBalanceRecalculation()
             print("💾 [TRANSACTION] Saving to storage")
-            saveToStorage()
+            scheduleSave()
             print("✅ [TRANSACTION] Transaction added successfully")
         } else {
             print("⚠️ [TRANSACTION] Transaction with ID \(transactionWithID.id) already exists, skipping")
@@ -1073,15 +1129,17 @@ class TransactionsViewModel: ObservableObject {
 
         print("🔄 [TRANSACTION] Recalculating balances after delete")
         invalidateCaches()
-        recalculateAccountBalances()
+        scheduleBalanceRecalculation()
         
-        // Логируем балансы ПОСЛЕ пересчета
-        print("💰 [TRANSACTION] BALANCES AFTER RECALCULATE:")
-        for account in accounts {
-            print("   💳 '\(account.name)': \(account.balance)")
+        // Note: Balance logging happens after recalculation completes
+        if !isBatchMode {
+            print("💰 [TRANSACTION] BALANCES AFTER RECALCULATE:")
+            for account in accounts {
+                print("   💳 '\(account.name)': \(account.balance)")
+            }
         }
         
-        saveToStorage()
+        scheduleSave()
         
         print("✅ [TRANSACTION] ========== DELETE COMPLETED ==========")
     }
@@ -1121,8 +1179,8 @@ class TransactionsViewModel: ObservableObject {
         allTransactions = newTransactions
 
         invalidateCaches()
-        recalculateAccountBalances()
-        saveToStorage()
+        scheduleBalanceRecalculation()
+        scheduleSave()
     }
 
     // MARK: - Custom Categories
@@ -1244,14 +1302,10 @@ class TransactionsViewModel: ObservableObject {
 
         insertTransactionsSorted([transferTx])
         
-        // CRITICAL: Синхронизируем обновленные балансы с AccountsViewModel
-        // Без этого UI не обновится, т.к. карточки счетов используют accountsViewModel.accounts
-        if let accountsVM = accountsViewModel {
-            print("🔗 [TRANSFER] Syncing balances with AccountsViewModel")
-            accountsVM.syncAccountBalances(accounts)
-        } else {
-            print("⚠️ [TRANSFER] AccountsViewModel is nil, skipping balance sync")
-        }
+        // CRITICAL: Синхронизируем обновленные балансы с AccountBalanceService
+        // Без этого UI не обновится, т.к. карточки счетов используют accounts
+        print("🔗 [TRANSFER] Syncing balances with AccountBalanceService")
+        accountBalanceService.syncAccountBalances(accounts)
         
         saveToStorage()
     }
@@ -1503,26 +1557,61 @@ class TransactionsViewModel: ObservableObject {
     
     private func loadFromStorage() {
         print("📂 [STORAGE] Loading data from storage in TransactionsViewModel")
-        allTransactions = repository.loadTransactions()
-        categoryRules = repository.loadCategoryRules()
-        accounts = repository.loadAccounts()
-
-        print("📊 [STORAGE] Loaded \(accounts.count) accounts in TransactionsViewModel")
         
-        // CRITICAL: Calculate initial balances by subtracting all transactions from current balance
-        // This ensures we have the true "starting capital" without any transactions
-        for account in accounts {
-            print("   💰 '\(account.name)': current balance = \(account.balance)")
-            if initialAccountBalances[account.id] == nil {
-                // Calculate the sum of all transactions for this account
-                let transactionsSum = calculateTransactionsBalance(for: account.id)
-                // Initial balance = current balance - sum of all transactions
-                let initialBalance = account.balance - transactionsSum
-                initialAccountBalances[account.id] = initialBalance
-                print("   📝 '\(account.name)': initial balance (without transactions) = \(initialBalance), transactions sum = \(transactionsSum)")
+        // OPTIMIZATION: Load recent transactions first for fast UI display
+        let now = Date()
+        let calendar = Calendar.current
+        guard let startDate = calendar.date(byAdding: .month, value: -displayMonthsRange, to: now) else {
+            // Fallback to loading all transactions
+            allTransactions = repository.loadTransactions(dateRange: nil)
+            displayTransactions = allTransactions
+            hasOlderTransactions = false
+            print("⚠️ [STORAGE] Failed to calculate date range, loaded all transactions")
+            loadOtherData()
+            return
+        }
+        
+        let recentDateRange = DateInterval(start: startDate, end: now)
+        
+        // Load recent transactions for UI (fast)
+        displayTransactions = repository.loadTransactions(dateRange: recentDateRange)
+        print("✅ [STORAGE] Loaded \(displayTransactions.count) recent transactions (last \(displayMonthsRange) months) for display")
+        
+        // Load ALL transactions asynchronously for calculations
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+            
+            print("📂 [STORAGE_BG] Loading ALL transactions in background for calculations...")
+            let allTxns = self.repository.loadTransactions(dateRange: nil)
+            
+            await MainActor.run {
+                self.allTransactions = allTxns
+                self.hasOlderTransactions = allTxns.count > self.displayTransactions.count
+                print("✅ [STORAGE_BG] Loaded \(allTxns.count) total transactions")
+                
+                if self.hasOlderTransactions {
+                    print("ℹ️ [STORAGE_BG] \(allTxns.count - self.displayTransactions.count) older transactions available")
+                }
+                
+                // Recalculate caches with full data
+                self.invalidateCaches()
+                self.rebuildIndexes()
             }
         }
-
+        
+        loadOtherData()
+    }
+    
+    private func loadOtherData() {
+        categoryRules = repository.loadCategoryRules()
+        
+        // Load accounts from AccountBalanceService (single source of truth)
+        accounts = accountBalanceService.accounts
+        print("📊 [STORAGE] Loaded \(accounts.count) accounts from AccountBalanceService")
+        
+        // Note: Initial balances will be calculated after ALL transactions are loaded
+        // This happens asynchronously in the background task above
+        
         customCategories = repository.loadCategories()
         recurringSeries = repository.loadRecurringSeries()
         recurringOccurrences = repository.loadRecurringOccurrences()
@@ -1530,20 +1619,56 @@ class TransactionsViewModel: ObservableObject {
         categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
 
-        print("✅ [STORAGE] Data loaded successfully. Balances already calculated and stored.")
+        print("✅ [STORAGE] Core data loaded successfully")
+        
+        // Calculate initial balances with displayTransactions for now
+        // Will be recalculated when all transactions load in background
+        for account in accounts {
+            print("   💰 '\(account.name)': current balance = \(account.balance)")
+            if initialAccountBalances[account.id] == nil {
+                // Calculate the sum of display transactions for this account (temporary)
+                let transactionsSum = displayTransactions
+                    .filter { $0.accountId == account.id || $0.targetAccountId == account.id }
+                    .reduce(0.0) { sum, tx in
+                        if tx.accountId == account.id {
+                            return sum + (tx.type == .income ? tx.amount : -tx.amount)
+                        } else if tx.targetAccountId == account.id {
+                            return sum + tx.amount // Transfer in
+                        }
+                        return sum
+                    }
+                let initialBalance = account.balance - transactionsSum
+                initialAccountBalances[account.id] = initialBalance
+                print("   📝 '\(account.name)': initial balance (temporary, will recalc) = \(initialBalance)")
+            }
+        }
+
         // NOTE: Do NOT call recalculateAccountBalances() here!
         // Balances are already calculated and saved in Core Data.
-        // Calling it again will double/triple/etc the balances on each app launch.
-        // recalculateAccountBalances() should only be called after:
-        // - Adding/deleting/editing transactions
-        // - Importing CSV
-        // - Other operations that modify transactions
+        // They will be recalculated when all transactions finish loading in background
 
-        // Build indexes for fast filtering
+        // Build indexes for fast filtering (with displayTransactions for now)
         rebuildIndexes()
 
         // Precompute currency conversions in background for better UI performance
         precomputeCurrencyConversions()
+    }
+    
+    /// Load older transactions beyond the initial display range
+    /// Call this when user scrolls to the bottom or requests to view older data
+    func loadOlderTransactions() {
+        guard hasOlderTransactions else {
+            print("ℹ️ [LOAD_OLDER] No older transactions to load")
+            return
+        }
+        
+        print("📂 [LOAD_OLDER] Loading older transactions...")
+        
+        // displayTransactions should now include all transactions
+        displayTransactions = allTransactions
+        hasOlderTransactions = false
+        
+        print("✅ [LOAD_OLDER] Now displaying all \(displayTransactions.count) transactions")
     }
     
     /// Reset and recalculate all account balances from scratch
@@ -1771,24 +1896,20 @@ class TransactionsViewModel: ObservableObject {
             print("💰 [BALANCE] AFTER - Account '\(account.name)' (ID: \(account.id)): balance = \(account.balance)")
         }
 
-        // Синхронизируем обновленные балансы с AccountsViewModel
-        if let accountsVM = accountsViewModel {
-            print("🔗 [BALANCE] Syncing balances with AccountsViewModel")
-            print("📊 [BALANCE] Accounts to sync:")
-            for account in accounts {
-                print("   💳 '\(account.name)': \(account.balance)")
-            }
-            
-            accountsVM.syncAccountBalances(accounts)
-            
-            // ✅ Сохраняем обновленные балансы в Core Data
-            print("💾 [BALANCE] Saving updated balances to Core Data")
-            accountsVM.saveAllAccountsSync()
-            
-            print("✅ [BALANCE] Balance sync and save completed")
-        } else {
-            print("⚠️ [BALANCE] AccountsViewModel is nil, skipping balance sync")
+        // Синхронизируем обновленные балансы с AccountBalanceService
+        print("🔗 [BALANCE] Syncing balances with AccountBalanceService")
+        print("📊 [BALANCE] Accounts to sync:")
+        for account in accounts {
+            print("   💳 '\(account.name)': \(account.balance)")
         }
+        
+        accountBalanceService.syncAccountBalances(accounts)
+        
+        // ✅ Сохраняем обновленные балансы в Core Data
+        print("💾 [BALANCE] Saving updated balances to Core Data")
+        accountBalanceService.saveAllAccountsSync()
+        
+        print("✅ [BALANCE] Balance sync and save completed")
 
         if hasConversionIssues {
             currencyConversionWarning = "Не удалось конвертировать валюты для некоторых переводов. Балансы могут быть неточными. Проверьте подключение к интернету."
@@ -1864,13 +1985,35 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func deleteRecurringSeries(_ seriesId: String) {
-        recurringOccurrences.removeAll { $0.seriesId == seriesId }
-        recurringSeries.removeAll { $0.id == seriesId }
-        saveToStorage()
+        print("🗑️ [RECURRING] Deleting recurring series: \(seriesId)")
         
+        // CRITICAL: Delete all transactions associated with this series
+        let transactionsToDelete = allTransactions.filter { $0.recurringSeriesId == seriesId }
+        print("🗑️ [RECURRING] Found \(transactionsToDelete.count) transactions to delete")
+        
+        // Remove transactions
+        allTransactions.removeAll { $0.recurringSeriesId == seriesId }
+        
+        // Remove occurrences
+        recurringOccurrences.removeAll { $0.seriesId == seriesId }
+        
+        // Remove series
+        recurringSeries.removeAll { $0.id == seriesId }
+        
+        // CRITICAL: Recalculate balances after deleting transactions
+        print("🔄 [RECURRING] Recalculating balances after series deletion")
+        invalidateCaches()
+        rebuildIndexes()
+        scheduleBalanceRecalculation()
+        
+        scheduleSave()
+        
+        // Cancel notifications
         Task {
             await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
         }
+        
+        print("✅ [RECURRING] Series and associated transactions deleted")
     }
     
     // MARK: - Subscriptions
@@ -1923,6 +2066,58 @@ class TransactionsViewModel: ObservableObject {
     
     private static var timeFormatter: DateFormatter {
         DateFormatters.timeFormatter
+    }
+    
+    /// Regenerate transactions for a specific recurring series after it was updated
+    /// Deletes future transactions and generates new ones based on updated series
+    /// - Parameter seriesId: ID of the recurring series that was updated
+    private func regenerateRecurringTransactions(for seriesId: String) {
+        print("🔄 [RECURRING_REGEN] Starting regeneration for series: \(seriesId)")
+        
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        // Step 1: Delete all FUTURE transactions for this series
+        let futureTransactionsCount = allTransactions.filter { transaction in
+            guard transaction.recurringSeriesId == seriesId else { return false }
+            guard let date = DateFormatters.dateFormatter.date(from: transaction.date) else {
+                return false
+            }
+            return date > today
+        }.count
+        
+        print("🗑️ [RECURRING_REGEN] Deleting \(futureTransactionsCount) future transactions")
+        allTransactions.removeAll { transaction in
+            guard transaction.recurringSeriesId == seriesId else { return false }
+            guard let date = DateFormatters.dateFormatter.date(from: transaction.date) else {
+                return false
+            }
+            return date > today
+        }
+        
+        // Step 2: Delete future occurrences
+        recurringOccurrences.removeAll { occurrence in
+            guard occurrence.seriesId == seriesId else { return false }
+            guard let date = DateFormatters.dateFormatter.date(from: occurrence.occurrenceDate) else {
+                return false
+            }
+            return date > today
+        }
+        
+        // Step 3: Regenerate transactions for this series
+        print("♻️ [RECURRING_REGEN] Regenerating transactions")
+        generateRecurringTransactions()
+        
+        // Step 4: Recalculate balances
+        print("💰 [RECURRING_REGEN] Recalculating account balances")
+        invalidateCaches()
+        rebuildIndexes()
+        scheduleBalanceRecalculation()
+        
+        // Step 5: Save
+        scheduleSave()
+        
+        print("✅ [RECURRING_REGEN] Regeneration completed for series: \(seriesId)")
     }
     
     func generateRecurringTransactions() {
@@ -2096,8 +2291,8 @@ class TransactionsViewModel: ObservableObject {
 
         // Recalculate and save if there were any changes
         if needsSave {
-            recalculateAccountBalances()
-            saveToStorage()
+            scheduleBalanceRecalculation()
+            scheduleSave()
 
             Task {
                 for series in recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
@@ -2227,6 +2422,78 @@ class TransactionsViewModel: ObservableObject {
     func rebuildIndexes() {
         print("📇 [INDEX] Rebuilding transaction indexes")
         indexManager.buildIndexes(transactions: allTransactions)
+    }
+    
+    // MARK: - Batch Mode Operations
+    
+    /// Begin batch mode - delays expensive operations until endBatch()
+    /// Use this when performing multiple operations (CSV import, bulk operations)
+    /// Example:
+    /// ```
+    /// viewModel.beginBatch()
+    /// for transaction in transactions {
+    ///     viewModel.addTransaction(transaction)
+    /// }
+    /// viewModel.endBatch() // Balance recalculation happens once here
+    /// ```
+    func beginBatch() {
+        print("📦 [BATCH] Starting batch mode")
+        isBatchMode = true
+        pendingBalanceRecalculation = false
+        pendingSave = false
+    }
+    
+    /// End batch mode and perform all pending operations
+    /// This will recalculate balances and save if needed
+    func endBatch() {
+        print("📦 [BATCH] Ending batch mode")
+        isBatchMode = false
+        
+        var operationsPerformed: [String] = []
+        
+        if pendingBalanceRecalculation {
+            print("💰 [BATCH] Performing pending balance recalculation")
+            recalculateAccountBalances()
+            operationsPerformed.append("balance recalc")
+            pendingBalanceRecalculation = false
+        }
+        
+        if pendingSave {
+            print("💾 [BATCH] Performing pending save")
+            saveToStorage()
+            operationsPerformed.append("save")
+            pendingSave = false
+        }
+        
+        if operationsPerformed.isEmpty {
+            print("✅ [BATCH] Complete - no operations were needed")
+        } else {
+            print("✅ [BATCH] Complete - performed: \(operationsPerformed.joined(separator: ", "))")
+        }
+    }
+    
+    /// Helper method to schedule balance recalculation
+    /// In batch mode, this is delayed until endBatch()
+    /// In normal mode, this is executed immediately
+    private func scheduleBalanceRecalculation() {
+        if isBatchMode {
+            pendingBalanceRecalculation = true
+            print("📦 [BATCH] Balance recalculation scheduled (deferred)")
+        } else {
+            recalculateAccountBalances()
+        }
+    }
+    
+    /// Helper method to schedule save
+    /// In batch mode, this is delayed until endBatch()
+    /// In normal mode, this is executed immediately
+    private func scheduleSave() {
+        if isBatchMode {
+            pendingSave = true
+            print("📦 [BATCH] Save scheduled (deferred)")
+        } else {
+            saveToStorage()
+        }
     }
 
     // MARK: - Currency Conversion Cache

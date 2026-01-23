@@ -18,6 +18,9 @@ final class CoreDataRepository: DataRepositoryProtocol {
     private let stack = CoreDataStack.shared
     private let userDefaultsRepository = UserDefaultsRepository()
     
+    /// Save coordinator to prevent race conditions
+    private let saveCoordinator = CoreDataSaveCoordinator()
+    
     // MARK: - Initialization
     
     init() {
@@ -26,13 +29,26 @@ final class CoreDataRepository: DataRepositoryProtocol {
     
     // MARK: - Transactions
     
-    func loadTransactions() -> [Transaction] {
-        print("📂 [CORE_DATA_REPO] Loading transactions from Core Data")
+    func loadTransactions(dateRange: DateInterval? = nil) -> [Transaction] {
+        if let dateRange = dateRange {
+            print("📂 [CORE_DATA_REPO] Loading transactions from Core Data (date range: \(dateRange.start) to \(dateRange.end))")
+        } else {
+            print("📂 [CORE_DATA_REPO] Loading ALL transactions from Core Data")
+        }
         PerformanceProfiler.start("CoreDataRepository.loadTransactions")
         
         let context = stack.viewContext
         let request = TransactionEntity.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+        
+        // Apply date range filter if provided
+        if let dateRange = dateRange {
+            request.predicate = NSPredicate(
+                format: "date >= %@ AND date <= %@",
+                dateRange.start as NSDate,
+                dateRange.end as NSDate
+            )
+        }
         
         do {
             let entities = try context.fetch(request)
@@ -48,35 +64,36 @@ final class CoreDataRepository: DataRepositoryProtocol {
             
             // Fallback to UserDefaults if Core Data fails
             print("⚠️ [CORE_DATA_REPO] Falling back to UserDefaults")
-            return userDefaultsRepository.loadTransactions()
+            return userDefaultsRepository.loadTransactions(dateRange: dateRange)
         }
     }
     
     func saveTransactions(_ transactions: [Transaction]) {
         print("💾 [CORE_DATA_REPO] Saving \(transactions.count) transactions to Core Data")
         
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
             
             PerformanceProfiler.start("CoreDataRepository.saveTransactions")
             
-            let context = self.stack.newBackgroundContext()
-            
-            await context.perform {
-                do {
+            do {
+                try await self.saveCoordinator.performSave(operation: "saveTransactions") { context in
                     // First, fetch all existing transactions to update or delete
                     let fetchRequest = TransactionEntity.fetchRequest()
                     let existingEntities = try context.fetch(fetchRequest)
                     
-                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    // Build dictionary safely
+                    // NOTE: Unique constraints now prevent new duplicates at SQLite level
+                    // This code remains for cleaning up existing duplicates from before constraints were added
+                    // TODO: Remove this duplicate handling code after a few releases (v2.0+)
                     var existingDict: [String: TransactionEntity] = [:]
                     for entity in existingEntities {
                         let id = entity.id ?? ""
                         if !id.isEmpty && existingDict[id] == nil {
                             existingDict[id] = entity
                         } else if !id.isEmpty {
-                            // Found duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found duplicate transaction entity with id: \(id), deleting duplicate")
+                            // Found pre-existing duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found legacy duplicate transaction entity with id: \(id), deleting")
                             context.delete(entity)
                         }
                     }
@@ -133,18 +150,15 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             context.delete(entity)
                         }
                     }
-                    
-                    // Save if there are changes
-                    if context.hasChanges {
-                        try context.save()
-                    }
-                } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving transactions: \(error)")
                 }
+                
+                PerformanceProfiler.end("CoreDataRepository.saveTransactions")
+                print("✅ [CORE_DATA_REPO] Transactions saved successfully")
+                
+            } catch {
+                PerformanceProfiler.end("CoreDataRepository.saveTransactions")
+                print("❌ [CORE_DATA_REPO] Error saving transactions: \(error)")
             }
-            
-            PerformanceProfiler.end("CoreDataRepository.saveTransactions")
-            print("✅ [CORE_DATA_REPO] Transactions saved successfully")
         }
     }
     
@@ -179,68 +193,65 @@ final class CoreDataRepository: DataRepositoryProtocol {
     func saveAccounts(_ accounts: [Account]) {
         print("💾 [CORE_DATA_REPO] Saving \(accounts.count) accounts to Core Data")
         
-        // CRITICAL: Use viewContext for immediate save to prevent data loss
-        // This ensures data is persisted even if app terminates quickly
-        let context = stack.viewContext
-        
-        Task { @MainActor in
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            
             PerformanceProfiler.start("CoreDataRepository.saveAccounts")
             
             do {
-                // Fetch all existing accounts
-                let fetchRequest = AccountEntity.fetchRequest()
-                let existingEntities = try context.fetch(fetchRequest)
-                
-                // Build dictionary safely, handling duplicates by keeping the first occurrence
-                var existingDict: [String: AccountEntity] = [:]
-                for entity in existingEntities {
-                    let id = entity.id ?? ""
-                    if !id.isEmpty && existingDict[id] == nil {
-                        existingDict[id] = entity
-                    } else if !id.isEmpty {
-                        // Found duplicate - delete the extra entity
-                        print("⚠️ [CORE_DATA_REPO] Found duplicate account entity with id: \(id), deleting duplicate")
-                        context.delete(entity)
-                    }
-                }
-                
-                var keptIds = Set<String>()
-                
-                // Update or create accounts
-                for account in accounts {
-                    keptIds.insert(account.id)
+                try await self.saveCoordinator.performSave(operation: "saveAccounts") { context in
+                    // Fetch all existing accounts
+                    let fetchRequest = AccountEntity.fetchRequest()
+                    let existingEntities = try context.fetch(fetchRequest)
                     
-                    if let existing = existingDict[account.id] {
-                        // Update existing
-                        existing.name = account.name
-                        existing.balance = account.balance
-                        existing.currency = account.currency
-                        existing.logo = account.bankLogo.rawValue
-                        existing.isDeposit = account.isDeposit
-                        existing.bankName = account.depositInfo?.bankName
-                    } else {
-                        // Create new
-                        _ = AccountEntity.from(account, context: context)
+                    // Build dictionary safely, handling duplicates by keeping the first occurrence
+                    var existingDict: [String: AccountEntity] = [:]
+                    for entity in existingEntities {
+                        let id = entity.id ?? ""
+                        if !id.isEmpty && existingDict[id] == nil {
+                            existingDict[id] = entity
+                        } else if !id.isEmpty {
+                            // Found duplicate - delete the extra entity
+                            print("⚠️ [CORE_DATA_REPO] Found duplicate account entity with id: \(id), deleting duplicate")
+                            context.delete(entity)
+                        }
+                    }
+                    
+                    var keptIds = Set<String>()
+                    
+                    // Update or create accounts
+                    for account in accounts {
+                        keptIds.insert(account.id)
+                        
+                        if let existing = existingDict[account.id] {
+                            // Update existing
+                            existing.name = account.name
+                            existing.balance = account.balance
+                            existing.currency = account.currency
+                            existing.logo = account.bankLogo.rawValue
+                            existing.isDeposit = account.isDeposit
+                            existing.bankName = account.depositInfo?.bankName
+                        } else {
+                            // Create new
+                            _ = AccountEntity.from(account, context: context)
+                        }
+                    }
+                    
+                    // Delete accounts that no longer exist
+                    for entity in existingEntities {
+                        if let id = entity.id, !keptIds.contains(id) {
+                            context.delete(entity)
+                        }
                     }
                 }
                 
-                // Delete accounts that no longer exist
-                for entity in existingEntities {
-                    if let id = entity.id, !keptIds.contains(id) {
-                        context.delete(entity)
-                    }
-                }
+                PerformanceProfiler.end("CoreDataRepository.saveAccounts")
+                print("✅ [CORE_DATA_REPO] Accounts saved successfully")
                 
-                // Save if there are changes
-                if context.hasChanges {
-                    try context.save()
-                    print("✅ [CORE_DATA_REPO] Accounts saved successfully")
-                }
             } catch {
+                PerformanceProfiler.end("CoreDataRepository.saveAccounts")
                 print("❌ [CORE_DATA_REPO] Error saving accounts: \(error)")
             }
-            
-            PerformanceProfiler.end("CoreDataRepository.saveAccounts")
         }
     }
     
@@ -503,15 +514,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
     func saveRecurringSeries(_ series: [RecurringSeries]) {
         print("💾 [CORE_DATA_REPO] Saving \(series.count) recurring series to Core Data")
         
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
             
             PerformanceProfiler.start("CoreDataRepository.saveRecurringSeries")
             
-            let context = self.stack.newBackgroundContext()
-            
-            await context.perform {
-                do {
+            do {
+                try await self.saveCoordinator.performSave(operation: "saveRecurringSeries") { context in
                     // Fetch all existing recurring series
                     let fetchRequest = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
                     let existingEntities = try context.fetch(fetchRequest)
@@ -572,18 +581,15 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             context.delete(entity)
                         }
                     }
-                    
-                    // Save if there are changes
-                    if context.hasChanges {
-                        try context.save()
-                    }
-                } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving recurring series: \(error)")
                 }
+                
+                PerformanceProfiler.end("CoreDataRepository.saveRecurringSeries")
+                print("✅ [CORE_DATA_REPO] Recurring series saved successfully")
+                
+            } catch {
+                PerformanceProfiler.end("CoreDataRepository.saveRecurringSeries")
+                print("❌ [CORE_DATA_REPO] Error saving recurring series: \(error)")
             }
-            
-            PerformanceProfiler.end("CoreDataRepository.saveRecurringSeries")
-            print("✅ [CORE_DATA_REPO] Recurring series saved successfully")
         }
     }
     
@@ -618,15 +624,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
     func saveCategories(_ categories: [CustomCategory]) {
         print("💾 [CORE_DATA_REPO] Saving \(categories.count) categories to Core Data")
         
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
             
             PerformanceProfiler.start("CoreDataRepository.saveCategories")
             
-            let context = self.stack.newBackgroundContext()
-            
-            await context.perform {
-                do {
+            do {
+                try await self.saveCoordinator.performSave(operation: "saveCategories") { context in
                     // Fetch all existing categories
                     let fetchRequest = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
                     let existingEntities = try context.fetch(fetchRequest)
@@ -668,18 +672,15 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             context.delete(entity)
                         }
                     }
-                    
-                    // Save if there are changes
-                    if context.hasChanges {
-                        try context.save()
-                    }
-                } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving categories: \(error)")
                 }
+                
+                PerformanceProfiler.end("CoreDataRepository.saveCategories")
+                print("✅ [CORE_DATA_REPO] Categories saved successfully")
+                
+            } catch {
+                PerformanceProfiler.end("CoreDataRepository.saveCategories")
+                print("❌ [CORE_DATA_REPO] Error saving categories: \(error)")
             }
-            
-            PerformanceProfiler.end("CoreDataRepository.saveCategories")
-            print("✅ [CORE_DATA_REPO] Categories saved successfully")
         }
     }
     

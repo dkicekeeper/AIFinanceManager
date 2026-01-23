@@ -36,12 +36,26 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     
     // MARK: - Transactions
     
-    func loadTransactions() -> [Transaction] {
+    func loadTransactions(dateRange: DateInterval? = nil) -> [Transaction] {
         guard let data = userDefaults.data(forKey: storageKeyTransactions),
               let decoded = try? JSONDecoder().decode([Transaction].self, from: data) else {
             return []
         }
-        return decoded
+        
+        // Apply date range filter if provided
+        guard let dateRange = dateRange else {
+            return decoded
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        
+        return decoded.filter { transaction in
+            guard let transactionDate = dateFormatter.date(from: transaction.date) else {
+                return false
+            }
+            return transactionDate >= dateRange.start && transactionDate <= dateRange.end
+        }
     }
     
     func saveTransactions(_ transactions: [Transaction]) {

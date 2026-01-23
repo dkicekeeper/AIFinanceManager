@@ -10,6 +10,42 @@ import SwiftUI
 import UIKit
 import Combine
 
+// MARK: - Transaction Fingerprint
+
+/// Fingerprint for detecting duplicate transactions
+/// Uses normalized values for reliable duplicate detection
+struct TransactionFingerprint: Hashable {
+    let date: String
+    let amount: Double
+    let description: String
+    let accountId: String
+    let type: String
+    
+    init(from transaction: Transaction) {
+        self.date = transaction.date
+        self.amount = transaction.amount
+        // Normalize description: lowercase, trim, remove extra spaces
+        self.description = transaction.description
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        self.accountId = transaction.accountId ?? ""
+        self.type = transaction.type.rawValue
+    }
+    
+    /// Create fingerprint from raw CSV data
+    init(date: String, amount: Double, description: String, accountId: String?, type: TransactionType) {
+        self.date = date
+        self.amount = amount
+        self.description = description
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        self.accountId = accountId ?? ""
+        self.type = type.rawValue
+    }
+}
+
 class CSVImportService {
     static func importTransactions(
         csvFile: CSVFile,
@@ -22,12 +58,20 @@ class CSVImportService {
     ) async -> ImportResult {
         var importedCount = 0
         var skippedCount = 0
+        var duplicatesSkipped = 0 // Дубликаты (по fingerprint)
         var createdAccounts = 0 // Создание счетов при импорте
         var createdCategories = 0
         var createdSubcategories = 0
         var errors: [String] = []
         
         let totalRows = csvFile.rows.count
+        
+        // Build fingerprint set of existing transactions for duplicate detection
+        print("🔍 [CSV_IMPORT] Building fingerprint set from existing transactions")
+        let existingFingerprints = await MainActor.run {
+            Set(transactionsViewModel.allTransactions.map { TransactionFingerprint(from: $0) })
+        }
+        print("🔍 [CSV_IMPORT] Found \(existingFingerprints.count) existing transaction fingerprints")
         
         // Получаем индексы колонок
         let dateIndex = columnMapping.dateColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
@@ -48,6 +92,7 @@ class CSVImportService {
             return ImportResult(
                 importedCount: 0,
                 skippedCount: csvFile.rowCount,
+                duplicatesSkipped: 0,
                 createdAccounts: 0,
                 createdCategories: 0,
                 createdSubcategories: 0,
@@ -60,6 +105,10 @@ class CSVImportService {
             if let accountsVM = accountsViewModel {
                 transactionsViewModel.accounts = accountsVM.accounts
             }
+            
+            // Start batch mode to defer expensive operations until end
+            print("📦 [CSV_IMPORT] Starting batch mode for performance")
+            transactionsViewModel.beginBatch()
         }
         
         // Батчинг для экономии памяти: обрабатываем транзакции порциями
@@ -469,6 +518,15 @@ class CSVImportService {
                 createdAt: createdAt // Используем дату транзакции + небольшое смещение для сохранения порядка
             )
             
+            // Check for duplicates using fingerprint
+            let fingerprint = TransactionFingerprint(from: transaction)
+            if existingFingerprints.contains(fingerprint) {
+                duplicatesSkipped += 1
+                skippedCount += 1
+                print("⏭️ [CSV_IMPORT] Row \(rowIndex + 2): Duplicate detected (fingerprint match), skipping")
+                continue
+            }
+            
             transactionsBatch.append(transaction)
             
             // Накапливаем связи подкатегорий с транзакцией для текущего батча
@@ -514,8 +572,14 @@ class CSVImportService {
             // чтобы убедиться, что все данные сохранены после импорта
             categoriesViewModel.saveAllData()
             
-            // Пересчитываем балансы один раз в конце
-            transactionsViewModel.recalculateAccountBalances()
+            // End batch mode - this triggers balance recalculation and save
+            print("📦 [CSV_IMPORT] Ending batch mode - triggering balance recalculation")
+            transactionsViewModel.endBatch()
+            
+            // Note: endBatch() now handles:
+            // - recalculateAccountBalances()
+            // - saveToStorage()
+            // But we still need to do some manual steps for CSV import
 
             // Перестраиваем индексы для быстрой фильтрации
             transactionsViewModel.rebuildIndexes()
@@ -538,10 +602,7 @@ class CSVImportService {
                 accountsVM.saveAllAccountsSync()
             }
             
-            // Сохраняем все данные один раз в конце (синхронно для импорта)
-            // Теперь подкатегории и связи синхронизированы с CategoriesViewModel
-            // Используем синхронную версию, чтобы гарантировать сохранение
-            // до вызова reloadFromStorage() в UI
+            // Force save again to ensure everything is persisted (endBatch already saved, but sync is safer)
             transactionsViewModel.saveToStorageSync()
             
             // Принудительно уведомляем об изменении для обновления UI
@@ -555,9 +616,22 @@ class CSVImportService {
         // Очищаем накопленные данные
         allTransactionSubcategoryLinks.removeAll(keepingCapacity: false)
         
+        // Log import summary
+        print("📊 [CSV_IMPORT] Import completed:")
+        print("   ✅ Imported: \(importedCount)")
+        print("   ⏭️ Skipped: \(skippedCount - duplicatesSkipped)")
+        print("   🔄 Duplicates: \(duplicatesSkipped)")
+        print("   ➕ Accounts created: \(createdAccounts)")
+        print("   ➕ Categories created: \(createdCategories)")
+        print("   ➕ Subcategories created: \(createdSubcategories)")
+        if !errors.isEmpty {
+            print("   ⚠️ Errors: \(errors.count)")
+        }
+        
         return ImportResult(
             importedCount: importedCount,
             skippedCount: skippedCount,
+            duplicatesSkipped: duplicatesSkipped,
             createdAccounts: createdAccounts,
             createdCategories: createdCategories,
             createdSubcategories: createdSubcategories,

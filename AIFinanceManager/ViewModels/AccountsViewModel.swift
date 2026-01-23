@@ -12,7 +12,7 @@ import CoreData
 import Combine
 
 @MainActor
-class AccountsViewModel: ObservableObject {
+class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     // MARK: - Published Properties
     
     @Published var accounts: [Account] = []
@@ -62,7 +62,7 @@ class AccountsViewModel: ObservableObject {
         accounts.append(account)
         // Сохраняем начальный баланс
         initialAccountBalances[account.id] = balance
-        repository.saveAccounts(accounts)
+        saveAccounts()  // ✅ Sync save
     }
     
     func updateAccount(_ account: Account) {
@@ -85,13 +85,10 @@ class AccountsViewModel: ObservableObject {
             // Переприсваиваем весь массив для триггера @Published
             print("📢 [ACCOUNT] Reassigning accounts array to trigger @Published")
             accounts = newAccounts
-
-            // Принудительно уведомляем SwiftUI об изменении
-            print("📢 [ACCOUNT] Sending objectWillChange notification")
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
             print("💾 [ACCOUNT] Saving accounts to repository")
-            repository.saveAccounts(accounts)
+            saveAccounts()  // ✅ Sync save
             print("✅ [ACCOUNT] Accounts saved")
         } else {
             print("⚠️ [ACCOUNT] Account with ID \(account.id) not found")
@@ -101,7 +98,7 @@ class AccountsViewModel: ObservableObject {
     func deleteAccount(_ account: Account) {
         accounts.removeAll { $0.id == account.id }
         initialAccountBalances.removeValue(forKey: account.id)
-        repository.saveAccounts(accounts)
+        saveAccounts()  // ✅ Sync save
     }
     
     // MARK: - Account Balance Management
@@ -136,7 +133,7 @@ class AccountsViewModel: ObservableObject {
         // This method is kept for backward compatibility but should be refactored
         
         // Обновляем балансы (это будет пересчитано через recalculateAccountBalances в TransactionsViewModel)
-        repository.saveAccounts(accounts)
+        saveAccounts()  // ✅ Sync save
     }
     
     // MARK: - Deposit Operations
@@ -170,7 +167,7 @@ class AccountsViewModel: ObservableObject {
         
         accounts.append(account)
         initialAccountBalances[account.id] = balance
-        repository.saveAccounts(accounts)
+        saveAccounts()  // ✅ Sync save
     }
     
     func updateDeposit(_ account: Account) {
@@ -191,12 +188,9 @@ class AccountsViewModel: ObservableObject {
             // Переприсваиваем весь массив для триггера @Published
             print("📢 [ACCOUNT] Reassigning accounts array to trigger @Published")
             accounts = newAccounts
+            // NOTE: @Published automatically sends objectWillChange notification
 
-            // Принудительно уведомляем SwiftUI об изменении
-            print("📢 [ACCOUNT] Sending objectWillChange notification")
-            objectWillChange.send()
-
-            repository.saveAccounts(accounts)
+            saveAccounts()  // ✅ Sync save
             print("✅ [ACCOUNT] Deposit saved")
         }
     }
@@ -282,10 +276,7 @@ class AccountsViewModel: ObservableObject {
         // Переприсваиваем весь массив для триггера @Published
         print("📢 [ACCOUNT] Reassigning accounts array to trigger @Published")
         accounts = newAccounts
-
-        // Принудительно уведомляем SwiftUI об изменении
-        print("📢 [ACCOUNT] Sending objectWillChange notification")
-        objectWillChange.send()
+        // NOTE: @Published automatically sends objectWillChange notification
 
         print("✅ [ACCOUNT] Balance sync completed")
     }
@@ -338,5 +329,23 @@ class AccountsViewModel: ObservableObject {
             transactions: transactions,
             amount: amount
         )
+    }
+    
+    // MARK: - Private Helpers
+    
+    /// Save accounts synchronously to prevent data loss on app termination
+    private func saveAccounts() {
+        if let coreDataRepo = repository as? CoreDataRepository {
+            do {
+                try coreDataRepo.saveAccountsSync(accounts)
+                print("✅ [ACCOUNTS] \(accounts.count) accounts saved synchronously")
+            } catch {
+                print("❌ [ACCOUNTS] Failed to save accounts synchronously: \(error)")
+                // Fallback to async save
+                repository.saveAccounts(accounts)
+            }
+        } else {
+            repository.saveAccounts(accounts)
+        }
     }
 }

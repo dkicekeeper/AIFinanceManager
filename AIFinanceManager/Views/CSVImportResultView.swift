@@ -25,8 +25,21 @@ struct CSVImportResultView: View {
                 VStack(spacing: 16) {
                     StatRow(label: "Импортировано операций", value: "\(result.importedCount)", color: .green)
                     
-                    if result.skippedCount > 0 {
-                        StatRow(label: "Пропущено строк", value: "\(result.skippedCount)", color: .orange)
+                    if result.duplicatesSkipped > 0 {
+                        StatRow(
+                            label: "Дубликаты пропущены",
+                            value: "\(result.duplicatesSkipped)",
+                            color: .purple,
+                            icon: "arrow.triangle.2.circlepath"
+                        )
+                    }
+                    
+                    if result.skippedCount - result.duplicatesSkipped > 0 {
+                        StatRow(
+                            label: "Пропущено (ошибки)",
+                            value: "\(result.skippedCount - result.duplicatesSkipped)",
+                            color: .orange
+                        )
                     }
                     
                     if result.createdAccounts > 0 {
@@ -100,9 +113,21 @@ struct StatRow: View {
     let label: String
     let value: String
     let color: Color
+    let icon: String?
+    
+    init(label: String, value: String, color: Color, icon: String? = nil) {
+        self.label = label
+        self.value = value
+        self.color = color
+        self.icon = icon
+    }
     
     var body: some View {
         HStack {
+            if let icon = icon {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+            }
             Text(label)
             Spacer()
             Text(value)
@@ -116,12 +141,13 @@ struct StatRow: View {
     let result = ImportResult(
         importedCount: 10,
         skippedCount: 2,
+        duplicatesSkipped: 5,
         createdAccounts: 1,
         createdCategories: 2,
         createdSubcategories: 0,
         errors: []
     )
-    return NavigationView {
+    NavigationView {
         CSVImportResultView(result: result, onDismiss: {})
     }
 }

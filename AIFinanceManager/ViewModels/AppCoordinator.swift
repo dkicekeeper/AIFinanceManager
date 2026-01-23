@@ -52,11 +52,14 @@ class AppCoordinator: ObservableObject {
         // 4. Deposits (depends on Accounts)
         self.depositsViewModel = DepositsViewModel(repository: self.repository, accountsViewModel: accountsViewModel)
 
-        // 5. Transactions (depends on Accounts and Categories)
-        self.transactionsViewModel = TransactionsViewModel(repository: self.repository)
-
-        // Set up bidirectional dependency between TransactionsViewModel and AccountsViewModel
-        self.transactionsViewModel.accountsViewModel = accountsViewModel
+        // 5. Transactions (depends on Accounts for balance updates)
+        // Use Protocol-based DI to prevent silent failures from weak references
+        self.transactionsViewModel = TransactionsViewModel(
+            repository: self.repository,
+            accountBalanceService: accountsViewModel  // AccountsViewModel conforms to AccountBalanceServiceProtocol
+        )
+        
+        print("✅ [APP_COORDINATOR] TransactionsViewModel initialized with AccountBalanceService")
 
         // CRITICAL: Подписываемся на изменения всех дочерних ViewModels
         // Это гарантирует, что AppCoordinator будет уведомлять SwiftUI о любых изменениях

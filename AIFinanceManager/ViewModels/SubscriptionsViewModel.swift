@@ -66,7 +66,7 @@ class SubscriptionsViewModel: ObservableObject {
             startDate: startDate
         )
         recurringSeries.append(series)
-        repository.saveRecurringSeries(recurringSeries)
+        saveRecurringSeries()  // ✅ Sync save
         return series
     }
     
@@ -74,9 +74,19 @@ class SubscriptionsViewModel: ObservableObject {
         if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
             let oldSeries = recurringSeries[index]
 
-            // Если изменилась частота, нужно удалить все будущие транзакции и перегенерировать
-            let _ = oldSeries.frequency != series.frequency
-            let _ = oldSeries.startDate != series.startDate
+            // Check if need to regenerate future transactions
+            let frequencyChanged = oldSeries.frequency != series.frequency
+            let startDateChanged = oldSeries.startDate != series.startDate
+            let amountChanged = oldSeries.amount != series.amount
+            let needsRegeneration = frequencyChanged || startDateChanged || amountChanged
+
+            print("📝 [RECURRING] Updating series: \(series.id)")
+            if needsRegeneration {
+                print("🔄 [RECURRING] Changes detected - will regenerate transactions:")
+                print("   Frequency: \(frequencyChanged ? "✓" : "-")")
+                print("   Start Date: \(startDateChanged ? "✓" : "-")")
+                print("   Amount: \(amountChanged ? "✓" : "-")")
+            }
 
             // Создаем новый массив вместо модификации элемента на месте
             var newSeries = recurringSeries
@@ -84,12 +94,18 @@ class SubscriptionsViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             recurringSeries = newSeries
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
-            // Note: Deleting future transactions should be handled by TransactionsViewModel
-            // This method only updates the series
+            // Notify TransactionsViewModel to regenerate if needed
+            if needsRegeneration {
+                NotificationCenter.default.post(
+                    name: .recurringSeriesChanged,
+                    object: nil,
+                    userInfo: ["seriesId": series.id, "oldSeries": oldSeries]
+                )
+            }
 
-            repository.saveRecurringSeries(recurringSeries)
+            saveRecurringSeries()  // ✅ Sync save
         }
     }
     
@@ -101,9 +117,9 @@ class SubscriptionsViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             recurringSeries = newSeries
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
-            repository.saveRecurringSeries(recurringSeries)
+            saveRecurringSeries()  // ✅ Sync save
         }
     }
     
@@ -112,7 +128,7 @@ class SubscriptionsViewModel: ObservableObject {
         recurringOccurrences.removeAll { $0.seriesId == seriesId }
         // Удаляем серию
         recurringSeries.removeAll { $0.id == seriesId }
-        repository.saveRecurringSeries(recurringSeries)
+        saveRecurringSeries()  // ✅ Sync save
         repository.saveRecurringOccurrences(recurringOccurrences)
         
         // Cancel notifications for subscriptions
@@ -154,7 +170,7 @@ class SubscriptionsViewModel: ObservableObject {
             status: .active
         )
         recurringSeries.append(series)
-        repository.saveRecurringSeries(recurringSeries)
+        saveRecurringSeries()  // ✅ Sync save
         
         // Schedule notifications
         Task {
@@ -171,9 +187,19 @@ class SubscriptionsViewModel: ObservableObject {
         if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
             let oldSeries = recurringSeries[index]
 
-            // If frequency or start date changed, remove future transactions
-            let _ = oldSeries.frequency != series.frequency
-            let _ = oldSeries.startDate != series.startDate
+            // Check if need to regenerate future transactions
+            let frequencyChanged = oldSeries.frequency != series.frequency
+            let startDateChanged = oldSeries.startDate != series.startDate
+            let amountChanged = oldSeries.amount != series.amount
+            let needsRegeneration = frequencyChanged || startDateChanged || amountChanged
+
+            print("📝 [SUBSCRIPTION] Updating subscription: \(series.id)")
+            if needsRegeneration {
+                print("🔄 [SUBSCRIPTION] Changes detected - will regenerate transactions:")
+                print("   Frequency: \(frequencyChanged ? "✓" : "-")")
+                print("   Start Date: \(startDateChanged ? "✓" : "-")")
+                print("   Amount: \(amountChanged ? "✓" : "-")")
+            }
 
             // Создаем новый массив вместо модификации элемента на месте
             var newSeries = recurringSeries
@@ -181,11 +207,18 @@ class SubscriptionsViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             recurringSeries = newSeries
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
-            // Note: Future transaction deletion should be handled by TransactionsViewModel
+            // Notify TransactionsViewModel to regenerate if needed
+            if needsRegeneration {
+                NotificationCenter.default.post(
+                    name: .recurringSeriesChanged,
+                    object: nil,
+                    userInfo: ["seriesId": series.id, "oldSeries": oldSeries]
+                )
+            }
 
-            repository.saveRecurringSeries(recurringSeries)
+            saveRecurringSeries()  // ✅ Sync save (updateSubscription)
             
             // Update notifications
             Task {
@@ -210,9 +243,9 @@ class SubscriptionsViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             recurringSeries = newSeries
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
-            repository.saveRecurringSeries(recurringSeries)
+            saveRecurringSeries()  // ✅ Sync save
 
             // Cancel notifications
             Task {
@@ -231,9 +264,9 @@ class SubscriptionsViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             recurringSeries = newSeries
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
-            repository.saveRecurringSeries(recurringSeries)
+            saveRecurringSeries()  // ✅ Sync save (resumeSubscription)
 
             // Schedule notifications
             Task {
@@ -254,9 +287,9 @@ class SubscriptionsViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             recurringSeries = newSeries
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
-            repository.saveRecurringSeries(recurringSeries)
+            saveRecurringSeries()  // ✅ Sync save
 
             // Cancel notifications
             Task {
@@ -278,5 +311,15 @@ class SubscriptionsViewModel: ObservableObject {
     /// Get recurring series by ID
     func getRecurringSeries(by id: String) -> RecurringSeries? {
         return recurringSeries.first { $0.id == id }
+    }
+    
+    // MARK: - Private Helpers
+    
+    /// Save recurring series
+    /// Note: Uses async save through SaveCoordinator for proper Core Data handling
+    /// Recurring series have complex relationships that require background context
+    private func saveRecurringSeries() {
+        repository.saveRecurringSeries(recurringSeries)
+        print("💾 [SUBSCRIPTIONS] Saving \(recurringSeries.count) recurring series")
     }
 }

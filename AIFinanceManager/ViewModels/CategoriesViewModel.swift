@@ -48,7 +48,20 @@ class CategoriesViewModel: ObservableObject {
     
     func addCategory(_ category: CustomCategory) {
         customCategories.append(category)
-        repository.saveCategories(customCategories)
+        
+        // Use synchronous save for user-initiated actions to prevent data loss
+        if let coreDataRepo = repository as? CoreDataRepository {
+            do {
+                try coreDataRepo.saveCategoriesSync(customCategories)
+                print("✅ [CATEGORIES] Category '\(category.name)' saved synchronously")
+            } catch {
+                print("❌ [CATEGORIES] Failed to save category: \(error)")
+                // Keep async as fallback
+                repository.saveCategories(customCategories)
+            }
+        } else {
+            repository.saveCategories(customCategories)
+        }
     }
     
     func updateCategory(_ category: CustomCategory) {
@@ -56,7 +69,7 @@ class CategoriesViewModel: ObservableObject {
             // Если категория не найдена, возможно это новая категория с существующим id
             // В этом случае добавляем её
             customCategories.append(category)
-            repository.saveCategories(customCategories)
+            saveCategories()
             return
         }
 
@@ -66,9 +79,9 @@ class CategoriesViewModel: ObservableObject {
 
         // Переприсваиваем весь массив для триггера @Published
         customCategories = newCategories
-        objectWillChange.send()
+        // NOTE: @Published automatically sends objectWillChange notification
 
-        repository.saveCategories(customCategories)
+        saveCategories()
     }
     
     func deleteCategory(_ category: CustomCategory, deleteTransactions: Bool = false) {
@@ -77,7 +90,7 @@ class CategoriesViewModel: ObservableObject {
         
         // Удаляем категорию
         customCategories.removeAll { $0.id == category.id }
-        repository.saveCategories(customCategories)
+        saveCategories()
     }
     
     func getCategory(name: String, type: TransactionType) -> CustomCategory? {
@@ -103,7 +116,7 @@ class CategoriesViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             categoryRules = newRules
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
             repository.saveCategoryRules(categoryRules)
         }
@@ -131,7 +144,7 @@ class CategoriesViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             subcategories = newSubcategories
-            objectWillChange.send()
+            // NOTE: @Published automatically sends objectWillChange notification
 
             repository.saveSubcategories(subcategories)
         }
@@ -365,6 +378,24 @@ class CategoriesViewModel: ObservableObject {
         case .yearly:
             // Start of current year
             return calendar.dateInterval(of: .year, for: now)?.start ?? now
+        }
+    }
+    
+    // MARK: - Private Helpers
+    
+    /// Save categories synchronously to prevent data loss on app termination
+    private func saveCategories() {
+        if let coreDataRepo = repository as? CoreDataRepository {
+            do {
+                try coreDataRepo.saveCategoriesSync(customCategories)
+                print("✅ [CATEGORIES] \(customCategories.count) categories saved synchronously")
+            } catch {
+                print("❌ [CATEGORIES] Failed to save categories synchronously: \(error)")
+                // Fallback to async save
+                repository.saveCategories(customCategories)
+            }
+        } else {
+            repository.saveCategories(customCategories)
         }
     }
 }

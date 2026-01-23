@@ -84,22 +84,36 @@ class CoreDataStack {
         description?.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         description?.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
         
+        // Enable automatic lightweight migration
+        description?.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
+        description?.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
+        
         container.loadPersistentStores { storeDescription, error in
             if let error = error as NSError? {
-                // In production, handle this error appropriately
-                fatalError("❌ [CORE_DATA] Unresolved error \(error), \(error.userInfo)")
+                // Check if this is a migration error
+                if error.code == NSPersistentStoreIncompatibleVersionHashError ||
+                   error.code == NSMigrationMissingSourceModelError {
+                    print("⚠️ [CORE_DATA] Migration required, attempting automatic migration...")
+                    // Lightweight migration will be attempted automatically
+                    fatalError("❌ [CORE_DATA] Migration failed: \(error), \(error.userInfo)")
+                } else {
+                    // In production, handle this error appropriately
+                    fatalError("❌ [CORE_DATA] Unresolved error \(error), \(error.userInfo)")
+                }
             }
             print("✅ [CORE_DATA] Persistent store loaded: \(storeDescription)")
         }
         
         // Automatic merge from parent context
         container.viewContext.automaticallyMergesChangesFromParent = true
+        
+        // Use constraint merge policy to handle unique constraint violations
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         
         // Undo manager for view context (optional, can be disabled for performance)
         container.viewContext.undoManager = nil
         
-        print("✅ [CORE_DATA] CoreDataStack initialized")
+        print("✅ [CORE_DATA] CoreDataStack initialized with unique constraints support")
         return container
     }()
     

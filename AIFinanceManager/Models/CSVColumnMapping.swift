@@ -60,8 +60,20 @@ struct EntityMapping {
 struct ImportResult {
     let importedCount: Int
     let skippedCount: Int
+    let duplicatesSkipped: Int  // Transactions skipped due to fingerprint match
     let createdAccounts: Int
     let createdCategories: Int
     let createdSubcategories: Int
     let errors: [String]
+    
+    /// Total rows processed
+    var totalProcessed: Int {
+        return importedCount + skippedCount
+    }
+    
+    /// Success rate (0.0 to 1.0)
+    var successRate: Double {
+        guard totalProcessed > 0 else { return 0.0 }
+        return Double(importedCount) / Double(totalProcessed)
+    }
 }

@@ -12,17 +12,32 @@
         <relationship name="recurringSeries" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="RecurringSeriesEntity" inverseName="account" inverseEntity="RecurringSeriesEntity"/>
         <relationship name="targetTransactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TransactionEntity" inverseName="targetAccount" inverseEntity="TransactionEntity"/>
         <relationship name="transactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TransactionEntity" inverseName="account" inverseEntity="TransactionEntity"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="CategoryRuleEntity" representedClassName=".CategoryRuleEntity" syncable="YES">
         <attribute name="category" attributeType="String"/>
         <attribute name="id" attributeType="String"/>
         <attribute name="isEnabled" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="pattern" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="CategorySubcategoryLinkEntity" representedClassName=".CategorySubcategoryLinkEntity" syncable="YES">
         <attribute name="categoryId" attributeType="String"/>
         <attribute name="id" attributeType="String"/>
         <attribute name="subcategoryId" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="CustomCategoryEntity" representedClassName=".CustomCategoryEntity" syncable="YES">
         <attribute name="budgetAmount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
@@ -34,6 +49,11 @@
         <attribute name="id" attributeType="String"/>
         <attribute name="name" attributeType="String"/>
         <attribute name="type" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="RecurringOccurrenceEntity" representedClassName=".RecurringOccurrenceEntity" syncable="YES">
         <attribute name="id" optional="YES" attributeType="String"/>
@@ -41,6 +61,11 @@
         <attribute name="seriesId" optional="YES" attributeType="String"/>
         <attribute name="transactionId" optional="YES" attributeType="String"/>
         <relationship name="series" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecurringSeriesEntity" inverseName="occurrences" inverseEntity="RecurringSeriesEntity"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="RecurringSeriesEntity" representedClassName=".RecurringSeriesEntity" syncable="YES">
         <attribute name="amount" attributeType="Decimal" defaultValueString="0.0"/>
@@ -60,11 +85,21 @@
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="recurringSeries" inverseEntity="AccountEntity"/>
         <relationship name="occurrences" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="RecurringOccurrenceEntity" inverseName="series" inverseEntity="RecurringOccurrenceEntity"/>
         <relationship name="transactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TransactionEntity" inverseName="recurringSeries" inverseEntity="TransactionEntity"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="SubcategoryEntity" representedClassName=".SubcategoryEntity" syncable="YES">
         <attribute name="iconName" optional="YES" attributeType="String"/>
         <attribute name="id" attributeType="String"/>
         <attribute name="name" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="TransactionEntity" representedClassName=".TransactionEntity" syncable="YES">
         <attribute name="amount" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
@@ -80,10 +115,20 @@
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="transactions" inverseEntity="AccountEntity"/>
         <relationship name="recurringSeries" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecurringSeriesEntity" inverseName="transactions" inverseEntity="RecurringSeriesEntity"/>
         <relationship name="targetAccount" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="targetTransactions" inverseEntity="AccountEntity"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
     <entity name="TransactionSubcategoryLinkEntity" representedClassName=".TransactionSubcategoryLinkEntity" syncable="YES">
         <attribute name="id" attributeType="String"/>
         <attribute name="subcategoryId" attributeType="String"/>
         <attribute name="transactionId" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
     </entity>
 </model>

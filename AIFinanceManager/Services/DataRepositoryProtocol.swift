@@ -12,7 +12,12 @@ import Foundation
 /// Provides abstraction layer for data persistence
 protocol DataRepositoryProtocol {
     // MARK: - Transactions
-    func loadTransactions() -> [Transaction]
+    
+    /// Load transactions with optional date range filter
+    /// - Parameter dateRange: Optional date range to filter transactions. If nil, loads all transactions
+    /// - Returns: Array of transactions matching the filter
+    func loadTransactions(dateRange: DateInterval?) -> [Transaction]
+    
     func saveTransactions(_ transactions: [Transaction])
     
     // MARK: - Accounts
