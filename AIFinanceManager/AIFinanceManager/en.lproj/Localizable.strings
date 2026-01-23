@@ -24,6 +24,11 @@
 "navigation.importResult" = "Import Result";
 
 // MARK: - Time Filters
+"timeFilter.title" = "Time Filter";
+"timeFilter.presets" = "Presets";
+"timeFilter.customPeriod" = "Custom Period";
+"timeFilter.from" = "From";
+"timeFilter.to" = "To";
 "timeFilter.today" = "Today";
 "timeFilter.yesterday" = "Yesterday";
 "timeFilter.thisWeek" = "This Week";
@@ -50,6 +55,7 @@
 "button.retry" = "Retry";
 "button.change" = "Change";
 "button.select" = "Select";
+"button.apply" = "Apply";
 
 // MARK: - Empty States
 "emptyState.noTransactions" = "No transactions";

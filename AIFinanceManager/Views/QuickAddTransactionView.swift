@@ -14,6 +14,7 @@ struct QuickAddTransactionView: View {
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var selectedCategory: String? = nil
     @State private var selectedType: TransactionType = .expense
+    @State private var showingAddCategory = false
 
     // Кешированные данные для производительности
     @State private var cachedCategories: [String] = []
@@ -25,19 +26,25 @@ struct QuickAddTransactionView: View {
         
         Group {
             if categories.isEmpty {
-                VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                    HStack {
-                        Text(String(localized: "categories.expenseCategories", defaultValue: "Категории расходов"))
-                            .font(AppTypography.h3)
+                Button(action: {
+                    HapticManager.light()
+                    showingAddCategory = true
+                }) {
+                    VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                        HStack {
+                            Text(String(localized: "categories.expenseCategories", defaultValue: "Категории расходов"))
+                                .font(AppTypography.h3)
+                                .foregroundStyle(.primary)
+                        }
+                        
+                        Text(String(localized: "emptyState.noCategories", defaultValue: "Нет категорий"))
+                            .font(AppTypography.bodySmall)
                             .foregroundStyle(.primary)
                     }
-                    
-                    Text(String(localized: "emptyState.noCategories", defaultValue: "Нет категорий"))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .glassCardStyle(radius: AppRadius.pill)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassCardStyle(radius: AppRadius.pill)
+                .buttonStyle(.bounce)
             } else {
                 LazyVGrid(columns: gridColumns, spacing: AppSpacing.lg) {
                     ForEach(categories, id: \.self) { category in
@@ -108,11 +115,27 @@ struct QuickAddTransactionView: View {
                     accounts: accountsViewModel.accounts,
                     transactionsViewModel: transactionsViewModel,
                     categoriesViewModel: categoriesViewModel,
+                    accountsViewModel: accountsViewModel,
                     onDismiss: {
                         selectedCategory = nil
                     }
                 )
             }
+        }
+        .sheet(isPresented: $showingAddCategory) {
+            CategoryEditView(
+                categoriesViewModel: categoriesViewModel,
+                transactionsViewModel: transactionsViewModel,
+                category: nil,
+                type: .expense,
+                onSave: { category in
+                    HapticManager.success()
+                    categoriesViewModel.addCategory(category)
+                    transactionsViewModel.invalidateCaches()
+                    showingAddCategory = false
+                },
+                onCancel: { showingAddCategory = false }
+            )
         }
         .onAppear {
             updateCachedData()
@@ -178,6 +201,7 @@ struct AddTransactionModal: View {
     let accounts: [Account]
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @ObservedObject var categoriesViewModel: CategoriesViewModel
+    @ObservedObject var accountsViewModel: AccountsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     let onDismiss: () -> Void
     
@@ -202,6 +226,7 @@ struct AddTransactionModal: View {
         accounts: [Account],
         transactionsViewModel: TransactionsViewModel,
         categoriesViewModel: CategoriesViewModel,
+        accountsViewModel: AccountsViewModel,
         onDismiss: @escaping () -> Void
     ) {
         self.category = category
@@ -210,6 +235,7 @@ struct AddTransactionModal: View {
         self.accounts = accounts
         self.transactionsViewModel = transactionsViewModel
         self.categoriesViewModel = categoriesViewModel
+        self.accountsViewModel = accountsViewModel
         self.onDismiss = onDismiss
         _selectedCurrency = State(initialValue: currency)
     }
@@ -228,6 +254,19 @@ struct AddTransactionModal: View {
             return categoriesViewModel.subcategories
         }
         return categoriesViewModel.searchSubcategories(query: subcategorySearchText)
+    }
+    
+    /// Ранжированный список счетов с учетом частоты использования для данной категории
+    private var rankedAccounts: [Account] {
+        let amount = AmountFormatter.parse(amountText).map { NSDecimalNumber(decimal: $0).doubleValue }
+        
+        return accountsViewModel.rankedAccounts(
+            transactions: transactionsViewModel.allTransactions,
+            type: type,
+            amount: amount,
+            category: category,
+            sourceAccountId: nil
+        )
     }
     
     // Убрано computed property formattedAmount - оно вызывалось при каждом обновлении view
@@ -249,10 +288,10 @@ struct AddTransactionModal: View {
                     }
                 )
                 
-                // 3. Счет
+                // 3. Счет (ранжированный список)
                 if !accounts.isEmpty {
                     AccountSelectorView(
-                        accounts: accounts,
+                        accounts: rankedAccounts,
                         selectedAccountId: $selectedAccountId
                     )
                 }
@@ -373,7 +412,18 @@ struct AddTransactionModal: View {
     
     private func setupOnAppear() {
         if selectedAccountId == nil {
-            selectedAccountId = accounts.first?.id
+            // 🧠 Адаптивное автоподставление счета на основе категории
+            if let suggestedAccount = accountsViewModel.suggestedAccount(
+                forCategory: category,
+                transactions: transactionsViewModel.allTransactions,
+                amount: nil // На этом этапе сумма еще неизвестна
+            ) {
+                print("🎯 [ADAPTIVE] Suggested account '\(suggestedAccount.name)' for category '\(category)'")
+                selectedAccountId = suggestedAccount.id
+            } else {
+                // Fallback - первый счет из списка
+                selectedAccountId = accounts.first?.id
+            }
         }
         updateCurrencyForSelectedAccount()
     }

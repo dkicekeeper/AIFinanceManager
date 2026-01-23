@@ -25,7 +25,7 @@ struct TimeFilterView: View {
     var body: some View {
         NavigationView {
             List {
-                Section(header: Text("Пресеты")) {
+                Section(header: Text(String(localized: "timeFilter.presets", defaultValue: "Пресеты"))) {
                     ForEach(TimeFilterPreset.allCases.filter { $0 != .custom }, id: \.self) { preset in
                         Button(action: {
                             selectedPreset = preset
@@ -35,7 +35,7 @@ struct TimeFilterView: View {
                             }
                         }) {
                             HStack {
-                                Text(preset.rawValue)
+                                Text(preset.localizedName)
                                     .foregroundColor(.primary)
                                 Spacer()
                                 if selectedPreset == preset {
@@ -47,13 +47,13 @@ struct TimeFilterView: View {
                     }
                 }
                 
-                Section(header: Text("Пользовательский период")) {
+                Section(header: Text(String(localized: "timeFilter.customPeriod", defaultValue: "Пользовательский период"))) {
                     Button(action: {
                         selectedPreset = .custom
                         showingCustomPicker = true
                     }) {
                         HStack {
-                            Text("Пользовательский период")
+                            Text(String(localized: "timeFilter.customPeriod", defaultValue: "Пользовательский период"))
                                 .foregroundColor(.primary)
                             Spacer()
                             if selectedPreset == .custom {
@@ -64,10 +64,10 @@ struct TimeFilterView: View {
                     }
                     
                     if selectedPreset == .custom {
-                        DatePicker("С", selection: $customStartDate, displayedComponents: .date)
+                        DatePicker(String(localized: "timeFilter.from", defaultValue: "С"), selection: $customStartDate, displayedComponents: .date)
                             .datePickerStyle(.compact)
                         
-                        DatePicker("По", selection: $customEndDate, in: customStartDate..., displayedComponents: .date)
+                        DatePicker(String(localized: "timeFilter.to", defaultValue: "По"), selection: $customEndDate, in: customStartDate..., displayedComponents: .date)
                             .datePickerStyle(.compact)
                         
                         Button(action: {
@@ -76,7 +76,7 @@ struct TimeFilterView: View {
                                 dismiss()
                             }
                         }) {
-                            Text("Применить")
+                            Text(String(localized: "button.apply", defaultValue: "Применить"))
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(customEndDate >= customStartDate ? Color.blue : Color.gray)
@@ -87,7 +87,7 @@ struct TimeFilterView: View {
                     }
                 }
             }
-            .navigationTitle("Фильтр по времени")
+            .navigationTitle(String(localized: "timeFilter.title", defaultValue: "Фильтр по времени"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

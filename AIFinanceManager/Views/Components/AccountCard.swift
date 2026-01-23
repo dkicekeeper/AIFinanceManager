@@ -26,8 +26,9 @@ struct AccountCard: View {
                         .foregroundColor(.primary)
                 }
             }
+            .glassCardStyle()
         }
-        .glassCardStyle()
+        .buttonStyle(.bounce)
         .accessibilityLabel("\(account.name), balance \(Formatting.formatCurrency(account.balance, currency: account.currency))")
         .accessibilityHint("Tap to view account details")
         .onAppear {

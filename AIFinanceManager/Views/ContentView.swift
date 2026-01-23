@@ -36,6 +36,7 @@ struct ContentView: View {
     @State private var showingRecognizedText = false
     @State private var showingCSVPreview = false
     @State private var parsedCSVFile: CSVFile? = nil
+    @State private var showingAddAccount = false
 
     // Wallpaper image
     @State private var wallpaperImage: UIImage? = nil
@@ -72,7 +73,7 @@ struct ContentView: View {
             .environmentObject(timeFilterManager)) {
             analyticsCard
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.bounce)
         .screenPadding()
     }
     
@@ -84,7 +85,7 @@ struct ContentView: View {
             .environmentObject(timeFilterManager)) {
             subscriptionsCard
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.bounce)
         .screenPadding()
     }
     
@@ -253,6 +254,22 @@ struct ContentView: View {
             .sheet(isPresented: $showingTimeFilter) {
                 TimeFilterView(filterManager: timeFilterManager)
             }
+            .sheet(isPresented: $showingAddAccount) {
+                AccountEditView(
+                    accountsViewModel: accountsViewModel,
+                    transactionsViewModel: viewModel,
+                    account: nil,
+                    onSave: { account in
+                        HapticManager.success()
+                        accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
+                        viewModel.accounts = accountsViewModel.accounts
+                        viewModel.recalculateAccountBalances()
+                        viewModel.saveToStorage()
+                        showingAddAccount = false
+                    },
+                    onCancel: { showingAddAccount = false }
+                )
+            }
             .onAppear {
                 PerformanceProfiler.start("ContentView.onAppear")
                 loadWallpaper()
@@ -414,19 +431,25 @@ struct ContentView: View {
     private var accountsSection: some View {
         Group {
             if accountsViewModel.accounts.isEmpty {
-                VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                    HStack {
-                        Text(String(localized: "accounts.title", defaultValue: "Счета"))
-                            .font(AppTypography.h3)
+                Button(action: {
+                    HapticManager.light()
+                    showingAddAccount = true
+                }) {
+                    VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                        HStack {
+                            Text(String(localized: "accounts.title", defaultValue: "Счета"))
+                                .font(AppTypography.h3)
+                                .foregroundStyle(.primary)
+                        }
+                        
+                        Text(String(localized: "emptyState.noAccounts", defaultValue: "Нет счетов"))
+                            .font(AppTypography.bodySmall)
                             .foregroundStyle(.primary)
                     }
-                    
-                    Text(String(localized: "emptyState.noAccounts", defaultValue: "Нет счетов"))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .glassCardStyle(radius: AppRadius.pill)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassCardStyle(radius: AppRadius.pill)
+                .buttonStyle(.bounce)
                 .screenPadding()
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {

@@ -289,4 +289,54 @@ class AccountsViewModel: ObservableObject {
 
         print("✅ [ACCOUNT] Balance sync completed")
     }
+    
+    // MARK: - Intelligent Account Ranking
+    
+    /// Получить счета, отсортированные по частоте использования с учетом контекста
+    /// - Parameters:
+    ///   - transactions: История транзакций
+    ///   - type: Тип транзакции
+    ///   - amount: Сумма транзакции (опционально)
+    ///   - category: Категория транзакции (опционально)
+    ///   - sourceAccountId: ID счета источника для переводов (опционально)
+    /// - Returns: Отсортированный массив счетов
+    func rankedAccounts(
+        transactions: [Transaction],
+        type: TransactionType,
+        amount: Double? = nil,
+        category: String? = nil,
+        sourceAccountId: String? = nil
+    ) -> [Account] {
+        let context = AccountRankingContext(
+            type: type,
+            amount: amount,
+            category: category,
+            sourceAccountId: sourceAccountId
+        )
+        
+        return AccountRankingService.rankAccounts(
+            accounts: accounts,
+            transactions: transactions,
+            context: context
+        )
+    }
+    
+    /// Получить рекомендуемый счет для категории (адаптивное автоподставление)
+    /// - Parameters:
+    ///   - category: Категория транзакции
+    ///   - transactions: История транзакций
+    ///   - amount: Сумма транзакции (опционально)
+    /// - Returns: Рекомендуемый счет или первый доступный
+    func suggestedAccount(
+        forCategory category: String,
+        transactions: [Transaction],
+        amount: Double? = nil
+    ) -> Account? {
+        return AccountRankingService.suggestedAccount(
+            forCategory: category,
+            accounts: accounts,
+            transactions: transactions,
+            amount: amount
+        )
+    }
 }

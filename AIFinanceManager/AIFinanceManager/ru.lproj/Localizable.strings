@@ -24,6 +24,11 @@
 "navigation.importResult" = "Результат импорта";
 
 // MARK: - Time Filters
+"timeFilter.title" = "Фильтр по времени";
+"timeFilter.presets" = "Пресеты";
+"timeFilter.customPeriod" = "Пользовательский период";
+"timeFilter.from" = "С";
+"timeFilter.to" = "По";
 "timeFilter.today" = "Сегодня";
 "timeFilter.yesterday" = "Вчера";
 "timeFilter.thisWeek" = "Эта неделя";
@@ -50,6 +55,7 @@
 "button.retry" = "Повторить";
 "button.change" = "Изменить";
 "button.select" = "Выбрать";
+"button.apply" = "Применить";
 
 // MARK: - Empty States
 "emptyState.noTransactions" = "Нет операций";

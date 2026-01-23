@@ -231,7 +231,6 @@ extension View {
             .padding(AppSpacing.lg)
             .contentShape(Rectangle())
             .glassEffect(in: .rect(cornerRadius: radius))
-//        self.glassEffect(.regular .interactive())
     }
     
     /// Применяет стиль для fallback иконок (используется в BrandLogoView, SubscriptionCard)
@@ -272,4 +271,26 @@ enum AppAnimation {
 
     /// Медленная анимация (modals, large transitions)
     static let slow: Double = 0.35
+    
+    /// Spring animation для bounce эффекта (iOS 16+ style)
+    static let spring = Animation.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0)
+}
+
+// MARK: - Interactive Button Styles
+
+/// Интерактивный стиль кнопки с эффектом увеличения и bounce (iOS 16+ style)
+struct BounceButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 1.08 : 1.0)
+            .brightness(configuration.isPressed ? 0.1 : 0.0)
+            .animation(AppAnimation.spring, value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == BounceButtonStyle {
+    /// Применяет iOS 16+ стиль с эффектом увеличения и bounce при нажатии
+    static var bounce: BounceButtonStyle {
+        BounceButtonStyle()
+    }
 }
