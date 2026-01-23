@@ -22,15 +22,21 @@ extension CustomCategoryEntity {
     func toCustomCategory() -> CustomCategory {
         let transactionType = TransactionType(rawValue: type ?? "expense") ?? .expense
         
+        // Parse budget period
+        let budgetPeriodEnum = CustomCategory.BudgetPeriod(rawValue: budgetPeriod ?? "monthly") ?? .monthly
+        
+        // Convert budgetAmount (0.0 means nil)
+        let budgetAmountValue = budgetAmount == 0.0 ? nil : budgetAmount
+        
         return CustomCategory(
             id: id ?? UUID().uuidString,
             name: name ?? "",
             iconName: iconName,
             colorHex: colorHex ?? "#000000",
             type: transactionType,
-            budgetAmount: nil, // Not stored in Entity yet
-            budgetPeriod: .monthly,
-            budgetResetDay: 1
+            budgetAmount: budgetAmountValue,
+            budgetPeriod: budgetPeriodEnum,
+            budgetResetDay: Int(budgetResetDay)
         )
     }
     
@@ -42,7 +48,13 @@ extension CustomCategoryEntity {
         entity.type = category.type.rawValue
         entity.iconName = category.iconName
         entity.colorHex = category.colorHex
-        // Note: budget fields are not stored in Entity yet
+        
+        // Budget fields
+        entity.budgetAmount = category.budgetAmount ?? 0.0
+        entity.budgetPeriod = category.budgetPeriod.rawValue
+        entity.budgetStartDate = category.budgetStartDate
+        entity.budgetResetDay = Int64(category.budgetResetDay)
+        
         return entity
     }
 }

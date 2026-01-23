@@ -23,6 +23,10 @@ extension CustomCategoryEntity {
     @NSManaged public var type: String?
     @NSManaged public var iconName: String?
     @NSManaged public var colorHex: String?
+    @NSManaged public var budgetAmount: Double
+    @NSManaged public var budgetPeriod: String?
+    @NSManaged public var budgetStartDate: Date?
+    @NSManaged public var budgetResetDay: Int64
     @NSManaged public var transactions: NSSet?
 
 }

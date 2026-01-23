@@ -21,7 +21,7 @@ class DataMigrationService {
     
     // MARK: - Migration Status Key
     
-    private let migrationCompletedKey = "coreDataMigrationCompleted_v2"
+    private let migrationCompletedKey = "coreDataMigrationCompleted_v3"
     
     // MARK: - Public Methods
     
