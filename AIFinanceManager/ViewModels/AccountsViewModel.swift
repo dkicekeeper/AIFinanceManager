@@ -60,9 +60,9 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     func addAccount(name: String, balance: Double, currency: String, bankLogo: BankLogo = .none) {
         let account = Account(name: name, balance: balance, currency: currency, bankLogo: bankLogo)
         accounts.append(account)
-        // Сохраняем начальный баланс
+        // Сохраняем начальный баланс для корректного расчета в TransactionsViewModel
         initialAccountBalances[account.id] = balance
-        saveAccounts()  // ✅ Sync save
+        saveAccounts()
     }
     
     func updateAccount(_ account: Account) {
@@ -253,9 +253,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
 
     /// Синхронизировать балансы с обновленными счетами (вызывается из TransactionsViewModel)
     func syncAccountBalances(_ updatedAccounts: [Account]) {
-        print("🔄 [ACCOUNT] Syncing account balances from TransactionsViewModel")
-        print("📊 [ACCOUNT] Current accounts count: \(accounts.count)")
-        print("📊 [ACCOUNT] Updated accounts count: \(updatedAccounts.count)")
 
         // Создаем новый массив вместо модификации элементов на месте
         // Это необходимо для корректной работы @Published property wrapper
@@ -263,22 +260,15 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
 
         for updatedAccount in updatedAccounts {
             if let index = newAccounts.firstIndex(where: { $0.id == updatedAccount.id }) {
-                let oldBalance = newAccounts[index].balance
                 newAccounts[index] = updatedAccount
-                print("   🔄 '\(updatedAccount.name)': \(oldBalance) -> \(updatedAccount.balance)")
             } else {
                 // Аккаунт не найден - добавляем его (например, при импорте CSV)
-                print("   ➕ Adding new account '\(updatedAccount.name)' (ID: \(updatedAccount.id)) with balance \(updatedAccount.balance)")
                 newAccounts.append(updatedAccount)
             }
         }
 
         // Переприсваиваем весь массив для триггера @Published
-        print("📢 [ACCOUNT] Reassigning accounts array to trigger @Published")
         accounts = newAccounts
-        // NOTE: @Published automatically sends objectWillChange notification
-
-        print("✅ [ACCOUNT] Balance sync completed")
     }
     
     // MARK: - Intelligent Account Ranking

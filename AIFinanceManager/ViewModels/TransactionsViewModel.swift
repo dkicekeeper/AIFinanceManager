@@ -959,6 +959,11 @@ class TransactionsViewModel: ObservableObject {
             
             createCategoriesForTransactions(transactionsWithRules)
             insertTransactionsSorted(transactionsWithRules)
+
+            // КРИТИЧЕСКИ ВАЖНО: Для счетов из accountsWithCalculatedInitialBalance
+            // нужно напрямую обновить баланс, так как recalculateAccountBalances() пропустит их транзакции
+            applyTransactionToBalancesDirectly(transactionWithID)
+
             print("🔄 [TRANSACTION] Invalidating caches and recalculating balances")
             invalidateCaches()
             scheduleBalanceRecalculation()
@@ -1726,19 +1731,94 @@ class TransactionsViewModel: ObservableObject {
         
         print("✅ [BALANCE] RESET: Complete! All balances recalculated from scratch.")
     }
-    
+
+    /// Применяет транзакцию к балансам счетов напрямую
+    /// Используется для счетов из accountsWithCalculatedInitialBalance,
+    /// где recalculateAccountBalances() пропускает транзакции
+    private func applyTransactionToBalancesDirectly(_ transaction: Transaction) {
+        var newAccounts = accounts
+        var balanceChanged = false
+
+        switch transaction.type {
+        case .income:
+            if let accountId = transaction.accountId,
+               accountsWithCalculatedInitialBalance.contains(accountId),
+               let index = newAccounts.firstIndex(where: { $0.id == accountId }) {
+                let amount = transaction.convertedAmount ?? transaction.amount
+                newAccounts[index].balance += amount
+                balanceChanged = true
+            }
+
+        case .expense:
+            if let accountId = transaction.accountId,
+               accountsWithCalculatedInitialBalance.contains(accountId),
+               let index = newAccounts.firstIndex(where: { $0.id == accountId }) {
+                let amount = transaction.convertedAmount ?? transaction.amount
+                newAccounts[index].balance -= amount
+                balanceChanged = true
+            }
+
+        case .internalTransfer:
+            // Списание со счета-источника
+            if let sourceId = transaction.accountId,
+               accountsWithCalculatedInitialBalance.contains(sourceId),
+               let sourceIndex = newAccounts.firstIndex(where: { $0.id == sourceId }) {
+                let sourceAccount = newAccounts[sourceIndex]
+                let sourceAmount: Double
+                if transaction.currency == sourceAccount.currency {
+                    sourceAmount = transaction.amount
+                } else if let converted = transaction.convertedAmount {
+                    sourceAmount = converted
+                } else if let converted = CurrencyConverter.convertSync(
+                    amount: transaction.amount,
+                    from: transaction.currency,
+                    to: sourceAccount.currency
+                ) {
+                    sourceAmount = converted
+                } else {
+                    sourceAmount = transaction.amount
+                }
+                newAccounts[sourceIndex].balance -= sourceAmount
+                balanceChanged = true
+            }
+
+            // Зачисление на счет-получатель
+            if let targetId = transaction.targetAccountId,
+               accountsWithCalculatedInitialBalance.contains(targetId),
+               let targetIndex = newAccounts.firstIndex(where: { $0.id == targetId }) {
+                let targetAccount = newAccounts[targetIndex]
+                let targetAmount: Double
+                if transaction.currency == targetAccount.currency {
+                    targetAmount = transaction.amount
+                } else if let converted = CurrencyConverter.convertSync(
+                    amount: transaction.amount,
+                    from: transaction.currency,
+                    to: targetAccount.currency
+                ) {
+                    targetAmount = converted
+                } else {
+                    targetAmount = transaction.amount
+                }
+                newAccounts[targetIndex].balance += targetAmount
+                balanceChanged = true
+            }
+
+        case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            // Депозиты обрабатываются отдельно
+            break
+        }
+
+        if balanceChanged {
+            accounts = newAccounts
+            // Синхронизируем с AccountsViewModel
+            accountBalanceService.syncAccountBalances(accounts)
+        }
+    }
+
     func recalculateAccountBalances() {
         guard !accounts.isEmpty else {
             print("⚠️ [BALANCE] recalculateAccountBalances: accounts is empty, returning")
             return
-        }
-
-        print("🔄 [BALANCE] Starting recalculateAccountBalances")
-        print("📊 [BALANCE] Current accounts count: \(accounts.count)")
-
-        // Логируем текущие балансы до пересчета
-        for account in accounts {
-            print("💰 [BALANCE] BEFORE - Account '\(account.name)' (ID: \(account.id)): balance = \(account.balance)")
         }
 
         currencyConversionWarning = nil
@@ -1748,22 +1828,21 @@ class TransactionsViewModel: ObservableObject {
         for account in accounts {
             balanceChanges[account.id] = 0
             if initialAccountBalances[account.id] == nil {
-                // Рассчитываем initialBalance = current - transactionsSum
-                // Это дает нам "начальный капитал", который привел к текущему балансу
-                let transactionsSum = calculateTransactionsBalance(for: account.id)
-                let initialBalance = account.balance - transactionsSum
-                initialAccountBalances[account.id] = initialBalance
-                print("📝 [BALANCE] FRESHLY CALCULATED initial balance for '\(account.name)': \(initialBalance) (current: \(account.balance), transactions: \(transactionsSum))")
-                
-                // КРИТИЧЕСКИ ВАЖНО: Сохраняем в instance property
-                // Транзакции УЖЕ УЧТЕНЫ в current balance, поэтому НЕ должны обрабатываться снова
-                accountsWithCalculatedInitialBalance.insert(account.id)
-            } else {
-                // initialBalance УЖЕ СУЩЕСТВУЕТ из предыдущих вызовов
-                if accountsWithCalculatedInitialBalance.contains(account.id) {
-                    print("📝 [BALANCE] EXISTING CALCULATED initial balance for '\(account.name)': \(initialAccountBalances[account.id] ?? 0) - will NOT process transactions (already included)")
+                // Проверяем, есть ли initialBalance от AccountBalanceService (ручное создание счета)
+                if let manualInitialBalance = accountBalanceService.getInitialBalance(for: account.id) {
+                    // Счет был создан вручную - используем его начальный баланс
+                    // НЕ добавляем в accountsWithCalculatedInitialBalance - транзакции ДОЛЖНЫ обрабатываться!
+                    initialAccountBalances[account.id] = manualInitialBalance
                 } else {
-                    print("📝 [BALANCE] EXISTING MANUAL initial balance for '\(account.name)': \(initialAccountBalances[account.id] ?? 0) - will process transactions normally")
+                    // Счет импортирован или уже имеет транзакции - рассчитываем initialBalance
+                    // Это дает нам "начальный капитал", который привел к текущему балансу
+                    let transactionsSum = calculateTransactionsBalance(for: account.id)
+                    let initialBalance = account.balance - transactionsSum
+                    initialAccountBalances[account.id] = initialBalance
+
+                    // КРИТИЧЕСКИ ВАЖНО: Только для импортированных данных
+                    // Транзакции УЖЕ УЧТЕНЫ в current balance, поэтому НЕ должны обрабатываться снова
+                    accountsWithCalculatedInitialBalance.insert(account.id)
                 }
             }
         }
@@ -1875,22 +1954,12 @@ class TransactionsViewModel: ObservableObject {
             }
         }
 
-        print("📊 [BALANCE] Processing balance changes for \(accounts.count) accounts")
-        for (accountId, change) in balanceChanges {
-            if change != 0 {
-                let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
-                print("💸 [BALANCE] Balance change for '\(accountName)': \(change)")
-            }
-        }
-
         // Создаем новый массив вместо модификации элементов на месте
         // Это необходимо для корректной работы @Published property wrapper
         var newAccounts = accounts
 
         for index in newAccounts.indices {
             let accountId = newAccounts[index].id
-            let accountName = newAccounts[index].name
-            let oldBalance = newAccounts[index].balance
 
             if newAccounts[index].isDeposit {
                 if let depositInfo = newAccounts[index].depositInfo {
@@ -1899,40 +1968,22 @@ class TransactionsViewModel: ObservableObject {
                         totalBalance += depositInfo.interestAccruedNotCapitalized
                     }
                     newAccounts[index].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
-                    print("🏦 [BALANCE] DEPOSIT '\(accountName)': \(oldBalance) -> \(newAccounts[index].balance)")
                 }
             } else {
                 let initialBalance = initialAccountBalances[accountId] ?? newAccounts[index].balance
                 let changes = balanceChanges[accountId] ?? 0
                 newAccounts[index].balance = initialBalance + changes
-                print("💳 [BALANCE] REGULAR '\(accountName)': \(oldBalance) -> \(newAccounts[index].balance) (initial: \(initialBalance), changes: \(changes))")
             }
         }
 
         // Переприсваиваем весь массив для триггера @Published
-        print("📢 [BALANCE] Reassigning accounts array to trigger @Published")
         accounts = newAccounts
 
-        print("✅ [BALANCE] Finished recalculateAccountBalances")
-        // Логируем финальные балансы после пересчета
-        for account in accounts {
-            print("💰 [BALANCE] AFTER - Account '\(account.name)' (ID: \(account.id)): balance = \(account.balance)")
-        }
-
         // Синхронизируем обновленные балансы с AccountBalanceService
-        print("🔗 [BALANCE] Syncing balances with AccountBalanceService")
-        print("📊 [BALANCE] Accounts to sync:")
-        for account in accounts {
-            print("   💳 '\(account.name)': \(account.balance)")
-        }
-        
         accountBalanceService.syncAccountBalances(accounts)
         
-        // ✅ Сохраняем обновленные балансы в Core Data
-        print("💾 [BALANCE] Saving updated balances to Core Data")
+        // Сохраняем обновленные балансы в Core Data
         accountBalanceService.saveAllAccountsSync()
-        
-        print("✅ [BALANCE] Balance sync and save completed")
 
         if hasConversionIssues {
             currencyConversionWarning = "Не удалось конвертировать валюты для некоторых переводов. Балансы могут быть неточными. Проверьте подключение к интернету."
