@@ -1998,11 +1998,6 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
-    func transactions(for subscriptionId: String) -> [Transaction] {
-        allTransactions.filter { $0.recurringSeriesId == subscriptionId }
-            .sorted { $0.date > $1.date }
-    }
-    
     func nextChargeDate(for subscriptionId: String) -> Date? {
         guard let series = recurringSeries.first(where: { $0.id == subscriptionId && $0.isSubscription }) else {
             return nil
@@ -2196,42 +2191,14 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Subcategories
 
-    func updateSubcategory(_ subcategory: Subcategory) {
-        if let index = subcategories.firstIndex(where: { $0.id == subcategory.id }) {
-            subcategories[index] = subcategory
-            saveToStorageDebounced()
-        }
-    }
-
-    func deleteSubcategory(_ subcategoryId: String) {
-        categorySubcategoryLinks.removeAll { $0.subcategoryId == subcategoryId }
-        transactionSubcategoryLinks.removeAll { $0.subcategoryId == subcategoryId }
-        subcategories.removeAll { $0.id == subcategoryId }
-        saveToStorageDebounced()
-    }
-
+    /// Get subcategories linked to a specific transaction
+    /// Note: CRUD operations for subcategories should use CategoriesViewModel
     func getSubcategoriesForTransaction(_ transactionId: String) -> [Subcategory] {
         let linkedSubcategoryIds = transactionSubcategoryLinks
             .filter { $0.transactionId == transactionId }
             .map { $0.subcategoryId }
-        
+
         return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
-    }
-    
-    func linkSubcategoriesToTransaction(transactionId: String, subcategoryIds: [String]) {
-        transactionSubcategoryLinks.removeAll { $0.transactionId == transactionId }
-
-        for subcategoryId in subcategoryIds {
-            let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
-            transactionSubcategoryLinks.append(link)
-        }
-
-        saveToStorageDebounced()
-    }
-    
-    func searchSubcategories(query: String) -> [Subcategory] {
-        let queryLower = query.lowercased()
-        return subcategories.filter { $0.name.lowercased().contains(queryLower) }
     }
 
     // MARK: - Transaction Indexes

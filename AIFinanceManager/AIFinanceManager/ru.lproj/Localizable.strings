@@ -157,6 +157,8 @@
 "common.all" = "Все";
 "common.selected" = "Выбрано";
 "common.none" = "Нет";
+"common.uncategorized" = "Без категории";
+"common.unknown" = "Неизвестно";
 
 // MARK: - Date Labels
 "date.today" = "Сегодня";

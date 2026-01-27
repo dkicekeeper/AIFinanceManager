@@ -157,6 +157,8 @@
 "common.all" = "All";
 "common.selected" = "Selected";
 "common.none" = "None";
+"common.uncategorized" = "Uncategorized";
+"common.unknown" = "Unknown";
 
 // MARK: - Date Labels
 "date.today" = "Today";
