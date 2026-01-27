@@ -206,9 +206,9 @@ class TransactionGroupingService {
         let transactionDay = calendar.startOfDay(for: date)
 
         if transactionDay == today {
-            return "Сегодня"
+            return String(localized: "date.today")
         } else if calendar.dateComponents([.day], from: transactionDay, to: today).day == 1 {
-            return "Вчера"
+            return String(localized: "date.yesterday")
         } else {
             let transactionYear = calendar.component(.year, from: date)
             if transactionYear == currentYear {
@@ -220,10 +220,13 @@ class TransactionGroupingService {
     }
 
     private func parseDateFromKey(_ key: String, currentYear: Int) -> Date {
-        // Handle special keys
-        if key == "Сегодня" {
+        // Handle localized special keys
+        let todayKey = String(localized: "date.today")
+        let yesterdayKey = String(localized: "date.yesterday")
+
+        if key == todayKey {
             return Date()
-        } else if key == "Вчера" {
+        } else if key == yesterdayKey {
             return Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
         }
 

@@ -1,0 +1,130 @@
+//
+//  DateSectionExpensesCache.swift
+//  AIFinanceManager
+//
+//  Created on 2026-01-27
+//
+//  Manages caching of day expenses calculations for performance optimization.
+//  Prevents recalculation of expenses on every section render.
+//
+
+import Foundation
+import SwiftUI
+import Combine
+
+/// Manages caching of daily expenses for transaction sections
+/// Provides memoization to avoid expensive recalculations during scrolling
+@MainActor
+class DateSectionExpensesCache: ObservableObject {
+
+    // MARK: - Private Properties
+
+    /// Cache dictionary mapping date keys to calculated expenses
+    private var cache: [String: Double] = [:]
+
+    /// Timestamp of last cache invalidation for debugging
+    private var lastInvalidation: Date = Date()
+
+    // MARK: - Public Methods
+
+    /// Get expenses for a specific date section with caching
+    /// - Parameters:
+    ///   - dateKey: The date key identifying the section (e.g., "Today", "2024-01-15")
+    ///   - transactions: Array of transactions for this section
+    ///   - baseCurrency: Base currency for conversion
+    ///   - viewModel: TransactionsViewModel for currency conversion
+    /// - Returns: Total expenses for the section in base currency
+    func getExpenses(
+        for dateKey: String,
+        transactions: [Transaction],
+        baseCurrency: String,
+        viewModel: TransactionsViewModel
+    ) -> Double {
+        // Check cache first
+        if let cached = cache[dateKey] {
+            #if DEBUG
+            print("💰 [CACHE] HIT for \(dateKey): \(cached)")
+            #endif
+            return cached
+        }
+
+        // Cache miss - calculate expenses
+        #if DEBUG
+        print("💰 [CACHE] MISS for \(dateKey) - calculating...")
+        let startTime = CFAbsoluteTimeGetCurrent()
+        #endif
+
+        let expenses = calculateExpenses(
+            transactions: transactions,
+            baseCurrency: baseCurrency,
+            viewModel: viewModel
+        )
+
+        #if DEBUG
+        let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
+        print("💰 [CACHE] Calculated \(dateKey): \(expenses) in \(String(format: "%.2f", timeElapsed * 1000))ms")
+        #endif
+
+        // Store in cache
+        cache[dateKey] = expenses
+
+        return expenses
+    }
+
+    /// Invalidate all cached expenses
+    /// Call this when transactions change or currency settings update
+    func invalidate() {
+        let cacheSize = cache.count
+        cache.removeAll()
+        lastInvalidation = Date()
+
+        #if DEBUG
+        print("💰 [CACHE] Invalidated \(cacheSize) cached entries")
+        #endif
+    }
+
+    /// Invalidate specific date section
+    /// - Parameter dateKey: The date key to invalidate
+    func invalidate(dateKey: String) {
+        cache.removeValue(forKey: dateKey)
+
+        #if DEBUG
+        print("💰 [CACHE] Invalidated \(dateKey)")
+        #endif
+    }
+
+    /// Get cache statistics for debugging
+    /// - Returns: Dictionary with cache stats
+    func getStats() -> [String: Any] {
+        return [
+            "cachedSections": cache.count,
+            "lastInvalidation": lastInvalidation,
+            "cacheKeys": Array(cache.keys)
+        ]
+    }
+
+    // MARK: - Private Methods
+
+    /// Calculate total expenses for a section
+    /// - Parameters:
+    ///   - transactions: Transactions to calculate from
+    ///   - baseCurrency: Base currency for conversion
+    ///   - viewModel: ViewModel for currency conversion
+    /// - Returns: Total expenses in base currency
+    private func calculateExpenses(
+        transactions: [Transaction],
+        baseCurrency: String,
+        viewModel: TransactionsViewModel
+    ) -> Double {
+        return transactions
+            .filter { $0.type == .expense }
+            .reduce(0.0) { total, transaction in
+                // Use ViewModel's cached conversion method
+                let amountInBaseCurrency = viewModel.getConvertedAmountOrCompute(
+                    transaction: transaction,
+                    to: baseCurrency
+                )
+                return total + amountInBaseCurrency
+            }
+    }
+}
