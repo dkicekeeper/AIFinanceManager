@@ -63,6 +63,11 @@ class TransactionsViewModel: ObservableObject {
     private var convertedAmountsCache: [String: Double] = [:]
     private var conversionCacheInvalidated = true
 
+    // Balance calculation cache: accountId -> calculated balance
+    private var cachedAccountBalances: [String: Double] = [:]
+    private var balanceCacheInvalidated = true
+    private var lastBalanceCalculationTransactionCount = 0
+
     // Transaction indexes for fast filtering
     private let indexManager = TransactionIndexManager()
     
@@ -80,10 +85,18 @@ class TransactionsViewModel: ObservableObject {
     /// This avoids race conditions when multiple notifications arrive simultaneously
     private var isProcessingRecurringNotification = false
 
+    // MARK: - Save Debouncing
+
+    /// Debouncer for saveToStorage to prevent excessive saves
+    /// Delays save operation by 500ms after last change
+    private var saveDebouncer: AnyCancellable?
+    private var saveCancellables = Set<AnyCancellable>()
+
     func invalidateCaches() {
         summaryCacheInvalidated = true
         categoryExpensesCacheInvalidated = true
         conversionCacheInvalidated = true
+        balanceCacheInvalidated = true
         indexManager.invalidate()
     }
 
@@ -1038,16 +1051,16 @@ class TransactionsViewModel: ObservableObject {
                 )
             }
         }
-        
+
         invalidateCaches()
-        saveToStorage()
+        saveToStorageDebounced()
     }
-    
+
     func clearHistory() {
         allTransactions = []
         categoryRules = []
         accounts = []
-        saveToStorage()
+        saveToStorage() // Keep immediate save for critical operations
     }
     
     func resetAllData() {
@@ -1283,8 +1296,8 @@ class TransactionsViewModel: ObservableObject {
         // Без этого UI не обновится, т.к. карточки счетов используют accounts
         print("🔗 [TRANSFER] Syncing balances with AccountBalanceService")
         accountBalanceService.syncAccountBalances(accounts)
-        
-        saveToStorage()
+
+        saveToStorageDebounced()
     }
     
     // MARK: - Deposits
@@ -1405,6 +1418,18 @@ class TransactionsViewModel: ObservableObject {
             print("✅ [STORAGE] ========== ASYNC SAVE COMPLETED ==========")
             PerformanceProfiler.end("saveToStorage")
         }
+    }
+
+    /// Debounced version of saveToStorage to prevent excessive saves
+    /// Delays save operation by 500ms after last change
+    /// Use this instead of saveToStorage() for operations that may trigger multiple times
+    func saveToStorageDebounced() {
+        saveDebouncer?.cancel()
+        saveDebouncer = Just(())
+            .delay(for: .milliseconds(500), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.saveToStorage()
+            }
     }
 
     /// Синхронная версия saveToStorage для использования при импорте
@@ -1839,6 +1864,12 @@ class TransactionsViewModel: ObservableObject {
             return
         }
 
+        // OPTIMIZATION: Skip recalculation if nothing changed since last calculation
+        if !balanceCacheInvalidated && lastBalanceCalculationTransactionCount == allTransactions.count {
+            print("⏭️ [BALANCE] Skipping recalculation - cache is valid")
+            return
+        }
+
         currencyConversionWarning = nil
         var balanceChanges: [String: Double] = [:]
         
@@ -1893,7 +1924,14 @@ class TransactionsViewModel: ObservableObject {
         let today = Calendar.current.startOfDay(for: Date())
         let dateFormatter = Self.dateFormatter
         var hasConversionIssues = false
-        
+
+        // OPTIMIZATION: Create account lookup dictionary to avoid O(n) searches in the loop
+        // This reduces complexity from O(n*m) to O(n) where n=transactions, m=accounts
+        var accountsDict: [String: Account] = [:]
+        for account in accounts {
+            accountsDict[account.id] = account
+        }
+
         for tx in allTransactions {
             guard let transactionDate = dateFormatter.date(from: tx.date),
                   transactionDate <= today else {
@@ -1919,7 +1957,7 @@ class TransactionsViewModel: ObservableObject {
                 break
             case .internalTransfer:
                 if let sourceId = tx.accountId,
-                   let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
+                   let sourceAccount = accountsDict[sourceId] {
                     // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
                     guard !accountsWithCalculatedInitialBalance.contains(sourceId) else { 
                         // Проверяем также target account перед continue
@@ -1930,7 +1968,7 @@ class TransactionsViewModel: ObservableObject {
                         }
                         // Если дошли сюда, значит target нужно обработать, пропускаем только source
                         if let targetId = tx.targetAccountId,
-                           let targetAccount = accounts.first(where: { $0.id == targetId }) {
+                           let targetAccount = accountsDict[targetId] {
                             let targetAmount: Double
                             if tx.currency == targetAccount.currency {
                                 targetAmount = tx.amount
@@ -1972,7 +2010,7 @@ class TransactionsViewModel: ObservableObject {
                 }
 
                 if let targetId = tx.targetAccountId,
-                   let targetAccount = accounts.first(where: { $0.id == targetId }) {
+                   let targetAccount = accountsDict[targetId] {
                     // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
                     guard !accountsWithCalculatedInitialBalance.contains(targetId) else { continue }
                     
@@ -2024,13 +2062,18 @@ class TransactionsViewModel: ObservableObject {
 
         // Синхронизируем обновленные балансы с AccountBalanceService
         accountBalanceService.syncAccountBalances(accounts)
-        
+
         // Сохраняем обновленные балансы в Core Data
         accountBalanceService.saveAllAccountsSync()
 
         if hasConversionIssues {
             currencyConversionWarning = "Не удалось конвертировать валюты для некоторых переводов. Балансы могут быть неточными. Проверьте подключение к интернету."
         }
+
+        // OPTIMIZATION: Update cache state after successful calculation
+        balanceCacheInvalidated = false
+        lastBalanceCalculationTransactionCount = allTransactions.count
+        cachedAccountBalances = balanceChanges
     }
     
     // MARK: - Recurring Transactions
@@ -2058,7 +2101,7 @@ class TransactionsViewModel: ObservableObject {
             startDate: startDate
         )
         recurringSeries.append(series)
-        saveToStorage()
+        saveToStorageDebounced()
         generateRecurringTransactions()
         return series
     }
@@ -2088,16 +2131,16 @@ class TransactionsViewModel: ObservableObject {
                     recurringOccurrences.removeAll { $0.id == occurrence.id }
                 }
             }
-            
-            saveToStorage()
+
+            saveToStorageDebounced()
             generateRecurringTransactions()
         }
     }
-    
+
     func stopRecurringSeries(_ seriesId: String) {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId }) {
             recurringSeries[index].isActive = false
-            saveToStorage()
+            saveToStorageDebounced()
         }
     }
     
@@ -2161,8 +2204,8 @@ class TransactionsViewModel: ObservableObject {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
             recurringSeries[index].status = .archived
             recurringSeries[index].isActive = false
-            saveToStorage()
-            
+            saveToStorageDebounced()
+
             Task {
                 await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
             }
@@ -2275,12 +2318,31 @@ class TransactionsViewModel: ObservableObject {
         var newOccurrences: [RecurringOccurrence] = []
         
         for series in recurringSeries where series.isActive {
-            guard let startDate = dateFormatter.date(from: series.startDate) else { continue }
+            guard let startDate = dateFormatter.date(from: series.startDate) else {
+                print("⚠️ [RECURRING] ERROR: Invalid start date '\(series.startDate)' for series \(series.id)")
+                continue
+            }
+
+            // Calculate reasonable maxIterations based on frequency
+            let maxIterations: Int = {
+                let daysBetweenStartAndHorizon = calendar.dateComponents([.day], from: startDate, to: horizonDate).day ?? 0
+                guard daysBetweenStartAndHorizon > 0 else { return 1 }
+
+                switch series.frequency {
+                case .daily:
+                    return min(daysBetweenStartAndHorizon + 10, 10000) // Max 10000 for safety
+                case .weekly:
+                    return min((daysBetweenStartAndHorizon / 7) + 10, 2000)
+                case .monthly:
+                    return min((daysBetweenStartAndHorizon / 30) + 10, 500)
+                case .yearly:
+                    return min((daysBetweenStartAndHorizon / 365) + 10, 100)
+                }
+            }()
 
             // Always start from the startDate to generate past transactions
             var currentDate = startDate
             var iterationCount = 0
-            let maxIterations = 10000 // Safety limit to prevent infinite loops
 
             while currentDate <= horizonDate && iterationCount < maxIterations {
                 iterationCount += 1
@@ -2358,7 +2420,11 @@ class TransactionsViewModel: ObservableObject {
             }
 
             if iterationCount >= maxIterations {
-                print("⚠️ [RECURRING] WARNING: Reached maximum iteration limit (\(maxIterations)) for series \(series.id). This may indicate a problem with date calculation.")
+                print("⚠️ [RECURRING] WARNING: Reached maximum iteration limit (\(maxIterations)) for series '\(series.description)' (ID: \(series.id))")
+                print("   Frequency: \(series.frequency), Start: \(series.startDate), Iterations: \(iterationCount)")
+                print("   This may indicate a problem with date calculation or an unusually long series.")
+            } else if iterationCount > 0 {
+                print("✅ [RECURRING] Generated series '\(series.description)' in \(iterationCount) iterations")
             }
         }
         
@@ -2481,26 +2547,26 @@ class TransactionsViewModel: ObservableObject {
                 }
             }
         }
-        
-        saveToStorage()
+
+        saveToStorageDebounced()
     }
-    
+
     // MARK: - Subcategories
-    
+
     /// ⚠️ DEPRECATED: Use CategoriesViewModel.addSubcategory instead
-    
+
     func updateSubcategory(_ subcategory: Subcategory) {
         if let index = subcategories.firstIndex(where: { $0.id == subcategory.id }) {
             subcategories[index] = subcategory
-            saveToStorage()
+            saveToStorageDebounced()
         }
     }
-    
+
     func deleteSubcategory(_ subcategoryId: String) {
         categorySubcategoryLinks.removeAll { $0.subcategoryId == subcategoryId }
         transactionSubcategoryLinks.removeAll { $0.subcategoryId == subcategoryId }
         subcategories.removeAll { $0.id == subcategoryId }
-        saveToStorage()
+        saveToStorageDebounced()
     }
     
     /// ⚠️ DEPRECATED: Use CategoriesViewModel.linkSubcategoryToCategory instead
@@ -2519,13 +2585,13 @@ class TransactionsViewModel: ObservableObject {
     
     func linkSubcategoriesToTransaction(transactionId: String, subcategoryIds: [String]) {
         transactionSubcategoryLinks.removeAll { $0.transactionId == transactionId }
-        
+
         for subcategoryId in subcategoryIds {
             let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
             transactionSubcategoryLinks.append(link)
         }
-        
-        saveToStorage()
+
+        saveToStorageDebounced()
     }
     
     func searchSubcategories(query: String) -> [Subcategory] {
@@ -2603,13 +2669,13 @@ class TransactionsViewModel: ObservableObject {
     
     /// Helper method to schedule save
     /// In batch mode, this is delayed until endBatch()
-    /// In normal mode, this is executed immediately
+    /// In normal mode, this uses debounced save to prevent excessive I/O
     private func scheduleSave() {
         if isBatchMode {
             pendingSave = true
             print("📦 [BATCH] Save scheduled (deferred)")
         } else {
-            saveToStorage()
+            saveToStorageDebounced()
         }
     }
 
