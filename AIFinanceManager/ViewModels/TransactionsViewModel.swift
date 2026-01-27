@@ -507,13 +507,19 @@ class TransactionsViewModel: ObservableObject {
             if transaction.currency == baseCurrency {
                 amountInBaseCurrency = transaction.amount
             } else {
-                if let converted = CurrencyConverter.convertSync(
+                // Приоритет: 1) сохраненный convertedAmount (для исторических данных), 2) синхронная конвертация по кэшу
+                if let savedConversion = transaction.convertedAmount, baseCurrency == "KZT" {
+                    // Используем сохраненную конвертацию (по историческому курсу)
+                    amountInBaseCurrency = savedConversion
+                } else if let converted = CurrencyConverter.convertSync(
                     amount: transaction.amount,
                     from: transaction.currency,
                     to: baseCurrency
                 ) {
+                    // Конвертируем по текущему курсу из кэша
                     amountInBaseCurrency = converted
                 } else {
+                    // Fallback: используем сохраненную конвертацию или оригинальную сумму
                     amountInBaseCurrency = transaction.convertedAmount ?? transaction.amount
                     print("⚠️ Не удалось конвертировать транзакцию \(transaction.id) в \(baseCurrency) для categoryExpenses")
                 }
@@ -2309,21 +2315,27 @@ class TransactionsViewModel: ObservableObject {
                 if tx.currency == baseCurrency {
                     cache[cacheKey] = tx.amount
                 } else {
-                    // Call convertSync on MainActor since it's @MainActor isolated
-                    let converted = await MainActor.run {
-                        CurrencyConverter.convertSync(
-                            amount: tx.amount,
-                            from: tx.currency,
-                            to: baseCurrency
-                        )
-                    }
-                    
-                    if let converted = converted {
-                        cache[cacheKey] = converted
+                    // Приоритет: используем сохраненный convertedAmount для исторических данных (если базовая валюта KZT)
+                    if let savedConversion = tx.convertedAmount, baseCurrency == "KZT" {
+                        cache[cacheKey] = savedConversion
                         conversionCount += 1
-                    } else if let convertedAmount = tx.convertedAmount {
-                        // Fallback to stored converted amount
-                        cache[cacheKey] = convertedAmount
+                    } else {
+                        // Call convertSync on MainActor since it's @MainActor isolated
+                        let converted = await MainActor.run {
+                            CurrencyConverter.convertSync(
+                                amount: tx.amount,
+                                from: tx.currency,
+                                to: baseCurrency
+                            )
+                        }
+
+                        if let converted = converted {
+                            cache[cacheKey] = converted
+                            conversionCount += 1
+                        } else if let convertedAmount = tx.convertedAmount {
+                            // Fallback to stored converted amount
+                            cache[cacheKey] = convertedAmount
+                        }
                     }
                 }
             }
@@ -2366,14 +2378,19 @@ class TransactionsViewModel: ObservableObject {
         // Fallback to sync conversion (should be rare after precomputation)
         if transaction.currency == baseCurrency {
             return transaction.amount
-        } else if let converted = CurrencyConverter.convertSync(
-            amount: transaction.amount,
-            from: transaction.currency,
-            to: baseCurrency
-        ) {
-            return converted
         } else {
-            return transaction.convertedAmount ?? transaction.amount
+            // Приоритет: 1) сохраненный convertedAmount (для исторических данных), 2) синхронная конвертация
+            if let savedConversion = transaction.convertedAmount, baseCurrency == "KZT" {
+                return savedConversion
+            } else if let converted = CurrencyConverter.convertSync(
+                amount: transaction.amount,
+                from: transaction.currency,
+                to: baseCurrency
+            ) {
+                return converted
+            } else {
+                return transaction.convertedAmount ?? transaction.amount
+            }
         }
     }
 }

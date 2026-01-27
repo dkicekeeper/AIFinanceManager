@@ -13,59 +13,80 @@ class CurrencyConverter {
     private static var cacheDate: Date?
     private static let cacheValidityHours: TimeInterval = 24 * 60 * 60 // 24 часа
 
-    // Получить курс валюты к тенге
-    static func getExchangeRate(for currency: String) async -> Double? {
+    // Кэш исторических курсов: [дата: [валюта: курс]]
+    private static var historicalRatesCache: [String: [String: Double]] = [:]
+
+    // Получить курс валюты к тенге на конкретную дату
+    static func getExchangeRate(for currency: String, on date: Date? = nil) async -> Double? {
         // KZT всегда равен 1
         if currency == "KZT" {
             return 1.0
         }
 
-        // Проверяем кэш
-        if let cachedDate = cacheDate,
-           Date().timeIntervalSince(cachedDate) < cacheValidityHours,
-           let cachedRate = cachedRates[currency] {
-            return cachedRate
+        let targetDate = date ?? Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd.MM.yyyy"
+        let dateString = dateFormatter.string(from: targetDate)
+
+        // Для текущей даты используем обычный кэш
+        if date == nil || Calendar.current.isDateInToday(targetDate) {
+            // Проверяем кэш
+            if let cachedDate = cacheDate,
+               Date().timeIntervalSince(cachedDate) < cacheValidityHours,
+               let cachedRate = cachedRates[currency] {
+                return cachedRate
+            }
+        } else {
+            // Для исторической даты проверяем исторический кэш
+            if let historicalRates = historicalRatesCache[dateString],
+               let rate = historicalRates[currency] {
+                return rate
+            }
         }
 
         // Загружаем курсы с Нацбанка РК
         // API требует параметр fdate в формате DD.MM.YYYY
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd.MM.yyyy"
-        let dateString = dateFormatter.string(from: Date())
-
         guard let url = URL(string: "\(baseURL)?fdate=\(dateString)") else { return nil }
-        
+
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
-            
+
             // Парсим XML
             let parser = XMLParser(data: data)
             let delegate = ExchangeRateParserDelegate()
             parser.delegate = delegate
             parser.parse()
-            
-            // Обновляем кэш
-            cachedRates = delegate.rates
-            cacheDate = Date()
-            
+
+            // Обновляем соответствующий кэш
+            if date == nil || Calendar.current.isDateInToday(targetDate) {
+                cachedRates = delegate.rates
+                cacheDate = Date()
+            } else {
+                historicalRatesCache[dateString] = delegate.rates
+            }
+
             return delegate.rates[currency]
         } catch {
-            print("Ошибка загрузки курсов валют: \(error)")
-            // Возвращаем кэшированное значение, если есть
-            return cachedRates[currency]
+            print("Ошибка загрузки курсов валют для даты \(dateString): \(error)")
+            // Для исторических данных: если не удалось загрузить, возвращаем nil
+            // Для текущих данных: возвращаем кэшированное значение, если есть
+            if date == nil || Calendar.current.isDateInToday(targetDate) {
+                return cachedRates[currency]
+            }
+            return nil
         }
     }
     
-    // Конвертировать сумму из одной валюты в другую
-    static func convert(amount: Double, from: String, to: String) async -> Double? {
+    // Конвертировать сумму из одной валюты в другую на конкретную дату
+    static func convert(amount: Double, from: String, to: String, on date: Date? = nil) async -> Double? {
         // Если валюты одинаковые, возвращаем сумму без изменений
         if from == to {
             return amount
         }
 
-        // Получаем курсы обеих валют к тенге
-        guard let fromRate = await getExchangeRate(for: from),
-              let toRate = await getExchangeRate(for: to) else {
+        // Получаем курсы обеих валют к тенге на указанную дату
+        guard let fromRate = await getExchangeRate(for: from, on: date),
+              let toRate = await getExchangeRate(for: to, on: date) else {
             return nil
         }
 
