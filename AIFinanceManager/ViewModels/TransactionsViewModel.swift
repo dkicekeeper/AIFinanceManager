@@ -38,8 +38,21 @@ class TransactionsViewModel: ObservableObject {
     @Published var appSettings: AppSettings = AppSettings.load()
 
     private var initialAccountBalances: [String: Double] = [:]
+
+    // MARK: - Balance Calculation Service
+
+    /// Service for unified balance calculation logic
+    /// Manages imported account tracking and provides consistent balance calculation
+    private let balanceCalculationService: BalanceCalculationServiceProtocol
+
+    /// Координатор для сериализации операций с балансами
+    /// Предотвращает race conditions при одновременном обновлении балансов
+    private let balanceUpdateCoordinator = BalanceUpdateCoordinatorWrapper()
+
     // КРИТИЧЕСКИ ВАЖНО: Сохраняем, какие аккаунты имеют initialBalance, рассчитанный автоматически
     // Для этих аккаунтов транзакции НЕ должны обрабатываться повторно
+    // NOTE: Теперь управляется через balanceCalculationService.isImported()
+    // Этот Set оставлен для обратной совместимости и будет удален в следующей версии
     private var accountsWithCalculatedInitialBalance: Set<String> = []
     private var cachedSummary: Summary?
     private var summaryCacheInvalidated = true
@@ -54,12 +67,18 @@ class TransactionsViewModel: ObservableObject {
     private let indexManager = TransactionIndexManager()
     
     // MARK: - Batch Mode for Performance
-    
+
     /// Batch mode delays expensive operations (balance recalculation, saving) until endBatch()
     /// Use this when performing multiple operations at once (e.g., CSV import, bulk delete)
     private var isBatchMode = false
     private var pendingBalanceRecalculation = false
     private var pendingSave = false
+
+    // MARK: - Notification Processing Guard
+
+    /// Prevents concurrent processing of recurring series notifications
+    /// This avoids race conditions when multiple notifications arrive simultaneously
+    private var isProcessingRecurringNotification = false
 
     func invalidateCaches() {
         summaryCacheInvalidated = true
@@ -82,14 +101,17 @@ class TransactionsViewModel: ObservableObject {
 
     init(
         repository: DataRepositoryProtocol = UserDefaultsRepository(),
-        accountBalanceService: AccountBalanceServiceProtocol
+        accountBalanceService: AccountBalanceServiceProtocol,
+        balanceCalculationService: BalanceCalculationServiceProtocol = BalanceCalculationService()
     ) {
         self.repository = repository
         self.accountBalanceService = accountBalanceService
+        self.balanceCalculationService = balanceCalculationService
         print("🏗️ [INIT] Initializing TransactionsViewModel (deferred loading)")
         print("🔗 [INIT] AccountBalanceService injected: \(type(of: accountBalanceService))")
+        print("🔗 [INIT] BalanceCalculationService injected: \(type(of: balanceCalculationService))")
         // Don't load data synchronously in init - use loadDataAsync() instead
-        
+
         // Setup observers for recurring series changes
         setupRecurringSeriesObserver()
     }
@@ -110,18 +132,26 @@ class TransactionsViewModel: ObservableObject {
                   let seriesId = notification.userInfo?["seriesId"] as? String else {
                 return
             }
-            
+
+            // Guard against concurrent processing to prevent race conditions
+            guard !self.isProcessingRecurringNotification else {
+                print("⚠️ [OBSERVER] Already processing recurring notification, skipping: \(seriesId)")
+                return
+            }
+            self.isProcessingRecurringNotification = true
+            defer { self.isProcessingRecurringNotification = false }
+
             print("📢 [OBSERVER] Received recurringSeriesCreated for series: \(seriesId)")
             print("🔄 [OBSERVER] Generating transactions for new series")
             self.generateRecurringTransactions()
-            
+
             // Recalculate balances and save
             self.invalidateCaches()
             self.rebuildIndexes()
             self.scheduleBalanceRecalculation()
             self.scheduleSave()
         }
-        
+
         // Listen for UPDATED recurring series (regenerate only affected series)
         NotificationCenter.default.addObserver(
             forName: .recurringSeriesChanged,
@@ -132,7 +162,15 @@ class TransactionsViewModel: ObservableObject {
                   let seriesId = notification.userInfo?["seriesId"] as? String else {
                 return
             }
-            
+
+            // Guard against concurrent processing to prevent race conditions
+            guard !self.isProcessingRecurringNotification else {
+                print("⚠️ [OBSERVER] Already processing recurring notification, skipping change for: \(seriesId)")
+                return
+            }
+            self.isProcessingRecurringNotification = true
+            defer { self.isProcessingRecurringNotification = false }
+
             print("📢 [OBSERVER] Received recurringSeriesChanged for series: \(seriesId)")
             self.regenerateRecurringTransactions(for: seriesId)
         }
@@ -782,8 +820,12 @@ class TransactionsViewModel: ObservableObject {
         if !uniqueNew.isEmpty {
             createCategoriesForTransactions(uniqueNew)
             insertTransactionsSorted(uniqueNew)
-            // НЕ вызываем invalidateCaches(), recalculateAccountBalances() и saveToStorage()
-            // Это будет сделано в конце импорта
+            // НЕ вызываем invalidateCaches(), recalculateAccountBalances() и saveToStorage() напрямую
+            // Но ставим флаги для отложенного выполнения в endBatch()
+            if isBatchMode {
+                pendingBalanceRecalculation = true
+                pendingSave = true
+            }
         }
     }
     
@@ -941,27 +983,12 @@ class TransactionsViewModel: ObservableObject {
         let existingIDs = Set(allTransactions.map { $0.id })
         
         if !existingIDs.contains(transactionWithID.id) {
-            if transactionWithID.type == .internalTransfer {
-                if let sourceId = transactionWithID.accountId,
-                   let targetId = transactionWithID.targetAccountId {
-                    let sourceIsDeposit = accounts.first(where: { $0.id == sourceId })?.isDeposit ?? false
-                    let targetIsDeposit = accounts.first(where: { $0.id == targetId })?.isDeposit ?? false
-                    
-                    if sourceIsDeposit || targetIsDeposit {
-                        updateDepositBalancesForTransfer(
-                            transaction: transactionWithID,
-                            sourceId: sourceId,
-                            targetId: targetId
-                        )
-                    }
-                }
-            }
-            
             createCategoriesForTransactions(transactionsWithRules)
             insertTransactionsSorted(transactionsWithRules)
 
-            // КРИТИЧЕСКИ ВАЖНО: Для счетов из accountsWithCalculatedInitialBalance
+            // КРИТИЧЕСКИ ВАЖНО: Для счетов из accountsWithCalculatedInitialBalance и депозитов
             // нужно напрямую обновить баланс, так как recalculateAccountBalances() пропустит их транзакции
+            // Этот метод теперь также корректно обрабатывает депозиты в internal transfers
             applyTransactionToBalancesDirectly(transactionWithID)
 
             print("🔄 [TRANSACTION] Invalidating caches and recalculating balances")
@@ -972,84 +999,6 @@ class TransactionsViewModel: ObservableObject {
             print("✅ [TRANSACTION] Transaction added successfully")
         } else {
             print("⚠️ [TRANSACTION] Transaction with ID \(transactionWithID.id) already exists, skipping")
-        }
-    }
-    
-    /// ⚠️ DEPRECATED: This method modifies accounts in-place but changes are overwritten by recalculateAccountBalances()
-    /// Consider refactoring to avoid redundant calculations
-    private func updateDepositBalancesForTransfer(transaction: Transaction, sourceId: String, targetId: String) {
-        guard let sourceIndex = accounts.firstIndex(where: { $0.id == sourceId }),
-              let targetIndex = accounts.firstIndex(where: { $0.id == targetId }) else {
-            return
-        }
-        
-        let sourceAccount = accounts[sourceIndex]
-        let targetAccount = accounts[targetIndex]
-        
-        let sourceAmount: Double = {
-            if transaction.currency == sourceAccount.currency {
-                return transaction.amount
-            } else if let convertedAmount = transaction.convertedAmount, transaction.currency == sourceAccount.currency {
-                return convertedAmount
-            } else if let converted = CurrencyConverter.convertSync(
-                amount: transaction.amount,
-                from: transaction.currency,
-                to: sourceAccount.currency
-            ) {
-                return converted
-            } else {
-                return transaction.amount
-            }
-        }()
-        
-        let targetAmount: Double = {
-            if transaction.currency == targetAccount.currency {
-                return transaction.amount
-            } else if let converted = CurrencyConverter.convertSync(
-                amount: transaction.amount,
-                from: transaction.currency,
-                to: targetAccount.currency
-            ) {
-                return converted
-            } else {
-                return transaction.amount
-            }
-        }()
-        
-        if var sourceDepositInfo = sourceAccount.depositInfo {
-            let amountDecimal = Decimal(sourceAmount)
-            if !sourceDepositInfo.capitalizationEnabled && sourceDepositInfo.interestAccruedNotCapitalized > 0 {
-                if amountDecimal <= sourceDepositInfo.interestAccruedNotCapitalized {
-                    sourceDepositInfo.interestAccruedNotCapitalized -= amountDecimal
-                } else {
-                    let remaining = amountDecimal - sourceDepositInfo.interestAccruedNotCapitalized
-                    sourceDepositInfo.interestAccruedNotCapitalized = 0
-                    sourceDepositInfo.principalBalance -= remaining
-                }
-            } else {
-                sourceDepositInfo.principalBalance -= amountDecimal
-            }
-            accounts[sourceIndex].depositInfo = sourceDepositInfo
-            var totalBalance: Decimal = sourceDepositInfo.principalBalance
-            if !sourceDepositInfo.capitalizationEnabled {
-                totalBalance += sourceDepositInfo.interestAccruedNotCapitalized
-            }
-            accounts[sourceIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
-        } else {
-            accounts[sourceIndex].balance -= sourceAmount
-        }
-        
-        if var targetDepositInfo = targetAccount.depositInfo {
-            let amountDecimal = Decimal(targetAmount)
-            targetDepositInfo.principalBalance += amountDecimal
-            accounts[targetIndex].depositInfo = targetDepositInfo
-            var totalBalance: Decimal = targetDepositInfo.principalBalance
-            if !targetDepositInfo.capitalizationEnabled {
-                totalBalance += targetDepositInfo.interestAccruedNotCapitalized
-            }
-            accounts[targetIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
-        } else {
-            accounts[targetIndex].balance += targetAmount
         }
     }
     
@@ -1732,6 +1681,36 @@ class TransactionsViewModel: ObservableObject {
         print("✅ [BALANCE] RESET: Complete! All balances recalculated from scratch.")
     }
 
+    // MARK: - Initial Balance Access
+
+    /// Получить начальный баланс счета (вычисленный при импорте или установленный вручную)
+    /// - Parameter accountId: ID счета
+    /// - Returns: Начальный баланс или nil если не установлен
+    func getInitialBalance(for accountId: String) -> Double? {
+        // Приоритет: локальный кэш -> BalanceCalculationService
+        if let localBalance = initialAccountBalances[accountId] {
+            return localBalance
+        }
+        return balanceCalculationService.getInitialBalance(for: accountId)
+    }
+
+    /// Проверить, является ли счет импортированным (с автоматически рассчитанным начальным балансом)
+    /// - Parameter accountId: ID счета
+    /// - Returns: true если счет был импортирован и его транзакции уже учтены в балансе
+    func isAccountImported(_ accountId: String) -> Bool {
+        // Проверяем оба источника для обратной совместимости
+        return accountsWithCalculatedInitialBalance.contains(accountId) ||
+               balanceCalculationService.isImported(accountId)
+    }
+
+    /// Сбросить все флаги импортированных счетов
+    /// Используйте с осторожностью - это приведет к пересчету всех балансов
+    func resetImportedAccountFlags() {
+        accountsWithCalculatedInitialBalance.removeAll()
+        balanceCalculationService.clearImportedFlags()
+        print("🔄 [BALANCE] Reset all imported account flags")
+    }
+
     /// Применяет транзакцию к балансам счетов напрямую
     /// Используется для счетов из accountsWithCalculatedInitialBalance,
     /// где recalculateAccountBalances() пропускает транзакции
@@ -1761,7 +1740,6 @@ class TransactionsViewModel: ObservableObject {
         case .internalTransfer:
             // Списание со счета-источника
             if let sourceId = transaction.accountId,
-               accountsWithCalculatedInitialBalance.contains(sourceId),
                let sourceIndex = newAccounts.firstIndex(where: { $0.id == sourceId }) {
                 let sourceAccount = newAccounts[sourceIndex]
                 let sourceAmount: Double
@@ -1778,13 +1756,38 @@ class TransactionsViewModel: ObservableObject {
                 } else {
                     sourceAmount = transaction.amount
                 }
-                newAccounts[sourceIndex].balance -= sourceAmount
-                balanceChanged = true
+
+                // Обрабатываем депозиты отдельно - нужно обновить depositInfo
+                if sourceAccount.isDeposit, var sourceDepositInfo = sourceAccount.depositInfo {
+                    let amountDecimal = Decimal(sourceAmount)
+                    // Сначала списываем с накопленных процентов (если не капитализируются)
+                    if !sourceDepositInfo.capitalizationEnabled && sourceDepositInfo.interestAccruedNotCapitalized > 0 {
+                        if amountDecimal <= sourceDepositInfo.interestAccruedNotCapitalized {
+                            sourceDepositInfo.interestAccruedNotCapitalized -= amountDecimal
+                        } else {
+                            let remaining = amountDecimal - sourceDepositInfo.interestAccruedNotCapitalized
+                            sourceDepositInfo.interestAccruedNotCapitalized = 0
+                            sourceDepositInfo.principalBalance -= remaining
+                        }
+                    } else {
+                        sourceDepositInfo.principalBalance -= amountDecimal
+                    }
+                    newAccounts[sourceIndex].depositInfo = sourceDepositInfo
+                    var totalBalance: Decimal = sourceDepositInfo.principalBalance
+                    if !sourceDepositInfo.capitalizationEnabled {
+                        totalBalance += sourceDepositInfo.interestAccruedNotCapitalized
+                    }
+                    newAccounts[sourceIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+                    balanceChanged = true
+                } else if accountsWithCalculatedInitialBalance.contains(sourceId) {
+                    // Обычный счет из импорта
+                    newAccounts[sourceIndex].balance -= sourceAmount
+                    balanceChanged = true
+                }
             }
 
             // Зачисление на счет-получатель
             if let targetId = transaction.targetAccountId,
-               accountsWithCalculatedInitialBalance.contains(targetId),
                let targetIndex = newAccounts.firstIndex(where: { $0.id == targetId }) {
                 let targetAccount = newAccounts[targetIndex]
                 let targetAmount: Double
@@ -1799,12 +1802,27 @@ class TransactionsViewModel: ObservableObject {
                 } else {
                     targetAmount = transaction.amount
                 }
-                newAccounts[targetIndex].balance += targetAmount
-                balanceChanged = true
+
+                // Обрабатываем депозиты отдельно - нужно обновить depositInfo
+                if targetAccount.isDeposit, var targetDepositInfo = targetAccount.depositInfo {
+                    let amountDecimal = Decimal(targetAmount)
+                    targetDepositInfo.principalBalance += amountDecimal
+                    newAccounts[targetIndex].depositInfo = targetDepositInfo
+                    var totalBalance: Decimal = targetDepositInfo.principalBalance
+                    if !targetDepositInfo.capitalizationEnabled {
+                        totalBalance += targetDepositInfo.interestAccruedNotCapitalized
+                    }
+                    newAccounts[targetIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+                    balanceChanged = true
+                } else if accountsWithCalculatedInitialBalance.contains(targetId) {
+                    // Обычный счет из импорта
+                    newAccounts[targetIndex].balance += targetAmount
+                    balanceChanged = true
+                }
             }
 
         case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
-            // Депозиты обрабатываются отдельно
+            // Эти типы обрабатываются через специальные методы депозитов
             break
         }
 
@@ -1833,16 +1851,41 @@ class TransactionsViewModel: ObservableObject {
                     // Счет был создан вручную - используем его начальный баланс
                     // НЕ добавляем в accountsWithCalculatedInitialBalance - транзакции ДОЛЖНЫ обрабатываться!
                     initialAccountBalances[account.id] = manualInitialBalance
-                } else {
-                    // Счет импортирован или уже имеет транзакции - рассчитываем initialBalance
-                    // Это дает нам "начальный капитал", который привел к текущему балансу
-                    let transactionsSum = calculateTransactionsBalance(for: account.id)
-                    let initialBalance = account.balance - transactionsSum
-                    initialAccountBalances[account.id] = initialBalance
 
-                    // КРИТИЧЕСКИ ВАЖНО: Только для импортированных данных
-                    // Транзакции УЖЕ УЧТЕНЫ в current balance, поэтому НЕ должны обрабатываться снова
-                    accountsWithCalculatedInitialBalance.insert(account.id)
+                    // Синхронизируем с BalanceCalculationService - отмечаем как manual
+                    balanceCalculationService.markAsManual(account.id)
+                    balanceCalculationService.setInitialBalance(manualInitialBalance, for: account.id)
+                } else {
+                    // Проверяем, есть ли уже транзакции для этого счета
+                    let transactionsSum = calculateTransactionsBalance(for: account.id)
+
+                    // КРИТИЧЕСКИ ВАЖНО: Различаем два сценария:
+                    // 1. Счет создан при импорте CSV с balance=0 - транзакции ДОЛЖНЫ применяться
+                    // 2. Счет импортирован с существующим balance>0 - транзакции уже учтены
+
+                    if account.balance == 0 && transactionsSum != 0 {
+                        // Сценарий 1: Новый счет созданный при импорте CSV
+                        // Initial balance = 0, транзакции должны применяться для расчета баланса
+                        initialAccountBalances[account.id] = 0
+                        // НЕ добавляем в accountsWithCalculatedInitialBalance - транзакции ДОЛЖНЫ обрабатываться!
+                        print("📊 [BALANCE] New imported account '\(account.name)': initial=0, will apply transactions (sum=\(transactionsSum))")
+
+                        // Синхронизируем с BalanceCalculationService - отмечаем как manual (транзакции применяются)
+                        balanceCalculationService.markAsManual(account.id)
+                        balanceCalculationService.setInitialBalance(0, for: account.id)
+                    } else {
+                        // Сценарий 2: Счет с существующим балансом (импортирован с данными)
+                        // Рассчитываем initialBalance = balance - транзакции
+                        // Транзакции УЖЕ УЧТЕНЫ в current balance
+                        let initialBalance = account.balance - transactionsSum
+                        initialAccountBalances[account.id] = initialBalance
+                        accountsWithCalculatedInitialBalance.insert(account.id)
+                        print("📊 [BALANCE] Existing account '\(account.name)': balance=\(account.balance), initial=\(initialBalance), skip transactions")
+
+                        // Синхронизируем с BalanceCalculationService
+                        balanceCalculationService.markAsImported(account.id)
+                        balanceCalculationService.setInitialBalance(initialBalance, for: account.id)
+                    }
                 }
             }
         }

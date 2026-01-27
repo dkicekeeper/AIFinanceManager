@@ -594,8 +594,13 @@ class CSVImportService {
                     if let updatedAccount = transactionsViewModel.accounts.first(where: { $0.id == account.id }) {
                         // Обновляем счет с новым балансом
                         accountsVM.accounts[index].balance = updatedAccount.balance
-                        // Обновляем начальный баланс, чтобы он соответствовал текущему балансу после пересчета
-                        accountsVM.setInitialBalance(updatedAccount.balance, for: account.id)
+                        // ИСПРАВЛЕНО: Используем правильный initialBalance из TransactionsViewModel
+                        // Это значение было вычислено как (balance - Σtransactions) при recalculateAccountBalances()
+                        // НЕ устанавливаем текущий баланс как initialBalance - это была причина бага!
+                        if let correctInitialBalance = transactionsViewModel.getInitialBalance(for: account.id) {
+                            accountsVM.setInitialBalance(correctInitialBalance, for: account.id)
+                            print("📊 [CSV_IMPORT] Account '\(account.name)': balance=\(updatedAccount.balance), initialBalance=\(correctInitialBalance)")
+                        }
                     }
                 }
                 // Сохраняем обновленные балансы счетов одним батчем (синхронно для импорта)
