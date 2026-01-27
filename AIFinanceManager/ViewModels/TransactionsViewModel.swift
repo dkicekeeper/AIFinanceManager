@@ -70,7 +70,33 @@ class TransactionsViewModel: ObservableObject {
 
     // Transaction indexes for fast filtering
     private let indexManager = TransactionIndexManager()
-    
+
+    // MARK: - Decomposed Services (Phase 2)
+
+    /// Filter service for transaction filtering operations
+    private lazy var filterService: TransactionFilterService = {
+        TransactionFilterService(dateFormatter: Self.dateFormatter)
+    }()
+
+    /// Grouping service for transaction grouping and sorting
+    private lazy var groupingService: TransactionGroupingService = {
+        TransactionGroupingService(
+            dateFormatter: Self.dateFormatter,
+            displayDateFormatter: DateFormatters.displayDateFormatter,
+            displayDateWithYearFormatter: DateFormatters.displayDateWithYearFormatter
+        )
+    }()
+
+    /// Balance calculator for account balance calculations
+    private lazy var balanceCalculator: BalanceCalculator = {
+        BalanceCalculator(dateFormatter: Self.dateFormatter)
+    }()
+
+    /// Recurring transaction generator for creating recurring transactions
+    private lazy var recurringGenerator: RecurringTransactionGenerator = {
+        RecurringTransactionGenerator(dateFormatter: Self.dateFormatter)
+    }()
+
     // MARK: - Batch Mode for Performance
 
     /// Batch mode delays expensive operations (balance recalculation, saving) until endBatch()
@@ -240,73 +266,31 @@ class TransactionsViewModel: ObservableObject {
     
     var filteredTransactions: [Transaction] {
         var transactions = applyRules(to: allTransactions)
-        
+
         if let selectedCategories = selectedCategories {
-            transactions = transactions.filter { transaction in
-                selectedCategories.contains(transaction.category)
-            }
+            transactions = filterService.filterByCategories(transactions, categories: selectedCategories)
         }
-        
+
         return filterRecurringTransactions(transactions)
     }
     
     func transactionsFilteredByTime(_ timeFilterManager: TimeFilterManager) -> [Transaction] {
         let range = timeFilterManager.currentFilter.dateRange()
         let transactions = applyRules(to: allTransactions)
-        return transactions.filter { transaction in
-            guard let transactionDate = Self.dateFormatter.date(from: transaction.date) else {
-                return false
-            }
-            return transactionDate >= range.start && transactionDate < range.end
-        }
+        return filterService.filterByTimeRange(transactions, start: range.start, end: range.end)
     }
     
     func transactionsFilteredByTimeAndCategory(_ timeFilterManager: TimeFilterManager) -> [Transaction] {
         let range = timeFilterManager.currentFilter.dateRange()
-        var transactions = applyRules(to: allTransactions)
-        
-        if let selectedCategories = selectedCategories {
-            transactions = transactions.filter { transaction in
-                selectedCategories.contains(transaction.category)
-            }
-        }
-        
-        var recurringTransactions: [Transaction] = []
-        var regularTransactions: [Transaction] = []
-        var recurringTransactionsBySeries: [String: [Transaction]] = [:]
-        
-        for transaction in transactions {
-            if let seriesId = transaction.recurringSeriesId {
-                recurringTransactionsBySeries[seriesId, default: []].append(transaction)
-            } else {
-                guard let transactionDate = Self.dateFormatter.date(from: transaction.date) else {
-                    continue
-                }
-                if transactionDate >= range.start && transactionDate < range.end {
-                    regularTransactions.append(transaction)
-                }
-            }
-        }
-        
-        let dateFormatter = Self.dateFormatter
-        
-        for series in recurringSeries where series.isActive {
-            guard let seriesTransactions = recurringTransactionsBySeries[series.id] else {
-                continue
-            }
+        let transactions = applyRules(to: allTransactions)
 
-            // Get ALL transactions in the time range, not just the first one
-            let transactionsInRange = seriesTransactions.filter { transaction in
-                guard let date = dateFormatter.date(from: transaction.date) else {
-                    return false
-                }
-                return date >= range.start && date < range.end
-            }
-
-            recurringTransactions.append(contentsOf: transactionsInRange)
-        }
-        
-        return recurringTransactions + regularTransactions
+        return filterService.filterByTimeAndCategory(
+            transactions,
+            series: recurringSeries,
+            start: range.start,
+            end: range.end,
+            categories: selectedCategories
+        )
     }
     
     // MARK: - History View Filtering and Grouping
@@ -321,38 +305,12 @@ class TransactionsViewModel: ObservableObject {
         var transactions = transactionsFilteredByTimeAndCategory(timeFilterManager)
 
         // For history view: show only the nearest transaction for each recurring series
-        var regularTransactions: [Transaction] = []
-        var recurringTransactionsBySeries: [String: [Transaction]] = [:]
+        let (recurring, regular) = filterService.separateRecurringTransactions(transactions)
+        let nearestRecurring = groupingService.getNearestRecurringTransactions(recurring)
+        transactions = regular + nearestRecurring
 
-        for transaction in transactions {
-            if let seriesId = transaction.recurringSeriesId {
-                recurringTransactionsBySeries[seriesId, default: []].append(transaction)
-            } else {
-                regularTransactions.append(transaction)
-            }
-        }
-
-        // Get only the nearest (min date) transaction for each recurring series
-        let dateFormatter = Self.dateFormatter
-        var nearestRecurringTransactions: [Transaction] = []
-
-        for (_, seriesTransactions) in recurringTransactionsBySeries {
-            let transactionsWithDates = seriesTransactions.compactMap { transaction -> (Transaction, Date)? in
-                guard let date = dateFormatter.date(from: transaction.date) else {
-                    return nil
-                }
-                return (transaction, date)
-            }
-
-            if let nearest = transactionsWithDates.min(by: { $0.1 < $1.1 })?.0 {
-                nearestRecurringTransactions.append(nearest)
-            }
-        }
-
-        transactions = regularTransactions + nearestRecurringTransactions
-        
         if let accountId = accountId {
-            transactions = transactions.filter { $0.accountId == accountId || $0.targetAccountId == accountId }
+            transactions = filterService.filterByAccount(transactions, accountId: accountId)
         }
         
         if !searchText.isEmpty {
@@ -410,156 +368,8 @@ class TransactionsViewModel: ObservableObject {
     
     /// Группирует транзакции по датам и возвращает словарь с группированными транзакциями и отсортированными ключами
     func groupAndSortTransactionsByDate(_ transactions: [Transaction]) -> (grouped: [String: [Transaction]], sortedKeys: [String]) {
-        var grouped: [String: [Transaction]] = [:]
-        
-        let calendar = Calendar.current
-        let dateFormatter = Self.dateFormatter
-        let displayDateFormatter = DateFormatters.displayDateFormatter
-        let displayDateWithYearFormatter = DateFormatters.displayDateWithYearFormatter
-        let currentYear = calendar.component(.year, from: Date())
-        
-        var recurringTransactions: [Transaction] = []
-        var regularTransactions: [Transaction] = []
-        
-        for transaction in transactions {
-            if transaction.recurringSeriesId != nil {
-                recurringTransactions.append(transaction)
-            } else {
-                regularTransactions.append(transaction)
-            }
-        }
-        
-        recurringTransactions.sort { tx1, tx2 in
-            guard let date1 = dateFormatter.date(from: tx1.date),
-                  let date2 = dateFormatter.date(from: tx2.date) else {
-                return false
-            }
-            return date1 < date2
-        }
-        
-        regularTransactions.sort { tx1, tx2 in
-            if tx1.createdAt != tx2.createdAt {
-                return tx1.createdAt > tx2.createdAt
-            }
-            return tx1.id > tx2.id
-        }
-        
-        let allTransactions = recurringTransactions + regularTransactions
-        
-        for transaction in allTransactions {
-            guard let date = dateFormatter.date(from: transaction.date) else { continue }
-            
-            let dateKey: String
-            let today = calendar.startOfDay(for: Date())
-            let transactionDay = calendar.startOfDay(for: date)
-            let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
-            let transactionYear = calendar.component(.year, from: date)
-            
-            if transactionDay == today {
-                dateKey = "Сегодня"
-            } else if transactionDay == yesterday {
-                dateKey = "Вчера"
-            } else {
-                if transactionYear != currentYear {
-                    dateKey = displayDateWithYearFormatter.string(from: date)
-                } else {
-                    dateKey = displayDateFormatter.string(from: date)
-                }
-            }
-            
-            if grouped[dateKey] == nil {
-                grouped[dateKey] = []
-            }
-            grouped[dateKey]?.append(transaction)
-        }
-        
-        for key in grouped.keys {
-            let today = calendar.startOfDay(for: Date())
-            
-            grouped[key]?.sort { tx1, tx2 in
-                let isRecurring1 = tx1.recurringSeriesId != nil
-                let isRecurring2 = tx2.recurringSeriesId != nil
-                
-                if isRecurring1 && isRecurring2 {
-                    guard let date1 = dateFormatter.date(from: tx1.date),
-                          let date2 = dateFormatter.date(from: tx2.date) else {
-                        return false
-                    }
-                    if date1 > today && date2 > today {
-                        return date1 > date2
-                    } else if date1 <= today && date2 <= today {
-                        return date1 < date2
-                    } else {
-                        return date1 > today && date2 <= today
-                    }
-                }
-                
-                if !isRecurring1 && !isRecurring2 {
-                    if tx1.createdAt != tx2.createdAt {
-                        return tx1.createdAt > tx2.createdAt
-                    }
-                    return tx1.id > tx2.id
-                }
-                
-                return isRecurring1 && !isRecurring2
-            }
-        }
-        
-        let keys = Array(grouped.keys)
-        let todayKey = keys.first { $0 == "Сегодня" }
-        let yesterdayKey = keys.first { $0 == "Вчера" }
-        let otherKeys = keys.filter { $0 != "Сегодня" && $0 != "Вчера" }
-        
-        let keysWithDates: [(key: String, date: Date, isRecurring: Bool)] = otherKeys.compactMap { key in
-            guard let transactionsInGroup = grouped[key] else { return nil }
-            
-            if let recurringTransaction = transactionsInGroup.first(where: { $0.recurringSeriesId != nil }),
-               let date = dateFormatter.date(from: recurringTransaction.date) {
-                return (key: key, date: date, isRecurring: true)
-            }
-            
-            if let firstTransaction = transactionsInGroup.first,
-               let date = dateFormatter.date(from: firstTransaction.date) {
-                return (key: key, date: date, isRecurring: false)
-            }
-            
-            return nil
-        }
-        
-        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date()))!
-        
-        let futureKeys = keysWithDates.filter { $0.date > calendar.startOfDay(for: Date()) }
-            .sorted { key1, key2 in
-                if key1.isRecurring && key2.isRecurring {
-                    return key1.date > key2.date
-                }
-                if !key1.isRecurring && !key2.isRecurring {
-                    return key1.date > key2.date
-                }
-                return key1.isRecurring && !key2.isRecurring
-            }
-            .map { $0.key }
-        
-        let pastRecurringKeys = keysWithDates.filter { $0.date < yesterdayStart && $0.isRecurring }
-            .sorted { $0.date < $1.date }
-            .map { $0.key }
-        
-        let pastRegularKeys = keysWithDates.filter { $0.date < yesterdayStart && !$0.isRecurring }
-            .sorted { $0.date > $1.date }
-            .map { $0.key }
-        
-        var sortedKeys: [String] = []
-        sortedKeys.append(contentsOf: futureKeys)
-        if let today = todayKey {
-            sortedKeys.append(today)
-        }
-        if let yesterday = yesterdayKey {
-            sortedKeys.append(yesterday)
-        }
-        sortedKeys.append(contentsOf: pastRecurringKeys)
-        sortedKeys.append(contentsOf: pastRegularKeys)
-        
-        return (grouped, sortedKeys)
+        // Delegated to groupingService for cleaner code and better maintainability
+        return groupingService.groupByDate(transactions)
     }
     
     private func filterRecurringTransactions(_ transactions: [Transaction]) -> [Transaction] {
@@ -1174,24 +984,12 @@ class TransactionsViewModel: ObservableObject {
     }
 
     // MARK: - Custom Categories
-    
-    /// ⚠️ DEPRECATED: Use CategoriesViewModel.addCategory instead
-    
-    /// ⚠️ DEPRECATED: Use CategoriesViewModel.updateCategory instead
-    
-    /// ⚠️ DEPRECATED: Use CategoriesViewModel.deleteCategory instead
-    
+
     func getCategory(name: String, type: TransactionType) -> CustomCategory? {
         return customCategories.first { $0.name.lowercased() == name.lowercased() && $0.type == type }
     }
 
     // MARK: - Accounts
-
-    /// ⚠️ DEPRECATED: Use AccountsViewModel.addAccount instead
-
-    /// ⚠️ DEPRECATED: Use AccountsViewModel.updateAccount instead
-    
-    /// ⚠️ DEPRECATED: Use AccountsViewModel.deleteAccount instead
 
     func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {
         guard
@@ -1299,19 +1097,7 @@ class TransactionsViewModel: ObservableObject {
 
         saveToStorageDebounced()
     }
-    
-    // MARK: - Deposits
-    
-    /// ⚠️ DEPRECATED: Use DepositsViewModel.addDeposit instead
-    
-    /// ⚠️ DEPRECATED: Use DepositsViewModel.updateDeposit instead
-    
-    /// ⚠️ DEPRECATED: Use DepositsViewModel.deleteDeposit instead
-    
-    /// ⚠️ DEPRECATED: Use DepositsViewModel.addDepositRateChange instead
-    
-    /// ⚠️ DEPRECATED: Use DepositsViewModel.reconcileAllDeposits instead
-    
+
     // MARK: - Helper Methods
 
     private func insertTransactionsSorted(_ newTransactions: [Transaction]) {
@@ -2295,138 +2081,20 @@ class TransactionsViewModel: ObservableObject {
         recurringOccurrences = repository.loadRecurringOccurrences()
         print("🔄 [RECURRING] Reloaded \(recurringSeries.count) recurring series and \(recurringOccurrences.count) occurrences from storage")
 
-        let dateFormatter = Self.dateFormatter
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        guard let horizonDate = calendar.date(byAdding: .month, value: 3, to: today) else {
-            return
-        }
-
         // Skip if no active recurring series
         if recurringSeries.filter({ $0.isActive }).isEmpty {
             print("⏭️ [RECURRING] No active recurring series, skipping generation")
             return
         }
-        
+
+        // Delegate generation to recurringGenerator service
         let existingTransactionIds = Set(allTransactions.map { $0.id })
-        var existingOccurrenceKeys: Set<String> = []
-        for occurrence in recurringOccurrences {
-            existingOccurrenceKeys.insert("\(occurrence.seriesId):\(occurrence.occurrenceDate)")
-        }
-        
-        var newTransactions: [Transaction] = []
-        var newOccurrences: [RecurringOccurrence] = []
-        
-        for series in recurringSeries where series.isActive {
-            guard let startDate = dateFormatter.date(from: series.startDate) else {
-                print("⚠️ [RECURRING] ERROR: Invalid start date '\(series.startDate)' for series \(series.id)")
-                continue
-            }
-
-            // Calculate reasonable maxIterations based on frequency
-            let maxIterations: Int = {
-                let daysBetweenStartAndHorizon = calendar.dateComponents([.day], from: startDate, to: horizonDate).day ?? 0
-                guard daysBetweenStartAndHorizon > 0 else { return 1 }
-
-                switch series.frequency {
-                case .daily:
-                    return min(daysBetweenStartAndHorizon + 10, 10000) // Max 10000 for safety
-                case .weekly:
-                    return min((daysBetweenStartAndHorizon / 7) + 10, 2000)
-                case .monthly:
-                    return min((daysBetweenStartAndHorizon / 30) + 10, 500)
-                case .yearly:
-                    return min((daysBetweenStartAndHorizon / 365) + 10, 100)
-                }
-            }()
-
-            // Always start from the startDate to generate past transactions
-            var currentDate = startDate
-            var iterationCount = 0
-
-            while currentDate <= horizonDate && iterationCount < maxIterations {
-                iterationCount += 1
-                let dateString = dateFormatter.string(from: currentDate)
-                let occurrenceKey = "\(series.id):\(dateString)"
-                
-                if !existingOccurrenceKeys.contains(occurrenceKey) {
-                    let amountDouble = NSDecimalNumber(decimal: series.amount).doubleValue
-                    let transactionDate = dateFormatter.date(from: dateString) ?? Date()
-                    let createdAt = transactionDate.timeIntervalSince1970
-                    
-                    let transactionId = TransactionIDGenerator.generateID(
-                        date: dateString,
-                        description: series.description,
-                        amount: amountDouble,
-                        type: .expense,
-                        currency: series.currency,
-                        createdAt: createdAt
-                    )
-                    
-                    if !existingTransactionIds.contains(transactionId) {
-                        let occurrenceId = UUID().uuidString
-                        let transaction = Transaction(
-                            id: transactionId,
-                            date: dateString,
-                            description: series.description,
-                            amount: amountDouble,
-                            currency: series.currency,
-                            convertedAmount: nil,
-                            type: .expense,
-                            category: series.category,
-                            subcategory: series.subcategory,
-                            accountId: series.accountId,
-                            targetAccountId: series.targetAccountId,
-                            recurringSeriesId: series.id,
-                            recurringOccurrenceId: occurrenceId,
-                            createdAt: createdAt
-                        )
-                        
-                        let occurrence = RecurringOccurrence(
-                            id: occurrenceId,
-                            seriesId: series.id,
-                            occurrenceDate: dateString,
-                            transactionId: transactionId
-                        )
-                        
-                        newTransactions.append(transaction)
-                        newOccurrences.append(occurrence)
-                        existingOccurrenceKeys.insert(occurrenceKey)
-                    }
-                }
-                
-                guard let nextDate = {
-                    switch series.frequency {
-                    case .daily:
-                        return calendar.date(byAdding: .day, value: 1, to: currentDate)
-                    case .weekly:
-                        return calendar.date(byAdding: .day, value: 7, to: currentDate)
-                    case .monthly:
-                        return calendar.date(byAdding: .month, value: 1, to: currentDate)
-                    case .yearly:
-                        return calendar.date(byAdding: .year, value: 1, to: currentDate)
-                    }
-                }() else {
-                    break
-                }
-
-                // Additional safety check: ensure we're actually moving forward in time
-                if nextDate <= currentDate {
-                    print("⚠️ [RECURRING] ERROR: nextDate (\(nextDate)) is not greater than currentDate (\(currentDate)) for series \(series.id). Breaking to prevent infinite loop.")
-                    break
-                }
-
-                currentDate = nextDate
-            }
-
-            if iterationCount >= maxIterations {
-                print("⚠️ [RECURRING] WARNING: Reached maximum iteration limit (\(maxIterations)) for series '\(series.description)' (ID: \(series.id))")
-                print("   Frequency: \(series.frequency), Start: \(series.startDate), Iterations: \(iterationCount)")
-                print("   This may indicate a problem with date calculation or an unusually long series.")
-            } else if iterationCount > 0 {
-                print("✅ [RECURRING] Generated series '\(series.description)' in \(iterationCount) iterations")
-            }
-        }
+        let (newTransactions, newOccurrences) = recurringGenerator.generateTransactions(
+            series: recurringSeries,
+            existingOccurrences: recurringOccurrences,
+            existingTransactionIds: existingTransactionIds,
+            horizonMonths: 3
+        )
         
         // First, insert new transactions if any
         if !newTransactions.isEmpty {
@@ -2437,33 +2105,8 @@ class TransactionsViewModel: ObservableObject {
 
         // Now convert past recurring transactions to regular transactions
         // This must happen AFTER insertion to catch newly created transactions with past dates
-        var updatedAllTransactions = allTransactions
-        var convertedCount = 0
-        for i in updatedAllTransactions.indices {
-            let transaction = updatedAllTransactions[i]
-            if let _ = transaction.recurringSeriesId,
-               let transactionDate = dateFormatter.date(from: transaction.date),
-               transactionDate <= today {
-                let updatedTransaction = Transaction(
-                    id: transaction.id,
-                    date: transaction.date,
-                    description: transaction.description,
-                    amount: transaction.amount,
-                    currency: transaction.currency,
-                    convertedAmount: transaction.convertedAmount,
-                    type: transaction.type,
-                    category: transaction.category,
-                    subcategory: transaction.subcategory,
-                    accountId: transaction.accountId,
-                    targetAccountId: transaction.targetAccountId,
-                    recurringSeriesId: nil,
-                    recurringOccurrenceId: nil,
-                    createdAt: transaction.createdAt
-                )
-                updatedAllTransactions[i] = updatedTransaction
-                convertedCount += 1
-            }
-        }
+        let updatedAllTransactions = recurringGenerator.convertPastRecurringToRegular(allTransactions)
+        let convertedCount = zip(allTransactions, updatedAllTransactions).filter { $0.0.recurringSeriesId != $0.1.recurringSeriesId }.count
 
         // Reassign to trigger @Published if conversions happened
         let needsSave = !newTransactions.isEmpty || convertedCount > 0
@@ -2553,8 +2196,6 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Subcategories
 
-    /// ⚠️ DEPRECATED: Use CategoriesViewModel.addSubcategory instead
-
     func updateSubcategory(_ subcategory: Subcategory) {
         if let index = subcategories.firstIndex(where: { $0.id == subcategory.id }) {
             subcategories[index] = subcategory
@@ -2568,13 +2209,7 @@ class TransactionsViewModel: ObservableObject {
         subcategories.removeAll { $0.id == subcategoryId }
         saveToStorageDebounced()
     }
-    
-    /// ⚠️ DEPRECATED: Use CategoriesViewModel.linkSubcategoryToCategory instead
-    
-    /// ⚠️ DEPRECATED: Use CategoriesViewModel.unlinkSubcategoryFromCategory instead
-    
-    /// ⚠️ DEPRECATED: Use CategoriesViewModel.getSubcategoriesForCategory instead
-    
+
     func getSubcategoriesForTransaction(_ transactionId: String) -> [Subcategory] {
         let linkedSubcategoryIds = transactionSubcategoryLinks
             .filter { $0.transactionId == transactionId }
