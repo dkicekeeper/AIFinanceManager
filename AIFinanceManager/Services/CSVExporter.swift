@@ -9,8 +9,8 @@ import Foundation
 
 class CSVExporter {
     static func exportTransactions(_ transactions: [Transaction], accounts: [Account]) -> String {
-        var csv = "date,type,amount,currency,account,category,subcategories,note\n"
-        
+        var csv = "date,type,amount,currency,account,category,subcategories,note,targetAccount,targetCurrency,targetAmount\n"
+
         for transaction in transactions {
             let date = transaction.date
             let type = transaction.type == .expense ? "expense" : transaction.type == .income ? "income" : "internal"
@@ -20,10 +20,17 @@ class CSVExporter {
             let category = escapeCSVField(transaction.category)
             let subcategories = escapeCSVField(transaction.subcategory ?? "")
             let note = escapeCSVField(transaction.description)
-            
-            csv += "\(date),\(type),\(amount),\(currency),\(accountName),\(category),\(subcategories),\(note)\n"
+
+            // Мультивалютные поля
+            let targetAccountName = transaction.targetAccountId != nil
+                ? escapeCSVField(accounts.first(where: { $0.id == transaction.targetAccountId })?.name ?? "")
+                : ""
+            let targetCurrency = escapeCSVField(transaction.targetCurrency ?? "")
+            let targetAmount = transaction.targetAmount.map { String(format: "%.2f", $0) } ?? ""
+
+            csv += "\(date),\(type),\(amount),\(currency),\(accountName),\(category),\(subcategories),\(note),\(targetAccountName),\(targetCurrency),\(targetAmount)\n"
         }
-        
+
         return csv
     }
     

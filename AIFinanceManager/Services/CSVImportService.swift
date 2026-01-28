@@ -347,7 +347,15 @@ class CSVImportService {
                let parsedTargetAmount = parseAmount(targetAmountString) {
                 targetAmount = parsedTargetAmount
             }
-            
+
+            // Очистка targetCurrency/targetAmount если они дублируют основную валюту
+            // (если валюта та же и сумма идентична — это не мультивалютная транзакция)
+            if let tc = targetCurrency, let ta = targetAmount,
+               tc == currency, abs(ta - amount) < 0.01 {
+                targetCurrency = nil
+                targetAmount = nil
+            }
+
             // Парсим категорию с учетом примененных правил парсинга
             // Для переводов используем локализованное название "Перевод", для остальных - "Другое"
             var categoryName = type == .internalTransfer ? String(localized: "transactionForm.transfer") : "Другое"
@@ -497,8 +505,11 @@ class CSVImportService {
                 createdAt: createdAt
             )
             
-            // CSV уже содержит суммы и валюты источника — конвертация по курсу не нужна.
-            // Суммы берутся как есть из таблицы.
+            // CSV уже содержит суммы и валюты источника + эквиваленты в других валютах.
+            // Конвертация по курсу не нужна — суммы берутся как есть из таблицы.
+            // targetCurrency/targetAmount используются для:
+            // - переводов: валюта и сумма счета получателя
+            // - расходов/доходов: эквивалентная сумма в другой валюте (информационное поле)
             let transaction = Transaction(
                 id: transactionId,
                 date: transactionDateString,
