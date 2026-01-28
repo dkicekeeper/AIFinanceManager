@@ -30,7 +30,6 @@ struct CoreDataIndexes {
         }
         */
         
-        print("ℹ️ [INDEXES] Core Data indexes configuration (currently handled via .xcdatamodeld)")
     }
     
     /// Оптимизированные fetch requests с явным указанием, какие поля использовать для сортировки/фильтрации
@@ -102,22 +101,15 @@ struct CoreDataIndexes {
     static func printIndexStatistics(context: NSManagedObjectContext) {
         // Получить описание модели
         guard let model = context.persistentStoreCoordinator?.managedObjectModel else {
-            print("❌ [INDEXES] Cannot access model")
             return
         }
         
-        print("📊 [INDEXES] Core Data Model Statistics:")
         
         for (entityName, entity) in model.entitiesByName {
-            print("  📋 Entity: \(entityName)")
-            print("    Attributes: \(entity.attributesByName.count)")
-            print("    Relationships: \(entity.relationshipsByName.count)")
-            print("    Indexes: \(entity.indexes.count)")
             
             if !entity.indexes.isEmpty {
                 for index in entity.indexes {
                     let elements = index.elements.compactMap { $0.property?.name }.joined(separator: ", ")
-                    print("      ✅ Index '\(index.name)': [\(elements)]")
                 }
             }
         }

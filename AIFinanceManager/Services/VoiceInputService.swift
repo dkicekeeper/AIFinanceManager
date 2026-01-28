@@ -351,7 +351,6 @@ class VoiceInputService: NSObject, ObservableObject {
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
-            print("Ошибка при деактивации аудио сессии: \(error)")
         }
 
         // Reset silence detector

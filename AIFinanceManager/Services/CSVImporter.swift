@@ -19,8 +19,6 @@ struct CSVFile {
 
 class CSVImporter {
     static func parseCSV(from url: URL) throws -> CSVFile {
-        print("📂 Парсинг CSV из URL: \(url.path)")
-        print("📂 Файл существует: \(FileManager.default.fileExists(atPath: url.path))")
         
         // Проверяем, является ли URL временным файлом (уже скопированным DocumentPicker)
         let isTemporaryFile = url.path.contains(FileManager.default.temporaryDirectory.path)
@@ -36,7 +34,6 @@ class CSVImporter {
             }
             
             if !isAccessing {
-                print("⚠️ Не удалось получить доступ к security-scoped ресурсу")
             }
             
             // Копируем файл во временную директорию для надежного доступа
@@ -46,38 +43,30 @@ class CSVImporter {
             do {
                 try FileManager.default.copyItem(at: url, to: tempURL)
                 fileURL = tempURL
-                print("✅ Файл скопирован во временную директорию: \(tempURL.path)")
             } catch {
-                print("❌ Ошибка копирования файла: \(error)")
                 // Пробуем использовать оригинальный URL
             }
         } else {
-            print("✅ Используется временный файл: \(url.path)")
         }
         
         // Читаем содержимое файла
         guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else {
             // Пробуем другие кодировки
             if let contentUTF16 = try? String(contentsOf: fileURL, encoding: .utf16) {
-                print("✅ Файл прочитан как UTF-16")
                 return try parseCSVContent(contentUTF16)
             }
             if let contentWindowsCP1251 = try? String(contentsOf: fileURL, encoding: String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.windowsCyrillic.rawValue)))) {
-                print("✅ Файл прочитан как Windows CP1251")
                 return try parseCSVContent(contentWindowsCP1251)
             }
-            print("❌ Не удалось прочитать файл с любой кодировкой")
             throw CSVImportError.invalidEncoding
         }
         
-        print("✅ Файл прочитан, размер: \(content.count) символов")
         return try parseCSVContent(content)
     }
     
     private static func parseCSVContent(_ content: String) throws -> CSVFile {
         
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        print("📊 Найдено строк: \(lines.count)")
         
         guard !lines.isEmpty else {
             throw CSVImportError.emptyFile
@@ -85,18 +74,15 @@ class CSVImporter {
         
         // Парсим CSV с учетом кавычек
         let parsedLines = lines.map { parseCSVLine($0) }
-        print("📊 Распарсено строк: \(parsedLines.count)")
         
         guard let headers = parsedLines.first else {
             throw CSVImportError.noHeaders
         }
         
-        print("📋 Заголовки: \(headers)")
         
         let rows = Array(parsedLines.dropFirst())
         let preview = Array(rows.prefix(5))
         
-        print("✅ CSV успешно распарсен: \(headers.count) колонок, \(rows.count) строк данных")
         
         return CSVFile(headers: headers, rows: rows, preview: preview)
     }

@@ -41,7 +41,6 @@ class PDFService {
         // Проверяем, что файл существует и доступен
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: url.path) else {
-            print("Error: PDF file does not exist at path: \(url.path)")
             throw PDFError.invalidDocument
         }
         
@@ -55,13 +54,9 @@ class PDFService {
         
         // Сначала пытаемся открыть PDF документ
         guard let pdfDocument = PDFDocument(url: url) else {
-            print("Error: Could not open PDF document from URL: \(url)")
-            print("File path: \(url.path)")
-            print("File exists: \(fileManager.fileExists(atPath: url.path))")
             
             // Пытаемся прочитать данные напрямую
             if let data = try? Data(contentsOf: url) {
-                print("File data size: \(data.count) bytes")
                 if let pdfFromData = PDFDocument(data: data) {
                     // Если получилось открыть через Data, используем этот документ
                     return try await extractText(from: pdfFromData, progressCallback: progressCallback)
@@ -82,7 +77,6 @@ class PDFService {
         var fullText = ""
         var pageTexts: [String] = []
         
-        print("📄 PDF has \(pageCount) pages")
         
         // Сначала пытаемся извлечь текст через PDFKit (для текстовых PDF)
         var hasAnyText = false
@@ -95,7 +89,6 @@ class PDFService {
             }
             
             guard let page = pdfDocument.page(at: pageIndex) else {
-                print("⚠️ Warning: Could not get page \(pageIndex)")
                 pageTexts.append("")
                 continue
             }
@@ -107,23 +100,19 @@ class PDFService {
                     fullText += pageText + "\n\n"
                     pageTexts.append(trimmedPageText)
                     hasAnyText = true
-                    print("✅ Page \(pageIndex + 1): Extracted \(pageText.count) characters via PDFKit")
                 } else {
                     pageTexts.append("")
                 }
             } else {
                 pageTexts.append("")
-                print("⚠️ Page \(pageIndex + 1): No text found via PDFKit (may be scanned image)")
             }
         }
         
         // Если найден текст, извлекаем структуру через PDFKit с bounding boxes
         if hasAnyText {
             let trimmedText = fullText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-            print("✅ Successfully extracted \(trimmedText.count) characters from PDF via PDFKit")
             
             // Извлекаем структуру из PDFKit с использованием bounding boxes
-            print("🔍 Extracting structure from PDFKit with bounding boxes...")
             var allStructuredRows: [[String]] = []
             
             for pageIndex in 0..<pageCount {
@@ -134,18 +123,15 @@ class PDFService {
                 let textBlocks = extractTextBlocksWithBoundingBoxes(from: page, pageBounds: pageBounds)
                 
                 if !textBlocks.isEmpty {
-                    print("📄 Page \(pageIndex + 1): Found \(textBlocks.count) text blocks")
                     
                     // Структурируем текст по координатам
                     let pageStructuredRows = structurePDFTextBlocks(textBlocks, pageBounds: pageBounds)
                     if !pageStructuredRows.isEmpty {
                         allStructuredRows.append(contentsOf: pageStructuredRows)
-                        print("📊 Page \(pageIndex + 1): Structured \(pageStructuredRows.count) rows")
                     }
                 }
             }
             
-            print("✅ Total structured rows from PDFKit: \(allStructuredRows.count)")
             
             // Финальный прогресс уже показан в цикле, просто возвращаем результат
             return OCRResult(
@@ -156,7 +142,6 @@ class PDFService {
         }
         
         // Если текста нет, используем OCR через Vision с координатами
-        print("No text found via PDFKit, using Vision OCR with structure recognition...")
         return try await performStructuredOCR(
             from: pdfDocument,
             progressCallback: progressCallback
@@ -184,7 +169,6 @@ class PDFService {
             }
             
             guard let page = pdfDocument.page(at: pageIndex) else {
-                print("Warning: Could not get page \(pageIndex) for OCR")
                 pageTexts.append("")
                 continue
             }
@@ -206,7 +190,6 @@ class PDFService {
             }
             
             guard let cgImage = image.cgImage else {
-                print("Error: Could not convert page \(pageIndex + 1) to CGImage")
                 pageTexts.append("")
                 continue
             }
@@ -223,10 +206,8 @@ class PDFService {
             let pageStructuredRows = structureObservations(observations, pageSize: scaledSize)
             if !pageStructuredRows.isEmpty {
                 allStructuredRows.append(contentsOf: pageStructuredRows)
-                print("📊 Page \(pageIndex + 1)/\(pageCount): Found \(pageStructuredRows.count) structured rows")
             }
             
-            print("Page \(pageIndex + 1)/\(pageCount): Recognized \(pageText.count) characters via OCR, \(observations.count) text blocks")
         }
         
         // Финальный прогресс
@@ -239,12 +220,9 @@ class PDFService {
         let trimmedText = fullText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         
         guard !trimmedText.isEmpty else {
-            print("Error: OCR did not extract any text")
             throw PDFError.noTextFound
         }
         
-        print("✅ Successfully recognized \(trimmedText.count) characters from PDF via OCR")
-        print("📊 Total structured rows found: \(allStructuredRows.count)")
         
         return OCRResult(
             fullText: trimmedText,
@@ -262,17 +240,14 @@ class PDFService {
             guard let fullSelection = page.selection(for: pageBounds),
                   let fullText = fullSelection.string,
                   !fullText.isEmpty else {
-                print("⚠️ No text found in PDF page")
                 return textBlocks
             }
             
-            print("📄 Extracting text blocks from PDF page, full text length: \(fullText.count)")
             
             // Используем selectionsByLine для получения строк с их координатами
             // Это самый надежный метод, который PDFKit предоставляет для получения координат
             let lineSelections = fullSelection.selectionsByLine()
             
-            print("📊 Found \(lineSelections.count) lines in PDF")
             
             // Для каждой строки извлекаем слова с их приблизительными позициями
             for lineSelection in lineSelections {
@@ -362,7 +337,6 @@ class PDFService {
             }
         }
         
-        print("✅ Extracted \(textBlocks.count) text blocks from PDF page")
         return textBlocks
     }
     
@@ -382,7 +356,6 @@ class PDFService {
     private func structurePDFTextBlocks(_ textBlocks: [PDFTextBlock], pageBounds: CGRect) -> [[String]] {
         guard !textBlocks.isEmpty else { return [] }
         
-        print("🔍 Structuring \(textBlocks.count) PDF text blocks...")
         
         // Группируем по строкам (Y координаты)
         // В PDFKit координаты: (0,0) в нижнем левом углу, Y увеличивается вверх
@@ -405,7 +378,6 @@ class PDFService {
         let avgHeight = absoluteBlocks.map { $0.box.height }.reduce(0, +) / CGFloat(absoluteBlocks.count)
         let rowTolerance = max(avgHeight * 0.5, pageBounds.height * 0.015) // Адаптивный порог
         
-        print("📏 Average text height: \(avgHeight), row tolerance: \(rowTolerance)")
         
         // Сортируем блоки сверху вниз (по Y)
         let sortedBlocks = absoluteBlocks.sorted { $0.y < $1.y }
@@ -426,7 +398,6 @@ class PDFService {
             }
         }
         
-        print("📊 Grouped into \(rowGroups.count) rows")
         
         // Сортируем элементы в каждой строке по X (слева направо)
         for i in 0..<rowGroups.count {
@@ -493,11 +464,8 @@ class PDFService {
             }
         }
         
-        print("✅ Structured \(structuredRows.count) transaction rows from \(textBlocks.count) PDF blocks")
         
         if !structuredRows.isEmpty {
-            print("📊 First structured row example: \(structuredRows.first?.joined(separator: " | ") ?? "")")
-            print("📊 Structured row has \(structuredRows.first?.count ?? 0) columns")
         }
         
         return structuredRows
@@ -507,7 +475,6 @@ class PDFService {
     private func structureObservations(_ observations: [TextObservation], pageSize: CGSize) -> [[String]] {
         guard !observations.isEmpty else { return [] }
         
-        print("🔍 Structuring \(observations.count) text observations...")
         
         // Конвертируем координаты Vision в абсолютные координаты
         // Vision использует координаты 0-1, где (0,0) - нижний левый угол
@@ -533,7 +500,6 @@ class PDFService {
         let avgHeight = absoluteObservations.map { $0.box.height }.reduce(0, +) / CGFloat(absoluteObservations.count)
         let rowTolerance = max(avgHeight * 0.5, pageSize.height * 0.02) // Адаптивный порог
         
-        print("📏 Average text height: \(avgHeight), row tolerance: \(rowTolerance)")
         
         // Сортируем наблюдения сверху вниз (по Y)
         let sortedObs = absoluteObservations.sorted { $0.y > $1.y }
@@ -555,7 +521,6 @@ class PDFService {
             }
         }
         
-        print("📊 Grouped into \(rowGroups.count) rows")
         
         // Определяем колонки на основе X координат
         // Собираем все X координаты для определения позиций колонок
@@ -584,7 +549,6 @@ class PDFService {
         }
         
         columnPositions.sort()
-        print("📊 Detected \(columnPositions.count) column positions")
         
         // Сортируем элементы в каждой строке по X (слева направо)
         for i in 0..<rowGroups.count {
@@ -655,10 +619,8 @@ class PDFService {
             }
         }
         
-        print("✅ Structured \(structuredRows.count) transaction rows from \(observations.count) observations")
         
         if !structuredRows.isEmpty {
-            print("📊 First structured row example: \(structuredRows.first?.joined(separator: " | ") ?? "")")
         }
         
         return structuredRows

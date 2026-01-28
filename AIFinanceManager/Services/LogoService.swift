@@ -79,7 +79,6 @@ final class LogoService {
             }
         } catch {
             // Логируем ошибку, но не падаем
-            print("LogoService: Failed to load logo for '\(normalizedName)': \(error.localizedDescription)")
         }
         
         return nil

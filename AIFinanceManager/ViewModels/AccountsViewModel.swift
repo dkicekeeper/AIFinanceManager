@@ -38,12 +38,9 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
-        print("🔄 [ACCOUNT] Reloading accounts from storage")
         accounts = repository.loadAccounts()
 
-        print("📊 [ACCOUNT] Loaded \(accounts.count) accounts from storage")
         for account in accounts {
-            print("   💰 '\(account.name)': balance = \(account.balance)")
         }
 
         // Обновляем начальные балансы
@@ -52,7 +49,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
                 initialAccountBalances[account.id] = account.balance
             }
         }
-        print("✅ [ACCOUNT] Reload from storage completed")
     }
     
     // MARK: - Account CRUD Operations
@@ -66,8 +62,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     }
     
     func updateAccount(_ account: Account) {
-        print("📝 [ACCOUNT] Updating account: \(account.name) (ID: \(account.id))")
-        print("💰 [ACCOUNT] New balance: \(account.balance)")
 
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
             let oldBalance = accounts[index].balance
@@ -80,18 +74,13 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             // Обновляем начальный баланс при редактировании
             initialAccountBalances[account.id] = account.balance
 
-            print("✅ [ACCOUNT] Account updated: \(oldBalance) -> \(account.balance)")
 
             // Переприсваиваем весь массив для триггера @Published
-            print("📢 [ACCOUNT] Reassigning accounts array to trigger @Published")
             accounts = newAccounts
             // NOTE: @Published automatically sends objectWillChange notification
 
-            print("💾 [ACCOUNT] Saving accounts to repository")
             saveAccounts()  // ✅ Sync save
-            print("✅ [ACCOUNT] Accounts saved")
         } else {
-            print("⚠️ [ACCOUNT] Account with ID \(account.id) not found")
         }
     }
     
@@ -173,7 +162,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     func updateDeposit(_ account: Account) {
         guard account.isDeposit else { return }
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-            print("📝 [ACCOUNT] Updating deposit: \(account.name) (ID: \(account.id))")
 
             // Создаем новый массив вместо модификации элемента на месте
             var newAccounts = accounts
@@ -182,16 +170,13 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             if let depositInfo = account.depositInfo {
                 let balance = NSDecimalNumber(decimal: depositInfo.principalBalance).doubleValue
                 initialAccountBalances[account.id] = balance
-                print("💰 [ACCOUNT] Deposit balance updated to: \(balance)")
             }
 
             // Переприсваиваем весь массив для триггера @Published
-            print("📢 [ACCOUNT] Reassigning accounts array to trigger @Published")
             accounts = newAccounts
             // NOTE: @Published automatically sends objectWillChange notification
 
             saveAccounts()  // ✅ Sync save
-            print("✅ [ACCOUNT] Deposit saved")
         }
     }
     
@@ -218,28 +203,21 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     
     /// Сохранить все счета (используется после массового обновления балансов)
     func saveAllAccounts() {
-        print("💾 [ACCOUNT] Saving all accounts via repository")
         for account in accounts {
-            print("   💰 '\(account.name)': balance = \(account.balance)")
         }
         repository.saveAccounts(accounts)
-        print("✅ [ACCOUNT] All accounts saved")
     }
 
     /// Синхронно сохранить все счета (используется при импорте)
     func saveAllAccountsSync() {
-        print("💾 [ACCOUNT] Saving all accounts synchronously")
         for account in accounts {
-            print("   💰 '\(account.name)': balance = \(account.balance)")
         }
         
         // Use repository to save synchronously
         if let coreDataRepo = repository as? CoreDataRepository {
             do {
                 try coreDataRepo.saveAccountsSync(accounts)
-                print("✅ [ACCOUNT] All accounts saved synchronously to Core Data")
             } catch {
-                print("❌ [ACCOUNT] Failed to save accounts to Core Data: \(error)")
                 // Critical error - log but don't fallback to UserDefaults
                 // This ensures data consistency with the primary storage
             }
@@ -247,7 +225,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             // For non-CoreData repositories (e.g., UserDefaultsRepository in tests)
             // use the standard async save method
             repository.saveAccounts(accounts)
-            print("✅ [ACCOUNT] Accounts save initiated through repository")
         }
     }
 
@@ -328,9 +305,7 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
         if let coreDataRepo = repository as? CoreDataRepository {
             do {
                 try coreDataRepo.saveAccountsSync(accounts)
-                print("✅ [ACCOUNTS] \(accounts.count) accounts saved synchronously")
             } catch {
-                print("❌ [ACCOUNTS] Failed to save accounts synchronously: \(error)")
                 // Fallback to async save
                 repository.saveAccounts(accounts)
             }

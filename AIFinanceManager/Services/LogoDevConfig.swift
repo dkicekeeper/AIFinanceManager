@@ -108,7 +108,6 @@ enum LogoDevConfig {
         let urlString = "https://img.logo.dev/\(encodedBrandName)?token=\(key)"
         
         guard let url = URL(string: urlString) else {
-            print("LogoDevConfig: Failed to create URL from string: '\(urlString)'")
             return nil
         }
         

@@ -106,6 +106,13 @@
 "error.noTransactionsStructured" = "Не удалось найти транзакции в структурированных данных. Возможно, формат выписки отличается от ожидаемого.";
 "error.pdfExtraction" = "Не удалось извлечь текст из PDF. Возможно, документ поврежден или пуст.";
 "error.importFailed" = "Ошибка импорта";
+"error.coredata.migrationFailed" = "Миграция данных не удалась. Пожалуйста, перезапустите приложение или обратитесь в поддержку.";
+"error.coredata.initializationFailed" = "Не удалось инициализировать локальное хранилище. Приложение будет работать в ограниченном режиме.";
+"error.pdfRecognitionFailed" = "Ошибка при распознавании: %@";
+
+// MARK: - Accessibility
+"accessibility.accountCard.label" = "%@ баланс %@";
+"accessibility.accountCard.hint" = "Нажмите для просмотра деталей счёта";
 
 // MARK: - Account Actions
 "account.transfer" = "Перевод";
@@ -351,10 +358,10 @@
 "subscriptions.status.unknown" = "Неизвестно";
 
 // MARK: - Budget Management
-"budget_amount" = "Сумма бюджета";
-"budget_period" = "Период";
-"weekly" = "Еженедельно";
-"monthly" = "Ежемесячно";
+"budget.amount" = "Сумма бюджета";
+"budget.period" = "Период";
+"budget.weekly" = "Еженедельно";
+"budget.monthly" = "Ежемесячно";
 "yearly" = "Ежегодно";
 "budget_reset_day" = "Сброс в день";
 "budget_reset_day_description" = "День месяца, когда бюджет обнуляется (1-31)";

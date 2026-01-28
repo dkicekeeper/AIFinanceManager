@@ -10,16 +10,24 @@ import Foundation
 import CoreData
 import Combine
 import UIKit
+import os
 
 /// Core Data Stack - Singleton for managing Core Data
 class CoreDataStack {
-    
+
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CoreDataStack")
+
     // MARK: - Singleton
-    
+
     static let shared = CoreDataStack()
-    
+
+    /// Флаг доступности CoreData. При ошибке инициализации = false → приложение работает через UserDefaults fallback.
+    private(set) var isCoreDataAvailable: Bool = true
+
+    /// Ошибка инициализации CoreData (для отображения пользователю)
+    private(set) var initializationError: String? = nil
+
     private init() {
-        print("🗄️ [CORE_DATA] Initializing CoreDataStack")
         setupNotifications()
     }
     
@@ -48,35 +56,27 @@ class CoreDataStack {
     }
     
     @objc private func saveOnBackground() {
-        print("🔔 [CORE_DATA] App will resign active - saving context")
         saveContextSync()
     }
-    
+
     @objc private func saveOnTerminate() {
-        print("🔔 [CORE_DATA] App will terminate - saving context")
         saveContextSync()
     }
-    
+
     private func saveContextSync() {
         let context = viewContext
-        guard context.hasChanges else {
-            print("⏭️ [CORE_DATA] No changes to save")
-            return
-        }
-        
+        guard context.hasChanges else { return }
+
         do {
             try context.save()
-            print("✅ [CORE_DATA] Context saved successfully on app lifecycle event")
         } catch {
-            let nsError = error as NSError
-            print("❌ [CORE_DATA] Error saving context: \(nsError), \(nsError.userInfo)")
+            CoreDataStack.logger.error("Error saving context on lifecycle event: \(error as NSError)")
         }
     }
     
     // MARK: - Persistent Container
     
     lazy var persistentContainer: NSPersistentContainer = {
-        print("🗄️ [CORE_DATA] Creating NSPersistentContainer")
         let container = NSPersistentContainer(name: "AIFinanceManager")
         
         // Configure container
@@ -88,20 +88,17 @@ class CoreDataStack {
         description?.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
         description?.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
         
-        container.loadPersistentStores { storeDescription, error in
+        container.loadPersistentStores { [self] storeDescription, error in
             if let error = error as NSError? {
-                // Check if this is a migration error
+                CoreDataStack.logger.critical("Persistent store failed to load: \(error), \(error.userInfo)")
+                self.isCoreDataAvailable = false
                 if error.code == NSPersistentStoreIncompatibleVersionHashError ||
                    error.code == NSMigrationMissingSourceModelError {
-                    print("⚠️ [CORE_DATA] Migration required, attempting automatic migration...")
-                    // Lightweight migration will be attempted automatically
-                    fatalError("❌ [CORE_DATA] Migration failed: \(error), \(error.userInfo)")
+                    self.initializationError = String(localized: "error.coredata.migrationFailed")
                 } else {
-                    // In production, handle this error appropriately
-                    fatalError("❌ [CORE_DATA] Unresolved error \(error), \(error.userInfo)")
+                    self.initializationError = String(localized: "error.coredata.initializationFailed")
                 }
             }
-            print("✅ [CORE_DATA] Persistent store loaded: \(storeDescription)")
         }
         
         // Automatic merge from parent context
@@ -113,7 +110,6 @@ class CoreDataStack {
         // Undo manager for view context (optional, can be disabled for performance)
         container.viewContext.undoManager = nil
         
-        print("✅ [CORE_DATA] CoreDataStack initialized with unique constraints support")
         return container
     }()
     
@@ -137,21 +133,13 @@ class CoreDataStack {
     /// Save context if it has changes
     /// - Parameter context: The context to save
     func saveContext(_ context: NSManagedObjectContext) {
-        guard context.hasChanges else {
-            print("⏭️ [CORE_DATA] No changes to save")
-            return
-        }
-        
+        guard context.hasChanges else { return }
+
         context.perform {
             do {
                 try context.save()
-                print("✅ [CORE_DATA] Context saved successfully")
             } catch {
-                let nsError = error as NSError
-                print("❌ [CORE_DATA] Error saving context: \(nsError), \(nsError.userInfo)")
-                
-                // In production, handle this appropriately
-                // For now, just print the error
+                CoreDataStack.logger.error("Error saving context: \(error as NSError)")
             }
         }
     }
@@ -159,13 +147,8 @@ class CoreDataStack {
     /// Save context synchronously (use carefully, can block thread)
     /// - Parameter context: The context to save
     func saveContextSync(_ context: NSManagedObjectContext) throws {
-        guard context.hasChanges else {
-            print("⏭️ [CORE_DATA] No changes to save")
-            return
-        }
-        
+        guard context.hasChanges else { return }
         try context.save()
-        print("✅ [CORE_DATA] Context saved synchronously")
     }
     
     // MARK: - Batch Operations
@@ -182,8 +165,6 @@ class CoreDataStack {
         // Merge changes to view context
         let changes = [NSDeletedObjectsKey: objectIDArray]
         NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
-        
-        print("✅ [CORE_DATA] Batch deleted \(objectIDArray.count) objects")
     }
     
     /// Execute batch update request
@@ -197,26 +178,20 @@ class CoreDataStack {
         // Merge changes to view context
         let changes = [NSUpdatedObjectsKey: objectIDArray]
         NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
-        
-        print("✅ [CORE_DATA] Batch updated \(objectIDArray.count) objects")
     }
     
     // MARK: - Reset
     
     /// Delete all data from persistent store (use for testing/debugging)
     func resetAllData() throws {
-        print("⚠️ [CORE_DATA] Resetting all data")
-        
         let coordinator = persistentContainer.persistentStoreCoordinator
-        
+
         for store in coordinator.persistentStores {
             if let storeURL = store.url {
                 try coordinator.destroyPersistentStore(at: storeURL, ofType: store.type, options: nil)
                 try coordinator.addPersistentStore(ofType: store.type, configurationName: nil, at: storeURL, options: nil)
             }
         }
-        
-        print("✅ [CORE_DATA] All data reset")
     }
     
     // MARK: - Performance Monitoring
@@ -233,7 +208,7 @@ class CoreDataStack {
                 return ByteCountFormatter.string(fromByteCount: fileSize, countStyle: .file)
             }
         } catch {
-            print("❌ [CORE_DATA] Error getting store size: \(error)")
+            CoreDataStack.logger.error("Error getting store size: \(error)")
         }
         
         return "Unknown"
@@ -253,7 +228,7 @@ extension NSManagedObjectContext {
                     try self.save()
                 }
             } catch {
-                print("❌ [CORE_DATA] Error in performAndSave: \(error)")
+                Logger(subsystem: "AIFinanceManager", category: "CoreDataStack").error("Error in performAndSave: \(error)")
             }
         }
     }

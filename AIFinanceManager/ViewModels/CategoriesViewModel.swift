@@ -53,9 +53,7 @@ class CategoriesViewModel: ObservableObject {
         if let coreDataRepo = repository as? CoreDataRepository {
             do {
                 try coreDataRepo.saveCategoriesSync(customCategories)
-                print("✅ [CATEGORIES] Category '\(category.name)' saved synchronously")
             } catch {
-                print("❌ [CATEGORIES] Failed to save category: \(error)")
                 // Keep async as fallback
                 repository.saveCategories(customCategories)
             }
@@ -278,9 +276,7 @@ class CategoriesViewModel: ObservableObject {
         if let coreDataRepo = repository as? CoreDataRepository {
             do {
                 try coreDataRepo.saveCategoriesSync(categories)
-                print("✅ [CATEGORIES] Categories saved synchronously to Core Data")
             } catch {
-                print("❌ [CATEGORIES] Failed to save categories to Core Data: \(error)")
                 // Critical error - log but don't fallback to UserDefaults
                 // This ensures data consistency with the primary storage
             }
@@ -288,7 +284,6 @@ class CategoriesViewModel: ObservableObject {
             // For non-CoreData repositories (e.g., UserDefaultsRepository in tests)
             // use the standard async save method
             repository.saveCategories(categories)
-            print("✅ [CATEGORIES] Categories save initiated through repository")
         }
     }
 
@@ -388,9 +383,7 @@ class CategoriesViewModel: ObservableObject {
         if let coreDataRepo = repository as? CoreDataRepository {
             do {
                 try coreDataRepo.saveCategoriesSync(customCategories)
-                print("✅ [CATEGORIES] \(customCategories.count) categories saved synchronously")
             } catch {
-                print("❌ [CATEGORIES] Failed to save categories synchronously: \(error)")
                 // Fallback to async save
                 repository.saveCategories(customCategories)
             }

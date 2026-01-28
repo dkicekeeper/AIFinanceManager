@@ -51,7 +51,6 @@ struct RecognizedTextView: View {
                         HapticManager.success()
 
                         // Парсим текст выписки в CSV формат с использованием структурированных данных
-                        print("🔍 Парсинг выписки: structuredRows count = \(structuredRows?.count ?? 0)")
                         let csvFile = StatementTextParser.parseStatementToCSV(recognizedText, structuredRows: structuredRows)
 
                         isParsing = false
@@ -66,7 +65,6 @@ struct RecognizedTextView: View {
                             showingParseError = true
                         } else {
                             // Импортируем
-                            print("✅ Найдено \(csvFile.rows.count) транзакций для импорта")
                             onImport(csvFile)
                         }
                     }) {

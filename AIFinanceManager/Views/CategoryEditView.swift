@@ -115,16 +115,16 @@ struct CategoryEditView: View {
             // Budget section (only for expense categories)
             if type == .expense {
                 Section {
-                    TextField(String(localized: "budget_amount"), text: $budgetAmount)
+                    TextField(String(localized: "budget.amount"), text: $budgetAmount)
                         .keyboardType(.decimalPad)
-                        .accessibilityLabel(String(localized: "budget_amount"))
+                        .accessibilityLabel(String(localized: "budget.amount"))
 
-                    Picker(String(localized: "budget_period"), selection: $selectedPeriod) {
-                        Text(String(localized: "weekly")).tag(CustomCategory.BudgetPeriod.weekly)
-                        Text(String(localized: "monthly")).tag(CustomCategory.BudgetPeriod.monthly)
+                    Picker(String(localized: "budget.period"), selection: $selectedPeriod) {
+                        Text(String(localized: "budget.weekly")).tag(CustomCategory.BudgetPeriod.weekly)
+                        Text(String(localized: "budget.monthly")).tag(CustomCategory.BudgetPeriod.monthly)
                         Text(String(localized: "yearly")).tag(CustomCategory.BudgetPeriod.yearly)
                     }
-                    .accessibilityLabel(String(localized: "budget_period"))
+                    .accessibilityLabel(String(localized: "budget.period"))
 
                     if selectedPeriod == .monthly {
                         Stepper(

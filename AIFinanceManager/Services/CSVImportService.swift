@@ -67,11 +67,9 @@ class CSVImportService {
         let totalRows = csvFile.rows.count
         
         // Build fingerprint set of existing transactions for duplicate detection
-        print("🔍 [CSV_IMPORT] Building fingerprint set from existing transactions")
         let existingFingerprints = await MainActor.run {
             Set(transactionsViewModel.allTransactions.map { TransactionFingerprint(from: $0) })
         }
-        print("🔍 [CSV_IMPORT] Found \(existingFingerprints.count) existing transaction fingerprints")
         
         // Получаем индексы колонок
         let dateIndex = columnMapping.dateColumn.flatMap { csvFile.headers.firstIndex(of: $0) }
@@ -107,7 +105,6 @@ class CSVImportService {
             }
             
             // Start batch mode to defer expensive operations until end
-            print("📦 [CSV_IMPORT] Starting batch mode for performance")
             transactionsViewModel.beginBatch()
         }
         
@@ -526,7 +523,6 @@ class CSVImportService {
             if existingFingerprints.contains(fingerprint) {
                 duplicatesSkipped += 1
                 skippedCount += 1
-                print("⏭️ [CSV_IMPORT] Row \(rowIndex + 2): Duplicate detected (fingerprint match), skipping")
                 continue
             }
             
@@ -576,7 +572,6 @@ class CSVImportService {
             categoriesViewModel.saveAllData()
             
             // End batch mode - this triggers balance recalculation and save
-            print("📦 [CSV_IMPORT] Ending batch mode - triggering balance recalculation")
             transactionsViewModel.endBatch()
             
             // Note: endBatch() now handles:
@@ -602,7 +597,6 @@ class CSVImportService {
                         // НЕ устанавливаем текущий баланс как initialBalance - это была причина бага!
                         if let correctInitialBalance = transactionsViewModel.getInitialBalance(for: account.id) {
                             accountsVM.setInitialBalance(correctInitialBalance, for: account.id)
-                            print("📊 [CSV_IMPORT] Account '\(account.name)': balance=\(updatedAccount.balance), initialBalance=\(correctInitialBalance)")
                         }
                     }
                 }
@@ -625,15 +619,7 @@ class CSVImportService {
         allTransactionSubcategoryLinks.removeAll(keepingCapacity: false)
         
         // Log import summary
-        print("📊 [CSV_IMPORT] Import completed:")
-        print("   ✅ Imported: \(importedCount)")
-        print("   ⏭️ Skipped: \(skippedCount - duplicatesSkipped)")
-        print("   🔄 Duplicates: \(duplicatesSkipped)")
-        print("   ➕ Accounts created: \(createdAccounts)")
-        print("   ➕ Categories created: \(createdCategories)")
-        print("   ➕ Subcategories created: \(createdSubcategories)")
         if !errors.isEmpty {
-            print("   ⚠️ Errors: \(errors.count)")
         }
         
         return ImportResult(

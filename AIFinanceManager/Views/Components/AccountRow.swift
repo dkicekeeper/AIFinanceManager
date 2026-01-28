@@ -78,8 +78,8 @@ struct AccountRow: View {
         AccountRow(
             account: sampleAccount,
             currency: "USD",
-            onEdit: { print("Edit tapped") },
-            onDelete: { print("Delete tapped") }
+            onEdit: {},
+            onDelete: {}
         )
         .padding(.horizontal)
         .padding(.vertical, AppSpacing.xs)

@@ -29,11 +29,8 @@ struct AccountCard: View {
             .glassCardStyle()
         }
         .buttonStyle(.bounce)
-        .accessibilityLabel("\(account.name), balance \(Formatting.formatCurrency(account.balance, currency: account.currency))")
-        .accessibilityHint("Tap to view account details")
-        .onAppear {
-            print("👁️ [UI] AccountCard appeared for '\(account.name)': balance = \(account.balance)")
-        }
+        .accessibilityLabel(String(format: String(localized: "accessibility.accountCard.label"), account.name, Formatting.formatCurrency(account.balance, currency: account.currency)))
+        .accessibilityHint(String(localized: "accessibility.accountCard.hint"))
     }
 }
 

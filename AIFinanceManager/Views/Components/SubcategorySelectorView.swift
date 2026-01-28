@@ -94,7 +94,6 @@ struct SubcategorySelectorView: View {
             categoryId: nil,
             selectedSubcategoryIds: $selectedIds,
             onSearchTap: {
-                print("Search tapped")
             }
         )
     }

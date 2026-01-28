@@ -279,26 +279,13 @@ struct ContentView: View {
                 PerformanceProfiler.end("ContentView.onAppear")
             }
             .onChange(of: viewModel.allTransactions.count) { oldValue, newValue in
-                print("🔔 [UI] allTransactions.count changed: \(oldValue) -> \(newValue)")
                 refreshTrigger += 1
-                print("🔄 [UI] refreshTrigger incremented to \(refreshTrigger)")
             }
             .onChange(of: accountsViewModel.accounts.count) { oldValue, newValue in
-                print("🔔 [UI] accounts.count changed: \(oldValue) -> \(newValue)")
                 refreshTrigger += 1
-                print("🔄 [UI] refreshTrigger incremented to \(refreshTrigger)")
             }
-            .onChange(of: viewModel.allTransactions) { _, _ in
-                print("🔔 [UI] allTransactions array changed")
-            }
-            .onChange(of: accountsViewModel.accounts) { _, newAccounts in
-                print("🔔 [UI] accounts array changed")
-                print("📊 [UI] New accounts balances:")
-                for account in newAccounts {
-                    print("   💰 '\(account.name)': \(account.balance)")
-                }
+            .onChange(of: accountsViewModel.accounts) { _, _ in
                 refreshTrigger += 1
-                print("🔄 [UI] refreshTrigger incremented to \(refreshTrigger)")
             }
             .onChange(of: timeFilterManager.currentFilter) { _, _ in
                 // Summary will be recomputed automatically in analyticsCard
@@ -440,9 +427,7 @@ struct ContentView: View {
                                 .foregroundStyle(.primary)
                         }
                         
-                        Text(String(localized: "emptyState.noAccounts", defaultValue: "Нет счетов"))
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(.primary)
+                        EmptyStateView(title: String(localized: "emptyState.noAccounts", defaultValue: "Нет счетов"), style: .compact)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .glassCardStyle(radius: AppRadius.pill)
@@ -497,9 +482,7 @@ struct ContentView: View {
                             .foregroundStyle(.primary)
                     }
 
-                    Text(String(localized: "emptyState.noTransactions", defaultValue: "Нет транзакций"))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(.primary)
+                    EmptyStateView(title: String(localized: "emptyState.noTransactions", defaultValue: "Нет транзакций"), style: .compact)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .glassCardStyle(radius: AppRadius.pill)
@@ -519,7 +502,6 @@ struct ContentView: View {
     
     
     private func analyzePDF(url: URL) async {
-        print("📄 Starting PDF analysis for: \(url.path)")
         
         await MainActor.run {
             viewModel.isLoading = true
@@ -530,35 +512,23 @@ struct ContentView: View {
         
         do {
             // Извлекаем текст через PDFKit или OCR
-            print("📖 Extracting text from PDF...")
             let ocrResult = try await PDFService.shared.extractText(from: url) { current, total in
                 // Callback уже вызывается на MainActor в PDFService
-                print("📊 OCR Progress: \(current)/\(total)")
                 Task { @MainActor in
                     ocrProgress = (current: current, total: total)
                 }
             }
             
-            print("✅ Text extracted: \(ocrResult.fullText.count) characters")
             
             // Проверяем, что текст не пустой
             let trimmedText = ocrResult.fullText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
             guard !trimmedText.isEmpty else {
-                print("❌ Extracted text is empty")
                 await MainActor.run {
-                    viewModel.errorMessage = "Не удалось извлечь текст из PDF. Возможно, документ поврежден или пуст."
+                    viewModel.errorMessage = String(localized: "error.pdfExtraction")
                     viewModel.isLoading = false
                     ocrProgress = nil
                 }
                 return
-            }
-            
-            // Показываем распознанный текст для проверки пользователем на MainActor
-            print("📝 Showing recognized text modal...")
-            if let structuredRows = ocrResult.structuredRows {
-                print("📊 Structured rows found: \(structuredRows.count) rows")
-            } else {
-                print("⚠️ No structured rows found, will use text parsing")
             }
             
             await MainActor.run {
@@ -567,12 +537,10 @@ struct ContentView: View {
                 ocrProgress = nil
                 viewModel.isLoading = false
                 showingRecognizedText = true
-                print("✅ Modal should be shown, showingRecognizedText = \(showingRecognizedText), recognizedText length = \(recognizedText?.count ?? 0), structuredRows count = \(structuredRows?.count ?? 0)")
             }
             
         } catch let error as PDFError {
             let errorMessage = error.localizedDescription
-            print("❌ PDF Error: \(errorMessage)")
             await MainActor.run {
                 viewModel.errorMessage = errorMessage
                 viewModel.isLoading = false
@@ -581,9 +549,8 @@ struct ContentView: View {
                 structuredRows = nil
             }
         } catch {
-            print("❌ General Error: \(error.localizedDescription)")
             await MainActor.run {
-                viewModel.errorMessage = "Ошибка при распознавании: \(error.localizedDescription)"
+                viewModel.errorMessage = String(format: String(localized: "error.pdfRecognitionFailed"), error.localizedDescription)
                 viewModel.isLoading = false
                 ocrProgress = nil
                 recognizedText = nil

@@ -42,7 +42,8 @@ extension AccountEntity {
             balance: balance,
             currency: currency ?? "KZT",
             bankLogo: bankLogo,
-            depositInfo: depositInfo
+            depositInfo: depositInfo,
+            createdDate: createdAt
         )
     }
     
@@ -56,7 +57,7 @@ extension AccountEntity {
         entity.logo = account.bankLogo.rawValue
         entity.isDeposit = account.isDeposit
         entity.bankName = account.depositInfo?.bankName
-        entity.createdAt = Date()
+        entity.createdAt = account.createdDate ?? Date()
         // Note: depositInfo details are not stored in AccountEntity
         // This would need to be extended if full deposit support is required
         return entity

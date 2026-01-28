@@ -69,12 +69,10 @@ class SubscriptionsViewModel: ObservableObject {
         // ✅ CRITICAL: Reassign array to trigger @Published
         // Using append() doesn't always trigger SwiftUI updates
         recurringSeries = recurringSeries + [series]
-        print("📝 [RECURRING] Created recurring series, total count: \(recurringSeries.count)")
         
         saveRecurringSeries()  // ✅ Sync save
         
         // Notify TransactionsViewModel to generate transactions for new series
-        print("📢 [RECURRING] Notifying about new recurring series: \(series.id)")
         NotificationCenter.default.post(
             name: .recurringSeriesCreated,
             object: nil,
@@ -94,12 +92,7 @@ class SubscriptionsViewModel: ObservableObject {
             let amountChanged = oldSeries.amount != series.amount
             let needsRegeneration = frequencyChanged || startDateChanged || amountChanged
 
-            print("📝 [RECURRING] Updating series: \(series.id)")
             if needsRegeneration {
-                print("🔄 [RECURRING] Changes detected - will regenerate transactions:")
-                print("   Frequency: \(frequencyChanged ? "✓" : "-")")
-                print("   Start Date: \(startDateChanged ? "✓" : "-")")
-                print("   Amount: \(amountChanged ? "✓" : "-")")
             }
 
             // Создаем новый массив вместо модификации элемента на месте
@@ -138,13 +131,11 @@ class SubscriptionsViewModel: ObservableObject {
     }
     
     func deleteRecurringSeries(_ seriesId: String) {
-        print("🗑️ [RECURRING] Deleting recurring series: \(seriesId)")
         
         // ✅ CRITICAL: Use filter to create new array for @Published trigger
         recurringOccurrences = recurringOccurrences.filter { $0.seriesId != seriesId }
         recurringSeries = recurringSeries.filter { $0.id != seriesId }
         
-        print("📝 [RECURRING] After deletion, total count: \(recurringSeries.count)")
         
         saveRecurringSeries()  // ✅ Sync save
         repository.saveRecurringOccurrences(recurringOccurrences)
@@ -191,12 +182,10 @@ class SubscriptionsViewModel: ObservableObject {
         // ✅ CRITICAL: Reassign array to trigger @Published
         // Using append() doesn't always trigger SwiftUI updates
         recurringSeries = recurringSeries + [series]
-        print("📝 [SUBSCRIPTION] Created subscription, total count: \(recurringSeries.count)")
         
         saveRecurringSeries()  // ✅ Sync save
         
         // Notify TransactionsViewModel to generate transactions for new subscription
-        print("📢 [SUBSCRIPTION] Notifying about new subscription: \(series.id)")
         NotificationCenter.default.post(
             name: .recurringSeriesCreated,
             object: nil,
@@ -224,12 +213,7 @@ class SubscriptionsViewModel: ObservableObject {
             let amountChanged = oldSeries.amount != series.amount
             let needsRegeneration = frequencyChanged || startDateChanged || amountChanged
 
-            print("📝 [SUBSCRIPTION] Updating subscription: \(series.id)")
             if needsRegeneration {
-                print("🔄 [SUBSCRIPTION] Changes detected - will regenerate transactions:")
-                print("   Frequency: \(frequencyChanged ? "✓" : "-")")
-                print("   Start Date: \(startDateChanged ? "✓" : "-")")
-                print("   Amount: \(amountChanged ? "✓" : "-")")
             }
 
             // Создаем новый массив вместо модификации элемента на месте
@@ -351,7 +335,6 @@ class SubscriptionsViewModel: ObservableObject {
     /// Recurring series have complex relationships that require background context
     private func saveRecurringSeries() {
         repository.saveRecurringSeries(recurringSeries)
-        print("💾 [SUBSCRIPTIONS] Saving \(recurringSeries.count) recurring series")
     }
 
     // MARK: - Currency Conversion Helpers

@@ -106,6 +106,13 @@
 "error.noTransactionsStructured" = "No transactions found in structured data. The statement format may differ from expected.";
 "error.pdfExtraction" = "Failed to extract text from PDF. The document may be corrupted or empty.";
 "error.importFailed" = "Import failed";
+"error.coredata.migrationFailed" = "Data migration failed. Please restart the app or contact support.";
+"error.coredata.initializationFailed" = "Failed to initialize local storage. The app will work in limited mode.";
+"error.pdfRecognitionFailed" = "Recognition error: %@";
+
+// MARK: - Accessibility
+"accessibility.accountCard.label" = "%@ balance %@";
+"accessibility.accountCard.hint" = "Tap to view account details";
 
 // MARK: - Account Actions
 "account.transfer" = "Transfer";
@@ -351,10 +358,10 @@
 "subscriptions.status.unknown" = "Unknown";
 
 // MARK: - Budget Management
-"budget_amount" = "Budget Amount";
-"budget_period" = "Period";
-"weekly" = "Weekly";
-"monthly" = "Monthly";
+"budget.amount" = "Budget Amount";
+"budget.period" = "Period";
+"budget.weekly" = "Weekly";
+"budget.monthly" = "Monthly";
 "yearly" = "Yearly";
 "budget_reset_day" = "Reset on day";
 "budget_reset_day_description" = "The day of the month when the budget resets (1-31)";

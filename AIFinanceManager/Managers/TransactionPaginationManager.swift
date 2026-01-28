@@ -44,7 +44,6 @@ class TransactionPaginationManager: ObservableObject {
     // MARK: - Initialization
 
     init() {
-        print("📄 [PAGINATION] TransactionPaginationManager initialized")
     }
 
     // MARK: - Public Methods
@@ -54,7 +53,6 @@ class TransactionPaginationManager: ObservableObject {
     ///   - grouped: Dictionary of date keys to transactions
     ///   - sortedKeys: Array of date keys in display order
     func initialize(grouped: [String: [Transaction]], sortedKeys: [String]) {
-        print("📄 [PAGINATION] Initializing with \(sortedKeys.count) sections, \(grouped.values.flatMap { $0 }.count) total transactions")
 
         self.allGroupedTransactions = grouped
         self.allSortedKeys = sortedKeys
@@ -70,19 +68,16 @@ class TransactionPaginationManager: ObservableObject {
     /// Load the next page of transaction sections
     func loadNextPage() {
         guard hasMore && !isLoadingMore else {
-            print("📄 [PAGINATION] Skip loading: hasMore=\(hasMore), isLoadingMore=\(isLoadingMore)")
             return
         }
 
         isLoadingMore = true
-        print("📄 [PAGINATION] Loading page \(currentPage + 1)")
 
         // Calculate range for next page
         let startIndex = currentPage * sectionsPerPage
         let endIndex = min(startIndex + sectionsPerPage, allSortedKeys.count)
 
         guard startIndex < allSortedKeys.count else {
-            print("📄 [PAGINATION] No more sections to load")
             hasMore = false
             isLoadingMore = false
             return
@@ -90,7 +85,6 @@ class TransactionPaginationManager: ObservableObject {
 
         // Get next batch of sections
         let newSections = Array(allSortedKeys[startIndex..<endIndex])
-        print("📄 [PAGINATION] Loading sections \(startIndex)..<\(endIndex): \(newSections)")
 
         // Add new sections to visible list
         visibleSections.append(contentsOf: newSections)
@@ -108,12 +102,10 @@ class TransactionPaginationManager: ObservableObject {
         isLoadingMore = false
 
         let totalVisibleTransactions = groupedTransactions.values.flatMap { $0 }.count
-        print("📄 [PAGINATION] Page loaded. Visible: \(visibleSections.count) sections, \(totalVisibleTransactions) transactions. HasMore: \(hasMore)")
     }
 
     /// Reset pagination to initial state
     func reset() {
-        print("📄 [PAGINATION] Resetting pagination")
         currentPage = 0
         visibleSections = []
         groupedTransactions = [:]
@@ -134,7 +126,6 @@ class TransactionPaginationManager: ObservableObject {
         let shouldLoad = index >= triggerIndex && hasMore && !isLoadingMore
 
         if shouldLoad {
-            print("📄 [PAGINATION] Trigger loading at section \(sectionKey) (index \(index)/\(visibleSections.count))")
         }
 
         return shouldLoad

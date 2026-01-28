@@ -78,12 +78,10 @@ actor BalanceUpdateCoordinator: BalanceUpdateCoordinatorProtocol {
 
         // Check for duplicate requests from same source (debouncing)
         if shouldDebounce(request) {
-            print("⏳ [BALANCE_COORD] Debouncing duplicate request from: \(source)")
             return
         }
 
         pendingRequests.append(request)
-        print("📥 [BALANCE_COORD] Scheduled update from: \(source), queue size: \(pendingRequests.count)")
 
         await processQueueIfNeeded(action: action)
     }
@@ -91,7 +89,6 @@ actor BalanceUpdateCoordinator: BalanceUpdateCoordinatorProtocol {
     func cancelAllPending() async {
         let count = pendingRequests.count
         pendingRequests.removeAll()
-        print("🚫 [BALANCE_COORD] Cancelled \(count) pending updates")
     }
 
     // MARK: - Private Methods
@@ -135,7 +132,6 @@ actor BalanceUpdateCoordinator: BalanceUpdateCoordinatorProtocol {
 
     private func processQueueIfNeeded(action: @escaping () async -> Void) async {
         guard !isCurrentlyProcessing else {
-            print("⏸️ [BALANCE_COORD] Already processing, request queued")
             return
         }
 
@@ -147,14 +143,11 @@ actor BalanceUpdateCoordinator: BalanceUpdateCoordinatorProtocol {
 
         while !pendingRequests.isEmpty {
             let request = pendingRequests.removeFirst()
-            print("▶️ [BALANCE_COORD] Processing update from: \(request.source)")
 
             do {
                 await action()
                 processedCount += 1
-                print("✅ [BALANCE_COORD] Completed update from: \(request.source), total processed: \(processedCount)")
             } catch {
-                print("❌ [BALANCE_COORD] Error processing update: \(error)")
             }
 
             // Call completion on main thread

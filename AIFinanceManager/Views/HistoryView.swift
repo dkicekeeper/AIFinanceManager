@@ -171,7 +171,6 @@ struct HistoryView: View {
         paginationManager.initialize(grouped: result.grouped, sortedKeys: result.sortedKeys)
 
         PerformanceProfiler.end("HistoryView.updateTransactions")
-        print("📊 [HISTORY] Filtered \(filtered.count) transactions into \(result.sortedKeys.count) sections")
     }
 
     private func resetFilters() {

@@ -238,11 +238,9 @@ struct SettingsView: View {
     @State private var showingError = false
     
     private func handleCSVImport(url: URL) async {
-        print("📄 Начало импорта CSV из: \(url.path)")
         
         do {
             let file = try CSVImporter.parseCSV(from: url)
-            print("✅ CSV успешно распарсен: \(file.headers.count) колонок, \(file.rowCount) строк")
             
             await MainActor.run {
                 csvFile = file
@@ -251,7 +249,6 @@ struct SettingsView: View {
             }
         } catch {
             let errorMessage = error.localizedDescription
-            print("❌ Ошибка импорта CSV: \(errorMessage)")
             
             await MainActor.run {
                 importError = errorMessage
@@ -290,7 +287,6 @@ struct SettingsView: View {
                     transactionsViewModel.objectWillChange.send()
                 }
             } catch {
-                print("❌ Ошибка сохранения обоев: \(error)")
             }
         }
     }

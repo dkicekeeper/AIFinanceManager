@@ -83,7 +83,6 @@ class RecurringTransactionGenerator {
         existingTransactionIds: Set<String>
     ) -> (transactions: [Transaction], occurrences: [RecurringOccurrence]) {
         guard let startDate = dateFormatter.date(from: series.startDate) else {
-            print("⚠️ [RECURRING] ERROR: Invalid start date '\(series.startDate)' for series \(series.id)")
             return ([], [])
         }
 
@@ -161,7 +160,6 @@ class RecurringTransactionGenerator {
 
             // Safety check: ensure we're moving forward in time
             if nextDate <= currentDate {
-                print("⚠️ [RECURRING] ERROR: nextDate (\(nextDate)) is not greater than currentDate (\(currentDate)) for series \(series.id). Breaking to prevent infinite loop.")
                 break
             }
 
@@ -170,11 +168,7 @@ class RecurringTransactionGenerator {
 
         // Log completion
         if iterationCount >= maxIterations {
-            print("⚠️ [RECURRING] WARNING: Reached maximum iteration limit (\(maxIterations)) for series '\(series.description)' (ID: \(series.id))")
-            print("   Frequency: \(series.frequency), Start: \(series.startDate), Iterations: \(iterationCount)")
-            print("   This may indicate a problem with date calculation or an unusually long series.")
         } else if iterationCount > 0 {
-            print("✅ [RECURRING] Generated series '\(series.description)' in \(iterationCount) iterations")
         }
 
         return (newTransactions, newOccurrences)

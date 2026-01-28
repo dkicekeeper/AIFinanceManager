@@ -38,7 +38,6 @@ actor CoreDataSaveCoordinator {
     ) async throws -> T {
         // Check if this operation is already in progress
         guard !activeSaves.contains(operation) else {
-            print("⏸️ [SAVE_COORDINATOR] Save '\(operation)' already in progress, skipping")
             throw SaveError.savingInProgress(operation: operation)
         }
         
@@ -50,7 +49,6 @@ actor CoreDataSaveCoordinator {
             pendingSaves.removeValue(forKey: operation)
         }
         
-        print("🔄 [SAVE_COORDINATOR] Starting save operation: \(operation)")
         let startTime = Date()
         
         // Create background context for this operation
@@ -65,30 +63,25 @@ actor CoreDataSaveCoordinator {
                 if context.hasChanges {
                     do {
                         try context.save()
-                        print("✅ [SAVE_COORDINATOR] Save '\(operation)' completed successfully")
                     } catch let error as NSError {
                         // Handle merge conflicts
                         if error.code == NSManagedObjectMergeError {
-                            print("⚠️ [SAVE_COORDINATOR] Merge conflict detected, retrying...")
                             try self.handleMergeConflict(context: context)
                         } else {
                             throw error
                         }
                     }
                 } else {
-                    print("⏭️ [SAVE_COORDINATOR] No changes to save for '\(operation)'")
                 }
                 
                 return workResult
             }
             
             let duration = Date().timeIntervalSince(startTime)
-            print("⏱️ [SAVE_COORDINATOR] Operation '\(operation)' took \(String(format: "%.2f", duration * 1000))ms")
             
             return result
             
         } catch {
-            print("❌ [SAVE_COORDINATOR] Save '\(operation)' failed: \(error)")
             throw SaveError.saveFailed(operation: operation, underlyingError: error)
         }
     }
@@ -99,19 +92,16 @@ actor CoreDataSaveCoordinator {
     func performBatchSave(
         operations: [(name: String, work: (NSManagedObjectContext) throws -> Void)]
     ) async throws {
-        print("📦 [SAVE_COORDINATOR] Starting batch save with \(operations.count) operations")
         
         let context = stack.newBackgroundContext()
         
         try await context.perform {
             for (name, work) in operations {
-                print("   ├─ Executing: \(name)")
                 try work(context)
             }
             
             if context.hasChanges {
                 try context.save()
-                print("✅ [SAVE_COORDINATOR] Batch save completed successfully")
             }
         }
     }
@@ -128,7 +118,6 @@ actor CoreDataSaveCoordinator {
         // Retry save
         if context.hasChanges {
             try context.save()
-            print("✅ [SAVE_COORDINATOR] Merge conflict resolved")
         }
     }
     
@@ -198,7 +187,6 @@ extension CoreDataSaveCoordinator {
         batchSize: Int = 500
     ) async throws {
         guard !entities.isEmpty else {
-            print("⏭️ [SAVE_COORDINATOR] No entities to save")
             return
         }
         
@@ -206,7 +194,6 @@ extension CoreDataSaveCoordinator {
             Array(entities[$0..<min($0 + batchSize, entities.count)])
         }
         
-        print("📦 [SAVE_COORDINATOR] Saving \(entities.count) entities in \(batches.count) batches")
         
         for (index, batch) in batches.enumerated() {
             try await performSave(operation: "\(operation)_batch_\(index)") { context in
@@ -219,6 +206,5 @@ extension CoreDataSaveCoordinator {
             }
         }
         
-        print("✅ [SAVE_COORDINATOR] All batches saved successfully")
     }
 }

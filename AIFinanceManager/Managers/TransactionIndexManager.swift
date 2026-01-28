@@ -32,7 +32,6 @@ class TransactionIndexManager {
     /// Build indexes from transactions
     /// - Parameter transactions: Array of transactions to index
     func buildIndexes(transactions: [Transaction]) {
-        print("📇 [INDEX] Building indexes for \(transactions.count) transactions")
         PerformanceProfiler.start("buildIndexes")
 
         // Clear existing indexes
@@ -64,13 +63,11 @@ class TransactionIndexManager {
 
         isValid = true
         PerformanceProfiler.end("buildIndexes")
-        print("✅ [INDEX] Indexes built: \(byAccount.count) accounts, \(byCategory.count) categories, \(byType.count) types")
     }
 
     /// Invalidate indexes (call when transactions change)
     func invalidate() {
         isValid = false
-        print("🔄 [INDEX] Indexes invalidated")
     }
 
     /// Check if indexes are valid
@@ -88,7 +85,6 @@ class TransactionIndexManager {
     /// - Returns: Array of filtered transactions
     func filter(accountId: String? = nil, category: String? = nil, type: TransactionType? = nil) -> [Transaction] {
         guard isValid else {
-            print("⚠️ [INDEX] Indexes not valid, returning empty array")
             return []
         }
 

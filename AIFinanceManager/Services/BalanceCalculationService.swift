@@ -165,12 +165,10 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
 
     func markAsImported(_ accountId: String) {
         importedAccountIds.insert(accountId)
-        print("📊 [BALANCE_CALC] Marked account \(accountId) as imported")
     }
 
     func markAsManual(_ accountId: String) {
         importedAccountIds.remove(accountId)
-        print("📊 [BALANCE_CALC] Marked account \(accountId) as manual")
     }
 
     func isImported(_ accountId: String) -> Bool {
@@ -354,7 +352,6 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
 
     func clearImportedFlags() {
         importedAccountIds.removeAll()
-        print("📊 [BALANCE_CALC] Cleared all imported account flags")
     }
 
     func clearInitialBalance(for accountId: String) {

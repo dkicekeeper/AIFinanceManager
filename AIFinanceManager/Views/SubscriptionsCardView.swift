@@ -30,9 +30,7 @@ struct SubscriptionsCardView: View {
             }
             
             if subscriptions.isEmpty {
-                Text(String(localized: "emptyState.noActiveSubscriptions", defaultValue: "Нет активных подписок"))
-                    .font(AppTypography.bodySmall)
-                    .foregroundStyle(.primary)
+                EmptyStateView(title: String(localized: "emptyState.noActiveSubscriptions", defaultValue: "Нет активных подписок"), style: .compact)
             } else {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {

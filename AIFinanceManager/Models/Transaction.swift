@@ -228,33 +228,34 @@ struct Account: Identifiable, Codable, Equatable {
     var currency: String
     var bankLogo: BankLogo
     var depositInfo: DepositInfo? // Опциональная информация о депозите (nil для обычных счетов)
-    
-    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String, bankLogo: BankLogo = .none, depositInfo: DepositInfo? = nil) {
+    var createdDate: Date?
+
+    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String, bankLogo: BankLogo = .none, depositInfo: DepositInfo? = nil, createdDate: Date? = nil) {
         self.id = id
         self.name = name
         self.balance = balance
         self.currency = currency
         self.bankLogo = bankLogo
         self.depositInfo = depositInfo
+        self.createdDate = createdDate ?? Date()
     }
-    
+
     // Кастомный decoder для обратной совместимости со старыми данными
     enum CodingKeys: String, CodingKey {
-        case id, name, balance, currency, bankLogo, depositInfo
+        case id, name, balance, currency, bankLogo, depositInfo, createdDate
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         balance = try container.decode(Double.self, forKey: .balance)
         currency = try container.decode(String.self, forKey: .currency)
-        // Если bankLogo отсутствует в старых данных, используем .none
         bankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) ?? .none
-        // depositInfo опционален - для обратной совместимости
         depositInfo = try container.decodeIfPresent(DepositInfo.self, forKey: .depositInfo)
+        createdDate = try container.decodeIfPresent(Date.self, forKey: .createdDate)
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -263,6 +264,7 @@ struct Account: Identifiable, Codable, Equatable {
         try container.encode(currency, forKey: .currency)
         try container.encode(bankLogo, forKey: .bankLogo)
         try container.encodeIfPresent(depositInfo, forKey: .depositInfo)
+        try container.encodeIfPresent(createdDate, forKey: .createdDate)
     }
     
     // Computed property для проверки, является ли счет депозитом

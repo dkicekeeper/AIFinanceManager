@@ -68,7 +68,6 @@ struct DocumentPicker: UIViewControllerRepresentable {
                 try fileManager.copyItem(at: sourceURL, to: destinationURL)
                 return destinationURL
             } catch {
-                print("❌ Failed to copy file to temporary directory: \(error)")
                 return nil
             }
         }

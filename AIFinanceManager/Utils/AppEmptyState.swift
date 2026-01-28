@@ -10,34 +10,48 @@ import SwiftUI
 /// Единый компонент для отображения empty states
 /// Используй когда: нет данных в списках, нет результатов поиска, нет категорий и т.д.
 struct EmptyStateView: View {
+
+    /// Визуальный стиль empty state
+    enum Style {
+        /// Полный — иконка + текст + optional action button. Для management screens.
+        case standard
+        /// Компактный — только текст, без иконки и action. Для card-контекстов на home screen.
+        case compact
+    }
+
     let icon: String
     let title: String
     let description: String?
     let actionTitle: String?
     let action: (() -> Void)?
+    let style: Style
 
-    /// Создаёт empty state view
-    /// - Parameters:
-    ///   - icon: SF Symbol название (например: "doc.text.magnifyingglass")
-    ///   - title: Основной заголовок (например: "Нет операций")
-    ///   - description: Опциональное описание (например: "Добавьте первую операцию")
-    ///   - actionTitle: Опциональный текст кнопки действия
-    ///   - action: Опциональное действие при нажатии на кнопку
     init(
-        icon: String,
+        icon: String = "",
         title: String,
         description: String? = nil,
         actionTitle: String? = nil,
-        action: (() -> Void)? = nil
+        action: (() -> Void)? = nil,
+        style: Style = .standard
     ) {
         self.icon = icon
         self.title = title
         self.description = description
         self.actionTitle = actionTitle
         self.action = action
+        self.style = style
     }
 
     var body: some View {
+        switch style {
+        case .standard:
+            standardBody
+        case .compact:
+            compactBody
+        }
+    }
+
+    private var standardBody: some View {
         VStack(spacing: AppSpacing.lg) {
             Image(systemName: icon)
                 .font(.system(size: AppIconSize.xxxl))
@@ -66,6 +80,23 @@ struct EmptyStateView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(AppSpacing.xxl)
+    }
+
+    private var compactBody: some View {
+        VStack(spacing: AppSpacing.xs) {
+            Text(title)
+                .font(AppTypography.bodySmall)
+                .foregroundColor(.secondary)
+
+            if let description = description {
+                Text(description)
+                    .font(AppTypography.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(AppSpacing.md)
     }
 }
 

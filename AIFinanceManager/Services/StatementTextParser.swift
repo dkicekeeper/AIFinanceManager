@@ -12,7 +12,6 @@ class StatementTextParser {
     /// Парсит распознанный текст выписки Alatau City Bank в CSVFile формат
     /// Если structuredRows предоставлены, использует их напрямую, иначе парсит текст
     static func parseStatementToCSV(_ text: String, structuredRows: [[String]]? = nil) -> CSVFile {
-        print("🔍 Начало парсинга выписки. Размер текста: \(text.count) символов")
         
         // Заголовки CSV (аналогично стандартному CSV импорту)
         let headers = ["Дата", "Тип", "Сумма", "Валюта", "Описание", "Счет", "Категория", "Подкатегория"]
@@ -22,11 +21,9 @@ class StatementTextParser {
         
         // Если есть структурированные строки, используем их
         if let structuredRows = structuredRows, !structuredRows.isEmpty {
-            print("📊 Используем структурированные данные: \(structuredRows.count) строк")
             return parseStructuredRows(structuredRows, headers: headers, text: text)
         }
         
-        print("⚠️ Структурированные данные отсутствуют, парсим текст...")
         
         // Разбиваем текст на строки
         let allLines = text.components(separatedBy: .newlines)
@@ -83,10 +80,7 @@ class StatementTextParser {
         // Удаляем пустые строки
         lines = lines.filter { !$0.isEmpty }
         
-        print("📄 Всего обработано строк: \(lines.count)")
-        print("📄 Первые 10 строк:")
         for (index, line) in lines.prefix(10).enumerated() {
-            print("  \(index + 1): \(line.prefix(100))...")
         }
         
         // Ищем начало таблицы транзакций по заголовкам
@@ -98,13 +92,9 @@ class StatementTextParser {
             let normalized = line.uppercased()
             return normalized.contains("ТРАНЗАКЦИИ ПО СЧЕТУ") || normalized.contains("ТРАНЗАКЦИИПОСЧЕТУ")
         }
-        print("🔍 Найдено 'Транзакции по счету' в тексте: \(hasTransactionsHeader)")
         
         if !hasTransactionsHeader {
-            print("⚠️ ВНИМАНИЕ: Заголовок 'Транзакции по счету' не найден в распознанном тексте!")
-            print("📄 Примеры строк для отладки:")
             for (index, line) in lines.prefix(20).enumerated() {
-                print("  Строка \(index): \(line.prefix(150))")
             }
         }
         
@@ -114,13 +104,11 @@ class StatementTextParser {
             // Ищем заголовок таблицы транзакций (может быть "Транзакции по счету:" или "Транзакции по счету")
             let normalizedLine = line.uppercased().replacingOccurrences(of: "  ", with: " ")
             if normalizedLine.contains("ТРАНЗАКЦИИ ПО СЧЕТУ") || normalizedLine.contains("ТРАНЗАКЦИИПОСЧЕТУ") || line.contains("Транзакции по счету") {
-                print("📋 Найдена таблица транзакций: \(line)")
                 
                 // Извлекаем номер счета из строки вида "Транзакции по счету: KZ51998PB00009669873 KZT"
                 let accountMatch = extractAccountFromLine(line)
                 if !accountMatch.isEmpty {
                     currentAccount = accountMatch
-                    print("✅ Извлечен номер счета: \(currentAccount)")
                 }
                 
                 // Включаем режим парсинга транзакций
@@ -138,7 +126,6 @@ class StatementTextParser {
                 
                 // Пропускаем строку с названиями колонок ("Дата | Операция | Детали | ...")
                 if lines[i].contains("Дата") && lines[i].contains("Операция") {
-                    print("📋 Найдена строка заголовков: \(lines[i])")
                     i += 1
                     if i >= lines.count { break }
                 }
@@ -155,7 +142,6 @@ class StatementTextParser {
             
             // Проверяем, не закончилась ли таблица транзакций
             if inTransactionsTable && (line.contains("Сумма в обработке") || (line.contains("---") && !line.contains("|"))) {
-                print("⚠️ Конец таблицы транзакций: \(line)")
                 // Это разделитель между основной таблицей и таблицей "в обработке" или конец таблицы
                 if line.contains("Сумма в обработке") {
                     // Продолжаем парсить таблицу "в обработке"
@@ -179,7 +165,6 @@ class StatementTextParser {
             
             // Парсим строку транзакции только если мы находимся в таблице транзакций
             if inTransactionsTable && line.contains("|") && isTransactionLine(line) {
-                print("📝 Найдена транзакция: \(line.prefix(100))...")
                 
                 // Если следующая строка также содержит "|" но не является новой транзакцией, это продолжение текущей
                 var transactionLine = line
@@ -202,9 +187,7 @@ class StatementTextParser {
                 
                 if let transaction = parseTransactionLine(transactionLine, account: currentAccount) {
                     transactions.append(transaction)
-                    print("✅ Транзакция успешно распарсена")
                 } else {
-                    print("❌ Не удалось распарсить транзакцию: \(transactionLine.prefix(100))...")
                 }
                 
                 i = nextIndex
@@ -217,7 +200,6 @@ class StatementTextParser {
         // Создаем preview (первые 5 строк)
         let preview = Array(transactions.prefix(5))
         
-        print("✅ Парсинг выписки завершен: найдено \(transactions.count) транзакций")
         
         return CSVFile(headers: headers, rows: transactions, preview: preview)
     }
@@ -230,12 +212,10 @@ class StatementTextParser {
         // Ищем номер счета в тексте выписки
         currentAccount = extractAccountFromText(text)
         
-        print("📋 Найдено структурированных строк: \(structuredRows.count)")
         
         for (index, row) in structuredRows.enumerated() {
             // Пропускаем заголовки таблицы
             if row.contains("Дата") && row.contains("Операция") {
-                print("⏭️ Пропущена строка заголовков")
                 continue
             }
             
@@ -257,15 +237,12 @@ class StatementTextParser {
             // Парсим структурированную строку
             if let transaction = parseStructuredRow(row, account: currentAccount) {
                 transactions.append(transaction)
-                print("✅ Транзакция \(index + 1) распарсена из структурированных данных: \(transaction[0]) - \(transaction[1]) - \(transaction[2])")
             } else {
-                print("⚠️ Не удалось распарсить строку \(index + 1): \(row.prefix(5))...")
             }
         }
         
         let preview = Array(transactions.prefix(5))
         
-        print("✅ Парсинг структурированных данных завершен: найдено \(transactions.count) транзакций")
         
         return CSVFile(headers: headers, rows: transactions, preview: preview)
     }
@@ -283,7 +260,6 @@ class StatementTextParser {
     /// Парсит структурированную строку (массив колонок) в формат CSV
     private static func parseStructuredRow(_ row: [String], account: String) -> [String]? {
         guard row.count >= 3 else {
-            print("⚠️ Недостаточно колонок в структурированной строке: \(row.count)")
             return nil
         }
         
@@ -301,7 +277,6 @@ class StatementTextParser {
         }
         
         guard !dateString.isEmpty else {
-            print("⚠️ Не найдена дата в структурированной строке")
             return nil
         }
         
@@ -340,7 +315,6 @@ class StatementTextParser {
         }
         
         guard !amountString.isEmpty else {
-            print("⚠️ Не найдена сумма в структурированной строке")
             return nil
         }
         
@@ -410,7 +384,6 @@ class StatementTextParser {
         // Минимум должно быть 7 колонок (Дата, Операция, Детали, Сумма, Валюта, Приход, Расход)
         // Но описание может занимать несколько частей, если оно длинное
         guard parts.count >= 7 else {
-            print("⚠️ Недостаточно колонок в строке транзакции: \(parts.count), ожидается >= 7")
             return nil
         }
         
@@ -419,7 +392,6 @@ class StatementTextParser {
         let dateString = extractDate(from: dateTimePart)
         
         guard !dateString.isEmpty else {
-            print("⚠️ Не удалось извлечь дату из строки: \(parts[0])")
             return nil
         }
         
@@ -449,7 +421,6 @@ class StatementTextParser {
         }
         
         guard foundAmount else {
-            print("⚠️ Не удалось найти сумму в строке транзакции")
             return nil
         }
         
@@ -467,7 +438,6 @@ class StatementTextParser {
         
         // Проверяем корректность индексов
         guard parts.count > expenseIndex else {
-            print("⚠️ Недостаточно колонок для извлечения всех данных")
             return nil
         }
         
@@ -493,7 +463,6 @@ class StatementTextParser {
         if amountString.isEmpty || Double(amountString) == nil {
             amountString = parts[amountIndex].replacingOccurrences(of: " ", with: "").replacingOccurrences(of: ",", with: ".")
             if Double(amountString) == nil {
-                print("⚠️ Не удалось распарсить сумму: \(parts[amountIndex])")
                 return nil
             }
         }

@@ -306,7 +306,7 @@ struct SubscriptionDetailView: View {
             
             VStack(spacing: AppSpacing.sm) {
                 ForEach(subscriptionTransactions) { transaction in
-                    TransactionRow(transaction: transaction, viewModel: transactionsViewModel, isPlanned: transaction.id.hasPrefix("planned-"))
+                    DepositTransactionRow(transaction: transaction, currency: transaction.currency, isPlanned: transaction.id.hasPrefix("planned-"))
                 }
             }
         }
@@ -318,48 +318,6 @@ struct SubscriptionDetailView: View {
 }
 
 
-struct TransactionRow: View {
-    let transaction: Transaction
-    @ObservedObject var viewModel: TransactionsViewModel
-    let isPlanned: Bool
-    
-    init(transaction: Transaction, viewModel: TransactionsViewModel, isPlanned: Bool = false) {
-        self.transaction = transaction
-        self.viewModel = viewModel
-        self.isPlanned = isPlanned
-    }
-    
-    var body: some View {
-        HStack {
-            if isPlanned {
-                Image(systemName: "clock")
-                    .foregroundColor(.blue)
-                    .font(.caption)
-            }
-            
-            Text(formatDate(transaction.date))
-                .font(AppTypography.bodySmall)
-                .foregroundColor(isPlanned ? .blue : .secondary)
-            
-            Spacer()
-            
-            Text(Formatting.formatCurrency(transaction.amount, currency: transaction.currency))
-                .font(AppTypography.body)
-                .fontWeight(.semibold)
-                .foregroundColor(isPlanned ? .blue : .primary)
-        }
-        .padding(AppSpacing.sm)
-        .background(isPlanned ? Color.blue.opacity(0.1) : Color(.systemGray6))
-        .cornerRadius(AppRadius.sm)
-    }
-    
-    private func formatDate(_ dateString: String) -> String {
-        guard let date = DateFormatters.dateFormatter.date(from: dateString) else {
-            return dateString
-        }
-        return DateFormatters.displayDateFormatter.string(from: date)
-    }
-}
 
 #Preview {
     let coordinator = AppCoordinator()

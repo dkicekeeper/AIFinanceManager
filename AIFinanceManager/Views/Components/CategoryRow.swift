@@ -107,8 +107,8 @@ struct CategoryRow: View {
             category: sampleCategory,
             isDefault: false,
             budgetProgress: nil,
-            onEdit: { print("Edit tapped") },
-            onDelete: { print("Delete tapped") }
+            onEdit: {},
+            onDelete: {}
         )
         .padding(.vertical, AppSpacing.xs)
         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))

@@ -27,7 +27,6 @@ class SubscriptionNotificationScheduler {
             let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
             return granted
         } catch {
-            print("Error requesting notification authorization: \(error)")
             return false
         }
     }
@@ -87,7 +86,6 @@ class SubscriptionNotificationScheduler {
             do {
                 try await center.add(request)
             } catch {
-                print("Error scheduling notification: \(error)")
             }
         }
     }

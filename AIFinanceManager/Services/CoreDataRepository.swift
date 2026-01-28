@@ -24,16 +24,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
     // MARK: - Initialization
     
     init() {
-        print("🗄️ [CORE_DATA_REPO] Initializing CoreDataRepository")
     }
     
     // MARK: - Transactions
     
     func loadTransactions(dateRange: DateInterval? = nil) -> [Transaction] {
         if let dateRange = dateRange {
-            print("📂 [CORE_DATA_REPO] Loading transactions from Core Data (date range: \(dateRange.start) to \(dateRange.end))")
         } else {
-            print("📂 [CORE_DATA_REPO] Loading ALL transactions from Core Data")
         }
         PerformanceProfiler.start("CoreDataRepository.loadTransactions")
 
@@ -61,21 +58,17 @@ final class CoreDataRepository: DataRepositoryProtocol {
             let transactions = entities.map { $0.toTransaction() }
 
             PerformanceProfiler.end("CoreDataRepository.loadTransactions")
-            print("✅ [CORE_DATA_REPO] Loaded \(transactions.count) transactions")
 
             return transactions
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading transactions: \(error)")
             PerformanceProfiler.end("CoreDataRepository.loadTransactions")
 
             // Fallback to UserDefaults if Core Data fails
-            print("⚠️ [CORE_DATA_REPO] Falling back to UserDefaults")
             return userDefaultsRepository.loadTransactions(dateRange: dateRange)
         }
     }
     
     func saveTransactions(_ transactions: [Transaction]) {
-        print("💾 [CORE_DATA_REPO] Saving \(transactions.count) transactions to Core Data")
         
         Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
@@ -88,19 +81,10 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     let fetchRequest = TransactionEntity.fetchRequest()
                     let existingEntities = try context.fetch(fetchRequest)
                     
-                    // Build dictionary safely
-                    // NOTE: Unique constraints now prevent new duplicates at SQLite level
-                    // This code remains for cleaning up existing duplicates from before constraints were added
-                    // TODO: Remove this duplicate handling code after a few releases (v2.0+)
                     var existingDict: [String: TransactionEntity] = [:]
                     for entity in existingEntities {
-                        let id = entity.id ?? ""
-                        if !id.isEmpty && existingDict[id] == nil {
+                        if let id = entity.id, !id.isEmpty {
                             existingDict[id] = entity
-                        } else if !id.isEmpty {
-                            // Found pre-existing duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found legacy duplicate transaction entity with id: \(id), deleting")
-                            context.delete(entity)
                         }
                     }
                     
@@ -159,11 +143,9 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 }
                 
                 PerformanceProfiler.end("CoreDataRepository.saveTransactions")
-                print("✅ [CORE_DATA_REPO] Transactions saved successfully")
                 
             } catch {
                 PerformanceProfiler.end("CoreDataRepository.saveTransactions")
-                print("❌ [CORE_DATA_REPO] Error saving transactions: \(error)")
             }
         }
     }
@@ -171,7 +153,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
     // MARK: - Accounts
     
     func loadAccounts() -> [Account] {
-        print("📂 [CORE_DATA_REPO] Loading accounts from Core Data")
         PerformanceProfiler.start("CoreDataRepository.loadAccounts")
         
         let context = stack.viewContext
@@ -183,21 +164,17 @@ final class CoreDataRepository: DataRepositoryProtocol {
             let accounts = entities.map { $0.toAccount() }
             
             PerformanceProfiler.end("CoreDataRepository.loadAccounts")
-            print("✅ [CORE_DATA_REPO] Loaded \(accounts.count) accounts")
             
             return accounts
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading accounts: \(error)")
             PerformanceProfiler.end("CoreDataRepository.loadAccounts")
             
             // Fallback to UserDefaults if Core Data fails
-            print("⚠️ [CORE_DATA_REPO] Falling back to UserDefaults")
             return userDefaultsRepository.loadAccounts()
         }
     }
     
     func saveAccounts(_ accounts: [Account]) {
-        print("💾 [CORE_DATA_REPO] Saving \(accounts.count) accounts to Core Data")
         
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
@@ -218,7 +195,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existingDict[id] = entity
                         } else if !id.isEmpty {
                             // Found duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found duplicate account entity with id: \(id), deleting duplicate")
                             context.delete(entity)
                         }
                     }
@@ -252,18 +228,15 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 }
                 
                 PerformanceProfiler.end("CoreDataRepository.saveAccounts")
-                print("✅ [CORE_DATA_REPO] Accounts saved successfully")
                 
             } catch {
                 PerformanceProfiler.end("CoreDataRepository.saveAccounts")
-                print("❌ [CORE_DATA_REPO] Error saving accounts: \(error)")
             }
         }
     }
     
     /// Синхронно сохранить счета в Core Data (для импорта CSV)
     func saveAccountsSync(_ accounts: [Account]) throws {
-        print("💾 [CORE_DATA_REPO] Saving \(accounts.count) accounts to Core Data synchronously")
         
         let context = stack.viewContext
         
@@ -279,7 +252,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 existingDict[id] = entity
             } else if !id.isEmpty {
                 // Found duplicate - delete the extra entity
-                print("⚠️ [CORE_DATA_REPO] Found duplicate account entity with id: \(id), deleting duplicate")
                 context.delete(entity)
             }
         }
@@ -314,16 +286,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
         // Save if there are changes
         if context.hasChanges {
             try context.save()
-            print("✅ [CORE_DATA_REPO] Accounts saved synchronously")
         } else {
-            print("ℹ️ [CORE_DATA_REPO] No changes to save")
         }
     }
     
     /// Синхронно сохранить транзакции в Core Data (для импорта CSV)
     /// ОПТИМИЗИРОВАНО: Использует background context для избежания блокировки UI
     func saveTransactionsSync(_ transactions: [Transaction]) throws {
-        print("💾 [CORE_DATA_REPO] Saving \(transactions.count) transactions to Core Data (background)")
         PerformanceProfiler.start("CoreDataRepository.saveTransactionsSync")
 
         // PERFORMANCE: Используем background context вместо viewContext
@@ -345,7 +314,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 if !id.isEmpty && existingDict[id] == nil {
                     existingDict[id] = entity
                 } else if !id.isEmpty {
-                    print("⚠️ [CORE_DATA_REPO] Found duplicate transaction entity with id: \(id), deleting duplicate")
                     backgroundContext.delete(entity)
                 }
             }
@@ -460,7 +428,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                         }
                     }
 
-                    print("💾 [CORE_DATA_REPO] Batch saved: \(processedCount)/\(transactions.count)")
                 }
             }
 
@@ -476,9 +443,7 @@ final class CoreDataRepository: DataRepositoryProtocol {
             // Финальное сохранение
             if backgroundContext.hasChanges {
                 try backgroundContext.save()
-                print("✅ [CORE_DATA_REPO] Transactions saved (background context)")
             } else {
-                print("ℹ️ [CORE_DATA_REPO] No changes to save")
             }
         }
 
@@ -487,7 +452,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
     
     /// Синхронно сохранить категории в Core Data (для импорта CSV)
     func saveCategoriesSync(_ categories: [CustomCategory]) throws {
-        print("💾 [CORE_DATA_REPO] Saving \(categories.count) categories to Core Data synchronously")
         
         let context = stack.viewContext
         
@@ -502,7 +466,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
             if !id.isEmpty && existingDict[id] == nil {
                 existingDict[id] = entity
             } else if !id.isEmpty {
-                print("⚠️ [CORE_DATA_REPO] Found duplicate category entity with id: \(id), deleting duplicate")
                 context.delete(entity)
             }
         }
@@ -535,16 +498,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
         // Save if there are changes
         if context.hasChanges {
             try context.save()
-            print("✅ [CORE_DATA_REPO] Categories saved synchronously")
         } else {
-            print("ℹ️ [CORE_DATA_REPO] No changes to save")
         }
     }
     
     // MARK: - Recurring Series
     
     func loadRecurringSeries() -> [RecurringSeries] {
-        print("📂 [CORE_DATA_REPO] Loading recurring series from Core Data")
         PerformanceProfiler.start("CoreDataRepository.loadRecurringSeries")
         
         let context = stack.viewContext
@@ -556,21 +516,17 @@ final class CoreDataRepository: DataRepositoryProtocol {
             let series = entities.map { $0.toRecurringSeries() }
             
             PerformanceProfiler.end("CoreDataRepository.loadRecurringSeries")
-            print("✅ [CORE_DATA_REPO] Loaded \(series.count) recurring series")
             
             return series
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading recurring series: \(error)")
             PerformanceProfiler.end("CoreDataRepository.loadRecurringSeries")
             
             // Fallback to UserDefaults if Core Data fails
-            print("⚠️ [CORE_DATA_REPO] Falling back to UserDefaults")
             return userDefaultsRepository.loadRecurringSeries()
         }
     }
     
     func saveRecurringSeries(_ series: [RecurringSeries]) {
-        print("💾 [CORE_DATA_REPO] Saving \(series.count) recurring series to Core Data")
         
         Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
@@ -591,7 +547,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existingDict[id] = entity
                         } else if !id.isEmpty {
                             // Found duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found duplicate recurring series entity with id: \(id), deleting duplicate")
                             context.delete(entity)
                         }
                     }
@@ -642,11 +597,9 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 }
                 
                 PerformanceProfiler.end("CoreDataRepository.saveRecurringSeries")
-                print("✅ [CORE_DATA_REPO] Recurring series saved successfully")
                 
             } catch {
                 PerformanceProfiler.end("CoreDataRepository.saveRecurringSeries")
-                print("❌ [CORE_DATA_REPO] Error saving recurring series: \(error)")
             }
         }
     }
@@ -654,7 +607,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
     // MARK: - Categories
     
     func loadCategories() -> [CustomCategory] {
-        print("📂 [CORE_DATA_REPO] Loading categories from Core Data")
         PerformanceProfiler.start("CoreDataRepository.loadCategories")
         
         let context = stack.viewContext
@@ -666,21 +618,17 @@ final class CoreDataRepository: DataRepositoryProtocol {
             let categories = entities.map { $0.toCustomCategory() }
             
             PerformanceProfiler.end("CoreDataRepository.loadCategories")
-            print("✅ [CORE_DATA_REPO] Loaded \(categories.count) categories")
             
             return categories
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading categories: \(error)")
             PerformanceProfiler.end("CoreDataRepository.loadCategories")
             
             // Fallback to UserDefaults if Core Data fails
-            print("⚠️ [CORE_DATA_REPO] Falling back to UserDefaults")
             return userDefaultsRepository.loadCategories()
         }
     }
     
     func saveCategories(_ categories: [CustomCategory]) {
-        print("💾 [CORE_DATA_REPO] Saving \(categories.count) categories to Core Data")
         
         Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
@@ -701,7 +649,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existingDict[id] = entity
                         } else if !id.isEmpty {
                             // Found duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found duplicate category entity with id: \(id), deleting duplicate")
                             context.delete(entity)
                         }
                     }
@@ -733,11 +680,9 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 }
                 
                 PerformanceProfiler.end("CoreDataRepository.saveCategories")
-                print("✅ [CORE_DATA_REPO] Categories saved successfully")
                 
             } catch {
                 PerformanceProfiler.end("CoreDataRepository.saveCategories")
-                print("❌ [CORE_DATA_REPO] Error saving categories: \(error)")
             }
         }
     }
@@ -745,7 +690,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
     // MARK: - Category Rules
     
     func loadCategoryRules() -> [CategoryRule] {
-        print("📂 [CORE_DATA_REPO] Loading category rules from Core Data")
         
         let context = stack.viewContext
         let request = NSFetchRequest<CategoryRuleEntity>(entityName: "CategoryRuleEntity")
@@ -754,16 +698,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
         do {
             let entities = try context.fetch(request)
             let rules = entities.map { $0.toCategoryRule() }
-            print("✅ [CORE_DATA_REPO] Loaded \(rules.count) category rules")
             return rules
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading category rules: \(error)")
             return userDefaultsRepository.loadCategoryRules()
         }
     }
     
     func saveCategoryRules(_ rules: [CategoryRule]) {
-        print("💾 [CORE_DATA_REPO] Saving \(rules.count) category rules to Core Data")
         
         Task.detached(priority: .utility) { @MainActor [weak self] in
             guard let self = self else { return }
@@ -791,18 +732,15 @@ final class CoreDataRepository: DataRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving category rules: \(error)")
                 }
             }
             
-            print("✅ [CORE_DATA_REPO] Category rules saved successfully")
         }
     }
     
     // MARK: - Recurring Occurrences
 
     func loadRecurringOccurrences() -> [RecurringOccurrence] {
-        print("📂 [CORE_DATA_REPO] Loading recurring occurrences from Core Data")
 
         let context = stack.viewContext
         let request = NSFetchRequest<RecurringOccurrenceEntity>(entityName: "RecurringOccurrenceEntity")
@@ -811,19 +749,15 @@ final class CoreDataRepository: DataRepositoryProtocol {
         do {
             let entities = try context.fetch(request)
             let occurrences = entities.map { $0.toRecurringOccurrence() }
-            print("✅ [CORE_DATA_REPO] Loaded \(occurrences.count) recurring occurrences")
             return occurrences
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading recurring occurrences: \(error)")
 
             // Fallback to UserDefaults if Core Data fails
-            print("⚠️ [CORE_DATA_REPO] Falling back to UserDefaults")
             return userDefaultsRepository.loadRecurringOccurrences()
         }
     }
 
     func saveRecurringOccurrences(_ occurrences: [RecurringOccurrence]) {
-        print("💾 [CORE_DATA_REPO] Saving \(occurrences.count) recurring occurrences to Core Data")
 
         Task.detached(priority: .utility) { @MainActor [weak self] in
             guard let self = self else { return }
@@ -846,7 +780,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existingDict[id] = entity
                         } else if !id.isEmpty {
                             // Found duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found duplicate recurring occurrence entity with id: \(id), deleting duplicate")
                             context.delete(entity)
                         }
                     }
@@ -886,19 +819,16 @@ final class CoreDataRepository: DataRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving recurring occurrences: \(error)")
                 }
             }
 
             PerformanceProfiler.end("CoreDataRepository.saveRecurringOccurrences")
-            print("✅ [CORE_DATA_REPO] Recurring occurrences saved successfully")
         }
     }
     
     // MARK: - Subcategories
     
     func loadSubcategories() -> [Subcategory] {
-        print("📂 [CORE_DATA_REPO] Loading subcategories from Core Data")
         
         let context = stack.viewContext
         let request = NSFetchRequest<SubcategoryEntity>(entityName: "SubcategoryEntity")
@@ -907,16 +837,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
         do {
             let entities = try context.fetch(request)
             let subcategories = entities.map { $0.toSubcategory() }
-            print("✅ [CORE_DATA_REPO] Loaded \(subcategories.count) subcategories")
             return subcategories
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading subcategories: \(error)")
             return userDefaultsRepository.loadSubcategories()
         }
     }
     
     func saveSubcategories(_ subcategories: [Subcategory]) {
-        print("💾 [CORE_DATA_REPO] Saving \(subcategories.count) subcategories to Core Data")
         
         Task.detached(priority: .utility) { @MainActor [weak self] in
             guard let self = self else { return }
@@ -937,7 +864,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existingDict[id] = entity
                         } else if !id.isEmpty {
                             // Found duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found duplicate subcategory entity with id: \(id), deleting duplicate")
                             context.delete(entity)
                         }
                     }
@@ -969,18 +895,15 @@ final class CoreDataRepository: DataRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving subcategories: \(error)")
                 }
             }
             
-            print("✅ [CORE_DATA_REPO] Subcategories saved successfully")
         }
     }
     
     // MARK: - Category-Subcategory Links
     
     func loadCategorySubcategoryLinks() -> [CategorySubcategoryLink] {
-        print("📂 [CORE_DATA_REPO] Loading category-subcategory links from Core Data")
         
         let context = stack.viewContext
         let request = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
@@ -989,16 +912,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
         do {
             let entities = try context.fetch(request)
             let links = entities.map { $0.toCategorySubcategoryLink() }
-            print("✅ [CORE_DATA_REPO] Loaded \(links.count) category-subcategory links")
             return links
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading category-subcategory links: \(error)")
             return userDefaultsRepository.loadCategorySubcategoryLinks()
         }
     }
     
     func saveCategorySubcategoryLinks(_ links: [CategorySubcategoryLink]) {
-        print("💾 [CORE_DATA_REPO] Saving \(links.count) category-subcategory links to Core Data")
         
         Task.detached(priority: .utility) { @MainActor [weak self] in
             guard let self = self else { return }
@@ -1019,7 +939,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existingDict[id] = entity
                         } else if !id.isEmpty {
                             // Found duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found duplicate category-subcategory link entity with id: \(id), deleting duplicate")
                             context.delete(entity)
                         }
                     }
@@ -1052,18 +971,15 @@ final class CoreDataRepository: DataRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving category-subcategory links: \(error)")
                 }
             }
             
-            print("✅ [CORE_DATA_REPO] Category-subcategory links saved successfully")
         }
     }
     
     // MARK: - Transaction-Subcategory Links
     
     func loadTransactionSubcategoryLinks() -> [TransactionSubcategoryLink] {
-        print("📂 [CORE_DATA_REPO] Loading transaction-subcategory links from Core Data")
         
         let context = stack.viewContext
         let request = NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
@@ -1072,16 +988,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
         do {
             let entities = try context.fetch(request)
             let links = entities.map { $0.toTransactionSubcategoryLink() }
-            print("✅ [CORE_DATA_REPO] Loaded \(links.count) transaction-subcategory links")
             return links
         } catch {
-            print("❌ [CORE_DATA_REPO] Error loading transaction-subcategory links: \(error)")
             return userDefaultsRepository.loadTransactionSubcategoryLinks()
         }
     }
     
     func saveTransactionSubcategoryLinks(_ links: [TransactionSubcategoryLink]) {
-        print("💾 [CORE_DATA_REPO] Saving \(links.count) transaction-subcategory links to Core Data")
         
         Task.detached(priority: .utility) { @MainActor [weak self] in
             guard let self = self else { return }
@@ -1102,7 +1015,6 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existingDict[id] = entity
                         } else if !id.isEmpty {
                             // Found duplicate - delete the extra entity
-                            print("⚠️ [CORE_DATA_REPO] Found duplicate transaction-subcategory link entity with id: \(id), deleting duplicate")
                             context.delete(entity)
                         }
                     }
@@ -1135,25 +1047,20 @@ final class CoreDataRepository: DataRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
-                    print("❌ [CORE_DATA_REPO] Error saving transaction-subcategory links: \(error)")
                 }
             }
             
-            print("✅ [CORE_DATA_REPO] Transaction-subcategory links saved successfully")
         }
     }
     
     // MARK: - Clear All Data
     
     func clearAllData() {
-        print("⚠️ [CORE_DATA_REPO] Clearing all data")
         
         do {
             try stack.resetAllData()
             userDefaultsRepository.clearAllData()
-            print("✅ [CORE_DATA_REPO] All data cleared")
         } catch {
-            print("❌ [CORE_DATA_REPO] Error clearing data: \(error)")
         }
     }
     

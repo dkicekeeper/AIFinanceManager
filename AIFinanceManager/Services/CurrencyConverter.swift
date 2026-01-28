@@ -67,7 +67,6 @@ class CurrencyConverter {
 
             return delegate.rates[currency]
         } catch {
-            print("Ошибка загрузки курсов валют для даты \(dateString): \(error)")
             // Для исторических данных: если не удалось загрузить, возвращаем nil
             // Для текущих данных: возвращаем кэшированное значение, если есть
             if date == nil || Calendar.current.isDateInToday(targetDate) {
@@ -122,7 +121,6 @@ class CurrencyConverter {
             fromRate = cachedRates[from]
             // Если курса нет в кэше, возвращаем nil (нельзя конвертировать)
             if fromRate == nil {
-                print("⚠️ Курс валюты \(from) не найден в кэше")
                 return nil
             }
         }
@@ -134,7 +132,6 @@ class CurrencyConverter {
             toRate = cachedRates[to]
             // Если курса нет в кэше, возвращаем nil (нельзя конвертировать)
             if toRate == nil {
-                print("⚠️ Курс валюты \(to) не найден в кэше")
                 return nil
             }
         }
@@ -198,7 +195,6 @@ private class ExchangeRateParserDelegate: NSObject, XMLParserDelegate {
                             // Для UZS (quant=100): rate = 4.21 / 100 = 0.0421 (за 1 UZS)
                             let normalizedRate = rate / quant
                             rates[code] = normalizedRate
-                            print("✅ Загружен курс: 1 \(code) = \(normalizedRate) KZT (исходный курс: \(rate) за \(quant) \(code))")
                         }
                         break
                     }

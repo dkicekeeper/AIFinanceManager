@@ -129,7 +129,6 @@ class MLDataExporter {
             try csv.write(to: fileURL, atomically: true, encoding: .utf8)
             return fileURL
         } catch {
-            print("Ошибка сохранения CSV: \(error)")
             return nil
         }
     }

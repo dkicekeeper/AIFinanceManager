@@ -352,13 +352,3 @@ class AccountRankingService {
     }
 }
 
-// MARK: - Account Extensions
-
-extension Account {
-    /// Дата создания счета (если не задана - используем далекое прошлое)
-    var createdDate: Date? {
-        // TODO: Добавить поле createdDate в модель Account если его нет
-        // Пока возвращаем nil и будем использовать fallback логику
-        return nil
-    }
-}

@@ -37,7 +37,6 @@ class AppCoordinator: ObservableObject {
 
     init(repository: DataRepositoryProtocol? = nil) {
         self.repository = repository ?? CoreDataRepository()
-        print("🗄️ [APP_COORDINATOR] Using repository: CoreDataRepository")
 
         // Initialize ViewModels in dependency order
         // 1. Accounts (no dependencies)
@@ -59,7 +58,6 @@ class AppCoordinator: ObservableObject {
             accountBalanceService: accountsViewModel  // AccountsViewModel conforms to AccountBalanceServiceProtocol
         )
         
-        print("✅ [APP_COORDINATOR] TransactionsViewModel initialized with AccountBalanceService")
 
         // CRITICAL: Подписываемся на изменения всех дочерних ViewModels
         // Это гарантирует, что AppCoordinator будет уведомлять SwiftUI о любых изменениях
@@ -78,32 +76,25 @@ class AppCoordinator: ObservableObject {
     func initialize() async {
         // Prevent double initialization
         guard !isInitialized else {
-            print("⏭️ [APP_COORDINATOR] Already initialized, skipping")
             return
         }
         
         isInitialized = true
-        print("🚀 [APP_COORDINATOR] Starting initialization")
         PerformanceProfiler.start("AppCoordinator.initialize")
         
         // STEP 1: Check and perform migration if needed
         if migrationService.isMigrationNeeded() {
-            print("🔄 [APP_COORDINATOR] Starting data migration...")
             do {
                 try await migrationService.migrateAllData()
                 migrationCompleted = true
-                print("✅ [APP_COORDINATOR] Migration completed")
                 
                 // Reload all ViewModels after migration
-                print("🔄 [APP_COORDINATOR] Reloading ViewModels after migration...")
                 accountsViewModel.reloadFromStorage()
                 categoriesViewModel.reloadFromStorage()
             } catch {
-                print("❌ [APP_COORDINATOR] Migration failed: \(error)")
                 // Continue with UserDefaults fallback
             }
         } else {
-            print("✅ [APP_COORDINATOR] Data already migrated")
             migrationCompleted = true
         }
         
@@ -111,7 +102,6 @@ class AppCoordinator: ObservableObject {
         await transactionsViewModel.loadDataAsync()
         
         PerformanceProfiler.end("AppCoordinator.initialize")
-        print("✅ [APP_COORDINATOR] Initialization complete")
     }
     
     // MARK: - Private Methods

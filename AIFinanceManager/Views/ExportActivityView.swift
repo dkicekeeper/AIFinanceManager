@@ -26,7 +26,6 @@ struct ExportActivityView: UIViewControllerRepresentable {
         do {
             try csvContent.write(to: tempURL, atomically: true, encoding: .utf8)
         } catch {
-            print("Ошибка создания файла: \(error)")
         }
         
         let activityVC = UIActivityViewController(

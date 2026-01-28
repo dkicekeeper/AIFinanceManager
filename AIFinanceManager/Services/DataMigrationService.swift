@@ -34,11 +34,9 @@ class DataMigrationService {
     /// Perform full migration from UserDefaults to Core Data
     func migrateAllData() async throws {
         guard isMigrationNeeded() else {
-            print("✅ [MIGRATION] Data already migrated, skipping")
             return
         }
 
-        print("🔄 [MIGRATION] Starting data migration from UserDefaults to Core Data")
         PerformanceProfiler.start("DataMigration.migrateAllData")
 
         do {
@@ -74,11 +72,9 @@ class DataMigrationService {
             UserDefaults.standard.synchronize()
 
             PerformanceProfiler.end("DataMigration.migrateAllData")
-            print("✅ [MIGRATION] Data migration completed successfully")
 
         } catch {
             PerformanceProfiler.end("DataMigration.migrateAllData")
-            print("❌ [MIGRATION] Migration failed: \(error)")
             throw error
         }
     }
@@ -87,13 +83,11 @@ class DataMigrationService {
     func resetMigrationStatus() {
         UserDefaults.standard.removeObject(forKey: migrationCompletedKey)
         UserDefaults.standard.synchronize()
-        print("⚠️ [MIGRATION] Migration status reset")
     }
     
     // MARK: - Clear Core Data
     
     func clearAllCoreData() async throws {
-        print("🗑️ [MIGRATION] Clearing all Core Data...")
         
         let context = stack.newBackgroundContext()
         
@@ -115,24 +109,19 @@ class DataMigrationService {
                 let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
                 
                 try context.execute(deleteRequest)
-                print("   ✓ Cleared \(entityName)")
             }
             
             try context.save()
-            print("✅ [MIGRATION] All Core Data cleared")
         }
     }
     
     // MARK: - Private Migration Methods
     
     private func migrateAccounts() async throws {
-        print("📦 [MIGRATION] Migrating accounts...")
         
         let accounts = userDefaultsRepo.loadAccounts()
-        print("📊 [MIGRATION] Found \(accounts.count) accounts to migrate")
         
         guard !accounts.isEmpty else {
-            print("⏭️ [MIGRATION] No accounts to migrate")
             return
         }
         
@@ -141,24 +130,19 @@ class DataMigrationService {
         try await context.perform {
             for account in accounts {
                 let entity = AccountEntity.from(account, context: context)
-                print("   ✓ Migrated account: \(entity.name ?? "Unknown")")
             }
             
             if context.hasChanges {
                 try context.save()
-                print("✅ [MIGRATION] Saved \(accounts.count) accounts to Core Data")
             }
         }
     }
     
     private func migrateTransactions() async throws {
-        print("📦 [MIGRATION] Migrating transactions...")
         
         let transactions = userDefaultsRepo.loadTransactions()
-        print("📊 [MIGRATION] Found \(transactions.count) transactions to migrate")
         
         guard !transactions.isEmpty else {
-            print("⏭️ [MIGRATION] No transactions to migrate")
             return
         }
         
@@ -168,17 +152,14 @@ class DataMigrationService {
             Array(transactions[$0..<min($0 + batchSize, transactions.count)])
         }
         
-        print("📊 [MIGRATION] Migrating in \(batches.count) batches")
         
         for (index, batch) in batches.enumerated() {
             try await migrateBatch(batch, batchIndex: index + 1, totalBatches: batches.count)
         }
         
-        print("✅ [MIGRATION] All transactions migrated successfully")
     }
     
     private func migrateBatch(_ transactions: [Transaction], batchIndex: Int, totalBatches: Int) async throws {
-        print("   📦 [MIGRATION] Batch \(batchIndex)/\(totalBatches): \(transactions.count) transactions")
         
         let context = stack.newBackgroundContext()
         
@@ -204,19 +185,15 @@ class DataMigrationService {
             
             if context.hasChanges {
                 try context.save()
-                print("   ✅ [MIGRATION] Batch \(batchIndex) saved")
             }
         }
     }
     
     private func migrateCategorySubcategoryLinks() async throws {
-        print("📦 [MIGRATION] Migrating category-subcategory links...")
         
         let links = userDefaultsRepo.loadCategorySubcategoryLinks()
-        print("📊 [MIGRATION] Found \(links.count) category-subcategory links to migrate")
         
         guard !links.isEmpty else {
-            print("⏭️ [MIGRATION] No category-subcategory links to migrate")
             return
         }
         
@@ -229,19 +206,15 @@ class DataMigrationService {
             
             if context.hasChanges {
                 try context.save()
-                print("✅ [MIGRATION] Saved \(links.count) category-subcategory links to Core Data")
             }
         }
     }
     
     private func migrateTransactionSubcategoryLinks() async throws {
-        print("📦 [MIGRATION] Migrating transaction-subcategory links...")
         
         let links = userDefaultsRepo.loadTransactionSubcategoryLinks()
-        print("📊 [MIGRATION] Found \(links.count) transaction-subcategory links to migrate")
         
         guard !links.isEmpty else {
-            print("⏭️ [MIGRATION] No transaction-subcategory links to migrate")
             return
         }
         
@@ -254,19 +227,15 @@ class DataMigrationService {
             
             if context.hasChanges {
                 try context.save()
-                print("✅ [MIGRATION] Saved \(links.count) transaction-subcategory links to Core Data")
             }
         }
     }
     
     private func migrateSubcategories() async throws {
-        print("📦 [MIGRATION] Migrating subcategories...")
         
         let subcategories = userDefaultsRepo.loadSubcategories()
-        print("📊 [MIGRATION] Found \(subcategories.count) subcategories to migrate")
         
         guard !subcategories.isEmpty else {
-            print("⏭️ [MIGRATION] No subcategories to migrate")
             return
         }
         
@@ -275,24 +244,19 @@ class DataMigrationService {
         try await context.perform {
             for subcategory in subcategories {
                 _ = SubcategoryEntity.from(subcategory, context: context)
-                print("   ✓ Migrated subcategory: \(subcategory.name)")
             }
             
             if context.hasChanges {
                 try context.save()
-                print("✅ [MIGRATION] Saved \(subcategories.count) subcategories to Core Data")
             }
         }
     }
     
     private func migrateCategoryRules() async throws {
-        print("📦 [MIGRATION] Migrating category rules...")
         
         let rules = userDefaultsRepo.loadCategoryRules()
-        print("📊 [MIGRATION] Found \(rules.count) rules to migrate")
         
         guard !rules.isEmpty else {
-            print("⏭️ [MIGRATION] No category rules to migrate")
             return
         }
         
@@ -301,24 +265,19 @@ class DataMigrationService {
         try await context.perform {
             for rule in rules {
                 _ = CategoryRuleEntity.from(rule, context: context)
-                print("   ✓ Migrated rule: \(rule.description) → \(rule.category)")
             }
             
             if context.hasChanges {
                 try context.save()
-                print("✅ [MIGRATION] Saved \(rules.count) category rules to Core Data")
             }
         }
     }
     
     private func migrateCustomCategories() async throws {
-        print("📦 [MIGRATION] Migrating custom categories...")
         
         let categories = userDefaultsRepo.loadCategories()
-        print("📊 [MIGRATION] Found \(categories.count) categories to migrate")
         
         guard !categories.isEmpty else {
-            print("⏭️ [MIGRATION] No categories to migrate")
             return
         }
         
@@ -327,24 +286,19 @@ class DataMigrationService {
         try await context.perform {
             for category in categories {
                 _ = CustomCategoryEntity.from(category, context: context)
-                print("   ✓ Migrated category: \(category.name)")
             }
             
             if context.hasChanges {
                 try context.save()
-                print("✅ [MIGRATION] Saved \(categories.count) categories to Core Data")
             }
         }
     }
     
     private func migrateRecurringSeries() async throws {
-        print("📦 [MIGRATION] Migrating recurring series...")
         
         let series = userDefaultsRepo.loadRecurringSeries()
-        print("📊 [MIGRATION] Found \(series.count) recurring series to migrate")
         
         guard !series.isEmpty else {
-            print("⏭️ [MIGRATION] No recurring series to migrate")
             return
         }
         
@@ -359,24 +313,19 @@ class DataMigrationService {
                     entity.account = self.fetchAccount(id: accountId, context: context)
                 }
                 
-                print("   ✓ Migrated recurring series: \(item.description)")
             }
             
             if context.hasChanges {
                 try context.save()
-                print("✅ [MIGRATION] Saved \(series.count) recurring series to Core Data")
             }
         }
     }
     
     private func migrateRecurringOccurrences() async throws {
-        print("📦 [MIGRATION] Migrating recurring occurrences...")
 
         let occurrences = userDefaultsRepo.loadRecurringOccurrences()
-        print("📊 [MIGRATION] Found \(occurrences.count) recurring occurrences to migrate")
 
         guard !occurrences.isEmpty else {
-            print("⏭️ [MIGRATION] No recurring occurrences to migrate")
             return
         }
 
@@ -391,12 +340,10 @@ class DataMigrationService {
                     entity.series = self.fetchRecurringSeries(id: occurrence.seriesId, context: context)
                 }
 
-                print("   ✓ Migrated occurrence for series: \(occurrence.seriesId)")
             }
 
             if context.hasChanges {
                 try context.save()
-                print("✅ [MIGRATION] Saved \(occurrences.count) recurring occurrences to Core Data")
             }
         }
     }

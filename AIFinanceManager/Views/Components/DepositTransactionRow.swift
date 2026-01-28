@@ -10,35 +10,42 @@ import SwiftUI
 struct DepositTransactionRow: View {
     let transaction: Transaction
     let currency: String
-    let depositAccountId: String
-    
+    var depositAccountId: String?
+    /// When true, renders a "planned" highlight (blue tint + clock icon)
+    var isPlanned: Bool = false
+
     var body: some View {
         HStack {
-            // Icon
-            Image(systemName: iconForTransactionType(transaction.type))
-                .foregroundColor(colorForTransactionType(transaction.type))
-                .font(AppTypography.caption)
-                .frame(width: AppIconSize.sm)
-            
-            // Date and description
+            if isPlanned {
+                Image(systemName: "clock")
+                    .foregroundColor(.blue)
+                    .font(AppTypography.caption)
+            } else {
+                Image(systemName: iconForTransactionType(transaction.type))
+                    .foregroundColor(colorForTransactionType(transaction.type))
+                    .font(AppTypography.caption)
+                    .frame(width: AppIconSize.sm)
+            }
+
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                Text(transaction.description)
-                    .font(AppTypography.body)
+                if !transaction.description.isEmpty {
+                    Text(transaction.description)
+                        .font(AppTypography.body)
+                }
                 Text(formatDate(transaction.date))
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(isPlanned ? .blue : .secondary)
             }
-            
+
             Spacer()
-            
-            // Amount
+
             Text(formatAmount(transaction))
                 .font(AppTypography.body)
                 .fontWeight(.semibold)
-                .foregroundColor(colorForTransactionType(transaction.type))
+                .foregroundColor(isPlanned ? .blue : colorForTransactionType(transaction.type))
         }
         .padding(AppSpacing.sm)
-        .background(AppColors.secondaryBackground)
+        .background(isPlanned ? Color.blue.opacity(0.1) : AppColors.secondaryBackground)
         .cornerRadius(AppRadius.sm)
     }
     
