@@ -36,11 +36,17 @@ final class CoreDataRepository: DataRepositoryProtocol {
             print("📂 [CORE_DATA_REPO] Loading ALL transactions from Core Data")
         }
         PerformanceProfiler.start("CoreDataRepository.loadTransactions")
-        
+
         let context = stack.viewContext
         let request = TransactionEntity.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
-        
+
+        // PERFORMANCE: Batch size для ленивой загрузки объектов
+        request.fetchBatchSize = 100
+
+        // PERFORMANCE: Prefetch relationships чтобы избежать N+1 проблемы
+        request.relationshipKeyPathsForPrefetching = ["account"]
+
         // Apply date range filter if provided
         if let dateRange = dateRange {
             request.predicate = NSPredicate(
@@ -49,19 +55,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 dateRange.end as NSDate
             )
         }
-        
+
         do {
             let entities = try context.fetch(request)
             let transactions = entities.map { $0.toTransaction() }
-            
+
             PerformanceProfiler.end("CoreDataRepository.loadTransactions")
             print("✅ [CORE_DATA_REPO] Loaded \(transactions.count) transactions")
-            
+
             return transactions
         } catch {
             print("❌ [CORE_DATA_REPO] Error loading transactions: \(error)")
             PerformanceProfiler.end("CoreDataRepository.loadTransactions")
-            
+
             // Fallback to UserDefaults if Core Data fails
             print("⚠️ [CORE_DATA_REPO] Falling back to UserDefaults")
             return userDefaultsRepository.loadTransactions(dateRange: dateRange)
@@ -315,116 +321,168 @@ final class CoreDataRepository: DataRepositoryProtocol {
     }
     
     /// Синхронно сохранить транзакции в Core Data (для импорта CSV)
+    /// ОПТИМИЗИРОВАНО: Использует background context для избежания блокировки UI
     func saveTransactionsSync(_ transactions: [Transaction]) throws {
-        print("💾 [CORE_DATA_REPO] Saving \(transactions.count) transactions to Core Data synchronously")
-        
-        let context = stack.viewContext
-        
-        // Fetch all existing transactions
-        let fetchRequest = TransactionEntity.fetchRequest()
-        let existingEntities = try context.fetch(fetchRequest)
-        
-        // Build dictionary safely
-        var existingDict: [String: TransactionEntity] = [:]
-        for entity in existingEntities {
-            let id = entity.id ?? ""
-            if !id.isEmpty && existingDict[id] == nil {
-                existingDict[id] = entity
-            } else if !id.isEmpty {
-                print("⚠️ [CORE_DATA_REPO] Found duplicate transaction entity with id: \(id), deleting duplicate")
-                context.delete(entity)
-            }
-        }
-        
-        // Fetch all existing accounts to establish relationships
-        let accountFetchRequest = AccountEntity.fetchRequest()
-        let accountEntities = try context.fetch(accountFetchRequest)
-        var accountDict: [String: AccountEntity] = [:]
-        for accountEntity in accountEntities {
-            if let id = accountEntity.id {
-                accountDict[id] = accountEntity
-            }
-        }
-        
-        // Fetch all existing recurring series to establish relationships
-        let seriesFetchRequest = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
-        let seriesEntities = try context.fetch(seriesFetchRequest)
-        var seriesDict: [String: RecurringSeriesEntity] = [:]
-        for seriesEntity in seriesEntities {
-            if let id = seriesEntity.id {
-                seriesDict[id] = seriesEntity
-            }
-        }
-        
-        var keptIds = Set<String>()
-        
-        // Update or create transactions
-        for transaction in transactions {
-            keptIds.insert(transaction.id)
-            
-            if let existing = existingDict[transaction.id] {
-                // Update existing
-                existing.date = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()
-                existing.descriptionText = transaction.description
-                existing.amount = transaction.amount
-                existing.currency = transaction.currency
-                existing.convertedAmount = transaction.convertedAmount ?? 0
-                existing.type = transaction.type.rawValue
-                existing.category = transaction.category
-                existing.subcategory = transaction.subcategory
-                existing.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
-                
-                // ✅ Установить relationships
-                if let accountId = transaction.accountId {
-                    existing.account = accountDict[accountId]
-                } else {
-                    existing.account = nil
+        print("💾 [CORE_DATA_REPO] Saving \(transactions.count) transactions to Core Data (background)")
+        PerformanceProfiler.start("CoreDataRepository.saveTransactionsSync")
+
+        // PERFORMANCE: Используем background context вместо viewContext
+        let backgroundContext = stack.persistentContainer.newBackgroundContext()
+        backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+
+        // Выполняем все операции в background context синхронно
+        try backgroundContext.performAndWait {
+            // PERFORMANCE: Batch size для fetch
+            let fetchRequest = TransactionEntity.fetchRequest()
+            fetchRequest.fetchBatchSize = 500
+
+            let existingEntities = try backgroundContext.fetch(fetchRequest)
+
+            // Build dictionary safely
+            var existingDict: [String: TransactionEntity] = [:]
+            for entity in existingEntities {
+                let id = entity.id ?? ""
+                if !id.isEmpty && existingDict[id] == nil {
+                    existingDict[id] = entity
+                } else if !id.isEmpty {
+                    print("⚠️ [CORE_DATA_REPO] Found duplicate transaction entity with id: \(id), deleting duplicate")
+                    backgroundContext.delete(entity)
                 }
-                
-                if let targetAccountId = transaction.targetAccountId {
-                    existing.targetAccount = accountDict[targetAccountId]
-                } else {
-                    existing.targetAccount = nil
+            }
+
+            // Fetch all existing accounts to establish relationships
+            let accountFetchRequest = AccountEntity.fetchRequest()
+            let accountEntities = try backgroundContext.fetch(accountFetchRequest)
+            var accountDict: [String: AccountEntity] = [:]
+            for accountEntity in accountEntities {
+                if let id = accountEntity.id {
+                    accountDict[id] = accountEntity
                 }
-                
-                if let seriesId = transaction.recurringSeriesId {
-                    existing.recurringSeries = seriesDict[seriesId]
-                } else {
-                    existing.recurringSeries = nil
+            }
+
+            // Fetch all existing recurring series to establish relationships
+            let seriesFetchRequest = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
+            let seriesEntities = try backgroundContext.fetch(seriesFetchRequest)
+            var seriesDict: [String: RecurringSeriesEntity] = [:]
+            for seriesEntity in seriesEntities {
+                if let id = seriesEntity.id {
+                    seriesDict[id] = seriesEntity
                 }
+            }
+
+            var keptIds = Set<String>()
+
+            // PERFORMANCE: Batch processing - сохраняем каждые 500 транзакций
+            let batchSize = 500
+            var processedCount = 0
+
+            // Update or create transactions
+            for transaction in transactions {
+                keptIds.insert(transaction.id)
+
+                if let existing = existingDict[transaction.id] {
+                    // Update existing
+                    existing.date = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()
+                    existing.descriptionText = transaction.description
+                    existing.amount = transaction.amount
+                    existing.currency = transaction.currency
+                    existing.convertedAmount = transaction.convertedAmount ?? 0
+                    existing.type = transaction.type.rawValue
+                    existing.category = transaction.category
+                    existing.subcategory = transaction.subcategory
+                    existing.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
+
+                    // Установить relationships
+                    if let accountId = transaction.accountId {
+                        existing.account = accountDict[accountId]
+                    } else {
+                        existing.account = nil
+                    }
+
+                    if let targetAccountId = transaction.targetAccountId {
+                        existing.targetAccount = accountDict[targetAccountId]
+                    } else {
+                        existing.targetAccount = nil
+                    }
+
+                    if let seriesId = transaction.recurringSeriesId {
+                        existing.recurringSeries = seriesDict[seriesId]
+                    } else {
+                        existing.recurringSeries = nil
+                    }
+                } else {
+                    // Create new
+                    let newEntity = TransactionEntity.from(transaction, context: backgroundContext)
+
+                    // Установить relationships для новой транзакции
+                    if let accountId = transaction.accountId {
+                        newEntity.account = accountDict[accountId]
+                    }
+
+                    if let targetAccountId = transaction.targetAccountId {
+                        newEntity.targetAccount = accountDict[targetAccountId]
+                    }
+
+                    if let seriesId = transaction.recurringSeriesId {
+                        newEntity.recurringSeries = seriesDict[seriesId]
+                    }
+                }
+
+                processedCount += 1
+
+                // PERFORMANCE: Промежуточное сохранение каждые batchSize транзакций
+                if processedCount % batchSize == 0 && backgroundContext.hasChanges {
+                    try backgroundContext.save()
+                    backgroundContext.reset() // Освобождаем память
+
+                    // Перезагружаем dictionaries после reset
+                    let refetchedEntities = try backgroundContext.fetch(fetchRequest)
+                    existingDict.removeAll()
+                    for entity in refetchedEntities {
+                        if let id = entity.id, !id.isEmpty {
+                            existingDict[id] = entity
+                        }
+                    }
+
+                    let refetchedAccounts = try backgroundContext.fetch(accountFetchRequest)
+                    accountDict.removeAll()
+                    for entity in refetchedAccounts {
+                        if let id = entity.id {
+                            accountDict[id] = entity
+                        }
+                    }
+
+                    let refetchedSeries = try backgroundContext.fetch(seriesFetchRequest)
+                    seriesDict.removeAll()
+                    for entity in refetchedSeries {
+                        if let id = entity.id {
+                            seriesDict[id] = entity
+                        }
+                    }
+
+                    print("💾 [CORE_DATA_REPO] Batch saved: \(processedCount)/\(transactions.count)")
+                }
+            }
+
+            // Delete transactions that no longer exist
+            // Перезагружаем существующие entities после возможного reset
+            let finalExistingEntities = try backgroundContext.fetch(fetchRequest)
+            for entity in finalExistingEntities {
+                if let id = entity.id, !keptIds.contains(id) {
+                    backgroundContext.delete(entity)
+                }
+            }
+
+            // Финальное сохранение
+            if backgroundContext.hasChanges {
+                try backgroundContext.save()
+                print("✅ [CORE_DATA_REPO] Transactions saved (background context)")
             } else {
-                // Create new
-                let newEntity = TransactionEntity.from(transaction, context: context)
-                
-                // ✅ Установить relationships для новой транзакции
-                if let accountId = transaction.accountId {
-                    newEntity.account = accountDict[accountId]
-                }
-                
-                if let targetAccountId = transaction.targetAccountId {
-                    newEntity.targetAccount = accountDict[targetAccountId]
-                }
-                
-                if let seriesId = transaction.recurringSeriesId {
-                    newEntity.recurringSeries = seriesDict[seriesId]
-                }
+                print("ℹ️ [CORE_DATA_REPO] No changes to save")
             }
         }
-        
-        // Delete transactions that no longer exist
-        for entity in existingEntities {
-            if let id = entity.id, !keptIds.contains(id) {
-                context.delete(entity)
-            }
-        }
-        
-        // Save if there are changes
-        if context.hasChanges {
-            try context.save()
-            print("✅ [CORE_DATA_REPO] Transactions saved synchronously")
-        } else {
-            print("ℹ️ [CORE_DATA_REPO] No changes to save")
-        }
+
+        PerformanceProfiler.end("CoreDataRepository.saveTransactionsSync")
     }
     
     /// Синхронно сохранить категории в Core Data (для импорта CSV)

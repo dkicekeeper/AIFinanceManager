@@ -17,8 +17,10 @@ class TransactionsViewModel: ObservableObject {
     /// Use this for lists and UI rendering for better performance
     @Published var displayTransactions: [Transaction] = []
     
-    /// Controls how many months to load for initial display (default: 12 months)
-    var displayMonthsRange: Int = 12
+    /// Controls how many months to load for initial display
+    /// PERFORMANCE: Уменьшено с 12 до 6 месяцев для ускорения первоначальной загрузки
+    /// При 19K+ транзакций это значительно уменьшает объем обрабатываемых данных
+    var displayMonthsRange: Int = 6
     
     /// Indicates if older transactions are available to load
     @Published var hasOlderTransactions: Bool = false
@@ -70,6 +72,10 @@ class TransactionsViewModel: ObservableObject {
 
     // Transaction indexes for fast filtering
     private let indexManager = TransactionIndexManager()
+
+    // PERFORMANCE: Cached accounts dictionary for O(1) lookup by ID
+    private var cachedAccountsById: [String: Account] = [:]
+    private var accountsCacheInvalidated = true
 
     // MARK: - Decomposed Services (Phase 2)
 
@@ -123,6 +129,7 @@ class TransactionsViewModel: ObservableObject {
         categoryExpensesCacheInvalidated = true
         conversionCacheInvalidated = true
         balanceCacheInvalidated = true
+        accountsCacheInvalidated = true
         indexManager.invalidate()
     }
 
@@ -316,7 +323,8 @@ class TransactionsViewModel: ObservableObject {
         if !searchText.isEmpty {
             let searchLower = searchText.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
             let searchNumber = Double(searchText.replacingOccurrences(of: ",", with: "."))
-            let accountsById = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
+            // PERFORMANCE: Use cached dictionary instead of creating new one on each search
+            let accountsById = getAccountsById()
             
             transactions = transactions.filter { transaction in
                 if transaction.category.lowercased().contains(searchLower) {
@@ -1441,8 +1449,9 @@ class TransactionsViewModel: ObservableObject {
         // Balances are already calculated and saved in Core Data.
         // They will be recalculated when all transactions finish loading in background
 
-        // Build indexes for fast filtering (with displayTransactions for now)
-        rebuildIndexes()
+        // PERFORMANCE: Do NOT call rebuildIndexes() here!
+        // At this point allTransactions is still empty (loading in background task).
+        // Indexes will be built when background task completes (see loadFromStorage Task).
 
         // Precompute currency conversions in background for better UI performance
         precomputeCurrencyConversions()
@@ -2207,6 +2216,18 @@ class TransactionsViewModel: ObservableObject {
         return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
     }
 
+    // MARK: - Cached Lookups
+
+    /// PERFORMANCE: Returns cached dictionary of accounts by ID for O(1) lookup
+    /// Rebuilds cache only when accounts change
+    private func getAccountsById() -> [String: Account] {
+        if accountsCacheInvalidated || cachedAccountsById.isEmpty {
+            cachedAccountsById = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
+            accountsCacheInvalidated = false
+        }
+        return cachedAccountsById
+    }
+
     // MARK: - Transaction Indexes
 
     /// Rebuild transaction indexes for fast filtering
@@ -2291,6 +2312,7 @@ class TransactionsViewModel: ObservableObject {
 
     /// Precompute currency conversions for all transactions in background
     /// This dramatically improves UI performance by avoiding sync conversions
+    /// OPTIMIZED: Removed per-transaction MainActor.run calls (was causing 19000+ context switches)
     func precomputeCurrencyConversions() {
         guard conversionCacheInvalidated else {
             print("💱 [CONVERSION] Cache is valid, skipping precomputation")
@@ -2300,34 +2322,37 @@ class TransactionsViewModel: ObservableObject {
         print("💱 [CONVERSION] Starting precomputation for \(allTransactions.count) transactions")
         PerformanceProfiler.start("precomputeCurrencyConversions")
 
-        Task.detached(priority: .utility) { [weak self] in
+        // Capture all needed data from MainActor ONCE before background work
+        let baseCurrency = appSettings.baseCurrency
+        let transactions = allTransactions
+
+        Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
 
-            let baseCurrency = await MainActor.run { self.appSettings.baseCurrency }
-            let transactions = await MainActor.run { self.allTransactions }
-
+            // Pre-reserve capacity for better performance
             var cache: [String: Double] = [:]
+            cache.reserveCapacity(transactions.count)
             var conversionCount = 0
 
+            // Process all transactions without MainActor context switches
+            // CurrencyConverter.convertSync only reads from static cache - thread-safe for reads
             for tx in transactions {
                 let cacheKey = "\(tx.id)_\(baseCurrency)"
 
                 if tx.currency == baseCurrency {
                     cache[cacheKey] = tx.amount
                 } else {
-                    // Приоритет: используем сохраненный convertedAmount для исторических данных (если базовая валюта KZT)
+                    // Priority: use saved convertedAmount for historical data (if base currency is KZT)
                     if let savedConversion = tx.convertedAmount, baseCurrency == "KZT" {
                         cache[cacheKey] = savedConversion
                         conversionCount += 1
                     } else {
-                        // Call convertSync on MainActor since it's @MainActor isolated
-                        let converted = await MainActor.run {
-                            CurrencyConverter.convertSync(
-                                amount: tx.amount,
-                                from: tx.currency,
-                                to: baseCurrency
-                            )
-                        }
+                        // convertSync only reads from static cache - no MainActor needed
+                        let converted = CurrencyConverter.convertSync(
+                            amount: tx.amount,
+                            from: tx.currency,
+                            to: baseCurrency
+                        )
 
                         if let converted = converted {
                             cache[cacheKey] = converted
@@ -2343,10 +2368,9 @@ class TransactionsViewModel: ObservableObject {
             // Capture values before passing to MainActor
             let finalConversionCount = conversionCount
             let finalCacheCount = cache.count
-            let cacheCopy = cache // Create a copy to avoid concurrent access issues
 
             await MainActor.run {
-                self.convertedAmountsCache = cacheCopy
+                self.convertedAmountsCache = cache
                 self.conversionCacheInvalidated = false
                 print("✅ [CONVERSION] Precomputed \(finalConversionCount) conversions, cached \(finalCacheCount) amounts")
                 PerformanceProfiler.end("precomputeCurrencyConversions")

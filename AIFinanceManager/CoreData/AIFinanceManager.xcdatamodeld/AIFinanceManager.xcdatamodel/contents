@@ -115,6 +115,23 @@
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="transactions" inverseEntity="AccountEntity"/>
         <relationship name="recurringSeries" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecurringSeriesEntity" inverseName="transactions" inverseEntity="RecurringSeriesEntity"/>
         <relationship name="targetAccount" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="targetTransactions" inverseEntity="AccountEntity"/>
+        <fetchIndex name="byDateIndex">
+            <fetchIndexElement property="date" type="Binary" order="descending"/>
+        </fetchIndex>
+        <fetchIndex name="byCategoryIndex">
+            <fetchIndexElement property="category" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byTypeIndex">
+            <fetchIndexElement property="type" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byDateAndCategoryIndex">
+            <fetchIndexElement property="date" type="Binary" order="descending"/>
+            <fetchIndexElement property="category" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byDateAndTypeIndex">
+            <fetchIndexElement property="date" type="Binary" order="descending"/>
+            <fetchIndexElement property="type" type="Binary" order="ascending"/>
+        </fetchIndex>
         <uniquenessConstraints>
             <uniquenessConstraint>
                 <constraint value="id"/>

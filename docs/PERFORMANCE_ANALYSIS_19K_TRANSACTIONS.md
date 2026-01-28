@@ -686,6 +686,66 @@ var displayMonthsRange: Int = 3  // Было 12
 
 ---
 
+## Changelog: Внесённые оптимизации
+
+### 2026-01-28: Первый этап оптимизации ✅
+
+#### 1. ✅ Добавлены Fetch Indexes в Core Data модель
+**Файл:** `AIFinanceManager.xcdatamodel/contents`
+- `byDateIndex` — индекс по дате (descending)
+- `byCategoryIndex` — индекс по категории
+- `byTypeIndex` — индекс по типу транзакции
+- `byDateAndCategoryIndex` — составной индекс дата + категория
+- `byDateAndTypeIndex` — составной индекс дата + тип
+
+**Ожидаемый эффект:** 10-100x ускорение fetch запросов с фильтрацией
+
+#### 2. ✅ Оптимизирован saveTransactionsSync
+**Файл:** `CoreDataRepository.swift`
+- Перенесён на `backgroundContext` вместо `viewContext`
+- Добавлено batch сохранение каждые 500 транзакций
+- Добавлен `context.reset()` для освобождения памяти между batch'ами
+
+**Ожидаемый эффект:** UI не блокируется при сохранении 19K транзакций
+
+#### 3. ✅ Добавлены fetchBatchSize и prefetching
+**Файл:** `CoreDataRepository.swift`
+- `request.fetchBatchSize = 100` — ленивая загрузка объектов
+- `request.relationshipKeyPathsForPrefetching = ["account"]` — решение N+1 проблемы
+
+**Ожидаемый эффект:** 2-3x ускорение загрузки, меньше SQL запросов
+
+#### 4. ✅ Оптимизирован CSV импорт
+**Файл:** `CSVImportService.swift`
+- Увеличен `batchSize` с 100 до 500
+
+**Ожидаемый эффект:** 5x меньше итераций при импорте 19K строк
+
+#### 5. ✅ Уменьшен displayMonthsRange
+**Файл:** `TransactionsViewModel.swift`
+- Уменьшен с 12 до 6 месяцев
+
+**Ожидаемый эффект:** ~50% меньше транзакций при первой загрузке
+
+#### 6. ✅ Убран дублирующийся вызов rebuildIndexes
+**Файл:** `TransactionsViewModel.swift`
+- Удалён вызов `rebuildIndexes()` в `loadOtherData()` (строка 1447)
+- Оставлен только вызов в background task после загрузки всех транзакций (строка 1394)
+
+**Причина:** Первый вызов происходил когда `allTransactions` был ещё пустым (загрузка идёт в фоне), поэтому он был бесполезен.
+
+**Ожидаемый эффект:** Экономия одной итерации по всем транзакциям при запуске
+
+#### 7. ✅ Кэширование accountsById словаря
+**Файл:** `TransactionsViewModel.swift`
+- Добавлен `cachedAccountsById` и `accountsCacheInvalidated` флаг
+- Добавлен метод `getAccountsById()` для ленивой инициализации кэша
+- Заменено создание словаря в `filterTransactionsForHistory` на использование кэша
+
+**Ожидаемый эффект:** O(1) вместо O(n) для создания словаря при каждом поиске
+
+---
+
 **Автор анализа:** Claude Opus 4.5
 **Дата:** 2026-01-28
-**Версия:** 1.0
+**Версия:** 1.3 (добавлено кэширование accountsById)

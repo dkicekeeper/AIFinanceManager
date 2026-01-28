@@ -111,8 +111,9 @@ class CSVImportService {
             transactionsViewModel.beginBatch()
         }
         
-        // Батчинг для экономии памяти: обрабатываем транзакции порциями
-        let batchSize = 100 // Уменьшен размер батча для экономии памяти
+        // PERFORMANCE: Батчинг для экономии памяти: обрабатываем транзакции порциями
+        // Увеличен размер батча для лучшей производительности при большом количестве транзакций
+        let batchSize = 500
         var transactionsBatch: [Transaction] = []
         var transactionSubcategoryLinksBatch: [String: [String]] = [:]
         var allTransactionSubcategoryLinks: [String: [String]] = [:] // Накапливаем все связи для сохранения в конце
