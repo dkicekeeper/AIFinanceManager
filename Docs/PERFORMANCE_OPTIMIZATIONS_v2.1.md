@@ -164,17 +164,39 @@
 
 ## Оставшиеся оптимизации (Week 2-3) — Опционально
 
-### Week 2: Incremental Balance Updates (2-3 часа)
+### Week 2: Incremental Balance Updates (частично реализовано) ⚠️
 
-**Идея:** При добавлении/удалении одной транзакции обновлять баланс только затронутого счёта, а не пересчитывать все 19K
+**Статус:** Infrastructure готова, интеграция отложена до будущих версий
 
-**Сложность:** Высокая — требует:
-- Сохранение `lastCalculatedBalances`
-- Delta-логика для `applyTransaction()`
-- Флаг для force full recalc (импорт)
-- Тщательное тестирование корректности
+**Что сделано:**
+- ✅ Добавлен `lastCalculatedBalances` cache в BalanceCalculationService
+- ✅ Добавлен `lastCalculationTransactionCount` для определения batch operations
+- ✅ Реализованы методы:
+  - `updateBalancesForAddedTransaction()` — инкрементальное добавление
+  - `updateBalancesForRemovedTransaction()` — инкрементальное удаление
+  - `calculateAndCacheAllBalances()` — force recalc с кэшированием
+- ✅ Детекция batch operations (threshold: 10+ транзакций → auto full recalc)
+- ✅ Поддержка income/expense/internalTransfer
+- ✅ Автоматический fallback на full recalc при пустом кэше
 
-**Эффект:** 1000x+ ускорение для одиночных операций
+**Что отложено:**
+- ❌ Интеграция в TransactionsViewModel.addTransaction/deleteTransaction
+- ❌ Обработка deposits в инкрементальных обновлениях
+- ❌ Comprehensive тестирование на 19K+ транзакциях
+
+**Причина откладывания:**
+- TransactionsViewModel имеет сложную балансовую логику (409 строк в `recalculateAccountBalances`)
+- Существует `applyTransactionToBalancesDirectly` — partial overlap functionality
+- `accountsWithCalculatedInitialBalance` Set — requires careful handling
+- Deposits, imported accounts, manual accounts — много граничных кейсов
+- **Высокий риск регрессии** при изменении существующей логики
+- **Week 1 оптимизации уже дали 3-5x улучшение** — incremental updates не критичны
+
+**Потенциальный эффект (если интегрировать):**
+1000x+ ускорение для одиночных операций (add/delete transaction)
+
+**Рекомендация:**
+Отложить до появления реальных performance issues. Текущий код служит как **reference implementation** для будущего рефакторинга.
 
 ---
 

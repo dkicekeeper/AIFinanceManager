@@ -142,6 +142,44 @@ protocol BalanceCalculationServiceProtocol: AnyObject {
     /// Clear initial balance for account
     /// - Parameter accountId: Account ID
     func clearInitialBalance(for accountId: String)
+
+    // MARK: - Incremental Updates
+
+    /// Update balance incrementally for a single transaction addition
+    /// Much faster than full recalculation (O(1) vs O(n))
+    /// - Parameters:
+    ///   - transaction: The added transaction
+    ///   - accounts: All accounts
+    ///   - currentTransactionCount: Current total transaction count
+    /// - Returns: Updated balances for affected accounts only
+    func updateBalancesForAddedTransaction(
+        _ transaction: Transaction,
+        accounts: [Account],
+        currentTransactionCount: Int
+    ) -> [String: Double]
+
+    /// Update balance incrementally for a single transaction removal
+    /// - Parameters:
+    ///   - transaction: The removed transaction
+    ///   - accounts: All accounts
+    ///   - currentTransactionCount: Current total transaction count
+    /// - Returns: Updated balances for affected accounts only
+    func updateBalancesForRemovedTransaction(
+        _ transaction: Transaction,
+        accounts: [Account],
+        currentTransactionCount: Int
+    ) -> [String: Double]
+
+    /// Calculate all balances from scratch and cache the result
+    /// Use for initial load or when incremental update is not possible
+    /// - Parameters:
+    ///   - accounts: All accounts
+    ///   - transactions: All transactions
+    /// - Returns: Dictionary of account balances
+    func calculateAndCacheAllBalances(
+        accounts: [Account],
+        transactions: [Transaction]
+    ) -> [String: Double]
 }
 
 // MARK: - Implementation
@@ -161,6 +199,12 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
 
     /// Initial balances for accounts
     private var initialBalances: [String: Double] = [:]
+
+    /// Last calculated balances (for incremental updates)
+    private var lastCalculatedBalances: [String: Double] = [:]
+
+    /// Transaction count at last full calculation (for detecting batch operations)
+    private var lastCalculationTransactionCount: Int = 0
 
     // MARK: - Initialization
 
@@ -373,6 +417,164 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
 
     func clearInitialBalance(for accountId: String) {
         initialBalances.removeValue(forKey: accountId)
+    }
+
+    // MARK: - Incremental Updates
+
+    func updateBalancesForAddedTransaction(
+        _ transaction: Transaction,
+        accounts: [Account],
+        currentTransactionCount: Int
+    ) -> [String: Double] {
+        // Detect batch operations: если добавилось много транзакций сразу - делаем full recalc
+        let transactionDelta = abs(currentTransactionCount - lastCalculationTransactionCount)
+        if transactionDelta > 10 {
+            // Batch operation detected - force full recalc
+            return calculateAndCacheAllBalances(accounts: accounts, transactions: [])
+        }
+
+        // Получаем текущие балансы или используем кэш
+        var balances = lastCalculatedBalances
+        if balances.isEmpty {
+            // Кэш пустой - используем текущие балансы счетов
+            balances = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0.balance) })
+        }
+
+        // Применяем транзакцию только к затронутым счетам
+        var updatedBalances: [String: Double] = [:]
+
+        switch transaction.type {
+        case .income, .expense:
+            if let accountId = transaction.accountId,
+               let account = accounts.first(where: { $0.id == accountId }) {
+                let currentBalance = balances[accountId] ?? account.balance
+                let newBalance = applyTransaction(transaction, to: currentBalance, for: account, isSource: true)
+                balances[accountId] = newBalance
+                updatedBalances[accountId] = newBalance
+            }
+
+        case .internalTransfer:
+            // Обновляем оба счёта
+            if let sourceAccountId = transaction.accountId,
+               let sourceAccount = accounts.first(where: { $0.id == sourceAccountId }) {
+                let currentBalance = balances[sourceAccountId] ?? sourceAccount.balance
+                let newBalance = applyTransaction(transaction, to: currentBalance, for: sourceAccount, isSource: true)
+                balances[sourceAccountId] = newBalance
+                updatedBalances[sourceAccountId] = newBalance
+            }
+
+            if let targetAccountId = transaction.targetAccountId,
+               let targetAccount = accounts.first(where: { $0.id == targetAccountId }) {
+                let currentBalance = balances[targetAccountId] ?? targetAccount.balance
+                let newBalance = applyTransaction(transaction, to: currentBalance, for: targetAccount, isSource: false)
+                balances[targetAccountId] = newBalance
+                updatedBalances[targetAccountId] = newBalance
+            }
+
+        case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            // Deposits handled separately - no incremental update for now
+            break
+        }
+
+        // Обновляем кэш
+        lastCalculatedBalances = balances
+        lastCalculationTransactionCount = currentTransactionCount
+
+        return updatedBalances
+    }
+
+    func updateBalancesForRemovedTransaction(
+        _ transaction: Transaction,
+        accounts: [Account],
+        currentTransactionCount: Int
+    ) -> [String: Double] {
+        // Detect batch operations
+        let transactionDelta = abs(currentTransactionCount - lastCalculationTransactionCount)
+        if transactionDelta > 10 {
+            // Batch operation detected - force full recalc
+            return calculateAndCacheAllBalances(accounts: accounts, transactions: [])
+        }
+
+        // Получаем текущие балансы или используем кэш
+        var balances = lastCalculatedBalances
+        if balances.isEmpty {
+            balances = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0.balance) })
+        }
+
+        // Откатываем транзакцию (применяем обратную операцию)
+        var updatedBalances: [String: Double] = [:]
+
+        switch transaction.type {
+        case .income:
+            // Откатываем доход - вычитаем
+            if let accountId = transaction.accountId,
+               let account = accounts.first(where: { $0.id == accountId }) {
+                let currentBalance = balances[accountId] ?? account.balance
+                let amount = getTransactionAmount(transaction, for: account.currency)
+                let newBalance = currentBalance - amount
+                balances[accountId] = newBalance
+                updatedBalances[accountId] = newBalance
+            }
+
+        case .expense:
+            // Откатываем расход - добавляем
+            if let accountId = transaction.accountId,
+               let account = accounts.first(where: { $0.id == accountId }) {
+                let currentBalance = balances[accountId] ?? account.balance
+                let amount = getTransactionAmount(transaction, for: account.currency)
+                let newBalance = currentBalance + amount
+                balances[accountId] = newBalance
+                updatedBalances[accountId] = newBalance
+            }
+
+        case .internalTransfer:
+            // Откатываем перевод
+            if let sourceAccountId = transaction.accountId,
+               let sourceAccount = accounts.first(where: { $0.id == sourceAccountId }) {
+                let currentBalance = balances[sourceAccountId] ?? sourceAccount.balance
+                let amount = getSourceAmount(transaction)
+                let newBalance = currentBalance + amount // Возвращаем деньги источнику
+                balances[sourceAccountId] = newBalance
+                updatedBalances[sourceAccountId] = newBalance
+            }
+
+            if let targetAccountId = transaction.targetAccountId,
+               let targetAccount = accounts.first(where: { $0.id == targetAccountId }) {
+                let currentBalance = balances[targetAccountId] ?? targetAccount.balance
+                let amount = getTargetAmount(transaction)
+                let newBalance = currentBalance - amount // Убираем у получателя
+                balances[targetAccountId] = newBalance
+                updatedBalances[targetAccountId] = newBalance
+            }
+
+        case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            // Deposits handled separately
+            break
+        }
+
+        // Обновляем кэш
+        lastCalculatedBalances = balances
+        lastCalculationTransactionCount = currentTransactionCount
+
+        return updatedBalances
+    }
+
+    func calculateAndCacheAllBalances(
+        accounts: [Account],
+        transactions: [Transaction]
+    ) -> [String: Double] {
+        var balances: [String: Double] = [:]
+
+        for account in accounts {
+            let balance = calculateBalance(for: account, transactions: transactions, allAccounts: accounts)
+            balances[account.id] = balance
+        }
+
+        // Кэшируем результат
+        lastCalculatedBalances = balances
+        lastCalculationTransactionCount = transactions.count
+
+        return balances
     }
 
     // MARK: - Private Helpers

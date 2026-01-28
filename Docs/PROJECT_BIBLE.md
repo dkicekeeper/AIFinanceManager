@@ -657,9 +657,12 @@ Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
 - `Views/History/HistoryTransactionsList.swift` — LazyVStack
 
 **Оставшиеся оптимизации (Week 2-3):**
-- Incremental Balance Updates — обновлять только затронутые счета (2-3 часа)
-- Pagination для History — "Load More" button (1 час)
-- Debounce Search Input — задержка выполнения поиска (20 мин)
+- Incremental Balance Updates — **частично реализовано** ⚠️
+  - ✅ Infrastructure добавлена в BalanceCalculationService (3 новых метода)
+  - ❌ Интеграция отложена (высокий риск регрессии + Week 1 уже дал 3-5x boost)
+  - Код служит как reference implementation для будущего
+- Pagination для History — "Load More" button (1 час, low priority)
+- Debounce Search Input — задержка поиска (20 мин, low priority)
 
 ### Оставшиеся рекомендации
 
