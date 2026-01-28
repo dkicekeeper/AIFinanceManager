@@ -56,26 +56,13 @@ class TransactionsViewModel: ObservableObject {
     // NOTE: Теперь управляется через balanceCalculationService.isImported()
     // Этот Set оставлен для обратной совместимости и будет удален в следующей версии
     private var accountsWithCalculatedInitialBalance: Set<String> = []
-    private var cachedSummary: Summary?
-    private var summaryCacheInvalidated = true
-    private var cachedCategoryExpenses: [String: CategoryExpense]?
-    private var categoryExpensesCacheInvalidated = true
+    // MARK: - Extracted Services (P3 decomposition)
 
-    // Currency conversion cache: "txId_baseCurrency" -> converted amount
-    private var convertedAmountsCache: [String: Double] = [:]
-    private var conversionCacheInvalidated = true
+    /// Centralized cache manager for summaries, balances, account lookups, and indexes
+    let cacheManager = TransactionCacheManager()
 
-    // Balance calculation cache: accountId -> calculated balance
-    private var cachedAccountBalances: [String: Double] = [:]
-    private var balanceCacheInvalidated = true
-    private var lastBalanceCalculationTransactionCount = 0
-
-    // Transaction indexes for fast filtering
-    private let indexManager = TransactionIndexManager()
-
-    // PERFORMANCE: Cached accounts dictionary for O(1) lookup by ID
-    private var cachedAccountsById: [String: Account] = [:]
-    private var accountsCacheInvalidated = true
+    /// Currency conversion cache service
+    let currencyService = TransactionCurrencyService()
 
     // MARK: - Decomposed Services (Phase 2)
 
@@ -125,12 +112,8 @@ class TransactionsViewModel: ObservableObject {
     private var saveCancellables = Set<AnyCancellable>()
 
     func invalidateCaches() {
-        summaryCacheInvalidated = true
-        categoryExpensesCacheInvalidated = true
-        conversionCacheInvalidated = true
-        balanceCacheInvalidated = true
-        accountsCacheInvalidated = true
-        indexManager.invalidate()
+        cacheManager.invalidateAll()
+        currencyService.invalidate()
     }
 
     // MARK: - Dependencies
@@ -426,7 +409,7 @@ class TransactionsViewModel: ObservableObject {
     
     func summary(timeFilterManager: TimeFilterManager) -> Summary {
         // Return cached summary if valid
-        if !summaryCacheInvalidated, let cached = cachedSummary {
+        if !cacheManager.summaryCacheInvalidated, let cached = cacheManager.cachedSummary {
             return cached
         }
         
@@ -479,8 +462,8 @@ class TransactionsViewModel: ObservableObject {
             plannedAmount: 0  // Skip planned amount for now (was causing performance issues)
         )
         
-        cachedSummary = result
-        summaryCacheInvalidated = false
+        cacheManager.cachedSummary = result
+        cacheManager.summaryCacheInvalidated = false
         
         PerformanceProfiler.end("summary.calculation.sync")
         return result
@@ -512,8 +495,8 @@ class TransactionsViewModel: ObservableObject {
             result[category] = expense
         }
         
-        cachedCategoryExpenses = result
-        categoryExpensesCacheInvalidated = false
+        cacheManager.cachedCategoryExpenses = result
+        cacheManager.categoryExpensesCacheInvalidated = false
         
         return result
     }
@@ -1558,7 +1541,7 @@ class TransactionsViewModel: ObservableObject {
         }
 
         // OPTIMIZATION: Skip recalculation if nothing changed since last calculation
-        if !balanceCacheInvalidated && lastBalanceCalculationTransactionCount == allTransactions.count {
+        if !cacheManager.balanceCacheInvalidated && cacheManager.lastBalanceCalculationTransactionCount == allTransactions.count {
             return
         }
 
@@ -1696,9 +1679,9 @@ class TransactionsViewModel: ObservableObject {
         }
 
         // OPTIMIZATION: Update cache state after successful calculation
-        balanceCacheInvalidated = false
-        lastBalanceCalculationTransactionCount = allTransactions.count
-        cachedAccountBalances = balanceChanges
+        cacheManager.balanceCacheInvalidated = false
+        cacheManager.lastBalanceCalculationTransactionCount = allTransactions.count
+        cacheManager.cachedAccountBalances = balanceChanges
     }
     
     // MARK: - Recurring Transactions
@@ -2054,23 +2037,16 @@ class TransactionsViewModel: ObservableObject {
         return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
     }
 
-    // MARK: - Cached Lookups
+    // MARK: - Cached Lookups (delegated to TransactionCacheManager)
 
-    /// PERFORMANCE: Returns cached dictionary of accounts by ID for O(1) lookup
-    /// Rebuilds cache only when accounts change
     private func getAccountsById() -> [String: Account] {
-        if accountsCacheInvalidated || cachedAccountsById.isEmpty {
-            cachedAccountsById = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
-            accountsCacheInvalidated = false
-        }
-        return cachedAccountsById
+        cacheManager.getAccountsById(accounts: accounts)
     }
 
     // MARK: - Transaction Indexes
 
-    /// Rebuild transaction indexes for fast filtering
     func rebuildIndexes() {
-        indexManager.buildIndexes(transactions: allTransactions)
+        cacheManager.rebuildIndexes(transactions: allTransactions)
     }
     
     // MARK: - Batch Mode Operations
@@ -2137,65 +2113,18 @@ class TransactionsViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Currency Conversion Cache
+    // MARK: - Currency Conversion (delegated to TransactionCurrencyService)
 
-    /// Precompute currency amounts cache for all transactions
-    /// Использует только данные, записанные при создании транзакции (без сетевых запросов)
     func precomputeCurrencyConversions() {
-        guard conversionCacheInvalidated else { return }
-
-        PerformanceProfiler.start("precomputeCurrencyConversions")
-
-        let baseCurrency = appSettings.baseCurrency
-        let transactions = allTransactions
-
-        Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self = self else { return }
-
-            var cache: [String: Double] = [:]
-            cache.reserveCapacity(transactions.count)
-
-            for tx in transactions {
-                let cacheKey = "\(tx.id)_\(baseCurrency)"
-
-                if tx.currency == baseCurrency {
-                    cache[cacheKey] = tx.amount
-                } else {
-                    // Используем convertedAmount, сохранённый при создании транзакции
-                    cache[cacheKey] = tx.convertedAmount ?? tx.amount
-                }
-            }
-
-            let finalCacheCount = cache.count
-
-            await MainActor.run {
-                self.convertedAmountsCache = cache
-                self.conversionCacheInvalidated = false
-                PerformanceProfiler.end("precomputeCurrencyConversions")
-            }
-        }
+        currencyService.precompute(transactions: allTransactions, baseCurrency: appSettings.baseCurrency)
     }
 
-    /// Get converted amount from cache
-    /// - Parameters:
-    ///   - transactionId: Transaction ID
-    ///   - baseCurrency: Target currency
-    /// - Returns: Converted amount or nil if not cached
     func getConvertedAmount(transactionId: String, to baseCurrency: String) -> Double? {
-        let cacheKey = "\(transactionId)_\(baseCurrency)"
-        return convertedAmountsCache[cacheKey]
+        currencyService.getConvertedAmount(transactionId: transactionId, to: baseCurrency)
     }
 
-    /// Получить сумму транзакции в базовой валюте из кэша или из записанных данных
     func getConvertedAmountOrCompute(transaction: Transaction, to baseCurrency: String) -> Double {
-        if let cached = getConvertedAmount(transactionId: transaction.id, to: baseCurrency) {
-            return cached
-        }
-        // Если кэш ещё не готов — читаем из транзакции напрямую
-        if transaction.currency == baseCurrency {
-            return transaction.amount
-        }
-        return transaction.convertedAmount ?? transaction.amount
+        currencyService.getConvertedAmountOrCompute(transaction: transaction, to: baseCurrency)
     }
 }
 
