@@ -5,13 +5,9 @@ struct ContentView: View {
     @EnvironmentObject var coordinator: AppCoordinator
     @EnvironmentObject var timeFilterManager: TimeFilterManager
 
-    // @State для принудительного обновления UI при изменении данных
-    @State private var refreshTrigger: Int = 0
     @State private var isInitializing = true
 
     // Computed properties для доступа к ViewModels из coordinator
-    // CRITICAL: SwiftUI не отслеживает изменения в nested computed properties автоматически!
-    // Поэтому мы используем onChange observers и refreshTrigger для принудительного обновления
     private var viewModel: TransactionsViewModel {
         coordinator.transactionsViewModel
     }
@@ -278,23 +274,9 @@ struct ContentView: View {
 
                 PerformanceProfiler.end("ContentView.onAppear")
             }
-            .onChange(of: viewModel.allTransactions.count) { oldValue, newValue in
-                refreshTrigger += 1
-            }
-            .onChange(of: accountsViewModel.accounts.count) { oldValue, newValue in
-                refreshTrigger += 1
-            }
-            .onChange(of: accountsViewModel.accounts) { _, _ in
-                refreshTrigger += 1
-            }
-            .onChange(of: timeFilterManager.currentFilter) { _, _ in
-                // Summary will be recomputed automatically in analyticsCard
-                refreshTrigger += 1
-            }
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
                 loadWallpaper()
             }
-            .id(refreshTrigger) // Принудительное обновление всего view при изменении refreshTrigger
         }
     }
     

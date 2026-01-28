@@ -149,6 +149,11 @@ protocol BalanceCalculationServiceProtocol: AnyObject {
 /// Default implementation of balance calculation service
 final class BalanceCalculationService: BalanceCalculationServiceProtocol {
 
+    // MARK: - Dependencies
+
+    /// Cache manager for optimized date parsing
+    private var cacheManager: TransactionCacheManager?
+
     // MARK: - State
 
     /// Set of account IDs that were imported (transactions already in balance)
@@ -156,6 +161,13 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
 
     /// Initial balances for accounts
     private var initialBalances: [String: Double] = [:]
+
+    // MARK: - Initialization
+
+    /// Set cache manager for optimized date parsing
+    func setCacheManager(_ cacheManager: TransactionCacheManager) {
+        self.cacheManager = cacheManager
+    }
 
     // MARK: - Calculation Mode
 
@@ -244,14 +256,19 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
             }
 
             let today = Calendar.current.startOfDay(for: Date())
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
 
             var balance = initialBalance
 
             for tx in transactions {
-                guard let txDate = dateFormatter.date(from: tx.date),
-                      txDate <= today else {
+                // Use cached date parsing if available, otherwise fallback to DateFormatters
+                let txDate: Date?
+                if let cache = cacheManager {
+                    txDate = cache.getParsedDate(for: tx.date)
+                } else {
+                    txDate = DateFormatters.dateFormatter.date(from: tx.date)
+                }
+
+                guard let txDate = txDate, txDate <= today else {
                     continue
                 }
 

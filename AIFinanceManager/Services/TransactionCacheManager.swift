@@ -37,6 +37,15 @@ class TransactionCacheManager {
     private var cachedAccountsById: [String: Account] = [:]
     private var accountsCacheInvalidated = true
 
+    // MARK: - Subcategory Index
+
+    private var transactionSubcategoryIndex: [String: Set<String>] = [:]
+    private var subcategoryIndexInvalidated = true
+
+    // MARK: - Parsed Dates Cache
+
+    private var parsedDatesCache: [String: Date] = [:]
+
     // MARK: - Index Manager
 
     let indexManager = TransactionIndexManager()
@@ -49,6 +58,8 @@ class TransactionCacheManager {
         categoryExpensesCacheInvalidated = true
         balanceCacheInvalidated = true
         accountsCacheInvalidated = true
+        subcategoryIndexInvalidated = true
+        parsedDatesCache.removeAll(keepingCapacity: true)
         indexManager.invalidate()
     }
 
@@ -74,5 +85,40 @@ class TransactionCacheManager {
     /// Rebuild transaction indexes for fast filtering
     func rebuildIndexes(transactions: [Transaction]) {
         indexManager.buildIndexes(transactions: transactions)
+    }
+
+    // MARK: - Subcategory Lookup
+
+    /// Build subcategory lookup index for O(1) access
+    func buildSubcategoryIndex(links: [TransactionSubcategoryLink]) {
+        guard subcategoryIndexInvalidated else { return }
+
+        transactionSubcategoryIndex.removeAll(keepingCapacity: true)
+        transactionSubcategoryIndex.reserveCapacity(links.count)
+
+        for link in links {
+            transactionSubcategoryIndex[link.transactionId, default: []].insert(link.subcategoryId)
+        }
+
+        subcategoryIndexInvalidated = false
+    }
+
+    /// Get subcategory IDs for a transaction (O(1))
+    func getSubcategoryIds(for transactionId: String) -> Set<String> {
+        return transactionSubcategoryIndex[transactionId] ?? []
+    }
+
+    // MARK: - Date Parsing Cache
+
+    /// Get parsed date from cache or parse and cache it (O(1) for cached dates)
+    func getParsedDate(for dateString: String) -> Date? {
+        if let cached = parsedDatesCache[dateString] {
+            return cached
+        }
+        if let parsed = DateFormatters.dateFormatter.date(from: dateString) {
+            parsedDatesCache[dateString] = parsed
+            return parsed
+        }
+        return nil
     }
 }

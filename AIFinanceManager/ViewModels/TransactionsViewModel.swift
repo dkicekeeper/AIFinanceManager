@@ -136,6 +136,12 @@ class TransactionsViewModel: ObservableObject {
         self.repository = repository
         self.accountBalanceService = accountBalanceService
         self.balanceCalculationService = balanceCalculationService
+
+        // PERFORMANCE: Set cache manager for optimized date parsing in balance calculations
+        if let concreteService = balanceCalculationService as? BalanceCalculationService {
+            concreteService.setCacheManager(cacheManager)
+        }
+
         // Don't load data synchronously in init - use loadDataAsync() instead
 
         // Setup observers for recurring series changes
@@ -2027,13 +2033,10 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Subcategories
 
-    /// Get subcategories linked to a specific transaction
+    /// Get subcategories linked to a specific transaction (O(1) index lookup)
     /// Note: CRUD operations for subcategories should use CategoriesViewModel
     func getSubcategoriesForTransaction(_ transactionId: String) -> [Subcategory] {
-        let linkedSubcategoryIds = transactionSubcategoryLinks
-            .filter { $0.transactionId == transactionId }
-            .map { $0.subcategoryId }
-
+        let linkedSubcategoryIds = cacheManager.getSubcategoryIds(for: transactionId)
         return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
     }
 
@@ -2047,6 +2050,7 @@ class TransactionsViewModel: ObservableObject {
 
     func rebuildIndexes() {
         cacheManager.rebuildIndexes(transactions: allTransactions)
+        cacheManager.buildSubcategoryIndex(links: transactionSubcategoryLinks)
     }
     
     // MARK: - Batch Mode Operations
