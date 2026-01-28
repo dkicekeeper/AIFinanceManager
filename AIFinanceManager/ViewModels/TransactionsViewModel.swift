@@ -188,7 +188,7 @@ class TransactionsViewModel: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             guard let self = self,
-                  let _ = notification.userInfo?["seriesId"] as? String else {
+                  let seriesId = notification.userInfo?["seriesId"] as? String else {
                 return
             }
 

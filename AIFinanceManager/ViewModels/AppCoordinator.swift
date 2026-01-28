@@ -30,8 +30,6 @@ class AppCoordinator: ObservableObject {
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
-    private lazy var migrationService = DataMigrationService()
-    private var migrationCompleted = false
 
     // MARK: - Initialization
 
@@ -81,24 +79,8 @@ class AppCoordinator: ObservableObject {
         
         isInitialized = true
         PerformanceProfiler.start("AppCoordinator.initialize")
-        
-        // STEP 1: Check and perform migration if needed
-        if migrationService.isMigrationNeeded() {
-            do {
-                try await migrationService.migrateAllData()
-                migrationCompleted = true
-                
-                // Reload all ViewModels after migration
-                accountsViewModel.reloadFromStorage()
-                categoriesViewModel.reloadFromStorage()
-            } catch {
-                // Continue with UserDefaults fallback
-            }
-        } else {
-            migrationCompleted = true
-        }
-        
-        // STEP 2: Load data asynchronously - this is non-blocking
+
+        // Load data asynchronously - this is non-blocking
         await transactionsViewModel.loadDataAsync()
         
         PerformanceProfiler.end("AppCoordinator.initialize")
