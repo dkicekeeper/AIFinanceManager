@@ -1,0 +1,132 @@
+//
+//  AccountEditView.swift
+//  AIFinanceManager
+//
+//  Created on 2024
+//
+
+import SwiftUI
+
+struct AccountEditView: View {
+    @ObservedObject var accountsViewModel: AccountsViewModel
+    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    let account: Account?
+    let onSave: (Account) -> Void
+    let onCancel: () -> Void
+
+    @State private var name: String = ""
+    @State private var balanceText: String = ""
+    @State private var currency: String = "USD"
+    @State private var selectedBankLogo: BankLogo = .none
+    @State private var showingBankLogoPicker = false
+    @FocusState private var isNameFocused: Bool
+
+    private let currencies = ["USD", "EUR", "KZT", "RUB", "GBP"]
+
+    private var parsedBalance: Double {
+        if balanceText.isEmpty { return 0.0 }
+        return Double(balanceText.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+    }
+
+    var body: some View {
+        EditSheetContainer(
+            title: account == nil ? String(localized: "modal.newAccount") : String(localized: "modal.editAccount"),
+            isSaveDisabled: name.isEmpty,
+            onSave: {
+                let newAccount = Account(
+                    id: account?.id ?? UUID().uuidString,
+                    name: name,
+                    balance: parsedBalance,
+                    currency: currency,
+                    bankLogo: selectedBankLogo
+                )
+                onSave(newAccount)
+            },
+            onCancel: onCancel
+        ) {
+            Section(header: Text(String(localized: "common.name"))) {
+                TextField(String(localized: "account.namePlaceholder"), text: $name)
+                    .focused($isNameFocused)
+            }
+
+            Section(header: Text(String(localized: "common.logo"))) {
+                Button(action: { showingBankLogoPicker = true }) {
+                    HStack {
+                        Text(String(localized: "account.selectLogo"))
+                        Spacer()
+                        selectedBankLogo.image(size: 24)
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+            }
+
+            Section(header: Text(String(localized: "common.balance"))) {
+                HStack {
+                    TextField(String(localized: "common.balancePlaceholder"), text: $balanceText)
+                        .keyboardType(.decimalPad)
+
+                    Picker(String(localized: "common.currency"), selection: $currency) {
+                        ForEach(currencies, id: \.self) { curr in
+                            Text(Formatting.currencySymbol(for: curr)).tag(curr)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                }
+            }
+        }
+        .onAppear {
+            if let account = account {
+                name = account.name
+                balanceText = String(format: "%.2f", account.balance)
+                currency = account.currency
+                selectedBankLogo = account.bankLogo
+                isNameFocused = false
+            } else {
+                currency = transactionsViewModel.appSettings.baseCurrency
+                selectedBankLogo = .none
+                balanceText = ""
+                // Активируем поле названия при создании нового счета
+                Task {
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                    isNameFocused = true
+                }
+            }
+        }
+        .sheet(isPresented: $showingBankLogoPicker) {
+            BankLogoPickerView(selectedLogo: $selectedBankLogo)
+        }
+    }
+}
+
+#Preview("Account Edit View - New") {
+    let coordinator = AppCoordinator()
+
+    return AccountEditView(
+        accountsViewModel: coordinator.accountsViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel,
+        account: nil,
+        onSave: { _ in },
+        onCancel: {}
+    )
+}
+
+#Preview("Account Edit View - Edit") {
+    let coordinator = AppCoordinator()
+    let sampleAccount = Account(
+        id: "preview",
+        name: "Test Account",
+        balance: 10000,
+        currency: "USD",
+        bankLogo: .kaspi
+    )
+
+    return AccountEditView(
+        accountsViewModel: coordinator.accountsViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel,
+        account: sampleAccount,
+        onSave: { _ in },
+        onCancel: {}
+    )
+}

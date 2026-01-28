@@ -1231,6 +1231,19 @@ class TransactionsViewModel: ObservableObject {
         PerformanceProfiler.end("saveToStorageSync")
     }
 
+    /// Синхронизирует список счетов из AccountsViewModel и сохраняет состояние.
+    /// Заменяет повторяющийся паттерн:
+    /// ```
+    /// transactionsViewModel.accounts = accountsViewModel.accounts
+    /// transactionsViewModel.recalculateAccountBalances()
+    /// transactionsViewModel.saveToStorage()
+    /// ```
+    func syncAccountsFrom(_ accountsViewModel: AccountsViewModel) {
+        accounts = accountsViewModel.accounts
+        recalculateAccountBalances()
+        saveToStorage()
+    }
+
     // MARK: - Синхронные методы сохранения для импорта
 
     private func saveTransactionsSync(_ transactions: [Transaction]) {
@@ -1835,6 +1848,33 @@ class TransactionsViewModel: ObservableObject {
         }
     }
     
+    /// Останавливает recurring-серию и удаляет все будущие транзакции/occurrences.
+    /// Извлечён из TransactionCard для соблюдения SRP.
+    func stopRecurringSeriesAndCleanup(seriesId: String, transactionDate: String) {
+        stopRecurringSeries(seriesId)
+
+        let dateFormatter = DateFormatters.dateFormatter
+        guard let txDate = dateFormatter.date(from: transactionDate) else { return }
+        let today = Calendar.current.startOfDay(for: Date())
+
+        // Удаляем все будущие транзакции этой серии
+        let futureOccurrences = recurringOccurrences.filter { occurrence in
+            guard occurrence.seriesId == seriesId,
+                  let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
+                return false
+            }
+            return occurrenceDate > txDate && occurrenceDate > today
+        }
+
+        for occurrence in futureOccurrences {
+            allTransactions.removeAll { $0.id == occurrence.transactionId }
+            recurringOccurrences.removeAll { $0.id == occurrence.id }
+        }
+
+        recalculateAccountBalances()
+        saveToStorage()
+    }
+
     func deleteRecurringSeries(_ seriesId: String) {
         print("🗑️ [RECURRING] Deleting recurring series: \(seriesId)")
         

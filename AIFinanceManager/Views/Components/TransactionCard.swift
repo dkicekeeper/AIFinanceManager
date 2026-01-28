@@ -74,7 +74,7 @@ struct TransactionCard: View {
         .accessibilityLabel(accessibilityText)
         .accessibilityHint(String(localized: "accessibility.swipeForOptions"))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            // Удаление - для recurring транзакций просто удаляем операцию без диалога
+            // Удаление
             Button(role: .destructive) {
                 HapticManager.warning()
                 if let viewModel = viewModel {
@@ -101,32 +101,7 @@ struct TransactionCard: View {
             Button(String(localized: "transaction.stopRecurring.confirm"), role: .destructive) {
                 HapticManager.warning()
                 if let viewModel = viewModel, let seriesId = transaction.recurringSeriesId {
-                    // Note: stopRecurringSeries should be in SubscriptionsViewModel
-                    // For now, keeping in TransactionsViewModel for backward compatibility
-                    viewModel.stopRecurringSeries(seriesId)
-                    // После остановки серии нужно удалить будущие транзакции и перегенерировать список
-                    let dateFormatter = DateFormatters.dateFormatter
-                    guard let transactionDate = dateFormatter.date(from: transaction.date) else { return }
-                    let today = Calendar.current.startOfDay(for: Date())
-                    
-                    // Удаляем все будущие транзакции этой серии (начиная со следующего дня после текущей транзакции)
-                    // Note: recurringOccurrences should be accessed through SubscriptionsViewModel
-                    let futureOccurrences = viewModel.recurringOccurrences.filter { occurrence in
-                        guard occurrence.seriesId == seriesId,
-                              let occurrenceDate = dateFormatter.date(from: occurrence.occurrenceDate) else {
-                            return false
-                        }
-                        // Удаляем только будущие транзакции (после даты текущей транзакции)
-                        return occurrenceDate > transactionDate && occurrenceDate > today
-                    }
-                    
-                    for occurrence in futureOccurrences {
-                        viewModel.allTransactions.removeAll { $0.id == occurrence.transactionId }
-                        viewModel.recurringOccurrences.removeAll { $0.id == occurrence.id }
-                    }
-                    
-                    viewModel.recalculateAccountBalances()
-                    viewModel.saveToStorage()
+                    viewModel.stopRecurringSeriesAndCleanup(seriesId: seriesId, transactionDate: transaction.date)
                 }
             }
         } message: {

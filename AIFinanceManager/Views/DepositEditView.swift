@@ -28,140 +28,127 @@ struct DepositEditView: View {
     private let depositCurrencies = ["KZT", "USD", "EUR"]
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text(String(localized: "deposit.name"))) {
-                    TextField(String(localized: "deposit.namePlaceholder"), text: $name)
-                        .focused($isNameFocused)
+        EditSheetContainer(
+            title: account == nil ? String(localized: "deposit.new") : String(localized: "deposit.editTitle"),
+            isSaveDisabled: name.isEmpty || bankName.isEmpty || principalBalanceText.isEmpty || interestRateText.isEmpty,
+            onSave: {
+                guard let principalBalance = AmountFormatter.parse(principalBalanceText),
+                      let interestRate = AmountFormatter.parse(interestRateText) else {
+                    return
                 }
-                
-                Section(header: Text(String(localized: "deposit.bank"))) {
-                    TextField(String(localized: "deposit.bankNamePlaceholder"), text: $bankName)
-                    
-                    Button(action: { 
-                        HapticManager.selection()
-                        showingBankLogoPicker = true 
-                    }) {
-                        HStack {
-                            Text(String(localized: "deposit.selectLogo"))
-                            Spacer()
-                            selectedBankLogo.image(size: AppIconSize.lg)
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(AppTypography.caption)
-                        }
-                    }
-                }
-                
-                Section(header: Text(String(localized: "common.currency"))) {
-                    Picker(String(localized: "common.currency"), selection: $currency) {
-                        ForEach(depositCurrencies, id: \.self) { curr in
-                            Text("\(Formatting.currencySymbol(for: curr)) \(curr)").tag(curr)
-                        }
-                    }
-                }
-                
-                Section(header: Text(String(localized: "deposit.initialAmount"))) {
-                    TextField(String(localized: "common.balancePlaceholder"), text: $principalBalanceText)
-                        .keyboardType(.decimalPad)
-                }
-                
-                Section(header: Text(String(localized: "deposit.interestRate"))) {
+
+                let depositInfo = DepositInfo(
+                    bankName: bankName,
+                    principalBalance: principalBalance,
+                    capitalizationEnabled: capitalizationEnabled,
+                    interestRateAnnual: interestRate,
+                    interestPostingDay: interestPostingDay
+                )
+
+                let balance = NSDecimalNumber(decimal: principalBalance).doubleValue
+                let newAccount = Account(
+                    id: account?.id ?? UUID().uuidString,
+                    name: name,
+                    balance: balance,
+                    currency: currency,
+                    bankLogo: selectedBankLogo,
+                    depositInfo: depositInfo
+                )
+                HapticManager.success()
+                onSave(newAccount)
+            },
+            onCancel: onCancel
+        ) {
+            Section(header: Text(String(localized: "deposit.name"))) {
+                TextField(String(localized: "deposit.namePlaceholder"), text: $name)
+                    .focused($isNameFocused)
+            }
+
+            Section(header: Text(String(localized: "deposit.bank"))) {
+                TextField(String(localized: "deposit.bankNamePlaceholder"), text: $bankName)
+
+                Button(action: {
+                    HapticManager.selection()
+                    showingBankLogoPicker = true
+                }) {
                     HStack {
-                        TextField("0.0", text: $interestRateText)
-                            .keyboardType(.decimalPad)
-                        Text(String(localized: "deposit.rateAnnual"))
+                        Text(String(localized: "deposit.selectLogo"))
+                        Spacer()
+                        selectedBankLogo.image(size: AppIconSize.lg)
+                        Image(systemName: "chevron.right")
                             .foregroundColor(.secondary)
+                            .font(AppTypography.caption)
                     }
                 }
-                
-                Section(header: Text(String(localized: "deposit.postingDayTitle"))) {
-                    Picker(String(localized: "deposit.dayOfMonth"), selection: $interestPostingDay) {
-                        ForEach(1...31, id: \.self) { day in
-                            Text("\(day)").tag(day)
-                        }
+            }
+
+            Section(header: Text(String(localized: "common.currency"))) {
+                Picker(String(localized: "common.currency"), selection: $currency) {
+                    ForEach(depositCurrencies, id: \.self) { curr in
+                        Text("\(Formatting.currencySymbol(for: curr)) \(curr)").tag(curr)
                     }
-                    Text(String(localized: "deposit.postingDayHint"))
-                        .font(AppTypography.caption)
+                }
+            }
+
+            Section(header: Text(String(localized: "deposit.initialAmount"))) {
+                TextField(String(localized: "common.balancePlaceholder"), text: $principalBalanceText)
+                    .keyboardType(.decimalPad)
+            }
+
+            Section(header: Text(String(localized: "deposit.interestRate"))) {
+                HStack {
+                    TextField("0.0", text: $interestRateText)
+                        .keyboardType(.decimalPad)
+                    Text(String(localized: "deposit.rateAnnual"))
                         .foregroundColor(.secondary)
                 }
-                
-                Section(header: Text(String(localized: "deposit.capitalizationTitle"))) {
-                    Toggle(String(localized: "deposit.enableCapitalization"), isOn: $capitalizationEnabled)
-                    Text(String(localized: "deposit.capitalizationHint"))
-                        .font(AppTypography.caption)
-                        .foregroundColor(.secondary)
-                }
             }
-            .navigationTitle(account == nil ? String(localized: "deposit.new") : String(localized: "deposit.editTitle"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark")
+
+            Section(header: Text(String(localized: "deposit.postingDayTitle"))) {
+                Picker(String(localized: "deposit.dayOfMonth"), selection: $interestPostingDay) {
+                    ForEach(1...31, id: \.self) { day in
+                        Text("\(day)").tag(day)
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        HapticManager.light()
-                        guard let principalBalance = AmountFormatter.parse(principalBalanceText),
-                              let interestRate = AmountFormatter.parse(interestRateText) else {
-                            return
-                        }
-                        
-                        let depositInfo = DepositInfo(
-                            bankName: bankName,
-                            principalBalance: principalBalance,
-                            capitalizationEnabled: capitalizationEnabled,
-                            interestRateAnnual: interestRate,
-                            interestPostingDay: interestPostingDay
-                        )
-                        
-                        let balance = NSDecimalNumber(decimal: principalBalance).doubleValue
-                        let newAccount = Account(
-                            id: account?.id ?? UUID().uuidString,
-                            name: name,
-                            balance: balance,
-                            currency: currency,
-                            bankLogo: selectedBankLogo,
-                            depositInfo: depositInfo
-                        )
-                        HapticManager.success()
-                        onSave(newAccount)
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(name.isEmpty || bankName.isEmpty || principalBalanceText.isEmpty || interestRateText.isEmpty)
+                Text(String(localized: "deposit.postingDayHint"))
+                    .font(AppTypography.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Section(header: Text(String(localized: "deposit.capitalizationTitle"))) {
+                Toggle(String(localized: "deposit.enableCapitalization"), isOn: $capitalizationEnabled)
+                Text(String(localized: "deposit.capitalizationHint"))
+                    .font(AppTypography.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .onAppear {
+            if let account = account, let depositInfo = account.depositInfo {
+                name = account.name
+                bankName = depositInfo.bankName
+                principalBalanceText = String(format: "%.2f", NSDecimalNumber(decimal: depositInfo.principalBalance).doubleValue)
+                currency = account.currency
+                selectedBankLogo = account.bankLogo
+                interestRateText = String(format: "%.2f", NSDecimalNumber(decimal: depositInfo.interestRateAnnual).doubleValue)
+                interestPostingDay = depositInfo.interestPostingDay
+                capitalizationEnabled = depositInfo.capitalizationEnabled
+                isNameFocused = false
+            } else {
+                currency = "KZT"
+                selectedBankLogo = .none
+                principalBalanceText = ""
+                interestRateText = ""
+                interestPostingDay = 1
+                capitalizationEnabled = true
+                // Активируем поле названия при создании нового депозита
+                Task {
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                    isNameFocused = true
                 }
             }
-            .onAppear {
-                if let account = account, let depositInfo = account.depositInfo {
-                    name = account.name
-                    bankName = depositInfo.bankName
-                    principalBalanceText = String(format: "%.2f", NSDecimalNumber(decimal: depositInfo.principalBalance).doubleValue)
-                    currency = account.currency
-                    selectedBankLogo = account.bankLogo
-                    interestRateText = String(format: "%.2f", NSDecimalNumber(decimal: depositInfo.interestRateAnnual).doubleValue)
-                    interestPostingDay = depositInfo.interestPostingDay
-                    capitalizationEnabled = depositInfo.capitalizationEnabled
-                    isNameFocused = false
-                } else {
-                    currency = "KZT"
-                    selectedBankLogo = .none
-                    principalBalanceText = ""
-                    interestRateText = ""
-                    interestPostingDay = 1
-                    capitalizationEnabled = true
-                    // Активируем поле названия при создании нового депозита
-                    Task {
-                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
-                        isNameFocused = true
-                    }
-                }
-            }
-            .sheet(isPresented: $showingBankLogoPicker) {
-                BankLogoPickerView(selectedLogo: $selectedBankLogo)
-            }
+        }
+        .sheet(isPresented: $showingBankLogoPicker) {
+            BankLogoPickerView(selectedLogo: $selectedBankLogo)
         }
     }
 }

@@ -43,14 +43,18 @@ struct AccountsManagementView: View {
                             onDelete: {
                                 HapticManager.warning()
                                 accountsViewModel.deleteAccount(account)
-                                // CRITICAL: Sync accounts between ViewModels to prevent data loss
-                                transactionsViewModel.accounts = accountsViewModel.accounts
-                                // Also delete related transactions
+                                // Удаляем связанные транзакции перед синхронизацией
                                 transactionsViewModel.allTransactions.removeAll {
                                     $0.accountId == account.id || $0.targetAccountId == account.id
                                 }
-                                transactionsViewModel.recalculateAccountBalances()
-                                transactionsViewModel.saveToStorage()
+                                transactionsViewModel.syncAccountsFrom(accountsViewModel)
+                            },
+                            interestToday: account.depositInfo.flatMap {
+                                let val = DepositInterestService.calculateInterestToToday(depositInfo: $0)
+                                return val > 0 ? NSDecimalNumber(decimal: val).doubleValue : nil
+                            },
+                            nextPostingDate: account.depositInfo.flatMap {
+                                DepositInterestService.nextPostingDate(depositInfo: $0)
                             }
                         )
                     }
@@ -96,10 +100,7 @@ struct AccountsManagementView: View {
                 onSave: { account in
                     HapticManager.success()
                     accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
-                    // CRITICAL: Sync accounts between ViewModels to prevent data loss
-                    transactionsViewModel.accounts = accountsViewModel.accounts
-                    transactionsViewModel.recalculateAccountBalances()
-                    transactionsViewModel.saveToStorage()
+                    transactionsViewModel.syncAccountsFrom(accountsViewModel)
                     showingAddAccount = false
                 },
                 onCancel: { showingAddAccount = false }
@@ -159,191 +160,11 @@ struct AccountsManagementView: View {
                         onSave: { updatedAccount in
                             HapticManager.success()
                             accountsViewModel.updateAccount(updatedAccount)
-                            // CRITICAL: Sync accounts between ViewModels to prevent data loss
-                            transactionsViewModel.accounts = accountsViewModel.accounts
-                            transactionsViewModel.recalculateAccountBalances()
-                            transactionsViewModel.saveToStorage()
+                            transactionsViewModel.syncAccountsFrom(accountsViewModel)
                             editingAccount = nil
                         },
                         onCancel: { editingAccount = nil }
                     )
-                }
-            }
-        }
-    }
-}
-
-struct AccountEditView: View {
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    let account: Account?
-    let onSave: (Account) -> Void
-    let onCancel: () -> Void
-    
-    @State private var name: String = ""
-    @State private var balanceText: String = ""
-    @State private var currency: String = "USD"
-    @State private var selectedBankLogo: BankLogo = .none
-    @State private var showingBankLogoPicker = false
-    @FocusState private var isNameFocused: Bool
-    
-    private let currencies = ["USD", "EUR", "KZT", "RUB", "GBP"]
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text(String(localized: "common.name"))) {
-                    TextField(String(localized: "account.namePlaceholder"), text: $name)
-                        .focused($isNameFocused)
-                }
-
-                Section(header: Text(String(localized: "common.logo"))) {
-                    Button(action: { showingBankLogoPicker = true }) {
-                        HStack {
-                            Text(String(localized: "account.selectLogo"))
-                            Spacer()
-                            selectedBankLogo.image(size: 24)
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                    }
-                }
-
-                Section(header: Text(String(localized: "common.balance"))) {
-                    HStack {
-                        TextField(String(localized: "common.balancePlaceholder"), text: $balanceText)
-                            .keyboardType(.decimalPad)
-                        
-                        Picker(String(localized: "common.currency"), selection: $currency) {
-                            ForEach(currencies, id: \.self) { curr in
-                                Text(Formatting.currencySymbol(for: curr)).tag(curr)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                    }
-                }
-            }
-            .navigationTitle(account == nil ? String(localized: "modal.newAccount") : String(localized: "modal.editAccount"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        HapticManager.light()
-                        // Если balanceText пустой, используем 0 по умолчанию
-                        let balance: Double
-                        if balanceText.isEmpty {
-                            balance = 0.0
-                        } else if let parsedBalance = Double(balanceText.replacingOccurrences(of: ",", with: ".")) {
-                            balance = parsedBalance
-                        } else {
-                            balance = 0.0
-                        }
-                        
-                        let newAccount = Account(
-                            id: account?.id ?? UUID().uuidString,
-                            name: name,
-                            balance: balance,
-                            currency: currency,
-                            bankLogo: selectedBankLogo
-                        )
-                        onSave(newAccount)
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(name.isEmpty)
-                }
-            }
-            .onAppear {
-                if let account = account {
-                    name = account.name
-                    balanceText = String(format: "%.2f", account.balance)
-                    currency = account.currency
-                    selectedBankLogo = account.bankLogo
-                    isNameFocused = false
-                } else {
-                    currency = transactionsViewModel.appSettings.baseCurrency
-                    selectedBankLogo = .none
-                    balanceText = ""
-                    // Активируем поле названия при создании нового счета
-                    Task {
-                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
-                        isNameFocused = true
-                    }
-                }
-            }
-            .sheet(isPresented: $showingBankLogoPicker) {
-                BankLogoPickerView(selectedLogo: $selectedBankLogo)
-            }
-        }
-    }
-}
-
-struct BankLogoPickerView: View {
-    @Binding var selectedLogo: BankLogo
-    @Environment(\.dismiss) var dismiss
-    
-    // Группируем банки по категориям для удобства
-    private var popularBanks: [BankLogo] {
-        [.alatauCityBank, .halykBank, .kaspi, .homeCredit, .eurasian, .forte, .jusan]
-    }
-    
-    private var otherBanks: [BankLogo] {
-        BankLogo.allCases.filter { $0 != .none && !popularBanks.contains($0) }
-    }
-    
-    var body: some View {
-        NavigationView {
-            List {
-                Section(header: Text(String(localized: "account.popularBanks"))) {
-                    ForEach(popularBanks) { bank in
-                        BankLogoRow(
-                            bank: bank,
-                            isSelected: selectedLogo == bank,
-                            onSelect: {
-                                selectedLogo = bank
-                                dismiss()
-                            }
-                        )
-                    }
-                }
-
-                Section(header: Text(String(localized: "account.otherBanks"))) {
-                    ForEach(otherBanks) { bank in
-                        BankLogoRow(
-                            bank: bank,
-                            isSelected: selectedLogo == bank,
-                            onSelect: {
-                                selectedLogo = bank
-                                dismiss()
-                            }
-                        )
-                    }
-                }
-                
-                Section {
-                    BankLogoRow(
-                        bank: .none,
-                        isSelected: selectedLogo == .none,
-                        onSelect: {
-                            selectedLogo = .none
-                            dismiss()
-                        }
-                    )
-                }
-            }
-            .navigationTitle(String(localized: "navigation.selectLogo"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(String(localized: "button.done")) {
-                        dismiss()
-                    }
                 }
             }
         }
@@ -441,39 +262,3 @@ struct BankLogoPickerView: View {
     .listStyle(PlainListStyle())
 }
 
-#Preview("Account Edit View - New") {
-    let coordinator = AppCoordinator()
-    
-    return AccountEditView(
-        accountsViewModel: coordinator.accountsViewModel,
-        transactionsViewModel: coordinator.transactionsViewModel,
-        account: nil,
-        onSave: { _ in },
-        onCancel: {}
-    )
-}
-
-#Preview("Account Edit View - Edit") {
-    let coordinator = AppCoordinator()
-    let sampleAccount = Account(
-        id: "preview",
-        name: "Test Account",
-        balance: 10000,
-        currency: "USD",
-        bankLogo: .kaspi
-    )
-    
-    return AccountEditView(
-        accountsViewModel: coordinator.accountsViewModel,
-        transactionsViewModel: coordinator.transactionsViewModel,
-        account: sampleAccount,
-        onSave: { _ in },
-        onCancel: {}
-    )
-}
-
-#Preview("Bank Logo Picker") {
-    @Previewable @State var selectedLogo: BankLogo = .kaspi
-    
-    return BankLogoPickerView(selectedLogo: $selectedLogo)
-}

@@ -67,59 +67,28 @@ struct SubscriptionsCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCardStyle(radius: AppRadius.pill)
         .task {
-            await calculateTotal()
+            await refreshTotal()
         }
         .onChange(of: subscriptions.count) { _, _ in
             Task {
-                await calculateTotal()
+                await refreshTotal()
             }
         }
         .onChange(of: baseCurrency) { _, _ in
             Task {
-                await calculateTotal()
+                await refreshTotal()
             }
         }
     }
 
-    private func calculateTotal() async {
-        guard !subscriptions.isEmpty else {
-            await MainActor.run {
-                totalAmount = 0
-                isLoadingTotal = false
-            }
-            return
-        }
-        
-        await MainActor.run {
-            isLoadingTotal = true
-        }
-        
-        // Конвертируем суммы подписок в базовую валюту (подписки — не транзакции, конвертация нужна)
-        var total: Decimal = 0
-
-        for subscription in subscriptions {
-            if subscription.currency == baseCurrency {
-                total += subscription.amount
-            } else {
-                let amountDouble = NSDecimalNumber(decimal: subscription.amount).doubleValue
-                if let converted = await CurrencyConverter.convert(
-                    amount: amountDouble,
-                    from: subscription.currency,
-                    to: baseCurrency
-                ) {
-                    total += Decimal(converted)
-                } else {
-                    total += subscription.amount
-                }
-            }
-        }
-        
-        await MainActor.run {
-            totalAmount = total
-            isLoadingTotal = false
-        }
+    /// Делегирует конвертацию валют в SubscriptionsViewModel
+    private func refreshTotal() async {
+        isLoadingTotal = true
+        let result = await subscriptionsViewModel.calculateTotalInCurrency(baseCurrency)
+        totalAmount = result.total
+        isLoadingTotal = false
     }
-    
+
 }
 
 #Preview {

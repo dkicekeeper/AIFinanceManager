@@ -353,4 +353,35 @@ class SubscriptionsViewModel: ObservableObject {
         repository.saveRecurringSeries(recurringSeries)
         print("💾 [SUBSCRIPTIONS] Saving \(recurringSeries.count) recurring series")
     }
+
+    // MARK: - Currency Conversion Helpers
+
+    /// Вычисляет суммарный объём активных подписок в указанной валюте.
+    /// Извлечён из SubscriptionsCardView для соблюдения SRP.
+    func calculateTotalInCurrency(_ baseCurrency: String) async -> (total: Decimal, isComplete: Bool) {
+        guard !activeSubscriptions.isEmpty else {
+            return (0, true)
+        }
+
+        var total: Decimal = 0
+
+        for subscription in activeSubscriptions {
+            if subscription.currency == baseCurrency {
+                total += subscription.amount
+            } else {
+                let amountDouble = NSDecimalNumber(decimal: subscription.amount).doubleValue
+                if let converted = await CurrencyConverter.convert(
+                    amount: amountDouble,
+                    from: subscription.currency,
+                    to: baseCurrency
+                ) {
+                    total += Decimal(converted)
+                } else {
+                    total += subscription.amount
+                }
+            }
+        }
+
+        return (total, true)
+    }
 }

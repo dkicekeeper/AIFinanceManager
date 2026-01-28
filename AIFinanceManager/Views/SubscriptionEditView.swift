@@ -49,8 +49,14 @@ struct SubscriptionEditView: View {
     }
     
     var body: some View {
-        NavigationView {
-            Form {
+        EditSheetContainer(
+            title: subscription == nil ? "Новая подписка" : "Редактировать подписку",
+            isSaveDisabled: description.isEmpty || amountText.isEmpty,
+            onSave: {
+                saveSubscription()
+            },
+            onCancel: onCancel
+        ) {
                 Section(header: Text("Название")) {
                     TextField("Название подписки", text: $description)
                         .focused($isDescriptionFocused)
@@ -185,73 +191,55 @@ struct SubscriptionEditView: View {
                         ))
                     }
                 }
-            }
-            .navigationTitle(subscription == nil ? "Новая подписка" : "Редактировать подписку")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark")
-                    }
+        }
+        .onAppear {
+            if let subscription = subscription {
+                description = subscription.description
+                amountText = NSDecimalNumber(decimal: subscription.amount).stringValue
+                currency = subscription.currency
+                selectedCategory = subscription.category
+                selectedAccountId = subscription.accountId
+                selectedFrequency = subscription.frequency
+                if let date = DateFormatters.dateFormatter.date(from: subscription.startDate) {
+                    startDate = date
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        saveSubscription()
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(description.isEmpty || amountText.isEmpty)
+                selectedBrandLogo = subscription.brandLogo
+                selectedBrandName = subscription.brandId // brandId хранит название бренда для logo.dev
+                // Если brandId начинается с "sf:" или "icon:", это иконка
+                if let brandId = subscription.brandId, brandId.hasPrefix("sf:") {
+                    selectedIconName = String(brandId.dropFirst(3))
+                    selectedBrandName = nil
+                } else if let brandId = subscription.brandId, brandId.hasPrefix("icon:") {
+                    selectedIconName = String(brandId.dropFirst(5))
+                    selectedBrandName = nil
                 }
-            }
-            .onAppear {
-                if let subscription = subscription {
-                    description = subscription.description
-                    amountText = NSDecimalNumber(decimal: subscription.amount).stringValue
-                    currency = subscription.currency
-                    selectedCategory = subscription.category
-                    selectedAccountId = subscription.accountId
-                    selectedFrequency = subscription.frequency
-                    if let date = DateFormatters.dateFormatter.date(from: subscription.startDate) {
-                        startDate = date
-                    }
-                    selectedBrandLogo = subscription.brandLogo
-                    selectedBrandName = subscription.brandId // brandId хранит название бренда для logo.dev
-                    // Если brandId начинается с "sf:" или "icon:", это иконка
-                    if let brandId = subscription.brandId, brandId.hasPrefix("sf:") {
-                        selectedIconName = String(brandId.dropFirst(3))
-                        selectedBrandName = nil
-                    } else if let brandId = subscription.brandId, brandId.hasPrefix("icon:") {
-                        selectedIconName = String(brandId.dropFirst(5))
-                        selectedBrandName = nil
-                    }
-                    selectedReminderOffsets = Set(subscription.reminderOffsets ?? [])
-                } else {
-                    currency = transactionsViewModel.appSettings.baseCurrency
-                    if !availableCategories.isEmpty {
-                        selectedCategory = availableCategories[0]
-                    }
+                selectedReminderOffsets = Set(subscription.reminderOffsets ?? [])
+            } else {
+                currency = transactionsViewModel.appSettings.baseCurrency
+                if !availableCategories.isEmpty {
+                    selectedCategory = availableCategories[0]
                 }
             }
-            .sheet(isPresented: $showingLogoSearch) {
-                LogoSearchView(selectedBrandName: $selectedBrandName)
-                    .onDisappear {
-                        // При выборе логотипа сбрасываем иконку
-                        if selectedBrandName != nil {
-                            selectedIconName = nil
-                        }
+        }
+        .sheet(isPresented: $showingLogoSearch) {
+            LogoSearchView(selectedBrandName: $selectedBrandName)
+                .onDisappear {
+                    // При выборе логотипа сбрасываем иконку
+                    if selectedBrandName != nil {
+                        selectedIconName = nil
                     }
-            }
-            .sheet(isPresented: $showingIconPicker) {
-                IconPickerView(selectedIconName: Binding(
-                    get: { selectedIconName ?? "creditcard.fill" },
-                    set: { newIcon in
-                        selectedIconName = newIcon
-                        // При выборе иконки сбрасываем логотип
-                        selectedBrandName = nil
-                        selectedBrandLogo = nil
-                    }
-                ))
-            }
+                }
+        }
+        .sheet(isPresented: $showingIconPicker) {
+            IconPickerView(selectedIconName: Binding(
+                get: { selectedIconName ?? "creditcard.fill" },
+                set: { newIcon in
+                    selectedIconName = newIcon
+                    // При выборе иконки сбрасываем логотип
+                    selectedBrandName = nil
+                    selectedBrandLogo = nil
+                }
+            ))
         }
     }
     

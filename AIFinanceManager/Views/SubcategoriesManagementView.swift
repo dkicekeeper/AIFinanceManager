@@ -113,46 +113,33 @@ struct SubcategoryEditView: View {
     @FocusState private var isNameFocused: Bool
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text(String(localized: "common.name"))) {
-                    TextField(String(localized: "subcategory.namePlaceholder"), text: $name)
-                        .focused($isNameFocused)
-                }
+        EditSheetContainer(
+            title: subcategory == nil ? String(localized: "modal.newSubcategory") : String(localized: "modal.editSubcategory"),
+            isSaveDisabled: name.trimmingCharacters(in: .whitespaces).isEmpty,
+            onSave: {
+                let subcategoryToSave = Subcategory(
+                    id: subcategory?.id ?? UUID().uuidString,
+                    name: name
+                )
+                onSave(subcategoryToSave)
+            },
+            onCancel: onCancel
+        ) {
+            Section(header: Text(String(localized: "common.name"))) {
+                TextField(String(localized: "subcategory.namePlaceholder"), text: $name)
+                    .focused($isNameFocused)
             }
-            .navigationTitle(subcategory == nil ? String(localized: "modal.newSubcategory") : String(localized: "modal.editSubcategory"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        HapticManager.light()
-                        let subcategoryToSave = Subcategory(
-                            id: subcategory?.id ?? UUID().uuidString,
-                            name: name
-                        )
-                        onSave(subcategoryToSave)
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-            .onAppear {
-                if let subcategory = subcategory {
-                    name = subcategory.name
-                    isNameFocused = false
-                } else {
-                    name = ""
-                    // Активируем поле названия при создании новой подкатегории
-                    Task {
-                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
-                        isNameFocused = true
-                    }
+        }
+        .onAppear {
+            if let subcategory = subcategory {
+                name = subcategory.name
+                isNameFocused = false
+            } else {
+                name = ""
+                // Активируем поле названия при создании новой подкатегории
+                Task {
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                    isNameFocused = true
                 }
             }
         }

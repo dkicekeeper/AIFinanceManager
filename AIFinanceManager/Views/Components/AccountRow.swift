@@ -12,6 +12,10 @@ struct AccountRow: View {
     let currency: String
     let onEdit: () -> Void
     let onDelete: () -> Void
+    /// Pre-computed interest accrued to today (from parent via DepositInterestService)
+    var interestToday: Double? = nil
+    /// Pre-computed next interest posting date (from parent via DepositInterestService)
+    var nextPostingDate: Date? = nil
     
     var body: some View {
             HStack(spacing: AppSpacing.md) {
@@ -26,22 +30,18 @@ struct AccountRow: View {
                         .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
                     
-                    if let depositInfo = account.depositInfo {
-                        let interestToToday = DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
-                        if interestToToday > 0 {
-                            let formattedAmount = Formatting.formatCurrency(NSDecimalNumber(decimal: interestToToday).doubleValue, currency: account.currency)
-                            Text(String(format: String(localized: "account.interestToday"), formattedAmount))
-                                .font(AppTypography.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        if let nextPosting = DepositInterestService.nextPostingDate(depositInfo: depositInfo) {
-                            let formatter = DateFormatters.displayDateFormatter
-                            let dateString = formatter.string(from: nextPosting)
-                            Text(String(format: String(localized: "account.nextPosting"), dateString))
-                                .font(AppTypography.caption)
-                                .foregroundColor(.secondary)
-                        }
+                    if let interest = interestToday, interest > 0 {
+                        let formattedAmount = Formatting.formatCurrency(interest, currency: account.currency)
+                        Text(String(format: String(localized: "account.interestToday"), formattedAmount))
+                            .font(AppTypography.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let posting = nextPostingDate {
+                        let dateString = DateFormatters.displayDateFormatter.string(from: posting)
+                        Text(String(format: String(localized: "account.nextPosting"), dateString))
+                            .font(AppTypography.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
                 
