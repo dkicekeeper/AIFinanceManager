@@ -79,10 +79,7 @@ class StatementTextParser {
         
         // Удаляем пустые строки
         lines = lines.filter { !$0.isEmpty }
-        
-        for (index, line) in lines.prefix(10).enumerated() {
-        }
-        
+
         // Ищем начало таблицы транзакций по заголовкам
         var i = 0
         var inTransactionsTable = false // Флаг, что мы находимся в таблице транзакций
@@ -93,10 +90,7 @@ class StatementTextParser {
             return normalized.contains("ТРАНЗАКЦИИ ПО СЧЕТУ") || normalized.contains("ТРАНЗАКЦИИПОСЧЕТУ")
         }
         
-        if !hasTransactionsHeader {
-            for (index, line) in lines.prefix(20).enumerated() {
-            }
-        }
+        _ = hasTransactionsHeader
         
         while i < lines.count {
             let line = lines[i]
@@ -211,9 +205,9 @@ class StatementTextParser {
         
         // Ищем номер счета в тексте выписки
         currentAccount = extractAccountFromText(text)
-        
-        
-        for (index, row) in structuredRows.enumerated() {
+
+
+        for row in structuredRows {
             // Пропускаем заголовки таблицы
             if row.contains("Дата") && row.contains("Операция") {
                 continue

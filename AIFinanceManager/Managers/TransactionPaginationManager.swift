@@ -101,7 +101,7 @@ class TransactionPaginationManager: ObservableObject {
         hasMore = endIndex < allSortedKeys.count
         isLoadingMore = false
 
-        let totalVisibleTransactions = groupedTransactions.values.flatMap { $0 }.count
+        _ = groupedTransactions.values.flatMap { $0 }.count
     }
 
     /// Reset pagination to initial state

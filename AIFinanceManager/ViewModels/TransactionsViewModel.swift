@@ -161,7 +161,7 @@ class TransactionsViewModel: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             guard let self = self,
-                  let seriesId = notification.userInfo?["seriesId"] as? String else {
+                  let _ = notification.userInfo?["seriesId"] as? String else {
                 return
             }
 
@@ -188,7 +188,7 @@ class TransactionsViewModel: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             guard let self = self,
-                  let seriesId = notification.userInfo?["seriesId"] as? String else {
+                  let _ = notification.userInfo?["seriesId"] as? String else {
                 return
             }
 
@@ -720,7 +720,7 @@ class TransactionsViewModel: ObservableObject {
     
     func addTransaction(_ transaction: Transaction) {
         if let accountId = transaction.accountId {
-            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
+            _ = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
         }
 
         let formattedDescription = formatMerchantName(transaction.description)
@@ -859,10 +859,6 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func deleteTransaction(_ transaction: Transaction) {
-        
-        // Логируем балансы ДО удаления
-        for account in accounts {
-        }
 
         // removeAll уже создает новый массив, что правильно триггерит @Published
         allTransactions.removeAll { $0.id == transaction.id }
@@ -882,13 +878,7 @@ class TransactionsViewModel: ObservableObject {
 
         invalidateCaches()
         scheduleBalanceRecalculation()
-        
-        // Note: Balance logging happens after recalculation completes
-        if !isBatchMode {
-            for account in accounts {
-            }
-        }
-        
+
         scheduleSave()
         
     }
@@ -1114,9 +1104,6 @@ class TransactionsViewModel: ObservableObject {
             let series = await MainActor.run { self.recurringSeries }
             let occurrences = await MainActor.run { self.recurringOccurrences }
 
-            for account in accs {
-            }
-
             // НЕ сохраняем подкатегории и связи здесь - они управляются CategoriesViewModel
             // let subcats = await MainActor.run { self.subcategories }
             // let catLinks = await MainActor.run { self.categorySubcategoryLinks }
@@ -1125,8 +1112,6 @@ class TransactionsViewModel: ObservableObject {
             await MainActor.run {
                 self.repository.saveTransactions(transactions)
                 self.repository.saveCategoryRules(rules)
-                for account in accs {
-                }
                 self.repository.saveAccounts(accs)
                 self.repository.saveCategories(categories)
                 self.repository.saveRecurringSeries(series)
@@ -1402,11 +1387,10 @@ class TransactionsViewModel: ObservableObject {
             let transactionsSum = calculateTransactionsBalance(for: account.id)
             let initialBalance = account.balance - transactionsSum
             initialAccountBalances[account.id] = initialBalance
-            
-            if let oldInitial = oldInitialBalances[account.id] {
-            }
+
+            _ = oldInitialBalances[account.id]
         }
-        
+
         // STEP 3: Recalculate current balances from scratch
         recalculateAccountBalances()
         
@@ -1602,7 +1586,7 @@ class TransactionsViewModel: ObservableObject {
 
         let today = Calendar.current.startOfDay(for: Date())
         let dateFormatter = Self.dateFormatter
-        var hasConversionIssues = false
+        let hasConversionIssues = false
 
         for tx in allTransactions {
             guard let transactionDate = dateFormatter.date(from: tx.date),
@@ -1786,10 +1770,10 @@ class TransactionsViewModel: ObservableObject {
     }
 
     func deleteRecurringSeries(_ seriesId: String) {
-        
+
         // CRITICAL: Delete all transactions associated with this series
-        let transactionsToDelete = allTransactions.filter { $0.recurringSeriesId == seriesId }
-        
+        _ = allTransactions.filter { $0.recurringSeriesId == seriesId }
+
         // Remove transactions
         allTransactions.removeAll { $0.recurringSeriesId == seriesId }
         
@@ -1867,9 +1851,9 @@ class TransactionsViewModel: ObservableObject {
         
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        
+
         // Step 1: Delete all FUTURE transactions for this series
-        let futureTransactionsCount = allTransactions.filter { transaction in
+        _ = allTransactions.filter { transaction in
             guard transaction.recurringSeriesId == seriesId else { return false }
             guard let date = DateFormatters.dateFormatter.date(from: transaction.date) else {
                 return false

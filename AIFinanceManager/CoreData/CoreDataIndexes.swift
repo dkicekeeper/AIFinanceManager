@@ -105,11 +105,11 @@ struct CoreDataIndexes {
         }
         
         
-        for (entityName, entity) in model.entitiesByName {
-            
+        for (_, entity) in model.entitiesByName {
+
             if !entity.indexes.isEmpty {
                 for index in entity.indexes {
-                    let elements = index.elements.compactMap { $0.property?.name }.joined(separator: ", ")
+                    _ = index.elements.compactMap { $0.property?.name }.joined(separator: ", ")
                 }
             }
         }

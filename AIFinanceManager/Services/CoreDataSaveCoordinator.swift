@@ -76,9 +76,9 @@ actor CoreDataSaveCoordinator {
                 
                 return workResult
             }
-            
-            let duration = Date().timeIntervalSince(startTime)
-            
+
+            _ = Date().timeIntervalSince(startTime)
+
             return result
             
         } catch {
@@ -96,10 +96,10 @@ actor CoreDataSaveCoordinator {
         let context = stack.newBackgroundContext()
         
         try await context.perform {
-            for (name, work) in operations {
+            for (_, work) in operations {
                 try work(context)
             }
-            
+
             if context.hasChanges {
                 try context.save()
             }

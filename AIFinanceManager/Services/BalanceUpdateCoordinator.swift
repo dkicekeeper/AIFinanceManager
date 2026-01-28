@@ -87,7 +87,7 @@ actor BalanceUpdateCoordinator: BalanceUpdateCoordinatorProtocol {
     }
 
     func cancelAllPending() async {
-        let count = pendingRequests.count
+        _ = pendingRequests.count
         pendingRequests.removeAll()
     }
 
@@ -144,11 +144,8 @@ actor BalanceUpdateCoordinator: BalanceUpdateCoordinatorProtocol {
         while !pendingRequests.isEmpty {
             let request = pendingRequests.removeFirst()
 
-            do {
-                await action()
-                processedCount += 1
-            } catch {
-            }
+            await action()
+            processedCount += 1
 
             // Call completion on main thread
             if let completion = request.completion {

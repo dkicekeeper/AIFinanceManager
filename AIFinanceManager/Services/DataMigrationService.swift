@@ -129,9 +129,9 @@ class DataMigrationService {
         
         try await context.perform {
             for account in accounts {
-                let entity = AccountEntity.from(account, context: context)
+                _ = AccountEntity.from(account, context: context)
             }
-            
+
             if context.hasChanges {
                 try context.save()
             }

@@ -29,9 +29,7 @@ final class CoreDataRepository: DataRepositoryProtocol {
     // MARK: - Transactions
     
     func loadTransactions(dateRange: DateInterval? = nil) -> [Transaction] {
-        if let dateRange = dateRange {
-        } else {
-        }
+        _ = dateRange
         PerformanceProfiler.start("CoreDataRepository.loadTransactions")
 
         let context = stack.viewContext

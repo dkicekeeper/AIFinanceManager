@@ -40,9 +40,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     func reloadFromStorage() {
         accounts = repository.loadAccounts()
 
-        for account in accounts {
-        }
-
         // Обновляем начальные балансы
         for account in accounts {
             if initialAccountBalances[account.id] == nil {
@@ -64,7 +61,7 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     func updateAccount(_ account: Account) {
 
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-            let oldBalance = accounts[index].balance
+            _ = accounts[index].balance
 
             // Создаем новый массив вместо модификации элемента на месте
             // Это необходимо для корректной работы @Published property wrapper
@@ -203,16 +200,11 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     
     /// Сохранить все счета (используется после массового обновления балансов)
     func saveAllAccounts() {
-        for account in accounts {
-        }
         repository.saveAccounts(accounts)
     }
 
     /// Синхронно сохранить все счета (используется при импорте)
     func saveAllAccountsSync() {
-        for account in accounts {
-        }
-        
         // Use repository to save synchronously
         if let coreDataRepo = repository as? CoreDataRepository {
             do {
