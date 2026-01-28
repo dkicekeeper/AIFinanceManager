@@ -27,6 +27,8 @@ extension TransactionEntity {
     @NSManaged public var descriptionText: String?
     @NSManaged public var id: String?
     @NSManaged public var subcategory: String?
+    @NSManaged public var targetAmount: Double
+    @NSManaged public var targetCurrency: String?
     @NSManaged public var type: String?
     @NSManaged public var account: AccountEntity?
     @NSManaged public var recurringSeries: RecurringSeriesEntity?

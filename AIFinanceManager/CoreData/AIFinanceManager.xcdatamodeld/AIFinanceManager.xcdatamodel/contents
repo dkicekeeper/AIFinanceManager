@@ -111,6 +111,8 @@
         <attribute name="descriptionText" attributeType="String"/>
         <attribute name="id" attributeType="String"/>
         <attribute name="subcategory" optional="YES" attributeType="String"/>
+        <attribute name="targetAmount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="targetCurrency" optional="YES" attributeType="String"/>
         <attribute name="type" attributeType="String"/>
         <relationship name="account" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="AccountEntity" inverseName="transactions" inverseEntity="AccountEntity"/>
         <relationship name="recurringSeries" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecurringSeriesEntity" inverseName="transactions" inverseEntity="RecurringSeriesEntity"/>

@@ -103,8 +103,10 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existing.type = transaction.type.rawValue
                             existing.category = transaction.category
                             existing.subcategory = transaction.subcategory
+                            existing.targetAmount = transaction.targetAmount ?? 0
+                            existing.targetCurrency = transaction.targetCurrency
                             existing.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
-                            
+
                             // Update relationships if needed
                             if let accountId = transaction.accountId {
                                 existing.account = self.fetchAccountSync(id: accountId, context: context)
@@ -356,6 +358,8 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     existing.type = transaction.type.rawValue
                     existing.category = transaction.category
                     existing.subcategory = transaction.subcategory
+                    existing.targetAmount = transaction.targetAmount ?? 0
+                    existing.targetCurrency = transaction.targetCurrency
                     existing.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
 
                     // Установить relationships

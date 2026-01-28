@@ -183,7 +183,15 @@ struct TransactionCard: View {
             return lines.isEmpty ? mainAmount : lines.joined(separator: "\n")
         }
         
-        // Для доходов и расходов: если есть конвертированная сумма и она отличается от основной, показываем обе
+        // Для доходов и расходов: проверяем наличие targetCurrency/targetAmount (из CSV или ручного ввода)
+        if let targetCurrency = transaction.targetCurrency,
+           let targetAmount = transaction.targetAmount,
+           targetCurrency != transaction.currency {
+            let targetText = Formatting.formatCurrency(targetAmount, currency: targetCurrency)
+            return "\(prefix)\(mainAmount)\n(\(targetText))"
+        }
+
+        // Fallback: если есть конвертированная сумма и она отличается от основной
         if let convertedAmount = transaction.convertedAmount,
            let accountId = transaction.accountId,
            let account = accounts.first(where: { $0.id == accountId }),
@@ -191,7 +199,7 @@ struct TransactionCard: View {
             let convertedText = Formatting.formatCurrency(convertedAmount, currency: account.currency)
             return "\(prefix)\(mainAmount)\n(\(convertedText))"
         }
-        
+
         return prefix + mainAmount
     }
     

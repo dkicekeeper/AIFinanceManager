@@ -589,7 +589,7 @@ class TransactionsViewModel: ObservableObject {
         let processedTransactions = newTransactions.map { transaction -> Transaction in
             let formattedDescription = formatMerchantName(transaction.description)
             let matchedCategory = matchCategory(transaction.category, type: transaction.type)
-            
+
             return Transaction(
                 id: transaction.id,
                 date: transaction.date,
@@ -602,6 +602,8 @@ class TransactionsViewModel: ObservableObject {
                 subcategory: transaction.subcategory,
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
+                targetCurrency: transaction.targetCurrency,
+                targetAmount: transaction.targetAmount,
                 recurringSeriesId: transaction.recurringSeriesId,
                 recurringOccurrenceId: transaction.recurringOccurrenceId,
                 createdAt: transaction.createdAt
@@ -748,6 +750,8 @@ class TransactionsViewModel: ObservableObject {
                 subcategory: transaction.subcategory,
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
+                targetCurrency: transaction.targetCurrency,
+                targetAmount: transaction.targetAmount,
                 recurringSeriesId: transaction.recurringSeriesId,
                 recurringOccurrenceId: transaction.recurringOccurrenceId,
                 createdAt: transaction.createdAt
@@ -765,6 +769,8 @@ class TransactionsViewModel: ObservableObject {
                 subcategory: transaction.subcategory,
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
+                targetCurrency: transaction.targetCurrency,
+                targetAmount: transaction.targetAmount,
                 recurringSeriesId: transaction.recurringSeriesId,
                 recurringOccurrenceId: transaction.recurringOccurrenceId,
                 createdAt: transaction.createdAt
@@ -820,6 +826,8 @@ class TransactionsViewModel: ObservableObject {
                     subcategory: subcategory,
                     accountId: allTransactions[i].accountId,
                     targetAccountId: allTransactions[i].targetAccountId,
+                    targetCurrency: allTransactions[i].targetCurrency,
+                    targetAmount: allTransactions[i].targetAmount,
                     recurringSeriesId: allTransactions[i].recurringSeriesId,
                     recurringOccurrenceId: allTransactions[i].recurringOccurrenceId,
                     createdAt: allTransactions[i].createdAt
@@ -1084,6 +1092,8 @@ class TransactionsViewModel: ObservableObject {
                     subcategory: rule.subcategory,
                     accountId: transaction.accountId,
                     targetAccountId: transaction.targetAccountId,
+                    targetCurrency: transaction.targetCurrency,
+                    targetAmount: transaction.targetAmount,
                     recurringSeriesId: transaction.recurringSeriesId,
                     recurringOccurrenceId: transaction.recurringOccurrenceId,
                     createdAt: transaction.createdAt
@@ -2003,6 +2013,8 @@ class TransactionsViewModel: ObservableObject {
                         subcategory: newSubcategory ?? updatedTransaction.subcategory,
                         accountId: updatedTransaction.accountId,
                         targetAccountId: updatedTransaction.targetAccountId,
+                        targetCurrency: updatedTransaction.targetCurrency,
+                        targetAmount: updatedTransaction.targetAmount,
                         recurringSeriesId: updatedTransaction.recurringSeriesId,
                         recurringOccurrenceId: updatedTransaction.recurringOccurrenceId,
                         createdAt: updatedTransaction.createdAt
