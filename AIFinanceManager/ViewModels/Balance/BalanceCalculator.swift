@@ -39,12 +39,9 @@ actor BalanceCalculator {
         today: Date
     ) async -> (balanceChanges: [String: Double], hasConversionIssues: Bool) {
         var balanceChanges: [String: Double] = [:]
-        var hasConversionIssues = false
+        let hasConversionIssues = false
 
-        // OPTIMIZATION: Create account lookup dictionary for O(1) access
-        var accountsDict: [String: Account] = [:]
         for account in accounts {
-            accountsDict[account.id] = account
             balanceChanges[account.id] = 0
         }
 
@@ -75,66 +72,27 @@ actor BalanceCalculator {
 
             case .internalTransfer:
                 // Handle source account
-                if let sourceId = tx.accountId,
-                   let sourceAccount = accountsDict[sourceId] {
+                if let sourceId = tx.accountId {
                     guard !accountsToSkip.contains(sourceId) else {
-                        // Check if we need to process target account
+                        // Source пропускаем, но обрабатываем target ниже
                         if let targetId = tx.targetAccountId, !accountsToSkip.contains(targetId) {
-                            // Process only target below
-                        } else {
-                            continue
-                        }
-
-                        // Process target only
-                        if let targetId = tx.targetAccountId,
-                           let targetAccount = accountsDict[targetId] {
-                            let (targetAmount, conversionFailed) = convertAmount(
-                                amount: tx.amount,
-                                from: tx.currency,
-                                to: targetAccount.currency
-                            )
-                            if conversionFailed {
-                                hasConversionIssues = true
-                            }
-                            balanceChanges[targetId, default: 0] += targetAmount
+                            let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
+                            balanceChanges[targetId, default: 0] += resolvedTargetAmount
                         }
                         continue
                     }
 
-                    // Process source account
-                    let sourceAmount: Double
-                    if tx.currency == sourceAccount.currency {
-                        sourceAmount = tx.amount
-                    } else if let converted = tx.convertedAmount {
-                        sourceAmount = converted
-                    } else {
-                        let (amount, conversionFailed) = convertAmount(
-                            amount: tx.amount,
-                            from: tx.currency,
-                            to: sourceAccount.currency
-                        )
-                        sourceAmount = amount
-                        if conversionFailed {
-                            hasConversionIssues = true
-                        }
-                    }
+                    // Source: используем convertedAmount, записанный при создании
+                    let sourceAmount = tx.convertedAmount ?? tx.amount
                     balanceChanges[sourceId, default: 0] -= sourceAmount
                 }
 
                 // Handle target account
-                if let targetId = tx.targetAccountId,
-                   let targetAccount = accountsDict[targetId] {
+                if let targetId = tx.targetAccountId {
                     guard !accountsToSkip.contains(targetId) else { continue }
-
-                    let (targetAmount, conversionFailed) = convertAmount(
-                        amount: tx.amount,
-                        from: tx.currency,
-                        to: targetAccount.currency
-                    )
-                    if conversionFailed {
-                        hasConversionIssues = true
-                    }
-                    balanceChanges[targetId, default: 0] += targetAmount
+                    // Target: используем targetAmount, записанный при создании
+                    let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
+                    balanceChanges[targetId, default: 0] += resolvedTargetAmount
                 }
             }
         }
@@ -178,7 +136,7 @@ actor BalanceCalculator {
                 if tx.accountId == accountId {
                     balance -= tx.convertedAmount ?? tx.amount
                 } else if tx.targetAccountId == accountId {
-                    balance += tx.convertedAmount ?? tx.amount
+                    balance += tx.targetAmount ?? tx.convertedAmount ?? tx.amount
                 }
 
             case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
@@ -216,7 +174,7 @@ actor BalanceCalculator {
                 if tx.accountId == accountId {
                     sum -= tx.convertedAmount ?? tx.amount
                 } else if tx.targetAccountId == accountId {
-                    sum += tx.convertedAmount ?? tx.amount
+                    sum += tx.targetAmount ?? tx.convertedAmount ?? tx.amount
                 }
 
             case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
@@ -244,21 +202,5 @@ actor BalanceCalculator {
         }
 
         return NSDecimalNumber(decimal: totalBalance).doubleValue
-    }
-
-    // MARK: - Private Helpers
-
-    private func convertAmount(amount: Double, from: String, to: String) -> (amount: Double, failed: Bool) {
-        if from == to {
-            return (amount, false)
-        }
-
-        if let converted = CurrencyConverter.convertSync(amount: amount, from: from, to: to) {
-            return (converted, false)
-        }
-
-        // Conversion failed - return original amount and flag
-        print("⚠️ [BALANCE] Failed to convert \(amount) \(from) to \(to)")
-        return (amount, true)
     }
 }

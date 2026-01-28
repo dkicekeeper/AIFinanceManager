@@ -152,19 +152,6 @@ class CurrencyConverter {
         let converted = amount * fromRateValue / toRateValue
         return converted
     }
-
-    // Проверяет, доступны ли курсы валют в кэше
-    static func areRatesAvailableInCache(for currencies: [String]) -> Bool {
-        for currency in currencies {
-            if currency == "KZT" {
-                continue // KZT всегда доступен
-            }
-            if cachedRates[currency] == nil {
-                return false
-            }
-        }
-        return true
-    }
 }
 
 // MARK: - XML Parser Delegate

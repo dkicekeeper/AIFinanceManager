@@ -94,49 +94,24 @@ struct SubscriptionsCardView: View {
             isLoadingTotal = true
         }
         
-        // Загружаем курсы для всех валют
-        let currencies = Set(subscriptions.map { $0.currency })
-        for currency in currencies {
-            if currency != baseCurrency {
-                _ = await CurrencyConverter.getExchangeRate(for: currency)
-            }
-        }
-        _ = await CurrencyConverter.getExchangeRate(for: baseCurrency)
-        
-        // Конвертируем суммы всех подписок в базовую валюту
+        // Конвертируем суммы подписок в базовую валюту (подписки — не транзакции, конвертация нужна)
         var total: Decimal = 0
-        
+
         for subscription in subscriptions {
-            let amountDouble = NSDecimalNumber(decimal: subscription.amount).doubleValue
-            let convertedAmount: Double
-            
             if subscription.currency == baseCurrency {
-                convertedAmount = amountDouble
+                total += subscription.amount
             } else {
-                // Сначала пробуем синхронную конвертацию (курсы должны быть в кэше)
-                if let converted = CurrencyConverter.convertSync(
+                let amountDouble = NSDecimalNumber(decimal: subscription.amount).doubleValue
+                if let converted = await CurrencyConverter.convert(
                     amount: amountDouble,
                     from: subscription.currency,
                     to: baseCurrency
                 ) {
-                    convertedAmount = converted
+                    total += Decimal(converted)
                 } else {
-                    // Если синхронная конвертация не сработала, используем асинхронную
-                    if let asyncConverted = await CurrencyConverter.convert(
-                        amount: amountDouble,
-                        from: subscription.currency,
-                        to: baseCurrency
-                    ) {
-                        convertedAmount = asyncConverted
-                    } else {
-                        // Если конвертация невозможна, используем исходную сумму
-                        print("⚠️ Не удалось конвертировать \(amountDouble) \(subscription.currency) в \(baseCurrency) для подписки \(subscription.description)")
-                        convertedAmount = amountDouble
-                    }
+                    total += subscription.amount
                 }
             }
-            
-            total += Decimal(convertedAmount)
         }
         
         await MainActor.run {

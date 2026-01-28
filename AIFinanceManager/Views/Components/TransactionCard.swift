@@ -184,53 +184,23 @@ struct TransactionCard: View {
                 return mainAmount
             }
             
-            // Сумма для источника
-            var sourceAmount: Double = transaction.amount
-            var sourceCurrency: String = transaction.currency
-            
-            sourceCurrency = source.currency
-            if transaction.currency == source.currency {
-                // Валюты совпадают - используем сумму как есть
-                sourceAmount = transaction.amount
-            } else if let convertedAmount = transaction.convertedAmount {
-                // Есть конвертированная сумма для источника
-                sourceAmount = convertedAmount
-            } else if let converted = CurrencyConverter.convertSync(
-                amount: transaction.amount,
-                from: transaction.currency,
-                to: source.currency
-            ) {
-                // Конвертируем на лету
-                sourceAmount = converted
-            }
-            
-            // Если есть счет получателя и валюта отличается от источника - показываем обе суммы
+            // Сумма для источника — из данных, записанных при создании
+            let sourceCurrency = source.currency
+            let sourceAmount = transaction.convertedAmount ?? transaction.amount
+
             if let target = targetAccount {
                 let targetCurrency = target.currency
-                
-                // Если валюты источника и получателя одинаковые - показываем только сумму источника
+
                 if sourceCurrency == targetCurrency {
                     lines.append(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))
                 } else {
-                    // Валюты разные - показываем обе суммы
                     lines.append(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))
-                    
-                    var targetAmount: Double = transaction.amount
-                    if transaction.currency == targetCurrency {
-                        // Валюты совпадают - используем сумму как есть
-                        targetAmount = transaction.amount
-                    } else if let converted = CurrencyConverter.convertSync(
-                        amount: transaction.amount,
-                        from: transaction.currency,
-                        to: targetCurrency
-                    ) {
-                        // Валюты разные - конвертируем на лету через кэш
-                        targetAmount = converted
-                    }
-                    lines.append(Formatting.formatCurrency(targetAmount, currency: targetCurrency))
+                    // Сумма для получателя — из targetAmount, записанного при создании
+                    let resolvedTargetAmount = transaction.targetAmount ?? transaction.convertedAmount ?? transaction.amount
+                    let resolvedTargetCurrency = transaction.targetCurrency ?? targetCurrency
+                    lines.append(Formatting.formatCurrency(resolvedTargetAmount, currency: resolvedTargetCurrency))
                 }
             } else {
-                // Если счета получателя нет, показываем только сумму источника
                 lines.append(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))
             }
             
@@ -321,57 +291,27 @@ struct TransactionCard: View {
         }
         
         if let source = sourceAccount {
-            // Вычисляем сумму для источника
             let sourceCurrency = source.currency
-            let sourceAmount: Double = {
-                if transaction.currency == sourceCurrency {
-                    return transaction.amount
-                } else if let convertedAmount = transaction.convertedAmount {
-                    return convertedAmount
-                } else if let converted = CurrencyConverter.convertSync(
-                    amount: transaction.amount,
-                    from: transaction.currency,
-                    to: sourceCurrency
-                ) {
-                    return converted
-                } else {
-                    return transaction.amount
-                }
-            }()
-            
-            // Если есть счет получателя - показываем обе суммы
+            // Сумма источника — из данных, записанных при создании
+            let sourceAmount = transaction.convertedAmount ?? transaction.amount
+
             if let target = targetAccount {
-                let targetCurrency = target.currency
-                
-                // Вычисляем сумму для получателя
-                let targetAmount: Double = {
-                    if transaction.currency == targetCurrency {
-                        return transaction.amount
-                    } else if let converted = CurrencyConverter.convertSync(
-                        amount: transaction.amount,
-                        from: transaction.currency,
-                        to: targetCurrency
-                    ) {
-                        return converted
-                    } else {
-                        return transaction.amount
-                    }
-                }()
-                
-                // Всегда показываем обе суммы (источника с минусом, получателя с плюсом)
+                let targetCurrency = transaction.targetCurrency ?? target.currency
+                // Сумма получателя — из targetAmount, записанного при создании
+                let targetAmount = transaction.targetAmount ?? transaction.convertedAmount ?? transaction.amount
+
                 VStack(alignment: .trailing, spacing: AppSpacing.xs) {
                     Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
                         .font(AppTypography.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.red)
-                    
+
                     Text("+\(Formatting.formatCurrency(targetAmount, currency: targetCurrency))")
                         .font(AppTypography.body)
                         .fontWeight(.semibold)
                         .foregroundColor(.green)
                 }
             } else {
-                // Если счета получателя нет, показываем только сумму источника
                 Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
                     .font(AppTypography.body)
                     .fontWeight(.semibold)

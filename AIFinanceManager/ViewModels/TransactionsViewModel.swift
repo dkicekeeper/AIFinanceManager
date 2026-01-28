@@ -510,28 +510,8 @@ class TransactionsViewModel: ObservableObject {
             }
 
             let category = transaction.category.isEmpty ? "Uncategorized" : transaction.category
-            let baseCurrency = appSettings.baseCurrency
-            let amountInBaseCurrency: Double
-            if transaction.currency == baseCurrency {
-                amountInBaseCurrency = transaction.amount
-            } else {
-                // Приоритет: 1) сохраненный convertedAmount (для исторических данных), 2) синхронная конвертация по кэшу
-                if let savedConversion = transaction.convertedAmount, baseCurrency == "KZT" {
-                    // Используем сохраненную конвертацию (по историческому курсу)
-                    amountInBaseCurrency = savedConversion
-                } else if let converted = CurrencyConverter.convertSync(
-                    amount: transaction.amount,
-                    from: transaction.currency,
-                    to: baseCurrency
-                ) {
-                    // Конвертируем по текущему курсу из кэша
-                    amountInBaseCurrency = converted
-                } else {
-                    // Fallback: используем сохраненную конвертацию или оригинальную сумму
-                    amountInBaseCurrency = transaction.convertedAmount ?? transaction.amount
-                    print("⚠️ Не удалось конвертировать транзакцию \(transaction.id) в \(baseCurrency) для categoryExpenses")
-                }
-            }
+            // Используем сохраненные данные при создании транзакции
+            let amountInBaseCurrency = getConvertedAmountOrCompute(transaction: transaction, to: appSettings.baseCurrency)
 
             var expense = result[category] ?? CategoryExpense(total: 0, subcategories: [:])
             expense.total += amountInBaseCurrency
@@ -1069,10 +1049,6 @@ class TransactionsViewModel: ObservableObject {
             newAccounts[targetIndex].balance += targetAmount
         }
         
-        // Переприсваиваем весь массив для триггера @Published
-        print("📢 [TRANSFER] Reassigning accounts array to trigger @Published")
-        print("💰 [TRANSFER] Source '\(newAccounts[sourceIndex].name)': balance = \(newAccounts[sourceIndex].balance)")
-        print("💰 [TRANSFER] Target '\(newAccounts[targetIndex].name)': balance = \(newAccounts[targetIndex].balance)")
         accounts = newAccounts
 
         let createdAt = Date().timeIntervalSince1970
@@ -1085,28 +1061,34 @@ class TransactionsViewModel: ObservableObject {
             createdAt: createdAt
         )
 
+        // Сохраняем конвертированные суммы при создании перевода
+        // convertedAmount — сумма в валюте источника (если отличается от currency)
+        // targetAmount / targetCurrency — сумма в валюте получателя
+        let sourceAccount = newAccounts[sourceIndex]
+        let convertedAmountForSource: Double? = (currency != sourceAccount.currency) ? amount : nil
+        let resolvedTargetCurrency = newAccounts[targetIndex].currency
+
         let transferTx = Transaction(
             id: id,
             date: date,
             description: description,
             amount: amount,
             currency: currency,
-            convertedAmount: nil,
+            convertedAmount: convertedAmountForSource,
             type: .internalTransfer,
-            category: "Перевод",
+            category: String(localized: "transactionForm.transfer"),
             subcategory: nil,
             accountId: sourceId,
             targetAccountId: targetId,
+            targetCurrency: resolvedTargetCurrency,
+            targetAmount: targetAmount,
             recurringSeriesId: nil,
             recurringOccurrenceId: nil,
-            createdAt: Date().timeIntervalSince1970
+            createdAt: createdAt
         )
 
         insertTransactionsSorted([transferTx])
         
-        // CRITICAL: Синхронизируем обновленные балансы с AccountBalanceService
-        // Без этого UI не обновится, т.к. карточки счетов используют accounts
-        print("🔗 [TRANSFER] Syncing balances with AccountBalanceService")
         accountBalanceService.syncAccountBalances(accounts)
 
         saveToStorageDebounced()
@@ -1340,13 +1322,11 @@ class TransactionsViewModel: ObservableObject {
                 }
             case .internalTransfer:
                 if tx.accountId == accountId {
-                    // Money leaving this account
-                    let amountToUse = tx.convertedAmount ?? tx.amount
-                    balance -= amountToUse
+                    // Source: используем convertedAmount
+                    balance -= tx.convertedAmount ?? tx.amount
                 } else if tx.targetAccountId == accountId {
-                    // Money coming to this account
-                    let amountToUse = tx.convertedAmount ?? tx.amount
-                    balance += amountToUse
+                    // Target: используем targetAmount
+                    balance += tx.targetAmount ?? tx.convertedAmount ?? tx.amount
                 }
             case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
                 // Skip deposit transactions for regular accounts
@@ -1568,25 +1548,11 @@ class TransactionsViewModel: ObservableObject {
             if let sourceId = transaction.accountId,
                let sourceIndex = newAccounts.firstIndex(where: { $0.id == sourceId }) {
                 let sourceAccount = newAccounts[sourceIndex]
-                let sourceAmount: Double
-                if transaction.currency == sourceAccount.currency {
-                    sourceAmount = transaction.amount
-                } else if let converted = transaction.convertedAmount {
-                    sourceAmount = converted
-                } else if let converted = CurrencyConverter.convertSync(
-                    amount: transaction.amount,
-                    from: transaction.currency,
-                    to: sourceAccount.currency
-                ) {
-                    sourceAmount = converted
-                } else {
-                    sourceAmount = transaction.amount
-                }
+                // Source: используем convertedAmount, записанный при создании
+                let sourceAmount = transaction.convertedAmount ?? transaction.amount
 
-                // Обрабатываем депозиты отдельно - нужно обновить depositInfo
                 if sourceAccount.isDeposit, var sourceDepositInfo = sourceAccount.depositInfo {
                     let amountDecimal = Decimal(sourceAmount)
-                    // Сначала списываем с накопленных процентов (если не капитализируются)
                     if !sourceDepositInfo.capitalizationEnabled && sourceDepositInfo.interestAccruedNotCapitalized > 0 {
                         if amountDecimal <= sourceDepositInfo.interestAccruedNotCapitalized {
                             sourceDepositInfo.interestAccruedNotCapitalized -= amountDecimal
@@ -1606,7 +1572,6 @@ class TransactionsViewModel: ObservableObject {
                     newAccounts[sourceIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
                     balanceChanged = true
                 } else if accountsWithCalculatedInitialBalance.contains(sourceId) {
-                    // Обычный счет из импорта
                     newAccounts[sourceIndex].balance -= sourceAmount
                     balanceChanged = true
                 }
@@ -1616,18 +1581,8 @@ class TransactionsViewModel: ObservableObject {
             if let targetId = transaction.targetAccountId,
                let targetIndex = newAccounts.firstIndex(where: { $0.id == targetId }) {
                 let targetAccount = newAccounts[targetIndex]
-                let targetAmount: Double
-                if transaction.currency == targetAccount.currency {
-                    targetAmount = transaction.amount
-                } else if let converted = CurrencyConverter.convertSync(
-                    amount: transaction.amount,
-                    from: transaction.currency,
-                    to: targetAccount.currency
-                ) {
-                    targetAmount = converted
-                } else {
-                    targetAmount = transaction.amount
-                }
+                // Target: используем targetAmount, записанный при создании
+                let targetAmount = transaction.targetAmount ?? transaction.convertedAmount ?? transaction.amount
 
                 // Обрабатываем депозиты отдельно - нужно обновить depositInfo
                 if targetAccount.isDeposit, var targetDepositInfo = targetAccount.depositInfo {
@@ -1726,30 +1681,21 @@ class TransactionsViewModel: ObservableObject {
         let dateFormatter = Self.dateFormatter
         var hasConversionIssues = false
 
-        // OPTIMIZATION: Create account lookup dictionary to avoid O(n) searches in the loop
-        // This reduces complexity from O(n*m) to O(n) where n=transactions, m=accounts
-        var accountsDict: [String: Account] = [:]
-        for account in accounts {
-            accountsDict[account.id] = account
-        }
-
         for tx in allTransactions {
             guard let transactionDate = dateFormatter.date(from: tx.date),
                   transactionDate <= today else {
                 continue
             }
-            
+
             switch tx.type {
             case .income:
                 if let accountId = tx.accountId {
-                    // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
                     guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
                     let amountToUse = tx.convertedAmount ?? tx.amount
                     balanceChanges[accountId, default: 0] += amountToUse
                 }
             case .expense:
                 if let accountId = tx.accountId {
-                    // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
                     guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
                     let amountToUse = tx.convertedAmount ?? tx.amount
                     balanceChanges[accountId, default: 0] -= amountToUse
@@ -1757,81 +1703,25 @@ class TransactionsViewModel: ObservableObject {
             case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
                 break
             case .internalTransfer:
-                if let sourceId = tx.accountId,
-                   let sourceAccount = accountsDict[sourceId] {
-                    // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
-                    guard !accountsWithCalculatedInitialBalance.contains(sourceId) else { 
-                        // Проверяем также target account перед continue
+                if let sourceId = tx.accountId {
+                    guard !accountsWithCalculatedInitialBalance.contains(sourceId) else {
+                        // Source пропускаем, но обрабатываем target ниже
                         if let targetId = tx.targetAccountId, !accountsWithCalculatedInitialBalance.contains(targetId) {
-                            // Source пропускаем, но обрабатываем target ниже
-                        } else {
-                            continue
-                        }
-                        // Если дошли сюда, значит target нужно обработать, пропускаем только source
-                        if let targetId = tx.targetAccountId,
-                           let targetAccount = accountsDict[targetId] {
-                            let targetAmount: Double
-                            if tx.currency == targetAccount.currency {
-                                targetAmount = tx.amount
-                            } else if let converted = CurrencyConverter.convertSync(
-                                amount: tx.amount,
-                                from: tx.currency,
-                                to: targetAccount.currency
-                            ) {
-                                targetAmount = converted
-                            } else {
-                                print("⚠️ Не удалось конвертировать \(tx.amount) \(tx.currency) в \(targetAccount.currency) для счета-получателя. Баланс может быть неточным.")
-                                hasConversionIssues = true
-                                targetAmount = tx.amount
-                            }
-                            balanceChanges[targetId, default: 0] += targetAmount
+                            let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
+                            balanceChanges[targetId, default: 0] += resolvedTargetAmount
                         }
                         continue
                     }
-                    
-                    let sourceAmount: Double
-                    if tx.currency == sourceAccount.currency {
-                        sourceAmount = tx.amount
-                    } else if let converted = tx.convertedAmount {
-                        sourceAmount = converted
-                    } else {
-                        if let converted = CurrencyConverter.convertSync(
-                            amount: tx.amount,
-                            from: tx.currency,
-                            to: sourceAccount.currency
-                        ) {
-                            sourceAmount = converted
-                        } else {
-                            print("⚠️ Не удалось конвертировать \(tx.amount) \(tx.currency) в \(sourceAccount.currency) для счета-источника. Баланс может быть неточным.")
-                            hasConversionIssues = true
-                            sourceAmount = tx.amount
-                        }
-                    }
+                    // Source: используем convertedAmount, записанный при создании
+                    let sourceAmount = tx.convertedAmount ?? tx.amount
                     balanceChanges[sourceId, default: 0] -= sourceAmount
                 }
 
-                if let targetId = tx.targetAccountId,
-                   let targetAccount = accountsDict[targetId] {
-                    // Пропускаем аккаунты с РАССЧИТАННЫМ initialBalance
+                if let targetId = tx.targetAccountId {
                     guard !accountsWithCalculatedInitialBalance.contains(targetId) else { continue }
-                    
-                    let targetAmount: Double
-                    if tx.currency == targetAccount.currency {
-                        targetAmount = tx.amount
-                    } else if let converted = CurrencyConverter.convertSync(
-                        amount: tx.amount,
-                        from: tx.currency,
-                        to: targetAccount.currency
-                    ) {
-                        targetAmount = converted
-                    } else {
-                        print("⚠️ Не удалось конвертировать \(tx.amount) \(tx.currency) в \(targetAccount.currency) для счета-получателя. Баланс может быть неточным.")
-                        print("⚠️ Перевод ID: \(tx.id), Описание: \(tx.description)")
-                        print("⚠️ Курсы валют не загружены в кэш. Проверьте подключение к интернету и перезапустите приложение.")
-                        hasConversionIssues = true
-                        targetAmount = tx.amount
-                    }
-                    balanceChanges[targetId, default: 0] += targetAmount
+                    // Target: используем targetAmount, записанный при создании
+                    let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
+                    balanceChanges[targetId, default: 0] += resolvedTargetAmount
                 }
             }
         }
@@ -2310,69 +2200,39 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Currency Conversion Cache
 
-    /// Precompute currency conversions for all transactions in background
-    /// This dramatically improves UI performance by avoiding sync conversions
-    /// OPTIMIZED: Removed per-transaction MainActor.run calls (was causing 19000+ context switches)
+    /// Precompute currency amounts cache for all transactions
+    /// Использует только данные, записанные при создании транзакции (без сетевых запросов)
     func precomputeCurrencyConversions() {
-        guard conversionCacheInvalidated else {
-            print("💱 [CONVERSION] Cache is valid, skipping precomputation")
-            return
-        }
+        guard conversionCacheInvalidated else { return }
 
-        print("💱 [CONVERSION] Starting precomputation for \(allTransactions.count) transactions")
         PerformanceProfiler.start("precomputeCurrencyConversions")
 
-        // Capture all needed data from MainActor ONCE before background work
         let baseCurrency = appSettings.baseCurrency
         let transactions = allTransactions
 
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
 
-            // Pre-reserve capacity for better performance
             var cache: [String: Double] = [:]
             cache.reserveCapacity(transactions.count)
-            var conversionCount = 0
 
-            // Process all transactions without MainActor context switches
-            // CurrencyConverter.convertSync only reads from static cache - thread-safe for reads
             for tx in transactions {
                 let cacheKey = "\(tx.id)_\(baseCurrency)"
 
                 if tx.currency == baseCurrency {
                     cache[cacheKey] = tx.amount
                 } else {
-                    // Priority: use saved convertedAmount for historical data (if base currency is KZT)
-                    if let savedConversion = tx.convertedAmount, baseCurrency == "KZT" {
-                        cache[cacheKey] = savedConversion
-                        conversionCount += 1
-                    } else {
-                        // convertSync only reads from static cache - no MainActor needed
-                        let converted = CurrencyConverter.convertSync(
-                            amount: tx.amount,
-                            from: tx.currency,
-                            to: baseCurrency
-                        )
-
-                        if let converted = converted {
-                            cache[cacheKey] = converted
-                            conversionCount += 1
-                        } else if let convertedAmount = tx.convertedAmount {
-                            // Fallback to stored converted amount
-                            cache[cacheKey] = convertedAmount
-                        }
-                    }
+                    // Используем convertedAmount, сохранённый при создании транзакции
+                    cache[cacheKey] = tx.convertedAmount ?? tx.amount
                 }
             }
 
-            // Capture values before passing to MainActor
-            let finalConversionCount = conversionCount
             let finalCacheCount = cache.count
 
             await MainActor.run {
                 self.convertedAmountsCache = cache
                 self.conversionCacheInvalidated = false
-                print("✅ [CONVERSION] Precomputed \(finalConversionCount) conversions, cached \(finalCacheCount) amounts")
+                print("✅ [CONVERSION] Cached \(finalCacheCount) amounts from stored data")
                 PerformanceProfiler.end("precomputeCurrencyConversions")
             }
         }
@@ -2388,34 +2248,16 @@ class TransactionsViewModel: ObservableObject {
         return convertedAmountsCache[cacheKey]
     }
 
-    /// Get converted amount for a transaction, falling back to sync conversion if not cached
-    /// - Parameters:
-    ///   - transaction: The transaction
-    ///   - baseCurrency: Target currency
-    /// - Returns: Converted amount
+    /// Получить сумму транзакции в базовой валюте из кэша или из записанных данных
     func getConvertedAmountOrCompute(transaction: Transaction, to baseCurrency: String) -> Double {
-        // Try cache first
         if let cached = getConvertedAmount(transactionId: transaction.id, to: baseCurrency) {
             return cached
         }
-
-        // Fallback to sync conversion (should be rare after precomputation)
+        // Если кэш ещё не готов — читаем из транзакции напрямую
         if transaction.currency == baseCurrency {
             return transaction.amount
-        } else {
-            // Приоритет: 1) сохраненный convertedAmount (для исторических данных), 2) синхронная конвертация
-            if let savedConversion = transaction.convertedAmount, baseCurrency == "KZT" {
-                return savedConversion
-            } else if let converted = CurrencyConverter.convertSync(
-                amount: transaction.amount,
-                from: transaction.currency,
-                to: baseCurrency
-            ) {
-                return converted
-            } else {
-                return transaction.convertedAmount ?? transaction.amount
-            }
         }
+        return transaction.convertedAmount ?? transaction.amount
     }
 }
 

@@ -500,31 +500,15 @@ class CSVImportService {
                 createdAt: createdAt
             )
             
-            // Вычисляем convertedAmount для исторических данных
-            // Это позволяет отображать правильные суммы в базовой валюте (KZT) даже для старых транзакций
-            var convertedAmount: Double? = nil
-            if currency != "KZT" {
-                // Пытаемся конвертировать сумму по историческому курсу на дату транзакции
-                if let converted = await CurrencyConverter.convert(
-                    amount: amount,
-                    from: currency,
-                    to: "KZT",
-                    on: date
-                ) {
-                    convertedAmount = converted
-                    print("✅ Конвертировано \(amount) \(currency) → \(converted) KZT по курсу на \(transactionDateString)")
-                } else {
-                    print("⚠️ Не удалось получить исторический курс \(currency) на \(transactionDateString), конвертация будет выполнена позже")
-                }
-            }
-
+            // CSV уже содержит суммы и валюты источника — конвертация по курсу не нужна.
+            // Суммы берутся как есть из таблицы.
             let transaction = Transaction(
                 id: transactionId,
                 date: transactionDateString,
-                description: note, // Оставляем пустым, если пустое
+                description: note,
                 amount: amount,
                 currency: currency,
-                convertedAmount: convertedAmount, // Используем исторический курс, если удалось получить
+                convertedAmount: nil,
                 type: type,
                 category: categoryName,
                 subcategory: subcategoryName,

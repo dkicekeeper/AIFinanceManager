@@ -268,17 +268,13 @@ struct AccountActionView: View {
                     convertedAmount = converted
                 }
                 
-                // Для переводов: всегда загружаем курсы валют для всех участвующих валют
-                // Это нужно для convertSync в recalculateAccountBalances() и HistoryView
-                // Получаем информацию о целевом счете для предзагрузки курсов
+                // Предзагружаем курсы для конвертации targetAmount при создании перевода
                 if let targetAccountId = selectedTargetAccountId {
                     let targetAccountCurrency: String? = await MainActor.run {
                         accountsViewModel.accounts.first(where: { $0.id == targetAccountId })?.currency
                     }
 
                     if let targetCurrency = targetAccountCurrency {
-                        // Предзагружаем курсы для всех валют, участвующих в переводе
-                        // Это гарантирует, что курсы будут в кэше для convertSync
                         let currenciesToLoad = Set([selectedCurrency, account.currency, targetCurrency])
 
                         var allRatesLoaded = true
@@ -352,6 +348,26 @@ struct AccountActionView: View {
                 }
             }
             
+            // Предвычисляем targetAmount для переводов (в async контексте)
+            var precomputedTargetAmount: Double? = nil
+            var precomputedTargetCurrency: String? = nil
+            if selectedAction != .income, let targetAccountId = selectedTargetAccountId {
+                let targetAcc = await MainActor.run {
+                    accountsViewModel.accounts.first(where: { $0.id == targetAccountId })
+                }
+                let resolvedTargetCurrency = targetAcc?.currency ?? selectedCurrency
+                precomputedTargetCurrency = resolvedTargetCurrency
+                if selectedCurrency != resolvedTargetCurrency {
+                    precomputedTargetAmount = await CurrencyConverter.convert(
+                        amount: amount,
+                        from: selectedCurrency,
+                        to: resolvedTargetCurrency
+                    )
+                } else {
+                    precomputedTargetAmount = amount
+                }
+            }
+
             // Все валидации и создание транзакции выполняем на MainActor
             await MainActor.run {
                 if selectedAction == .income {
@@ -432,27 +448,22 @@ struct AccountActionView: View {
                     // Для депозитов всегда используем addTransaction, чтобы можно было указать валюту депозита
                     // Для обычных счетов используем transfer() если валюты совпадают
                     if account.isDeposit || selectedCurrency != account.currency {
-                        // Для депозитов или когда валюты разные - используем addTransaction
-                        // Для депозитов: валюта транзакции = валюта депозита (selectedCurrency = account.currency)
-                        // Для получателя (депозита) используется transaction.currency (валюта депозита)
-                        // Для источника конвертируется через convertedAmount или convertSync
                         let transaction = Transaction(
                             id: "",
                             date: transactionDate,
                             description: finalDescription,
                             amount: amount,
                             currency: selectedCurrency,
-                            convertedAmount: convertedAmount, // Конвертированная сумма для источника (в валюте источника), если валюты разные
+                            convertedAmount: convertedAmount,
                             type: .internalTransfer,
-                            category: "Перевод",
+                            category: String(localized: "transactionForm.transfer"),
                             subcategory: nil,
                             accountId: sourceId,
-                            targetAccountId: targetId
+                            targetAccountId: targetId,
+                            targetCurrency: precomputedTargetCurrency,
+                            targetAmount: precomputedTargetAmount
                         )
                         transactionsViewModel.addTransaction(transaction)
-                        
-                        // После добавления транзакции пересчитываем балансы, чтобы применить конвертацию для получателя
-                        transactionsViewModel.recalculateAccountBalances()
                     } else {
                         // Для обычных счетов с одинаковыми валютами - используем transfer()
                         transactionsViewModel.transfer(

@@ -271,10 +271,10 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
                 case .internalTransfer:
                     if tx.accountId == account.id {
                         // Source account - subtract
-                        balance -= getTransactionAmount(tx, for: account.currency)
+                        balance -= getSourceAmount(tx)
                     } else if tx.targetAccountId == account.id {
-                        // Target account - add
-                        balance += getTransactionAmount(tx, for: account.currency)
+                        // Target account - add (используем targetAmount, записанный при создании)
+                        balance += getTargetAmount(tx)
                     }
 
                 case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
@@ -293,24 +293,21 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
         for account: Account,
         isSource: Bool
     ) -> Double {
-        let amount = getTransactionAmount(transaction, for: account.currency)
-
         switch transaction.type {
         case .income:
-            return currentBalance + amount
+            return currentBalance + getTransactionAmount(transaction, for: account.currency)
 
         case .expense:
-            return currentBalance - amount
+            return currentBalance - getTransactionAmount(transaction, for: account.currency)
 
         case .internalTransfer:
             if isSource {
-                return currentBalance - amount
+                return currentBalance - getSourceAmount(transaction)
             } else {
-                return currentBalance + amount
+                return currentBalance + getTargetAmount(transaction)
             }
 
         case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
-            // Deposits handled via applyTransactionToDeposit
             return currentBalance
         }
     }
@@ -366,25 +363,23 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
 
     // MARK: - Private Helpers
 
+    /// Сумма транзакции в валюте счёта (для income/expense)
+    /// Использует convertedAmount, записанный при создании транзакции
     private func getTransactionAmount(_ transaction: Transaction, for targetCurrency: String) -> Double {
         if transaction.currency == targetCurrency {
             return transaction.amount
         }
+        return transaction.convertedAmount ?? transaction.amount
+    }
 
-        if let converted = transaction.convertedAmount {
-            return converted
-        }
+    /// Сумма со стороны источника перевода
+    private func getSourceAmount(_ transaction: Transaction) -> Double {
+        return transaction.convertedAmount ?? transaction.amount
+    }
 
-        if let converted = CurrencyConverter.convertSync(
-            amount: transaction.amount,
-            from: transaction.currency,
-            to: targetCurrency
-        ) {
-            return converted
-        }
-
-        // Fallback to original amount if conversion fails
-        return transaction.amount
+    /// Сумма со стороны получателя перевода
+    private func getTargetAmount(_ transaction: Transaction) -> Double {
+        return transaction.targetAmount ?? transaction.convertedAmount ?? transaction.amount
     }
 }
 
