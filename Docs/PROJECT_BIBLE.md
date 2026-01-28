@@ -120,6 +120,8 @@ AIFinanceManager/
 │   ├── BalanceCalculationService.swift # Balance calculation modes
 │   ├── BalanceUpdateCoordinator.swift  # Race condition prevention
 │   ├── DepositInterestService.swift   # Interest accrual logic
+│   ├── TransactionCacheManager.swift  # ✨ NEW: Cache management (summary, balances, indexes)
+│   ├── TransactionCurrencyService.swift # ✨ NEW: Currency conversion caching
 │   ├── CSVImportService.swift         # CSV parsing + entity creation (~717 lines)
 │   ├── CSVImporter.swift / CSVExporter.swift
 │   ├── VoiceInputService.swift        # Speech recognition
@@ -575,66 +577,56 @@ Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
 
 ## 11. Технические долги и риски
 
-### Нарушения SRP
-| Файл | Проблема |
-|------|----------|
-| `TransactionsViewModel.swift` (~103KB) | Слишком большой: содержит CRUD, cache management, batch mode, balance coordination, currency conversion. Нужно выделить: `TransactionCacheManager`, `TransactionCurrencyConverter` |
-| `ContentView.swift` (740 строк) | Содержит `RecognizedTextView` (строка 599) и `ErrorMessageView` (строка 723) — должны быть отдельные файлы |
-| `CoreDataRepository.swift` (~1177 lines) | Очень большой, но пока допустимо т.к. генерируемый паттерн |
+### ✅ Исправлено (v2.0)
+
+**2026-01-28:** Выполнен рефакторинг критических долгов:
+- ✅ `fatalError` в CoreDataStack заменён на грейсфул дегрейдацию
+- ✅ 492 debug `print()` удалены (оставлены только в `#if DEBUG`)
+- ✅ Hardcoded Russian strings локализованы
+- ✅ Budget localization keys унифицированы (dot-notation)
+- ✅ Legacy duplicate handling удалён из CoreDataRepository
+- ✅ `createdDate` добавлен в Account model
+- ✅ AddTransactionModal вынесен в отдельный файл
+- ✅ TransactionRow дубль устранён (параметризован DepositTransactionRow)
+- ✅ EmptyStateView compact style добавлен
+- ✅ **TransactionsViewModel декомпозирован:** 2205 → 2134 строк (-71)
+  - Выделен `TransactionCacheManager` (77 строк)
+  - Выделен `TransactionCurrencyService` (70 строк)
+
+### Оставшиеся долги
+
+| Файл | Проблема | Приоритет |
+|------|----------|-----------|
+| `CoreDataRepository.swift` (~1177 lines) | Очень большой, но допустимо (генерируемый паттерн CRUD) | Низкий |
+| Navigation API | Использует `NavigationView` (iOS 15) вместо `NavigationStack` (iOS 16+) | Низкий |
 
 ### Дублирование UI
-1. **Modal edit layouts** — 5 edit views с идентичной структурой (NavigationView + Form + toolbar)
-2. **Management rows** — AccountRow, CategoryRow, SubcategoryRow — одинаковый layout
-3. **Empty state inline** — в разных местах повторяются VStack(icon + title + description) вместо использования AppEmptyState
+1. **Modal edit layouts** — 5 edit views с идентичной структурой (NavigationView + Form + toolbar) — можно выделить `EditSheetLayout`
+2. **Management rows** — AccountRow, CategoryRow, SubcategoryRow — одинаковый layout — можно выделить `ManagementRow`
 
-### Перегруженные ViewModels
-- `TransactionsViewModel` — ключевой риск. При добавлении новых фич он становится ещё больше.
-
-### Performance risks
-- `displayTransactions` window = 6 месяцев — хорошая оптимизация, но при 19K+ транзакций still тяжело
-- `refreshTrigger` + `.id()` на ContentView — принудительная полная перерендеринг при любом изменении данных
-- `onChange` observers в ContentView (строки 283-311) с print-statements в production коде
-
-### Print statements в production
-Повсюду развёрнутые `print()` для debugging — должны быть удалены или заменены на structured logging.
-
-### Hardcoded strings
-- Часть текстов не локализована (mixing Russian hardcoded strings)
-- Budget keys не follow dot-notation
+### ML Integration
+- `CategoryMLPredictor` (строка 45) — TODO: реализовать предсказание когда модель будет обучена. Блокирован обученной моделью.
 
 ---
 
-## 12. Рекомендации
+## 12. История изменений и рекомендации
 
-### Высокий приоритет (без переписки архитектуры)
+### v2.0 (2026-01-28) — Рефакторинг долгов
 
-1. **Удалить debug prints** — заменить на unified logger или удалить. Убрать из View layer точно.
+**Выполнено:**
+- P0: fatalError → грейсфул дегрейдация, hardcoded strings → локализация
+- P1: 492 print() удалены, budget keys унифицированы, accessibility labels
+- P2: createdDate в Account, AddTransactionModal extraction, EmptyStateView compact, TransactionRow уify
+- P3: TransactionsViewModel декомпозирован → `TransactionCacheManager` + `TransactionCurrencyService`
 
-2. **Вынести `RecognizedTextView` и `ErrorMessageView`** из ContentView.swift в отдельные файлы.
+### Оставшиеся рекомендации
 
-3. **Выделить `EditSheetLayout`** — shared component для modal edit forms (NavigationView wrapper + toolbar).
-
-4. **Выделить `ManagementRow`** — shared row component для management lists.
-
-5. **Унифицировать localization keys** — budget section привести к dot-notation.
-
-6. **Убрать hardcoded accessibility labels** в AccountCard.
-
-### Средний приоритет (UI-компоненты)
-
-7. **AppEmptyState** — стандартизировать использование: заменить inline empty states.
-
-8. **Разбить TransactionsViewModel** — выделить:
-   - `TransactionCacheManager` — cache logic
-   - `TransactionCurrencyService` — currency conversion + cache
-
-### Низкий приоритет (можно отложить)
-
-9. **Переход на NavigationStack** (iOS 16+) — если минимальный deployment target позволяет.
-
-10. **Structured logging** — заменить print() на рамку (Logger / LogStore).
-
-11. **CoreDataRepository decomposition** — если файл растёт дальше.
+**Низкий приоритет:**
+1. **NavigationStack** (iOS 16+) — мигрировать с NavigationView если deployment target позволяет
+2. **EditSheetLayout** — выделить shared component для modal edit forms
+3. **ManagementRow** — выделить shared row component для management lists
+4. **CoreDataRepository** — декомпозировать если файл растёт дальше 1500+ строк
+5. **CategoryMLPredictor** — реализовать ML предсказание когда модель будет обучена
 
 ---
 
