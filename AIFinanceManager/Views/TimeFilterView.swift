@@ -36,11 +36,11 @@ struct TimeFilterView: View {
                         }) {
                             HStack {
                                 Text(preset.localizedName)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(AppColors.textPrimary)
                                 Spacer()
                                 if selectedPreset == preset {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(AppColors.accent)
                                 }
                             }
                         }
@@ -54,22 +54,22 @@ struct TimeFilterView: View {
                     }) {
                         HStack {
                             Text(String(localized: "timeFilter.customPeriod", defaultValue: "Пользовательский период"))
-                                .foregroundColor(.primary)
+                                .foregroundColor(AppColors.textPrimary)
                             Spacer()
                             if selectedPreset == .custom {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppColors.accent)
                             }
                         }
                     }
-                    
+
                     if selectedPreset == .custom {
                         DatePicker(String(localized: "timeFilter.from", defaultValue: "С"), selection: $customStartDate, displayedComponents: .date)
                             .datePickerStyle(.compact)
-                        
+
                         DatePicker(String(localized: "timeFilter.to", defaultValue: "По"), selection: $customEndDate, in: customStartDate..., displayedComponents: .date)
                             .datePickerStyle(.compact)
-                        
+
                         Button(action: {
                             if customEndDate >= customStartDate {
                                 filterManager.setCustomRange(start: customStartDate, end: customEndDate)
@@ -78,10 +78,10 @@ struct TimeFilterView: View {
                         }) {
                             Text(String(localized: "button.apply", defaultValue: "Применить"))
                                 .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(customEndDate >= customStartDate ? Color.blue : Color.gray)
+                                .padding(AppSpacing.md)
+                                .background(customEndDate >= customStartDate ? AppColors.accent : AppColors.secondaryBackground)
                                 .foregroundColor(.white)
-                                .cornerRadius(10)
+                                .cornerRadius(AppRadius.button)
                         }
                         .disabled(customEndDate < customStartDate)
                     }

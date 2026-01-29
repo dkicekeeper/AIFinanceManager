@@ -27,26 +27,26 @@ struct LogoSearchView: View {
                     Spacer()
                     VStack(spacing: AppSpacing.md) {
                         Image(systemName: "exclamationmark.triangle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.orange)
+                            .font(.system(size: AppIconSize.xxxl))
+                            .foregroundColor(AppColors.warning)
                         Text(error)
-                            .font(AppTypography.body)
-                            .foregroundColor(.secondary)
+                            .font(AppTypography.bodyPrimary)
+                            .foregroundColor(AppColors.textSecondary)
                             .multilineTextAlignment(.center)
                     }
-                    .padding()
+                    .cardContentPadding()
                     Spacer()
                 } else if searchResults.isEmpty && !searchText.isEmpty {
                     Spacer()
                     VStack(spacing: AppSpacing.md) {
                         Image(systemName: "magnifyingglass")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
+                            .font(.system(size: AppIconSize.xxxl))
+                            .foregroundColor(AppColors.textSecondary)
                         Text("Введите название бренда для поиска")
-                            .font(AppTypography.body)
-                            .foregroundColor(.secondary)
+                            .font(AppTypography.bodyPrimary)
+                            .foregroundColor(AppColors.textSecondary)
                     }
-                    .padding()
+                    .cardContentPadding()
                     Spacer()
                 } else {
                     List {
@@ -259,49 +259,49 @@ struct LogoSearchResultRow: View {
                         switch phase {
                         case .empty:
                             ProgressView()
-                                .frame(width: 40, height: 40)
+                                .frame(width: AppIconSize.avatar, height: AppIconSize.avatar)
                         case .success(let image):
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
-                                .frame(width: 40, height: 40)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .frame(width: AppIconSize.avatar, height: AppIconSize.avatar)
+                                .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
                         case .failure(_):
                             Image(systemName: "photo")
-                                .font(.system(size: 24))
-                                .foregroundColor(.secondary)
-                                .frame(width: 40, height: 40)
+                                .font(.system(size: AppIconSize.lg))
+                                .foregroundColor(AppColors.textSecondary)
+                                .frame(width: AppIconSize.avatar, height: AppIconSize.avatar)
                         @unknown default:
                             Image(systemName: "photo")
-                                .font(.system(size: 24))
-                                .foregroundColor(.secondary)
-                                .frame(width: 40, height: 40)
+                                .font(.system(size: AppIconSize.lg))
+                                .foregroundColor(AppColors.textSecondary)
+                                .frame(width: AppIconSize.avatar, height: AppIconSize.avatar)
                         }
                     }
                 } else {
                     Image(systemName: "photo")
-                        .font(.system(size: 24))
-                        .foregroundColor(.secondary)
-                        .frame(width: 40, height: 40)
+                        .font(.system(size: AppIconSize.lg))
+                        .foregroundColor(AppColors.textSecondary)
+                        .frame(width: AppIconSize.avatar, height: AppIconSize.avatar)
                 }
-                
-                VStack(alignment: .leading, spacing: 2) {
+
+                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                     Text(result.name)
-                        .font(AppTypography.body)
-                        .foregroundColor(.primary)
-                    
+                        .font(AppTypography.bodyPrimary)
+                        .foregroundColor(AppColors.textPrimary)
+
                     if let domain = result.domain, domain != result.name {
                         Text(domain)
                             .font(AppTypography.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppColors.textSecondary)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppColors.accent)
                 }
             }
             .padding(.vertical, AppSpacing.xs)

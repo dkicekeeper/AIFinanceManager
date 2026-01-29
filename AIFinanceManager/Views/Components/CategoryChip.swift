@@ -38,7 +38,7 @@ struct CategoryChip: View {
                             .trim(from: 0, to: min(progress.percentage / 100, 1.0))
                             .stroke(
                                 progress.isOverBudget ? Color.red : Color.green,
-                                style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
                             )
                             .rotationEffect(.degrees(-90))
                             .frame(width: AppIconSize.coin + 8, height: AppIconSize.coin + 8)

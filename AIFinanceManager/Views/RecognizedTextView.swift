@@ -22,29 +22,29 @@ struct RecognizedTextView: View {
         NavigationView {
             VStack(spacing: 0) {
                 // Заголовок
-                VStack(spacing: 8) {
+                VStack(spacing: AppSpacing.sm) {
                     Text(String(localized: "modal.recognizedText.title"))
-                        .font(.headline)
+                        .font(AppTypography.h4)
                     Text(String(localized: "modal.recognizedText.message"))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(AppTypography.bodySecondary)
+                        .foregroundColor(AppColors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
-                .padding()
+                .cardContentPadding()
                 .frame(maxWidth: .infinity)
-                .background(Color(.systemGray6))
+                .background(AppColors.surface)
 
                 // Текст
                 ScrollView {
                     Text(recognizedText)
                         .font(.system(.body, design: .monospaced))
-                        .padding()
+                        .padding(AppSpacing.md)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled) // Позволяет копировать текст
                 }
 
                 // Кнопки
-                VStack(spacing: 12) {
+                VStack(spacing: AppSpacing.md) {
                     // Основная кнопка - импорт транзакций
                     Button(action: {
                         isParsing = true
@@ -70,14 +70,14 @@ struct RecognizedTextView: View {
                     }) {
                         Label(String(localized: "transaction.importTransactions"), systemImage: "square.and.arrow.down")
                             .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
+                            .padding(AppSpacing.md)
+                            .background(AppColors.accent)
                             .foregroundColor(.white)
-                            .cornerRadius(10)
+                            .cornerRadius(AppRadius.button)
                     }
                     .disabled(isParsing)
 
-                    HStack(spacing: 12) {
+                    HStack(spacing: AppSpacing.md) {
                         Button(action: {
                             UIPasteboard.general.string = recognizedText
                             showingCopyAlert = true
@@ -85,23 +85,23 @@ struct RecognizedTextView: View {
                         }) {
                             Label(String(localized: "button.copy"), systemImage: "doc.on.doc")
                                 .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.gray.opacity(0.2))
-                                .foregroundColor(.primary)
-                                .cornerRadius(10)
+                                .padding(AppSpacing.md)
+                                .background(AppColors.secondaryBackground)
+                                .foregroundColor(AppColors.textPrimary)
+                                .cornerRadius(AppRadius.button)
                         }
 
                         Button(action: onCancel) {
                             Text(String(localized: "button.close"))
                                 .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.gray.opacity(0.2))
-                                .foregroundColor(.primary)
-                                .cornerRadius(10)
+                                .padding(AppSpacing.md)
+                                .background(AppColors.secondaryBackground)
+                                .foregroundColor(AppColors.textPrimary)
+                                .cornerRadius(AppRadius.button)
                         }
                     }
                 }
-                .padding()
+                .cardContentPadding()
             }
             .navigationTitle(String(localized: "navigation.statementText"))
             .navigationBarTitleDisplayMode(.inline)
@@ -110,9 +110,9 @@ struct RecognizedTextView: View {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
                     ProgressView(String(localized: "progress.parsingStatement"))
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(10)
+                        .cardContentPadding()
+                        .background(AppColors.backgroundPrimary)
+                        .cornerRadius(AppRadius.card)
                 }
             }
             .alert(String(localized: "alert.textCopied.title"), isPresented: $showingCopyAlert) {

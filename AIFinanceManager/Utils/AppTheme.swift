@@ -290,10 +290,10 @@ enum AppColors {
     static let income = Color.green
 
     /// Expense transactions
-    static let expense = Color.red
+    static let expense = Color.primary
 
     /// Transfer transactions
-    static let transfer = Color.blue
+    static let transfer = Color.primary
 }
 
 // MARK: - View Modifiers для консистентного применения
@@ -317,29 +317,34 @@ extension View {
             .padding(.vertical, AppSpacing.sm)
     }
 
-    /// Применяет стиль filter chip
+    /// Применяет стиль chip (используется для CategoryChip, general purpose chips)
+    /// - Parameter isSelected: Если true, применяет выделенный стиль (accent background)
     func chipStyle(isSelected: Bool = false) -> some View {
         self
             .font(AppTypography.bodySmall.weight(.medium))
-            .foregroundColor(.primary)
+            .foregroundColor(AppColors.textPrimary)
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.sm)
-            .background(isSelected ? Color.blue.opacity(0.2) : AppColors.secondaryBackground)
+            .background(isSelected ? AppColors.accent.opacity(0.2) : AppColors.secondaryBackground)
             .cornerRadius(AppRadius.pill)
     }
-    
-    /// Применяет стандартный стиль для фильтров (FilterChip, AccountFilterMenu, CategoryFilterButton)
-    /// - Parameters:
-    ///   - isSelected: Если true, применяет выделенный стиль (синий фон)
+
+    /// Применяет стандартный стиль для фильтров с glass effect (FilterChip, AccountFilterMenu, CategoryFilterButton)
+    /// Использует iOS 18+ glass morphism API для современного вида
+    /// - Parameter isSelected: Если true, применяет выделенный стиль (accent tint + glass effect)
     func filterChipStyle(isSelected: Bool = false) -> some View {
         self
             .font(AppTypography.bodySmall)
             .fontWeight(.medium)
-            .foregroundColor(.primary)
+            .foregroundColor(AppColors.textPrimary)
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.sm)
-            .background(isSelected ? Color.blue.opacity(0.2) : Color(.systemGray5))
-            .cornerRadius(AppRadius.pill)
+            .glassEffect(
+                isSelected
+                    ? .regular.tint(AppColors.accent)
+                    : .regular
+            )
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))
     }
 
     /// Применяет тень

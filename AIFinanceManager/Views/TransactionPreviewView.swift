@@ -19,17 +19,17 @@ struct TransactionPreviewView: View {
         NavigationView {
             VStack(spacing: 0) {
                 // Заголовок с информацией
-                VStack(spacing: 8) {
+                VStack(spacing: AppSpacing.sm) {
                     Text("Найдено транзакций: \(transactions.count)")
-                        .font(.headline)
+                        .font(AppTypography.h4)
                     Text("Выберите транзакции для добавления")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(AppTypography.bodySecondary)
+                        .foregroundColor(AppColors.textSecondary)
                 }
-                .padding()
+                .cardContentPadding()
                 .frame(maxWidth: .infinity)
-                .background(Color(.systemGray6))
-                
+                .background(AppColors.surface)
+
                 // Список транзакций
                 List {
                     ForEach(transactions) { transaction in
@@ -57,9 +57,9 @@ struct TransactionPreviewView: View {
                     }
                 }
                 .listStyle(PlainListStyle())
-                
+
                 // Кнопки действий
-                HStack(spacing: 12) {
+                HStack(spacing: AppSpacing.md) {
                     Button(action: {
                         selectedTransactions = Set(transactions.map { $0.id })
                         // Автоматически выбираем счета для всех
@@ -72,40 +72,40 @@ struct TransactionPreviewView: View {
                     }) {
                         Text("Выбрать все")
                             .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
-                            .cornerRadius(10)
+                            .padding(AppSpacing.md)
+                            .background(AppColors.accent.opacity(0.1))
+                            .foregroundColor(AppColors.accent)
+                            .cornerRadius(AppRadius.button)
                     }
-                    
+
                     Button(action: {
                         selectedTransactions.removeAll()
                         accountMapping.removeAll()
                     }) {
                         Text("Снять выбор")
                             .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .foregroundColor(.gray)
-                            .cornerRadius(10)
+                            .padding(AppSpacing.md)
+                            .background(AppColors.secondaryBackground)
+                            .foregroundColor(AppColors.textSecondary)
+                            .cornerRadius(AppRadius.button)
                     }
                 }
-                .padding()
-                
+                .cardContentPadding()
+
                 // Кнопка добавления
                 Button(action: {
                     addSelectedTransactions()
                 }) {
                     Text("Добавить выбранные (\(selectedTransactions.count))")
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(selectedTransactions.isEmpty ? Color.gray.opacity(0.3) : Color.blue)
+                        .padding(AppSpacing.md)
+                        .background(selectedTransactions.isEmpty ? AppColors.secondaryBackground : AppColors.accent)
                         .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .cornerRadius(AppRadius.button)
                 }
                 .disabled(selectedTransactions.isEmpty)
-                .padding(.horizontal)
-                .padding(.bottom)
+                .screenPadding()
+                .padding(.bottom, AppSpacing.md)
             }
             .navigationTitle("Предпросмотр транзакций")
             .navigationBarTitleDisplayMode(.inline)
@@ -168,43 +168,42 @@ struct TransactionPreviewRow: View {
     let onAccountSelect: (String) -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
             HStack {
                 Button(action: onToggle) {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(isSelected ? .blue : .gray)
-                        .font(.title3)
+                        .foregroundColor(isSelected ? AppColors.accent : AppColors.textSecondary)
+                        .font(AppTypography.h4)
                 }
-                
-                VStack(alignment: .leading, spacing: 4) {
+
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(transaction.description)
-                        .font(.body)
+                        .font(AppTypography.bodyPrimary)
                         .fontWeight(.medium)
-                    
+
                     Text(transaction.date)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.textSecondary)
+
                     Text(transaction.category)
-                        .font(.caption)
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(4)
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.accent)
+                        .padding(.horizontal, AppSpacing.sm)
+                        .padding(.vertical, AppSpacing.xxs)
+                        .background(AppColors.accent.opacity(0.1))
+                        .cornerRadius(AppRadius.xs)
                 }
-                
+
                 Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
+
+                VStack(alignment: .trailing, spacing: AppSpacing.xs) {
                     Text(Formatting.formatCurrency(transaction.amount, currency: transaction.currency))
-                        .font(.body)
-                        .fontWeight(.semibold)
-                        .foregroundColor(transaction.type == .income ? .green : .red)
-                    
+                        .font(AppTypography.amount)
+                        .foregroundColor(transaction.type == .income ? AppColors.income : AppColors.expense)
+
                     Text(transaction.type == .income ? "Доход" : transaction.type == .expense ? "Расход" : "Перевод")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.textSecondary)
                 }
             }
             

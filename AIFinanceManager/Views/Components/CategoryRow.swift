@@ -54,16 +54,16 @@ struct CategoryRow: View {
                     if let progress = budgetProgress {
                         HStack(spacing: AppSpacing.xs) {
                             Text("\(formatAmount(progress.spent)) / \(formatAmount(progress.budgetAmount))₸")
-                                .font(AppTypography.caption)
+                                .font(AppTypography.bodySmall)
                                 .foregroundColor(progress.isOverBudget ? .red : .secondary)
                             
                             Text("(\(Int(progress.percentage))%)")
-                                .font(AppTypography.caption2)
+                                .font(AppTypography.bodySmall)
                                 .foregroundColor(.secondary)
                         }
                     } else if category.type == .expense {
                         Text(String(localized: "No budget set"))
-                            .font(AppTypography.caption)
+                            .font(AppTypography.bodySmall)
                             .foregroundColor(.secondary)
                     }
                 }

@@ -74,59 +74,59 @@ struct SubscriptionEditView: View {
                                         switch phase {
                                         case .empty:
                                             ProgressView()
-                                                .frame(width: 24, height: 24)
+                                                .frame(width: AppIconSize.lg, height: AppIconSize.lg)
                                         case .success(let image):
                                             image
                                                 .resizable()
                                                 .aspectRatio(contentMode: .fit)
-                                                .frame(width: 24, height: 24)
-                                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                                .frame(width: AppIconSize.lg, height: AppIconSize.lg)
+                                                .clipShape(RoundedRectangle(cornerRadius: AppRadius.xs))
                                         case .failure(_):
                                             Image(systemName: "photo")
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(AppColors.textSecondary)
                                         @unknown default:
                                             Image(systemName: "photo")
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(AppColors.textSecondary)
                                         }
                                     }
                                 } else {
                                     Image(systemName: "photo")
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(AppColors.textSecondary)
                                 }
                                 Text(brandName)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(AppColors.textSecondary)
                             } else if let logo = selectedBrandLogo {
-                                logo.image(size: 24)
+                                logo.image(size: AppIconSize.lg)
                             } else if let iconName = selectedIconName {
                                 Image(systemName: iconName)
-                                    .foregroundColor(.secondary)
-                                    .font(.system(size: 24))
+                                    .foregroundColor(AppColors.textSecondary)
+                                    .font(.system(size: AppIconSize.lg))
                             } else {
                                 Image(systemName: "photo")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(AppColors.textSecondary)
                             }
                             Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                                .foregroundColor(AppColors.textSecondary)
+                                .font(AppTypography.caption)
                         }
                     }
-                    
+
                     Button(action: { showingIconPicker = true }) {
                         HStack {
                             Text("Выбрать иконку")
                             Spacer()
                             if let iconName = selectedIconName {
                                 Image(systemName: iconName)
-                                    .foregroundColor(.secondary)
-                                    .font(.system(size: 24))
+                                    .foregroundColor(AppColors.textSecondary)
+                                    .font(.system(size: AppIconSize.lg))
                             } else {
                                 Image(systemName: "photo")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(AppColors.textSecondary)
                             }
                             Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                                .foregroundColor(AppColors.textSecondary)
+                                .font(AppTypography.caption)
                         }
                     }
                 }

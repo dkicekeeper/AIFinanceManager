@@ -433,11 +433,11 @@ struct ContainerWidthKey: PreferenceKey {
 // Моргающий курсор
 struct BlinkingCursor: View {
     @State private var opacity: Double = 1.0
-    
+
     var body: some View {
         Rectangle()
-            .fill(Color.primary)
-            .frame(width: 2, height: 36)
+            .fill(AppColors.textPrimary)
+            .frame(width: AppSize.cursorWidth, height: AppSize.cursorHeight)
             .opacity(opacity)
             .onAppear {
                 withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {

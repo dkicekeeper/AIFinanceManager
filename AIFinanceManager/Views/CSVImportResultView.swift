@@ -15,16 +15,16 @@ struct CSVImportResultView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
+            VStack(spacing: AppSpacing.xxl) {
                 // Иконка результата
                 Image(systemName: result.importedCount > 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .font(.system(size: 64))
-                    .foregroundColor(result.importedCount > 0 ? .green : .orange)
-                
+                    .font(.system(size: AppIconSize.coin))
+                    .foregroundColor(result.importedCount > 0 ? AppColors.success : AppColors.warning)
+
                 // Статистика
-                VStack(spacing: 16) {
-                    StatRow(label: "Импортировано операций", value: "\(result.importedCount)", color: .green)
-                    
+                VStack(spacing: AppSpacing.lg) {
+                    StatRow(label: "Импортировано операций", value: "\(result.importedCount)", color: AppColors.success)
+
                     if result.duplicatesSkipped > 0 {
                         StatRow(
                             label: "Дубликаты пропущены",
@@ -33,61 +33,61 @@ struct CSVImportResultView: View {
                             icon: "arrow.triangle.2.circlepath"
                         )
                     }
-                    
+
                     if result.skippedCount - result.duplicatesSkipped > 0 {
                         StatRow(
                             label: "Пропущено (ошибки)",
                             value: "\(result.skippedCount - result.duplicatesSkipped)",
-                            color: .orange
+                            color: AppColors.warning
                         )
                     }
-                    
+
                     if result.createdAccounts > 0 {
-                        StatRow(label: "Создано счетов", value: "\(result.createdAccounts)", color: .blue)
+                        StatRow(label: "Создано счетов", value: "\(result.createdAccounts)", color: AppColors.accent)
                     }
-                    
+
                     if result.createdCategories > 0 {
-                        StatRow(label: "Создано категорий", value: "\(result.createdCategories)", color: .blue)
+                        StatRow(label: "Создано категорий", value: "\(result.createdCategories)", color: AppColors.accent)
                     }
-                    
+
                     if result.createdSubcategories > 0 {
-                        StatRow(label: "Создано подкатегорий", value: "\(result.createdSubcategories)", color: .blue)
+                        StatRow(label: "Создано подкатегорий", value: "\(result.createdSubcategories)", color: AppColors.accent)
                     }
                 }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-                
+                .cardContentPadding()
+                .background(AppColors.surface)
+                .cornerRadius(AppRadius.card)
+
                 // Ошибки
                 if !result.errors.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: AppSpacing.sm) {
                         Text("Ошибки:")
-                            .font(.headline)
-                        
+                            .font(AppTypography.h4)
+
                         ScrollView {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: AppSpacing.xs) {
                                 ForEach(result.errors.prefix(10), id: \.self) { error in
                                     Text("• \(error)")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
+                                        .font(AppTypography.caption)
+                                        .foregroundColor(AppColors.destructive)
                                 }
-                                
+
                                 if result.errors.count > 10 {
                                     Text("... и еще \(result.errors.count - 10) ошибок")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .font(AppTypography.caption)
+                                        .foregroundColor(AppColors.textSecondary)
                                 }
                             }
                         }
-                        .frame(maxHeight: 150)
+                        .frame(maxHeight: AppSize.resultListHeight)
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+                    .cardContentPadding()
+                    .background(AppColors.surface)
+                    .cornerRadius(AppRadius.card)
                 }
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     // Закрываем все модалки
                     onDismiss()
@@ -95,14 +95,14 @@ struct CSVImportResultView: View {
                 }) {
                     Text("Готово")
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
+                        .padding(AppSpacing.md)
+                        .background(AppColors.accent)
                         .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .cornerRadius(AppRadius.button)
                 }
-                .padding()
+                .cardContentPadding()
             }
-            .padding()
+            .screenPadding()
             .navigationTitle("Результат импорта")
             .navigationBarTitleDisplayMode(.inline)
         }

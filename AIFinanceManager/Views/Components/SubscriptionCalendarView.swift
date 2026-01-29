@@ -59,16 +59,16 @@ struct SubscriptionCalendarView: View {
         HStack {
             Text(String(localized: "calendar.upcomingPayments"))
                 .font(AppTypography.h4)
-            
+
             Spacer()
-            
+
             Picker("View Type", selection: $viewType) {
                 ForEach(CalendarViewType.allCases) { type in
                     Text(type.displayName).tag(type)
                 }
             }
             .pickerStyle(SegmentedPickerStyle())
-            .frame(width: 180)
+            .frame(width: AppSize.calendarPickerWidth)
         }
     }
     
@@ -101,8 +101,8 @@ struct SubscriptionCalendarView: View {
                 ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { index, symbol in
                     Text(symbol)
                         .font(AppTypography.caption2)
-                        .foregroundColor(.secondary)
-                        .frame(height: 20)
+                        .foregroundColor(AppColors.textSecondary)
+                        .frame(height: AppSize.skeletonHeight)
                 }
             }
             
@@ -124,36 +124,36 @@ struct SubscriptionCalendarView: View {
     private func dateCell(for date: Date) -> some View {
         let isToday = calendar.isDateInToday(date)
         let occurrences = subscriptionsOnDate(date)
-        
-        return VStack(spacing: 2) {
+
+        return VStack(spacing: AppSpacing.xxs) {
             Text("\(calendar.component(.day, from: date))")
                 .font(isToday ? AppTypography.captionEmphasis : AppTypography.caption)
-                .foregroundColor(isToday ? .blue : .primary)
-                .frame(width: 24, height: 24)
-                .background(isToday ? Color.blue.opacity(0.1) : Color.clear)
+                .foregroundColor(isToday ? AppColors.accent : AppColors.textPrimary)
+                .frame(width: AppIconSize.lg, height: AppIconSize.lg)
+                .background(isToday ? AppColors.accent.opacity(0.1) : Color.clear)
                 .clipShape(Circle())
-            
+
             // Logos
             if !occurrences.isEmpty {
-                HStack(spacing: -4) {
+                HStack(spacing: -AppSpacing.xs) {
                     ForEach(occurrences.prefix(3), id: \.id) { sub in
-                        logoView(for: sub, size: 14)
-                            .background(Circle().fill(Color(.systemBackground)))
+                        logoView(for: sub, size: AppIconSize.indicator)
+                            .background(Circle().fill(AppColors.backgroundPrimary))
                             .clipShape(Circle())
                     }
                     if occurrences.count > 3 {
                         Text("+\(occurrences.count - 3)")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .frame(width: 14, height: 14)
-                            .background(Circle().fill(Color(.systemGray6)))
+                            .font(.system(size: AppIconSize.xs, weight: .bold))
+                            .foregroundColor(AppColors.textSecondary)
+                            .frame(width: AppIconSize.indicator, height: AppIconSize.indicator)
+                            .background(Circle().fill(AppColors.surface))
                     }
                 }
             } else {
-                Spacer().frame(height: 14)
+                Spacer().frame(height: AppIconSize.indicator)
             }
         }
-        .frame(height: 45)
+        .frame(height: AppSize.buttonSmall + 5)
     }
     
     private func logoView(for sub: RecurringSeries, size: CGFloat) -> some View {
