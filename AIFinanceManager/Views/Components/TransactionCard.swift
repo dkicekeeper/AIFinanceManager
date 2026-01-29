@@ -253,13 +253,13 @@ struct TransactionCard: View {
         case .income:
             return .green
         case .expense:
-            return .red
+            return .primary
         case .internalTransfer:
-            return .blue // Синий цвет для переводов для консистентности с иконкой
+            return .primary // Синий цвет для переводов для консистентности с иконкой
         case .depositTopUp, .depositInterestAccrual:
             return .green
         case .depositWithdrawal:
-            return .red
+            return .primary
         }
     }
     

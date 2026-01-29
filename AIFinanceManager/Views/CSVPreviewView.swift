@@ -22,76 +22,76 @@ struct CSVPreviewView: View {
     
     var body: some View {
         NavigationView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 // Информация о файле
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppSpacing.sm) {
                     Text("Информация о файле")
-                        .font(.headline)
-                    
+                        .font(AppTypography.h4)
+
                     HStack {
                         Text("Колонок:")
                         Spacer()
                         Text("\(csvFile.headers.count)")
                     }
-                    
+
                     HStack {
                         Text("Строк данных:")
                         Spacer()
                         Text("\(csvFile.rowCount)")
                     }
                 }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-                
+                .cardContentPadding()
+                .background(AppColors.surface)
+                .cornerRadius(AppRadius.card)
+
                 // Заголовки
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppSpacing.sm) {
                     Text("Колонки в файле")
-                        .font(.headline)
-                    
+                        .font(AppTypography.h4)
+
                     ScrollView(.horizontal, showsIndicators: true) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: AppSpacing.sm) {
                             ForEach(csvFile.headers, id: \.self) { header in
                                 Text(header)
-                                    .font(.caption)
-                                    .padding(8)
-                                    .background(Color.blue.opacity(0.2))
-                                    .cornerRadius(6)
+                                    .font(AppTypography.caption)
+                                    .padding(AppSpacing.sm)
+                                    .background(AppColors.accent.opacity(0.2))
+                                    .cornerRadius(AppRadius.compact)
                             }
                         }
                     }
                 }
-                .padding()
-                
+                .cardContentPadding()
+
                 // Превью данных
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppSpacing.sm) {
                     Text("Превью данных (первые \(csvFile.preview.count) строк)")
-                        .font(.headline)
-                    
+                        .font(AppTypography.h4)
+
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
                             ForEach(Array(csvFile.preview.enumerated()), id: \.offset) { index, row in
                                 HStack(alignment: .top) {
                                     Text("\(index + 1).")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .font(AppTypography.caption)
+                                        .foregroundColor(AppColors.textSecondary)
                                         .frame(width: 30, alignment: .leading)
-                                    
+
                                     ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 8) {
+                                        HStack(spacing: AppSpacing.sm) {
                                             ForEach(Array(row.enumerated()), id: \.offset) { colIndex, value in
-                                                VStack(alignment: .leading, spacing: 2) {
+                                                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                                                     Text(csvFile.headers[safe: colIndex] ?? "?")
-                                                        .font(.caption2)
-                                                        .foregroundColor(.secondary)
+                                                        .font(AppTypography.caption2)
+                                                        .foregroundColor(AppColors.textSecondary)
                                                     Text(value.isEmpty ? "(пусто)" : value)
-                                                        .font(.caption)
+                                                        .font(AppTypography.caption)
                                                         .lineLimit(2)
                                                 }
-                                                .padding(6)
-                                                .frame(width: 120, alignment: .leading)
-                                                .background(Color(.systemGray6))
-                                                .cornerRadius(4)
+                                                .padding(AppSpacing.compact)
+                                                .frame(width: AppSize.subscriptionCardWidth, alignment: .leading)
+                                                .background(AppColors.surface)
+                                                .cornerRadius(AppRadius.xs)
                                             }
                                         }
                                     }
@@ -99,23 +99,23 @@ struct CSVPreviewView: View {
                             }
                         }
                     }
-                    .frame(maxHeight: 300)
+                    .frame(maxHeight: AppSize.previewScrollHeight)
                 }
-                .padding()
-                
+                .cardContentPadding()
+
                 Spacer()
-                
+
                 Button(action: {
                     showingMapping = true
                 }) {
                     Text("Продолжить")
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
+                        .padding(AppSpacing.md)
+                        .background(AppColors.accent)
                         .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .cornerRadius(AppRadius.button)
                 }
-                .padding()
+                .cardContentPadding()
             }
             .navigationTitle("Превью CSV")
             .navigationBarTitleDisplayMode(.inline)

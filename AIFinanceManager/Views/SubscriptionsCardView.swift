@@ -36,7 +36,7 @@ struct SubscriptionsCardView: View {
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {
                         if isLoadingTotal {
                             ProgressView()
-                                .frame(height: 20)
+                                .frame(height: AppSize.skeletonHeight)
                         } else {
                             Text(Formatting.formatCurrency(
                                 NSDecimalNumber(decimal: totalAmount).doubleValue,
@@ -44,20 +44,20 @@ struct SubscriptionsCardView: View {
                             ))
                             .font(AppTypography.h2)
                             .fontWeight(.bold)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(AppColors.textPrimary)
                         }
-                        
+
                         Text("Активных \(subscriptions.count)")
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(.primary)
+                            .font(AppTypography.bodySecondary)
+                            .foregroundStyle(AppColors.textPrimary)
                     }
-                    
+
                     Spacer()
-                    
+
                     // Статичные логотипы подписок
                     if !subscriptions.isEmpty {
                         StaticSubscriptionIconsView(subscriptions: subscriptions)
-                            .frame(width: 120, height: 80)
+                            .frame(width: AppSize.subscriptionCardWidth, height: AppSize.subscriptionCardHeight)
                     }
                 }
             }

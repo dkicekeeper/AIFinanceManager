@@ -110,26 +110,28 @@ struct ContentView: View {
                 showingVoiceInput = true
             }) {
                 Image(systemName: "mic.fill")
-                    .font(.system(size: 24, weight: .semibold))
-                    .frame(width: 64, height: 64)
+                    .font(.system(size: AppIconSize.lg))
+                    .fontWeight(.semibold)
+                    .frame(width: AppSize.buttonLarge, height: AppSize.buttonLarge)
             }
             .buttonStyle(.glass)
             .accessibilityLabel(String(localized: "accessibility.voiceInput"))
             .accessibilityHint(String(localized: "accessibility.voiceInputHint"))
-            
+
             // Кнопка загрузки выписок
             Button(action: {
                 showingFilePicker = true
             }) {
                 Image(systemName: "doc.badge.plus")
-                    .font(.system(size: 24, weight: .semibold))
-                    .frame(width: 64, height: 64)
+                    .font(.system(size: AppIconSize.lg))
+                    .fontWeight(.semibold)
+                    .frame(width: AppSize.buttonLarge, height: AppSize.buttonLarge)
             }
             .buttonStyle(.glass)
             .accessibilityLabel(String(localized: "accessibility.importStatement"))
             .accessibilityHint(String(localized: "accessibility.importStatementHint"))
         }
-        .padding(.horizontal, AppSpacing.lg)
+        .screenPadding()
         .padding(.bottom, AppSpacing.xl)
     }
     

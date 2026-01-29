@@ -12,8 +12,14 @@ import SwiftUI
 /// Консистентная система отступов на основе 4pt grid
 /// Используй ТОЛЬКО эти значения для всех spacing и padding
 enum AppSpacing {
+    /// 2pt - Минимальный отступ (tight inline spacing, fine-tuned layouts)
+    static let xxs: CGFloat = 2
+
     /// 4pt - Микро отступ (между иконкой и текстом в одной строке)
     static let xs: CGFloat = 4
+
+    /// 6pt - Компактный отступ (tight button padding, small chip padding)
+    static let compact: CGFloat = 6
 
     /// 8pt - Малый отступ (vertical padding для rows, spacing внутри кнопок)
     static let sm: CGFloat = 8
@@ -32,12 +38,38 @@ enum AppSpacing {
 
     /// 32pt - Screen margins (редко используется)
     static let xxxl: CGFloat = 32
+
+    // MARK: - Semantic Spacing
+
+    /// Горизонтальный padding для страниц (alias для lg)
+    static let pageHorizontal: CGFloat = lg
+
+    /// Вертикальный spacing между секциями страницы (alias для xxl)
+    static let sectionVertical: CGFloat = xxl
+
+    /// Padding внутри карточек (alias для md)
+    static let cardPadding: CGFloat = md
+
+    /// Spacing между элементами в списке (alias для sm)
+    static let listRowSpacing: CGFloat = sm
+
+    /// Spacing между иконкой и текстом inline (alias для xs)
+    static let iconText: CGFloat = xs
+
+    /// Spacing между label и value в InfoRow (alias для md)
+    static let labelValue: CGFloat = md
 }
 
 // MARK: - Corner Radius System
 
 /// Консистентная система скругления углов
 enum AppRadius {
+    /// 4pt - Минимальные элементы (indicators, badges)
+    static let xs: CGFloat = 4
+
+    /// 6pt - Очень малые элементы (compact chips)
+    static let compact: CGFloat = 6
+
     /// 8pt - Малые элементы (chips, небольшие кнопки)
     static let sm: CGFloat = 8
 
@@ -52,12 +84,32 @@ enum AppRadius {
 
     /// Бесконечность - Круги (category icons, avatars)
     static let circle: CGFloat = .infinity
+
+    // MARK: - Semantic Radius
+
+    /// Card corner radius (alias для md)
+    static let card: CGFloat = md
+
+    /// Button corner radius (alias для md)
+    static let button: CGFloat = md
+
+    /// Sheet corner radius (alias для lg)
+    static let sheet: CGFloat = lg
+
+    /// Chip corner radius (alias для sm)
+    static let chip: CGFloat = sm
 }
 
 // MARK: - Icon Sizing System
 
 /// Консистентная система размеров иконок
 enum AppIconSize {
+    /// 12pt - Micro icons (tiny indicators, badges)
+    static let xs: CGFloat = 12
+
+    /// 14pt - Small indicators (dots, small badges)
+    static let indicator: CGFloat = 14
+
     /// 16pt - Inline icons (в тексте, мелкие индикаторы)
     static let sm: CGFloat = 16
 
@@ -70,17 +122,26 @@ enum AppIconSize {
     /// 32pt - Large icons (bank logos)
     static let xl: CGFloat = 32
 
+    /// 40pt - Medium avatar size (logo picker, subscription icons)
+    static let avatar: CGFloat = 40
+
     /// 44pt - Extra large (category circles в QuickAdd)
     static let xxl: CGFloat = 44
 
     /// 48pt - Hero icons (empty states)
     static let xxxl: CGFloat = 48
 
+    /// 50pt - Category row icons
+    static let categoryIcon: CGFloat = 50
+
     /// 56pt - Floating action buttons
     static let fab: CGFloat = 56
 
     /// 64pt - Category coins
     static let coin: CGFloat = 64
+
+    /// 80pt - Large action buttons (voice input button)
+    static let largeButton: CGFloat = 80
 }
 
 // MARK: - Typography System
@@ -122,6 +183,26 @@ enum AppTypography {
 
     /// Caption 2 - Very small text (legal, footnotes)
     static let caption2 = Font.caption2
+
+    // MARK: - Semantic Typography
+
+    /// Screen titles (alias для h1)
+    static let screenTitle = h1
+
+    /// Section headers (alias для h3)
+    static let sectionTitle = h3
+
+    /// Primary body text (alias для body)
+    static let bodyPrimary = body
+
+    /// Secondary text (alias для bodySmall)
+    static let bodySecondary = bodySmall
+
+    /// Label text (alias для bodySmall with medium weight)
+    static let label = bodySmall.weight(.medium)
+
+    /// Amount text (emphasized, typically for monetary values)
+    static let amount = bodyLarge.weight(.semibold)
 }
 
 // MARK: - Shadow System
@@ -155,21 +236,64 @@ struct Shadow {
 enum AppColors {
     // MARK: Backgrounds
 
-    /// Фон основных карточек
-    static let cardBackground = Color(.systemGray6)
+    /// Фон primary экрана
+    static let backgroundPrimary = Color(.systemBackground)
+
+    /// Фон surface (карточки, elevated elements)
+    static let surface = Color(.systemGray6)
+
+    /// Фон основных карточек (alias для surface)
+    static let cardBackground = surface
 
     /// Фон вторичных элементов (chips, secondary buttons)
     static let secondaryBackground = Color(.systemGray5)
 
-    /// Фон экрана
-    static let screenBackground = Color(.systemBackground)
+    /// Фон экрана (alias для backgroundPrimary)
+    static let screenBackground = backgroundPrimary
 
-    // MARK: Text Colors (используй системные .primary, .secondary)
+    // MARK: Text Colors
 
-    // MARK: Semantic Colors (уже определены в CategoryColors)
-    // income - .green
-    // expense - .red
-    // transfer - .blue
+    /// Primary text (используй системный .primary для auto light/dark)
+    static let textPrimary = Color.primary
+
+    /// Secondary text (используй системный .secondary для auto light/dark)
+    static let textSecondary = Color.secondary
+
+    /// Tertiary text (используй системный .gray для мета-информации)
+    static let textTertiary = Color.gray
+
+    // MARK: Interactive Colors
+
+    /// Accent color (для выделений, selections)
+    static let accent = Color.blue
+
+    /// Destructive actions
+    static let destructive = Color.red
+
+    /// Success/positive
+    static let success = Color.green
+
+    /// Warning
+    static let warning = Color.orange
+
+    // MARK: Dividers & Borders
+
+    /// Divider color
+    static let divider = Color(.separator)
+
+    /// Border color
+    static let border = Color(.systemGray4)
+
+    // MARK: Transaction Type Colors (semantic)
+
+    /// Income transactions
+    static let income = Color.green
+
+    /// Expense transactions
+    static let expense = Color.red
+
+    /// Transfer transactions
+    static let transfer = Color.blue
 }
 
 // MARK: - View Modifiers для консистентного применения
@@ -250,13 +374,91 @@ extension View {
 extension View {
     /// Стандартный horizontal padding для экранов
     func screenPadding() -> some View {
-        self.padding(.horizontal, AppSpacing.lg)
+        self.padding(.horizontal, AppSpacing.pageHorizontal)
     }
 
     /// Стандартный vertical spacing для sections
     func sectionSpacing() -> some View {
-        self.padding(.vertical, AppSpacing.md)
+        self.padding(.vertical, AppSpacing.sectionVertical)
     }
+
+    /// Card padding (внутренний padding карточек)
+    func cardContentPadding() -> some View {
+        self.padding(AppSpacing.cardPadding)
+    }
+
+    /// List row padding (padding для строк списка)
+    func listRowPadding() -> some View {
+        self.padding(.horizontal, AppSpacing.pageHorizontal)
+            .padding(.vertical, AppSpacing.listRowSpacing)
+    }
+}
+
+// MARK: - Container Sizes
+
+/// Консистентные размеры контейнеров и макет-элементов
+enum AppSize {
+    // MARK: - Buttons & Controls
+
+    /// Small button size (40x40)
+    static let buttonSmall: CGFloat = 40
+
+    /// Medium button size (56x56)
+    static let buttonMedium: CGFloat = 56
+
+    /// Large button size (64x64)
+    static let buttonLarge: CGFloat = 64
+
+    /// Extra large button size (80x80)
+    static let buttonXL: CGFloat = 80
+
+    // MARK: - Cards & Containers
+
+    /// Subscription card width
+    static let subscriptionCardWidth: CGFloat = 120
+
+    /// Subscription card height
+    static let subscriptionCardHeight: CGFloat = 80
+
+    /// Analytics card skeleton width
+    static let analyticsCardWidth: CGFloat = 200
+
+    /// Analytics card skeleton height
+    static let analyticsCardHeight: CGFloat = 140
+
+    // MARK: - Scroll & List Constraints
+
+    /// Max height for scrollable preview sections
+    static let previewScrollHeight: CGFloat = 300
+
+    /// Max height for result lists
+    static let resultListHeight: CGFloat = 150
+
+    /// Min height for content sections
+    static let contentMinHeight: CGFloat = 120
+
+    /// Standard height for rows/cells
+    static let rowHeight: CGFloat = 60
+
+    // MARK: - Specific UI Elements
+
+    /// Calendar picker width
+    static let calendarPickerWidth: CGFloat = 180
+
+    /// Wave animation height (small)
+    static let waveHeightSmall: CGFloat = 80
+
+    /// Wave animation height (medium)
+    static let waveHeightMedium: CGFloat = 100
+
+    /// Skeleton placeholder height
+    static let skeletonHeight: CGFloat = 16
+
+    /// Cursor line width
+    static let cursorWidth: CGFloat = 2
+
+    /// Cursor line height
+    static let cursorHeight: CGFloat = 36
 }
 
 // MARK: - Animation Durations
@@ -271,7 +473,7 @@ enum AppAnimation {
 
     /// Медленная анимация (modals, large transitions)
     static let slow: Double = 0.35
-    
+
     /// Spring animation для bounce эффекта (iOS 16+ style)
     static let spring = Animation.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0)
 }

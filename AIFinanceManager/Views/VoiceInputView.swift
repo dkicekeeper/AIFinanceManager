@@ -84,7 +84,7 @@ struct VoiceInputView: View {
                             // Даем время на финализацию перед вызовом onComplete
                             Task {
                                 try? await Task.sleep(nanoseconds: VoiceInputConstants.finalizationDelayMs * 1_000_000)
-                                
+
                                 await MainActor.run {
                                     // Проверяем наличие ошибки
                                     if let errorMsg = voiceService.errorMessage, !errorMsg.isEmpty {
@@ -93,7 +93,7 @@ struct VoiceInputView: View {
                                         // Не закрываем view при ошибке - показываем alert
                                         return
                                     }
-                                    
+
                                     let finalText = voiceService.getFinalText()
                                     if !finalText.isEmpty {
                                         onComplete(finalText)
@@ -109,12 +109,12 @@ struct VoiceInputView: View {
                         }) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 80, height: 80)
+                                    .fill(AppColors.destructive)
+                                    .frame(width: AppSize.buttonXL, height: AppSize.buttonXL)
                                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                                
+
                                 Image(systemName: "stop.fill")
-                                    .font(.system(size: 32))
+                                    .font(.system(size: AppIconSize.xl))
                                     .foregroundColor(.white)
                             }
                         }

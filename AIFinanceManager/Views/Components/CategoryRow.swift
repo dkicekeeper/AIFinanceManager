@@ -23,14 +23,14 @@ struct CategoryRow: View {
                         Circle()
                             .trim(from: 0, to: min(progress.percentage / 100, 1.0))
                             .stroke(
-                                progress.isOverBudget ? Color.red : Color.green,
+                                progress.isOverBudget ? AppColors.destructive : AppColors.success,
                                 style: StrokeStyle(lineWidth: 3, lineCap: .round)
                             )
                             .rotationEffect(.degrees(-90))
-                            .frame(width: 50, height: 50)
-                            .animation(.easeInOut(duration: 0.3), value: progress.percentage)
+                            .frame(width: AppIconSize.categoryIcon, height: AppIconSize.categoryIcon)
+                            .animation(.easeInOut(duration: AppAnimation.standard), value: progress.percentage)
                     }
-                    
+
                     // Иконка
                     Circle()
                         .fill(category.color.opacity(0.2))
