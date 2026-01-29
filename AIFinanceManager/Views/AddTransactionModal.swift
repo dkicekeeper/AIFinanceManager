@@ -293,23 +293,59 @@ struct AddTransactionModal: View {
 
         Task { @MainActor in
             var convertedAmount: Double? = nil
-            if selectedCurrency != accountCurrency {
+            let baseCurrency = transactionsViewModel.appSettings.baseCurrency
+            if selectedCurrency != baseCurrency {
                 _ = await CurrencyConverter.getExchangeRate(for: selectedCurrency)
-                _ = await CurrencyConverter.getExchangeRate(for: accountCurrency)
+                _ = await CurrencyConverter.getExchangeRate(for: baseCurrency)
 
                 convertedAmount = CurrencyConverter.convertSync(
                     amount: amountDouble,
                     from: selectedCurrency,
-                    to: accountCurrency
+                    to: baseCurrency
                 )
 
                 if convertedAmount == nil {
                     convertedAmount = await CurrencyConverter.convert(
                         amount: amountDouble,
                         from: selectedCurrency,
-                        to: accountCurrency
+                        to: baseCurrency
                     )
                 }
+            }
+
+            // Установка targetAmount и targetCurrency для отображения эквивалента и обновления баланса
+            var targetCurrencyValue: String? = nil
+            var targetAmountValue: Double? = nil
+
+            // Случай 1: валюта операции отличается от валюты счета
+            if selectedCurrency != accountCurrency {
+                // Валюта операции отличается от валюты счета
+                // Конвертируем в валюту счета для корректного баланса
+                targetCurrencyValue = accountCurrency
+
+                let convertedToAccount = CurrencyConverter.convertSync(
+                    amount: amountDouble,
+                    from: selectedCurrency,
+                    to: accountCurrency
+                )
+
+                if convertedToAccount == nil {
+                    targetAmountValue = await CurrencyConverter.convert(
+                        amount: amountDouble,
+                        from: selectedCurrency,
+                        to: accountCurrency
+                    )
+                } else {
+                    targetAmountValue = convertedToAccount
+                }
+            }
+            // Случай 2: валюта операции = валюта счета, но отличается от базовой валюты
+            else if selectedCurrency == accountCurrency &&
+                    selectedCurrency != baseCurrency &&
+                    convertedAmount != nil {
+                // Показываем эквивалент в базовой валюте для отображения в UI
+                targetCurrencyValue = baseCurrency
+                targetAmountValue = convertedAmount
             }
 
             let transaction = Transaction(
@@ -323,7 +359,12 @@ struct AddTransactionModal: View {
                 category: category,
                 subcategory: nil,
                 accountId: accountId,
-                targetAccountId: nil
+                targetAccountId: nil,
+                targetCurrency: targetCurrencyValue,
+                targetAmount: targetAmountValue,
+                recurringSeriesId: nil,
+                recurringOccurrenceId: nil,
+                createdAt: Date().timeIntervalSince1970
             )
 
             transactionsViewModel.addTransaction(transaction)

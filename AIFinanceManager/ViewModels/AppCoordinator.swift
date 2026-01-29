@@ -40,21 +40,26 @@ class AppCoordinator: ObservableObject {
         // 1. Accounts (no dependencies)
         self.accountsViewModel = AccountsViewModel(repository: self.repository)
 
-        // 2. Categories (no dependencies)
-        self.categoriesViewModel = CategoriesViewModel(repository: self.repository)
-
-        // 3. Subscriptions (no dependencies on other ViewModels)
-        self.subscriptionsViewModel = SubscriptionsViewModel(repository: self.repository)
-
-        // 4. Deposits (depends on Accounts)
-        self.depositsViewModel = DepositsViewModel(repository: self.repository, accountsViewModel: accountsViewModel)
-
-        // 5. Transactions (depends on Accounts for balance updates)
+        // 2. Transactions (depends on Accounts for balance updates)
+        // Create first to access currencyService and appSettings
         // Use Protocol-based DI to prevent silent failures from weak references
         self.transactionsViewModel = TransactionsViewModel(
             repository: self.repository,
             accountBalanceService: accountsViewModel  // AccountsViewModel conforms to AccountBalanceServiceProtocol
         )
+
+        // 3. Categories (depends on TransactionsViewModel for currency conversion)
+        self.categoriesViewModel = CategoriesViewModel(
+            repository: self.repository,
+            currencyService: transactionsViewModel.currencyService,
+            appSettings: transactionsViewModel.appSettings
+        )
+
+        // 4. Subscriptions (no dependencies on other ViewModels)
+        self.subscriptionsViewModel = SubscriptionsViewModel(repository: self.repository)
+
+        // 5. Deposits (depends on Accounts)
+        self.depositsViewModel = DepositsViewModel(repository: self.repository, accountsViewModel: accountsViewModel)
         
 
         // CRITICAL: Подписываемся на изменения всех дочерних ViewModels

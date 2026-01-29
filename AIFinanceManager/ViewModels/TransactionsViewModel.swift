@@ -1450,7 +1450,15 @@ class TransactionsViewModel: ObservableObject {
             if let accountId = transaction.accountId,
                accountsWithCalculatedInitialBalance.contains(accountId),
                let index = newAccounts.firstIndex(where: { $0.id == accountId }) {
-                let amount = transaction.convertedAmount ?? transaction.amount
+                // Используем targetAmount если валюта операции отличается от валюты счета
+                let amount: Double
+                if let targetAmount = transaction.targetAmount,
+                   let targetCurrency = transaction.targetCurrency,
+                   targetCurrency == newAccounts[index].currency {
+                    amount = targetAmount
+                } else {
+                    amount = transaction.amount
+                }
                 newAccounts[index].balance += amount
                 balanceChanged = true
             }
@@ -1459,7 +1467,15 @@ class TransactionsViewModel: ObservableObject {
             if let accountId = transaction.accountId,
                accountsWithCalculatedInitialBalance.contains(accountId),
                let index = newAccounts.firstIndex(where: { $0.id == accountId }) {
-                let amount = transaction.convertedAmount ?? transaction.amount
+                // Используем targetAmount если валюта операции отличается от валюты счета
+                let amount: Double
+                if let targetAmount = transaction.targetAmount,
+                   let targetCurrency = transaction.targetCurrency,
+                   targetCurrency == newAccounts[index].currency {
+                    amount = targetAmount
+                } else {
+                    amount = transaction.amount
+                }
                 newAccounts[index].balance -= amount
                 balanceChanged = true
             }
@@ -1608,13 +1624,31 @@ class TransactionsViewModel: ObservableObject {
             case .income:
                 if let accountId = tx.accountId {
                     guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
-                    let amountToUse = tx.convertedAmount ?? tx.amount
+                    // Используем targetAmount если валюта операции отличается от валюты счета
+                    let amountToUse: Double
+                    if let targetAmount = tx.targetAmount,
+                       let targetCurrency = tx.targetCurrency,
+                       let account = accounts.first(where: { $0.id == accountId }),
+                       targetCurrency == account.currency {
+                        amountToUse = targetAmount
+                    } else {
+                        amountToUse = tx.amount
+                    }
                     balanceChanges[accountId, default: 0] += amountToUse
                 }
             case .expense:
                 if let accountId = tx.accountId {
                     guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
-                    let amountToUse = tx.convertedAmount ?? tx.amount
+                    // Используем targetAmount если валюта операции отличается от валюты счета
+                    let amountToUse: Double
+                    if let targetAmount = tx.targetAmount,
+                       let targetCurrency = tx.targetCurrency,
+                       let account = accounts.first(where: { $0.id == accountId }),
+                       targetCurrency == account.currency {
+                        amountToUse = targetAmount
+                    } else {
+                        amountToUse = tx.amount
+                    }
                     balanceChanges[accountId, default: 0] -= amountToUse
                 }
             case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:

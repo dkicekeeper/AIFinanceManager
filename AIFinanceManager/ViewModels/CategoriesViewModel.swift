@@ -13,21 +13,29 @@ import Combine
 @MainActor
 class CategoriesViewModel: ObservableObject {
     // MARK: - Published Properties
-    
+
     @Published var customCategories: [CustomCategory] = []
     @Published var categoryRules: [CategoryRule] = []
     @Published var subcategories: [Subcategory] = []
     @Published var categorySubcategoryLinks: [CategorySubcategoryLink] = []
     @Published var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
-    
+
     // MARK: - Private Properties
-    
+
     private let repository: DataRepositoryProtocol
-    
+    private var currencyService: TransactionCurrencyService?
+    private var appSettings: AppSettings?
+
     // MARK: - Initialization
-    
-    init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
+
+    init(
+        repository: DataRepositoryProtocol = UserDefaultsRepository(),
+        currencyService: TransactionCurrencyService? = nil,
+        appSettings: AppSettings? = nil
+    ) {
         self.repository = repository
+        self.currencyService = currencyService
+        self.appSettings = appSettings
         self.customCategories = repository.loadCategories()
         self.categoryRules = repository.loadCategoryRules()
         self.subcategories = repository.loadSubcategories()
@@ -343,7 +351,20 @@ class CategoriesViewModel: ObservableObject {
                 }
                 return transactionDate >= periodStart && transactionDate <= periodEnd
             }
-            .reduce(0) { $0 + $1.amount }
+            .reduce(0) { sum, transaction in
+                // Конвертируем сумму в базовую валюту для корректного подсчета
+                // Если currencyService и appSettings доступны, используем конвертацию
+                if let currencyService = currencyService, let appSettings = appSettings {
+                    let amountInBaseCurrency = currencyService.getConvertedAmountOrCompute(
+                        transaction: transaction,
+                        to: appSettings.baseCurrency
+                    )
+                    return sum + amountInBaseCurrency
+                } else {
+                    // Fallback: используем сумму без конвертации
+                    return sum + transaction.amount
+                }
+            }
     }
 
     private func budgetPeriodStart(for category: CustomCategory) -> Date {
