@@ -46,18 +46,18 @@ struct CSVColumnMappingView: View {
                 dateFormatPicker
             }
             typePicker
+            categoryPicker
+            accountPicker
+            currencyPicker
             amountPicker
         }
     }
     
     private var optionalFieldsSection: some View {
         Section(header: Text("Опциональные поля")) {
-            currencyPicker
-            accountPicker
             targetAccountPicker
             targetCurrencyPicker
             targetAmountPicker
-            categoryPicker
             subcategoriesPicker
             if mapping.subcategoriesColumn != nil {
                 subcategoriesSeparatorPicker
@@ -71,7 +71,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.dateColumn ?? "" },
             set: { mapping.dateColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -91,7 +91,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.typeColumn ?? "" },
             set: { mapping.typeColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -103,7 +103,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.amountColumn ?? "" },
             set: { mapping.amountColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -115,7 +115,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.currencyColumn ?? "" },
             set: { mapping.currencyColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -127,7 +127,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.accountColumn ?? "" },
             set: { mapping.accountColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -139,7 +139,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.targetAccountColumn ?? "" },
             set: { mapping.targetAccountColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -147,11 +147,11 @@ struct CSVColumnMappingView: View {
     }
     
     private var targetCurrencyPicker: some View {
-        Picker("Валюта счета получателя", selection: Binding(
+        Picker("Валюта получателя", selection: Binding(
             get: { mapping.targetCurrencyColumn ?? "" },
             set: { mapping.targetCurrencyColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -159,11 +159,11 @@ struct CSVColumnMappingView: View {
     }
     
     private var targetAmountPicker: some View {
-        Picker("Сумма счета получателя", selection: Binding(
+        Picker("Сумма получателя", selection: Binding(
             get: { mapping.targetAmountColumn ?? "" },
             set: { mapping.targetAmountColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -175,7 +175,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.categoryColumn ?? "" },
             set: { mapping.categoryColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -187,7 +187,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.subcategoriesColumn ?? "" },
             set: { mapping.subcategoriesColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }
@@ -207,7 +207,7 @@ struct CSVColumnMappingView: View {
             get: { mapping.noteColumn ?? "" },
             set: { mapping.noteColumn = $0.isEmpty ? nil : $0 }
         )) {
-            Text("— не использовать —").tag("")
+            Text("—").tag("")
             ForEach(csvFile.headers, id: \.self) { header in
                 Text(header).tag(header)
             }

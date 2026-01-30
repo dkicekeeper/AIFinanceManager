@@ -53,7 +53,7 @@ struct ExpenseIncomeProgressBar: View {
                 Text(Formatting.formatCurrency(expenseAmount, currency: currency))
                     .font(AppTypography.bodySmall)
                     .fontWeight(.semibold)
-                    .foregroundColor(.red)
+                    .foregroundColor(.primary)
                 
                 Spacer()
                 
