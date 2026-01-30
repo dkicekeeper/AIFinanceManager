@@ -2105,26 +2105,46 @@ class TransactionsViewModel: ObservableObject {
     /// This will recalculate balances and save if needed
     func endBatch() {
         isBatchMode = false
-        
+
         var operationsPerformed: [String] = []
-        
+
         if pendingBalanceRecalculation {
             recalculateAccountBalances()
             operationsPerformed.append("balance recalc")
             pendingBalanceRecalculation = false
         }
-        
+
         if pendingSave {
             saveToStorage()
             operationsPerformed.append("save")
             pendingSave = false
         }
-        
+
+        // Refresh displayTransactions after batch operations to ensure UI is updated
+        refreshDisplayTransactions()
+
         if operationsPerformed.isEmpty {
         } else {
         }
     }
-    
+
+    /// Refresh displayTransactions from allTransactions
+    /// Call this after bulk operations (CSV import, delete all, etc.)
+    /// to ensure UI displays the latest data
+    func refreshDisplayTransactions() {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let startDate = calendar.date(byAdding: .month, value: -displayMonthsRange, to: now) else {
+            displayTransactions = allTransactions
+            hasOlderTransactions = false
+            return
+        }
+
+        let startDateString = Self.dateFormatter.string(from: startDate)
+        displayTransactions = allTransactions.filter { $0.date >= startDateString }
+        hasOlderTransactions = allTransactions.count > displayTransactions.count
+    }
+
     /// Helper method to schedule balance recalculation
     /// In batch mode, this is delayed until endBatch()
     /// In normal mode, this is executed immediately

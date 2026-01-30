@@ -581,14 +581,18 @@ class CSVImportService {
             // Явно сохраняем все данные CategoriesViewModel (подкатегории, связи и т.д.)
             // чтобы убедиться, что все данные сохранены после импорта
             categoriesViewModel.saveAllData()
-            
+
             // End batch mode - this triggers balance recalculation and save
             transactionsViewModel.endBatch()
-            
+
             // Note: endBatch() now handles:
             // - recalculateAccountBalances()
             // - saveToStorage()
+            // - refreshDisplayTransactions() (to update UI)
             // But we still need to do some manual steps for CSV import
+
+            // Explicitly refresh display transactions for UI (extra safeguard)
+            transactionsViewModel.refreshDisplayTransactions()
 
             // Перестраиваем индексы для быстрой фильтрации
             transactionsViewModel.rebuildIndexes()
