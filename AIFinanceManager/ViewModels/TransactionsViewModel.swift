@@ -232,16 +232,16 @@ class TransactionsViewModel: ObservableObject {
         // Note: PerformanceProfiler is handled inside the method itself
         await Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
-            
+
             await MainActor.run {
                 self.generateRecurringTransactions()
             }
         }.value
-        
+
         await MainActor.run {
             isLoading = false
         }
-        
+
         PerformanceProfiler.end("TransactionsViewModel.loadDataAsync")
     }
     
@@ -602,6 +602,8 @@ class TransactionsViewModel: ObservableObject {
                 subcategory: transaction.subcategory,
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
+                accountName: transaction.accountName,
+                targetAccountName: transaction.targetAccountName,
                 targetCurrency: transaction.targetCurrency,
                 targetAmount: transaction.targetAmount,
                 recurringSeriesId: transaction.recurringSeriesId,
@@ -721,13 +723,17 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func addTransaction(_ transaction: Transaction) {
-        if let accountId = transaction.accountId {
-            _ = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
-        }
+        // Заполняем названия счетов если они еще не заполнены
+        let accountName = transaction.accountName ?? (transaction.accountId.flatMap { accountId in
+            accounts.first(where: { $0.id == accountId })?.name
+        })
+        let targetAccountName = transaction.targetAccountName ?? (transaction.targetAccountId.flatMap { targetAccountId in
+            accounts.first(where: { $0.id == targetAccountId })?.name
+        })
 
         let formattedDescription = formatMerchantName(transaction.description)
         let matchedCategory = matchCategory(transaction.category, type: transaction.type)
-        
+
         let transactionWithID: Transaction
         if transaction.id.isEmpty {
             let id = TransactionIDGenerator.generateID(
@@ -750,6 +756,8 @@ class TransactionsViewModel: ObservableObject {
                 subcategory: transaction.subcategory,
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
+                accountName: accountName,
+                targetAccountName: targetAccountName,
                 targetCurrency: transaction.targetCurrency,
                 targetAmount: transaction.targetAmount,
                 recurringSeriesId: transaction.recurringSeriesId,
@@ -769,6 +777,8 @@ class TransactionsViewModel: ObservableObject {
                 subcategory: transaction.subcategory,
                 accountId: transaction.accountId,
                 targetAccountId: transaction.targetAccountId,
+                accountName: accountName,
+                targetAccountName: targetAccountName,
                 targetCurrency: transaction.targetCurrency,
                 targetAmount: transaction.targetAmount,
                 recurringSeriesId: transaction.recurringSeriesId,
@@ -896,6 +906,38 @@ class TransactionsViewModel: ObservableObject {
             return
         }
 
+        // Заполняем названия счетов если они еще не заполнены
+        let accountName = transaction.accountName ?? (transaction.accountId.flatMap { accountId in
+            accounts.first(where: { $0.id == accountId })?.name
+        })
+        let targetAccountName = transaction.targetAccountName ?? (transaction.targetAccountId.flatMap { targetAccountId in
+            accounts.first(where: { $0.id == targetAccountId })?.name
+        })
+
+        // Создаем обновленную транзакцию с названиями счетов
+        var updatedTransaction = transaction
+        if accountName != nil && updatedTransaction.accountName == nil {
+            updatedTransaction = Transaction(
+                id: updatedTransaction.id,
+                date: updatedTransaction.date,
+                description: updatedTransaction.description,
+                amount: updatedTransaction.amount,
+                currency: updatedTransaction.currency,
+                convertedAmount: updatedTransaction.convertedAmount,
+                type: updatedTransaction.type,
+                category: updatedTransaction.category,
+                subcategory: updatedTransaction.subcategory,
+                accountId: updatedTransaction.accountId,
+                targetAccountId: updatedTransaction.targetAccountId,
+                accountName: accountName,
+                targetAccountName: targetAccountName,
+                targetCurrency: updatedTransaction.targetCurrency,
+                targetAmount: updatedTransaction.targetAmount,
+                recurringSeriesId: updatedTransaction.recurringSeriesId,
+                recurringOccurrenceId: updatedTransaction.recurringOccurrenceId,
+                createdAt: updatedTransaction.createdAt
+            )
+        }
 
         // КРИТИЧЕСКИ ВАЖНО: Удаляем затронутые аккаунты из Set,
         // чтобы их балансы были пересчитаны с новым списком транзакций
@@ -907,16 +949,16 @@ class TransactionsViewModel: ObservableObject {
             accountsWithCalculatedInitialBalance.remove(targetAccountId)
         }
         // Также удаляем новые аккаунты, если они изменились
-        if let accountId = transaction.accountId, accountId != oldTransaction.accountId {
+        if let accountId = updatedTransaction.accountId, accountId != oldTransaction.accountId {
             accountsWithCalculatedInitialBalance.remove(accountId)
         }
-        if let targetAccountId = transaction.targetAccountId, targetAccountId != oldTransaction.targetAccountId {
+        if let targetAccountId = updatedTransaction.targetAccountId, targetAccountId != oldTransaction.targetAccountId {
             accountsWithCalculatedInitialBalance.remove(targetAccountId)
         }
 
         // Создаем новый массив вместо модификации элемента на месте
         var newTransactions = allTransactions
-        newTransactions[index] = transaction
+        newTransactions[index] = updatedTransaction
 
         // Переприсваиваем весь массив для триггера @Published
         allTransactions = newTransactions
@@ -1028,6 +1070,8 @@ class TransactionsViewModel: ObservableObject {
             subcategory: nil,
             accountId: sourceId,
             targetAccountId: targetId,
+            accountName: newAccounts[sourceIndex].name,
+            targetAccountName: newAccounts[targetIndex].name,
             targetCurrency: resolvedTargetCurrency,
             targetAmount: targetAmount,
             recurringSeriesId: nil,
@@ -1563,7 +1607,10 @@ class TransactionsViewModel: ObservableObject {
 
         currencyConversionWarning = nil
         var balanceChanges: [String: Double] = [:]
-        
+
+        // Создать Set из ID существующих счетов для быстрой проверки
+        let existingAccountIds = Set(accounts.map { $0.id })
+
         // Рассчитываем initialBalance для НОВЫХ аккаунтов
         for account in accounts {
             balanceChanges[account.id] = 0
@@ -1623,6 +1670,8 @@ class TransactionsViewModel: ObservableObject {
             switch tx.type {
             case .income:
                 if let accountId = tx.accountId {
+                    // Пропустить транзакции удаленных счетов
+                    guard existingAccountIds.contains(accountId) else { continue }
                     guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
                     // Используем targetAmount если валюта операции отличается от валюты счета
                     let amountToUse: Double
@@ -1638,6 +1687,8 @@ class TransactionsViewModel: ObservableObject {
                 }
             case .expense:
                 if let accountId = tx.accountId {
+                    // Пропустить транзакции удаленных счетов
+                    guard existingAccountIds.contains(accountId) else { continue }
                     guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
                     // Используем targetAmount если валюта операции отличается от валюты счета
                     let amountToUse: Double
@@ -1655,9 +1706,16 @@ class TransactionsViewModel: ObservableObject {
                 break
             case .internalTransfer:
                 if let sourceId = tx.accountId {
+                    // Пропустить если source счет удален
+                    guard existingAccountIds.contains(sourceId) else {
+                        // Если source удален, не обрабатываем весь перевод
+                        continue
+                    }
                     guard !accountsWithCalculatedInitialBalance.contains(sourceId) else {
                         // Source пропускаем, но обрабатываем target ниже
-                        if let targetId = tx.targetAccountId, !accountsWithCalculatedInitialBalance.contains(targetId) {
+                        if let targetId = tx.targetAccountId,
+                           existingAccountIds.contains(targetId),
+                           !accountsWithCalculatedInitialBalance.contains(targetId) {
                             let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
                             balanceChanges[targetId, default: 0] += resolvedTargetAmount
                         }
@@ -1669,12 +1727,19 @@ class TransactionsViewModel: ObservableObject {
                 }
 
                 if let targetId = tx.targetAccountId {
+                    // Пропустить если target счет удален
+                    guard existingAccountIds.contains(targetId) else { continue }
                     guard !accountsWithCalculatedInitialBalance.contains(targetId) else { continue }
                     // Target: используем targetAmount, записанный при создании
                     let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
                     balanceChanges[targetId, default: 0] += resolvedTargetAmount
                 }
             }
+        }
+
+        // Удалить orphaned balance changes для несуществующих счетов
+        balanceChanges = balanceChanges.filter { accountId, _ in
+            existingAccountIds.contains(accountId)
         }
 
         // Создаем новый массив вместо модификации элементов на месте
@@ -1813,32 +1878,78 @@ class TransactionsViewModel: ObservableObject {
         saveToStorage()
     }
 
-    func deleteRecurringSeries(_ seriesId: String) {
+    /// Очистить внутреннее состояние для удаленного счета
+    func cleanupDeletedAccount(_ accountId: String) {
+        initialAccountBalances.removeValue(forKey: accountId)
+        accountsWithCalculatedInitialBalance.remove(accountId)
 
-        // CRITICAL: Delete all transactions associated with this series
-        _ = allTransactions.filter { $0.recurringSeriesId == seriesId }
+        // Очистить кеш балансов
+        cacheManager.cachedAccountBalances.removeValue(forKey: accountId)
 
-        // Remove transactions
-        allTransactions.removeAll { $0.recurringSeriesId == seriesId }
-        
+        // Инвалидировать кеш балансов для пересчета
+        cacheManager.balanceCacheInvalidated = true
+    }
+
+    func deleteRecurringSeries(_ seriesId: String, deleteTransactions: Bool = true) {
+        if deleteTransactions {
+            // CRITICAL: Delete all transactions associated with this series
+            _ = allTransactions.filter { $0.recurringSeriesId == seriesId }
+
+            // Remove transactions
+            allTransactions.removeAll { $0.recurringSeriesId == seriesId }
+        } else {
+            // Clear the recurring series link, transactions become regular
+            var updatedTransactions: [Transaction] = []
+            for transaction in allTransactions {
+                if transaction.recurringSeriesId == seriesId {
+                    var updatedTransaction = transaction
+                    // Create new transaction without recurring IDs
+                    updatedTransaction = Transaction(
+                        id: transaction.id,
+                        date: transaction.date,
+                        description: transaction.description,
+                        amount: transaction.amount,
+                        currency: transaction.currency,
+                        convertedAmount: transaction.convertedAmount,
+                        type: transaction.type,
+                        category: transaction.category,
+                        subcategory: transaction.subcategory,
+                        accountId: transaction.accountId,
+                        targetAccountId: transaction.targetAccountId,
+                        accountName: transaction.accountName,
+                        targetAccountName: transaction.targetAccountName,
+                        targetCurrency: transaction.targetCurrency,
+                        targetAmount: transaction.targetAmount,
+                        recurringSeriesId: nil,
+                        recurringOccurrenceId: nil,
+                        createdAt: transaction.createdAt
+                    )
+                    updatedTransactions.append(updatedTransaction)
+                } else {
+                    updatedTransactions.append(transaction)
+                }
+            }
+            allTransactions = updatedTransactions
+        }
+
         // Remove occurrences
         recurringOccurrences.removeAll { $0.seriesId == seriesId }
-        
+
         // Remove series
         recurringSeries.removeAll { $0.id == seriesId }
-        
+
         // CRITICAL: Recalculate balances after deleting transactions
         invalidateCaches()
         rebuildIndexes()
         scheduleBalanceRecalculation()
-        
+
         scheduleSave()
-        
+
         // Cancel notifications
         Task {
             await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
         }
-        
+
     }
     
     // MARK: - Subscriptions
@@ -1960,6 +2071,7 @@ class TransactionsViewModel: ObservableObject {
             series: recurringSeries,
             existingOccurrences: recurringOccurrences,
             existingTransactionIds: existingTransactionIds,
+            accounts: accounts,
             horizonMonths: 3
         )
         

@@ -277,6 +277,8 @@ enum DepositInterestService {
             subcategory: nil,
             accountId: account.id,
             targetAccountId: nil,
+            accountName: account.name,
+            targetAccountName: nil,
             recurringSeriesId: nil,
             recurringOccurrenceId: nil,
             createdAt: Date().timeIntervalSince1970

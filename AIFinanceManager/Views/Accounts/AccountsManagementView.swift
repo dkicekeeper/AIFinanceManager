@@ -15,7 +15,9 @@ struct AccountsManagementView: View {
     @State private var showingAddAccount = false
     @State private var showingAddDeposit = false
     @State private var editingAccount: Account?
-    
+    @State private var accountToDelete: Account?
+    @State private var showingAccountDeleteDialog = false
+
     // Кешируем baseCurrency для оптимизации
     private var baseCurrency: String {
         transactionsViewModel.appSettings.baseCurrency
@@ -42,12 +44,8 @@ struct AccountsManagementView: View {
                             onEdit: { editingAccount = account },
                             onDelete: {
                                 HapticManager.warning()
-                                accountsViewModel.deleteAccount(account)
-                                // Удаляем связанные транзакции перед синхронизацией
-                                transactionsViewModel.allTransactions.removeAll {
-                                    $0.accountId == account.id || $0.targetAccountId == account.id
-                                }
-                                transactionsViewModel.syncAccountsFrom(accountsViewModel)
+                                accountToDelete = account
+                                showingAccountDeleteDialog = true
                             },
                             interestToday: account.depositInfo.flatMap {
                                 let val = DepositInterestService.calculateInterestToToday(depositInfo: $0)
@@ -167,6 +165,35 @@ struct AccountsManagementView: View {
                     )
                 }
             }
+        }
+        .alert(String(localized: "account.deleteTitle"), isPresented: $showingAccountDeleteDialog, presenting: accountToDelete) { account in
+            Button(String(localized: "button.cancel"), role: .cancel) {
+                accountToDelete = nil
+            }
+            Button(String(localized: "account.deleteOnlyAccount"), role: .destructive) {
+                HapticManager.warning()
+                accountsViewModel.deleteAccount(account, deleteTransactions: false)
+                // Очистить состояние удаленного счета ПЕРЕД пересчетом
+                transactionsViewModel.cleanupDeletedAccount(account.id)
+                // Транзакции остаются, accountName сохранен
+                transactionsViewModel.syncAccountsFrom(accountsViewModel)
+                accountToDelete = nil
+            }
+            Button(String(localized: "account.deleteAccountAndTransactions"), role: .destructive) {
+                HapticManager.warning()
+                accountsViewModel.deleteAccount(account, deleteTransactions: true)
+                // Удаляем все связанные транзакции
+                transactionsViewModel.allTransactions.removeAll {
+                    $0.accountId == account.id || $0.targetAccountId == account.id
+                }
+                // Очистить состояние удаленного счета ПЕРЕД пересчетом
+                transactionsViewModel.cleanupDeletedAccount(account.id)
+                // syncAccountsFrom уже вызывает recalculateAccountBalances, не дублируем
+                transactionsViewModel.syncAccountsFrom(accountsViewModel)
+                accountToDelete = nil
+            }
+        } message: { account in
+            Text(String(format: String(localized: "account.deleteMessage"), account.name))
         }
     }
 }

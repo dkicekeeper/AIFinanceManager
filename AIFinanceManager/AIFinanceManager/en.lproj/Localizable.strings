@@ -196,6 +196,10 @@
 "account.newAccount" = "New Account";
 "account.newDeposit" = "New Deposit";
 "account.namePlaceholder" = "Account name";
+"account.deleteTitle" = "Delete Account";
+"account.deleteMessage" = "What would you like to do with transactions from '%@'?";
+"account.deleteOnlyAccount" = "Delete Only Account";
+"account.deleteAccountAndTransactions" = "Delete Account and Transactions";
 "common.currency" = "Currency";
 "common.balancePlaceholder" = "0.00";
 "common.error" = "Error";
@@ -344,6 +348,8 @@
 "subscriptions.deleteConfirmTitle" = "Delete subscription?";
 "subscriptions.deleteConfirmMessage" = "All subscription data and related transactions will be deleted.";
 "subscriptions.delete" = "Delete";
+"subscriptions.deleteOnlySubscription" = "Delete Only Subscription";
+"subscriptions.deleteSubscriptionAndTransactions" = "Delete Subscription and Transactions";
 "subscriptions.pause" = "Pause";
 "subscriptions.resume" = "Resume";
 "subscriptions.transactionHistory" = "Transaction History";

@@ -31,12 +31,14 @@ class RecurringTransactionGenerator {
     ///   - series: Array of recurring series
     ///   - existingOccurrences: Array of existing occurrences to avoid duplicates
     ///   - existingTransactionIds: Set of existing transaction IDs
+    ///   - accounts: Array of accounts for resolving account names
     ///   - horizonMonths: Number of months to generate ahead (default: 3)
     /// - Returns: Tuple of (new transactions, new occurrences)
     func generateTransactions(
         series: [RecurringSeries],
         existingOccurrences: [RecurringOccurrence],
         existingTransactionIds: Set<String>,
+        accounts: [Account],
         horizonMonths: Int = 3
     ) -> (transactions: [Transaction], occurrences: [RecurringOccurrence]) {
         let today = calendar.startOfDay(for: Date())
@@ -59,7 +61,8 @@ class RecurringTransactionGenerator {
                 series: activeSeries,
                 horizonDate: horizonDate,
                 existingOccurrenceKeys: &existingOccurrenceKeys,
-                existingTransactionIds: existingTransactionIds
+                existingTransactionIds: existingTransactionIds,
+                accounts: accounts
             )
 
             newTransactions.append(contentsOf: transactions)
@@ -75,12 +78,14 @@ class RecurringTransactionGenerator {
     ///   - horizonDate: The date to generate up to
     ///   - existingOccurrenceKeys: Set of existing occurrence keys (modified in place)
     ///   - existingTransactionIds: Set of existing transaction IDs
+    ///   - accounts: Array of accounts for resolving account names
     /// - Returns: Tuple of (transactions, occurrences) for this series
     private func generateTransactionsForSeries(
         series: RecurringSeries,
         horizonDate: Date,
         existingOccurrenceKeys: inout Set<String>,
-        existingTransactionIds: Set<String>
+        existingTransactionIds: Set<String>,
+        accounts: [Account]
     ) -> (transactions: [Transaction], occurrences: [RecurringOccurrence]) {
         guard let startDate = dateFormatter.date(from: series.startDate) else {
             return ([], [])
@@ -123,6 +128,14 @@ class RecurringTransactionGenerator {
                 if !existingTransactionIds.contains(transactionId) {
                     let occurrenceId = UUID().uuidString
 
+                    // Resolve account names
+                    let accountName = series.accountId.flatMap { accountId in
+                        accounts.first(where: { $0.id == accountId })?.name
+                    }
+                    let targetAccountName = series.targetAccountId.flatMap { targetAccountId in
+                        accounts.first(where: { $0.id == targetAccountId })?.name
+                    }
+
                     let transaction = Transaction(
                         id: transactionId,
                         date: dateString,
@@ -135,6 +148,8 @@ class RecurringTransactionGenerator {
                         subcategory: series.subcategory,
                         accountId: series.accountId,
                         targetAccountId: series.targetAccountId,
+                        accountName: accountName,
+                        targetAccountName: targetAccountName,
                         recurringSeriesId: series.id,
                         recurringOccurrenceId: occurrenceId,
                         createdAt: createdAt
@@ -272,6 +287,8 @@ class RecurringTransactionGenerator {
                     subcategory: transaction.subcategory,
                     accountId: transaction.accountId,
                     targetAccountId: transaction.targetAccountId,
+                    accountName: transaction.accountName,
+                    targetAccountName: transaction.targetAccountName,
                     recurringSeriesId: nil, // Remove series ID
                     recurringOccurrenceId: nil, // Remove occurrence ID
                     createdAt: transaction.createdAt

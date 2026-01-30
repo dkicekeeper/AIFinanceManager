@@ -196,6 +196,10 @@
 "account.newAccount" = "Новый счёт";
 "account.newDeposit" = "Новый депозит";
 "account.namePlaceholder" = "Название счёта";
+"account.deleteTitle" = "Удалить счет";
+"account.deleteMessage" = "Что сделать с транзакциями счета '%@'?";
+"account.deleteOnlyAccount" = "Удалить только счет";
+"account.deleteAccountAndTransactions" = "Удалить счет и транзакции";
 "common.currency" = "Валюта";
 "common.balancePlaceholder" = "0.00";
 "common.error" = "Ошибка";
@@ -344,6 +348,8 @@
 "subscriptions.deleteConfirmTitle" = "Удалить подписку?";
 "subscriptions.deleteConfirmMessage" = "Все данные подписки и связанные транзакции будут удалены.";
 "subscriptions.delete" = "Удалить";
+"subscriptions.deleteOnlySubscription" = "Удалить только подписку";
+"subscriptions.deleteSubscriptionAndTransactions" = "Удалить подписку и транзакции";
 "subscriptions.pause" = "Приостановить";
 "subscriptions.resume" = "Возобновить";
 "subscriptions.transactionHistory" = "История транзакций";

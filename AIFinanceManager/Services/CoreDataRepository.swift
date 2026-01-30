@@ -106,6 +106,8 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existing.targetAmount = transaction.targetAmount ?? 0
                             existing.targetCurrency = transaction.targetCurrency
                             existing.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
+                            existing.accountName = transaction.accountName
+                            existing.targetAccountName = transaction.targetAccountName
 
                             // Update relationships if needed
                             if let accountId = transaction.accountId {
@@ -361,6 +363,8 @@ final class CoreDataRepository: DataRepositoryProtocol {
                     existing.targetAmount = transaction.targetAmount ?? 0
                     existing.targetCurrency = transaction.targetCurrency
                     existing.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
+                    existing.accountName = transaction.accountName
+                    existing.targetAccountName = transaction.targetAccountName
 
                     // Установить relationships
                     if let accountId = transaction.accountId {

@@ -28,6 +28,8 @@ struct Transaction: Identifiable, Codable, Equatable {
     let subcategory: String?
     let accountId: String?
     let targetAccountId: String?
+    let accountName: String? // Название счета-источника (для отображения удаленных счетов)
+    let targetAccountName: String? // Название счета-получателя (для отображения удаленных счетов)
     let targetCurrency: String? // Валюта счета получателя
     let targetAmount: Double? // Сумма на счете получателя (по курсу на момент транзакции)
     let recurringSeriesId: String? // Связь с периодической серией
@@ -46,6 +48,8 @@ struct Transaction: Identifiable, Codable, Equatable {
         subcategory: String? = nil,
         accountId: String? = nil,
         targetAccountId: String? = nil,
+        accountName: String? = nil,
+        targetAccountName: String? = nil,
         targetCurrency: String? = nil,
         targetAmount: Double? = nil,
         recurringSeriesId: String? = nil,
@@ -63,6 +67,8 @@ struct Transaction: Identifiable, Codable, Equatable {
         self.subcategory = subcategory
         self.accountId = accountId
         self.targetAccountId = targetAccountId
+        self.accountName = accountName
+        self.targetAccountName = targetAccountName
         self.targetCurrency = targetCurrency
         self.targetAmount = targetAmount
         self.recurringSeriesId = recurringSeriesId
@@ -74,7 +80,7 @@ struct Transaction: Identifiable, Codable, Equatable {
     // Кастомный decoder для обратной совместимости
     enum CodingKeys: String, CodingKey {
         case id, date, time, description, amount, currency, convertedAmount, type, category, subcategory
-        case accountId, targetAccountId, targetCurrency, targetAmount, recurringSeriesId, recurringOccurrenceId, createdAt
+        case accountId, targetAccountId, accountName, targetAccountName, targetCurrency, targetAmount, recurringSeriesId, recurringOccurrenceId, createdAt
     }
     
     init(from decoder: Decoder) throws {
@@ -92,6 +98,8 @@ struct Transaction: Identifiable, Codable, Equatable {
         subcategory = try container.decodeIfPresent(String.self, forKey: .subcategory)
         accountId = try container.decodeIfPresent(String.self, forKey: .accountId)
         targetAccountId = try container.decodeIfPresent(String.self, forKey: .targetAccountId)
+        accountName = try container.decodeIfPresent(String.self, forKey: .accountName)
+        targetAccountName = try container.decodeIfPresent(String.self, forKey: .targetAccountName)
         targetCurrency = try container.decodeIfPresent(String.self, forKey: .targetCurrency)
         targetAmount = try container.decodeIfPresent(Double.self, forKey: .targetAmount)
         recurringSeriesId = try container.decodeIfPresent(String.self, forKey: .recurringSeriesId)
@@ -125,6 +133,8 @@ struct Transaction: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(subcategory, forKey: .subcategory)
         try container.encodeIfPresent(accountId, forKey: .accountId)
         try container.encodeIfPresent(targetAccountId, forKey: .targetAccountId)
+        try container.encodeIfPresent(accountName, forKey: .accountName)
+        try container.encodeIfPresent(targetAccountName, forKey: .targetAccountName)
         try container.encodeIfPresent(targetCurrency, forKey: .targetCurrency)
         try container.encodeIfPresent(targetAmount, forKey: .targetAmount)
         try container.encodeIfPresent(recurringSeriesId, forKey: .recurringSeriesId)

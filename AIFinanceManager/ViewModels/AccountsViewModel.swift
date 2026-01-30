@@ -81,10 +81,11 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
         }
     }
     
-    func deleteAccount(_ account: Account) {
+    func deleteAccount(_ account: Account, deleteTransactions: Bool = false) {
         accounts.removeAll { $0.id == account.id }
         initialAccountBalances.removeValue(forKey: account.id)
         saveAccounts()  // ✅ Sync save
+        // Note: Transaction deletion is handled by the calling view
     }
     
     // MARK: - Account Balance Management

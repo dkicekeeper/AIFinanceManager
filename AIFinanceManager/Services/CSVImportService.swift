@@ -191,10 +191,15 @@ class CSVImportService {
             
             // Парсим тип
             guard let typeString = row[safe: typeIdx]?.trimmingCharacters(in: CharacterSet.whitespaces),
-                  !typeString.isEmpty,
-                  let type = parseType(typeString, mappings: columnMapping.typeMappings) else {
+                  !typeString.isEmpty else {
                 skippedCount += 1
-                errors.append("Строка \(rowIndex + 2): неверный тип операции")
+                errors.append("Строка \(rowIndex + 2): пустой тип операции")
+                continue
+            }
+
+            guard let type = parseType(typeString, mappings: columnMapping.typeMappings) else {
+                skippedCount += 1
+                errors.append("Строка \(rowIndex + 2): неверный тип операции '\(typeString)'")
                 continue
             }
             
@@ -223,7 +228,7 @@ class CSVImportService {
             // Применяем правила парсинга в зависимости от типа
             let effectiveAccountValue: String
             let effectiveCategoryValue: String
-            
+
             switch type {
             case .expense:
                 // Расход: счет = счет, категория = категория расхода
@@ -231,9 +236,16 @@ class CSVImportService {
                 effectiveCategoryValue = rawCategoryValue
             case .income:
                 // Доход: колонка "счет" = категория дохода, колонка "счет получателя" = счет пополнения
-                // Поэтому: счет транзакции = счет получателя, категория транзакции = счет (категория дохода)
-                effectiveAccountValue = rawTargetAccountValue
-                effectiveCategoryValue = rawAccountValue
+                // Если "счет получателя" пустой, используем "категорию" как счет (для старых CSV)
+                if !rawTargetAccountValue.isEmpty {
+                    // Новый формат: счет транзакции = счет получателя, категория = счет (категория дохода)
+                    effectiveAccountValue = rawTargetAccountValue
+                    effectiveCategoryValue = rawAccountValue
+                } else {
+                    // Старый формат: счет транзакции = категория, категория дохода = счет
+                    effectiveAccountValue = rawCategoryValue
+                    effectiveCategoryValue = rawAccountValue
+                }
             case .internalTransfer:
                 // Перевод: счет = счет, категория всегда "Перевод" (локализованная)
                 effectiveAccountValue = rawAccountValue
@@ -505,6 +517,23 @@ class CSVImportService {
                 createdAt: createdAt
             )
             
+            // Resolve account names for the transaction
+            let accountName = accountId.flatMap { id in
+                if let accountsVM = accountsViewModel {
+                    return accountsVM.accounts.first(where: { $0.id == id })?.name
+                } else {
+                    return transactionsViewModel.accounts.first(where: { $0.id == id })?.name
+                }
+            }
+
+            let targetAccountName = targetAccountId.flatMap { id in
+                if let accountsVM = accountsViewModel {
+                    return accountsVM.accounts.first(where: { $0.id == id })?.name
+                } else {
+                    return transactionsViewModel.accounts.first(where: { $0.id == id })?.name
+                }
+            }
+
             // CSV уже содержит суммы и валюты источника + эквиваленты в других валютах.
             // Конвертация по курсу не нужна — суммы берутся как есть из таблицы.
             // targetCurrency/targetAmount используются для:
@@ -522,6 +551,8 @@ class CSVImportService {
                 subcategory: subcategoryName,
                 accountId: accountId,
                 targetAccountId: targetAccountId,
+                accountName: accountName,
+                targetAccountName: targetAccountName,
                 targetCurrency: targetCurrency,
                 targetAmount: targetAmount,
                 recurringSeriesId: nil,

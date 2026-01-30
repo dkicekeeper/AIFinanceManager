@@ -176,17 +176,22 @@ struct SubscriptionDetailView: View {
             )
         }
         .alert(String(localized: "subscriptions.deleteConfirmTitle"), isPresented: $showingDeleteConfirmation) {
-            Button(String(localized: "subscriptions.delete"), role: .destructive) {
-                subscriptionsViewModel.deleteRecurringSeries(subscription.id)
-                // Also delete related transactions (only future ones - past ones are already converted to regular)
-                transactionsViewModel.allTransactions.removeAll { $0.recurringSeriesId == subscription.id }
-                transactionsViewModel.recalculateAccountBalances()
-                // CRITICAL: Save changes to storage to persist deletion
+            Button(String(localized: "quickAdd.cancel"), role: .cancel) {}
+
+            Button(String(localized: "subscriptions.deleteOnlySubscription"), role: .destructive) {
+                subscriptionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: false)
+                transactionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: false)
                 transactionsViewModel.saveToStorage()
-                // Закрываем модалку после удаления
                 dismiss()
             }
-            Button(String(localized: "quickAdd.cancel"), role: .cancel) {}
+
+            Button(String(localized: "subscriptions.deleteSubscriptionAndTransactions"), role: .destructive) {
+                subscriptionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: true)
+                transactionsViewModel.allTransactions.removeAll { $0.recurringSeriesId == subscription.id }
+                transactionsViewModel.recalculateAccountBalances()
+                transactionsViewModel.saveToStorage()
+                dismiss()
+            }
         } message: {
             Text(String(localized: "subscriptions.deleteConfirmMessage"))
         }

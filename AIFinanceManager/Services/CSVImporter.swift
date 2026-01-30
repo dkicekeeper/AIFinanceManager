@@ -65,26 +65,43 @@ class CSVImporter {
     }
     
     private static func parseCSVContent(_ content: String) throws -> CSVFile {
-        
+
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        
+
         guard !lines.isEmpty else {
             throw CSVImportError.emptyFile
         }
-        
+
         // Парсим CSV с учетом кавычек
         let parsedLines = lines.map { parseCSVLine($0) }
-        
+
         guard let headers = parsedLines.first else {
             throw CSVImportError.noHeaders
         }
-        
-        
-        let rows = Array(parsedLines.dropFirst())
+
+        let expectedColumnCount = headers.count
+
+        // Нормализуем строки - дополняем недостающие колонки пустыми значениями
+        let rows = Array(parsedLines.dropFirst()).map { row in
+            normalizeRow(row, expectedColumnCount: expectedColumnCount)
+        }
+
         let preview = Array(rows.prefix(5))
-        
-        
+
+
         return CSVFile(headers: headers, rows: rows, preview: preview)
+    }
+
+    private static func normalizeRow(_ row: [String], expectedColumnCount: Int) -> [String] {
+        if row.count == expectedColumnCount {
+            return row
+        } else if row.count < expectedColumnCount {
+            // Дополняем недостающие колонки пустыми значениями
+            return row + Array(repeating: "", count: expectedColumnCount - row.count)
+        } else {
+            // Обрезаем лишние колонки
+            return Array(row.prefix(expectedColumnCount))
+        }
     }
     
     private static func parseCSVLine(_ line: String) -> [String] {

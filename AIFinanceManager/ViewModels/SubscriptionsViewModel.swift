@@ -130,20 +130,22 @@ class SubscriptionsViewModel: ObservableObject {
         }
     }
     
-    func deleteRecurringSeries(_ seriesId: String) {
-        
+    func deleteRecurringSeries(_ seriesId: String, deleteTransactions: Bool = true) {
+
         // ✅ CRITICAL: Use filter to create new array for @Published trigger
         recurringOccurrences = recurringOccurrences.filter { $0.seriesId != seriesId }
         recurringSeries = recurringSeries.filter { $0.id != seriesId }
-        
-        
+
+
         saveRecurringSeries()  // ✅ Sync save
         repository.saveRecurringOccurrences(recurringOccurrences)
-        
+
         // Cancel notifications for subscriptions
         Task {
             await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
         }
+
+        // Note: Transaction deletion is handled by TransactionsViewModel
     }
     
     // MARK: - Subscription Operations

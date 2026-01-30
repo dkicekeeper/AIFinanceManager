@@ -30,6 +30,8 @@ extension TransactionEntity {
     @NSManaged public var targetAmount: Double
     @NSManaged public var targetCurrency: String?
     @NSManaged public var type: String?
+    @NSManaged public var accountName: String?
+    @NSManaged public var targetAccountName: String?
     @NSManaged public var account: AccountEntity?
     @NSManaged public var recurringSeries: RecurringSeriesEntity?
     @NSManaged public var targetAccount: AccountEntity?

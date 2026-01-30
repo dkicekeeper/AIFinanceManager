@@ -32,6 +32,8 @@ extension TransactionEntity {
             subcategory: subcategory,
             accountId: account?.id,
             targetAccountId: targetAccount?.id,
+            accountName: accountName ?? account?.name,
+            targetAccountName: targetAccountName ?? targetAccount?.name,
             targetCurrency: targetCurrency ?? targetAccount?.currency,
             targetAmount: targetAmount == 0 ? nil : targetAmount,
             recurringSeriesId: recurringSeries?.id,
@@ -55,6 +57,8 @@ extension TransactionEntity {
         entity.targetAmount = transaction.targetAmount ?? 0
         entity.targetCurrency = transaction.targetCurrency
         entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
+        entity.accountName = transaction.accountName
+        entity.targetAccountName = transaction.targetAccountName
         // Relationships will be set separately by finding AccountEntity and RecurringSeriesEntity
         return entity
     }

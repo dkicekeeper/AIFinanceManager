@@ -80,29 +80,47 @@ struct TransactionInfoView: View {
 struct TransferAccountInfo: View {
     let transaction: Transaction
     let accounts: [Account]
-    
+
     var body: some View {
         HStack(spacing: AppSpacing.xs) {
+            // Source account
             if let sourceId = transaction.accountId,
                let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
+                // Account exists - show with logo
                 HStack(spacing: AppSpacing.xs) {
                     sourceAccount.bankLogo.image(size: AppIconSize.sm)
                     Text(sourceAccount.name)
                         .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
                 }
+            } else if let accountName = transaction.accountName {
+                // Account was deleted - show name only
+                Text(accountName)
+                    .font(AppTypography.bodySmall)
+                    .foregroundColor(.secondary)
+                    .italic()
             }
+
             Image(systemName: "arrow.right")
                 .font(.system(size: AppIconSize.sm))
                 .foregroundColor(.secondary)
+
+            // Target account
             if let targetId = transaction.targetAccountId,
                let targetAccount = accounts.first(where: { $0.id == targetId }) {
+                // Account exists - show with logo
                 HStack(spacing: AppSpacing.xs) {
                     targetAccount.bankLogo.image(size: AppIconSize.sm)
                     Text(targetAccount.name)
                         .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
                 }
+            } else if let targetAccountName = transaction.targetAccountName {
+                // Account was deleted - show name only
+                Text(targetAccountName)
+                    .font(AppTypography.bodySmall)
+                    .foregroundColor(.secondary)
+                    .italic()
             }
         }
     }
@@ -113,16 +131,23 @@ struct TransferAccountInfo: View {
 struct RegularAccountInfo: View {
     let transaction: Transaction
     let accounts: [Account]
-    
+
     var body: some View {
         if let accountId = transaction.accountId,
            let account = accounts.first(where: { $0.id == accountId }) {
+            // Account exists - show with logo
             HStack(spacing: AppSpacing.xs) {
                 account.bankLogo.image(size: AppIconSize.sm)
                 Text(account.name)
                     .font(AppTypography.bodySmall)
                     .foregroundColor(.secondary)
             }
+        } else if let accountName = transaction.accountName {
+            // Account was deleted - show name only without logo
+            Text(accountName)
+                .font(AppTypography.bodySmall)
+                .foregroundColor(.secondary)
+                .italic()
         }
     }
 }
