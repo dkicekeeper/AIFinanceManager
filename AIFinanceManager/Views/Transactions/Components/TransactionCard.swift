@@ -59,11 +59,34 @@ struct TransactionCard: View {
                 if transaction.type == .internalTransfer {
                     transferAmountView
                 } else {
-                    Text(amountText)
-                        .font(AppTypography.body)
-                        .fontWeight(.semibold)
-                        .foregroundColor(amountColor)
-                        .multilineTextAlignment(.trailing)
+                    FormattedAmountView(
+                        amount: transaction.amount,
+                        currency: transaction.currency,
+                        prefix: amountPrefix,
+                        color: amountColor
+                    )
+
+                    // Если есть вторая валюта (мультивалютные транзакции)
+                    if let targetCurrency = transaction.targetCurrency,
+                       let targetAmount = transaction.targetAmount,
+                       targetCurrency != transaction.currency {
+                        HStack(spacing: 0) {
+                            Text("(")
+                                .font(AppTypography.body)
+                                .fontWeight(.semibold)
+                                .foregroundColor(amountColor.opacity(0.7))
+                            FormattedAmountView(
+                                amount: targetAmount,
+                                currency: targetCurrency,
+                                prefix: "",
+                                color: amountColor.opacity(0.7)
+                            )
+                            Text(")")
+                                .font(AppTypography.body)
+                                .fontWeight(.semibold)
+                                .foregroundColor(amountColor.opacity(0.7))
+                        }
+                    }
                 }
             }
         }
@@ -262,6 +285,21 @@ struct TransactionCard: View {
             return .primary
         }
     }
+
+    private var amountPrefix: String {
+        switch transaction.type {
+        case .income:
+            return "+"
+        case .expense:
+            return "-"
+        case .internalTransfer:
+            return ""
+        case .depositTopUp, .depositInterestAccrual:
+            return "+"
+        case .depositWithdrawal:
+            return "-"
+        }
+    }
     
     @ViewBuilder
     private var transferAmountView: some View {
@@ -272,7 +310,7 @@ struct TransactionCard: View {
         let targetAccount: Account? = transaction.targetAccountId.flatMap { targetId in
             accounts.first(where: { $0.id == targetId })
         }
-        
+
         if let source = sourceAccount {
             let sourceCurrency = source.currency
             // Сумма источника — из данных, записанных при создании
@@ -284,28 +322,36 @@ struct TransactionCard: View {
                 let targetAmount = transaction.targetAmount ?? transaction.convertedAmount ?? transaction.amount
 
                 VStack(alignment: .trailing, spacing: AppSpacing.xs) {
-                    Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
-                        .font(AppTypography.body)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.red)
+                    FormattedAmountView(
+                        amount: sourceAmount,
+                        currency: sourceCurrency,
+                        prefix: "-",
+                        color: .primary
+                    )
 
-                    Text("+\(Formatting.formatCurrency(targetAmount, currency: targetCurrency))")
-                        .font(AppTypography.body)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.green)
+                    FormattedAmountView(
+                        amount: targetAmount,
+                        currency: targetCurrency,
+                        prefix: "+",
+                        color: .green
+                    )
                 }
             } else {
-                Text("-\(Formatting.formatCurrency(sourceAmount, currency: sourceCurrency))")
-                    .font(AppTypography.body)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.red)
+                FormattedAmountView(
+                    amount: sourceAmount,
+                    currency: sourceCurrency,
+                    prefix: "-",
+                    color: .primary
+                )
             }
         } else {
             // Если счета источника нет, показываем основную сумму
-            Text(amountText)
-                .font(AppTypography.body)
-                .fontWeight(.semibold)
-                .foregroundColor(amountColor)
+            FormattedAmountView(
+                amount: transaction.amount,
+                currency: transaction.currency,
+                prefix: "",
+                color: amountColor
+            )
         }
     }
 }

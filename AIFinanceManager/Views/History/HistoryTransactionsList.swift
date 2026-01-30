@@ -86,17 +86,21 @@ struct HistoryTransactionsList: View {
                     Section(
                         header: dateHeader(for: dateKey, transactions: grouped[dateKey] ?? [])
                     ) {
-                        LazyVStack(spacing: AppSpacing.sm) {
-                            ForEach(grouped[dateKey] ?? []) { transaction in
-                                TransactionCard(
-                                    transaction: transaction,
-                                    currency: baseCurrency,
-                                    customCategories: categoriesViewModel.customCategories,
-                                    accounts: accountsViewModel.accounts,
-                                    viewModel: transactionsViewModel,
-                                    categoriesViewModel: categoriesViewModel
-                                )
-                            }
+                        ForEach(grouped[dateKey] ?? []) { transaction in
+                            TransactionCard(
+                                transaction: transaction,
+                                currency: baseCurrency,
+                                customCategories: categoriesViewModel.customCategories,
+                                accounts: accountsViewModel.accounts,
+                                viewModel: transactionsViewModel,
+                                categoriesViewModel: categoriesViewModel
+                            )
+                            .listRowInsets(EdgeInsets(
+                                top: AppSpacing.sm,
+                                leading: AppSpacing.lg,
+                                bottom: AppSpacing.sm,
+                                trailing: AppSpacing.lg
+                            ))
                         }
                     }
                     .id(dateKey)
