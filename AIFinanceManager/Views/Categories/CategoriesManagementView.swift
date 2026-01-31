@@ -114,20 +114,43 @@ struct CategoriesManagementView: View {
             }
             Button(String(localized: "category.deleteOnlyCategory"), role: .destructive) {
                 HapticManager.warning()
-                // Update transactions to use "Uncategorized" if needed
+                print("🗑️ [CategoryDeleteOnly] Deleting category '\(category.name)' WITHOUT transactions")
+
+                // Delete category (transactions keep the category name as string)
                 categoriesViewModel.deleteCategory(category, deleteTransactions: false)
+
+                // CRITICAL: Invalidate aggregate cache entry for this specific category
+                // Even though transactions remain, the category entity is deleted
                 transactionsViewModel.invalidateCaches()
+
+                // Rebuild aggregate cache to remove this category from UI
+                transactionsViewModel.rebuildAggregateCacheInBackground()
+
+                print("🗑️ [CategoryDeleteOnly] Completed - transactions keep category name as string")
                 categoryToDelete = nil
             }
             Button(String(localized: "category.deleteCategoryAndTransactions"), role: .destructive) {
                 HapticManager.warning()
+                print("🗑️ [CategoryDelete+Txns] Deleting category '\(category.name)' with transactions")
+
                 // Delete transactions with this category
+                let txnsToDelete = transactionsViewModel.allTransactions.filter {
+                    $0.category == category.name && $0.type == category.type
+                }
+                print("🗑️ [CategoryDelete+Txns] Removing \(txnsToDelete.count) transactions")
+
                 transactionsViewModel.allTransactions.removeAll {
                     $0.category == category.name && $0.type == category.type
                 }
+
                 transactionsViewModel.recalculateAccountBalances()
+
+                // Delete category
                 categoriesViewModel.deleteCategory(category, deleteTransactions: true)
-                transactionsViewModel.invalidateCaches()
+
+                // CRITICAL: Clear and rebuild aggregate cache since transactions deleted
+                transactionsViewModel.clearAndRebuildAggregateCache()
+
                 categoryToDelete = nil
             }
         } message: { category in
