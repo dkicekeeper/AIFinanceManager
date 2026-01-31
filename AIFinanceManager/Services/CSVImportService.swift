@@ -658,17 +658,23 @@ class CSVImportService {
             // Повторное сохранение удваивало время операции (~20-30 секунд на 10K транзакций)
             // transactionsViewModel.saveToStorageSync()  // ← УДАЛЕНО
 
-            // Принудительно уведомляем об изменении для обновления UI
+        }
+
+        // CRITICAL: Rebuild aggregate cache BEFORE notifying UI
+        // This ensures cache is ready when UI reads categoryExpenses()
+        print("🔄 [CSVImport] Rebuilding aggregate cache BEFORE UI notification")
+        await transactionsViewModel.rebuildAggregateCacheAfterImport()
+        print("🔄 [CSVImport] Aggregate cache rebuilt, NOW notifying UI")
+
+        // Принудительно уведомляем об изменении для обновления UI
+        // ONLY AFTER cache is ready!
+        await MainActor.run {
             transactionsViewModel.objectWillChange.send()
             categoriesViewModel.objectWillChange.send()
             if let accountsVM = accountsViewModel {
                 accountsVM.objectWillChange.send()
             }
         }
-
-        // Rebuild aggregate cache with imported data for immediate category sums display
-        // Must be called AFTER MainActor.run block (async function)
-        await transactionsViewModel.rebuildAggregateCacheAfterImport()
         
         // Очищаем накопленные данные
         allTransactionSubcategoryLinks.removeAll(keepingCapacity: false)
