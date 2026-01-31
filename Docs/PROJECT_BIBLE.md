@@ -137,8 +137,10 @@ AIFinanceManager/
 │   ├── BalanceCalculationService.swift # Balance calculation modes
 │   ├── BalanceUpdateCoordinator.swift  # Race condition prevention
 │   ├── DepositInterestService.swift   # Interest accrual logic
-│   ├── TransactionCacheManager.swift  # ✨ NEW: Cache management (summary, balances, indexes)
-│   ├── TransactionCurrencyService.swift # ✨ NEW: Currency conversion caching
+│   ├── TransactionCacheManager.swift  # ✨ Cache management (summary, balances, indexes)
+│   ├── TransactionCurrencyService.swift # ✨ Currency conversion caching
+│   ├── CategoryAggregateCache.swift   # ✨ Category aggregation cache (3-level)
+│   ├── CategoryAggregateService.swift # ✨ Aggregate building logic
 │   ├── CSVImportService.swift         # CSV parsing + entity creation (~717 lines)
 │   ├── CSVImporter.swift / CSVExporter.swift
 │   ├── VoiceInputService.swift        # Speech recognition
@@ -276,9 +278,29 @@ Transaction (1) ── (N) TransactionSubcategoryLink ── (1) Subcategory
 ### Single Source of Truth
 - **Accounts + balances:** `AccountsViewModel.accounts` — единый массив, конвертируется из CoreData
 - **Transactions:** `TransactionsViewModel.allTransactions` — полный набор в памяти
-- **Categories:** `CategoriesViewModel.customCategories`
+- **Categories:** `CategoriesViewModel.customCategories` ⚠️ **ВАЖНО:** также дублируется в `TransactionsViewModel.customCategories` — требуется синхронизация при изменениях
 - **Time filter:** `TimeFilterManager.currentFilter` (global)
 - **Settings:** `AppSettings` (singleton через load/save)
+
+### Кэширование
+
+**TransactionCacheManager** (в `TransactionsViewModel`):
+- `cachedSummary` — доходы/расходы по периоду
+- `cachedCategoryExpenses` — суммы по категориям
+- `cachedAccountBalances` — последние рассчитанные балансы
+- `transactionSubcategoryIndex` — O(1) lookup подкатегорий
+- `parsedDatesCache` — распарсенные даты транзакций
+
+**CategoryAggregateCache** (singleton):
+- In-memory: `aggregatesByKey: [String: CategoryAggregate]`
+- CoreData: `CategoryAggregateEntity` для персистентности
+- 3-level aggregation: monthly, yearly, all-time
+- Поддерживает incremental updates и full rebuild
+
+**Стратегия инвалидации:**
+- `invalidateCaches()` — очищает summary/currency кэши (НЕ aggregate cache)
+- `clearAndRebuildAggregateCache()` — полная перестройка + автоматическая инвалидация summary
+- Incremental updates сохраняют aggregate cache для производительности
 
 ### Миграция
 `DataMigrationService` — однократная миграция из UserDefaults → CoreData (версия `coreDataMigrationCompleted_v5`). После миграции UserDefaults исользуется только как fallback при ошибках CoreData.
@@ -680,6 +702,124 @@ Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
   - Код служит как reference implementation для будущего
 - Pagination для History — "Load More" button (1 час, low priority)
 - Debounce Search Input — задержка поиска (20 мин, low priority)
+
+### v2.2 (2026-01-31) — CategoryAggregate System & Cache Fixes
+
+**Контекст:** Исправление критических багов после внедрения системы CategoryAggregate
+
+**Проблемы, которые были обнаружены:**
+1. После CSV импорта суммы категорий на главной = 0 (UI зависание)
+2. Балансы счетов изменялись при удалении только счета (без транзакций)
+3. Категории оставались видимыми после удаления
+4. Summary показывал старые суммы после удаления категорий с транзакциями
+5. Удалённые категории возвращались после перезапуска приложения
+
+**Root Causes:**
+- `invalidateCaches()` очищал aggregate cache после инкрементальных обновлений
+- Internal transfer обработка использовала `guard...continue`, пропуская транзакции
+- Summary cache не инвалидировался после aggregate rebuild
+- Transaction deletions не сохранялись в CoreData
+- Дублирование `customCategories` в двух ViewModels без синхронизации
+
+**Выполнено (10 коммитов):**
+
+1. **Fix aggregate cache invalidation strategy** (12d03fc)
+   - Разделены `invalidateCaches()` (summary/currency) и `clearAndRebuildAggregateCache()`
+   - Aggregate cache теперь сохраняется при инкрементальных обновлениях
+   - **Результат:** CSV импорт работает, суммы категорий отображаются
+
+2. **Fix balance recalculation for internal transfers** (58072a5)
+   - Изменена обработка internal transfers с `guard...continue` на независимую
+   - Каждая сторона перевода обрабатывается отдельно
+   - **Результат:** Балансы не меняются при удалении только счета
+
+3. **Add aggregate cache rebuild for category deletion** (64a155e)
+   - Добавлен `rebuildAggregateCacheInBackground()` для удаления категории без транзакций
+   - **Результат:** Категория исчезает с UI сразу после удаления
+
+4. **Fix summary cache invalidation after rebuild** (438a11f)
+   - Добавлена инвалидация summary cache ПОСЛЕ завершения aggregate rebuild
+   - Применено к `clearAndRebuildAggregateCache()` и `rebuildAggregateCacheInBackground()`
+   - **Результат:** Summary показывает свежие данные после rebuild
+
+5. **Add validCategoryNames filtering** (b8e57d1)
+   - `CategoryAggregateCache.getCategoryExpenses()` принимает `validCategoryNames: Set<String>?`
+   - `TransactionsViewModel.categoryExpenses()` принимает `CategoriesViewModel?`
+   - `QuickAddTransactionView.popularCategories()` фильтрует по `existingCategoryNames`
+   - **Результат:** Удалённые категории не показываются в UI
+
+6. **Fix summary cache timing** (b8e57d1)
+   - Добавлен `invalidateCaches()` сразу после удаления транзакций в `CategoriesManagementView`
+   - Вызов происходит ДО `recalculateAccountBalances()`
+   - **Результат:** Summary обновляется корректно во время сессии
+
+7. **Save transaction deletions to storage** (400bd6f)
+   - Добавлен `saveToStorageSync()` после удаления категории с транзакциями
+   - **Результат:** Изменения сохраняются в CoreData и переживают перезапуск
+
+8. **Sync deleted categories between ViewModels** (cf77f1e)
+   - Синхронизация `customCategories` из `CategoriesViewModel` в `TransactionsViewModel`
+   - Применено для обоих сценариев удаления (с/без транзакций)
+   - **Результат:** Удалённые категории не воскресают после перезапуска
+
+**Архитектура CategoryAggregate:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  CategoryAggregate System (3-level aggregation)         │
+│                                                          │
+│  Level 1: Monthly (year, month, category, subcategory)  │
+│  Level 2: Yearly (year, 0, category, subcategory)       │
+│  Level 3: All-time (0, 0, category, subcategory)        │
+│                                                          │
+│  Components:                                            │
+│    ├── CategoryAggregateCache (in-memory + CoreData)   │
+│    ├── CategoryAggregateService (build logic)          │
+│    └── CategoryAggregateEntity (CoreData storage)      │
+│                                                          │
+│  Cache Strategy:                                        │
+│    - Incremental updates for add/delete/update         │
+│    - Full rebuild only after CSV import or category     │
+│      deletion                                           │
+│    - Two-level caching:                                │
+│      Level 1: TransactionCacheManager (summary)        │
+│      Level 2: CategoryAggregateCache (aggregates)      │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Критические правила для работы с CategoryAggregate:**
+
+1. **Инкрементальные обновления:**
+   - При добавлении/удалении/изменении транзакции используй `aggregateCache.updateForTransaction()`
+   - НЕ очищай aggregate cache! Только инвалидируй summary cache через `invalidateCaches()`
+
+2. **Полная перестройка:**
+   - После CSV импорта, удаления категории с транзакциями
+   - Используй `clearAndRebuildAggregateCache()` который автоматически инвалидирует summary cache
+
+3. **Удаление категории:**
+   - С транзакциями: удали транзакции → invalidate → recalculate → sync categories → save → rebuild
+   - Без транзакций: удали категорию → sync categories → save → rebuild
+   - ВСЕГДА синхронизируй `customCategories` между ViewModels
+
+4. **Фильтрация удалённых категорий:**
+   - Всегда передавай `categoriesViewModel` в `categoryExpenses()` и `popularCategories()`
+   - `getCategoryExpenses()` автоматически отфильтрует несуществующие категории
+
+**Файлы:**
+- `Services/CategoryAggregateCache.swift` — кэш с фильтрацией
+- `Services/CategoryAggregateService.swift` — логика построения агрегатов
+- `ViewModels/TransactionsViewModel.swift` — интеграция с фильтрацией
+- `Views/Categories/CategoriesManagementView.swift` — правильный flow удаления
+- `Views/Transactions/QuickAddTransactionView.swift` — фильтрация в UI
+
+**Impact:**
+- ✅ CSV импорт работает без зависаний
+- ✅ Категории показывают правильные суммы
+- ✅ Балансы счетов корректны при всех операциях
+- ✅ Summary обновляется синхронно
+- ✅ Удалённые категории не возвращаются
+- ✅ Все изменения персистентны после перезапуска
 
 ### Оставшиеся рекомендации
 
