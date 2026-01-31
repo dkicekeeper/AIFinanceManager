@@ -593,7 +593,10 @@ class TransactionsViewModel: ObservableObject {
         return result
     }
     
-    func categoryExpenses(timeFilterManager: TimeFilterManager) -> [String: CategoryExpense] {
+    func categoryExpenses(
+        timeFilterManager: TimeFilterManager,
+        categoriesViewModel: CategoriesViewModel? = nil
+    ) -> [String: CategoryExpense] {
         print("📊 [categoryExpenses] Called - cacheInvalidated: \(cacheManager.categoryExpensesCacheInvalidated)")
 
         // Проверить кеш
@@ -605,10 +608,17 @@ class TransactionsViewModel: ObservableObject {
 
         print("📊 [categoryExpenses] Recalculating from aggregate cache...")
 
+        // CRITICAL FIX: Получить список существующих категорий для фильтрации
+        // Это предотвращает отображение удалённых категорий после перезапуска
+        let validCategoryNames: Set<String>? = categoriesViewModel.map { vm in
+            Set(vm.customCategories.map { $0.name })
+        }
+
         // Использовать кеш агрегатов для эффективного расчета
         let result = aggregateCache.getCategoryExpenses(
             timeFilter: timeFilterManager.currentFilter,
-            baseCurrency: appSettings.baseCurrency
+            baseCurrency: appSettings.baseCurrency,
+            validCategoryNames: validCategoryNames
         )
 
         print("📊 [categoryExpenses] Fresh data calculated: \(result.keys.count) categories, total: \(result.values.reduce(0) { $0 + $1.total })")
@@ -619,8 +629,14 @@ class TransactionsViewModel: ObservableObject {
         return result
     }
     
-    func popularCategories(timeFilterManager: TimeFilterManager) -> [String] {
-        let expenses = categoryExpenses(timeFilterManager: timeFilterManager)
+    func popularCategories(
+        timeFilterManager: TimeFilterManager,
+        categoriesViewModel: CategoriesViewModel? = nil
+    ) -> [String] {
+        let expenses = categoryExpenses(
+            timeFilterManager: timeFilterManager,
+            categoriesViewModel: categoriesViewModel
+        )
         return Array(expenses.keys)
             .sorted { expenses[$0]?.total ?? 0 > expenses[$1]?.total ?? 0 }
     }

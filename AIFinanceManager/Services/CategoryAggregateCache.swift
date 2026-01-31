@@ -80,7 +80,8 @@ class CategoryAggregateCache {
     /// Получить суммы по категориям для периода (O(1) для кешированных)
     func getCategoryExpenses(
         timeFilter: TimeFilter,
-        baseCurrency: String
+        baseCurrency: String,
+        validCategoryNames: Set<String>? = nil
     ) -> [String: CategoryExpense] {
 
         print("🗂️ [CategoryAggregateCache] getCategoryExpenses called - isLoaded: \(isLoaded), aggregates count: \(aggregatesByKey.count)")
@@ -113,6 +114,12 @@ class CategoryAggregateCache {
             guard matches else { continue }
 
             let category = aggregate.categoryName
+
+            // CRITICAL FIX: Пропустить категории, которые не существуют в validCategoryNames
+            // Это предотвращает отображение удалённых категорий после перезапуска
+            if let validNames = validCategoryNames, !validNames.contains(category) {
+                continue
+            }
 
             if let subcategoryName = aggregate.subcategoryName {
                 // Это подкатегория - добавить к subcategories

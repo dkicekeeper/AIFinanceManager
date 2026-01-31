@@ -119,12 +119,9 @@ struct CategoriesManagementView: View {
                 // Delete category (transactions keep the category name as string)
                 categoriesViewModel.deleteCategory(category, deleteTransactions: false)
 
-                // CRITICAL: Invalidate aggregate cache entry for this specific category
-                // Even though transactions remain, the category entity is deleted
-                transactionsViewModel.invalidateCaches()
-
-                // Rebuild aggregate cache to remove this category from UI
-                transactionsViewModel.rebuildAggregateCacheInBackground()
+                // CRITICAL: Clear and rebuild aggregate cache to remove deleted category entity
+                // Even though transactions remain, we need to rebuild so the category disappears from UI
+                transactionsViewModel.clearAndRebuildAggregateCache()
 
                 print("🗑️ [CategoryDeleteOnly] Completed - transactions keep category name as string")
                 categoryToDelete = nil
@@ -142,6 +139,10 @@ struct CategoriesManagementView: View {
                 transactionsViewModel.allTransactions.removeAll {
                     $0.category == category.name && $0.type == category.type
                 }
+
+                // CRITICAL FIX: Invalidate ALL caches IMMEDIATELY after transaction deletion
+                // This prevents summary() from returning stale cached data
+                transactionsViewModel.invalidateCaches()
 
                 transactionsViewModel.recalculateAccountBalances()
 

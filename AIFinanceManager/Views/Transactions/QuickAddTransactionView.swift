@@ -162,7 +162,10 @@ struct QuickAddTransactionView: View {
 
             await MainActor.run {
                 PerformanceProfiler.start("QuickAddTransactionView.updateCachedData")
-                cachedCategoryExpenses = transactionsViewModel.categoryExpenses(timeFilterManager: timeFilterManager)
+                cachedCategoryExpenses = transactionsViewModel.categoryExpenses(
+                    timeFilterManager: timeFilterManager,
+                    categoriesViewModel: categoriesViewModel
+                )
                 cachedCategories = popularCategories()
                 PerformanceProfiler.end("QuickAddTransactionView.updateCachedData")
             }
@@ -176,20 +179,33 @@ struct QuickAddTransactionView: View {
     private func popularCategories() -> [String] {
         // Получаем все категории: только пользовательские + из транзакций
         var allCategories = Set<String>()
-        
+
+        // Создаем Set существующих категорий для быстрой проверки
+        let existingCategoryNames = Set(categoriesViewModel.customCategories.map { $0.name })
+
         // Добавляем пользовательские категории расходов
         for customCategory in categoriesViewModel.customCategories where customCategory.type == .expense {
             allCategories.insert(customCategory.name)
         }
-        
-        // Добавляем категории из транзакций (с учетом фильтра по времени)
-        let popularFromTransactions = transactionsViewModel.popularCategories(timeFilterManager: timeFilterManager)
+
+        // CRITICAL FIX: Добавляем категории из транзакций ТОЛЬКО если они существуют в customCategories
+        // Это предотвращает отображение удалённых категорий, даже если транзакции с ними остались
+        let popularFromTransactions = transactionsViewModel.popularCategories(
+            timeFilterManager: timeFilterManager,
+            categoriesViewModel: categoriesViewModel
+        )
         for category in popularFromTransactions {
-            allCategories.insert(category)
+            // Проверяем что категория существует в customCategories
+            if existingCategoryNames.contains(category) {
+                allCategories.insert(category)
+            }
         }
-        
+
         // Сортируем по популярности (сумме расходов с учетом фильтра)
-        let categoryExpenses = transactionsViewModel.categoryExpenses(timeFilterManager: timeFilterManager)
+        let categoryExpenses = transactionsViewModel.categoryExpenses(
+            timeFilterManager: timeFilterManager,
+            categoriesViewModel: categoriesViewModel
+        )
         return Array(allCategories).sorted { category1, category2 in
             let total1 = categoryExpenses[category1]?.total ?? 0
             let total2 = categoryExpenses[category2]?.total ?? 0
