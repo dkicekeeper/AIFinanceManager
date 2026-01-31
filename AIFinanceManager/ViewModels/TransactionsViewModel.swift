@@ -118,10 +118,21 @@ class TransactionsViewModel: ObservableObject {
     private var saveCancellables = Set<AnyCancellable>()
 
     func invalidateCaches() {
-        print("🔄 [TransactionsViewModel] Invalidating all caches")
+        print("🔄 [TransactionsViewModel] Invalidating summary/currency caches (NOT aggregate cache)")
         cacheManager.invalidateAll()
         currencyService.invalidate()
+        // NOTE: We do NOT clear aggregate cache here because:
+        // - Incremental updates (add/delete/update) already updated it correctly
+        // - Clearing it would force unnecessary full rebuild
+        // - If full clear needed, caller should use clearAndRebuildAggregateCache()
+    }
+
+    /// Clear aggregate cache and trigger full rebuild
+    /// Use this when you need to completely rebuild aggregates (e.g., after bulk deletion)
+    func clearAndRebuildAggregateCache() {
+        print("🔄 [clearAndRebuildAggregateCache] Clearing aggregate cache for full rebuild")
         aggregateCache.clear()
+        rebuildAggregateCacheInBackground()
     }
 
     // MARK: - Dependencies
@@ -948,6 +959,7 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func resetAllData() {
+        print("🔄 [resetAllData] Resetting all data")
         allTransactions = []
         categoryRules = []
         accounts = []
@@ -960,17 +972,24 @@ class TransactionsViewModel: ObservableObject {
         initialAccountBalances = [:]
         selectedCategories = nil
         invalidateCaches()
+
+        // CRITICAL: Clear aggregate cache since all transactions are deleted
+        aggregateCache.clear()
+        print("🔄 [resetAllData] Aggregate cache cleared")
+
         repository.clearAllData()
-        
+
         // Принудительно уведомляем об изменении для обновления UI
         objectWillChange.send()
-        
+
     }
     
     func deleteTransaction(_ transaction: Transaction) {
+        print("🗑️ [deleteTransaction] Deleting transaction: \(transaction.id), category: \(transaction.category ?? "nil"), amount: \(transaction.amount)")
 
         // removeAll уже создает новый массив, что правильно триггерит @Published
         allTransactions.removeAll { $0.id == transaction.id }
+        print("🗑️ [deleteTransaction] Removed from allTransactions, count now: \(allTransactions.count)")
 
         if let occurrenceId = transaction.recurringOccurrenceId {
             recurringOccurrences.removeAll { $0.id == occurrenceId }
@@ -980,23 +999,30 @@ class TransactionsViewModel: ObservableObject {
         // чтобы их балансы были пересчитаны с новым списком транзакций
         if let accountId = transaction.accountId {
             accountsWithCalculatedInitialBalance.remove(accountId)
+            print("🗑️ [deleteTransaction] Cleared calculated balance flag for account: \(accountId)")
         }
         if let targetAccountId = transaction.targetAccountId {
             accountsWithCalculatedInitialBalance.remove(targetAccountId)
+            print("🗑️ [deleteTransaction] Cleared calculated balance flag for target account: \(targetAccountId)")
         }
 
         // Инкрементальное обновление кеша агрегатов
+        print("🗑️ [deleteTransaction] BEFORE incremental update - aggregateCache count: \(aggregateCache.cacheCount)")
         aggregateCache.updateForTransaction(
             transaction: transaction,
             operation: .delete,
             baseCurrency: appSettings.baseCurrency
         )
+        print("🗑️ [deleteTransaction] AFTER incremental update - aggregateCache count: \(aggregateCache.cacheCount)")
 
+        print("🗑️ [deleteTransaction] Calling invalidateCaches() - aggregate cache should NOT be cleared (only summary cache)")
         invalidateCaches()
+        print("🗑️ [deleteTransaction] AFTER invalidateCaches() - aggregateCache count: \(aggregateCache.cacheCount)")
+
         scheduleBalanceRecalculation()
 
         scheduleSave()
-        
+
     }
 
     func updateTransaction(_ transaction: Transaction) {
@@ -1689,7 +1715,9 @@ class TransactionsViewModel: ObservableObject {
     }
 
     func recalculateAccountBalances() {
+        print("💰 [recalculateAccountBalances] STARTING - accounts count: \(accounts.count), transactions count: \(allTransactions.count)")
         guard !accounts.isEmpty else {
+            print("💰 [recalculateAccountBalances] SKIPPED - no accounts")
             return
         }
 
@@ -1879,6 +1907,11 @@ class TransactionsViewModel: ObservableObject {
         cacheManager.balanceCacheInvalidated = false
         cacheManager.lastBalanceCalculationTransactionCount = allTransactions.count
         cacheManager.cachedAccountBalances = balanceChanges
+
+        print("💰 [recalculateAccountBalances] COMPLETED - Final balances:")
+        for account in accounts {
+            print("💰   Account '\(account.name)': balance = \(account.balance)")
+        }
     }
     
     // MARK: - Recurring Transactions

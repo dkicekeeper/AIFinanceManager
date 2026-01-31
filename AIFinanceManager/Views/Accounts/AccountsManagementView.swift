@@ -172,28 +172,45 @@ struct AccountsManagementView: View {
             }
             Button(String(localized: "account.deleteOnlyAccount"), role: .destructive) {
                 HapticManager.warning()
+                print("🗑️ [AccountDeleteOnly] Deleting account '\(account.name)' WITHOUT transactions")
+
                 accountsViewModel.deleteAccount(account, deleteTransactions: false)
+
                 // Очистить состояние удаленного счета ПЕРЕД пересчетом
                 transactionsViewModel.cleanupDeletedAccount(account.id)
+
                 // Транзакции остаются, accountName сохранен
+                // NOTE: Aggregate cache is NOT touched - transactions unchanged, aggregates remain valid
                 transactionsViewModel.syncAccountsFrom(accountsViewModel)
+
+                print("🗑️ [AccountDeleteOnly] Completed - transactions remain with accountName preserved")
                 accountToDelete = nil
             }
             Button(String(localized: "account.deleteAccountAndTransactions"), role: .destructive) {
                 HapticManager.warning()
+                print("🗑️ [AccountDelete+Txns] Deleting account '\(account.name)' with transactions")
+
                 accountsViewModel.deleteAccount(account, deleteTransactions: true)
+
                 // Удаляем все связанные транзакции
+                let txnsToDelete = transactionsViewModel.allTransactions.filter {
+                    $0.accountId == account.id || $0.targetAccountId == account.id
+                }
+                print("🗑️ [AccountDelete+Txns] Removing \(txnsToDelete.count) transactions")
+
                 transactionsViewModel.allTransactions.removeAll {
                     $0.accountId == account.id || $0.targetAccountId == account.id
                 }
+
                 // Очистить состояние удаленного счета ПЕРЕД пересчетом
                 transactionsViewModel.cleanupDeletedAccount(account.id)
-                // CRITICAL: Invalidate caches since transactions were deleted
-                transactionsViewModel.invalidateCaches()
+
+                // CRITICAL: Use new method to clear and rebuild aggregate cache
+                transactionsViewModel.clearAndRebuildAggregateCache()
+
                 // syncAccountsFrom уже вызывает recalculateAccountBalances, не дублируем
                 transactionsViewModel.syncAccountsFrom(accountsViewModel)
-                // CRITICAL: Rebuild aggregate cache after deleting transactions
-                transactionsViewModel.rebuildAggregateCacheInBackground()
+
                 accountToDelete = nil
             }
         } message: { account in

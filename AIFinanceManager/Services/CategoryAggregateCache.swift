@@ -22,6 +22,11 @@ class CategoryAggregateCache {
 
     private let service = CategoryAggregateService()
 
+    /// Public getter for cache count (for logging/debugging)
+    var cacheCount: Int {
+        aggregatesByKey.count
+    }
+
     // MARK: - Loading
 
     /// Загрузить агрегаты из CoreData при первом обращении (non-blocking)
