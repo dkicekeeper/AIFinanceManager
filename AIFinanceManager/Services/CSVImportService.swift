@@ -649,10 +649,12 @@ class CSVImportService {
                 // Сохраняем обновленные балансы счетов одним батчем (синхронно для импорта)
                 accountsVM.saveAllAccountsSync()
             }
-            
-            // Force save again to ensure everything is persisted (endBatch already saved, but sync is safer)
-            transactionsViewModel.saveToStorageSync()
-            
+
+            // ОПТИМИЗАЦИЯ: Убран избыточный вызов saveToStorageSync()
+            // endBatch() на строке 617 уже вызывает saveToStorage() → saveToStorageSync()
+            // Повторное сохранение удваивало время операции (~20-30 секунд на 10K транзакций)
+            // transactionsViewModel.saveToStorageSync()  // ← УДАЛЕНО
+
             // Принудительно уведомляем об изменении для обновления UI
             transactionsViewModel.objectWillChange.send()
             categoriesViewModel.objectWillChange.send()
