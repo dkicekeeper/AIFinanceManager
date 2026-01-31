@@ -119,6 +119,12 @@ struct CategoriesManagementView: View {
                 // Delete category (transactions keep the category name as string)
                 categoriesViewModel.deleteCategory(category, deleteTransactions: false)
 
+                // CRITICAL: Sync customCategories to TransactionsViewModel to prevent resurrection
+                transactionsViewModel.customCategories = categoriesViewModel.customCategories
+
+                // CRITICAL: Save to storage so deletions persist after app restart
+                transactionsViewModel.saveToStorageSync()
+
                 // CRITICAL: Clear and rebuild aggregate cache to remove deleted category entity
                 // Even though transactions remain, we need to rebuild so the category disappears from UI
                 transactionsViewModel.clearAndRebuildAggregateCache()
@@ -148,6 +154,10 @@ struct CategoriesManagementView: View {
 
                 // Delete category
                 categoriesViewModel.deleteCategory(category, deleteTransactions: true)
+
+                // CRITICAL: Sync customCategories to TransactionsViewModel to prevent resurrection
+                // TransactionsViewModel also stores categories and will save them on next sync
+                transactionsViewModel.customCategories = categoriesViewModel.customCategories
 
                 // CRITICAL: Save to storage so deletions persist after app restart
                 transactionsViewModel.saveToStorageSync()

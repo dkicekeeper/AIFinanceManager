@@ -183,10 +183,15 @@ struct QuickAddTransactionView: View {
         // Создаем Set существующих категорий для быстрой проверки
         let existingCategoryNames = Set(categoriesViewModel.customCategories.map { $0.name })
 
+        print("📋 [popularCategories] customCategories count: \(categoriesViewModel.customCategories.count)")
+        print("📋 [popularCategories] existingCategoryNames: \(existingCategoryNames)")
+
         // Добавляем пользовательские категории расходов
         for customCategory in categoriesViewModel.customCategories where customCategory.type == .expense {
             allCategories.insert(customCategory.name)
         }
+
+        print("📋 [popularCategories] allCategories after adding custom: \(allCategories)")
 
         // CRITICAL FIX: Добавляем категории из транзакций ТОЛЬКО если они существуют в customCategories
         // Это предотвращает отображение удалённых категорий, даже если транзакции с ними остались

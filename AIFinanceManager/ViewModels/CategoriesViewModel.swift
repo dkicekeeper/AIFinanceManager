@@ -41,6 +41,9 @@ class CategoriesViewModel: ObservableObject {
         self.subcategories = repository.loadSubcategories()
         self.categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         self.transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
+
+        print("🔄 [CategoriesViewModel] Loaded \(customCategories.count) categories from storage")
+        print("🔄 [CategoriesViewModel] Category names: \(customCategories.map { $0.name })")
     }
 
     /// Перезагружает все данные из хранилища (используется после импорта)
@@ -93,10 +96,17 @@ class CategoriesViewModel: ObservableObject {
     func deleteCategory(_ category: CustomCategory, deleteTransactions: Bool = false) {
         // Note: deleteTransactions logic should be handled by TransactionsViewModel
         // This method only handles category deletion
-        
+
+        print("🗑️ [CategoriesViewModel] Deleting category '\(category.name)' - customCategories count BEFORE: \(customCategories.count)")
+
         // Удаляем категорию
         customCategories.removeAll { $0.id == category.id }
+
+        print("🗑️ [CategoriesViewModel] Deleted category '\(category.name)' - customCategories count AFTER: \(customCategories.count)")
+
         saveCategories()
+
+        print("🗑️ [CategoriesViewModel] Categories saved to storage")
     }
     
     func getCategory(name: String, type: TransactionType) -> CustomCategory? {
