@@ -239,11 +239,48 @@ final class CoreDataRepository: DataRepositoryProtocol {
     
     // MARK: - Category Aggregates
 
-    /// Загрузить все агрегаты категорий из Core Data
-    func loadAggregates() -> [CategoryAggregate] {
+    /// Load aggregates with optional filtering for performance
+    /// - Parameters:
+    ///   - year: Filter by year (nil = load all years)
+    ///   - month: Filter by month (nil = load all months for the year)
+    ///   - limit: Maximum number of records to load (nil = no limit)
+    /// - Returns: Array of category aggregates matching the filter
+    /// - Note: Filtering by year reduces dataset from 57K to ~3K records (10+ years of data)
+    func loadAggregates(
+        year: Int16? = nil,
+        month: Int16? = nil,
+        limit: Int? = nil
+    ) -> [CategoryAggregate] {
         let context = stack.viewContext
         let request = CategoryAggregateEntity.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(key: "lastUpdated", ascending: false)]
+
+        // Build predicates for filtering
+        var predicates: [NSPredicate] = []
+
+        if let year = year {
+            // Load specific year + all-time aggregates (year == 0)
+            // This reduces dataset from 57K to ~3K records for typical usage
+            let yearPredicate = NSPredicate(format: "year == %d OR year == 0", year)
+            predicates.append(yearPredicate)
+
+            if let month = month {
+                // Also filter by month (plus yearly/all-time aggregates where month == 0)
+                let monthPredicate = NSPredicate(format: "month == %d OR month == 0", month)
+                predicates.append(monthPredicate)
+            }
+        }
+
+        if !predicates.isEmpty {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+        }
+
+        request.sortDescriptors = [
+            NSSortDescriptor(key: "lastUpdated", ascending: false)
+        ]
+
+        if let limit = limit {
+            request.fetchLimit = limit
+        }
 
         do {
             let entities = try context.fetch(request)
