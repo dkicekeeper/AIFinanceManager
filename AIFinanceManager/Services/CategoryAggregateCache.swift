@@ -280,7 +280,8 @@ class CategoryAggregateCache {
 
         print("🔄 [CategoryAggregateCache] rebuildFromTransactions started - transactions: \(transactions.count), baseCurrency: \(baseCurrency)")
 
-        // Построить агрегаты с нуля в фоновом потоке
+        // CRITICAL FIX: Build aggregates synchronously in background thread
+        // We MUST wait for completion before returning so cache is ready
         let aggregates: [CategoryAggregate] = await Task.detached(priority: .userInitiated) { [service] in
             service.buildAggregates(
                 from: transactions,
@@ -290,15 +291,14 @@ class CategoryAggregateCache {
 
         print("🔄 [CategoryAggregateCache] Built \(aggregates.count) aggregates")
 
-        // Обновить memory cache НА ГЛАВНОМ ПОТОКЕ
-        await MainActor.run {
-            self.aggregatesByKey.removeAll()
-            for aggregate in aggregates {
-                self.aggregatesByKey[aggregate.id] = aggregate
-            }
-            self.isLoaded = true
-            print("🔄 [CategoryAggregateCache] Memory cache updated - \(self.aggregatesByKey.count) aggregates, isLoaded: \(self.isLoaded)")
+        // CRITICAL FIX: Update memory cache SYNCHRONOUSLY
+        // This ensures cache is ready BEFORE function returns
+        self.aggregatesByKey.removeAll()
+        for aggregate in aggregates {
+            self.aggregatesByKey[aggregate.id] = aggregate
         }
+        self.isLoaded = true
+        print("🔄 [CategoryAggregateCache] Memory cache updated SYNCHRONOUSLY - \(self.aggregatesByKey.count) aggregates, isLoaded: \(self.isLoaded)")
 
         // Сохранить в CoreData асинхронно (БЕЗ ожидания - fire and forget)
         print("🔄 [CategoryAggregateCache] Saving aggregates to CoreData...")
