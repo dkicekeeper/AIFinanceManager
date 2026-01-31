@@ -613,23 +613,23 @@ class CSVImportService {
             // чтобы убедиться, что все данные сохранены после импорта
             categoriesViewModel.saveAllData()
 
-            // End batch mode - this triggers balance recalculation and save
-            transactionsViewModel.endBatch()
+            // OPTIMIZATION: Use endBatchWithoutSave() to skip redundant async save
+            // We'll do a single sync save below for data safety
+            transactionsViewModel.endBatchWithoutSave()
 
             // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ БАГА: Гарантировать синхронное сохранение
-            // endBatch() вызывает АСИНХРОННЫЙ saveToStorage() через Task.detached
+            // endBatchWithoutSave() skips the async save, so we do sync save for data safety
             // Если приложение закроется до завершения задачи → все данные потеряются
-            // Добавляем СИНХРОННОЕ сохранение для гарантии записи на диск ДО продолжения
+            // СИНХРОННОЕ сохранение для гарантии записи на диск ДО продолжения
             transactionsViewModel.saveToStorageSync()
 
-            // Note: endBatch() now handles:
-            // - recalculateAccountBalances()
-            // - saveToStorage()
-            // - refreshDisplayTransactions() (to update UI)
-            // But we still need to do some manual steps for CSV import
+            // Rebuild aggregate cache with imported data for immediate category sums display
+            await transactionsViewModel.rebuildAggregateCacheAfterImport()
 
-            // Explicitly refresh display transactions for UI (extra safeguard)
-            transactionsViewModel.refreshDisplayTransactions()
+            // Note: endBatchWithoutSave() handles:
+            // - recalculateAccountBalances()
+            // - refreshDisplayTransactions() (to update UI)
+            // But skips the async save (we do sync save above)
 
             // Перестраиваем индексы для быстрой фильтрации
             transactionsViewModel.rebuildIndexes()

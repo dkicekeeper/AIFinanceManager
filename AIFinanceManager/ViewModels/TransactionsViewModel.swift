@@ -217,25 +217,24 @@ class TransactionsViewModel: ObservableObject {
         guard !isDataLoaded else {
             return
         }
-        
+
         isDataLoaded = true
         PerformanceProfiler.start("TransactionsViewModel.loadDataAsync")
-        
+
         await MainActor.run {
             isLoading = true
         }
-        
-        // Load data in background thread
+
+        // STEP 1: Load data (WAIT for completion to ensure allTransactions is populated)
         await Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
-            
+
             await MainActor.run {
-                self.loadFromStorage()
+                await self.loadFromStorage()
             }
         }.value
-        
-        // Generate recurring transactions (limited horizon)
-        // Note: PerformanceProfiler is handled inside the method itself
+
+        // STEP 2: Generate recurring transactions (WAIT for completion)
         await Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
 
@@ -244,7 +243,8 @@ class TransactionsViewModel: ObservableObject {
             }
         }.value
 
-        // Инициализация кеша агрегатов категорий
+        // STEP 3: Initialize aggregates AFTER data is fully loaded
+        // Now allTransactions is guaranteed to be populated
         await initializeCategoryAggregates()
 
         await MainActor.run {
@@ -300,7 +300,19 @@ class TransactionsViewModel: ObservableObject {
 
         PerformanceProfiler.end("CategoryAggregate.Migration")
     }
-    
+
+    /// Rebuild aggregate cache after CSV import
+    /// Called by CSVImportService to ensure category sums are up-to-date
+    func rebuildAggregateCacheAfterImport() async {
+        guard let coreDataRepo = repository as? CoreDataRepository else { return }
+
+        await aggregateCache.rebuildFromTransactions(
+            allTransactions,
+            baseCurrency: appSettings.baseCurrency,
+            repository: coreDataRepo
+        )
+    }
+
     private static var dateFormatter: DateFormatter {
         DateFormatters.dateFormatter
     }
@@ -1370,8 +1382,8 @@ class TransactionsViewModel: ObservableObject {
         return balance
     }
     
-    private func loadFromStorage() {
-        
+    private func loadFromStorage() async {
+
         // OPTIMIZATION: Load recent transactions first for fast UI display
         let now = Date()
         let calendar = Calendar.current
@@ -1383,31 +1395,33 @@ class TransactionsViewModel: ObservableObject {
             loadOtherData()
             return
         }
-        
+
         let recentDateRange = DateInterval(start: startDate, end: now)
-        
+
         // Load recent transactions for UI (fast)
         displayTransactions = repository.loadTransactions(dateRange: recentDateRange)
-        
-        // Load ALL transactions asynchronously for calculations
-        Task.detached(priority: .utility) { [weak self] in
+
+        // Load ALL transactions synchronously in background to ensure data is ready before migration
+        // CRITICAL FIX: Use .value to wait for completion so allTransactions is populated
+        // before initializeCategoryAggregates() runs
+        await Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
-            
+
             let allTxns = self.repository.loadTransactions(dateRange: nil)
-            
+
             await MainActor.run {
                 self.allTransactions = allTxns
                 self.hasOlderTransactions = allTxns.count > self.displayTransactions.count
-                
+
                 if self.hasOlderTransactions {
                 }
-                
+
                 // Recalculate caches with full data
                 self.invalidateCaches()
                 self.rebuildIndexes()
             }
-        }
-        
+        }.value
+
         loadOtherData()
     }
     
@@ -2291,6 +2305,23 @@ class TransactionsViewModel: ObservableObject {
         if operationsPerformed.isEmpty {
         } else {
         }
+    }
+
+    /// End batch mode without automatic save (caller handles save)
+    /// Used by CSV import to avoid double-save (endBatch's async save + explicit sync save)
+    func endBatchWithoutSave() {
+        isBatchMode = false
+
+        if pendingBalanceRecalculation {
+            recalculateAccountBalances()
+            pendingBalanceRecalculation = false
+        }
+
+        // Skip save - caller will do sync save for data safety
+        pendingSave = false
+
+        // Refresh displayTransactions after batch operations to ensure UI is updated
+        refreshDisplayTransactions()
     }
 
     /// Refresh displayTransactions from allTransactions

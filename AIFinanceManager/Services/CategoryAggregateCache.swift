@@ -24,22 +24,23 @@ class CategoryAggregateCache {
 
     // MARK: - Loading
 
-    /// Загрузить агрегаты из CoreData при первом обращении
+    /// Загрузить агрегаты из CoreData при первом обращении (non-blocking)
     func loadFromCoreData(repository: CoreDataRepository) async {
         guard !isLoaded else { return }
 
-        // Загрузить из CoreData в фоновом потоке
-        let aggregates = await Task.detached(priority: .userInitiated) {
-            repository.loadAggregates()
-        }.value
+        // Fire and forget - don't block UI thread
+        // This allows UI to remain responsive while aggregates load in background
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let aggregates = repository.loadAggregates()
 
-        // Обновить memory cache НА ГЛАВНОМ ПОТОКЕ
-        await MainActor.run {
-            self.aggregatesByKey.removeAll()
-            for aggregate in aggregates {
-                self.aggregatesByKey[aggregate.id] = aggregate
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                self.aggregatesByKey.removeAll()
+                for aggregate in aggregates {
+                    self.aggregatesByKey[aggregate.id] = aggregate
+                }
+                self.isLoaded = true
             }
-            self.isLoaded = true
         }
     }
 
@@ -50,6 +51,10 @@ class CategoryAggregateCache {
         timeFilter: TimeFilter,
         baseCurrency: String
     ) -> [String: CategoryExpense] {
+
+        // Graceful degradation - return empty if cache not loaded yet
+        // This prevents UI freezing while waiting for CoreData load
+        guard isLoaded else { return [:] }
 
         var result: [String: CategoryExpense] = [:]
 
