@@ -278,6 +278,16 @@ class TransactionsViewModel: ObservableObject {
             return
         }
 
+        // ИСПРАВЛЕНИЕ: Проверить что есть транзакции для миграции
+        // Если allTransactions пустой (данные не загрузились или потерялись),
+        // миграция с пустым массивом вызовет зависание UI
+        guard !allTransactions.isEmpty else {
+            // Нет транзакций - нечего мигрировать, отметить миграцию как завершенную
+            UserDefaults.standard.set(1, forKey: "aggregateCacheVersion")
+            PerformanceProfiler.end("CategoryAggregate.Migration")
+            return
+        }
+
         // Построить агрегаты из всех транзакций в фоновом потоке
         await aggregateCache.rebuildFromTransactions(
             allTransactions,

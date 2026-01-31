@@ -616,6 +616,12 @@ class CSVImportService {
             // End batch mode - this triggers balance recalculation and save
             transactionsViewModel.endBatch()
 
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ БАГА: Гарантировать синхронное сохранение
+            // endBatch() вызывает АСИНХРОННЫЙ saveToStorage() через Task.detached
+            // Если приложение закроется до завершения задачи → все данные потеряются
+            // Добавляем СИНХРОННОЕ сохранение для гарантии записи на диск ДО продолжения
+            transactionsViewModel.saveToStorageSync()
+
             // Note: endBatch() now handles:
             // - recalculateAccountBalances()
             // - saveToStorage()
