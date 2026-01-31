@@ -149,6 +149,9 @@ struct CategoriesManagementView: View {
                 // Delete category
                 categoriesViewModel.deleteCategory(category, deleteTransactions: true)
 
+                // CRITICAL: Save to storage so deletions persist after app restart
+                transactionsViewModel.saveToStorageSync()
+
                 // CRITICAL: Clear and rebuild aggregate cache since transactions deleted
                 transactionsViewModel.clearAndRebuildAggregateCache()
 
