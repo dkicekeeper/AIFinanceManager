@@ -36,6 +36,9 @@ struct ContentView: View {
 
     // Wallpaper image
     @State private var wallpaperImage: UIImage? = nil
+
+    // Cached summary for reactive updates
+    @State private var cachedSummary: Summary? = nil
     
     private var scrollContent: some View {
         VStack(spacing: AppSpacing.lg) {
@@ -269,6 +272,7 @@ struct ContentView: View {
             .onAppear {
                 PerformanceProfiler.start("ContentView.onAppear")
                 loadWallpaper()
+                updateSummary()
 
                 // Setup VoiceInputService with ViewModels for contextual strings (iOS 17+)
                 voiceService.categoriesViewModel = categoriesViewModel
@@ -278,6 +282,12 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
                 loadWallpaper()
+            }
+            .onChange(of: timeFilterManager.currentFilter) { _, _ in
+                updateSummary()
+            }
+            .onChange(of: viewModel.allTransactions.count) { _, _ in
+                updateSummary()
             }
         }
     }
@@ -367,6 +377,13 @@ struct ContentView: View {
     }
 
     
+    // Обновление кешированного summary
+    private func updateSummary() {
+        PerformanceProfiler.start("ContentView.updateSummary")
+        cachedSummary = viewModel.summary(timeFilterManager: timeFilterManager)
+        PerformanceProfiler.end("ContentView.updateSummary")
+    }
+
     // Загрузка обоев (асинхронно для производительности)
     private func loadWallpaper() {
         Task.detached(priority: .userInitiated) {
@@ -454,34 +471,36 @@ struct ContentView: View {
         .screenPadding()
     }
     
+    @ViewBuilder
     private var analyticsCard: some View {
         let currency = viewModel.appSettings.baseCurrency
 
         if viewModel.allTransactions.isEmpty {
-            return AnyView(
-                VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                    HStack {
-                        Text(String(localized: "analytics.history", defaultValue: "История"))
-                            .font(AppTypography.h3)
-                            .foregroundStyle(.primary)
-                    }
-
-                    EmptyStateView(title: String(localized: "emptyState.noTransactions", defaultValue: "Нет транзакций"), style: .compact)
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                HStack {
+                    Text(String(localized: "analytics.history", defaultValue: "История"))
+                        .font(AppTypography.h3)
+                        .foregroundStyle(.primary)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassCardStyle(radius: AppRadius.pill)
-            )
-        }
 
-        // Compute summary directly - ViewModel has internal cache
-        let summary = viewModel.summary(timeFilterManager: timeFilterManager)
-
-        return AnyView(
+                EmptyStateView(title: String(localized: "emptyState.noTransactions", defaultValue: "Нет транзакций"), style: .compact)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCardStyle(radius: AppRadius.pill)
+        } else if let summary = cachedSummary {
+            // Use cached summary - updated reactively via .onChange
             AnalyticsCard(
                 summary: summary,
                 currency: currency
             )
-        )
+            .id("summary-\(summary.totalIncome)-\(summary.totalExpenses)-\(timeFilterManager.currentFilter.preset)")
+        } else {
+            // Fallback during initial load
+            AnalyticsCard(
+                summary: viewModel.summary(timeFilterManager: timeFilterManager),
+                currency: currency
+            )
+        }
     }
     
     

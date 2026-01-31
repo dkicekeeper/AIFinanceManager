@@ -40,7 +40,6 @@ struct HistoryScrollBehavior {
         // Priority 1: Check if "Today" section exists
         if sections.contains(todayKey) {
             #if DEBUG
-            print("📜 [SCROLL] Target: Today section")
             #endif
             return todayKey
         }
@@ -48,7 +47,6 @@ struct HistoryScrollBehavior {
         // Priority 2: Check if "Yesterday" section exists
         if sections.contains(yesterdayKey) {
             #if DEBUG
-            print("📜 [SCROLL] Target: Yesterday section")
             #endif
             return yesterdayKey
         }
@@ -72,7 +70,6 @@ struct HistoryScrollBehavior {
                 // If transaction is today or in the past, this is our target
                 if transactionDay <= today {
                     #if DEBUG
-                    print("📜 [SCROLL] Target: First past section (\(key))")
                     #endif
                     return key
                 }
@@ -82,7 +79,6 @@ struct HistoryScrollBehavior {
         // Priority 4: Fallback to first section (might be future)
         let fallback = sections.first
         #if DEBUG
-        print("📜 [SCROLL] Target: Fallback to first section (\(fallback ?? "none"))")
         #endif
         return fallback
     }

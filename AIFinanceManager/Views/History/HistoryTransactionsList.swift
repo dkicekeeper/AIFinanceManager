@@ -181,13 +181,6 @@ struct HistoryTransactionsList: View {
             }
 
             #if DEBUG
-            print(HistoryScrollBehavior.debugScrollTarget(
-                sections: paginationManager.visibleSections,
-                grouped: paginationManager.groupedTransactions,
-                target: target,
-                todayKey: todayKey,
-                yesterdayKey: yesterdayKey
-            ))
             #endif
         }
     }

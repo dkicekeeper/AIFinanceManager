@@ -84,12 +84,10 @@ class CategoryAggregateCache {
         validCategoryNames: Set<String>? = nil
     ) -> [String: CategoryExpense] {
 
-        print("🗂️ [CategoryAggregateCache] getCategoryExpenses called - isLoaded: \(isLoaded), aggregates count: \(aggregatesByKey.count)")
 
         // Graceful degradation - return empty if cache not loaded yet
         // This prevents UI freezing while waiting for CoreData load
         guard isLoaded else {
-            print("🗂️ [CategoryAggregateCache] Cache not loaded yet, returning empty")
             return [:]
         }
 
@@ -97,7 +95,6 @@ class CategoryAggregateCache {
 
         // Определить диапазон года/месяца для фильтра
         let (targetYear, targetMonth) = getYearMonth(from: timeFilter)
-        print("🗂️ [CategoryAggregateCache] Filter: targetYear=\(targetYear), targetMonth=\(targetMonth), baseCurrency=\(baseCurrency)")
 
         // Итерировать по агрегатам и фильтровать по периоду
         for (_, aggregate) in aggregatesByKey {
@@ -146,7 +143,6 @@ class CategoryAggregateCache {
             }
         }
 
-        print("🗂️ [CategoryAggregateCache] Returning \(result.count) categories, total: \(result.values.reduce(0) { $0 + $1.total })")
 
         return result
     }
@@ -290,7 +286,6 @@ class CategoryAggregateCache {
         repository: CoreDataRepository
     ) async {
 
-        print("🔄 [CategoryAggregateCache] rebuildFromTransactions started - transactions: \(transactions.count), baseCurrency: \(baseCurrency)")
 
         // CRITICAL FIX: Build aggregates synchronously in background thread
         // We MUST wait for completion before returning so cache is ready
@@ -301,7 +296,6 @@ class CategoryAggregateCache {
             )
         }.value
 
-        print("🔄 [CategoryAggregateCache] Built \(aggregates.count) aggregates")
 
         // CRITICAL FIX: Update memory cache SYNCHRONOUSLY
         // This ensures cache is ready BEFORE function returns
@@ -310,10 +304,8 @@ class CategoryAggregateCache {
             self.aggregatesByKey[aggregate.id] = aggregate
         }
         self.isLoaded = true
-        print("🔄 [CategoryAggregateCache] Memory cache updated SYNCHRONOUSLY - \(self.aggregatesByKey.count) aggregates, isLoaded: \(self.isLoaded)")
 
         // Сохранить в CoreData асинхронно (БЕЗ ожидания - fire and forget)
-        print("🔄 [CategoryAggregateCache] Saving aggregates to CoreData...")
         repository.saveAggregates(aggregates)
     }
 
@@ -322,7 +314,6 @@ class CategoryAggregateCache {
         let count = aggregatesByKey.count
         aggregatesByKey.removeAll()
         isLoaded = false
-        print("🗂️ [CategoryAggregateCache] Cleared cache - \(count) aggregates removed, isLoaded set to false")
     }
 }
 

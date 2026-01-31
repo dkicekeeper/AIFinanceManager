@@ -168,7 +168,6 @@ struct VoiceInputView: View {
                 // Проверяем, что это новая ошибка (не пустая) и мы еще не показывали alert
                 if let error = newError, !error.isEmpty, !showingErrorAlert {
                     #if DEBUG
-                    print("🔴 VoiceInputView: Error detected - \(error)")
                     #endif
                     errorAlertMessage = error
                     showingErrorAlert = true
@@ -180,7 +179,6 @@ struct VoiceInputView: View {
                     // Запись только что остановилась
                     if let error = voiceService.errorMessage, !error.isEmpty {
                         #if DEBUG
-                        print("🔴 VoiceInputView: Recording stopped with error - \(error)")
                         #endif
                         errorAlertMessage = error
                         showingErrorAlert = true

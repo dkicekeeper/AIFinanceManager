@@ -31,9 +31,7 @@ class TransactionBalanceCoordinator: TransactionBalanceCoordinatorProtocol {
     func recalculateAllBalances() {
         guard let delegate = delegate else { return }
 
-        print("💰 [TransactionBalanceCoordinator] STARTING - accounts count: \(delegate.accounts.count), transactions count: \(delegate.allTransactions.count)")
         guard !delegate.accounts.isEmpty else {
-            print("💰 [TransactionBalanceCoordinator] SKIPPED - no accounts")
             return
         }
 
@@ -212,9 +210,7 @@ class TransactionBalanceCoordinator: TransactionBalanceCoordinatorProtocol {
         delegate.cacheManager.lastBalanceCalculationTransactionCount = delegate.allTransactions.count
         delegate.cacheManager.cachedAccountBalances = balanceChanges
 
-        print("💰 [TransactionBalanceCoordinator] COMPLETED - Final balances:")
         for account in delegate.accounts {
-            print("💰   Account '\(account.name)': balance = \(account.balance)")
         }
     }
 

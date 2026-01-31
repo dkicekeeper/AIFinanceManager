@@ -183,15 +183,12 @@ struct QuickAddTransactionView: View {
         // Создаем Set существующих категорий для быстрой проверки
         let existingCategoryNames = Set(categoriesViewModel.customCategories.map { $0.name })
 
-        print("📋 [popularCategories] customCategories count: \(categoriesViewModel.customCategories.count)")
-        print("📋 [popularCategories] existingCategoryNames: \(existingCategoryNames)")
 
         // Добавляем пользовательские категории расходов
         for customCategory in categoriesViewModel.customCategories where customCategory.type == .expense {
             allCategories.insert(customCategory.name)
         }
 
-        print("📋 [popularCategories] allCategories after adding custom: \(allCategories)")
 
         // CRITICAL FIX: Добавляем категории из транзакций ТОЛЬКО если они существуют в customCategories
         // Это предотвращает отображение удалённых категорий, даже если транзакции с ними остались
@@ -206,14 +203,11 @@ struct QuickAddTransactionView: View {
             }
         }
 
-        // Сортируем по популярности (сумме расходов с учетом фильтра)
-        let categoryExpenses = transactionsViewModel.categoryExpenses(
-            timeFilterManager: timeFilterManager,
-            categoriesViewModel: categoriesViewModel
-        )
+        // IMPORTANT: Use cached category expenses instead of calling categoryExpenses() again
+        // This ensures we use the same filtered data that was just calculated
         return Array(allCategories).sorted { category1, category2 in
-            let total1 = categoryExpenses[category1]?.total ?? 0
-            let total2 = categoryExpenses[category2]?.total ?? 0
+            let total1 = cachedCategoryExpenses[category1]?.total ?? 0
+            let total2 = cachedCategoryExpenses[category2]?.total ?? 0
             if total1 != total2 {
                 return total1 > total2
             }

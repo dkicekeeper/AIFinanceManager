@@ -605,9 +605,6 @@ final class BalanceCalculationService: BalanceCalculationServiceProtocol {
 extension BalanceCalculationService {
     /// Debug: Print current state
     func debugPrintState() {
-        print("🔍 [BALANCE_CALC] Current state:")
-        print("   Imported accounts: \(importedAccountIds)")
-        print("   Initial balances: \(initialBalances)")
     }
 }
 #endif

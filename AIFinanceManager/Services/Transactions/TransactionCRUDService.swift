@@ -249,24 +249,18 @@ class TransactionCRUDService: TransactionCRUDServiceProtocol {
     func deleteTransaction(_ transaction: Transaction) {
         guard let delegate = delegate else { return }
 
-        print("🗑️ [TransactionCRUDService] Deleting transaction: \(transaction.id), category: \(transaction.category), amount: \(transaction.amount)")
 
         // Remove transaction from array (triggers @Published)
         delegate.allTransactions.removeAll { $0.id == transaction.id }
-        print("🗑️ [TransactionCRUDService] Removed from allTransactions, count now: \(delegate.allTransactions.count)")
 
         // Incremental aggregate cache update
-        print("🗑️ [TransactionCRUDService] BEFORE incremental update - aggregateCache count: \(delegate.aggregateCache.cacheCount)")
         delegate.aggregateCache.updateForTransaction(
             transaction: transaction,
             operation: .delete,
             baseCurrency: delegate.appSettings.baseCurrency
         )
-        print("🗑️ [TransactionCRUDService] AFTER incremental update - aggregateCache count: \(delegate.aggregateCache.cacheCount)")
 
-        print("🗑️ [TransactionCRUDService] Calling invalidateCaches() - aggregate cache should NOT be cleared (only summary cache)")
         delegate.invalidateCaches()
-        print("🗑️ [TransactionCRUDService] AFTER invalidateCaches() - aggregateCache count: \(delegate.aggregateCache.cacheCount)")
 
         delegate.scheduleBalanceRecalculation()
         delegate.scheduleSave()

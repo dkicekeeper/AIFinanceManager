@@ -77,7 +77,6 @@ class HistoryFilterCoordinator: ObservableObject {
                 await MainActor.run {
                     self.debouncedSearchText = text
                     #if DEBUG
-                    print("🔍 [FILTER] Search debounced: '\(text)'")
                     #endif
                 }
             }
@@ -101,7 +100,6 @@ class HistoryFilterCoordinator: ObservableObject {
             guard !Task.isCancelled else { return }
 
             #if DEBUG
-            print("🔍 [FILTER] Account filter debounced: \(accountId ?? "all")")
             #endif
         }
     }
@@ -122,7 +120,6 @@ class HistoryFilterCoordinator: ObservableObject {
             guard !Task.isCancelled else { return }
 
             #if DEBUG
-            print("🔍 [FILTER] Category filter debounced")
             #endif
         }
     }
@@ -140,7 +137,6 @@ class HistoryFilterCoordinator: ObservableObject {
         filterTask?.cancel()
 
         #if DEBUG
-        print("🔍 [FILTER] All filters reset")
         #endif
     }
 
@@ -150,7 +146,6 @@ class HistoryFilterCoordinator: ObservableObject {
         if let accountId = accountId, selectedAccountFilter != accountId {
             selectedAccountFilter = accountId
             #if DEBUG
-            print("🔍 [FILTER] Initial account filter set: \(accountId)")
             #endif
         }
     }

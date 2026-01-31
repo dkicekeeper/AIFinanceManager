@@ -81,9 +81,7 @@ struct BrandLogoView: View {
         let url = LogoDevConfig.logoURL(for: brandName)
         #if DEBUG
         if let url = url {
-            print("BrandLogoView: Setting URL for '\(brandName)': \(url.absoluteString)")
         } else {
-            print("BrandLogoView: Failed to generate URL for '\(brandName)'")
         }
         #endif
         logoURL = url

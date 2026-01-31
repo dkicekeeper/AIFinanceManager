@@ -36,7 +36,6 @@ class CacheCoordinator: CacheCoordinatorProtocol {
     func invalidate(scope: CacheInvalidationScope) {
         switch scope {
         case .summaryAndCurrency:
-            print("🔄 [CacheCoordinator] Invalidating summary/currency caches")
             cacheManager.invalidateAll()
             currencyService.invalidate()
             // NOTE: We do NOT clear aggregate cache here because:
@@ -44,11 +43,9 @@ class CacheCoordinator: CacheCoordinatorProtocol {
             // - Clearing it would force unnecessary full rebuild
 
         case .aggregates:
-            print("🔄 [CacheCoordinator] Invalidating aggregate cache only")
             aggregateCache.clear()
 
         case .all:
-            print("🔄 [CacheCoordinator] Invalidating ALL caches")
             cacheManager.invalidateAll()
             currencyService.invalidate()
             aggregateCache.clear()
@@ -60,7 +57,6 @@ class CacheCoordinator: CacheCoordinatorProtocol {
         baseCurrency: String,
         repository: CoreDataRepository
     ) async {
-        print("🔄 [CacheCoordinator] Starting aggregate rebuild (blocking)")
         PerformanceProfiler.start("CacheCoordinator.rebuildAggregates")
 
         // Clear existing aggregates
@@ -77,7 +73,6 @@ class CacheCoordinator: CacheCoordinatorProtocol {
         // This ensures categoryExpenses() fetches fresh data from rebuilt aggregate cache
         await MainActor.run {
             cacheManager.invalidateAll()
-            print("🔄 [CacheCoordinator] Summary cache invalidated after rebuild")
         }
 
         PerformanceProfiler.end("CacheCoordinator.rebuildAggregates")
@@ -89,7 +84,6 @@ class CacheCoordinator: CacheCoordinatorProtocol {
         repository: CoreDataRepository,
         onComplete: @escaping () -> Void
     ) {
-        print("🔄 [CacheCoordinator] Starting aggregate rebuild (async)")
 
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
@@ -103,7 +97,6 @@ class CacheCoordinator: CacheCoordinatorProtocol {
             // CRITICAL: Invalidate summary cache after rebuild completes
             await MainActor.run { [weak self] in
                 self?.cacheManager.invalidateAll()
-                print("🔄 [CacheCoordinator] Summary cache invalidated after async rebuild")
                 onComplete()
             }
         }

@@ -51,8 +51,6 @@ class CategoryMLPredictor {
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            print("\(VoiceInputConstants.debugLogPrefix) ML Predictor вызван для текста: \"\(text)\"")
-            print("\(VoiceInputConstants.debugLogPrefix) ML Predictor: модель еще не обучена")
         }
         #endif
 
@@ -88,11 +86,6 @@ class CategoryMLPredictor {
         guard let modelURL = Bundle.main.url(forResource: modelName, withExtension: "mlmodelc") else {
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) ML модель '\(modelName).mlmodelc' не найдена")
-                print("\(VoiceInputConstants.debugLogPrefix) Для обучения модели:")
-                print("\(VoiceInputConstants.debugLogPrefix) 1. Экспортируйте данные с помощью prepareTrainingData()")
-                print("\(VoiceInputConstants.debugLogPrefix) 2. Обучите модель в Create ML (Mac)")
-                print("\(VoiceInputConstants.debugLogPrefix) 3. Добавьте .mlmodel файл в проект")
             }
             #endif
             return
@@ -103,13 +96,11 @@ class CategoryMLPredictor {
 
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) ML модель успешно загружена")
             }
             #endif
         } catch {
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) Ошибка загрузки ML модели: \(error)")
             }
             #endif
         }
@@ -149,7 +140,6 @@ extension CategoryMLPredictor {
             if let category = mlCategory, mlConfidence > 0.7 {
                 #if DEBUG
                 if VoiceInputConstants.enableParsingDebugLogs {
-                    print("\(VoiceInputConstants.debugLogPrefix) ML Predictor выбрал: \(category) (confidence: \(mlConfidence))")
                 }
                 #endif
                 return category

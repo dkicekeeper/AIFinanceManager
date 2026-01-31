@@ -559,7 +559,7 @@ class CSVImportService {
                 recurringOccurrenceId: nil,
                 createdAt: createdAt // Используем дату транзакции + небольшое смещение для сохранения порядка
             )
-            
+
             // Check for duplicates using fingerprint
             let fingerprint = TransactionFingerprint(from: transaction)
             if existingFingerprints.contains(fingerprint) {
@@ -662,9 +662,7 @@ class CSVImportService {
 
         // CRITICAL: Rebuild aggregate cache BEFORE notifying UI
         // This ensures cache is ready when UI reads categoryExpenses()
-        print("🔄 [CSVImport] Rebuilding aggregate cache BEFORE UI notification")
         await transactionsViewModel.rebuildAggregateCacheAfterImport()
-        print("🔄 [CSVImport] Aggregate cache rebuilt, NOW notifying UI")
 
         // Принудительно уведомляем об изменении для обновления UI
         // ONLY AFTER cache is ready!

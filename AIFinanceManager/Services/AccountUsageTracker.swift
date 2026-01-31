@@ -65,7 +65,6 @@ class AccountUsageTracker {
 
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) Account \(accountId): usage=\(usageScore), recency=\(recencyScore), total=\(accountScores[accountId] ?? 0)")
             }
             #endif
         }
@@ -80,7 +79,6 @@ class AccountUsageTracker {
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs, let account = smartDefault {
-            print("\(VoiceInputConstants.debugLogPrefix) Smart default account: \(account.name) (score: \(accountScores[topAccountId] ?? 0))")
         }
         #endif
 

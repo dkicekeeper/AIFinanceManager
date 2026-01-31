@@ -34,7 +34,7 @@ class TransactionsViewModel: ObservableObject {
 
     var initialAccountBalances: [String: Double] = [:]
     var accountsWithCalculatedInitialBalance: Set<String> = []
-    var displayMonthsRange: Int = 6
+    var displayMonthsRange: Int = 120  // 10 years - increased from 6 to support historical data imports
 
     // MARK: - Dependencies (Injected)
 
@@ -333,12 +333,22 @@ class TransactionsViewModel: ObservableObject {
             timeFilter: timeFilterManager.currentFilter
         )
 
-        return queryService.calculateSummary(
+        // IMPORTANT: Temporarily invalidate summary cache to force recalculation
+        // The cache doesn't account for time filters, so we need fresh calculation
+        let wasInvalidated = cacheManager.summaryCacheInvalidated
+        cacheManager.summaryCacheInvalidated = true
+
+        let result = queryService.calculateSummary(
             transactions: filtered,
             baseCurrency: appSettings.baseCurrency,
             cacheManager: cacheManager,
             currencyService: currencyService
         )
+
+        // Restore invalidation state to allow caching for non-filtered queries
+        cacheManager.summaryCacheInvalidated = wasInvalidated
+
+        return result
     }
 
     func categoryExpenses(
@@ -349,13 +359,23 @@ class TransactionsViewModel: ObservableObject {
             Set(vm.customCategories.map { $0.name })
         }
 
-        return queryService.getCategoryExpenses(
+        // IMPORTANT: Temporarily invalidate category expenses cache to force recalculation
+        // The cache doesn't account for time filters, so we need fresh calculation
+        let wasInvalidated = cacheManager.categoryExpensesCacheInvalidated
+        cacheManager.categoryExpensesCacheInvalidated = true
+
+        let result = queryService.getCategoryExpenses(
             timeFilter: timeFilterManager.currentFilter,
             baseCurrency: appSettings.baseCurrency,
             validCategoryNames: validCategoryNames,
             aggregateCache: aggregateCache,
             cacheManager: cacheManager
         )
+
+        // Restore invalidation state to allow caching for non-filtered queries
+        cacheManager.categoryExpensesCacheInvalidated = wasInvalidated
+
+        return result
     }
 
     func popularCategories(

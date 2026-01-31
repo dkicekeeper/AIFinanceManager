@@ -172,7 +172,6 @@ struct AccountsManagementView: View {
             }
             Button(String(localized: "account.deleteOnlyAccount"), role: .destructive) {
                 HapticManager.warning()
-                print("🗑️ [AccountDeleteOnly] Deleting account '\(account.name)' WITHOUT transactions")
 
                 accountsViewModel.deleteAccount(account, deleteTransactions: false)
 
@@ -183,12 +182,10 @@ struct AccountsManagementView: View {
                 // NOTE: Aggregate cache is NOT touched - transactions unchanged, aggregates remain valid
                 transactionsViewModel.syncAccountsFrom(accountsViewModel)
 
-                print("🗑️ [AccountDeleteOnly] Completed - transactions remain with accountName preserved")
                 accountToDelete = nil
             }
             Button(String(localized: "account.deleteAccountAndTransactions"), role: .destructive) {
                 HapticManager.warning()
-                print("🗑️ [AccountDelete+Txns] Deleting account '\(account.name)' with transactions")
 
                 accountsViewModel.deleteAccount(account, deleteTransactions: true)
 
@@ -196,7 +193,6 @@ struct AccountsManagementView: View {
                 let txnsToDelete = transactionsViewModel.allTransactions.filter {
                     $0.accountId == account.id || $0.targetAccountId == account.id
                 }
-                print("🗑️ [AccountDelete+Txns] Removing \(txnsToDelete.count) transactions")
 
                 transactionsViewModel.allTransactions.removeAll {
                     $0.accountId == account.id || $0.targetAccountId == account.id

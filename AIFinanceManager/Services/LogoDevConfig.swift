@@ -112,7 +112,6 @@ enum LogoDevConfig {
         }
         
         #if DEBUG
-        print("LogoDevConfig: Generated URL for '\(brandName)': \(urlString)")
         #endif
         
         return url

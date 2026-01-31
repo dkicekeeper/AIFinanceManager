@@ -99,7 +99,6 @@ struct DepositRateChangeView: View {
     DepositRateChangeView(
         account: sampleAccount,
         onRateChanged: { date, rate, note in
-            print("Rate changed: \(date), \(rate), \(note ?? "no note")")
         },
         onComplete: {}
     )

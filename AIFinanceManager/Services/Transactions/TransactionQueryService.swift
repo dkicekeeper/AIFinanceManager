@@ -27,15 +27,12 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService
     ) -> Summary {
-        print("💰 [TransactionQueryService] Called - cacheInvalidated: \(cacheManager.summaryCacheInvalidated)")
 
         // Return cached summary if valid
         if !cacheManager.summaryCacheInvalidated, let cached = cacheManager.cachedSummary {
-            print("💰 [TransactionQueryService] Returning cached: income=\(cached.totalIncome), expense=\(cached.totalExpenses)")
             return cached
         }
 
-        print("💰 [TransactionQueryService] Recalculating summary...")
         PerformanceProfiler.start("TransactionQueryService.calculateSummary")
 
         let today = Calendar.current.startOfDay(for: Date())
@@ -85,7 +82,6 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
             plannedAmount: 0  // Skip planned amount for performance
         )
 
-        print("💰 [TransactionQueryService] Calculated: income=\(totalIncome), expense=\(totalExpenses), netFlow=\(totalIncome - totalExpenses)")
 
         cacheManager.cachedSummary = result
         cacheManager.summaryCacheInvalidated = false
@@ -101,16 +97,13 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
         aggregateCache: CategoryAggregateCache,
         cacheManager: TransactionCacheManager
     ) -> [String: CategoryExpense] {
-        print("📊 [TransactionQueryService] Called - cacheInvalidated: \(cacheManager.categoryExpensesCacheInvalidated)")
 
         // Check cache
         if !cacheManager.categoryExpensesCacheInvalidated,
            let cached = cacheManager.cachedCategoryExpenses {
-            print("📊 [TransactionQueryService] Returning cached data: \(cached.keys.count) categories")
             return cached
         }
 
-        print("📊 [TransactionQueryService] Recalculating from aggregate cache...")
 
         // Use aggregate cache for efficient calculation
         let result = aggregateCache.getCategoryExpenses(
@@ -119,7 +112,6 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
             validCategoryNames: validCategoryNames
         )
 
-        print("📊 [TransactionQueryService] Fresh data calculated: \(result.keys.count) categories, total: \(result.values.reduce(0) { $0 + $1.total })")
 
         cacheManager.cachedCategoryExpenses = result
         cacheManager.categoryExpensesCacheInvalidated = false

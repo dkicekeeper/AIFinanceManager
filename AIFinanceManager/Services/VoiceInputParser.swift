@@ -296,7 +296,6 @@ class VoiceInputParser {
     func parse(_ text: String) -> ParsedOperation {
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            print("\(VoiceInputConstants.debugLogPrefix) Исходный текст: \"\(text)\"")
         }
         #endif
 
@@ -304,7 +303,6 @@ class VoiceInputParser {
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            print("\(VoiceInputConstants.debugLogPrefix) Нормализованный текст: \"\(normalizedText)\"")
         }
         #endif
         
@@ -322,9 +320,7 @@ class VoiceInputParser {
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
             if let amount = operation.amount {
-                print("\(VoiceInputConstants.debugLogPrefix) Распознанная сумма: \(amount)")
             } else {
-                print("\(VoiceInputConstants.debugLogPrefix) Сумма не распознана")
             }
         }
         #endif
@@ -335,7 +331,6 @@ class VoiceInputParser {
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
             if let currency = operation.currencyCode {
-                print("\(VoiceInputConstants.debugLogPrefix) Распознанная валюта: \(currency)")
             }
         }
         #endif
@@ -348,10 +343,7 @@ class VoiceInputParser {
         if VoiceInputConstants.enableParsingDebugLogs {
             if let accountId = accountResult.accountId,
                let account = liveAccounts.first(where: { $0.id == accountId }) {
-                print("\(VoiceInputConstants.debugLogPrefix) Выбранный счет: \(account.name) (ID: \(accountId))")
-                print("\(VoiceInputConstants.debugLogPrefix) Причина выбора: \(accountResult.reason)")
             } else {
-                print("\(VoiceInputConstants.debugLogPrefix) Счет не распознан")
             }
         }
         #endif
@@ -364,9 +356,7 @@ class VoiceInputParser {
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
             if let categoryName = category {
-                print("\(VoiceInputConstants.debugLogPrefix) Выбранная категория: \(categoryName)")
                 if !subcats.isEmpty {
-                    print("\(VoiceInputConstants.debugLogPrefix) Выбранные подкатегории: \(subcats.joined(separator: ", "))")
                 }
             }
         }
@@ -523,7 +513,6 @@ class VoiceInputParser {
 
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) Выбрана сумма: \(rounded) (приоритет: \(bestMatch.priority))")
             }
             #endif
 
@@ -934,7 +923,6 @@ class VoiceInputParser {
         guard !liveTransactions.isEmpty else {
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) No transactions found, using first account as default")
             }
             #endif
             return liveAccounts.first
@@ -947,7 +935,6 @@ class VoiceInputParser {
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
             if let account = smartDefault {
-                print("\(VoiceInputConstants.debugLogPrefix) Smart default account selected: \(account.name)")
             }
         }
         #endif

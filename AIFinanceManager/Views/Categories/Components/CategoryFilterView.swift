@@ -143,7 +143,6 @@ struct CategoryFilterView: View {
         incomeCategories: ["Salary", "Freelance"],
         currentFilter: nil,
         onFilterChanged: { filter in
-            print("Filter changed: \(filter?.description ?? "nil")")
         }
     )
 }

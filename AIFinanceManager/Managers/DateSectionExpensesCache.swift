@@ -43,14 +43,12 @@ class DateSectionExpensesCache: ObservableObject {
         // Check cache first
         if let cached = cache[dateKey] {
             #if DEBUG
-            print("💰 [CACHE] HIT for \(dateKey): \(cached)")
             #endif
             return cached
         }
 
         // Cache miss - calculate expenses
         #if DEBUG
-        print("💰 [CACHE] MISS for \(dateKey) - calculating...")
         let startTime = CFAbsoluteTimeGetCurrent()
         #endif
 
@@ -62,7 +60,6 @@ class DateSectionExpensesCache: ObservableObject {
 
         #if DEBUG
         let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
-        print("💰 [CACHE] Calculated \(dateKey): \(expenses) in \(String(format: "%.2f", timeElapsed * 1000))ms")
         #endif
 
         // Store in cache
@@ -79,7 +76,6 @@ class DateSectionExpensesCache: ObservableObject {
         lastInvalidation = Date()
 
         #if DEBUG
-        print("💰 [CACHE] Invalidated \(cacheSize) cached entries")
         #endif
     }
 
@@ -89,7 +85,6 @@ class DateSectionExpensesCache: ObservableObject {
         cache.removeValue(forKey: dateKey)
 
         #if DEBUG
-        print("💰 [CACHE] Invalidated \(dateKey)")
         #endif
     }
 

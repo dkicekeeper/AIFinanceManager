@@ -20,13 +20,23 @@ class TimeFilterManager: ObservableObject {
     private let storageKey = "timeFilter"
     
     init() {
-        // Загружаем сохраненный фильтр или используем дефолтный
-        if let data = UserDefaults.standard.data(forKey: storageKey),
-           let decoded = try? JSONDecoder().decode(TimeFilter.self, from: data) {
+        // MIGRATION: Reset to .allTime for users who had .thisMonth as default
+        // This ensures historical CSV imports are visible
+        let migrationKey = "timeFilterMigrationV1"
+        let needsMigration = !UserDefaults.standard.bool(forKey: migrationKey)
+
+        if needsMigration {
+            // First launch or needs migration - use .allTime
+            self.currentFilter = TimeFilter(preset: .allTime)
+            UserDefaults.standard.set(true, forKey: migrationKey)
+            saveToStorage()
+        } else if let data = UserDefaults.standard.data(forKey: storageKey),
+                  let decoded = try? JSONDecoder().decode(TimeFilter.self, from: data) {
+            // Use saved filter
             self.currentFilter = decoded
         } else {
-            // Дефолтный фильтр - этот месяц
-            self.currentFilter = TimeFilter(preset: .thisMonth)
+            // Fallback - use .allTime
+            self.currentFilter = TimeFilter(preset: .allTime)
         }
     }
     

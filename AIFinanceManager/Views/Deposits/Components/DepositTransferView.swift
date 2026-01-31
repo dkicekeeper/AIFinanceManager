@@ -136,7 +136,6 @@ struct DepositTransferView: View {
         depositAccount: Account(id: "test", name: "Test Deposit", balance: 100000, currency: "KZT", bankLogo: .kaspi),
         transferDirection: .toDeposit,
         onTransferSaved: { from, to, amount, date, desc in
-            print("Transfer: \(from) -> \(to), amount: \(amount)")
         },
         onComplete: {}
     )
@@ -148,7 +147,6 @@ struct DepositTransferView: View {
         depositAccount: Account(id: "test", name: "Test Deposit", balance: 100000, currency: "KZT", bankLogo: .kaspi),
         transferDirection: .fromDeposit,
         onTransferSaved: { from, to, amount, date, desc in
-            print("Transfer: \(from) -> \(to), amount: \(amount)")
         },
         onComplete: {}
     )

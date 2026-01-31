@@ -25,7 +25,6 @@ class PerformanceProfiler {
     nonisolated static func end(_ name: String) {
         Task { @MainActor in
             guard let startTime = startTimes[name] else {
-                print("⚠️ PerformanceProfiler: No start time for '\(name)'")
                 return
             }
 
@@ -34,7 +33,6 @@ class PerformanceProfiler {
 
             // Выводим результат только если время превышает порог (100ms)
             if duration > 0.1 {
-                print("⏱️ PerformanceProfiler: '\(name)' took \(String(format: "%.3f", duration))s")
             }
 
             startTimes.removeValue(forKey: name)

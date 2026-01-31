@@ -123,7 +123,6 @@ struct LogoSearchView: View {
                 }
                 
                 #if DEBUG
-                print("LogoSearchView: Searching for '\(variant)' at \(searchURL.absoluteString)")
                 #endif
                 
                 var request = URLRequest(url: searchURL)
@@ -154,7 +153,6 @@ struct LogoSearchView: View {
                     }
                     
                     #if DEBUG
-                    print("LogoSearchView: Response status for '\(variant)': \(httpResponse.statusCode)")
                     #endif
                     
                     if httpResponse.statusCode == 200 {
@@ -171,7 +169,6 @@ struct LogoSearchView: View {
                 } catch {
                     // Продолжаем со следующим вариантом
                     #if DEBUG
-                    print("LogoSearchView: Error for variant '\(variant)': \(error.localizedDescription)")
                     #endif
                     continue
                 }

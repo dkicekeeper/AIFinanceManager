@@ -55,12 +55,10 @@ class MockAccountBalanceService: AccountBalanceServiceProtocol {
     private var initialBalances: [String: Double] = [:]
     
     func syncAccountBalances(_ accounts: [Account]) {
-        print("🧪 [MOCK] syncAccountBalances called with \(accounts.count) accounts")
         self.accounts = accounts
     }
     
     func saveAllAccountsSync() {
-        print("🧪 [MOCK] saveAllAccountsSync called")
     }
     
     func getAccount(by id: String) -> Account? {

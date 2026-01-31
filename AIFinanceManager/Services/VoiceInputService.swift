@@ -124,7 +124,6 @@ class VoiceInputService: NSObject, ObservableObject {
     func startRecording() async throws {
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            print("\(VoiceInputConstants.debugLogPrefix) 🎤 Starting recording...")
         }
         #endif
 
@@ -132,7 +131,6 @@ class VoiceInputService: NSObject, ObservableObject {
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) ❌ Speech recognizer not available")
             }
             #endif
             throw VoiceInputError.speechRecognitionNotAvailable
@@ -142,7 +140,6 @@ class VoiceInputService: NSObject, ObservableObject {
         if isRecording {
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) ⚠️ Already recording")
             }
             #endif
             return
@@ -163,7 +160,6 @@ class VoiceInputService: NSObject, ObservableObject {
 
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) VAD enabled - silence detector initialized")
             }
             #endif
         } else {
@@ -171,7 +167,6 @@ class VoiceInputService: NSObject, ObservableObject {
 
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) VAD disabled")
             }
             #endif
         }
@@ -211,7 +206,6 @@ class VoiceInputService: NSObject, ObservableObject {
 
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
-                print("\(VoiceInputConstants.debugLogPrefix) Added \(contextualStrings.count) contextual strings")
             }
             #endif
         }
@@ -237,7 +231,6 @@ class VoiceInputService: NSObject, ObservableObject {
                     if silenceDetected {
                         #if DEBUG
                         if VoiceInputConstants.enableParsingDebugLogs {
-                            print("\(VoiceInputConstants.debugLogPrefix) 🛑 VAD triggered - stopping recording")
                         }
                         #endif
 
@@ -267,8 +260,6 @@ class VoiceInputService: NSObject, ObservableObject {
 
                     #if DEBUG
                     if VoiceInputConstants.enableParsingDebugLogs {
-                        print("\(VoiceInputConstants.debugLogPrefix) Transcription: \(transcription)")
-                        print("\(VoiceInputConstants.debugLogPrefix) isFinal: \(result.isFinal)")
                     }
                     #endif
 
@@ -282,7 +273,6 @@ class VoiceInputService: NSObject, ObservableObject {
             if let error = error {
                 #if DEBUG
                 if VoiceInputConstants.enableParsingDebugLogs {
-                    print("\(VoiceInputConstants.debugLogPrefix) Recognition error: \(error.localizedDescription)")
                 }
                 #endif
 
@@ -301,7 +291,6 @@ class VoiceInputService: NSObject, ObservableObject {
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            print("\(VoiceInputConstants.debugLogPrefix) ✅ Recording started successfully")
         }
         #endif
     }

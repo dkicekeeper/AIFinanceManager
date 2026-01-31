@@ -114,7 +114,6 @@ struct CategoriesManagementView: View {
             }
             Button(String(localized: "category.deleteOnlyCategory"), role: .destructive) {
                 HapticManager.warning()
-                print("🗑️ [CategoryDeleteOnly] Deleting category '\(category.name)' WITHOUT transactions")
 
                 // Delete category (transactions keep the category name as string)
                 categoriesViewModel.deleteCategory(category, deleteTransactions: false)
@@ -129,18 +128,15 @@ struct CategoriesManagementView: View {
                 // Even though transactions remain, we need to rebuild so the category disappears from UI
                 transactionsViewModel.clearAndRebuildAggregateCache()
 
-                print("🗑️ [CategoryDeleteOnly] Completed - transactions keep category name as string")
                 categoryToDelete = nil
             }
             Button(String(localized: "category.deleteCategoryAndTransactions"), role: .destructive) {
                 HapticManager.warning()
-                print("🗑️ [CategoryDelete+Txns] Deleting category '\(category.name)' with transactions")
 
                 // Delete transactions with this category
                 let txnsToDelete = transactionsViewModel.allTransactions.filter {
                     $0.category == category.name && $0.type == category.type
                 }
-                print("🗑️ [CategoryDelete+Txns] Removing \(txnsToDelete.count) transactions")
 
                 transactionsViewModel.allTransactions.removeAll {
                     $0.category == category.name && $0.type == category.type

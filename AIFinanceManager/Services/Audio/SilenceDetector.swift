@@ -75,7 +75,6 @@ class SilenceDetector {
 
                 #if DEBUG
                 if VoiceInputConstants.enableParsingDebugLogs {
-                    print("\(VoiceInputConstants.debugLogPrefix) 🔇 Silence started (RMS: \(String(format: "%.1f", rmsDb)) dB)")
                 }
                 #endif
             }
@@ -88,7 +87,6 @@ class SilenceDetector {
                 if silentDuration >= silenceDuration && hasHadSpeech {
                     #if DEBUG
                     if VoiceInputConstants.enableParsingDebugLogs {
-                        print("\(VoiceInputConstants.debugLogPrefix) ✅ Sustained silence detected (\(String(format: "%.1f", silentDuration))s)")
                     }
                     #endif
                     return true
@@ -102,7 +100,6 @@ class SilenceDetector {
                 // Speech resumed after silence
                 #if DEBUG
                 if VoiceInputConstants.enableParsingDebugLogs {
-                    print("\(VoiceInputConstants.debugLogPrefix) 🔊 Speech resumed (RMS: \(String(format: "%.1f", rmsDb)) dB)")
                 }
                 #endif
             }
@@ -118,7 +115,6 @@ class SilenceDetector {
 
                     #if DEBUG
                     if VoiceInputConstants.enableParsingDebugLogs && !hasHadSpeech {
-                        print("\(VoiceInputConstants.debugLogPrefix) ✅ Minimum speech duration reached")
                     }
                     #endif
                 }
@@ -141,7 +137,6 @@ class SilenceDetector {
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            print("\(VoiceInputConstants.debugLogPrefix) 🔄 SilenceDetector reset")
         }
         #endif
     }
