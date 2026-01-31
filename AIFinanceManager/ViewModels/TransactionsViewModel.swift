@@ -1795,10 +1795,9 @@ class TransactionsViewModel: ObservableObject {
 
             switch tx.type {
             case .income:
-                if let accountId = tx.accountId {
-                    // Пропустить транзакции удаленных счетов
-                    guard existingAccountIds.contains(accountId) else { continue }
-                    guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
+                if let accountId = tx.accountId,
+                   existingAccountIds.contains(accountId),
+                   !accountsWithCalculatedInitialBalance.contains(accountId) {
                     // Используем targetAmount если валюта операции отличается от валюты счета
                     let amountToUse: Double
                     if let targetAmount = tx.targetAmount,
@@ -1812,10 +1811,9 @@ class TransactionsViewModel: ObservableObject {
                     balanceChanges[accountId, default: 0] += amountToUse
                 }
             case .expense:
-                if let accountId = tx.accountId {
-                    // Пропустить транзакции удаленных счетов
-                    guard existingAccountIds.contains(accountId) else { continue }
-                    guard !accountsWithCalculatedInitialBalance.contains(accountId) else { continue }
+                if let accountId = tx.accountId,
+                   existingAccountIds.contains(accountId),
+                   !accountsWithCalculatedInitialBalance.contains(accountId) {
                     // Используем targetAmount если валюта операции отличается от валюты счета
                     let amountToUse: Double
                     if let targetAmount = tx.targetAmount,
@@ -1831,34 +1829,25 @@ class TransactionsViewModel: ObservableObject {
             case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
                 break
             case .internalTransfer:
+                // CRITICAL FIX: Process transfers even if one account is deleted
+                // If account deleted WITHOUT transactions, we still need to update the OTHER account's balance
+
                 if let sourceId = tx.accountId {
-                    // Пропустить если source счет удален
-                    guard existingAccountIds.contains(sourceId) else {
-                        // Если source удален, не обрабатываем весь перевод
-                        continue
+                    // Only update source if it exists AND needs recalculation
+                    if existingAccountIds.contains(sourceId) &&
+                       !accountsWithCalculatedInitialBalance.contains(sourceId) {
+                        let sourceAmount = tx.convertedAmount ?? tx.amount
+                        balanceChanges[sourceId, default: 0] -= sourceAmount
                     }
-                    guard !accountsWithCalculatedInitialBalance.contains(sourceId) else {
-                        // Source пропускаем, но обрабатываем target ниже
-                        if let targetId = tx.targetAccountId,
-                           existingAccountIds.contains(targetId),
-                           !accountsWithCalculatedInitialBalance.contains(targetId) {
-                            let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
-                            balanceChanges[targetId, default: 0] += resolvedTargetAmount
-                        }
-                        continue
-                    }
-                    // Source: используем convertedAmount, записанный при создании
-                    let sourceAmount = tx.convertedAmount ?? tx.amount
-                    balanceChanges[sourceId, default: 0] -= sourceAmount
                 }
 
                 if let targetId = tx.targetAccountId {
-                    // Пропустить если target счет удален
-                    guard existingAccountIds.contains(targetId) else { continue }
-                    guard !accountsWithCalculatedInitialBalance.contains(targetId) else { continue }
-                    // Target: используем targetAmount, записанный при создании
-                    let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
-                    balanceChanges[targetId, default: 0] += resolvedTargetAmount
+                    // Only update target if it exists AND needs recalculation
+                    if existingAccountIds.contains(targetId) &&
+                       !accountsWithCalculatedInitialBalance.contains(targetId) {
+                        let resolvedTargetAmount = tx.targetAmount ?? tx.convertedAmount ?? tx.amount
+                        balanceChanges[targetId, default: 0] += resolvedTargetAmount
+                    }
                 }
             }
         }
