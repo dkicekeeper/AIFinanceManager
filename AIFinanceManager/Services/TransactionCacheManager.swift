@@ -26,6 +26,13 @@ class TransactionCacheManager {
     var cachedCategoryExpenses: [String: CategoryExpense]?
     var categoryExpensesCacheInvalidated = true
 
+    // MARK: - Category Lists Cache
+
+    var cachedUniqueCategories: [String]?
+    var cachedExpenseCategories: [String]?
+    var cachedIncomeCategories: [String]?
+    var categoryListsCacheInvalidated = true
+
     // MARK: - Account Balance Cache
 
     var cachedAccountBalances: [String: Double] = [:]
@@ -56,6 +63,7 @@ class TransactionCacheManager {
     func invalidateAll() {
         summaryCacheInvalidated = true
         categoryExpensesCacheInvalidated = true
+        categoryListsCacheInvalidated = true
         balanceCacheInvalidated = true
         accountsCacheInvalidated = true
         subcategoryIndexInvalidated = true
