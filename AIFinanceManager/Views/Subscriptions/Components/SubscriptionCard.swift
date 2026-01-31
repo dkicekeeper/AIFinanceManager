@@ -9,9 +9,8 @@ import SwiftUI
 
 struct SubscriptionCard: View {
     let subscription: RecurringSeries
-    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    
+    let nextChargeDate: Date?
+
     var body: some View {
         HStack(spacing: AppSpacing.md) {
             // Logo - показываем сохраненный brandLogo, иконку или fallback
@@ -50,7 +49,7 @@ struct SubscriptionCard: View {
                 .font(AppTypography.body)
                 .foregroundColor(.secondary)
                 
-                if let nextChargeDate = subscriptionsViewModel.nextChargeDate(for: subscription.id) {
+                if let nextChargeDate = nextChargeDate {
                     Text(String(format: String(localized: "subscriptions.nextCharge"), formatDate(nextChargeDate)))
                         .font(AppTypography.caption)
                         .foregroundColor(.secondary)
@@ -91,7 +90,6 @@ struct SubscriptionCard: View {
 }
 
 #Preview {
-    let coordinator = AppCoordinator()
     SubscriptionCard(
         subscription: RecurringSeries(
             id: "1",
@@ -106,8 +104,7 @@ struct SubscriptionCard: View {
             brandId: "Netflix",
             status: .active
         ),
-        subscriptionsViewModel: coordinator.subscriptionsViewModel,
-        transactionsViewModel: coordinator.transactionsViewModel
+        nextChargeDate: Date().addingTimeInterval(7 * 24 * 60 * 60) // 7 days from now
     )
     .padding()
 }

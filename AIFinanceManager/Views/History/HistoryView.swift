@@ -70,9 +70,11 @@ struct HistoryView: View {
         .safeAreaInset(edge: .top) {
             VStack(spacing: 0) {
                 HistoryFilterSection(
-                    transactionsViewModel: transactionsViewModel,
-                    accountsViewModel: accountsViewModel,
-                    categoriesViewModel: categoriesViewModel,
+                    timeFilterDisplayName: timeFilterManager.currentFilter.displayName,
+                    accounts: accountsViewModel.accounts,
+                    selectedCategories: transactionsViewModel.selectedCategories,
+                    customCategories: categoriesViewModel.customCategories,
+                    incomeCategories: transactionsViewModel.incomeCategories,
                     selectedAccountFilter: $filterCoordinator.selectedAccountFilter,
                     showingCategoryFilter: $filterCoordinator.showingCategoryFilter
                 )
@@ -125,7 +127,14 @@ struct HistoryView: View {
             resetFilters()
         }
         .sheet(isPresented: $filterCoordinator.showingCategoryFilter) {
-            CategoryFilterView(viewModel: transactionsViewModel)
+            CategoryFilterView(
+                expenseCategories: transactionsViewModel.expenseCategories,
+                incomeCategories: transactionsViewModel.incomeCategories,
+                currentFilter: transactionsViewModel.selectedCategories,
+                onFilterChanged: { newFilter in
+                    transactionsViewModel.selectedCategories = newFilter
+                }
+            )
         }
     }
 

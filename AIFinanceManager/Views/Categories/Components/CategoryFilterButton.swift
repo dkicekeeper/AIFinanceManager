@@ -8,12 +8,13 @@
 import SwiftUI
 
 struct CategoryFilterButton: View {
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    let selectedCategories: Set<String>?
+    let customCategories: [CustomCategory]
+    let incomeCategories: [String]
     let onTap: () -> Void
-    
+
     private var categoryFilterText: String {
-        guard let selectedCategories = transactionsViewModel.selectedCategories else {
+        guard let selectedCategories = selectedCategories else {
             return "Все категории"
         }
         if selectedCategories.count == 1 {
@@ -21,28 +22,28 @@ struct CategoryFilterButton: View {
         }
         return "\(selectedCategories.count) категорий"
     }
-    
+
     @ViewBuilder
     private var categoryFilterIcon: some View {
-        if let selectedCategories = transactionsViewModel.selectedCategories,
+        if let selectedCategories = selectedCategories,
            selectedCategories.count == 1,
            let category = selectedCategories.first {
             let isIncome: Bool = {
-                if let customCategory = categoriesViewModel.customCategories.first(where: { $0.name == category }) {
+                if let customCategory = customCategories.first(where: { $0.name == category }) {
                     return customCategory.type == .income
                 } else {
-                    return transactionsViewModel.incomeCategories.contains(category)
+                    return incomeCategories.contains(category)
                 }
             }()
             let categoryType: TransactionType = isIncome ? .income : .expense
-            let iconName = CategoryIcon.iconName(for: category, type: categoryType, customCategories: categoriesViewModel.customCategories)
-            let iconColor = CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: categoriesViewModel.customCategories)
+            let iconName = CategoryIcon.iconName(for: category, type: categoryType, customCategories: customCategories)
+            let iconColor = CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: customCategories)
             Image(systemName: iconName)
                 .font(.system(size: 14))
                 .foregroundColor(isIncome ? Color.green : iconColor)
         }
     }
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.sm) {
@@ -51,16 +52,16 @@ struct CategoryFilterButton: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: AppIconSize.sm))
             }
-            .filterChipStyle(isSelected: transactionsViewModel.selectedCategories != nil)
+            .filterChipStyle(isSelected: selectedCategories != nil)
         }
     }
 }
 
 #Preview {
-    let coordinator = AppCoordinator()
     CategoryFilterButton(
-        transactionsViewModel: coordinator.transactionsViewModel,
-        categoriesViewModel: coordinator.categoriesViewModel,
+        selectedCategories: Set(["Food"]),
+        customCategories: [],
+        incomeCategories: ["Salary"],
         onTap: {}
     )
     .padding()

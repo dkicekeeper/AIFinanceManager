@@ -888,6 +888,59 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Accounts
 
+    /// Deduct amount from account, handling deposit logic
+    private func deductFromAccount(_ account: inout Account, amount: Double) {
+        account.balance -= amount
+
+        if var depositInfo = account.depositInfo {
+            let amountDecimal = Decimal(amount)
+            if !depositInfo.capitalizationEnabled && depositInfo.interestAccruedNotCapitalized > 0 {
+                if amountDecimal <= depositInfo.interestAccruedNotCapitalized {
+                    depositInfo.interestAccruedNotCapitalized -= amountDecimal
+                } else {
+                    let remaining = amountDecimal - depositInfo.interestAccruedNotCapitalized
+                    depositInfo.interestAccruedNotCapitalized = 0
+                    depositInfo.principalBalance -= remaining
+                }
+            } else {
+                depositInfo.principalBalance -= amountDecimal
+            }
+            account.depositInfo = depositInfo
+            var totalBalance: Decimal = depositInfo.principalBalance
+            if !depositInfo.capitalizationEnabled {
+                totalBalance += depositInfo.interestAccruedNotCapitalized
+            }
+            account.balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+        }
+    }
+
+    /// Add amount to account, handling deposit logic
+    private func addToAccount(_ account: inout Account, amount: Double) {
+        if var depositInfo = account.depositInfo {
+            let amountDecimal = Decimal(amount)
+            depositInfo.principalBalance += amountDecimal
+            account.depositInfo = depositInfo
+            var totalBalance: Decimal = depositInfo.principalBalance
+            if !depositInfo.capitalizationEnabled {
+                totalBalance += depositInfo.interestAccruedNotCapitalized
+            }
+            account.balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+        } else {
+            account.balance += amount
+        }
+    }
+
+    /// Convert amount between currencies if needed
+    private func convertAmountIfNeeded(amount: Double, from: String, to: String) -> Double {
+        if from == to {
+            return amount
+        } else if let converted = CurrencyConverter.convertSync(amount: amount, from: from, to: to) {
+            return converted
+        } else {
+            return amount
+        }
+    }
+
     func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {
         guard
             let sourceIndex = accounts.firstIndex(where: { $0.id == sourceId }),
@@ -896,61 +949,25 @@ class TransactionsViewModel: ObservableObject {
         else { return }
 
         let currency = accounts[sourceIndex].currency
-        
+
         // CRITICAL: Создаем новый массив вместо модификации на месте
         // Это необходимо для корректной работы @Published property wrapper
         var newAccounts = accounts
 
-        newAccounts[sourceIndex].balance -= amount
-        
-        if var sourceDepositInfo = newAccounts[sourceIndex].depositInfo {
-            let amountDecimal = Decimal(amount)
-            if !sourceDepositInfo.capitalizationEnabled && sourceDepositInfo.interestAccruedNotCapitalized > 0 {
-                if amountDecimal <= sourceDepositInfo.interestAccruedNotCapitalized {
-                    sourceDepositInfo.interestAccruedNotCapitalized -= amountDecimal
-                } else {
-                    let remaining = amountDecimal - sourceDepositInfo.interestAccruedNotCapitalized
-                    sourceDepositInfo.interestAccruedNotCapitalized = 0
-                    sourceDepositInfo.principalBalance -= remaining
-                }
-            } else {
-                sourceDepositInfo.principalBalance -= amountDecimal
-            }
-            newAccounts[sourceIndex].depositInfo = sourceDepositInfo
-            var totalBalance: Decimal = sourceDepositInfo.principalBalance
-            if !sourceDepositInfo.capitalizationEnabled {
-                totalBalance += sourceDepositInfo.interestAccruedNotCapitalized
-            }
-            newAccounts[sourceIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
-        }
-        
+        // Deduct from source account (with deposit handling)
+        deductFromAccount(&newAccounts[sourceIndex], amount: amount)
+
+        // Calculate target amount with currency conversion
         let targetAccount = newAccounts[targetIndex]
-        let targetAmount: Double
-        if currency == targetAccount.currency {
-            targetAmount = amount
-        } else if let converted = CurrencyConverter.convertSync(
+        let targetAmount = convertAmountIfNeeded(
             amount: amount,
             from: currency,
             to: targetAccount.currency
-        ) {
-            targetAmount = converted
-        } else {
-            targetAmount = amount
-        }
-        
-        if var targetDepositInfo = targetAccount.depositInfo {
-            let amountDecimal = Decimal(targetAmount)
-            targetDepositInfo.principalBalance += amountDecimal
-            newAccounts[targetIndex].depositInfo = targetDepositInfo
-            var totalBalance: Decimal = targetDepositInfo.principalBalance
-            if !targetDepositInfo.capitalizationEnabled {
-                totalBalance += targetDepositInfo.interestAccruedNotCapitalized
-            }
-            newAccounts[targetIndex].balance = NSDecimalNumber(decimal: totalBalance).doubleValue
-        } else {
-            newAccounts[targetIndex].balance += targetAmount
-        }
-        
+        )
+
+        // Add to target account (with deposit handling)
+        addToAccount(&newAccounts[targetIndex], amount: targetAmount)
+
         accounts = newAccounts
 
         let createdAt = Date().timeIntervalSince1970

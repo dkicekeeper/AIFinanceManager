@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct DepositRateChangeView: View {
-    @ObservedObject var depositsViewModel: DepositsViewModel
     let account: Account
+    let onRateChanged: (String, Decimal, String?) -> Void // (effectiveFrom, annualRate, note)
     let onComplete: () -> Void
-    
+
     @State private var rateText: String = ""
     @State private var effectiveFromDate: Date = Date()
     @State private var noteText: String = ""
@@ -70,23 +70,17 @@ struct DepositRateChangeView: View {
     
     private func saveRateChange() {
         guard let rate = AmountFormatter.parse(rateText) else { return }
-        
+
         let dateString = DateFormatters.dateFormatter.string(from: effectiveFromDate)
         let note = noteText.isEmpty ? nil : noteText
-        
-        depositsViewModel.addDepositRateChange(
-            accountId: account.id,
-            effectiveFrom: dateString,
-            annualRate: rate,
-            note: note
-        )
-        
+
+        onRateChanged(dateString, rate, note)
+
         onComplete()
     }
 }
 
 #Preview("Deposit Rate Change") {
-    let coordinator = AppCoordinator()
     let sampleAccount = Account(
         id: "test",
         name: "Test Deposit",
@@ -101,10 +95,12 @@ struct DepositRateChangeView: View {
             interestPostingDay: 15
         )
     )
-    
+
     DepositRateChangeView(
-        depositsViewModel: coordinator.depositsViewModel,
         account: sampleAccount,
+        onRateChanged: { date, rate, note in
+            print("Rate changed: \(date), \(rate), \(note ?? "no note")")
+        },
         onComplete: {}
     )
 }

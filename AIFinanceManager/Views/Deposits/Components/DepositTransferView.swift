@@ -13,12 +13,12 @@ enum DepositTransferDirection {
 }
 
 struct DepositTransferView: View {
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
+    let accounts: [Account]
     let depositAccount: Account
     let transferDirection: DepositTransferDirection
+    let onTransferSaved: (String, String, Double, String, String) -> Void // (fromId, toId, amount, date, description)
     let onComplete: () -> Void
-    
+
     @State private var selectedSourceAccountId: String? = nil
     @State private var amountText: String = ""
     @State private var descriptionText: String = ""
@@ -26,9 +26,9 @@ struct DepositTransferView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     @FocusState private var isAmountFocused: Bool
-    
+
     private var availableAccounts: [Account] {
-        accountsViewModel.accounts.filter { $0.id != depositAccount.id }
+        accounts.filter { $0.id != depositAccount.id }
     }
     
     var body: some View {
@@ -110,56 +110,46 @@ struct DepositTransferView: View {
               let amount = AmountFormatter.parse(amountText) else {
             return
         }
-        
+
         let dateString = DateFormatters.dateFormatter.string(from: selectedDate)
-        let description = descriptionText.isEmpty 
+        let description = descriptionText.isEmpty
             ? (transferDirection == .toDeposit ? String(localized: "deposit.topUpDescription") : String(localized: "deposit.transferFromDescription"))
             : descriptionText
-        
+
         let amountDouble = NSDecimalNumber(decimal: amount).doubleValue
-        
+
         if transferDirection == .toDeposit {
             // Перевод на депозит (с выбранного счета на депозит)
-            transactionsViewModel.transfer(
-                from: sourceAccountId,
-                to: depositAccount.id,
-                amount: amountDouble,
-                date: dateString,
-                description: description
-            )
+            onTransferSaved(sourceAccountId, depositAccount.id, amountDouble, dateString, description)
         } else {
             // Перевод с депозита (с депозита на выбранный счет)
-            transactionsViewModel.transfer(
-                from: depositAccount.id,
-                to: sourceAccountId,
-                amount: amountDouble,
-                date: dateString,
-                description: description
-            )
+            onTransferSaved(depositAccount.id, sourceAccountId, amountDouble, dateString, description)
         }
-        
+
         onComplete()
     }
 }
 
 #Preview("Deposit Transfer - Top Up") {
-    let coordinator = AppCoordinator()
     DepositTransferView(
-        transactionsViewModel: coordinator.transactionsViewModel,
-        accountsViewModel: coordinator.accountsViewModel,
-        depositAccount: coordinator.accountsViewModel.accounts.first ?? Account(id: "test", name: "Test Deposit", balance: 100000, currency: "KZT", bankLogo: .kaspi),
+        accounts: [],
+        depositAccount: Account(id: "test", name: "Test Deposit", balance: 100000, currency: "KZT", bankLogo: .kaspi),
         transferDirection: .toDeposit,
+        onTransferSaved: { from, to, amount, date, desc in
+            print("Transfer: \(from) -> \(to), amount: \(amount)")
+        },
         onComplete: {}
     )
 }
 
 #Preview("Deposit Transfer - Transfer From") {
-    let coordinator = AppCoordinator()
     DepositTransferView(
-        transactionsViewModel: coordinator.transactionsViewModel,
-        accountsViewModel: coordinator.accountsViewModel,
-        depositAccount: coordinator.accountsViewModel.accounts.first ?? Account(id: "test", name: "Test Deposit", balance: 100000, currency: "KZT", bankLogo: .kaspi),
+        accounts: [],
+        depositAccount: Account(id: "test", name: "Test Deposit", balance: 100000, currency: "KZT", bankLogo: .kaspi),
         transferDirection: .fromDeposit,
+        onTransferSaved: { from, to, amount, date, desc in
+            print("Transfer: \(from) -> \(to), amount: \(amount)")
+        },
         onComplete: {}
     )
 }

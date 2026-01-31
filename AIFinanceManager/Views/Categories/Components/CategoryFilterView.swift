@@ -8,11 +8,15 @@
 import SwiftUI
 
 struct CategoryFilterView: View {
-    @ObservedObject var viewModel: TransactionsViewModel
+    let expenseCategories: [String]
+    let incomeCategories: [String]
+    let currentFilter: Set<String>?
+    let onFilterChanged: (Set<String>?) -> Void
+
     @Environment(\.dismiss) var dismiss
     @State private var selectedExpenseCategories: Set<String> = []
     @State private var selectedIncomeCategories: Set<String> = []
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -22,7 +26,7 @@ struct CategoryFilterView: View {
                         Text(String(localized: "categoryFilter.allCategories"))
                             .fontWeight(.medium)
                         Spacer()
-                        if viewModel.selectedCategories == nil {
+                        if currentFilter == nil {
                             Image(systemName: "checkmark")
                                 .foregroundColor(.blue)
                         }
@@ -32,17 +36,16 @@ struct CategoryFilterView: View {
                         HapticManager.selection()
                         selectedExpenseCategories.removeAll()
                         selectedIncomeCategories.removeAll()
-                        viewModel.selectedCategories = nil
                     }
                 }
                 
                 // Категории расходов
                 Section(header: Text(String(localized: "transactionType.expense"))) {
-                    if viewModel.expenseCategories.isEmpty {
+                    if expenseCategories.isEmpty {
                         Text(String(localized: "categoryFilter.noExpenseCategories"))
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(viewModel.expenseCategories, id: \.self) { category in
+                        ForEach(expenseCategories, id: \.self) { category in
                             HStack {
                                 Text(category)
                                 Spacer()
@@ -66,11 +69,11 @@ struct CategoryFilterView: View {
                 
                 // Категории доходов
                 Section(header: Text(String(localized: "transactionType.income"))) {
-                    if viewModel.incomeCategories.isEmpty {
+                    if incomeCategories.isEmpty {
                         Text(String(localized: "categoryFilter.noIncomeCategories"))
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(viewModel.incomeCategories, id: \.self) { category in
+                        ForEach(incomeCategories, id: \.self) { category in
                             HStack {
                                 Text(category)
                                 Spacer()
@@ -115,9 +118,9 @@ struct CategoryFilterView: View {
             }
             .onAppear {
                 // Загружаем текущий фильтр
-                if let currentFilter = viewModel.selectedCategories {
-                    selectedExpenseCategories = Set(viewModel.expenseCategories.filter { currentFilter.contains($0) })
-                    selectedIncomeCategories = Set(viewModel.incomeCategories.filter { currentFilter.contains($0) })
+                if let filter = currentFilter {
+                    selectedExpenseCategories = Set(expenseCategories.filter { filter.contains($0) })
+                    selectedIncomeCategories = Set(incomeCategories.filter { filter.contains($0) })
                 }
             }
         }
@@ -127,14 +130,20 @@ struct CategoryFilterView: View {
         let allSelected = selectedExpenseCategories.union(selectedIncomeCategories)
         if allSelected.isEmpty {
             // Если ничего не выбрано, показываем все категории
-            viewModel.selectedCategories = nil
+            onFilterChanged(nil)
         } else {
-            viewModel.selectedCategories = allSelected
+            onFilterChanged(allSelected)
         }
     }
 }
 
 #Preview {
-    let coordinator = AppCoordinator()
-    CategoryFilterView(viewModel: coordinator.transactionsViewModel)
+    CategoryFilterView(
+        expenseCategories: ["Food", "Transport", "Entertainment"],
+        incomeCategories: ["Salary", "Freelance"],
+        currentFilter: nil,
+        onFilterChanged: { filter in
+            print("Filter changed: \(filter?.description ?? "nil")")
+        }
+    )
 }

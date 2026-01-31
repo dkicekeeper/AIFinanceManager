@@ -8,33 +8,35 @@
 import SwiftUI
 
 struct HistoryFilterSection: View {
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    let timeFilterDisplayName: String
+    let accounts: [Account]
+    let selectedCategories: Set<String>?
+    let customCategories: [CustomCategory]
+    let incomeCategories: [String]
     @Binding var selectedAccountFilter: String?
     @Binding var showingCategoryFilter: Bool
-    
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: AppSpacing.md) {
                 // Time filter chip
                 FilterChip(
-                    title: timeFilterManager.currentFilter.displayName,
+                    title: timeFilterDisplayName,
                     icon: "calendar",
                     onTap: {}
                 )
-                
+
                 // Account filter menu
                 AccountFilterMenu(
-                    accounts: accountsViewModel.accounts,
+                    accounts: accounts,
                     selectedAccountId: $selectedAccountFilter
                 )
-                
+
                 // Category filter button
                 CategoryFilterButton(
-                    transactionsViewModel: transactionsViewModel,
-                    categoriesViewModel: categoriesViewModel,
+                    selectedCategories: selectedCategories,
+                    customCategories: customCategories,
+                    incomeCategories: incomeCategories,
                     onTap: { showingCategoryFilter = true }
                 )
             }
@@ -45,13 +47,13 @@ struct HistoryFilterSection: View {
 }
 
 #Preview {
-    let coordinator = AppCoordinator()
     HistoryFilterSection(
-        transactionsViewModel: coordinator.transactionsViewModel,
-        accountsViewModel: coordinator.accountsViewModel,
-        categoriesViewModel: coordinator.categoriesViewModel,
+        timeFilterDisplayName: "Этот месяц",
+        accounts: [],
+        selectedCategories: nil,
+        customCategories: [],
+        incomeCategories: ["Salary"],
         selectedAccountFilter: .constant(nil),
         showingCategoryFilter: .constant(false)
     )
-    .environmentObject(TimeFilterManager())
 }

@@ -109,13 +109,18 @@ struct SubscriptionsListView: View {
     private var subscriptionsList: some View {
         VStack(spacing: AppSpacing.md) {
             ForEach(subscriptionsViewModel.subscriptions) { subscription in
+                let nextChargeDate = subscriptionsViewModel.nextChargeDate(for: subscription.id)
+
                 NavigationLink(destination: SubscriptionDetailView(
                     subscriptionsViewModel: subscriptionsViewModel,
                     transactionsViewModel: transactionsViewModel,
                     subscription: subscription
                 )
                     .environmentObject(timeFilterManager)) {
-                    SubscriptionCard(subscription: subscription, subscriptionsViewModel: subscriptionsViewModel, transactionsViewModel: transactionsViewModel)
+                    SubscriptionCard(
+                        subscription: subscription,
+                        nextChargeDate: nextChargeDate
+                    )
                 }
                 .buttonStyle(PlainButtonStyle())
             }
