@@ -152,4 +152,35 @@
             </uniquenessConstraint>
         </uniquenessConstraints>
     </entity>
+    <entity name="CategoryAggregateEntity" representedClassName=".CategoryAggregateEntity" syncable="YES">
+        <attribute name="categoryName" attributeType="String"/>
+        <attribute name="currency" attributeType="String"/>
+        <attribute name="id" attributeType="String"/>
+        <attribute name="lastTransactionDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lastUpdated" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="month" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="subcategoryName" optional="YES" attributeType="String"/>
+        <attribute name="totalAmount" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="transactionCount" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="year" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <fetchIndex name="byCategoryIndex">
+            <fetchIndexElement property="categoryName" type="Binary" order="ascending"/>
+            <fetchIndexElement property="year" type="Binary" order="descending"/>
+            <fetchIndexElement property="month" type="Binary" order="descending"/>
+        </fetchIndex>
+        <fetchIndex name="bySubcategoryIndex">
+            <fetchIndexElement property="categoryName" type="Binary" order="ascending"/>
+            <fetchIndexElement property="subcategoryName" type="Binary" order="ascending"/>
+            <fetchIndexElement property="year" type="Binary" order="descending"/>
+            <fetchIndexElement property="month" type="Binary" order="descending"/>
+        </fetchIndex>
+        <fetchIndex name="byLastUpdatedIndex">
+            <fetchIndexElement property="lastUpdated" type="Binary" order="descending"/>
+        </fetchIndex>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
 </model>

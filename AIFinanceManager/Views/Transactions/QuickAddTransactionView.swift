@@ -19,6 +19,7 @@ struct QuickAddTransactionView: View {
     // Кешированные данные для производительности
     @State private var cachedCategories: [String] = []
     @State private var cachedCategoryExpenses: [String: CategoryExpense] = [:]
+    @State private var updateTask: Task<Void, Never>?
 
     var body: some View {
         let categories = cachedCategories
@@ -149,12 +150,23 @@ struct QuickAddTransactionView: View {
         }
     }
 
-    // Обновление кешированных данных
+    // Обновление кешированных данных с debouncing
     private func updateCachedData() {
-        PerformanceProfiler.start("QuickAddTransactionView.updateCachedData")
-        cachedCategoryExpenses = transactionsViewModel.categoryExpenses(timeFilterManager: timeFilterManager)
-        cachedCategories = popularCategories()
-        PerformanceProfiler.end("QuickAddTransactionView.updateCachedData")
+        // Отменить предыдущую задачу обновления
+        updateTask?.cancel()
+
+        // Запустить новую задачу с debouncing
+        updateTask = Task {
+            try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms debounce
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                PerformanceProfiler.start("QuickAddTransactionView.updateCachedData")
+                cachedCategoryExpenses = transactionsViewModel.categoryExpenses(timeFilterManager: timeFilterManager)
+                cachedCategories = popularCategories()
+                PerformanceProfiler.end("QuickAddTransactionView.updateCachedData")
+            }
+        }
     }
 
     private var gridColumns: [GridItem] {

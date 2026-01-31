@@ -56,6 +56,12 @@ class TransactionsViewModel: ObservableObject {
     // NOTE: Теперь управляется через balanceCalculationService.isImported()
     // Этот Set оставлен для обратной совместимости и будет удален в следующей версии
     private var accountsWithCalculatedInitialBalance: Set<String> = []
+
+    // MARK: - Category Aggregation
+
+    /// Кеш агрегатов категорий для быстрого O(1) доступа
+    private let aggregateCache = CategoryAggregateCache()
+
     // MARK: - Extracted Services (P3 decomposition)
 
     /// Centralized cache manager for summaries, balances, account lookups, and indexes
@@ -238,11 +244,51 @@ class TransactionsViewModel: ObservableObject {
             }
         }.value
 
+        // Инициализация кеша агрегатов категорий
+        await initializeCategoryAggregates()
+
         await MainActor.run {
             isLoading = false
         }
 
         PerformanceProfiler.end("TransactionsViewModel.loadDataAsync")
+    }
+
+    /// Инициализировать кеш агрегатов категорий (миграция или загрузка)
+    private func initializeCategoryAggregates() async {
+        let currentVersion = UserDefaults.standard.integer(forKey: "aggregateCacheVersion")
+
+        if currentVersion < 1 {
+            // Первый запуск - выполнить миграцию
+            await migrateToAggregateCache()
+        } else {
+            // Обычная загрузка из CoreData
+            guard let coreDataRepo = repository as? CoreDataRepository else { return }
+            await aggregateCache.loadFromCoreData(repository: coreDataRepo)
+        }
+    }
+
+    /// Миграция к системе агрегатов категорий
+    @MainActor
+    private func migrateToAggregateCache() async {
+        PerformanceProfiler.start("CategoryAggregate.Migration")
+
+        guard let coreDataRepo = repository as? CoreDataRepository else {
+            PerformanceProfiler.end("CategoryAggregate.Migration")
+            return
+        }
+
+        // Построить агрегаты из всех транзакций в фоновом потоке
+        await aggregateCache.rebuildFromTransactions(
+            allTransactions,
+            baseCurrency: appSettings.baseCurrency,
+            repository: coreDataRepo
+        )
+
+        // Отметить миграцию как завершенную
+        UserDefaults.standard.set(1, forKey: "aggregateCacheVersion")
+
+        PerformanceProfiler.end("CategoryAggregate.Migration")
     }
     
     private static var dateFormatter: DateFormatter {
@@ -476,34 +522,21 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func categoryExpenses(timeFilterManager: TimeFilterManager) -> [String: CategoryExpense] {
-        let filtered = transactionsFilteredByTime(timeFilterManager).filter { $0.type == .expense }
-        var result: [String: CategoryExpense] = [:]
-        let today = Calendar.current.startOfDay(for: Date())
-        let dateFormatter = Self.dateFormatter
-        
-        for transaction in filtered {
-            guard let transactionDate = dateFormatter.date(from: transaction.date),
-                  transactionDate <= today else {
-                continue
-            }
-
-            let category = transaction.category.isEmpty ? "Uncategorized" : transaction.category
-            // Используем сохраненные данные при создании транзакции
-            let amountInBaseCurrency = getConvertedAmountOrCompute(transaction: transaction, to: appSettings.baseCurrency)
-
-            var expense = result[category] ?? CategoryExpense(total: 0, subcategories: [:])
-            expense.total += amountInBaseCurrency
-
-            if let subcategory = transaction.subcategory {
-                expense.subcategories[subcategory, default: 0] += amountInBaseCurrency
-            }
-
-            result[category] = expense
+        // Проверить кеш
+        if !cacheManager.categoryExpensesCacheInvalidated,
+           let cached = cacheManager.cachedCategoryExpenses {
+            return cached
         }
-        
+
+        // Использовать кеш агрегатов для эффективного расчета
+        let result = aggregateCache.getCategoryExpenses(
+            timeFilter: timeFilterManager.currentFilter,
+            baseCurrency: appSettings.baseCurrency
+        )
+
         cacheManager.cachedCategoryExpenses = result
         cacheManager.categoryExpensesCacheInvalidated = false
-        
+
         return result
     }
     
@@ -799,6 +832,13 @@ class TransactionsViewModel: ObservableObject {
             // Этот метод теперь также корректно обрабатывает депозиты в internal transfers
             applyTransactionToBalancesDirectly(transactionWithID)
 
+            // Инкрементальное обновление кеша агрегатов
+            aggregateCache.updateForTransaction(
+                transaction: transactionWithID,
+                operation: .add,
+                baseCurrency: appSettings.baseCurrency
+            )
+
             invalidateCaches()
             scheduleBalanceRecalculation()
             scheduleSave()
@@ -894,6 +934,13 @@ class TransactionsViewModel: ObservableObject {
             accountsWithCalculatedInitialBalance.remove(targetAccountId)
         }
 
+        // Инкрементальное обновление кеша агрегатов
+        aggregateCache.updateForTransaction(
+            transaction: transaction,
+            operation: .delete,
+            baseCurrency: appSettings.baseCurrency
+        )
+
         invalidateCaches()
         scheduleBalanceRecalculation()
 
@@ -962,6 +1009,13 @@ class TransactionsViewModel: ObservableObject {
 
         // Переприсваиваем весь массив для триггера @Published
         allTransactions = newTransactions
+
+        // Инкрементальное обновление кеша агрегатов
+        aggregateCache.updateForTransaction(
+            transaction: updatedTransaction,
+            operation: .update(oldTransaction: oldTransaction),
+            baseCurrency: appSettings.baseCurrency
+        )
 
         invalidateCaches()
         scheduleBalanceRecalculation()

@@ -237,6 +237,76 @@ final class CoreDataRepository: DataRepositoryProtocol {
         }
     }
     
+    // MARK: - Category Aggregates
+
+    /// Загрузить все агрегаты категорий из Core Data
+    func loadAggregates() -> [CategoryAggregate] {
+        let context = stack.viewContext
+        let request = CategoryAggregateEntity.fetchRequest()
+        request.sortDescriptors = [NSSortDescriptor(key: "lastUpdated", ascending: false)]
+
+        do {
+            let entities = try context.fetch(request)
+            return entities.map { $0.toAggregate() }
+        } catch {
+            return []
+        }
+    }
+
+    /// Сохранить агрегаты категорий в Core Data
+    func saveAggregates(_ aggregates: [CategoryAggregate]) {
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+
+            do {
+                try await self.saveCoordinator.performSave(operation: "saveAggregates") { context in
+                    // Fetch существующие агрегаты
+                    let fetchRequest = CategoryAggregateEntity.fetchRequest()
+                    let existingEntities = try context.fetch(fetchRequest)
+
+                    var existingDict: [String: CategoryAggregateEntity] = [:]
+                    for entity in existingEntities {
+                        if let id = entity.id {
+                            existingDict[id] = entity
+                        }
+                    }
+
+                    var keptIds = Set<String>()
+
+                    // Обновить или создать агрегаты
+                    for aggregate in aggregates {
+                        keptIds.insert(aggregate.id)
+
+                        if let existing = existingDict[aggregate.id] {
+                            // Обновить существующий
+                            existing.categoryName = aggregate.categoryName
+                            existing.subcategoryName = aggregate.subcategoryName
+                            existing.year = aggregate.year
+                            existing.month = aggregate.month
+                            existing.totalAmount = aggregate.totalAmount
+                            existing.transactionCount = aggregate.transactionCount
+                            existing.currency = aggregate.currency
+                            existing.lastUpdated = Date()
+                            existing.lastTransactionDate = aggregate.lastTransactionDate
+                        } else {
+                            // Создать новый
+                            _ = CategoryAggregateEntity.from(aggregate, context: context)
+                        }
+                    }
+
+                    // Удалить агрегаты, которых больше нет
+                    for entity in existingEntities {
+                        if let id = entity.id, !keptIds.contains(id) {
+                            context.delete(entity)
+                        }
+                    }
+                }
+            } catch {
+                // Логировать ошибку
+            }
+        }
+    }
+
     /// Синхронно сохранить счета в Core Data (для импорта CSV)
     func saveAccountsSync(_ accounts: [Account]) throws {
         
@@ -407,40 +477,14 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 // PERFORMANCE: Промежуточное сохранение каждые batchSize транзакций
                 if processedCount % batchSize == 0 && backgroundContext.hasChanges {
                     try backgroundContext.save()
-                    backgroundContext.reset() // Освобождаем память
-
-                    // Перезагружаем dictionaries после reset
-                    let refetchedEntities = try backgroundContext.fetch(fetchRequest)
-                    existingDict.removeAll()
-                    for entity in refetchedEntities {
-                        if let id = entity.id, !id.isEmpty {
-                            existingDict[id] = entity
-                        }
-                    }
-
-                    let refetchedAccounts = try backgroundContext.fetch(accountFetchRequest)
-                    accountDict.removeAll()
-                    for entity in refetchedAccounts {
-                        if let id = entity.id {
-                            accountDict[id] = entity
-                        }
-                    }
-
-                    let refetchedSeries = try backgroundContext.fetch(seriesFetchRequest)
-                    seriesDict.removeAll()
-                    for entity in refetchedSeries {
-                        if let id = entity.id {
-                            seriesDict[id] = entity
-                        }
-                    }
-
+                    // УБРАНО: backgroundContext.reset() - избыточная перезагрузка данных
+                    // УБРАНО: весь блок refetch - не нужен без reset()
                 }
             }
 
             // Delete transactions that no longer exist
-            // Перезагружаем существующие entities после возможного reset
-            let finalExistingEntities = try backgroundContext.fetch(fetchRequest)
-            for entity in finalExistingEntities {
+            // Используем уже загруженные entities (не нужен refetch без reset)
+            for entity in existingEntities {
                 if let id = entity.id, !keptIds.contains(id) {
                     backgroundContext.delete(entity)
                 }
