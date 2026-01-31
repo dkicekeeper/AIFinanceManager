@@ -42,7 +42,7 @@ class SubscriptionsViewModel: ObservableObject {
     }
     
     // MARK: - Recurring Series CRUD Operations
-    
+
     func createRecurringSeries(
         amount: Decimal,
         currency: String,
@@ -65,55 +65,25 @@ class SubscriptionsViewModel: ObservableObject {
             frequency: frequency,
             startDate: startDate
         )
-        
+
         // ✅ CRITICAL: Reassign array to trigger @Published
         // Using append() doesn't always trigger SwiftUI updates
         recurringSeries = recurringSeries + [series]
-        
+
         saveRecurringSeries()  // ✅ Sync save
-        
+
         // Notify TransactionsViewModel to generate transactions for new series
         NotificationCenter.default.post(
             name: .recurringSeriesCreated,
             object: nil,
             userInfo: ["seriesId": series.id]
         )
-        
+
         return series
     }
-    
+
     func updateRecurringSeries(_ series: RecurringSeries) {
-        if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
-            let oldSeries = recurringSeries[index]
-
-            // Check if need to regenerate future transactions
-            let frequencyChanged = oldSeries.frequency != series.frequency
-            let startDateChanged = oldSeries.startDate != series.startDate
-            let amountChanged = oldSeries.amount != series.amount
-            let needsRegeneration = frequencyChanged || startDateChanged || amountChanged
-
-            if needsRegeneration {
-            }
-
-            // Создаем новый массив вместо модификации элемента на месте
-            var newSeries = recurringSeries
-            newSeries[index] = series
-
-            // Переприсваиваем весь массив для триггера @Published
-            recurringSeries = newSeries
-            // NOTE: @Published automatically sends objectWillChange notification
-
-            // Notify TransactionsViewModel to regenerate if needed
-            if needsRegeneration {
-                NotificationCenter.default.post(
-                    name: .recurringSeriesChanged,
-                    object: nil,
-                    userInfo: ["seriesId": series.id, "oldSeries": oldSeries]
-                )
-            }
-
-            saveRecurringSeries()  // ✅ Sync save
-        }
+        updateSeriesInternal(series, scheduleNotifications: false)
     }
     
     func stopRecurringSeries(_ seriesId: String) {
@@ -195,59 +165,14 @@ class SubscriptionsViewModel: ObservableObject {
         )
         
         // Schedule notifications
-        Task {
-            if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
-                await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
-            }
-        }
-        
+        scheduleNotificationsForSubscription(series)
+
         return series
     }
     
     /// Update a subscription
     func updateSubscription(_ series: RecurringSeries) {
-        if let index = recurringSeries.firstIndex(where: { $0.id == series.id }) {
-            let oldSeries = recurringSeries[index]
-
-            // Check if need to regenerate future transactions
-            let frequencyChanged = oldSeries.frequency != series.frequency
-            let startDateChanged = oldSeries.startDate != series.startDate
-            let amountChanged = oldSeries.amount != series.amount
-            let needsRegeneration = frequencyChanged || startDateChanged || amountChanged
-
-            if needsRegeneration {
-            }
-
-            // Создаем новый массив вместо модификации элемента на месте
-            var newSeries = recurringSeries
-            newSeries[index] = series
-
-            // Переприсваиваем весь массив для триггера @Published
-            recurringSeries = newSeries
-            // NOTE: @Published automatically sends objectWillChange notification
-
-            // Notify TransactionsViewModel to regenerate if needed
-            if needsRegeneration {
-                NotificationCenter.default.post(
-                    name: .recurringSeriesChanged,
-                    object: nil,
-                    userInfo: ["seriesId": series.id, "oldSeries": oldSeries]
-                )
-            }
-
-            saveRecurringSeries()  // ✅ Sync save (updateSubscription)
-            
-            // Update notifications
-            Task {
-                if series.subscriptionStatus == .active {
-                    if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
-                        await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
-                    }
-                } else {
-                    await SubscriptionNotificationScheduler.shared.cancelNotifications(for: series.id)
-                }
-            }
-        }
+        updateSeriesInternal(series, scheduleNotifications: true)
     }
     
     /// Pause a subscription
@@ -281,16 +206,11 @@ class SubscriptionsViewModel: ObservableObject {
 
             // Переприсваиваем весь массив для триггера @Published
             recurringSeries = newSeries
-            // NOTE: @Published automatically sends objectWillChange notification
 
-            saveRecurringSeries()  // ✅ Sync save (resumeSubscription)
+            saveRecurringSeries()
 
             // Schedule notifications
-            Task {
-                if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: recurringSeries[index]) {
-                    await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: recurringSeries[index], nextChargeDate: nextChargeDate)
-                }
-            }
+            scheduleNotificationsForSubscription(recurringSeries[index])
         }
     }
     
@@ -331,7 +251,63 @@ class SubscriptionsViewModel: ObservableObject {
     }
     
     // MARK: - Private Helpers
-    
+
+    /// Unified update method for both recurring series and subscriptions
+    /// - Parameters:
+    ///   - series: The series to update
+    ///   - scheduleNotifications: Whether to schedule/update notifications (subscriptions only)
+    private func updateSeriesInternal(_ series: RecurringSeries, scheduleNotifications: Bool) {
+        guard let index = recurringSeries.firstIndex(where: { $0.id == series.id }) else { return }
+
+        let oldSeries = recurringSeries[index]
+
+        // Check if need to regenerate future transactions
+        let frequencyChanged = oldSeries.frequency != series.frequency
+        let startDateChanged = oldSeries.startDate != series.startDate
+        let amountChanged = oldSeries.amount != series.amount
+        let needsRegeneration = frequencyChanged || startDateChanged || amountChanged
+
+        // Создаем новый массив вместо модификации элемента на месте
+        var newSeries = recurringSeries
+        newSeries[index] = series
+
+        // Переприсваиваем весь массив для триггера @Published
+        recurringSeries = newSeries
+
+        // Notify TransactionsViewModel to regenerate if needed
+        if needsRegeneration {
+            NotificationCenter.default.post(
+                name: .recurringSeriesChanged,
+                object: nil,
+                userInfo: ["seriesId": series.id, "oldSeries": oldSeries]
+            )
+        }
+
+        saveRecurringSeries()
+
+        // Schedule notifications for subscriptions if requested
+        if scheduleNotifications {
+            scheduleNotificationsForSubscription(series)
+        }
+    }
+
+    /// Schedule or cancel notifications for a subscription based on its status
+    /// - Parameter series: The subscription series to schedule notifications for
+    private func scheduleNotificationsForSubscription(_ series: RecurringSeries) {
+        Task {
+            if series.subscriptionStatus == .active {
+                if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
+                    await SubscriptionNotificationScheduler.shared.scheduleNotifications(
+                        for: series,
+                        nextChargeDate: nextChargeDate
+                    )
+                }
+            } else {
+                await SubscriptionNotificationScheduler.shared.cancelNotifications(for: series.id)
+            }
+        }
+    }
+
     /// Save recurring series
     /// Note: Uses async save through SaveCoordinator for proper Core Data handling
     /// Recurring series have complex relationships that require background context

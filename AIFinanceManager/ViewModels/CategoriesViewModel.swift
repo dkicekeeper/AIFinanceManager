@@ -26,6 +26,14 @@ class CategoriesViewModel: ObservableObject {
     private var currencyService: TransactionCurrencyService?
     private var appSettings: AppSettings?
 
+    /// Lazy budget service - created when needed with current dependencies
+    private lazy var budgetService: CategoryBudgetService = {
+        CategoryBudgetService(
+            currencyService: currencyService,
+            appSettings: appSettings
+        )
+    }()
+
     // MARK: - Initialization
 
     init(
@@ -335,76 +343,7 @@ class CategoriesViewModel: ObservableObject {
     }
 
     func budgetProgress(for category: CustomCategory, transactions: [Transaction]) -> BudgetProgress? {
-        // Only expense categories can have budgets
-        guard let budgetAmount = category.budgetAmount,
-              category.type == .expense else { return nil }
-
-        // Calculate spent amount for current period
-        let spent = calculateSpent(for: category, transactions: transactions)
-
-        return BudgetProgress(budgetAmount: budgetAmount, spent: spent)
-    }
-
-    private func calculateSpent(for category: CustomCategory, transactions: [Transaction]) -> Double {
-        let periodStart = budgetPeriodStart(for: category)
-        let periodEnd = Date()
-
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-
-        return transactions
-            .filter { transaction in
-                guard transaction.category == category.name,
-                      transaction.type == .expense,
-                      let transactionDate = dateFormatter.date(from: transaction.date) else {
-                    return false
-                }
-                return transactionDate >= periodStart && transactionDate <= periodEnd
-            }
-            .reduce(0) { sum, transaction in
-                // Конвертируем сумму в базовую валюту для корректного подсчета
-                // Если currencyService и appSettings доступны, используем конвертацию
-                if let currencyService = currencyService, let appSettings = appSettings {
-                    let amountInBaseCurrency = currencyService.getConvertedAmountOrCompute(
-                        transaction: transaction,
-                        to: appSettings.baseCurrency
-                    )
-                    return sum + amountInBaseCurrency
-                } else {
-                    // Fallback: используем сумму без конвертации
-                    return sum + transaction.amount
-                }
-            }
-    }
-
-    private func budgetPeriodStart(for category: CustomCategory) -> Date {
-        guard category.budgetStartDate != nil else { return Date() }
-
-        let calendar = Calendar.current
-        let now = Date()
-
-        switch category.budgetPeriod {
-        case .weekly:
-            // Start of current week
-            return calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
-        case .monthly:
-            // Reset on specific day of month
-            let components = calendar.dateComponents([.year, .month], from: now)
-            var startComponents = components
-            startComponents.day = category.budgetResetDay
-
-            if let resetDate = calendar.date(from: startComponents) {
-                // If reset day hasn't happened this month yet, use previous month
-                if resetDate > now {
-                    return calendar.date(byAdding: .month, value: -1, to: resetDate) ?? resetDate
-                }
-                return resetDate
-            }
-            return now
-        case .yearly:
-            // Start of current year
-            return calendar.dateInterval(of: .year, for: now)?.start ?? now
-        }
+        return budgetService.budgetProgress(for: category, transactions: transactions)
     }
     
     // MARK: - Private Helpers
