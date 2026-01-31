@@ -344,7 +344,7 @@ class TransactionBalanceCoordinator: TransactionBalanceCoordinatorProtocol {
 
     /// Calculate the balance change for a specific account from all transactions
     /// This is used to determine the initial balance (starting capital) of an account
-    private func calculateTransactionsBalance(for accountId: String) -> Double {
+    func calculateTransactionsBalance(for accountId: String) -> Double {
         guard let delegate = delegate else { return 0 }
 
         let today = Calendar.current.startOfDay(for: Date())

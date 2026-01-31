@@ -208,7 +208,7 @@ struct SubscriptionsListView: View {
     let coordinator = AppCoordinator()
     let dateFormatter = DateFormatters.dateFormatter
     let today = dateFormatter.string(from: Date())
-    
+
     let sampleSubscription = RecurringSeries(
         id: "preview-card",
         amount: Decimal(9.99),
@@ -222,11 +222,10 @@ struct SubscriptionsListView: View {
         brandId: "Netflix",
         status: .active
     )
-    
-    return SubscriptionCard(
+
+    SubscriptionCard(
         subscription: sampleSubscription,
-        subscriptionsViewModel: coordinator.subscriptionsViewModel,
-        transactionsViewModel: coordinator.transactionsViewModel
+        nextChargeDate: Date().addingTimeInterval(7 * 24 * 60 * 60) // 7 days from now
     )
     .padding()
 }

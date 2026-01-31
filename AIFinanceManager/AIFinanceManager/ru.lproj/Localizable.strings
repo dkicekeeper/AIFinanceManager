@@ -256,6 +256,7 @@
 "deposit.editTitle" = "Редактировать депозит";
 
 // MARK: - Categories Management
+"category.uncategorized" = "Без категории";
 "category.deleteTitle" = "Удалить категорию?";
 "category.deleteOnlyCategory" = "Удалить только категорию";
 "category.deleteCategoryAndTransactions" = "Удалить категорию и операции";

@@ -22,6 +22,12 @@ protocol TransactionBalanceCoordinatorProtocol {
 
     /// Schedule balance recalculation based on batch mode
     func scheduleRecalculation()
+
+    /// Calculate the balance change for a specific account from all transactions
+    /// This is used to determine the initial balance (starting capital) of an account
+    /// - Parameter accountId: The account ID to calculate balance for
+    /// - Returns: Net balance change from all transactions
+    func calculateTransactionsBalance(for accountId: String) -> Double
 }
 
 /// Delegate protocol for TransactionBalanceCoordinator to access ViewModel state

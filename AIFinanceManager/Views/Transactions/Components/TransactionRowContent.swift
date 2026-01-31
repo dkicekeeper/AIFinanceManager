@@ -18,7 +18,7 @@ struct TransactionRowContent: View {
     let showDescription: Bool
     let depositAccountId: String?
     let isPlanned: Bool
-    let linkedSubcategories: [String]
+    let linkedSubcategories: [Subcategory]
 
     init(
         transaction: Transaction,
@@ -29,7 +29,7 @@ struct TransactionRowContent: View {
         showDescription: Bool = true,
         depositAccountId: String? = nil,
         isPlanned: Bool = false,
-        linkedSubcategories: [String] = []
+        linkedSubcategories: [Subcategory] = []
     ) {
         self.transaction = transaction
         self.currency = currency

@@ -256,6 +256,7 @@
 "deposit.editTitle" = "Edit Deposit";
 
 // MARK: - Categories Management
+"category.uncategorized" = "Uncategorized";
 "category.deleteTitle" = "Delete category?";
 "category.deleteOnlyCategory" = "Delete category only";
 "category.deleteCategoryAndTransactions" = "Delete category and transactions";

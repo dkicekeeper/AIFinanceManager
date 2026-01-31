@@ -58,11 +58,13 @@ class TransactionStorageCoordinator: TransactionStorageCoordinatorProtocol {
         // CRITICAL FIX: Use .value to wait for completion so allTransactions is populated
         // before initializeCategoryAggregates() runs
         await Task.detached(priority: .utility) { [weak self] in
-            guard let self = self, let delegate = self.delegate else { return }
+            guard let self = self else { return }
 
-            let allTxns = delegate.repository.loadTransactions(dateRange: nil)
+            let allTxns = await self.delegate?.repository.loadTransactions(dateRange: nil) ?? []
 
-            await MainActor.run {
+            await MainActor.run { [weak self] in
+                guard let delegate = self?.delegate else { return }
+
                 delegate.allTransactions = allTxns
                 delegate.hasOlderTransactions = allTxns.count > delegate.displayTransactions.count
 

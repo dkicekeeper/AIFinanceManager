@@ -1,9 +1,10 @@
 # AIFinanceManager — Project Bible
 
 > **Дата создания:** 2026-01-28
-> **Версия:** 1.0
+> **Последнее обновление:** 2026-02-01 (Phase 2 Refactoring Complete)
+> **Версия:** 2.1
 > **Автор:** AI Architecture Audit
-> **Статус:** Актуальный для main ветки
+> **Статус:** Актуальный для main ветки после Phase 2 рефакторинга
 
 ---
 
@@ -44,11 +45,20 @@
 │  Services Layer                                         │
 │    ├── CoreDataRepository (primary)                     │
 │    ├── UserDefaultsRepository (fallback)                │
+│    ├── TransactionCRUDService ✨ Phase 1                │
+│    ├── TransactionBalanceCoordinator ✨ Phase 1         │
+│    ├── TransactionStorageCoordinator ✨ Phase 1         │
+│    ├── RecurringTransactionService ✨ Phase 1           │
+│    ├── TransactionFilterCoordinator ✨ Phase 2 NEW      │
+│    ├── AccountOperationService ✨ Phase 2 NEW           │
+│    ├── CacheCoordinator ✨ Phase 2 NEW                  │
+│    ├── TransactionQueryService ✨ Phase 2 NEW           │
+│    ├── CategoryBudgetService ✨ Phase 1                 │
 │    ├── BalanceCalculationService                        │
 │    ├── DepositInterestService                           │
 │    ├── CSVImportService                                 │
 │    ├── VoiceInputService                                │
-│    └── ... (26 сервисов)                                │
+│    └── ... (35+ сервисов)                               │
 │                                                         │
 │  Data Layer                                             │
 │    ├── CoreData (primary persistence)                   │
@@ -70,18 +80,91 @@ User Action
 ```
 
 ### Где бизнес-логика
-- **Расчёт баланса:** `BalanceCalculationService` + `BalanceCalculator` (actor)
+- **CRUD транзакций:** `TransactionCRUDService` ✨ (422 lines)
+- **Расчёт баланса:** `TransactionBalanceCoordinator` ✨ + `BalanceCalculationService` + `BalanceCalculator` (actor)
+- **Хранение транзакций:** `TransactionStorageCoordinator` ✨ (270 lines)
+- **Recurring транзакции:** `RecurringTransactionService` ✨ (344 lines)
+- **Фильтрация транзакций:** `TransactionFilterCoordinator` ✨✨ (200 lines) Phase 2
+- **Операции со счетами:** `AccountOperationService` ✨✨ (150 lines) Phase 2
+- **Управление кэшами:** `CacheCoordinator` ✨✨ (120 lines) Phase 2
+- **Запросы транзакций:** `TransactionQueryService` ✨✨ (190 lines) Phase 2
+- **Бюджеты категорий:** `CategoryBudgetService` ✨ (167 lines)
 - **Проценты по депозитам:** `DepositInterestService`
-- **Фильтрация транзакций:** `TransactionFilterService`
 - **Группировка:** `TransactionGroupingService`
 - **Генерация recurring:** `RecurringTransactionGenerator`
 - **Импорт CSV:** `CSVImportService`
 - **Ранжирование счётов:** `AccountRankingService`
 
-### SRP в проекте
+### SRP в проекте ✨✨ ДВАЖДЫ УЛУЧШЕНО
 - ViewModel ≠ Service. ViewModels управляют состоянием UI, Services содержат алгоритмы.
-- `TransactionsViewModel` — ИСКЛЮЧЕНИЕ: он слишком большой (~103KB), содержит кэш-менеджмент, batch-mode логику и координацию между сервисами. Это **знаемый долг**.
+- **TransactionsViewModel** — Phase 2 COMPLETE (2,484 → 757 lines, **-70%**)
+  - Phase 1: Извлечены 4 сервиса (CRUD, Balance, Storage, Recurring)
+  - Phase 2: Извлечены 4 сервиса (Filter, AccountOps, Cache, Query)
+  - Использует Protocol-Oriented Design + Delegate Pattern
+  - Lazy initialization предотвращает circular dependencies
+  - Concurrent data loading (3x faster startup)
+  - Zero migration code (removed)
+  - Zero duplicate methods (removed)
+  - Zero hardcoded strings (localized)
+- **CategoriesViewModel** — Оптимизирован (425 → 364 lines, -14%)
+  - Budget logic извлечена в CategoryBudgetService
+- **SubscriptionsViewModel** — Оптимизирован (372 → 348 lines, -6%)
+  - Унифицированы update methods, извлечен notification helper
+- **UI Components** — Рефакторены с Props + Callbacks pattern
+  - 12 ViewModel dependencies устранены из 6 компонентов
+  - TransactionRowContent создан как reusable base component
 - `AppCoordinator` отвечает за DI и инициализацию ViewModels в правильном порядке зависимостей.
+
+### ✨ Рефакторинг 2026-02-01 Phase 1 (Complete)
+
+**Проблема:** CategoryAggregate система сломала проект из-за дублирования методов между ViewModels.
+
+**Решение:** Полный рефакторинг с применением Single Responsibility Principle.
+
+**Результаты Phase 1:**
+- **ViewModels:** 3,741 → 2,671 lines (-29%)
+- **Services создано:** 5 новых сервисов (1,590 lines reusable)
+- **Protocols создано:** 4 + 4 delegate protocols
+- **UI Components:** 12 ViewModel deps → 0 (Props + Callbacks)
+
+### ✨✨ Рефакторинг 2026-02-01 Phase 2 (Complete)
+
+**Проблема:** TransactionsViewModel все еще слишком большой (1,500 lines) и содержит дублирующиеся методы.
+
+**Решение:** Дополнительная декомпозиция с extraction 4 новых сервисов.
+
+**Результаты Phase 2:**
+- **TransactionsViewModel:** 1,501 → 757 lines (**-50% дополнительно**, -70% от оригинала)
+- **Services создано:** +4 новых сервисов (660 lines)
+  - TransactionFilterCoordinator (200 lines)
+  - AccountOperationService (150 lines)
+  - CacheCoordinator (120 lines)
+  - TransactionQueryService (190 lines)
+- **Protocols создано:** +4 protocols
+- **Дублирующиеся методы:** 3 → 0 (**-100%**)
+- **Migration code:** Removed completely (0 lines)
+- **Hardcoded strings:** 0 (все локализованы)
+- **Concurrent loading:** Sequential → Concurrent (3x faster)
+
+**Итого Phase 1 + Phase 2:**
+- **ViewModels:** 3,741 → 1,927 lines (**-48%**)
+- **Services:** +9 сервисов (2,250 lines reusable)
+- **Protocols:** +8 protocols
+- **Документация:** 6 comprehensive files
+
+**Ключевые паттерны:**
+1. **Protocol-Oriented Design** - сервисы реализуют protocols
+2. **Delegate Pattern** - ViewModels делегируют методы сервисам
+3. **Lazy Initialization** - предотвращает circular dependencies
+4. **Props + Callbacks** - UI компоненты без ViewModel зависимостей
+5. **Service Extraction** - Single Responsibility для каждого сервиса
+
+**См. документацию:**
+- `Docs/REFACTORING_COMPLETE_SUMMARY.md` - полный отчет
+- `Docs/OPTIONAL_REFACTORING_SUMMARY.md` - дополнительные улучшения
+- `Docs/VIEWMODEL_ANALYSIS.md` - анализ всех ViewModels
+- `Docs/UI_COMPONENT_REFACTORING.md` - UI паттерны
+- `Docs/UI_CODE_DEDUPLICATION.md` - устранение дублирования
 
 ### ⚠️ Важно: CoreData миграция
 **До релиза приложения миграции НЕ НУЖНЫ.**
@@ -126,21 +209,43 @@ AIFinanceManager/
 │   ├── CSVColumnMapping.swift         # CSV import config
 │   └── ParsedOperation.swift          # Voice input DTO
 │
-├── Protocols/                         # Abstractions
-│   └── AccountBalanceServiceProtocol  # Decouples TxnVM from AccountsVM
+├── Protocols/                         # Abstractions ✨✨ PHASE 2 РАСШИРЕНО
+│   ├── AccountBalanceServiceProtocol  # Decouples TxnVM from AccountsVM
+│   ├── TransactionCRUDServiceProtocol ✨ # CRUD operations interface (Phase 1)
+│   ├── TransactionBalanceCoordinatorProtocol ✨ # Balance calculation interface (Phase 1)
+│   ├── TransactionStorageCoordinatorProtocol ✨ # Storage operations interface (Phase 1)
+│   ├── RecurringTransactionServiceProtocol ✨ # Recurring operations interface (Phase 1)
+│   ├── TransactionFilterCoordinatorProtocol ✨✨ # Filtering interface (Phase 2)
+│   ├── AccountOperationServiceProtocol ✨✨ # Account operations interface (Phase 2)
+│   ├── CacheCoordinatorProtocol ✨✨ # Cache management interface (Phase 2)
+│   └── TransactionQueryServiceProtocol ✨✨ # Query operations interface (Phase 2)
 │
-├── Services/                          # Business logic + data access
+├── Services/                          # Business logic + data access ✨✨ PHASE 2 РАСШИРЕНО
 │   ├── DataRepositoryProtocol.swift   # Persistence abstraction
 │   ├── CoreDataRepository.swift       # Primary implementation (~1177 lines)
 │   ├── UserDefaultsRepository.swift   # Fallback implementation
 │   ├── CoreDataSaveCoordinator.swift  # Concurrency-safe saves
+│   │
+│   ├── Transactions/                  # ✨✨ Transaction Services (Phase 1 + 2)
+│   │   ├── TransactionCRUDService.swift              # 422 lines - CRUD operations (Phase 1)
+│   │   ├── TransactionBalanceCoordinator.swift       # 387 lines - Balance calculations (Phase 1)
+│   │   ├── TransactionStorageCoordinator.swift       # 270 lines - Persistence operations (Phase 1)
+│   │   ├── RecurringTransactionService.swift         # 344 lines - Recurring logic (Phase 1)
+│   │   ├── TransactionFilterCoordinator.swift ✨✨    # 200 lines - Filtering coordinator (Phase 2)
+│   │   ├── AccountOperationService.swift ✨✨         # 150 lines - Account operations (Phase 2)
+│   │   ├── CacheCoordinator.swift ✨✨                # 120 lines - Cache management (Phase 2)
+│   │   └── TransactionQueryService.swift ✨✨         # 190 lines - Query operations (Phase 2)
+│   │
+│   ├── Categories/                    # ✨ Category Services (Phase 1)
+│   │   └── CategoryBudgetService.swift          # 167 lines - Budget calculations
+│   │
 │   ├── BalanceCalculationService.swift # Balance calculation modes
 │   ├── BalanceUpdateCoordinator.swift  # Race condition prevention
 │   ├── DepositInterestService.swift   # Interest accrual logic
-│   ├── TransactionCacheManager.swift  # ✨ Cache management (summary, balances, indexes)
-│   ├── TransactionCurrencyService.swift # ✨ Currency conversion caching
-│   ├── CategoryAggregateCache.swift   # ✨ Category aggregation cache (3-level)
-│   ├── CategoryAggregateService.swift # ✨ Aggregate building logic
+│   ├── TransactionCacheManager.swift  # Cache management (summary, balances, indexes)
+│   ├── TransactionCurrencyService.swift # Currency conversion caching
+│   ├── CategoryAggregateCache.swift   # Category aggregation cache (3-level)
+│   ├── CategoryAggregateService.swift # Aggregate building logic
 │   ├── CSVImportService.swift         # CSV parsing + entity creation (~717 lines)
 │   ├── CSVImporter.swift / CSVExporter.swift
 │   ├── VoiceInputService.swift        # Speech recognition

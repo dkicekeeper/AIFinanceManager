@@ -153,8 +153,15 @@ struct DepositDetailView: View {
         .sheet(isPresented: $showingRateChange) {
             if let account = account {
                 DepositRateChangeView(
-                    depositsViewModel: depositsViewModel,
                     account: account,
+                    onRateChanged: { effectiveFrom, annualRate, note in
+                        depositsViewModel.addDepositRateChange(
+                            accountId: account.id,
+                            effectiveFrom: effectiveFrom,
+                            annualRate: annualRate,
+                            note: note
+                        )
+                    },
                     onComplete: {
                         HapticManager.success()
                         showingRateChange = false
