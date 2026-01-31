@@ -1987,9 +1987,9 @@ class TransactionsViewModel: ObservableObject {
         // Инвалидировать кеш балансов для пересчета
         cacheManager.balanceCacheInvalidated = true
 
-        // CRITICAL: Invalidate all caches including aggregate cache
-        // When account is deleted, category aggregates need to be recalculated
-        invalidateCaches()
+        // NOTE: We do NOT invalidate aggregate cache here because:
+        // - If only account is deleted (transactions remain), aggregates are still valid
+        // - If account+transactions are deleted, caller will invalidate and rebuild
     }
 
     func deleteRecurringSeries(_ seriesId: String, deleteTransactions: Bool = true) {

@@ -188,6 +188,8 @@ struct AccountsManagementView: View {
                 }
                 // Очистить состояние удаленного счета ПЕРЕД пересчетом
                 transactionsViewModel.cleanupDeletedAccount(account.id)
+                // CRITICAL: Invalidate caches since transactions were deleted
+                transactionsViewModel.invalidateCaches()
                 // syncAccountsFrom уже вызывает recalculateAccountBalances, не дублируем
                 transactionsViewModel.syncAccountsFrom(accountsViewModel)
                 // CRITICAL: Rebuild aggregate cache after deleting transactions
