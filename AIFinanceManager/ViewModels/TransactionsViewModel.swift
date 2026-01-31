@@ -118,6 +118,7 @@ class TransactionsViewModel: ObservableObject {
     private var saveCancellables = Set<AnyCancellable>()
 
     func invalidateCaches() {
+        print("🔄 [TransactionsViewModel] Invalidating all caches")
         cacheManager.invalidateAll()
         currencyService.invalidate()
     }
@@ -479,15 +480,21 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func summary(timeFilterManager: TimeFilterManager) -> Summary {
+        print("💰 [summary] Called - cacheInvalidated: \(cacheManager.summaryCacheInvalidated)")
+
         // Return cached summary if valid
         if !cacheManager.summaryCacheInvalidated, let cached = cacheManager.cachedSummary {
+            print("💰 [summary] Returning cached: income=\(cached.totalIncome), expense=\(cached.totalExpenses)")
             return cached
         }
-        
+
+        print("💰 [summary] Recalculating summary...")
+
         // Compute synchronously (will be fast with indexes and caching from Phase 2)
         PerformanceProfiler.start("summary.calculation.sync")
-        
+
         let filtered = transactionsFilteredByTime(timeFilterManager)
+        print("💰 [summary] Filtered transactions count: \(filtered.count)")
         let today = Calendar.current.startOfDay(for: Date())
         let dateFormatter = Self.dateFormatter
         let baseCurrency = appSettings.baseCurrency
@@ -532,7 +539,9 @@ class TransactionsViewModel: ObservableObject {
             endDate: dates.last ?? "",
             plannedAmount: 0  // Skip planned amount for now (was causing performance issues)
         )
-        
+
+        print("💰 [summary] Calculated: income=\(totalIncome), expense=\(totalExpenses), netFlow=\(totalIncome - totalExpenses)")
+
         cacheManager.cachedSummary = result
         cacheManager.summaryCacheInvalidated = false
         
@@ -541,17 +550,24 @@ class TransactionsViewModel: ObservableObject {
     }
     
     func categoryExpenses(timeFilterManager: TimeFilterManager) -> [String: CategoryExpense] {
+        print("📊 [categoryExpenses] Called - cacheInvalidated: \(cacheManager.categoryExpensesCacheInvalidated)")
+
         // Проверить кеш
         if !cacheManager.categoryExpensesCacheInvalidated,
            let cached = cacheManager.cachedCategoryExpenses {
+            print("📊 [categoryExpenses] Returning cached data: \(cached.keys.count) categories")
             return cached
         }
+
+        print("📊 [categoryExpenses] Recalculating from aggregate cache...")
 
         // Использовать кеш агрегатов для эффективного расчета
         let result = aggregateCache.getCategoryExpenses(
             timeFilter: timeFilterManager.currentFilter,
             baseCurrency: appSettings.baseCurrency
         )
+
+        print("📊 [categoryExpenses] Fresh data calculated: \(result.keys.count) categories, total: \(result.values.reduce(0) { $0 + $1.total })")
 
         cacheManager.cachedCategoryExpenses = result
         cacheManager.categoryExpensesCacheInvalidated = false
@@ -2307,18 +2323,28 @@ class TransactionsViewModel: ObservableObject {
     /// End batch mode without automatic save (caller handles save)
     /// Used by CSV import to avoid double-save (endBatch's async save + explicit sync save)
     func endBatchWithoutSave() {
+        print("🔚 [endBatchWithoutSave] Starting - allTransactions count: \(allTransactions.count)")
         isBatchMode = false
 
         if pendingBalanceRecalculation {
+            print("🔚 [endBatchWithoutSave] Recalculating account balances")
             recalculateAccountBalances()
             pendingBalanceRecalculation = false
         }
+
+        // CRITICAL FIX: Invalidate all caches so UI gets fresh data
+        // Without this, categoryExpenses() returns stale cached values
+        // and UI shows 0 for category sums after CSV import
+        print("🔚 [endBatchWithoutSave] Invalidating caches")
+        invalidateCaches()
 
         // Skip save - caller will do sync save for data safety
         pendingSave = false
 
         // Refresh displayTransactions after batch operations to ensure UI is updated
+        print("🔚 [endBatchWithoutSave] Refreshing display transactions")
         refreshDisplayTransactions()
+        print("🔚 [endBatchWithoutSave] Completed - displayTransactions count: \(displayTransactions.count)")
     }
 
     /// Refresh displayTransactions from allTransactions
