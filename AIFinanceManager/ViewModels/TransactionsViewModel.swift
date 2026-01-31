@@ -228,10 +228,7 @@ class TransactionsViewModel: ObservableObject {
         // STEP 1: Load data (WAIT for completion to ensure allTransactions is populated)
         await Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
-
-            await MainActor.run {
-                await self.loadFromStorage()
-            }
+            await self.loadFromStorage()
         }.value
 
         // STEP 2: Generate recurring transactions (WAIT for completion)

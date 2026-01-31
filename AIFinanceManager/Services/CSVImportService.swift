@@ -596,19 +596,19 @@ class CSVImportService {
             if let accountsVM = accountsViewModel {
                 transactionsViewModel.accounts = accountsVM.accounts
             }
-            
+
             // Сохраняем все связи транзакций с подкатегориями одним батчем
             if !allTransactionSubcategoryLinks.isEmpty {
                 categoriesViewModel.batchLinkSubcategoriesToTransaction(allTransactionSubcategoryLinks)
             }
-            
+
             // Синхронизируем категории, подкатегории и связи из CategoriesViewModel в TransactionsViewModel
             // перед сохранением, чтобы TransactionsViewModel.saveToStorage() не перезаписал устаревшие данные
             transactionsViewModel.customCategories = categoriesViewModel.customCategories
             transactionsViewModel.subcategories = categoriesViewModel.subcategories
             transactionsViewModel.categorySubcategoryLinks = categoriesViewModel.categorySubcategoryLinks
             transactionsViewModel.transactionSubcategoryLinks = categoriesViewModel.transactionSubcategoryLinks
-            
+
             // Явно сохраняем все данные CategoriesViewModel (подкатегории, связи и т.д.)
             // чтобы убедиться, что все данные сохранены после импорта
             categoriesViewModel.saveAllData()
@@ -622,9 +622,6 @@ class CSVImportService {
             // Если приложение закроется до завершения задачи → все данные потеряются
             // СИНХРОННОЕ сохранение для гарантии записи на диск ДО продолжения
             transactionsViewModel.saveToStorageSync()
-
-            // Rebuild aggregate cache with imported data for immediate category sums display
-            await transactionsViewModel.rebuildAggregateCacheAfterImport()
 
             // Note: endBatchWithoutSave() handles:
             // - recalculateAccountBalances()
@@ -668,6 +665,10 @@ class CSVImportService {
                 accountsVM.objectWillChange.send()
             }
         }
+
+        // Rebuild aggregate cache with imported data for immediate category sums display
+        // Must be called AFTER MainActor.run block (async function)
+        await transactionsViewModel.rebuildAggregateCacheAfterImport()
         
         // Очищаем накопленные данные
         allTransactionSubcategoryLinks.removeAll(keepingCapacity: false)
