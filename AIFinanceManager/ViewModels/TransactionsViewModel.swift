@@ -132,7 +132,17 @@ class TransactionsViewModel: ObservableObject {
     func clearAndRebuildAggregateCache() {
         print("🔄 [clearAndRebuildAggregateCache] Clearing aggregate cache for full rebuild")
         aggregateCache.clear()
-        rebuildAggregateCacheInBackground()
+
+        Task {
+            await rebuildAggregateCacheAfterImport()
+
+            // CRITICAL: Invalidate summary cache after rebuild completes
+            // This ensures categoryExpenses() fetches fresh data from rebuilt aggregate cache
+            await MainActor.run {
+                cacheManager.invalidateAll()
+                print("🔄 [clearAndRebuildAggregateCache] Summary cache invalidated after rebuild")
+            }
+        }
     }
 
     // MARK: - Dependencies
@@ -335,6 +345,13 @@ class TransactionsViewModel: ObservableObject {
                 baseCurrency: self.appSettings.baseCurrency,
                 repository: coreDataRepo
             )
+
+            // CRITICAL: Invalidate summary cache after rebuild completes
+            // This ensures categoryExpenses() fetches fresh data from rebuilt aggregate cache
+            await MainActor.run { [weak self] in
+                self?.cacheManager.invalidateAll()
+                print("🔄 [rebuildAggregateCacheInBackground] Summary cache invalidated after rebuild")
+            }
         }
     }
 
