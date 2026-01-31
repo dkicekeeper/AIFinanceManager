@@ -190,6 +190,8 @@ struct AccountsManagementView: View {
                 transactionsViewModel.cleanupDeletedAccount(account.id)
                 // syncAccountsFrom уже вызывает recalculateAccountBalances, не дублируем
                 transactionsViewModel.syncAccountsFrom(accountsViewModel)
+                // CRITICAL: Rebuild aggregate cache after deleting transactions
+                transactionsViewModel.rebuildAggregateCacheInBackground()
                 accountToDelete = nil
             }
         } message: { account in

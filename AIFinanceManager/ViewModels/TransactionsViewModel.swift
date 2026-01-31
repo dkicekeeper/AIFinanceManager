@@ -312,6 +312,21 @@ class TransactionsViewModel: ObservableObject {
         )
     }
 
+    /// Rebuild aggregate cache in background (non-blocking, fire-and-forget)
+    /// Use this when you need to trigger rebuild from synchronous context
+    func rebuildAggregateCacheInBackground() {
+        guard let coreDataRepo = repository as? CoreDataRepository else { return }
+
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            await self.aggregateCache.rebuildFromTransactions(
+                self.allTransactions,
+                baseCurrency: self.appSettings.baseCurrency,
+                repository: coreDataRepo
+            )
+        }
+    }
+
     private static var dateFormatter: DateFormatter {
         DateFormatters.dateFormatter
     }
@@ -1971,6 +1986,10 @@ class TransactionsViewModel: ObservableObject {
 
         // Инвалидировать кеш балансов для пересчета
         cacheManager.balanceCacheInvalidated = true
+
+        // CRITICAL: Invalidate all caches including aggregate cache
+        // When account is deleted, category aggregates need to be recalculated
+        invalidateCaches()
     }
 
     func deleteRecurringSeries(_ seriesId: String, deleteTransactions: Bool = true) {
