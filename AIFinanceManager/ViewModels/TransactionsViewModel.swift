@@ -121,6 +121,7 @@ class TransactionsViewModel: ObservableObject {
         print("🔄 [TransactionsViewModel] Invalidating all caches")
         cacheManager.invalidateAll()
         currencyService.invalidate()
+        aggregateCache.clear()
     }
 
     // MARK: - Dependencies
@@ -1505,7 +1506,9 @@ class TransactionsViewModel: ObservableObject {
     /// This is useful when balances are corrupted (e.g., from double-counting transactions)
     /// Call this method from Settings to fix balance issues
     func resetAndRecalculateAllBalances() {
-        
+        // Invalidate all caches before recalculation
+        invalidateCaches()
+
         // STEP 1: Clear all cached initial balances
         let oldInitialBalances = initialAccountBalances
         initialAccountBalances = [:]

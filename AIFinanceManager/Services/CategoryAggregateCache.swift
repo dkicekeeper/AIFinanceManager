@@ -307,8 +307,10 @@ class CategoryAggregateCache {
 
     /// Очистить кеш
     func clear() {
+        let count = aggregatesByKey.count
         aggregatesByKey.removeAll()
         isLoaded = false
+        print("🗂️ [CategoryAggregateCache] Cleared cache - \(count) aggregates removed, isLoaded set to false")
     }
 }
 
