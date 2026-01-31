@@ -78,14 +78,20 @@ class CategoryAggregateCache {
         baseCurrency: String
     ) -> [String: CategoryExpense] {
 
+        print("🗂️ [CategoryAggregateCache] getCategoryExpenses called - isLoaded: \(isLoaded), aggregates count: \(aggregatesByKey.count)")
+
         // Graceful degradation - return empty if cache not loaded yet
         // This prevents UI freezing while waiting for CoreData load
-        guard isLoaded else { return [:] }
+        guard isLoaded else {
+            print("🗂️ [CategoryAggregateCache] Cache not loaded yet, returning empty")
+            return [:]
+        }
 
         var result: [String: CategoryExpense] = [:]
 
         // Определить диапазон года/месяца для фильтра
         let (targetYear, targetMonth) = getYearMonth(from: timeFilter)
+        print("🗂️ [CategoryAggregateCache] Filter: targetYear=\(targetYear), targetMonth=\(targetMonth), baseCurrency=\(baseCurrency)")
 
         // Итерировать по агрегатам и фильтровать по периоду
         for (_, aggregate) in aggregatesByKey {
@@ -127,6 +133,8 @@ class CategoryAggregateCache {
                 }
             }
         }
+
+        print("🗂️ [CategoryAggregateCache] Returning \(result.count) categories, total: \(result.values.reduce(0) { $0 + $1.total })")
 
         return result
     }
@@ -270,6 +278,8 @@ class CategoryAggregateCache {
         repository: CoreDataRepository
     ) async {
 
+        print("🔄 [CategoryAggregateCache] rebuildFromTransactions started - transactions: \(transactions.count), baseCurrency: \(baseCurrency)")
+
         // Построить агрегаты с нуля в фоновом потоке
         let aggregates: [CategoryAggregate] = await Task.detached(priority: .userInitiated) { [service] in
             service.buildAggregates(
@@ -278,6 +288,8 @@ class CategoryAggregateCache {
             )
         }.value
 
+        print("🔄 [CategoryAggregateCache] Built \(aggregates.count) aggregates")
+
         // Обновить memory cache НА ГЛАВНОМ ПОТОКЕ
         await MainActor.run {
             self.aggregatesByKey.removeAll()
@@ -285,9 +297,11 @@ class CategoryAggregateCache {
                 self.aggregatesByKey[aggregate.id] = aggregate
             }
             self.isLoaded = true
+            print("🔄 [CategoryAggregateCache] Memory cache updated - \(self.aggregatesByKey.count) aggregates, isLoaded: \(self.isLoaded)")
         }
 
         // Сохранить в CoreData асинхронно (БЕЗ ожидания - fire and forget)
+        print("🔄 [CategoryAggregateCache] Saving aggregates to CoreData...")
         repository.saveAggregates(aggregates)
     }
 
