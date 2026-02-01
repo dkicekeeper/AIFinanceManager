@@ -191,7 +191,7 @@ class CategoryAggregateService {
 
     // MARK: - Private Helpers
 
-    /// Обновить агрегат (создает месячный, годовой и all-time)
+    /// Обновить агрегат (создает daily (last 90 days), месячный, годовой и all-time)
     private func updateAggregate(
         in aggregates: inout [String: CategoryAggregate],
         category: String,
@@ -202,6 +202,51 @@ class CategoryAggregateService {
         baseCurrency: String,
         transactionDate: Date
     ) {
+        // 0. Daily агрегат (только для последних 90 дней)
+        let calendar = Calendar.current
+        let daysAgo = calendar.dateComponents([.day], from: transactionDate, to: Date()).day ?? 0
+
+        if daysAgo >= 0 && daysAgo <= 90 {
+            // Создаём daily aggregate для последних 90 дней
+            let day = Int16(calendar.component(.day, from: transactionDate))
+
+            let dailyId = CategoryAggregate.makeId(
+                category: category,
+                subcategory: subcategory,
+                year: year,
+                month: month,
+                day: day
+            )
+
+            if let existing = aggregates[dailyId] {
+                aggregates[dailyId] = CategoryAggregate(
+                    categoryName: category,
+                    subcategoryName: subcategory,
+                    year: year,
+                    month: month,
+                    day: day,
+                    totalAmount: existing.totalAmount + amount,
+                    transactionCount: existing.transactionCount + 1,
+                    currency: baseCurrency,
+                    lastUpdated: Date(),
+                    lastTransactionDate: max(existing.lastTransactionDate ?? transactionDate, transactionDate)
+                )
+            } else {
+                aggregates[dailyId] = CategoryAggregate(
+                    categoryName: category,
+                    subcategoryName: subcategory,
+                    year: year,
+                    month: month,
+                    day: day,
+                    totalAmount: amount,
+                    transactionCount: 1,
+                    currency: baseCurrency,
+                    lastUpdated: Date(),
+                    lastTransactionDate: transactionDate
+                )
+            }
+        }
+
         // 1. Месячный агрегат
         let monthlyId = CategoryAggregate.makeId(
             category: category,

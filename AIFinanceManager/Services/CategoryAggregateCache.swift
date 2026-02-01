@@ -84,19 +84,9 @@ class CategoryAggregateCache {
         validCategoryNames: Set<String>? = nil
     ) -> [String: CategoryExpense] {
 
-        #if DEBUG
-        print("🗄️ [CategoryAggregateCache] getCategoryExpenses() called")
-        print("   isLoaded: \(isLoaded)")
-        print("   aggregatesByKey.count: \(aggregatesByKey.count)")
-        print("   filter: \(timeFilter.displayName)")
-        #endif
-
         // Graceful degradation - return empty if cache not loaded yet
         // This prevents UI freezing while waiting for CoreData load
         guard isLoaded else {
-            #if DEBUG
-            print("⚠️ [CategoryAggregateCache] NOT LOADED - returning empty dict")
-            #endif
             return [:]
         }
 
@@ -217,18 +207,87 @@ class CategoryAggregateCache {
             return aggregate.year == targetYear && aggregate.month == targetMonth
         }
 
-        // ✅ FIX: Date-based filters (last30Days, thisWeek, yesterday, etc.)
+        // ✅ Date-based filters use daily aggregates (faster and more accurate)
+        // This code path is now handled by getDailyAggregates() method
+        // Old approach (filtering by lastTransactionDate) is deprecated
         if targetYear == -1 && targetMonth == -1 {
-            // Use aggregate's lastTransactionDate to filter by date range
-            guard let lastTransactionDate = aggregate.lastTransactionDate else {
-                return false
+            // For daily aggregates: match exact year, month, and day
+            if aggregate.day > 0 {
+                // This is a daily aggregate
+                guard let lastTransactionDate = aggregate.lastTransactionDate else {
+                    return false
+                }
+                return lastTransactionDate >= dateRange.start && lastTransactionDate < dateRange.end
             }
-
-            // Check if the aggregate's last transaction falls within the filter's date range
-            return lastTransactionDate >= dateRange.start && lastTransactionDate < dateRange.end
+            return false
         }
 
         return false
+    }
+
+    /// Get category expenses using daily aggregates (for date-based filters)
+    /// This is MUCH faster than iterating through transactions: O(days) vs O(transactions)
+    func getDailyAggregates(
+        dateRange: (start: Date, end: Date),
+        baseCurrency: String,
+        validCategoryNames: Set<String>? = nil
+    ) -> [String: CategoryExpense] {
+
+        guard isLoaded else {
+            return [:]
+        }
+
+        var result: [String: CategoryExpense] = [:]
+        let calendar = Calendar.current
+
+        // Iterate through daily aggregates only (day > 0)
+        for (_, aggregate) in aggregatesByKey {
+            // Skip non-daily aggregates
+            guard aggregate.day > 0 else { continue }
+
+            // Skip wrong currency
+            guard aggregate.currency == baseCurrency else { continue }
+
+            // Check if aggregate's date falls within range
+            guard let lastTransactionDate = aggregate.lastTransactionDate,
+                  lastTransactionDate >= dateRange.start && lastTransactionDate < dateRange.end else {
+                continue
+            }
+
+            let category = aggregate.categoryName
+
+            // Filter by valid category names if provided
+            if let validNames = validCategoryNames, !validNames.contains(category) {
+                continue
+            }
+
+            // Accumulate totals
+            if let subcategoryName = aggregate.subcategoryName {
+                // This is a subcategory aggregate
+                if var existing = result[category] {
+                    existing.subcategories[subcategoryName, default: 0] += aggregate.totalAmount
+                    result[category] = existing
+                } else {
+                    result[category] = CategoryExpense(
+                        total: 0,
+                        subcategories: [subcategoryName: aggregate.totalAmount]
+                    )
+                }
+            } else {
+                // This is a category aggregate (no subcategory)
+                if var existing = result[category] {
+                    existing.total += aggregate.totalAmount
+                    result[category] = existing
+                } else {
+                    result[category] = CategoryExpense(
+                        total: aggregate.totalAmount,
+                        subcategories: [:]
+                    )
+                }
+            }
+        }
+
+        return result
     }
 
     // MARK: - Updates
@@ -304,12 +363,6 @@ class CategoryAggregateCache {
         repository: CoreDataRepository
     ) async {
 
-        #if DEBUG
-        print("🏗️ [CategoryAggregateCache] rebuildFromTransactions() started")
-        print("   transactions.count: \(transactions.count)")
-        print("   baseCurrency: \(baseCurrency)")
-        #endif
-
         // CRITICAL FIX: Build aggregates synchronously in background thread
         // We MUST wait for completion before returning so cache is ready
         let aggregates: [CategoryAggregate] = await Task.detached(priority: .userInitiated) { [service] in
@@ -319,10 +372,6 @@ class CategoryAggregateCache {
             )
         }.value
 
-        #if DEBUG
-        print("🏗️ [CategoryAggregateCache] Built \(aggregates.count) aggregates")
-        #endif
-
         // CRITICAL FIX: Update memory cache SYNCHRONOUSLY
         // This ensures cache is ready BEFORE function returns
         self.aggregatesByKey.removeAll()
@@ -331,22 +380,14 @@ class CategoryAggregateCache {
         }
         self.isLoaded = true
 
-        #if DEBUG
-        print("✅ [CategoryAggregateCache] Cache rebuilt: isLoaded=\(self.isLoaded), keys=\(self.aggregatesByKey.count)")
-        #endif
-
         // Сохранить в CoreData асинхронно (БЕЗ ожидания - fire and forget)
         repository.saveAggregates(aggregates)
     }
 
     /// Очистить кеш
     func clear() {
-        let count = aggregatesByKey.count
         aggregatesByKey.removeAll()
         isLoaded = false
-        #if DEBUG
-        print("🧹 [CategoryAggregateCache] Cache cleared: removed \(count) aggregates, isLoaded=false")
-        #endif
     }
 }
 

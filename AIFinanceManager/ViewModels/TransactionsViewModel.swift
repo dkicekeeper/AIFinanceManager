@@ -229,6 +229,12 @@ class TransactionsViewModel: ObservableObject {
 
         // MIGRATION REMOVED: Simply load from CoreData (no version check)
         await aggregateCache.loadFromCoreData(repository: coreDataRepo)
+
+        // ✅ FIX: Invalidate CategoryExpenses cache after loading aggregate cache
+        // This ensures daily aggregates are used instead of old cached data
+        await MainActor.run {
+            cacheManager.invalidateCategoryExpenses()
+        }
     }
 
     // MARK: - CRUD Operations (Delegated to Services)
@@ -373,10 +379,6 @@ class TransactionsViewModel: ObservableObject {
             Set(vm.customCategories.map { $0.name })
         }
 
-        #if DEBUG
-        print("🔍 [TransactionsViewModel] categoryExpenses() called for filter: \(timeFilterManager.currentFilter.displayName)")
-        #endif
-
         // ✅ FIX: Pass transactions and currencyService for date-based filters
         // Date-based filters (last30Days, thisWeek) need direct calculation from transactions
         // Month/year filters use aggregate cache (more efficient)
@@ -389,14 +391,6 @@ class TransactionsViewModel: ObservableObject {
             transactions: allTransactions,
             currencyService: currencyService
         )
-
-        #if DEBUG
-        let totalExpenses = result.values.reduce(0) { $0 + $1.total }
-        print("📊 [TransactionsViewModel] Returning \(result.count) categories, total: \(String(format: "%.2f", totalExpenses))")
-        if let firstCategory = result.first {
-            print("   Example: \(firstCategory.key) = \(String(format: "%.2f", firstCategory.value.total))")
-        }
-        #endif
 
         return result
     }
@@ -652,36 +646,20 @@ class TransactionsViewModel: ObservableObject {
     /// Call this from AppCoordinator after both ViewModels are initialized
     /// - Parameter categoriesViewModel: The single source of truth for categories
     func setCategoriesViewModel(_ categoriesViewModel: CategoriesViewModel) {
-        #if DEBUG
-        print("🔗 [TransactionsViewModel] Setting up categoriesPublisher subscription...")
-        #endif
-
         // Subscribe to categories changes
         categoriesSubscription = categoriesViewModel.categoriesPublisher
             .sink { [weak self] categories in
                 guard let self = self else { return }
-
-                #if DEBUG
-                print("📥 [TransactionsViewModel] Received \(categories.count) categories from publisher")
-                #endif
 
                 // Update local copy
                 self.customCategories = categories
 
                 // Invalidate caches that depend on categories
                 self.invalidateCaches()
-
-                #if DEBUG
-                print("✅ [TransactionsViewModel] Categories synced automatically")
-                #endif
             }
 
         // Set initial value
         customCategories = categoriesViewModel.customCategories
-
-        #if DEBUG
-        print("✅ [TransactionsViewModel] Combine subscription established (SSOT)")
-        #endif
     }
 
     // MARK: - Data Management
@@ -850,10 +828,6 @@ extension TransactionsViewModel: TransactionStorageDelegate {
         // publisher uses .map { $0.count }.removeDuplicates() which filters it out
         // Instead, we change a dedicated trigger UUID that Combine observes
         dataRefreshTrigger = UUID()
-
-        #if DEBUG
-        print("🔔 [TransactionsViewModel] notifyDataChanged() - triggered dataRefreshTrigger")
-        #endif
     }
 }
 extension TransactionsViewModel: RecurringTransactionServiceDelegate {}

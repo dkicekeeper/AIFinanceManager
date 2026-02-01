@@ -126,7 +126,7 @@ private struct CategoryGridItem: View {
 
             if let totalText = category.formattedTotal(currency: baseCurrency) {
                 Text(totalText)
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodySmall)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
             }
@@ -137,6 +137,7 @@ private struct CategoryGridItem: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            Spacer()
         }
     }
 }

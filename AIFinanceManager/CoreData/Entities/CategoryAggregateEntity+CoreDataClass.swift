@@ -22,6 +22,7 @@ extension CategoryAggregateEntity {
             subcategoryName: subcategoryName,
             year: year,
             month: month,
+            day: day,
             totalAmount: totalAmount,
             transactionCount: transactionCount,
             currency: currency ?? "KZT",
@@ -38,6 +39,7 @@ extension CategoryAggregateEntity {
         entity.subcategoryName = aggregate.subcategoryName
         entity.year = aggregate.year
         entity.month = aggregate.month
+        entity.day = aggregate.day
         entity.totalAmount = aggregate.totalAmount
         entity.transactionCount = aggregate.transactionCount
         entity.currency = aggregate.currency

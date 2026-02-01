@@ -21,6 +21,7 @@ extension CategoryAggregateEntity {
     @NSManaged public var subcategoryName: String?
     @NSManaged public var year: Int16
     @NSManaged public var month: Int16
+    @NSManaged public var day: Int16
     @NSManaged public var totalAmount: Double
     @NSManaged public var transactionCount: Int32
     @NSManaged public var currency: String?
