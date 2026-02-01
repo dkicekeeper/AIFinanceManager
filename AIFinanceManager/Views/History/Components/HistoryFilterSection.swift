@@ -15,6 +15,7 @@ struct HistoryFilterSection: View {
     let incomeCategories: [String]
     @Binding var selectedAccountFilter: String?
     @Binding var showingCategoryFilter: Bool
+    let onTimeFilterTap: () -> Void
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -23,7 +24,7 @@ struct HistoryFilterSection: View {
                 FilterChip(
                     title: timeFilterDisplayName,
                     icon: "calendar",
-                    onTap: {}
+                    onTap: onTimeFilterTap
                 )
 
                 // Account filter menu
@@ -54,6 +55,7 @@ struct HistoryFilterSection: View {
         customCategories: [],
         incomeCategories: ["Salary"],
         selectedAccountFilter: .constant(nil),
-        showingCategoryFilter: .constant(false)
+        showingCategoryFilter: .constant(false),
+        onTimeFilterTap: {}
     )
 }

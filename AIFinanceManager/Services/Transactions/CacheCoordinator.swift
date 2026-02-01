@@ -36,11 +36,19 @@ class CacheCoordinator: CacheCoordinatorProtocol {
     func invalidate(scope: CacheInvalidationScope) {
         switch scope {
         case .summaryAndCurrency:
-            cacheManager.invalidateAll()
+            // ✅ FIX: Invalidate summary only, NOT category expenses
+            // Category expenses are now cached per-filter and should only be
+            // invalidated when transactions change, not when filter changes
+            cacheManager.summaryCacheInvalidated = true
+            cacheManager.categoryListsCacheInvalidated = true
             currencyService.invalidate()
             // NOTE: We do NOT clear aggregate cache here because:
             // - Incremental updates (add/delete/update) already updated it correctly
             // - Clearing it would force unnecessary full rebuild
+            // NOTE: We do NOT clear category expenses cache here because:
+            // - It's now cached per-filter (time-based key)
+            // - Changing filter should use cached results for that filter
+            // - Only transaction changes should invalidate it
 
         case .aggregates:
             aggregateCache.clear()
@@ -59,6 +67,15 @@ class CacheCoordinator: CacheCoordinatorProtocol {
     ) async {
         PerformanceProfiler.start("CacheCoordinator.rebuildAggregates")
 
+        // ✅ CRITICAL FIX: Invalidate caches BEFORE rebuild to prevent race condition
+        // If we invalidate AFTER, Combine publishers can trigger during rebuild and use stale cached data
+        cacheManager.summaryCacheInvalidated = true
+        cacheManager.categoryListsCacheInvalidated = true
+        cacheManager.invalidateCategoryExpenses()
+        #if DEBUG
+        print("🧹 [CacheCoordinator] Invalidated caches BEFORE aggregate rebuild")
+        #endif
+
         // Clear existing aggregates
         aggregateCache.clear()
 
@@ -69,11 +86,9 @@ class CacheCoordinator: CacheCoordinatorProtocol {
             repository: repository
         )
 
-        // CRITICAL: Invalidate summary cache after rebuild completes
-        // This ensures categoryExpenses() fetches fresh data from rebuilt aggregate cache
-        await MainActor.run {
-            cacheManager.invalidateAll()
-        }
+        #if DEBUG
+        print("✅ [CacheCoordinator] Aggregate rebuild complete")
+        #endif
 
         PerformanceProfiler.end("CacheCoordinator.rebuildAggregates")
     }
@@ -88,15 +103,30 @@ class CacheCoordinator: CacheCoordinatorProtocol {
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
 
+            // ✅ CRITICAL FIX: Invalidate caches BEFORE rebuild to prevent race condition
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                self.cacheManager.summaryCacheInvalidated = true
+                self.cacheManager.categoryListsCacheInvalidated = true
+                self.cacheManager.invalidateCategoryExpenses()
+                #if DEBUG
+                print("🧹 [CacheCoordinator] Invalidated caches BEFORE async aggregate rebuild")
+                #endif
+            }
+
             await self.aggregateCache.rebuildFromTransactions(
                 transactions,
                 baseCurrency: baseCurrency,
                 repository: repository
             )
 
-            // CRITICAL: Invalidate summary cache after rebuild completes
-            await MainActor.run { [weak self] in
-                self?.cacheManager.invalidateAll()
+            #if DEBUG
+            await MainActor.run {
+                print("✅ [CacheCoordinator] Async aggregate rebuild complete")
+            }
+            #endif
+
+            await MainActor.run {
                 onComplete()
             }
         }

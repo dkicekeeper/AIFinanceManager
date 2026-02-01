@@ -374,11 +374,12 @@ struct ContentView: View {
 
     // MARK: - Combine Publishers
 
-    /// Combines time filter and transactions changes with debounce to prevent duplicate updates
+    /// Combines time filter, transactions changes, and data refresh trigger with debounce to prevent duplicate updates
     private var summaryUpdatePublisher: AnyPublisher<Void, Never> {
-        Publishers.Merge(
+        Publishers.Merge3(
             timeFilterManager.$currentFilter.map { _ in () },
-            viewModel.$allTransactions.map { _ in () }
+            viewModel.$allTransactions.map { _ in () },
+            viewModel.$dataRefreshTrigger.map { _ in () }  // ✅ NEW: Observe refresh trigger for aggregate rebuild
         )
         .debounce(for: 0.1, scheduler: RunLoop.main)
         .eraseToAnyPublisher()

@@ -18,9 +18,9 @@ struct TransactionCard: View {
     @State private var showingStopRecurringConfirmation = false
     @State private var showingEditModal = false
 
-    // Кеш для style helper - вычисляется один раз
-    private var styleHelper: CategoryStyleHelper {
-        CategoryStyleHelper(category: transaction.category, type: transaction.type, customCategories: customCategories)
+    // ✅ CATEGORY REFACTORING: Use cached style data instead of recreating helper
+    private var styleData: CategoryStyleData {
+        CategoryStyleHelper.cached(category: transaction.category, type: transaction.type, customCategories: customCategories)
     }
 
     init(transaction: Transaction, currency: String, customCategories: [CustomCategory], accounts: [Account], viewModel: TransactionsViewModel? = nil, categoriesViewModel: CategoriesViewModel? = nil) {
@@ -43,7 +43,7 @@ struct TransactionCard: View {
     var body: some View {
         HStack(spacing: AppSpacing.md) {
             // Transaction icon
-            TransactionIconView(transaction: transaction, styleHelper: styleHelper)
+            TransactionIconView(transaction: transaction, styleData: styleData)
             
             // Transaction info
             TransactionInfoView(

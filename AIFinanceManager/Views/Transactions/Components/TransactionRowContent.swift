@@ -49,8 +49,9 @@ struct TransactionRowContent: View {
         return transactionDate > today
     }
 
-    private var styleHelper: CategoryStyleHelper {
-        CategoryStyleHelper(category: transaction.category, type: transaction.type, customCategories: customCategories)
+    // ✅ CATEGORY REFACTORING: Use cached style data instead of recreating helper
+    private var styleData: CategoryStyleData {
+        CategoryStyleHelper.cached(category: transaction.category, type: transaction.type, customCategories: customCategories)
     }
 
     var body: some View {
@@ -62,7 +63,7 @@ struct TransactionRowContent: View {
                         .foregroundColor(.blue)
                         .font(AppTypography.caption)
                 } else {
-                    TransactionIconView(transaction: transaction, styleHelper: styleHelper)
+                    TransactionIconView(transaction: transaction, styleData: styleData)
                 }
             }
 

@@ -140,6 +140,9 @@ enum AppIconSize {
     /// 64pt - Category coins
     static let coin: CGFloat = 64
 
+    /// 72pt - Budget ring (coin + 8pt stroke space)
+    static let budgetRing: CGFloat = 72
+
     /// 80pt - Large action buttons (voice input button)
     static let largeButton: CGFloat = 80
 }
@@ -341,7 +344,7 @@ extension View {
             .padding(.vertical, AppSpacing.sm)
             .glassEffect(
                 isSelected
-                    ? .regular.tint(AppColors.accent)
+                ? .regular.tint(AppColors.accent.opacity(0.2))
                     : .regular
             )
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))

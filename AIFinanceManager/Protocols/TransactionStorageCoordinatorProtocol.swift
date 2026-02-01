@@ -55,4 +55,6 @@ protocol TransactionStorageDelegate: AnyObject {
     func rebuildIndexes()
     func precomputeCurrencyConversions()
     func calculateTransactionsBalance(for accountId: String) -> Double
+    func rebuildAggregateCacheAfterImport() async
+    func notifyDataChanged()
 }

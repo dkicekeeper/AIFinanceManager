@@ -98,12 +98,10 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
         cacheManager: TransactionCacheManager
     ) -> [String: CategoryExpense] {
 
-        // Check cache
-        if !cacheManager.categoryExpensesCacheInvalidated,
-           let cached = cacheManager.cachedCategoryExpenses {
+        // ✅ Check cache with time filter as key
+        if let cached = cacheManager.getCachedCategoryExpenses(for: timeFilter) {
             return cached
         }
-
 
         // Use aggregate cache for efficient calculation
         let result = aggregateCache.getCategoryExpenses(
@@ -112,9 +110,17 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
             validCategoryNames: validCategoryNames
         )
 
-
-        cacheManager.cachedCategoryExpenses = result
-        cacheManager.categoryExpensesCacheInvalidated = false
+        // ✅ CRITICAL FIX: Only cache non-empty results
+        // During aggregate cache rebuild, getCategoryExpenses() may return empty results
+        // If we cache empty results, UI will show 0.00 even after rebuild completes
+        // Empty results should trigger a fresh calculation next time
+        if !result.isEmpty {
+            cacheManager.setCachedCategoryExpenses(result, for: timeFilter)
+        } else {
+            #if DEBUG
+            print("⚠️ [TransactionQueryService] NOT caching empty result - aggregate cache may still be rebuilding")
+            #endif
+        }
 
         return result
     }

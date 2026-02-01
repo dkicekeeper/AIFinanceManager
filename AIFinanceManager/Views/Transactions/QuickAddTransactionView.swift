@@ -56,6 +56,7 @@ struct QuickAddTransactionView: View {
             },
             emptyStateAction: coordinator.handleAddCategory
         )
+        .id(categoriesHash)  // ✅ Force SwiftUI to redraw when categories change
         // ✅ PERFORMANCE FIX: Use .sheet(item:) instead of custom Binding
         // This is much faster - SwiftUI optimizes item-based sheets
         .sheet(item: Binding(
@@ -74,6 +75,13 @@ struct QuickAddTransactionView: View {
         }
         .sheet(isPresented: $coordinator.showingAddCategory) {
             categoryEditSheet
+        }
+    }
+
+    // Compute hash of all category totals to detect changes
+    private var categoriesHash: Int {
+        coordinator.categories.reduce(0) { hash, category in
+            hash ^ category.total.hashValue
         }
     }
 

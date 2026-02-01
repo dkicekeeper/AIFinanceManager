@@ -84,10 +84,19 @@ class CategoryAggregateCache {
         validCategoryNames: Set<String>? = nil
     ) -> [String: CategoryExpense] {
 
+        #if DEBUG
+        print("🗄️ [CategoryAggregateCache] getCategoryExpenses() called")
+        print("   isLoaded: \(isLoaded)")
+        print("   aggregatesByKey.count: \(aggregatesByKey.count)")
+        print("   filter: \(timeFilter.displayName)")
+        #endif
 
         // Graceful degradation - return empty if cache not loaded yet
         // This prevents UI freezing while waiting for CoreData load
         guard isLoaded else {
+            #if DEBUG
+            print("⚠️ [CategoryAggregateCache] NOT LOADED - returning empty dict")
+            #endif
             return [:]
         }
 
@@ -286,6 +295,11 @@ class CategoryAggregateCache {
         repository: CoreDataRepository
     ) async {
 
+        #if DEBUG
+        print("🏗️ [CategoryAggregateCache] rebuildFromTransactions() started")
+        print("   transactions.count: \(transactions.count)")
+        print("   baseCurrency: \(baseCurrency)")
+        #endif
 
         // CRITICAL FIX: Build aggregates synchronously in background thread
         // We MUST wait for completion before returning so cache is ready
@@ -296,6 +310,9 @@ class CategoryAggregateCache {
             )
         }.value
 
+        #if DEBUG
+        print("🏗️ [CategoryAggregateCache] Built \(aggregates.count) aggregates")
+        #endif
 
         // CRITICAL FIX: Update memory cache SYNCHRONOUSLY
         // This ensures cache is ready BEFORE function returns
@@ -304,6 +321,10 @@ class CategoryAggregateCache {
             self.aggregatesByKey[aggregate.id] = aggregate
         }
         self.isLoaded = true
+
+        #if DEBUG
+        print("✅ [CategoryAggregateCache] Cache rebuilt: isLoaded=\(self.isLoaded), keys=\(self.aggregatesByKey.count)")
+        #endif
 
         // Сохранить в CoreData асинхронно (БЕЗ ожидания - fire and forget)
         repository.saveAggregates(aggregates)
@@ -314,6 +335,9 @@ class CategoryAggregateCache {
         let count = aggregatesByKey.count
         aggregatesByKey.removeAll()
         isLoaded = false
+        #if DEBUG
+        print("🧹 [CategoryAggregateCache] Cache cleared: removed \(count) aggregates, isLoaded=false")
+        #endif
     }
 }
 

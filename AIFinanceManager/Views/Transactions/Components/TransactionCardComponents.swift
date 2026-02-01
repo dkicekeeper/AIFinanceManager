@@ -11,17 +11,17 @@ import SwiftUI
 
 struct TransactionIconView: View {
     let transaction: Transaction
-    let styleHelper: CategoryStyleHelper
-    
+    let styleData: CategoryStyleData
+
     var body: some View {
         ZStack {
             Circle()
-                .fill(transaction.type == .internalTransfer ? Color.blue.opacity(0.2) : styleHelper.lightBackgroundColor)
+                .fill(transaction.type == .internalTransfer ? Color.blue.opacity(0.2) : styleData.lightBackgroundColor)
                 .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
                 .overlay(
-                    Image(systemName: styleHelper.iconName)
+                    Image(systemName: styleData.iconName)
                         .font(.system(size: AppIconSize.md))
-                        .foregroundColor(transaction.type == .internalTransfer ? Color.blue : styleHelper.primaryColor)
+                        .foregroundColor(transaction.type == .internalTransfer ? Color.blue : styleData.primaryColor)
                 )
             
             // Recurring badge
@@ -163,7 +163,7 @@ struct RegularAccountInfo: View {
             type: .expense,
             category: "Food"
         ),
-        styleHelper: CategoryStyleHelper(category: "Food", type: .expense, customCategories: [])
+        styleData: CategoryStyleHelper.cached(category: "Food", type: .expense, customCategories: [])
     )
     .padding()
 }

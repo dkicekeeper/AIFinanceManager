@@ -66,8 +66,14 @@ class AppCoordinator: ObservableObject {
         // Это гарантирует, что AppCoordinator будет уведомлять SwiftUI о любых изменениях
         setupViewModelObservers()
 
-        // Note: TransactionsViewModel still needs access to other ViewModels for some operations
-        // This will be refactored in Phase 6
+        // ✅ CATEGORY REFACTORING: Setup Single Source of Truth for categories
+        // TransactionsViewModel subscribes to CategoriesViewModel.categoriesPublisher
+        // This eliminates manual sync in 3 places (CategoriesManagementView, CSVImportService)
+        transactionsViewModel.setCategoriesViewModel(categoriesViewModel)
+
+        #if DEBUG
+        print("✅ [AppCoordinator] Category SSOT established via Combine")
+        #endif
     }
 
     // MARK: - Public Methods

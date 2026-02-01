@@ -35,7 +35,7 @@ class CategoryAggregateService {
             let components = Calendar.current.dateComponents([.year, .month], from: date)
             guard let year = components.year, let month = components.month else { continue }
 
-            let category = transaction.category.isEmpty ? "Uncategorized" : transaction.category
+            let category = transaction.category.isEmpty ? String(localized: "category.uncategorized") : transaction.category
             let amount = transaction.convertedAmount ?? transaction.amount
 
             // Создаем агрегаты для категории (без подкатегории)

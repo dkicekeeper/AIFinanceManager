@@ -364,7 +364,10 @@ class TransactionCRUDService: TransactionCRUDServiceProtocol {
                     type: transaction.type
                 )
 
-                delegate.customCategories.append(newCategory)
+                // ✅ CATEGORY REFACTORING: Proper array mutation
+                var updatedCategories = delegate.customCategories
+                updatedCategories.append(newCategory)
+                delegate.customCategories = updatedCategories
             }
         }
     }

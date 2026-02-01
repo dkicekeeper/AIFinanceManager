@@ -115,29 +115,6 @@ struct CategoryBudgetService {
         }
     }
 
-    /// Calculate days remaining in current budget period
-    /// - Parameter category: The category to calculate for
-    /// - Returns: Number of days remaining (0 if period ended or no budget)
-    func daysRemainingInPeriod(for category: CustomCategory) -> Int {
-        guard category.budgetStartDate != nil else { return 0 }
-
-        let calendar = Calendar.current
-        let now = Date()
-        let periodStart = budgetPeriodStart(for: category)
-
-        let periodEnd: Date
-        switch category.budgetPeriod {
-        case .weekly:
-            periodEnd = calendar.date(byAdding: .day, value: 7, to: periodStart) ?? now
-        case .monthly:
-            periodEnd = calendar.date(byAdding: .month, value: 1, to: periodStart) ?? now
-        case .yearly:
-            periodEnd = calendar.date(byAdding: .year, value: 1, to: periodStart) ?? now
-        }
-
-        let daysRemaining = calendar.dateComponents([.day], from: now, to: periodEnd).day ?? 0
-        return max(0, daysRemaining)
-    }
 }
 
 // MARK: - Static Helpers

@@ -392,8 +392,10 @@ class CSVImportService {
                             colorHex: hexString,
                             type: type
                         )
-                        // Добавляем напрямую в массив, чтобы избежать async сохранения во время импорта
-                        categoriesViewModel.customCategories.append(newCategory)
+                        // ✅ CATEGORY REFACTORING: Use updateCategories for controlled mutation
+                        var newCategories = categoriesViewModel.customCategories
+                        newCategories.append(newCategory)
+                        categoriesViewModel.updateCategories(newCategories)
                         categoryId = newCategory.id
                         createdCategories += 1
                     }
@@ -413,8 +415,10 @@ class CSVImportService {
                         colorHex: hexString,
                         type: type
                     )
-                    // Добавляем напрямую в массив, чтобы избежать async сохранения во время импорта
-                    categoriesViewModel.customCategories.append(newCategory)
+                    // ✅ CATEGORY REFACTORING: Use updateCategories for controlled mutation
+                    var newCategories = categoriesViewModel.customCategories
+                    newCategories.append(newCategory)
+                    categoriesViewModel.updateCategories(newCategories)
                     categoryName = effectiveCategoryValue
                     categoryId = newCategory.id
                     createdCategories += 1
@@ -439,8 +443,10 @@ class CSVImportService {
                         colorHex: hexString,
                         type: type
                     )
-                    // Добавляем напрямую в массив, чтобы избежать async сохранения во время импорта
-                    categoriesViewModel.customCategories.append(defaultCategory)
+                    // ✅ CATEGORY REFACTORING: Use updateCategories for controlled mutation
+                    var newCategories = categoriesViewModel.customCategories
+                    newCategories.append(defaultCategory)
+                    categoriesViewModel.updateCategories(newCategories)
                     categoryId = defaultCategory.id
                     createdCategories += 1
                 }
@@ -602,9 +608,8 @@ class CSVImportService {
                 categoriesViewModel.batchLinkSubcategoriesToTransaction(allTransactionSubcategoryLinks)
             }
 
-            // Синхронизируем категории, подкатегории и связи из CategoriesViewModel в TransactionsViewModel
-            // перед сохранением, чтобы TransactionsViewModel.saveToStorage() не перезаписал устаревшие данные
-            transactionsViewModel.customCategories = categoriesViewModel.customCategories
+            // ✅ CATEGORY REFACTORING: customCategories automatically synced via Combine publisher
+            // Manual sync still needed for subcategories and links (not yet on Combine)
             transactionsViewModel.subcategories = categoriesViewModel.subcategories
             transactionsViewModel.categorySubcategoryLinks = categoriesViewModel.categorySubcategoryLinks
             transactionsViewModel.transactionSubcategoryLinks = categoriesViewModel.transactionSubcategoryLinks

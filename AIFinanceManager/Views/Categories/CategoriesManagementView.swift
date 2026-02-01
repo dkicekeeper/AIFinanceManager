@@ -59,25 +59,39 @@ struct CategoriesManagementView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     HapticManager.light()
-                    showingAddCategory = true 
-                } label: { 
+                    showingAddCategory = true
+                } label: {
                     Image(systemName: "plus")
                 }
             }
-        }
-        .safeAreaInset(edge: .top) {
-            Picker("", selection: $selectedType) {
-                Text(String(localized: "transactionType.expense")).tag(TransactionType.expense)
-                Text(String(localized: "transactionType.income")).tag(TransactionType.income)
+            ToolbarItem(placement: .bottomBar) {
+                Picker("", selection: $selectedType) {
+                    Text(String(localized: "transactionType.expense")).tag(TransactionType.expense)
+                    Text(String(localized: "transactionType.income")).tag(TransactionType.income)
+                }
+                .pickerStyle(.segmented)
+                //                .padding(.horizontal, AppSpacing.lg)
+                //                .padding(.vertical, AppSpacing.md)
+                //                .background(Color(.clear))
+                .onChange(of: selectedType) { _, _ in
+                    HapticManager.selection()
+                }
+                .toolbarBackground(Color(.clear), for: .navigationBar)
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, AppSpacing.lg)
-            .padding(.vertical, AppSpacing.md)
-            .background(Color(.clear))
-            .onChange(of: selectedType) { _, _ in
-                HapticManager.selection()
-            }
         }
+//        .safeAreaInset(edge: .top) {
+//            Picker("", selection: $selectedType) {
+//                Text(String(localized: "transactionType.expense")).tag(TransactionType.expense)
+//                Text(String(localized: "transactionType.income")).tag(TransactionType.income)
+//            }
+//            .pickerStyle(.segmented)
+//            .padding(.horizontal, AppSpacing.lg)
+//            .padding(.vertical, AppSpacing.md)
+//            .background(Color(.clear))
+//            .onChange(of: selectedType) { _, _ in
+//                HapticManager.selection()
+//            }
+//        }
         .sheet(isPresented: $showingAddCategory) {
             CategoryEditView(
                 categoriesViewModel: categoriesViewModel,
@@ -118,8 +132,8 @@ struct CategoriesManagementView: View {
                 // Delete category (transactions keep the category name as string)
                 categoriesViewModel.deleteCategory(category, deleteTransactions: false)
 
-                // CRITICAL: Sync customCategories to TransactionsViewModel to prevent resurrection
-                transactionsViewModel.customCategories = categoriesViewModel.customCategories
+                // ✅ CATEGORY REFACTORING: No manual sync needed!
+                // customCategories automatically synced via Combine publisher
 
                 // CRITICAL: Save to storage so deletions persist after app restart
                 transactionsViewModel.saveToStorageSync()
@@ -151,9 +165,8 @@ struct CategoriesManagementView: View {
                 // Delete category
                 categoriesViewModel.deleteCategory(category, deleteTransactions: true)
 
-                // CRITICAL: Sync customCategories to TransactionsViewModel to prevent resurrection
-                // TransactionsViewModel also stores categories and will save them on next sync
-                transactionsViewModel.customCategories = categoriesViewModel.customCategories
+                // ✅ CATEGORY REFACTORING: No manual sync needed!
+                // customCategories automatically synced via Combine publisher
 
                 // CRITICAL: Save to storage so deletions persist after app restart
                 transactionsViewModel.saveToStorageSync()
@@ -183,7 +196,8 @@ struct CategoriesManagementView: View {
 
 #Preview("Categories Management - Empty") {
     let coordinator = AppCoordinator()
-    coordinator.categoriesViewModel.customCategories = []
+    // ✅ CATEGORY REFACTORING: Use updateCategories for controlled mutation
+    coordinator.categoriesViewModel.updateCategories([])
 
     return NavigationView {
         CategoriesManagementView(

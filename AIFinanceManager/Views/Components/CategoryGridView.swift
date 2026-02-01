@@ -64,7 +64,7 @@ struct CategoryGridView: View {
     // MARK: - Category Grid
 
     private var categoryGrid: some View {
-        LazyVGrid(columns: adaptiveColumns, spacing: AppSpacing.lg) {
+        LazyVGrid(columns: adaptiveColumns, spacing: AppSpacing.xxxl) {
             ForEach(categories) { category in
                 CategoryGridItem(
                     category: category,
@@ -75,7 +75,7 @@ struct CategoryGridView: View {
                 )
             }
         }
-        .padding(AppSpacing.lg)
+        .padding(AppSpacing.xxs)
     }
 
     // MARK: - Adaptive Columns
@@ -90,9 +90,9 @@ struct CategoryGridView: View {
 
         // Adaptive based on screen width
         let screenWidth = UIScreen.main.bounds.width
-        let minColumnWidth: CGFloat = 80
+        let minColumnWidth: CGFloat = 140
         let spacing: CGFloat = AppSpacing.md
-        let horizontalPadding: CGFloat = AppSpacing.lg * 2
+        let horizontalPadding: CGFloat = AppSpacing.lg
 
         let availableWidth = screenWidth - horizontalPadding
         let columns = Int((availableWidth + spacing) / (minColumnWidth + spacing))
@@ -126,15 +126,15 @@ private struct CategoryGridItem: View {
 
             if let totalText = category.formattedTotal(currency: baseCurrency) {
                 Text(totalText)
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(AppTypography.bodyLarge)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
             }
 
             if let budgetText = category.formattedBudget(currency: baseCurrency) {
                 Text(budgetText)
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(AppTypography.bodySmall)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
         }
@@ -165,6 +165,36 @@ private struct CategoryGridItem: View {
                 total: 3000,
                 budgetAmount: 5000,
                 budgetProgress: BudgetProgress(budgetAmount: 5000, spent: 3000)
+            ),
+            CategoryDisplayData(
+                id: "3",
+                name: "Home",
+                type: .expense,
+                iconName: "car.fill",
+                iconColor: .blue,
+                total: 55000,
+                budgetAmount: 50000,
+                budgetProgress: BudgetProgress(budgetAmount: 50000, spent: 55000)
+            ),
+            CategoryDisplayData(
+                id: "4",
+                name: "Home",
+                type: .expense,
+                iconName: "car.fill",
+                iconColor: .blue,
+                total: 130,
+                budgetAmount: 300,
+                budgetProgress: BudgetProgress(budgetAmount: 300, spent: 130)
+            ),
+            CategoryDisplayData(
+                id: "5",
+                name: "Home",
+                type: .expense,
+                iconName: "car.fill",
+                iconColor: .blue,
+                total: 5000,
+                budgetAmount: 6000,
+                budgetProgress: BudgetProgress(budgetAmount: 6000, spent: 5000)
             )
         ],
         baseCurrency: "USD",

@@ -57,19 +57,30 @@ final class QuickAddCoordinator: ObservableObject {
     private func setupBindings() {
         // Combine approach with debounce + distinctUntilChanged
         // Updates only when relevant data changes
-        Publishers.CombineLatest4(
-            transactionsViewModel.$allTransactions
-                .map { $0.count }
-                .removeDuplicates(),
-            categoriesViewModel.$customCategories
-                .map { $0.count }
-                .removeDuplicates(),
-            timeFilterManager.$currentFilter
-                .removeDuplicates(),
+        Publishers.CombineLatest(
+            Publishers.CombineLatest4(
+                transactionsViewModel.$allTransactions
+                    .map { $0.count }
+                    .removeDuplicates(),
+                categoriesViewModel.$customCategories
+                    .map { $0.count }
+                    .removeDuplicates(),
+                timeFilterManager.$currentFilter
+                    .removeDuplicates(),
+                transactionsViewModel.$dataRefreshTrigger  // ✅ NEW: Observe refresh trigger for aggregate rebuild
+            ),
             Just(()).eraseToAnyPublisher()
         )
         .debounce(for: .milliseconds(150), scheduler: DispatchQueue.main)
-        .sink { [weak self] _ in
+        .sink { [weak self] combined, _ in
+            let (transactionCount, categoryCount, filter, trigger) = combined
+            #if DEBUG
+            print("🔔 [QuickAddCoordinator] Combine publisher triggered:")
+            print("   Transactions: \(transactionCount)")
+            print("   Categories: \(categoryCount)")
+            print("   Filter: \(filter.displayName)")
+            print("   Refresh trigger: \(trigger)")
+            #endif
             self?.updateCategories()
         }
         .store(in: &cancellables)
@@ -81,19 +92,48 @@ final class QuickAddCoordinator: ObservableObject {
     func updateCategories() {
         PerformanceProfiler.start("QuickAddCoordinator.updateCategories")
 
+        #if DEBUG
+        print("🔄 [QuickAddCoordinator] updateCategories() called")
+        print("   Current filter: \(timeFilterManager.currentFilter.displayName)")
+        print("   Call stack:")
+        Thread.callStackSymbols.prefix(5).forEach { print("   \($0)") }
+        #endif
+
         // Get category expenses from TransactionsViewModel
         let categoryExpenses = transactionsViewModel.categoryExpenses(
             timeFilterManager: timeFilterManager,
             categoriesViewModel: categoriesViewModel
         )
 
+        #if DEBUG
+        print("🗂️ [QuickAddCoordinator] Received \(categoryExpenses.count) category expenses from ViewModel")
+        if let firstExpense = categoryExpenses.first {
+            print("   Example: \(firstExpense.key) = \(String(format: "%.2f", firstExpense.value.total))")
+        }
+        #endif
+
         // Map to display data
-        categories = categoryMapper.mapCategories(
+        let newCategories = categoryMapper.mapCategories(
             customCategories: categoriesViewModel.customCategories,
             categoryExpenses: categoryExpenses,
             type: .expense,
             baseCurrency: transactionsViewModel.appSettings.baseCurrency
         )
+
+        #if DEBUG
+        print("🎨 [QuickAddCoordinator] Mapped to \(newCategories.count) display categories")
+        if let firstCategory = newCategories.first {
+            print("   Example: \(firstCategory.name) = \(String(format: "%.2f", firstCategory.total))")
+        }
+        #endif
+
+        // ✅ CRITICAL: Assign to @Published property to trigger SwiftUI update
+        // Even though categories is @Published, we need to ensure SwiftUI sees the change
+        categories = newCategories
+
+        #if DEBUG
+        print("✅ [QuickAddCoordinator] Categories published to UI (\(categories.count) items)")
+        #endif
 
         PerformanceProfiler.end("QuickAddCoordinator.updateCategories")
     }

@@ -71,9 +71,33 @@ class TransactionStorageCoordinator: TransactionStorageCoordinatorProtocol {
                 if delegate.hasOlderTransactions {
                 }
 
-                // Recalculate caches with full data
-                delegate.invalidateCaches()
+                // ✅ FIX: Only invalidate summary cache, NOT category expenses
+                // We just loaded all transactions, but data hasn't changed - only expanded from recent to all
+                // Category expenses cache is per-filter and should persist across data loads
+                delegate.cacheManager.summaryCacheInvalidated = true
                 delegate.rebuildIndexes()
+
+                #if DEBUG
+                print("🏗️ [TransactionStorageCoordinator] Loaded \(allTxns.count) transactions, rebuilding aggregate cache...")
+                #endif
+
+                // ✅ CRITICAL FIX: Rebuild aggregate cache after loading transactions
+                // Without this, categoryExpenses() returns empty results
+                Task {
+                    await delegate.rebuildAggregateCacheAfterImport()
+                    #if DEBUG
+                    print("✅ [TransactionStorageCoordinator] Aggregate cache rebuild complete")
+                    #endif
+
+                    // ✅ CRITICAL FIX: Trigger UI update after aggregate rebuild completes
+                    // Combine publisher needs to know that data is ready
+                    await MainActor.run {
+                        delegate.notifyDataChanged()
+                        #if DEBUG
+                        print("🔄 [TransactionStorageCoordinator] Triggered UI update after aggregate rebuild")
+                        #endif
+                    }
+                }
             }
         }.value
 

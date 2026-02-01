@@ -29,7 +29,7 @@ struct SegmentedPickerView<T: Hashable>: View {
             }
         }
         .pickerStyle(SegmentedPickerStyle())
-        .padding(AppSpacing.lg)
+//        .padding(AppSpacing.lg)
 //        .background(.primary .opacity(0.05))
     }
 }

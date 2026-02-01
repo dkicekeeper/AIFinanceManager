@@ -20,6 +20,14 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         type: TransactionType,
         baseCurrency: String
     ) -> [CategoryDisplayData] {
+        #if DEBUG
+        print("🗺️ [CategoryDisplayDataMapper] mapCategories() called")
+        print("   Input: \(categoryExpenses.count) expense entries")
+        if let firstExpense = categoryExpenses.first {
+            print("   Example input: \(firstExpense.key) = \(String(format: "%.2f", firstExpense.value.total))")
+        }
+        #endif
+
         // Filter categories by type
         let filteredCategories = customCategories.filter { $0.type == type }
 
@@ -53,12 +61,21 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         }
 
         // Sort by total (descending), then by name (ascending)
-        return displayData.sorted { category1, category2 in
+        let result = displayData.sorted { category1, category2 in
             if category1.total != category2.total {
                 return category1.total > category2.total
             }
             return category1.name < category2.name
         }
+
+        #if DEBUG
+        print("🗺️ [CategoryDisplayDataMapper] Mapped to \(result.count) display categories")
+        if let firstResult = result.first {
+            print("   Example output: \(firstResult.name) = \(String(format: "%.2f", firstResult.total))")
+        }
+        #endif
+
+        return result
     }
 
     // MARK: - Private Methods
@@ -84,8 +101,8 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             return BudgetProgress(budgetAmount: budgetAmount, spent: total)
         }
 
-        // Get style info
-        let styleHelper = CategoryStyleHelper(
+        // ✅ CATEGORY REFACTORING: Use cached style data
+        let styleData = CategoryStyleHelper.cached(
             category: name,
             type: type,
             customCategories: customCategories
@@ -95,8 +112,8 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             id: customCategory?.id ?? UUID().uuidString,
             name: name,
             type: type,
-            iconName: styleHelper.iconName,
-            iconColor: styleHelper.iconColor,
+            iconName: styleData.iconName,
+            iconColor: styleData.iconColor,
             total: total,
             budgetAmount: customCategory?.budgetAmount,
             budgetProgress: budgetProgress

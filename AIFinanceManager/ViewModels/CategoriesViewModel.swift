@@ -5,6 +5,7 @@
 //  Created on 2026
 //
 //  ViewModel for managing categories, subcategories, and category rules
+//  REFACTORED: Now uses dedicated services for SRP compliance
 
 import Foundation
 import SwiftUI
@@ -14,11 +15,22 @@ import Combine
 class CategoriesViewModel: ObservableObject {
     // MARK: - Published Properties
 
-    @Published var customCategories: [CustomCategory] = []
+    /// SINGLE SOURCE OF TRUTH for categories
+    /// Other ViewModels subscribe to changes via categoriesPublisher
+    @Published private(set) var customCategories: [CustomCategory] = []
+
     @Published var categoryRules: [CategoryRule] = []
     @Published var subcategories: [Subcategory] = []
     @Published var categorySubcategoryLinks: [CategorySubcategoryLink] = []
     @Published var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
+
+    // MARK: - Publishers
+
+    /// Publisher for customCategories changes
+    /// Other ViewModels can subscribe to this instead of duplicating data
+    var categoriesPublisher: AnyPublisher<[CustomCategory], Never> {
+        $customCategories.eraseToAnyPublisher()
+    }
 
     // MARK: - Private Properties
 
@@ -26,7 +38,30 @@ class CategoriesViewModel: ObservableObject {
     private var currencyService: TransactionCurrencyService?
     private var appSettings: AppSettings?
 
-    /// Lazy budget service - created when needed with current dependencies
+    // MARK: - Services (Lazy Initialization)
+
+    /// CRUD service - handles category create/update/delete
+    private lazy var crudService: CategoryCRUDServiceProtocol = {
+        CategoryCRUDService(delegate: self, repository: repository)
+    }()
+
+    /// Subcategory coordinator - handles subcategory and link management
+    private lazy var subcategoryCoordinator: CategorySubcategoryCoordinatorProtocol = {
+        CategorySubcategoryCoordinator(delegate: self, repository: repository)
+    }()
+
+    /// Budget coordinator - handles budget calculations (NOT USED YET - for future)
+    /// Note: Currently using old CategoryBudgetService for compatibility
+    private lazy var budgetCoordinator: CategoryBudgetCoordinatorProtocol = {
+        CategoryBudgetCoordinator(
+            delegate: self,
+            currencyService: currencyService,
+            appSettings: appSettings
+        )
+    }()
+
+    /// Legacy budget service - still used for backward compatibility
+    /// TODO: Replace with budgetCoordinator after TransactionsViewModel integration
     private lazy var budgetService: CategoryBudgetService = {
         CategoryBudgetService(
             currencyService: currencyService,
@@ -49,7 +84,6 @@ class CategoriesViewModel: ObservableObject {
         self.subcategories = repository.loadSubcategories()
         self.categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         self.transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
-
     }
 
     /// Перезагружает все данные из хранилища (используется после импорта)
@@ -60,64 +94,33 @@ class CategoriesViewModel: ObservableObject {
         categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
     }
-    
+
+    // MARK: - Public Methods for Mutation
+
+    /// Internal method to update categories array (triggers publisher)
+    /// - Parameter categories: New categories array
+    func updateCategories(_ categories: [CustomCategory]) {
+        customCategories = categories
+    }
+
     // MARK: - Category CRUD Operations
-    
+
     func addCategory(_ category: CustomCategory) {
-        customCategories.append(category)
-        
-        // Use synchronous save for user-initiated actions to prevent data loss
-        if let coreDataRepo = repository as? CoreDataRepository {
-            do {
-                try coreDataRepo.saveCategoriesSync(customCategories)
-            } catch {
-                // Keep async as fallback
-                repository.saveCategories(customCategories)
-            }
-        } else {
-            repository.saveCategories(customCategories)
-        }
+        crudService.addCategory(category)
     }
-    
+
     func updateCategory(_ category: CustomCategory) {
-        guard let index = customCategories.firstIndex(where: { $0.id == category.id }) else {
-            // Если категория не найдена, возможно это новая категория с существующим id
-            // В этом случае добавляем её
-            customCategories.append(category)
-            saveCategories()
-            return
-        }
-
-        // Создаем новый массив вместо модификации элемента на месте
-        var newCategories = customCategories
-        newCategories[index] = category
-
-        // Переприсваиваем весь массив для триггера @Published
-        customCategories = newCategories
-        // NOTE: @Published automatically sends objectWillChange notification
-
-        saveCategories()
+        crudService.updateCategory(category)
     }
-    
+
     func deleteCategory(_ category: CustomCategory, deleteTransactions: Bool = false) {
         // Note: deleteTransactions logic should be handled by TransactionsViewModel
         // This method only handles category deletion
-
-
-        // Удаляем категорию
-        customCategories.removeAll { $0.id == category.id }
-
-
-        saveCategories()
-
+        crudService.deleteCategory(category)
     }
-    
-    func getCategory(name: String, type: TransactionType) -> CustomCategory? {
-        return customCategories.first { $0.name.lowercased() == name.lowercased() && $0.type == type }
-    }
-    
+
     // MARK: - Category Rules Operations
-    
+
     func addRule(_ rule: CategoryRule) {
         // Проверяем, нет ли уже правила с таким описанием
         if !categoryRules.contains(where: { $0.description.lowercased() == rule.description.lowercased() }) {
@@ -125,170 +128,102 @@ class CategoriesViewModel: ObservableObject {
             repository.saveCategoryRules(categoryRules)
         }
     }
-    
+
     func updateRule(_ rule: CategoryRule) {
         // CategoryRule не имеет id, поэтому ищем по description
         if let index = categoryRules.firstIndex(where: { $0.description.lowercased() == rule.description.lowercased() }) {
-            // Создаем новый массив вместо модификации элемента на месте
             var newRules = categoryRules
             newRules[index] = rule
-
-            // Переприсваиваем весь массив для триггера @Published
             categoryRules = newRules
-            // NOTE: @Published automatically sends objectWillChange notification
-
             repository.saveCategoryRules(categoryRules)
         }
     }
-    
+
     func deleteRule(_ rule: CategoryRule) {
         categoryRules.removeAll { $0.description.lowercased() == rule.description.lowercased() }
         repository.saveCategoryRules(categoryRules)
     }
-    
+
     // MARK: - Subcategory CRUD Operations
-    
+
     func addSubcategory(name: String) -> Subcategory {
-        let subcategory = Subcategory(name: name)
-        subcategories.append(subcategory)
-        repository.saveSubcategories(subcategories)
-        return subcategory
+        return subcategoryCoordinator.addSubcategory(name: name)
     }
-    
+
     func updateSubcategory(_ subcategory: Subcategory) {
-        if let index = subcategories.firstIndex(where: { $0.id == subcategory.id }) {
-            // Создаем новый массив вместо модификации элемента на месте
-            var newSubcategories = subcategories
-            newSubcategories[index] = subcategory
-
-            // Переприсваиваем весь массив для триггера @Published
-            subcategories = newSubcategories
-            // NOTE: @Published automatically sends objectWillChange notification
-
-            repository.saveSubcategories(subcategories)
-        }
+        subcategoryCoordinator.updateSubcategory(subcategory)
     }
-    
+
     func deleteSubcategory(_ subcategoryId: String) {
-        // Удаляем связи с категориями
-        categorySubcategoryLinks.removeAll { $0.subcategoryId == subcategoryId }
-        // Удаляем связи с транзакциями (оставляем транзакции, но убираем линк)
-        transactionSubcategoryLinks.removeAll { $0.subcategoryId == subcategoryId }
-        // Удаляем подкатегорию
-        subcategories.removeAll { $0.id == subcategoryId }
-        repository.saveSubcategories(subcategories)
-        repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
-        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
+        subcategoryCoordinator.deleteSubcategory(subcategoryId)
     }
-    
-    // MARK: - Category-Subcategory Links
-    
-    func linkSubcategoryToCategory(subcategoryId: String, categoryId: String) {
-        linkSubcategoryToCategoryWithoutSaving(subcategoryId: subcategoryId, categoryId: categoryId)
-        repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
-    }
-    
-    /// Связывает подкатегорию с категорией без немедленного сохранения (для массового импорта)
-    func linkSubcategoryToCategoryWithoutSaving(subcategoryId: String, categoryId: String) {
-        // Проверяем, нет ли уже такой связи
-        let existingLink = categorySubcategoryLinks.first { link in
-            link.categoryId == categoryId && link.subcategoryId == subcategoryId
-        }
-        
-        if existingLink == nil {
-            let link = CategorySubcategoryLink(categoryId: categoryId, subcategoryId: subcategoryId)
-            categorySubcategoryLinks.append(link)
-        }
-    }
-    
-    func unlinkSubcategoryFromCategory(subcategoryId: String, categoryId: String) {
-        categorySubcategoryLinks.removeAll { link in
-            link.categoryId == categoryId && link.subcategoryId == subcategoryId
-        }
-        repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
-    }
-    
-    func getSubcategoriesForCategory(_ categoryId: String) -> [Subcategory] {
-        let linkedSubcategoryIds = categorySubcategoryLinks
-            .filter { $0.categoryId == categoryId }
-            .map { $0.subcategoryId }
 
-        return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
-    }
-    
-    // MARK: - Transaction-Subcategory Links
-    
-    func getSubcategoriesForTransaction(_ transactionId: String) -> [Subcategory] {
-        let linkedSubcategoryIds = transactionSubcategoryLinks
-            .filter { $0.transactionId == transactionId }
-            .map { $0.subcategoryId }
-        
-        return subcategories.filter { linkedSubcategoryIds.contains($0.id) }
-    }
-    
-    func linkSubcategoriesToTransaction(transactionId: String, subcategoryIds: [String]) {
-        // Удаляем старые связи
-        transactionSubcategoryLinks.removeAll { $0.transactionId == transactionId }
-        
-        // Добавляем новые связи
-        for subcategoryId in subcategoryIds {
-            let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
-            transactionSubcategoryLinks.append(link)
-        }
-        
-        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
-    }
-    
-    /// Связывает подкатегории с транзакцией без немедленного сохранения (для массового импорта)
-    func linkSubcategoriesToTransactionWithoutSaving(transactionId: String, subcategoryIds: [String]) {
-        // Удаляем старые связи
-        transactionSubcategoryLinks.removeAll { $0.transactionId == transactionId }
-        
-        // Добавляем новые связи
-        for subcategoryId in subcategoryIds {
-            let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
-            transactionSubcategoryLinks.append(link)
-        }
-        // НЕ сохраняем - сохранение будет выполнено в конце импорта
-    }
-    
-    /// Массовое связывание подкатегорий с транзакциями (для импорта)
-    /// - Parameter links: Словарь [transactionId: [subcategoryIds]]
-    func batchLinkSubcategoriesToTransaction(_ links: [String: [String]]) {
-        // Удаляем старые связи для всех транзакций
-        let transactionIds = Set(links.keys)
-        transactionSubcategoryLinks.removeAll { transactionIds.contains($0.transactionId) }
-        
-        // Добавляем новые связи
-        for (transactionId, subcategoryIds) in links {
-            for subcategoryId in subcategoryIds {
-                let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
-                transactionSubcategoryLinks.append(link)
-            }
-        }
-        
-        // Сохраняем один раз в конце
-        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
-    }
-    
-    /// Принудительно сохраняет связи транзакций с подкатегориями (для использования после массового импорта)
-    func saveTransactionSubcategoryLinks() {
-        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
-    }
-    
     func searchSubcategories(query: String) -> [Subcategory] {
-        let queryLower = query.lowercased()
-        return subcategories.filter { $0.name.lowercased().contains(queryLower) }
+        return subcategoryCoordinator.searchSubcategories(query: query)
     }
-    
+
+    // MARK: - Category-Subcategory Links
+
+    func linkSubcategoryToCategory(subcategoryId: String, categoryId: String) {
+        subcategoryCoordinator.linkSubcategoryToCategory(
+            subcategoryId: subcategoryId,
+            categoryId: categoryId
+        )
+    }
+
+    func linkSubcategoryToCategoryWithoutSaving(subcategoryId: String, categoryId: String) {
+        subcategoryCoordinator.linkSubcategoryToCategoryWithoutSaving(
+            subcategoryId: subcategoryId,
+            categoryId: categoryId
+        )
+    }
+
+    func unlinkSubcategoryFromCategory(subcategoryId: String, categoryId: String) {
+        subcategoryCoordinator.unlinkSubcategoryFromCategory(
+            subcategoryId: subcategoryId,
+            categoryId: categoryId
+        )
+    }
+
+    func getSubcategoriesForCategory(_ categoryId: String) -> [Subcategory] {
+        return subcategoryCoordinator.getSubcategoriesForCategory(categoryId)
+    }
+
+    // MARK: - Transaction-Subcategory Links
+
+    func getSubcategoriesForTransaction(_ transactionId: String) -> [Subcategory] {
+        return subcategoryCoordinator.getSubcategoriesForTransaction(transactionId)
+    }
+
+    func linkSubcategoriesToTransaction(transactionId: String, subcategoryIds: [String]) {
+        subcategoryCoordinator.linkSubcategoriesToTransaction(
+            transactionId: transactionId,
+            subcategoryIds: subcategoryIds
+        )
+    }
+
+    func linkSubcategoriesToTransactionWithoutSaving(transactionId: String, subcategoryIds: [String]) {
+        subcategoryCoordinator.linkSubcategoriesToTransactionWithoutSaving(
+            transactionId: transactionId,
+            subcategoryIds: subcategoryIds
+        )
+    }
+
+    func batchLinkSubcategoriesToTransaction(_ links: [String: [String]]) {
+        subcategoryCoordinator.batchLinkSubcategoriesToTransaction(links)
+    }
+
+    func saveTransactionSubcategoryLinks() {
+        subcategoryCoordinator.saveTransactionSubcategoryLinks()
+    }
+
+    // MARK: - Batch Operations
+
     /// Сохраняет все данные CategoriesViewModel (используется после массового импорта)
     func saveAllData() {
-        repository.saveSubcategories(subcategories)
-        repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
-        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
+        subcategoryCoordinator.saveAllData()
 
-        // ВАЖНО: saveCategories использует Task.detached, но для импорта
-        // нам нужно синхронное сохранение. Поэтому сохраняем категории напрямую.
+        // Save categories synchronously for import
         saveCategoriesSync(customCategories)
     }
 
@@ -298,12 +233,11 @@ class CategoriesViewModel: ObservableObject {
             do {
                 try coreDataRepo.saveCategoriesSync(categories)
             } catch {
-                // Critical error - log but don't fallback to UserDefaults
-                // This ensures data consistency with the primary storage
+                #if DEBUG
+                print("❌ [CategoriesViewModel] Failed to save categories sync: \(error)")
+                #endif
             }
         } else {
-            // For non-CoreData repositories (e.g., UserDefaultsRepository in tests)
-            // use the standard async save method
             repository.saveCategories(categories)
         }
     }
@@ -340,20 +274,33 @@ class CategoriesViewModel: ObservableObject {
     func budgetProgress(for category: CustomCategory, transactions: [Transaction]) -> BudgetProgress? {
         return budgetService.budgetProgress(for: category, transactions: transactions)
     }
-    
+
     // MARK: - Private Helpers
-    
-    /// Save categories synchronously to prevent data loss on app termination
-    private func saveCategories() {
-        if let coreDataRepo = repository as? CoreDataRepository {
-            do {
-                try coreDataRepo.saveCategoriesSync(customCategories)
-            } catch {
-                // Fallback to async save
-                repository.saveCategories(customCategories)
-            }
-        } else {
-            repository.saveCategories(customCategories)
-        }
+
+    /// Schedule save operation (called by delegate)
+    func scheduleSave() {
+        // Implement debounced save if needed
+        // For now, services handle saves directly
     }
+}
+
+// MARK: - CategoryCRUDDelegate
+
+extension CategoriesViewModel: CategoryCRUDDelegate {
+    // customCategories already declared as @Published property
+    // scheduleSave already implemented above
+}
+
+// MARK: - CategorySubcategoryDelegate
+
+extension CategoriesViewModel: CategorySubcategoryDelegate {
+    // subcategories, categorySubcategoryLinks, transactionSubcategoryLinks
+    // already declared as @Published properties
+}
+
+// MARK: - CategoryBudgetDelegate
+
+extension CategoriesViewModel: CategoryBudgetDelegate {
+    // customCategories already available
+    // updateCategory already implemented
 }

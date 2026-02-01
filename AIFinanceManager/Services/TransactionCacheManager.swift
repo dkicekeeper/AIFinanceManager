@@ -21,10 +21,11 @@ class TransactionCacheManager {
     var cachedSummary: Summary?
     var summaryCacheInvalidated = true
 
-    // MARK: - Category Expenses Cache
+    // MARK: - Category Expenses Cache (per-filter)
 
-    var cachedCategoryExpenses: [String: CategoryExpense]?
-    var categoryExpensesCacheInvalidated = true
+    private var categoryExpensesCache: [String: [String: CategoryExpense]] = [:]
+    private var cacheAccessOrder: [String] = []
+    private let maxCacheSize = 10
 
     // MARK: - Category Lists Cache
 
@@ -62,7 +63,7 @@ class TransactionCacheManager {
     /// Invalidate all caches at once
     func invalidateAll() {
         summaryCacheInvalidated = true
-        categoryExpensesCacheInvalidated = true
+        invalidateCategoryExpenses()
         categoryListsCacheInvalidated = true
         balanceCacheInvalidated = true
         accountsCacheInvalidated = true
@@ -74,6 +75,81 @@ class TransactionCacheManager {
     /// Invalidate only the accounts lookup cache
     func invalidateAccounts() {
         accountsCacheInvalidated = true
+    }
+
+    // MARK: - Category Expenses Cache Methods
+
+    /// Get cached category expenses for specific time filter
+    func getCachedCategoryExpenses(for filter: TimeFilter) -> [String: CategoryExpense]? {
+        let key = makeCacheKey(filter)
+
+        // Update access order for LRU
+        if let index = cacheAccessOrder.firstIndex(of: key) {
+            cacheAccessOrder.remove(at: index)
+            cacheAccessOrder.append(key)
+        }
+
+        #if DEBUG
+        if let cached = categoryExpensesCache[key] {
+            print("✅ CategoryExpenses cache HIT for filter: \(filter.displayName)")
+            return cached
+        } else {
+            print("❌ CategoryExpenses cache MISS for filter: \(filter.displayName)")
+            return nil
+        }
+        #else
+        return categoryExpensesCache[key]
+        #endif
+    }
+
+    /// Set cached category expenses for specific time filter
+    func setCachedCategoryExpenses(_ expenses: [String: CategoryExpense], for filter: TimeFilter) {
+        let key = makeCacheKey(filter)
+
+        // Remove old entry if exists
+        if let index = cacheAccessOrder.firstIndex(of: key) {
+            cacheAccessOrder.remove(at: index)
+        }
+
+        // Add to end (most recent)
+        cacheAccessOrder.append(key)
+        categoryExpensesCache[key] = expenses
+
+        // Evict oldest if over limit
+        if cacheAccessOrder.count > maxCacheSize {
+            let oldestKey = cacheAccessOrder.removeFirst()
+            categoryExpensesCache.removeValue(forKey: oldestKey)
+            #if DEBUG
+            print("🗑️ CategoryExpenses cache evicted oldest entry (LRU)")
+            #endif
+        }
+
+        #if DEBUG
+        print("💾 CategoryExpenses cached for filter: \(filter.displayName) (cache size: \(cacheAccessOrder.count)/\(maxCacheSize))")
+        #endif
+    }
+
+    /// Invalidate all category expenses caches
+    func invalidateCategoryExpenses() {
+        categoryExpensesCache.removeAll()
+        cacheAccessOrder.removeAll()
+        #if DEBUG
+        print("🧹 CategoryExpenses cache cleared")
+        print("   Call stack:")
+        Thread.callStackSymbols.prefix(5).forEach { print("   \($0)") }
+        #endif
+    }
+
+    /// Generate unique cache key for time filter
+    private func makeCacheKey(_ filter: TimeFilter) -> String {
+        let range = filter.dateRange()
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+
+        let start = formatter.string(from: range.start)
+        let end = formatter.string(from: range.end)
+
+        return "\(filter.preset.rawValue)_\(start)_\(end)"
     }
 
     // MARK: - Account Lookup
