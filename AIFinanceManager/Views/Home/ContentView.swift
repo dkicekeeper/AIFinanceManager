@@ -1,13 +1,33 @@
-import SwiftUI
-import PDFKit
+//
+//  ContentView.swift
+//  AIFinanceManager
+//
+//  Home screen - main entry point of the app
+//  Refactored: 2026-02-01 - Full rebuild with SRP, optimized state management, and component extraction
+//
 
+import SwiftUI
+import Combine
+
+// MARK: - ContentView (Home Screen)
+
+/// Main home screen displaying accounts, analytics, subscriptions, and quick actions
+/// Single responsibility: Home screen UI orchestration
 struct ContentView: View {
+    // MARK: - Environment
     @EnvironmentObject var coordinator: AppCoordinator
     @EnvironmentObject var timeFilterManager: TimeFilterManager
 
+    // MARK: - State
     @State private var isInitializing = true
+    @State private var selectedAccount: Account?
+    @State private var showingTimeFilter = false
+    @State private var showingAddAccount = false
+    @State private var wallpaperImage: UIImage? = nil
+    @State private var cachedSummary: Summary? = nil
+    @State private var wallpaperLoadingTask: Task<Void, Never>? = nil
 
-    // Computed properties для доступа к ViewModels из coordinator
+    // MARK: - Computed ViewModels (from coordinator)
     private var viewModel: TransactionsViewModel {
         coordinator.transactionsViewModel
     }
@@ -20,448 +40,91 @@ struct ContentView: View {
     private var subscriptionsViewModel: SubscriptionsViewModel {
         coordinator.subscriptionsViewModel
     }
-    @State private var showingFilePicker = false
-    @State private var selectedAccount: Account?
-    @State private var showingVoiceInput = false
-    @State private var parsedOperation: ParsedOperation?
-    @StateObject private var voiceService = VoiceInputService()
-    @State private var showingTimeFilter = false
-    @State private var ocrProgress: (current: Int, total: Int)? = nil
-    @State private var recognizedText: String? = nil
-    @State private var structuredRows: [[String]]? = nil
-    @State private var showingRecognizedText = false
-    @State private var showingCSVPreview = false
-    @State private var parsedCSVFile: CSVFile? = nil
-    @State private var showingAddAccount = false
 
-    // Wallpaper image
-    @State private var wallpaperImage: UIImage? = nil
-
-    // Cached summary for reactive updates
-    @State private var cachedSummary: Summary? = nil
-    
-    private var scrollContent: some View {
-        VStack(spacing: AppSpacing.lg) {
-            accountsSection
-
-            historyNavigationLink
-            
-            subscriptionsNavigationLink
-
-            categoriesSection
-
-            if viewModel.isLoading {
-                loadingProgressView
-            }
-
-            if let error = viewModel.errorMessage {
-                ErrorMessageView(message: error)
-                    .screenPadding()
-            }
-        }
-        .padding(.vertical, AppSpacing.md)
-    }
-    
-    private var historyNavigationLink: some View {
-        NavigationLink(destination: HistoryView(
-            transactionsViewModel: viewModel,
-            accountsViewModel: accountsViewModel,
-            categoriesViewModel: categoriesViewModel,
-            initialCategory: nil
-        )
-            .environmentObject(timeFilterManager)) {
-            analyticsCard
-        }
-        .buttonStyle(.bounce)
-        .screenPadding()
-    }
-    
-    private var subscriptionsNavigationLink: some View {
-        NavigationLink(destination: SubscriptionsListView(
-            subscriptionsViewModel: subscriptionsViewModel,
-            transactionsViewModel: viewModel
-        )
-            .environmentObject(timeFilterManager)) {
-            subscriptionsCard
-        }
-        .buttonStyle(.bounce)
-        .screenPadding()
-    }
-    
-    private var loadingProgressView: some View {
-        VStack(spacing: AppSpacing.md) {
-            if let progress = ocrProgress {
-                ProgressView(value: Double(progress.current), total: Double(progress.total)) {
-                    Text(String(localized: "progress.recognizingText", defaultValue: "Recognizing text: page \(progress.current) of \(progress.total)"))
-                        .font(AppTypography.bodySmall)
-                        .foregroundColor(.secondary)
-                }
-                Text(String(localized: "progress.page", defaultValue: "Page \(progress.current) of \(progress.total)"))
-                    .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
-            } else {
-                ProgressView(String(localized: "progress.processingPDF"))
-            }
-        }
-        .padding(AppSpacing.md)
-    }
-    
-    private var bottomActions: some View {
-        HStack(spacing: AppSpacing.xl) {
-            // Кнопка голосового ввода
-            Button(action: {
-                showingVoiceInput = true
-            }) {
-                Image(systemName: "mic.fill")
-                    .font(.system(size: AppIconSize.lg))
-                    .fontWeight(.semibold)
-                    .frame(width: AppSize.buttonLarge, height: AppSize.buttonLarge)
-            }
-            .buttonStyle(.glass)
-            .accessibilityLabel(String(localized: "accessibility.voiceInput"))
-            .accessibilityHint(String(localized: "accessibility.voiceInputHint"))
-
-            // Кнопка загрузки выписок
-            Button(action: {
-                showingFilePicker = true
-            }) {
-                Image(systemName: "doc.badge.plus")
-                    .font(.system(size: AppIconSize.lg))
-                    .fontWeight(.semibold)
-                    .frame(width: AppSize.buttonLarge, height: AppSize.buttonLarge)
-            }
-            .buttonStyle(.glass)
-            .accessibilityLabel(String(localized: "accessibility.importStatement"))
-            .accessibilityHint(String(localized: "accessibility.importStatementHint"))
-        }
-        .screenPadding()
-        .padding(.bottom, AppSpacing.xl)
-    }
-    
+    // MARK: - Body
     var body: some View {
         NavigationView {
             ZStack {
-                // Main content
-                ScrollView {
-                    scrollContent
-                }
-                .safeAreaInset(edge: .bottom) {
-                    bottomActions
-                }
-                .opacity(isInitializing ? 0 : 1)
-                
-                // Simple loading overlay
-                if isInitializing {
-                    VStack(spacing: AppSpacing.lg) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                        Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
-                            .font(AppTypography.body)
-                            .foregroundColor(.secondary)
-                    }
-                    .transition(.opacity)
-                }
+                mainContent
+                loadingOverlay
             }
             .navigationBarTitleDisplayMode(.inline)
-            .background {
-                // Wallpaper фон - должен покрывать весь экран, включая область под safeAreaInset
-                if let wallpaperImage = wallpaperImage {
-                    Image(uiImage: wallpaperImage)
-                        .resizable()
-                        .scaledToFill()
-                        .ignoresSafeArea(.all, edges: .all)
-                } else {
-                    // Базовый фон как везде
-                    Color.clear
-                }
-            }
-            .task {
-                // Initialize coordinator asynchronously on first appearance
-                if isInitializing {
-                    await coordinator.initialize()
-                    withAnimation {
-                        isInitializing = false
-                    }
-                }
-            }
-            .sheet(isPresented: $showingFilePicker) {
-                DocumentPicker { url in
-                    Task {
-                        await analyzePDF(url: url)
-                    }
-                }
-            }
-            .sheet(isPresented: $showingRecognizedText) {
-                if let text = recognizedText, !text.isEmpty {
-                    RecognizedTextView(
-                        recognizedText: text,
-                        structuredRows: structuredRows,
-                        viewModel: viewModel,
-                        onImport: { csvFile in
-                            showingRecognizedText = false
-                            recognizedText = nil
-                            structuredRows = nil
-                            // Открываем CSVPreviewView для продолжения импорта
-                            showingCSVPreview = true
-                            parsedCSVFile = csvFile
-                        },
-                        onCancel: {
-                            showingRecognizedText = false
-                            recognizedText = nil
-                            structuredRows = nil
-                            viewModel.isLoading = false
-                        }
-                    )
-                } else {
-                    // Fallback - показываем пустой экран, если текст не загружен
-                    NavigationView {
-                        VStack {
-                            Text(String(localized: "error.loadTextFailed"))
-                                .font(.headline)
-                            Text(String(localized: "error.tryAgain"))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-            }
-            .sheet(isPresented: $showingCSVPreview) {
-                if let csvFile = parsedCSVFile {
-                    CSVPreviewView(
-                        csvFile: csvFile,
-                        transactionsViewModel: viewModel,
-                        categoriesViewModel: categoriesViewModel
-                    )
-                }
-            }
-            .toolbar {
-                toolbarContent
-            }
-            .sheet(item: $selectedAccount) { account in
-                accountSheet(for: account)
-            }
-            .sheet(isPresented: $showingVoiceInput) {
-                voiceInputSheet
-            }
-            .sheet(item: $parsedOperation) { parsed in
-                VoiceInputConfirmationView(
-                    transactionsViewModel: viewModel,
-                    accountsViewModel: accountsViewModel,
-                    categoriesViewModel: categoriesViewModel,
-                    parsedOperation: parsed,
-                    originalText: voiceService.getFinalText()
-                )
-            }
-            .sheet(isPresented: $showingTimeFilter) {
-                TimeFilterView(filterManager: timeFilterManager)
-            }
-            .sheet(isPresented: $showingAddAccount) {
-                AccountEditView(
-                    accountsViewModel: accountsViewModel,
-                    transactionsViewModel: viewModel,
-                    account: nil,
-                    onSave: { account in
-                        HapticManager.success()
-                        accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
-                        viewModel.syncAccountsFrom(accountsViewModel)
-                        showingAddAccount = false
-                    },
-                    onCancel: { showingAddAccount = false }
-                )
-            }
-            .onAppear {
-                PerformanceProfiler.start("ContentView.onAppear")
-                loadWallpaper()
-                updateSummary()
-
-                // Setup VoiceInputService with ViewModels for contextual strings (iOS 17+)
-                voiceService.categoriesViewModel = categoriesViewModel
-                voiceService.accountsViewModel = accountsViewModel
-
-                PerformanceProfiler.end("ContentView.onAppear")
-            }
+            .background { wallpaperBackground }
+            .toolbar { toolbarContent }
+            .sheet(item: $selectedAccount) { accountSheet(for: $0) }
+            .sheet(isPresented: $showingTimeFilter) { timeFilterSheet }
+            .sheet(isPresented: $showingAddAccount) { addAccountSheet }
+            .task { await initializeIfNeeded() }
+            .onAppear { setupOnAppear() }
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
-                loadWallpaper()
+                loadWallpaperOnce()
             }
-            .onChange(of: timeFilterManager.currentFilter) { _, _ in
-                updateSummary()
-            }
-            .onChange(of: viewModel.allTransactions.count) { _, _ in
+            .onReceive(summaryUpdatePublisher) { _ in
                 updateSummary()
             }
         }
     }
-    
-    private var toolbarContent: some ToolbarContent {
-        Group {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    showingTimeFilter = true
-                }) {
-                    HStack(spacing: AppSpacing.xs) {
-                        Image(systemName: "calendar")
-                        Text(timeFilterManager.currentFilter.displayName)
-                            .font(AppTypography.bodySmall)
-                            .fontWeight(.medium)
-                    }
-                    .foregroundColor(.primary)
-                }
-                .accessibilityLabel(String(localized: "accessibility.calendar"))
-                .accessibilityHint(String(localized: "accessibility.calendarHint"))
-            }
 
-            ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink(destination: SettingsView(
-                    transactionsViewModel: viewModel,
-                    accountsViewModel: accountsViewModel,
-                    categoriesViewModel: categoriesViewModel,
-                    subscriptionsViewModel: subscriptionsViewModel,
-                    depositsViewModel: coordinator.depositsViewModel
-                )) {
-                    Image(systemName: "gearshape")
-                }
-                .accessibilityLabel(String(localized: "accessibility.settings"))
-                .accessibilityHint(String(localized: "accessibility.settingsHint"))
+    // MARK: - Main Content
+    private var mainContent: some View {
+        ScrollView {
+            VStack(spacing: AppSpacing.lg) {
+                accountsSection
+                historyNavigationLink
+                subscriptionsNavigationLink
+                categoriesSection
+                errorSection
             }
+            .padding(.vertical, AppSpacing.md)
         }
-    }
-    
-    @ViewBuilder
-    private func accountSheet(for account: Account) -> some View {
-        Group {
-            if account.isDeposit {
-                NavigationView {
-                    DepositDetailView(
-                        depositsViewModel: coordinator.depositsViewModel,
-                        transactionsViewModel: viewModel,
-                        accountId: account.id
-                    )
-                        .environmentObject(timeFilterManager)
-                }
-            } else {
-                AccountActionView(
-                    transactionsViewModel: viewModel,
-                    accountsViewModel: accountsViewModel,
-                    account: account
-                )
-                    .environmentObject(timeFilterManager)
-            }
+        .safeAreaInset(edge: .bottom) {
+            bottomActions
         }
-    }
-    
-    private var voiceInputSheet: some View {
-        // Создаем parser один раз для всего sheet
-        let parser = VoiceInputParser(
-            categoriesViewModel: categoriesViewModel,
-            accountsViewModel: accountsViewModel,
-            transactionsViewModel: viewModel
-        )
-
-        return VoiceInputView(
-            voiceService: voiceService,
-            onComplete: { transcribedText in
-                // Проверяем, что текст не пустой
-                guard !transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                    // Если текст пустой, просто закрываем voice input
-                    showingVoiceInput = false
-                    return
-                }
-                
-                showingVoiceInput = false
-                let parsed = parser.parse(transcribedText)
-                // Устанавливаем parsedOperation - sheet откроется автоматически через .sheet(item:)
-                parsedOperation = parsed
-            },
-            parser: parser
-        )
+        .opacity(isInitializing ? 0 : 1)
     }
 
-    
-    // Обновление кешированного summary
-    private func updateSummary() {
-        PerformanceProfiler.start("ContentView.updateSummary")
-        cachedSummary = viewModel.summary(timeFilterManager: timeFilterManager)
-        PerformanceProfiler.end("ContentView.updateSummary")
-    }
-
-    // Загрузка обоев (асинхронно для производительности)
-    private func loadWallpaper() {
-        Task.detached(priority: .userInitiated) {
-            guard let wallpaperName = await MainActor.run(body: { viewModel.appSettings.wallpaperImageName }) else {
-                await MainActor.run {
-                    wallpaperImage = nil
-                }
-                return
-            }
-
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURL = documentsPath.appendingPathComponent(wallpaperName)
-
-            // Проверяем существование файла
-            guard FileManager.default.fileExists(atPath: fileURL.path),
-                  let image = UIImage(contentsOfFile: fileURL.path) else {
-                await MainActor.run {
-                    wallpaperImage = nil
-                }
-                return
-            }
-
-            // Обновляем UI на главном потоке
-            await MainActor.run {
-                wallpaperImage = image
-            }
-        }
-    }
-    
+    // MARK: - Sections
 
     private var accountsSection: some View {
         Group {
             if accountsViewModel.accounts.isEmpty {
-                Button(action: {
-                    HapticManager.light()
+                EmptyAccountsPrompt(onAddAccount: {
                     showingAddAccount = true
-                }) {
-                    VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                        HStack {
-                            Text(String(localized: "accounts.title", defaultValue: "Счета"))
-                                .font(AppTypography.h3)
-                                .foregroundStyle(.primary)
-                        }
-                        
-                        EmptyStateView(title: String(localized: "emptyState.noAccounts", defaultValue: "Нет счетов"), style: .compact)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .glassCardStyle(radius: AppRadius.pill)
-                }
-                .buttonStyle(.bounce)
-                .screenPadding()
+                })
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: AppSpacing.md) {
-                        ForEach(accountsViewModel.accounts) { account in
-                            AccountCard(
-                                account: account,
-                                onTap: {
-                                    selectedAccount = account
-                                }
-                            )
-                            .id("\(account.id)-\(account.balance)")
-                        }
+                AccountsCarousel(
+                    accounts: accountsViewModel.accounts,
+                    onAccountTap: { account in
+                        selectedAccount = account
                     }
-                    .padding(.vertical, AppSpacing.xs)
-                }
-                .scrollClipDisabled()
-                .screenPadding()
+                )
             }
         }
     }
-    private var subscriptionsCard: some View {
-        SubscriptionsCardView(
-            subscriptionsViewModel: subscriptionsViewModel,
-            transactionsViewModel: viewModel
-        )
+
+    private var historyNavigationLink: some View {
+        NavigationLink(destination: historyDestination) {
+            TransactionsSummaryCard(
+                summary: cachedSummary,
+                currency: viewModel.appSettings.baseCurrency,
+                isEmpty: viewModel.allTransactions.isEmpty
+            )
+        }
+        .buttonStyle(.bounce)
+        .screenPadding()
     }
-    
+
+    private var subscriptionsNavigationLink: some View {
+        NavigationLink(destination: subscriptionsDestination) {
+            SubscriptionsCardView(
+                subscriptionsViewModel: subscriptionsViewModel,
+                transactionsViewModel: viewModel
+            )
+        }
+        .buttonStyle(.bounce)
+        .screenPadding()
+    }
+
     private var categoriesSection: some View {
         QuickAddTransactionView(
             transactionsViewModel: viewModel,
@@ -470,102 +133,262 @@ struct ContentView: View {
         )
         .screenPadding()
     }
-    
+
     @ViewBuilder
-    private var analyticsCard: some View {
-        let currency = viewModel.appSettings.baseCurrency
-
-        if viewModel.allTransactions.isEmpty {
-            VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                HStack {
-                    Text(String(localized: "analytics.history", defaultValue: "История"))
-                        .font(AppTypography.h3)
-                        .foregroundStyle(.primary)
-                }
-
-                EmptyStateView(title: String(localized: "emptyState.noTransactions", defaultValue: "Нет транзакций"), style: .compact)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .glassCardStyle(radius: AppRadius.pill)
-        } else if let summary = cachedSummary {
-            // Use cached summary - updated reactively via .onChange
-            AnalyticsCard(
-                summary: summary,
-                currency: currency
-            )
-            .id("summary-\(summary.totalIncome)-\(summary.totalExpenses)-\(timeFilterManager.currentFilter.preset)")
-        } else {
-            // Fallback during initial load
-            AnalyticsCard(
-                summary: viewModel.summary(timeFilterManager: timeFilterManager),
-                currency: currency
-            )
+    private var errorSection: some View {
+        if let error = viewModel.errorMessage {
+            ErrorMessageView(message: error)
+                .screenPadding()
         }
     }
-    
-    
-    private func analyzePDF(url: URL) async {
-        
-        await MainActor.run {
-            viewModel.isLoading = true
-            viewModel.errorMessage = nil
-            ocrProgress = nil
-            recognizedText = nil
+
+    private var bottomActions: some View {
+        HStack(spacing: AppSpacing.xl) {
+            VoiceInputCoordinator(
+                transactionsViewModel: viewModel,
+                categoriesViewModel: categoriesViewModel,
+                accountsViewModel: accountsViewModel
+            )
+
+            PDFImportCoordinator(
+                transactionsViewModel: viewModel,
+                categoriesViewModel: categoriesViewModel
+            )
         }
-        
-        do {
-            // Извлекаем текст через PDFKit или OCR
-            let ocrResult = try await PDFService.shared.extractText(from: url) { current, total in
-                // Callback уже вызывается на MainActor в PDFService
-                Task { @MainActor in
-                    ocrProgress = (current: current, total: total)
-                }
+        .screenPadding()
+        .padding(.bottom, AppSpacing.xl)
+    }
+
+    // MARK: - Destinations
+
+    private var historyDestination: some View {
+        HistoryView(
+            transactionsViewModel: viewModel,
+            accountsViewModel: accountsViewModel,
+            categoriesViewModel: categoriesViewModel,
+            initialCategory: nil
+        )
+        .environmentObject(timeFilterManager)
+    }
+
+    private var subscriptionsDestination: some View {
+        SubscriptionsListView(
+            subscriptionsViewModel: subscriptionsViewModel,
+            transactionsViewModel: viewModel
+        )
+        .environmentObject(timeFilterManager)
+    }
+
+    private var settingsDestination: some View {
+        SettingsView(
+            transactionsViewModel: viewModel,
+            accountsViewModel: accountsViewModel,
+            categoriesViewModel: categoriesViewModel,
+            subscriptionsViewModel: subscriptionsViewModel,
+            depositsViewModel: coordinator.depositsViewModel
+        )
+    }
+
+    // MARK: - Overlays & Backgrounds
+
+    @ViewBuilder
+    private var loadingOverlay: some View {
+        if isInitializing {
+            VStack(spacing: AppSpacing.lg) {
+                ProgressView()
+                    .scaleEffect(1.5)
+                Text(String(localized: LocalizationKeys.Progress.loadingData))
+                    .font(AppTypography.body)
+                    .foregroundColor(.secondary)
             }
-            
-            
-            // Проверяем, что текст не пустой
-            let trimmedText = ocrResult.fullText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-            guard !trimmedText.isEmpty else {
+            .transition(.opacity)
+        }
+    }
+
+    @ViewBuilder
+    private var wallpaperBackground: some View {
+        if let wallpaperImage = wallpaperImage {
+            Image(uiImage: wallpaperImage)
+                .resizable()
+                .scaledToFill()
+                .ignoresSafeArea(.all, edges: .all)
+        }
+    }
+
+    // MARK: - Toolbar
+
+    private var toolbarContent: some ToolbarContent {
+        Group {
+            ToolbarItem(placement: .navigationBarLeading) {
+                timeFilterButton
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                settingsButton
+            }
+        }
+    }
+
+    private var timeFilterButton: some View {
+        Button(action: {
+            HapticManager.light()
+            showingTimeFilter = true
+        }) {
+            HStack(spacing: AppSpacing.xs) {
+                Image(systemName: "calendar")
+                Text(timeFilterManager.currentFilter.displayName)
+                    .font(AppTypography.bodySmall)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(.primary)
+        }
+        .accessibilityLabel(String(localized: LocalizationKeys.Accessibility.calendar))
+        .accessibilityHint(String(localized: LocalizationKeys.Accessibility.calendarHint))
+    }
+
+    private var settingsButton: some View {
+        NavigationLink(destination: settingsDestination) {
+            Image(systemName: "gearshape")
+        }
+        .accessibilityLabel(String(localized: LocalizationKeys.Accessibility.settings))
+        .accessibilityHint(String(localized: LocalizationKeys.Accessibility.settingsHint))
+    }
+
+    // MARK: - Sheets
+
+    @ViewBuilder
+    private func accountSheet(for account: Account) -> some View {
+        if account.isDeposit {
+            depositDetailSheet(for: account)
+        } else {
+            accountActionSheet(for: account)
+        }
+    }
+
+    private func depositDetailSheet(for account: Account) -> some View {
+        NavigationView {
+            DepositDetailView(
+                depositsViewModel: coordinator.depositsViewModel,
+                transactionsViewModel: viewModel,
+                accountId: account.id
+            )
+            .environmentObject(timeFilterManager)
+        }
+    }
+
+    private func accountActionSheet(for account: Account) -> some View {
+        AccountActionView(
+            transactionsViewModel: viewModel,
+            accountsViewModel: accountsViewModel,
+            account: account
+        )
+        .environmentObject(timeFilterManager)
+    }
+
+    private var timeFilterSheet: some View {
+        TimeFilterView(filterManager: timeFilterManager)
+    }
+
+    private var addAccountSheet: some View {
+        AccountEditView(
+            accountsViewModel: accountsViewModel,
+            transactionsViewModel: viewModel,
+            account: nil,
+            onSave: handleAccountSave,
+            onCancel: {
+                showingAddAccount = false
+            }
+        )
+    }
+
+    // MARK: - Lifecycle Methods
+
+    private func initializeIfNeeded() async {
+        guard isInitializing else { return }
+        await coordinator.initialize()
+        withAnimation {
+            isInitializing = false
+        }
+    }
+
+    private func setupOnAppear() {
+        PerformanceProfiler.start("ContentView.onAppear")
+        loadWallpaperOnce()
+        updateSummary()
+        PerformanceProfiler.end("ContentView.onAppear")
+    }
+
+    // MARK: - State Updates
+
+    private func updateSummary() {
+        PerformanceProfiler.start("ContentView.updateSummary")
+        cachedSummary = viewModel.summary(timeFilterManager: timeFilterManager)
+        PerformanceProfiler.end("ContentView.updateSummary")
+    }
+
+    private func loadWallpaperOnce() {
+        guard wallpaperLoadingTask == nil else { return }
+
+        wallpaperLoadingTask = Task.detached(priority: .userInitiated) {
+            guard let wallpaperName = await MainActor.run(body: {
+                viewModel.appSettings.wallpaperImageName
+            }) else {
                 await MainActor.run {
-                    viewModel.errorMessage = String(localized: "error.pdfExtraction")
-                    viewModel.isLoading = false
-                    ocrProgress = nil
+                    wallpaperImage = nil
                 }
                 return
             }
-            
-            await MainActor.run {
-                recognizedText = ocrResult.fullText
-                structuredRows = ocrResult.structuredRows
-                ocrProgress = nil
-                viewModel.isLoading = false
-                showingRecognizedText = true
+
+            let documentsPath = FileManager.default.urls(
+                for: .documentDirectory,
+                in: .userDomainMask
+            )[0]
+            let fileURL = documentsPath.appendingPathComponent(wallpaperName)
+
+            guard FileManager.default.fileExists(atPath: fileURL.path),
+                  let image = UIImage(contentsOfFile: fileURL.path) else {
+                await MainActor.run {
+                    wallpaperImage = nil
+                }
+                return
             }
-            
-        } catch let error as PDFError {
-            let errorMessage = error.localizedDescription
+
             await MainActor.run {
-                viewModel.errorMessage = errorMessage
-                viewModel.isLoading = false
-                ocrProgress = nil
-                recognizedText = nil
-                structuredRows = nil
-            }
-        } catch {
-            await MainActor.run {
-                viewModel.errorMessage = String(format: String(localized: "error.pdfRecognitionFailed"), error.localizedDescription)
-                viewModel.isLoading = false
-                ocrProgress = nil
-                recognizedText = nil
-                structuredRows = nil
+                wallpaperImage = image
             }
         }
     }
-    
+
+    // MARK: - Event Handlers
+
+    private func handleAccountSave(_ account: Account) {
+        HapticManager.success()
+        accountsViewModel.addAccount(
+            name: account.name,
+            balance: account.balance,
+            currency: account.currency,
+            bankLogo: account.bankLogo
+        )
+        viewModel.syncAccountsFrom(accountsViewModel)
+        showingAddAccount = false
+    }
+
+    // MARK: - Combine Publishers
+
+    /// Combines time filter and transactions changes with debounce to prevent duplicate updates
+    private var summaryUpdatePublisher: AnyPublisher<Void, Never> {
+        Publishers.Merge(
+            timeFilterManager.$currentFilter.map { _ in () },
+            viewModel.$allTransactions.map { _ in () }
+        )
+        .debounce(for: 0.1, scheduler: RunLoop.main)
+        .eraseToAnyPublisher()
+    }
 }
 
+// MARK: - Preview
 
 #Preview {
     ContentView()
         .environmentObject(TimeFilterManager())
+        .environmentObject(AppCoordinator())
 }

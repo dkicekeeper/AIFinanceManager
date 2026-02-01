@@ -94,6 +94,7 @@
 "alert.errorTitle" = "Ошибка";
 
 // MARK: - Progress
+"progress.loadingData" = "Загрузка данных...";
 "progress.processingPDF" = "Обработка PDF...";
 "progress.recognizingText" = "Распознавание текста: страница %d из %d";
 "progress.page" = "Страница %d из %d";
@@ -188,6 +189,7 @@
 "accessibility.swipeForOptions" = "Смахните влево для опций";
 
 // MARK: - Accounts Management
+"accounts.title" = "Счета";
 "account.interestToday" = "Проценты на сегодня: %@";
 "account.nextPosting" = "Начисление: %@";
 "account.selectLogo" = "Выбрать логотип";

@@ -94,6 +94,7 @@
 "alert.errorTitle" = "Error";
 
 // MARK: - Progress
+"progress.loadingData" = "Loading data...";
 "progress.processingPDF" = "Processing PDF...";
 "progress.recognizingText" = "Recognizing text: page %d of %d";
 "progress.page" = "Page %d of %d";
@@ -188,6 +189,7 @@
 "accessibility.swipeForOptions" = "Swipe left for options";
 
 // MARK: - Accounts Management
+"accounts.title" = "Accounts";
 "account.interestToday" = "Interest today: %@";
 "account.nextPosting" = "Next posting: %@";
 "account.selectLogo" = "Select Logo";
