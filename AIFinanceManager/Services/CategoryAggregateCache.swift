@@ -105,6 +105,9 @@ class CategoryAggregateCache {
         // Определить диапазон года/месяца для фильтра
         let (targetYear, targetMonth) = getYearMonth(from: timeFilter)
 
+        // ✅ FIX: Get date range for date-based filters
+        let dateRange = timeFilter.dateRange()
+
         // Итерировать по агрегатам и фильтровать по периоду
         for (_, aggregate) in aggregatesByKey {
             // Пропустить агрегаты не в базовой валюте
@@ -114,7 +117,8 @@ class CategoryAggregateCache {
             let matches = matchesTimeFilter(
                 aggregate: aggregate,
                 targetYear: targetYear,
-                targetMonth: targetMonth
+                targetMonth: targetMonth,
+                dateRange: dateRange  // ✅ Pass date range
             )
 
             guard matches else { continue }
@@ -194,7 +198,8 @@ class CategoryAggregateCache {
     private func matchesTimeFilter(
         aggregate: CategoryAggregate,
         targetYear: Int16,
-        targetMonth: Int16
+        targetMonth: Int16,
+        dateRange: (start: Date, end: Date)
     ) -> Bool {
 
         // All-time
@@ -212,11 +217,15 @@ class CategoryAggregateCache {
             return aggregate.year == targetYear && aggregate.month == targetMonth
         }
 
-        // Date-based filters (last 30/90/365 days, custom)
+        // ✅ FIX: Date-based filters (last30Days, thisWeek, yesterday, etc.)
         if targetYear == -1 && targetMonth == -1 {
-            // Используем месячные агрегаты и фильтруем по lastTransactionDate
-            // Эта логика будет дополнена при интеграции с реальным TimeFilter
-            return aggregate.month > 0 // Используем месячные агрегаты
+            // Use aggregate's lastTransactionDate to filter by date range
+            guard let lastTransactionDate = aggregate.lastTransactionDate else {
+                return false
+            }
+
+            // Check if the aggregate's last transaction falls within the filter's date range
+            return lastTransactionDate >= dateRange.start && lastTransactionDate < dateRange.end
         }
 
         return false

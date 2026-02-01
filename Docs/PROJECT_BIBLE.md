@@ -1,10 +1,10 @@
 # AIFinanceManager — Project Bible
 
 > **Дата создания:** 2026-01-28
-> **Последнее обновление:** 2026-02-01 (Performance Optimization & History UX v2.3)
-> **Версия:** 2.3
+> **Последнее обновление:** 2026-02-01 (Time Filter Bug Fixes v2.4)
+> **Версия:** 2.4
 > **Автор:** AI Architecture Audit
-> **Статус:** Актуальный для main ветки после Performance Optimization
+> **Статус:** Актуальный для main ветки после Time Filter Fixes
 
 ---
 
@@ -1064,6 +1064,117 @@ Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
    - Целевое время `groupByDate`: <400ms для 19k+ транзакций
    - Целевое общее время загрузки: <700ms
    - Cache hit rate должен быть >90%
+
+### v2.4 (2026-02-01) — Time Filter Bug Fixes (Critical)
+
+**Контекст:** Серия критических багов с фильтром времени, обнаруженных после v2.3
+
+**Проблемы, которые были обнаружены:**
+1. Категории на главной не обновлялись при изменении фильтра времени
+2. После удаления категории все категории показывали 0.00
+3. Фильтр времени показывал правильное название, но суммы оставались "all-time"
+
+**Root Causes - 3 независимых бага:**
+
+1. **QuickAddCoordinator использовал изолированный TimeFilterManager**
+   - File: `QuickAddTransactionView.swift:43`
+   - При init создавался новый `TimeFilterManager()` вместо @EnvironmentObject
+   - Coordinator подписывался на локальный publisher, который никогда не обновлялся
+   - **Последствие:** Combine не срабатывал при изменении глобального фильтра
+
+2. **Отсутствовал UI update trigger после aggregate rebuild**
+   - File: `TransactionsViewModel.swift:498`
+   - `clearAndRebuildAggregateCache()` не вызывал `notifyDataChanged()`
+   - Aggregate cache успешно перестраивался, но `dataRefreshTrigger` не срабатывал
+   - **Последствие:** QuickAddCoordinator не знал о необходимости обновления
+
+3. **CategoryAggregateCache игнорировал date-based фильтры**
+   - File: `CategoryAggregateCache.swift:216-220`
+   - Для `.last30Days`, `.thisWeek`, `.yesterday` возвращал ВСЕ месячные агрегаты
+   - Комментарий: "Эта логика будет дополнена" — TODO оставлен незавершённым
+   - **Последствие:** Фильтр передавался правильно, но данные были неверны
+
+**Выполнено - 3 независимых фикса:**
+
+1. **TIME_FILTER_QUICKADD_FIX.md** — Late Binding Pattern
+   - `QuickAddCoordinator`: сделан `timeFilterManager` mutable (let → var)
+   - Добавлен `setTimeFilterManager(_ manager:)` для late binding
+   - `QuickAddTransactionView.onAppear`: вызов `setTimeFilterManager()`
+   - `QuickAddTransactionView.onChange`: redundant safety для гарантии обновления
+   - **Результат:** Coordinator теперь использует глобальный @EnvironmentObject
+
+2. **CATEGORY_DELETE_UI_UPDATE_FIX.md** — Missing Notification
+   - `TransactionsViewModel.clearAndRebuildAggregateCache()`: добавлен `notifyDataChanged()`
+   - Вызов происходит после `rebuildAggregateCacheAfterImport()` на MainActor
+   - **Результат:** UI обновляется после удаления категории
+
+3. **TIME_FILTER_AGGREGATE_CACHE_FIX.md** — Date Range Filtering (этот фикс)
+   - `CategoryAggregateCache.getCategoryExpenses()`: добавлен `dateRange` параметр
+   - `CategoryAggregateCache.matchesTimeFilter()`: реализована проверка `lastTransactionDate`
+   - Для date-based фильтров: `aggregate.lastTransactionDate >= start && < end`
+   - **Результат:** Фильтры .last30Days, .thisWeek, .yesterday работают корректно
+
+**Детали 3-го фикса (Date Range Filtering):**
+
+Before:
+```swift
+// Date-based filters (last 30/90/365 days, custom)
+if targetYear == -1 && targetMonth == -1 {
+    return aggregate.month > 0 // ❌ BUG: Returns ALL monthly aggregates!
+}
+```
+
+After:
+```swift
+// ✅ FIX: Date-based filters (last30Days, thisWeek, yesterday, etc.)
+if targetYear == -1 && targetMonth == -1 {
+    guard let lastTransactionDate = aggregate.lastTransactionDate else {
+        return false
+    }
+    return lastTransactionDate >= dateRange.start && lastTransactionDate < dateRange.end
+}
+```
+
+**Критические правила для работы с Time Filter:**
+
+1. **@StateObject + @EnvironmentObject:**
+   - При использовании @EnvironmentObject внутри @StateObject используй late binding
+   - В init создавай dummy instance, в onAppear заменяй на реальный
+   - Pattern: `setXXXManager()` + `cancellables.removeAll()` + `setupBindings()`
+
+2. **Aggregate Cache Rebuilds:**
+   - ВСЕГДА вызывай `notifyDataChanged()` после aggregate rebuild
+   - Это гарантирует срабатывание `$dataRefreshTrigger` publisher
+   - UI компоненты подписанные на trigger автоматически обновятся
+
+3. **Date-Based Filtering:**
+   - Year/Month фильтры: используй exact matching (year == X, month == Y)
+   - Date-based фильтры: используй `lastTransactionDate` + date range
+   - Всегда проверяй nil для `lastTransactionDate`
+
+4. **Testing Filters:**
+   - Тестируй ВСЕ presets: allTime, thisMonth, lastMonth, thisYear, last30Days, thisWeek, yesterday, custom
+   - Month/year фильтры технически проще и работают всегда
+   - Date-based фильтры требуют специальной логики с date range
+
+**Файлы:**
+- `Views/Transactions/QuickAddCoordinator.swift` — late binding для timeFilterManager
+- `Views/Transactions/QuickAddTransactionView.swift` — onAppear + onChange hooks
+- `ViewModels/TransactionsViewModel.swift` — notifyDataChanged() в clearAndRebuildAggregateCache
+- `Services/CategoryAggregateCache.swift` — date range filtering для matchesTimeFilter
+
+**Документация:**
+- `Docs/TIME_FILTER_QUICKADD_FIX.md` — детальный анализ Fix #1
+- `Docs/CATEGORY_DELETE_UI_UPDATE_FIX.md` — детальный анализ Fix #2
+- `Docs/TIME_FILTER_AGGREGATE_CACHE_FIX.md` — детальный анализ Fix #3
+
+**Impact:**
+- ✅ Фильтр времени работает на главной (QuickAdd categories)
+- ✅ Удаление категории обновляет UI корректно
+- ✅ ВСЕ типы фильтров показывают правильные суммы
+- ✅ Month/year фильтры: работают как и раньше
+- ✅ Date-based фильтры: теперь работают корректно
+- ✅ BUILD SUCCEEDED без ошибок
 
 ### Оставшиеся рекомендации
 

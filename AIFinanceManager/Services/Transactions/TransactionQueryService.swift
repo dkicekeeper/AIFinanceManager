@@ -95,7 +95,9 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
         baseCurrency: String,
         validCategoryNames: Set<String>?,
         aggregateCache: CategoryAggregateCache,
-        cacheManager: TransactionCacheManager
+        cacheManager: TransactionCacheManager,
+        transactions: [Transaction]? = nil,
+        currencyService: TransactionCurrencyService? = nil
     ) -> [String: CategoryExpense] {
 
         // ✅ Check cache with time filter as key
@@ -103,12 +105,32 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
             return cached
         }
 
-        // Use aggregate cache for efficient calculation
-        let result = aggregateCache.getCategoryExpenses(
-            timeFilter: timeFilter,
-            baseCurrency: baseCurrency,
-            validCategoryNames: validCategoryNames
-        )
+        // ✅ FIX: For date-based filters, calculate from transactions directly
+        // Aggregate cache works on month/year granularity and returns entire month totals
+        // Date-based filters (last30Days, thisWeek, yesterday) need day-level precision
+        let isDateBasedFilter = isDateBasedFilterPreset(timeFilter.preset)
+
+        let result: [String: CategoryExpense]
+
+        if isDateBasedFilter, let transactions = transactions, let currencyService = currencyService {
+            #if DEBUG
+            print("📊 [TransactionQueryService] Using direct calculation for date-based filter: \(timeFilter.displayName)")
+            #endif
+            result = calculateCategoryExpensesFromTransactions(
+                transactions: transactions,
+                timeFilter: timeFilter,
+                baseCurrency: baseCurrency,
+                validCategoryNames: validCategoryNames,
+                currencyService: currencyService
+            )
+        } else {
+            // Use aggregate cache for month/year-based filters (more efficient)
+            result = aggregateCache.getCategoryExpenses(
+                timeFilter: timeFilter,
+                baseCurrency: baseCurrency,
+                validCategoryNames: validCategoryNames
+            )
+        }
 
         // ✅ CRITICAL FIX: Only cache non-empty results
         // During aggregate cache rebuild, getCategoryExpenses() may return empty results
@@ -121,6 +143,86 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
             print("⚠️ [TransactionQueryService] NOT caching empty result - aggregate cache may still be rebuilding")
             #endif
         }
+
+        return result
+    }
+
+    /// Check if filter preset requires date-based (day-level) calculation
+    private func isDateBasedFilterPreset(_ preset: TimeFilterPreset) -> Bool {
+        switch preset {
+        case .last30Days, .thisWeek, .yesterday, .today, .custom:
+            return true
+        case .allTime, .thisMonth, .lastMonth, .thisYear, .lastYear:
+            return false
+        }
+    }
+
+    /// Calculate category expenses directly from transactions (for date-based filters)
+    private func calculateCategoryExpensesFromTransactions(
+        transactions: [Transaction],
+        timeFilter: TimeFilter,
+        baseCurrency: String,
+        validCategoryNames: Set<String>?,
+        currencyService: TransactionCurrencyService
+    ) -> [String: CategoryExpense] {
+
+        let dateRange = timeFilter.dateRange()
+        let dateFormatter = Self.dateFormatter
+        var result: [String: CategoryExpense] = [:]
+
+        for transaction in transactions {
+            // Only expense transactions
+            guard transaction.type == .expense else { continue }
+
+            // Filter by date range
+            guard let transactionDate = dateFormatter.date(from: transaction.date),
+                  transactionDate >= dateRange.start && transactionDate < dateRange.end else {
+                continue
+            }
+
+            let category = transaction.category.isEmpty
+                ? String(localized: "category.uncategorized")
+                : transaction.category
+
+            // Filter by valid category names if provided
+            if let validNames = validCategoryNames, !validNames.contains(category) {
+                continue
+            }
+
+            // Convert to base currency
+            let amountInBaseCurrency = currencyService.getConvertedAmountOrCompute(
+                transaction: transaction,
+                to: baseCurrency
+            )
+
+            // Update category total
+            if var existing = result[category] {
+                existing.total += amountInBaseCurrency
+
+                // Handle subcategory if present
+                if let subcategory = transaction.subcategory {
+                    existing.subcategories[subcategory, default: 0] += amountInBaseCurrency
+                }
+
+                result[category] = existing
+            } else {
+                // Create new entry
+                var subcategories: [String: Double] = [:]
+                if let subcategory = transaction.subcategory {
+                    subcategories[subcategory] = amountInBaseCurrency
+                }
+
+                result[category] = CategoryExpense(
+                    total: amountInBaseCurrency,
+                    subcategories: subcategories
+                )
+            }
+        }
+
+        #if DEBUG
+        let totalExpenses = result.values.reduce(0) { $0 + $1.total }
+        print("📊 [TransactionQueryService] Direct calculation result: \(result.count) categories, total: \(String(format: "%.2f", totalExpenses))")
+        #endif
 
         return result
     }

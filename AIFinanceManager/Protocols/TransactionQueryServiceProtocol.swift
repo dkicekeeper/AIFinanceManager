@@ -27,20 +27,24 @@ protocol TransactionQueryServiceProtocol {
         currencyService: TransactionCurrencyService
     ) -> Summary
 
-    /// Get category expenses from aggregate cache
+    /// Get category expenses from aggregate cache or direct calculation
     /// - Parameters:
     ///   - timeFilter: Time filter to apply
     ///   - baseCurrency: Base currency for expenses
     ///   - validCategoryNames: Optional set of valid category names (for filtering deleted categories)
     ///   - aggregateCache: Aggregate cache to query
     ///   - cacheManager: Cache manager for caching results
+    ///   - transactions: Optional transactions for direct calculation (date-based filters)
+    ///   - currencyService: Optional currency service for conversions (date-based filters)
     /// - Returns: Dictionary of category expenses
     func getCategoryExpenses(
         timeFilter: TimeFilter,
         baseCurrency: String,
         validCategoryNames: Set<String>?,
         aggregateCache: CategoryAggregateCache,
-        cacheManager: TransactionCacheManager
+        cacheManager: TransactionCacheManager,
+        transactions: [Transaction]?,
+        currencyService: TransactionCurrencyService?
     ) -> [String: CategoryExpense]
 
     /// Get popular categories sorted by total expense

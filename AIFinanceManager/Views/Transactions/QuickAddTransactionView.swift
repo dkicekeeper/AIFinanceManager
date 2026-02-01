@@ -76,6 +76,14 @@ struct QuickAddTransactionView: View {
         .sheet(isPresented: $coordinator.showingAddCategory) {
             categoryEditSheet
         }
+        .onAppear {
+            // ✅ FIX: Update coordinator's timeFilterManager to use @EnvironmentObject
+            coordinator.setTimeFilterManager(timeFilterManager)
+        }
+        .onChange(of: timeFilterManager.currentFilter) { _, _ in
+            // ✅ FIX: Ensure coordinator uses correct filter when it changes
+            coordinator.updateCategories()
+        }
     }
 
     // Compute hash of all category totals to detect changes

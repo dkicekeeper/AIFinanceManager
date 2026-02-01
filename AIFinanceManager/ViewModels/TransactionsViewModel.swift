@@ -377,13 +377,17 @@ class TransactionsViewModel: ObservableObject {
         print("🔍 [TransactionsViewModel] categoryExpenses() called for filter: \(timeFilterManager.currentFilter.displayName)")
         #endif
 
-        // ✅ Workaround removed - cache now handles time filters correctly
+        // ✅ FIX: Pass transactions and currencyService for date-based filters
+        // Date-based filters (last30Days, thisWeek) need direct calculation from transactions
+        // Month/year filters use aggregate cache (more efficient)
         let result = queryService.getCategoryExpenses(
             timeFilter: timeFilterManager.currentFilter,
             baseCurrency: appSettings.baseCurrency,
             validCategoryNames: validCategoryNames,
             aggregateCache: aggregateCache,
-            cacheManager: cacheManager
+            cacheManager: cacheManager,
+            transactions: allTransactions,
+            currencyService: currencyService
         )
 
         #if DEBUG
@@ -502,6 +506,8 @@ class TransactionsViewModel: ObservableObject {
             await rebuildAggregateCacheAfterImport()
             await MainActor.run { [weak self] in
                 self?.cacheManager.invalidateAll()
+                // ✅ FIX: Trigger UI update after aggregate rebuild
+                self?.notifyDataChanged()
             }
         }
     }

@@ -19,7 +19,7 @@ final class QuickAddCoordinator: ObservableObject {
     let transactionsViewModel: TransactionsViewModel
     let categoriesViewModel: CategoriesViewModel
     let accountsViewModel: AccountsViewModel
-    private let timeFilterManager: TimeFilterManager
+    private var timeFilterManager: TimeFilterManager
     private let categoryMapper: CategoryDisplayDataMapperProtocol
 
     // MARK: - Published State
@@ -162,6 +162,22 @@ final class QuickAddCoordinator: ObservableObject {
     /// Dismiss current modal
     func dismissModal() {
         selectedCategory = nil
+    }
+
+    /// Update time filter manager (needed when using @EnvironmentObject)
+    func setTimeFilterManager(_ manager: TimeFilterManager) {
+        guard timeFilterManager !== manager else { return }
+
+        #if DEBUG
+        print("🔄 [QuickAddCoordinator] Updating timeFilterManager reference")
+        #endif
+
+        timeFilterManager = manager
+
+        // Re-setup bindings with new manager
+        cancellables.removeAll()
+        setupBindings()
+        updateCategories()
     }
 
     // MARK: - Computed Properties
