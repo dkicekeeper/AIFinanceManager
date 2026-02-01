@@ -30,13 +30,13 @@ struct TransactionsSummaryCard: View {
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
             HStack {
-                Text(String(localized: LocalizationKeys.Navigation.analyticsHistory))
+                Text(String(localized: "analytics.history"))
                     .font(AppTypography.h3)
                     .foregroundStyle(.primary)
             }
 
             EmptyStateView(
-                title: String(localized: LocalizationKeys.EmptyState.noTransactions),
+                title: String(localized: "emptyState.noTransactions"),
                 style: .compact
             )
         }
@@ -58,7 +58,7 @@ struct TransactionsSummaryCard: View {
         VStack(spacing: AppSpacing.md) {
             ProgressView()
                 .scaleEffect(1.2)
-            Text(String(localized: LocalizationKeys.Progress.loadingData))
+            Text(String(localized: "progress.loadingData"))
                 .font(AppTypography.caption)
                 .foregroundColor(.secondary)
         }
@@ -74,8 +74,12 @@ struct TransactionsSummaryCard: View {
         summary: Summary(
             totalIncome: 50000,
             totalExpenses: 35000,
+            totalInternalTransfers: 10000,
             netFlow: 15000,
-            transactionCount: 42
+            currency: "KZT",
+            startDate: "2026-01-01",
+            endDate: "2026-01-31",
+            plannedAmount: 5000
         ),
         currency: "KZT",
         isEmpty: false

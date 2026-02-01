@@ -1,0 +1,105 @@
+//
+//  CategoryDisplayDataMapper.swift
+//  AIFinanceManager
+//
+//  Maps categories to display data with totals and budget information.
+//  Extracted from QuickAddTransactionView to follow Single Responsibility Principle.
+//
+
+import Foundation
+import SwiftUI
+
+@MainActor
+final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
+
+    // MARK: - Public Methods
+
+    func mapCategories(
+        customCategories: [CustomCategory],
+        categoryExpenses: [String: CategoryExpense],
+        type: TransactionType,
+        baseCurrency: String
+    ) -> [CategoryDisplayData] {
+        // Filter categories by type
+        let filteredCategories = customCategories.filter { $0.type == type }
+
+        // Create Set of existing category names for validation
+        let existingCategoryNames = Set(filteredCategories.map { $0.name })
+
+        // Collect all unique categories from custom categories and expenses
+        var allCategories = Set<String>()
+
+        // Add custom categories
+        for category in filteredCategories {
+            allCategories.insert(category.name)
+        }
+
+        // Add categories from expenses (only if they exist in custom categories)
+        for categoryName in categoryExpenses.keys {
+            if existingCategoryNames.contains(categoryName) {
+                allCategories.insert(categoryName)
+            }
+        }
+
+        // Map to display data
+        let displayData = allCategories.compactMap { categoryName -> CategoryDisplayData? in
+            mapCategory(
+                name: categoryName,
+                customCategories: filteredCategories,
+                categoryExpenses: categoryExpenses,
+                type: type,
+                baseCurrency: baseCurrency
+            )
+        }
+
+        // Sort by total (descending), then by name (ascending)
+        return displayData.sorted { category1, category2 in
+            if category1.total != category2.total {
+                return category1.total > category2.total
+            }
+            return category1.name < category2.name
+        }
+    }
+
+    // MARK: - Private Methods
+
+    private func mapCategory(
+        name: String,
+        customCategories: [CustomCategory],
+        categoryExpenses: [String: CategoryExpense],
+        type: TransactionType,
+        baseCurrency: String
+    ) -> CategoryDisplayData? {
+        // Find custom category
+        let customCategory = customCategories.first {
+            $0.name.lowercased() == name.lowercased() && $0.type == type
+        }
+
+        // Get total from expenses
+        let total = categoryExpenses[name]?.total ?? 0
+
+        // Get budget progress (pre-calculated)
+        let budgetProgress = customCategory.flatMap { category -> BudgetProgress? in
+            guard let budgetAmount = category.budgetAmount, budgetAmount > 0 else { return nil }
+            return BudgetProgress(budgetAmount: budgetAmount, spent: total)
+        }
+
+        // Get style info
+        let styleHelper = CategoryStyleHelper(
+            category: name,
+            type: type,
+            customCategories: customCategories
+        )
+
+        return CategoryDisplayData(
+            id: customCategory?.id ?? UUID().uuidString,
+            name: name,
+            type: type,
+            iconName: styleHelper.iconName,
+            iconColor: styleHelper.iconColor,
+            total: total,
+            budgetAmount: customCategory?.budgetAmount,
+            budgetProgress: budgetProgress
+        )
+    }
+}

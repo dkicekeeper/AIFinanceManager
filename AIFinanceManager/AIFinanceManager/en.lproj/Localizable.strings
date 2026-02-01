@@ -258,6 +258,8 @@
 "deposit.editTitle" = "Edit Deposit";
 
 // MARK: - Categories Management
+"categories.expenseCategories" = "Expense Categories";
+"categories.incomeCategories" = "Income Categories";
 "category.uncategorized" = "Uncategorized";
 "category.deleteTitle" = "Delete category?";
 "category.deleteOnlyCategory" = "Delete category only";

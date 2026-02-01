@@ -197,7 +197,7 @@ struct ContentView: View {
             VStack(spacing: AppSpacing.lg) {
                 ProgressView()
                     .scaleEffect(1.5)
-                Text(String(localized: LocalizationKeys.Progress.loadingData))
+                Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
                     .font(AppTypography.body)
                     .foregroundColor(.secondary)
             }
@@ -241,16 +241,16 @@ struct ContentView: View {
             }
             .foregroundColor(.primary)
         }
-        .accessibilityLabel(String(localized: LocalizationKeys.Accessibility.calendar))
-        .accessibilityHint(String(localized: LocalizationKeys.Accessibility.calendarHint))
+        .accessibilityLabel(String(localized: "accessibility.calendar"))
+        .accessibilityHint(String(localized: "accessibility.calendarHint"))
     }
 
     private var settingsButton: some View {
         NavigationLink(destination: settingsDestination) {
             Image(systemName: "gearshape")
         }
-        .accessibilityLabel(String(localized: LocalizationKeys.Accessibility.settings))
-        .accessibilityHint(String(localized: LocalizationKeys.Accessibility.settingsHint))
+        .accessibilityLabel(String(localized: "accessibility.settings"))
+        .accessibilityHint(String(localized: "accessibility.settingsHint"))
     }
 
     // MARK: - Sheets

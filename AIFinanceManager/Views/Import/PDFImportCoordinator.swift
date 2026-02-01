@@ -56,8 +56,8 @@ struct PDFImportCoordinator: View {
                 .frame(width: AppSize.buttonLarge, height: AppSize.buttonLarge)
         }
         .buttonStyle(.glass)
-        .accessibilityLabel(String(localized: LocalizationKeys.Accessibility.importStatement))
-        .accessibilityHint(String(localized: LocalizationKeys.Accessibility.importStatementHint))
+        .accessibilityLabel(String(localized: "accessibility.importStatement"))
+        .accessibilityHint(String(localized: "accessibility.importStatementHint"))
     }
 
     // MARK: - File Picker
@@ -96,9 +96,9 @@ struct PDFImportCoordinator: View {
             // Fallback - empty screen if text not loaded
             NavigationView {
                 VStack(spacing: AppSpacing.md) {
-                    Text(String(localized: LocalizationKeys.Error.loadTextFailed))
+                    Text(String(localized: "error.loadTextFailed"))
                         .font(AppTypography.h4)
-                    Text(String(localized: LocalizationKeys.Error.tryAgain))
+                    Text(String(localized: "error.tryAgain"))
                         .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
                 }
@@ -124,15 +124,15 @@ struct PDFImportCoordinator: View {
         VStack(spacing: AppSpacing.md) {
             if let progress = ocrProgress {
                 ProgressView(value: Double(progress.current), total: Double(progress.total)) {
-                    Text(String(localized: LocalizationKeys.Progress.recognizingText))
+                    Text(String(localized: "progress.recognizingText", defaultValue: "Recognizing text..."))
                         .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
                 }
-                Text(String(format: String(localized: LocalizationKeys.Progress.page), progress.current, progress.total))
+                Text(String(format: String(localized: "progress.page", defaultValue: "Page %d of %d"), progress.current, progress.total))
                     .font(AppTypography.caption)
                     .foregroundColor(.secondary)
             } else {
-                ProgressView(String(localized: LocalizationKeys.Progress.processingPDF))
+                ProgressView(String(localized: "progress.processingPDF", defaultValue: "Processing PDF..."))
             }
         }
         .padding(AppSpacing.md)
@@ -160,7 +160,7 @@ struct PDFImportCoordinator: View {
             let trimmedText = ocrResult.fullText.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmedText.isEmpty else {
                 await MainActor.run {
-                    transactionsViewModel.errorMessage = String(localized: LocalizationKeys.Error.pdfExtraction)
+                    transactionsViewModel.errorMessage = String(localized: "error.pdfExtraction")
                     transactionsViewModel.isLoading = false
                     ocrProgress = nil
                 }
@@ -187,7 +187,7 @@ struct PDFImportCoordinator: View {
         } catch {
             await MainActor.run {
                 transactionsViewModel.errorMessage = String(
-                    format: String(localized: LocalizationKeys.Error.pdfRecognitionFailed),
+                    format: String(localized: "error.pdfRecognitionFailed"),
                     error.localizedDescription
                 )
                 transactionsViewModel.isLoading = false

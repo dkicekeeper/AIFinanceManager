@@ -46,9 +46,6 @@ struct AccountsCarousel: View {
                 balance: 150000,
                 currency: "KZT",
                 bankLogo: .kaspi,
-                isDeposit: false,
-                initialBalance: 0,
-                balanceCalculationMode: .fromInitialBalance,
                 depositInfo: nil
             ),
             Account(
@@ -56,10 +53,7 @@ struct AccountsCarousel: View {
                 name: "Halyk Bank",
                 balance: 250000,
                 currency: "KZT",
-                bankLogo: .halyk,
-                isDeposit: false,
-                initialBalance: 0,
-                balanceCalculationMode: .fromInitialBalance,
+                bankLogo: .halykBank,
                 depositInfo: nil
             )
         ],

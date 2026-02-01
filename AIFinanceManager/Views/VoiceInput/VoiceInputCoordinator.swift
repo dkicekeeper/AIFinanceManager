@@ -47,8 +47,8 @@ struct VoiceInputCoordinator: View {
                 .frame(width: AppSize.buttonLarge, height: AppSize.buttonLarge)
         }
         .buttonStyle(.glass)
-        .accessibilityLabel(String(localized: LocalizationKeys.Accessibility.voiceInput))
-        .accessibilityHint(String(localized: LocalizationKeys.Accessibility.voiceInputHint))
+        .accessibilityLabel(String(localized: "accessibility.voiceInput"))
+        .accessibilityHint(String(localized: "accessibility.voiceInputHint"))
     }
 
     // MARK: - Voice Input Sheet

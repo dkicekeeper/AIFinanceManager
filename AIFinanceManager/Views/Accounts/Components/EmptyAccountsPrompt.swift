@@ -21,13 +21,13 @@ struct EmptyAccountsPrompt: View {
         }) {
             VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 HStack {
-                    Text(String(localized: LocalizationKeys.Navigation.accountsTitle))
+                    Text(String(localized: "accounts.title"))
                         .font(AppTypography.h3)
                         .foregroundStyle(.primary)
                 }
 
                 EmptyStateView(
-                    title: String(localized: LocalizationKeys.EmptyState.noAccounts),
+                    title: String(localized: "emptyState.noAccounts"),
                     style: .compact
                 )
             }

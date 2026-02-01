@@ -3,34 +3,34 @@
 //  AIFinanceManager
 //
 //  Modal form for adding a transaction from the QuickAdd category grid.
+//  Refactored to use AddTransactionCoordinator for business logic.
 //
 
 import SwiftUI
 
 struct AddTransactionModal: View {
-    let category: String
-    let type: TransactionType
-    let currency: String
-    let accounts: [Account]
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
-    let onDismiss: () -> Void
 
-    @State private var amountText = ""
-    @State private var descriptionText = ""
-    @State private var selectedAccountId: String?
-    @State private var selectedCurrency: String
-    @State private var selectedDate: Date = Date()
-    @State private var isRecurring = false
-    @State private var selectedFrequency: RecurringFrequency = .monthly
-    @State private var selectedSubcategoryIds: Set<String> = []
+    // MARK: - Coordinator
+
+    @StateObject private var coordinator: AddTransactionCoordinator
+
+    // MARK: - Environment
+
+    @EnvironmentObject var timeFilterManager: TimeFilterManager
+
+    // MARK: - State
+
+    @State private var validationError: String?
+    @State private var isSaving = false
     @State private var showingSubcategorySearch = false
     @State private var subcategorySearchText = ""
     @State private var showingCategoryHistory = false
-    @State private var isSaving = false
-    @State private var validationError: String?
+
+    // MARK: - Callbacks
+
+    let onDismiss: () -> Void
+
+    // MARK: - Initialization
 
     init(
         category: String,
@@ -42,70 +42,91 @@ struct AddTransactionModal: View {
         accountsViewModel: AccountsViewModel,
         onDismiss: @escaping () -> Void
     ) {
-        self.category = category
-        self.type = type
-        self.currency = currency
-        self.accounts = accounts
-        self.transactionsViewModel = transactionsViewModel
-        self.categoriesViewModel = categoriesViewModel
-        self.accountsViewModel = accountsViewModel
-        self.onDismiss = onDismiss
-        _selectedCurrency = State(initialValue: currency)
-    }
-
-    private var categoryId: String? {
-        categoriesViewModel.customCategories.first { $0.name == category }?.id
-    }
-
-    private var availableSubcategories: [Subcategory] {
-        guard let categoryId = categoryId else { return [] }
-        return categoriesViewModel.getSubcategoriesForCategory(categoryId)
-    }
-
-    private var searchResults: [Subcategory] {
-        if subcategorySearchText.isEmpty {
-            return categoriesViewModel.subcategories
-        }
-        return categoriesViewModel.searchSubcategories(query: subcategorySearchText)
-    }
-
-    /// Ранжированный список счетов с учетом частоты использования для данной категории
-    private var rankedAccounts: [Account] {
-        let amount = AmountFormatter.parse(amountText).map { NSDecimalNumber(decimal: $0).doubleValue }
-
-        return accountsViewModel.rankedAccounts(
-            transactions: transactionsViewModel.allTransactions,
-            type: type,
-            amount: amount,
+        _coordinator = StateObject(wrappedValue: AddTransactionCoordinator(
             category: category,
-            sourceAccountId: nil
-        )
+            type: type,
+            currency: currency,
+            transactionsViewModel: transactionsViewModel,
+            categoriesViewModel: categoriesViewModel,
+            accountsViewModel: accountsViewModel
+        ))
+        self.onDismiss = onDismiss
     }
+
+    // MARK: - Body
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                formContent
+                    .sheet(isPresented: $showingSubcategorySearch) {
+                        subcategorySearchSheet
+                    }
+            }
+            .navigationTitle(coordinator.formData.category)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                toolbarContent
+            }
+            .dateButtonsSafeArea(
+                selectedDate: $coordinator.formData.selectedDate,
+                isDisabled: isSaving,
+                onSave: { date in
+                    coordinator.formData.selectedDate = date
+                    Task { await saveTransaction() }
+                }
+            )
+            .overlay(overlayContent)
+            .sheet(isPresented: $showingCategoryHistory) {
+                categoryHistorySheet
+            }
+            .onChange(of: coordinator.formData.accountId) { _, _ in
+                coordinator.updateCurrencyForSelectedAccount()
+            }
+            .onAppear {
+                // ✅ PERFORMANCE FIX: Compute suggested account asynchronously
+                // UI shows immediately, suggestion loads in background
+                Task {
+                    if coordinator.formData.accountId == nil {
+                        let suggested = await coordinator.computeSuggestedAccountIdAsync()
+                        coordinator.formData.accountId = suggested
+                        coordinator.updateCurrencyForSelectedAccount()
+                    } else {
+                        coordinator.updateCurrencyForSelectedAccount()
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Form Content
 
     private var formContent: some View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 AmountInputView(
-                    amount: $amountText,
-                    selectedCurrency: $selectedCurrency,
+                    amount: $coordinator.formData.amountText,
+                    selectedCurrency: $coordinator.formData.currency,
                     errorMessage: validationError,
                     onAmountChange: { _ in
                         validationError = nil
                     }
                 )
 
-                if !accounts.isEmpty {
+                if !coordinator.rankedAccounts().isEmpty {
                     AccountSelectorView(
-                        accounts: rankedAccounts,
-                        selectedAccountId: $selectedAccountId
+                        accounts: coordinator.rankedAccounts(),
+                        // ✅ PERFORMANCE FIX: Simple binding - no heavy computation in get
+                        // Suggested account is set asynchronously in onAppear
+                        selectedAccountId: $coordinator.formData.accountId
                     )
                 }
 
-                if categoryId != nil {
+                if !coordinator.availableSubcategories().isEmpty {
                     SubcategorySelectorView(
-                        categoriesViewModel: categoriesViewModel,
+                        categoriesViewModel: coordinator.categoriesViewModel,
                         categoryId: categoryId,
-                        selectedSubcategoryIds: $selectedSubcategoryIds,
+                        selectedSubcategoryIds: $coordinator.formData.subcategoryIds,
                         onSearchTap: {
                             showingSubcategorySearch = true
                         }
@@ -113,60 +134,21 @@ struct AddTransactionModal: View {
                 }
 
                 RecurringToggleView(
-                    isRecurring: $isRecurring,
-                    selectedFrequency: $selectedFrequency,
+                    isRecurring: $coordinator.formData.isRecurring,
+                    selectedFrequency: $coordinator.formData.frequency,
                     toggleTitle: String(localized: "quickAdd.makeRecurring"),
                     frequencyTitle: String(localized: "quickAdd.frequency")
                 )
 
                 DescriptionTextField(
-                    text: $descriptionText,
+                    text: $coordinator.formData.description,
                     placeholder: String(localized: "quickAdd.descriptionPlaceholder")
                 )
             }
         }
     }
 
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                formContent
-                    .sheet(isPresented: $showingSubcategorySearch) {
-                        SubcategorySearchView(
-                            categoriesViewModel: categoriesViewModel,
-                            categoryId: categoryId ?? "",
-                            selectedSubcategoryIds: $selectedSubcategoryIds,
-                            searchText: $subcategorySearchText
-                        )
-                        .onAppear {
-                            subcategorySearchText = ""
-                        }
-                    }
-            }
-            .navigationTitle(category)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                toolbarContent
-            }
-            .dateButtonsSafeArea(
-                selectedDate: $selectedDate,
-                isDisabled: isSaving,
-                onSave: { date in
-                    saveTransaction(date: date)
-                }
-            )
-            .overlay(overlayContent)
-            .sheet(isPresented: $showingCategoryHistory) {
-                categoryHistorySheet
-            }
-            .onAppear {
-                setupOnAppear()
-            }
-            .onChange(of: selectedAccountId) {
-                updateCurrencyForSelectedAccount()
-            }
-        }
-    }
+    // MARK: - Toolbar
 
     private var toolbarContent: some ToolbarContent {
         Group {
@@ -185,6 +167,8 @@ struct AddTransactionModal: View {
         }
     }
 
+    // MARK: - Overlay
+
     private var overlayContent: some View {
         Group {
             if isSaving {
@@ -197,199 +181,54 @@ struct AddTransactionModal: View {
         }
     }
 
+    // MARK: - Sheets
+
+    private var subcategorySearchSheet: some View {
+        SubcategorySearchView(
+            categoriesViewModel: coordinator.categoriesViewModel,
+            categoryId: categoryId ?? "",
+            selectedSubcategoryIds: $coordinator.formData.subcategoryIds,
+            searchText: $subcategorySearchText
+        )
+        .onAppear {
+            subcategorySearchText = ""
+        }
+    }
+
     private var categoryHistorySheet: some View {
         NavigationView {
             HistoryView(
-                transactionsViewModel: transactionsViewModel,
-                accountsViewModel: AccountsViewModel(repository: transactionsViewModel.repository),
-                categoriesViewModel: categoriesViewModel,
-                initialCategory: category
+                transactionsViewModel: coordinator.transactionsViewModel,
+                accountsViewModel: coordinator.accountsViewModel,
+                categoriesViewModel: coordinator.categoriesViewModel,
+                initialCategory: coordinator.formData.category
             )
-                .environmentObject(timeFilterManager)
+            .environmentObject(timeFilterManager)
         }
     }
 
-    private func setupOnAppear() {
-        if selectedAccountId == nil {
-            if let suggestedAccount = accountsViewModel.suggestedAccount(
-                forCategory: category,
-                transactions: transactionsViewModel.allTransactions,
-                amount: nil
-            ) {
-                selectedAccountId = suggestedAccount.id
-            } else {
-                selectedAccountId = accounts.first?.id
-            }
-        }
-        updateCurrencyForSelectedAccount()
+    // MARK: - Private Methods
+
+    private var categoryId: String? {
+        coordinator.categoriesViewModel.customCategories.first {
+            $0.name == coordinator.formData.category
+        }?.id
     }
 
-    private func updateCurrencyForSelectedAccount() {
-        if let accountId = selectedAccountId,
-           let account = accounts.first(where: { $0.id == accountId }) {
-            selectedCurrency = account.currency
-        }
-    }
-
-    private func saveTransaction(date: Date) {
-        guard let decimalAmount = AmountFormatter.parse(amountText) else {
-            validationError = String(localized: "error.validation.enterAmount")
-            HapticManager.error()
-            return
-        }
-
-        guard decimalAmount > 0 else {
-            validationError = String(localized: "error.validation.amountGreaterThanZero")
-            HapticManager.error()
-            return
-        }
-
-        guard let accountId = selectedAccountId else {
-            validationError = String(localized: "error.validation.selectAccount")
-            HapticManager.error()
-            return
-        }
-
-        guard let account = accounts.first(where: { $0.id == accountId }) else {
-            validationError = String(localized: "error.validation.accountNotFound")
-            HapticManager.error()
-            return
-        }
-
+    private func saveTransaction() async {
         isSaving = true
         validationError = nil
 
-        let dateFormatter = DateFormatters.dateFormatter
-        let dateString = dateFormatter.string(from: date)
-        let finalDescription = descriptionText
-        let amountDouble = NSDecimalNumber(decimal: decimalAmount).doubleValue
-        let accountCurrency = account.currency
+        let result = await coordinator.save()
 
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let transactionDate = calendar.startOfDay(for: date)
-        let isFutureDate = transactionDate > today
+        isSaving = false
 
-        if isRecurring {
-            _ = transactionsViewModel.createRecurringSeries(
-                amount: decimalAmount,
-                currency: selectedCurrency,
-                category: category,
-                subcategory: nil,
-                description: finalDescription,
-                accountId: accountId,
-                targetAccountId: nil,
-                frequency: selectedFrequency,
-                startDate: dateString
-            )
-
-            if isFutureDate {
-                HapticManager.success()
-                isSaving = false
-                onDismiss()
-                return
-            }
-        }
-
-        Task { @MainActor in
-            var convertedAmount: Double? = nil
-            let baseCurrency = transactionsViewModel.appSettings.baseCurrency
-            if selectedCurrency != baseCurrency {
-                _ = await CurrencyConverter.getExchangeRate(for: selectedCurrency)
-                _ = await CurrencyConverter.getExchangeRate(for: baseCurrency)
-
-                convertedAmount = CurrencyConverter.convertSync(
-                    amount: amountDouble,
-                    from: selectedCurrency,
-                    to: baseCurrency
-                )
-
-                if convertedAmount == nil {
-                    convertedAmount = await CurrencyConverter.convert(
-                        amount: amountDouble,
-                        from: selectedCurrency,
-                        to: baseCurrency
-                    )
-                }
-            }
-
-            // Установка targetAmount и targetCurrency для отображения эквивалента и обновления баланса
-            var targetCurrencyValue: String? = nil
-            var targetAmountValue: Double? = nil
-
-            // Случай 1: валюта операции отличается от валюты счета
-            if selectedCurrency != accountCurrency {
-                // Валюта операции отличается от валюты счета
-                // Конвертируем в валюту счета для корректного баланса
-                targetCurrencyValue = accountCurrency
-
-                let convertedToAccount = CurrencyConverter.convertSync(
-                    amount: amountDouble,
-                    from: selectedCurrency,
-                    to: accountCurrency
-                )
-
-                if convertedToAccount == nil {
-                    targetAmountValue = await CurrencyConverter.convert(
-                        amount: amountDouble,
-                        from: selectedCurrency,
-                        to: accountCurrency
-                    )
-                } else {
-                    targetAmountValue = convertedToAccount
-                }
-            }
-            // Случай 2: валюта операции = валюта счета, но отличается от базовой валюты
-            else if selectedCurrency == accountCurrency &&
-                    selectedCurrency != baseCurrency &&
-                    convertedAmount != nil {
-                // Показываем эквивалент в базовой валюте для отображения в UI
-                targetCurrencyValue = baseCurrency
-                targetAmountValue = convertedAmount
-            }
-
-            let transaction = Transaction(
-                id: "",
-                date: dateString,
-                description: finalDescription,
-                amount: amountDouble,
-                currency: selectedCurrency,
-                convertedAmount: convertedAmount,
-                type: type,
-                category: category,
-                subcategory: nil,
-                accountId: accountId,
-                targetAccountId: nil,
-                targetCurrency: targetCurrencyValue,
-                targetAmount: targetAmountValue,
-                recurringSeriesId: nil,
-                recurringOccurrenceId: nil,
-                createdAt: Date().timeIntervalSince1970
-            )
-
-            transactionsViewModel.addTransaction(transaction)
-
-            if !selectedSubcategoryIds.isEmpty {
-                let addedTransaction = transactionsViewModel.allTransactions.first { tx in
-                    tx.date == dateString &&
-                    tx.description == finalDescription &&
-                    tx.amount == amountDouble &&
-                    tx.category == category &&
-                    tx.accountId == accountId &&
-                    tx.type == type
-                }
-
-                if let transactionId = addedTransaction?.id {
-                    categoriesViewModel.linkSubcategoriesToTransaction(
-                        transactionId: transactionId,
-                        subcategoryIds: Array(selectedSubcategoryIds)
-                    )
-                }
-            }
-
+        if result.isValid {
             HapticManager.success()
-            isSaving = false
             onDismiss()
+        } else {
+            validationError = result.errors.first?.localizedDescription
+            HapticManager.error()
         }
     }
 }

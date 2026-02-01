@@ -59,7 +59,7 @@ class DateSectionExpensesCache: ObservableObject {
         )
 
         #if DEBUG
-        let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
+        let _ = CFAbsoluteTimeGetCurrent() - startTime
         #endif
 
         // Store in cache
@@ -71,7 +71,7 @@ class DateSectionExpensesCache: ObservableObject {
     /// Invalidate all cached expenses
     /// Call this when transactions change or currency settings update
     func invalidate() {
-        let cacheSize = cache.count
+        let _ = cache.count
         cache.removeAll()
         lastInvalidation = Date()
 
