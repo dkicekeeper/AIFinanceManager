@@ -1,10 +1,10 @@
 # AIFinanceManager — Project Bible
 
 > **Дата создания:** 2026-01-28
-> **Последнее обновление:** 2026-02-01 (Time Filter Bug Fixes v2.4)
-> **Версия:** 2.4
+> **Последнее обновление:** 2026-02-02 (Recurring Refactoring Phase 3 v2.5)
+> **Версия:** 2.5
 > **Автор:** AI Architecture Audit
-> **Статус:** Актуальный для main ветки после Time Filter Fixes
+> **Статус:** Актуальный для main ветки после Recurring Refactoring Phase 3
 
 ---
 
@@ -48,7 +48,9 @@
 │    ├── TransactionCRUDService ✨ Phase 1                │
 │    ├── TransactionBalanceCoordinator ✨ Phase 1         │
 │    ├── TransactionStorageCoordinator ✨ Phase 1         │
-│    ├── RecurringTransactionService ✨ Phase 1           │
+│    ├── RecurringTransactionService ✨ Phase 1 (⚠️ DEPRECATED Phase 3) │
+│    ├── RecurringTransactionCoordinator ✨✨✨ Phase 3 NEW │
+│    ├── RecurringValidationService ✨✨✨ Phase 3 NEW     │
 │    ├── TransactionFilterCoordinator ✨ Phase 2 NEW      │
 │    ├── AccountOperationService ✨ Phase 2 NEW           │
 │    ├── CacheCoordinator ✨ Phase 2 NEW                  │
@@ -83,10 +85,13 @@ User Action
 - **CRUD транзакций:** `TransactionCRUDService` ✨ (422 lines)
 - **Расчёт баланса:** `TransactionBalanceCoordinator` ✨ + `BalanceCalculationService` + `BalanceCalculator` (actor)
 - **Хранение транзакций:** `TransactionStorageCoordinator` ✨ (270 lines)
-- **Recurring транзакции:** `RecurringTransactionService` ✨ (344 lines)
+- **Recurring транзакции:** `RecurringTransactionCoordinator` ✨✨✨ (370 lines) Phase 3 — Single Entry Point
+  - `RecurringValidationService` ✨✨✨ (120 lines) Phase 3 — Business Rules
+  - ⚠️ `RecurringTransactionService` (DEPRECATED Phase 3)
 - **Фильтрация транзакций:** `TransactionFilterCoordinator` ✨✨ (200 lines) Phase 2
 - **Операции со счетами:** `AccountOperationService` ✨✨ (150 lines) Phase 2
 - **Управление кэшами:** `CacheCoordinator` ✨✨ (120 lines) Phase 2
+  - `LRUCache<Key, Value>` ✨✨✨ (235 lines) Phase 3 — Generic LRU Implementation
 - **Запросы транзакций:** `TransactionQueryService` ✨✨ (190 lines) Phase 2
 - **Бюджеты категорий:** `CategoryBudgetService` ✨ (167 lines)
 - **Проценты по депозитам:** `DepositInterestService`
@@ -1175,6 +1180,230 @@ if targetYear == -1 && targetMonth == -1 {
 - ✅ Month/year фильтры: работают как и раньше
 - ✅ Date-based фильтры: теперь работают корректно
 - ✅ BUILD SUCCEEDED без ошибок
+
+### v2.5 (2026-02-02) — Recurring Refactoring Phase 3 (Complete)
+
+**Контекст:** Полный рефакторинг подписок и повторяющихся транзакций с фокусом на оптимизацию, SRP, LRU eviction, удаление неиспользуемого кода
+
+**Проблемы, которые были обнаружены:**
+1. Дублирование данных: `recurringSeries` хранилась в двух ViewModels (Subscriptions + Transactions)
+2. Отсутствие единой точки входа для recurring операций
+3. Дублирование brandLogo display logic в 6 файлах
+4. Дублирование transaction generation logic в SubscriptionDetailView
+5. Unbounded memory growth в TransactionCacheManager (parsedDatesCache)
+6. Неиспользуемый код: updateRecurringTransaction() метод (73 LOC)
+
+**Root Causes:**
+- Отсутствие Single Source of Truth для recurringSeries
+- Разрозненные recurring операции между ViewModels
+- Copy-paste logic для отображения логотипов брендов
+- Повторяющийся код генерации транзакций
+- Отсутствие автоматического eviction в кэшах
+- Legacy код без использования
+
+**Выполнено - 3 фазы рефакторинга:**
+
+**Phase 1: Архитектурный фундамент** ✅
+
+1. **RecurringTransactionCoordinator** (370 LOC)
+   - Единая точка входа для всех recurring операций
+   - Методы: createSeries, updateSeries, stopSeries, deleteSeries, generateAllTransactions, getPlannedTransactions, pauseSubscription, resumeSubscription, archiveSubscription, nextChargeDate
+   - Координирует между SubscriptionsViewModel и TransactionsViewModel
+   - Weak references предотвращают retain cycles
+
+2. **RecurringValidationService** (120 LOC)
+   - Валидация бизнес-правил для recurring operations
+   - Методы: validate(), findSeries(), findSubscription(), needsRegeneration()
+   - Отделение validation logic от coordination logic
+
+3. **Single Source of Truth для recurringSeries**
+   - SubscriptionsViewModel: теперь единственный owner recurringSeries
+   - TransactionsViewModel.recurringSeries: изменён с @Published var на computed property
+   - Устранена дублирование данных и manual synchronization
+   - Добавлены internal методы в SubscriptionsViewModel для coordinator
+
+4. **AppCoordinator Integration**
+   - Инициализация RecurringTransactionCoordinator
+   - Установка связей между ViewModels
+   - Dependency injection для всех компонентов
+
+5. **Локализация**
+   - 8 новых error keys (EN + RU)
+   - Полная локализация RecurringTransactionError
+
+**Phase 2: UI Deduplication** ✅
+
+1. **BrandLogoDisplayHelper** (90 LOC)
+   - Централизованная логика выбора источника логотипа
+   - LogoSource enum: systemImage, customIcon, brandService, bankLogo
+   - Метод resolveSource() для определения источника
+   - Устранение дублирования brandId.hasPrefix() logic из 6 файлов
+
+2. **BrandLogoDisplayView** (130 LOC)
+   - Переиспользуемый компонент для отображения brand logos
+   - Switch-based rendering для всех типов источников
+   - Единая точка для styling и размеров
+
+3. **Рефакторинг компонентов**
+   - SubscriptionCard: 24 LOC → 5 LOC (-80%)
+   - StaticSubscriptionIconsView: 45 LOC → 15 LOC (-67%)
+   - SubscriptionCalendarView: 22 LOC → 7 LOC (-68%)
+   - SubscriptionDetailView: 110 LOC → 15 LOC (-87%)
+
+4. **getPlannedTransactions() метод** (105 LOC)
+   - Добавлен в SubscriptionsViewModel
+   - Генерация planned transactions для subscription detail
+   - Устранение дублирования generation logic
+
+**Phase 3: Performance & Cleanup** ✅
+
+1. **LRUCache<Key, Value>** (235 LOC)
+   - Generic LRU cache implementation
+   - Doubly-linked list + HashMap для O(1) операций
+   - Автоматическое вытеснение при превышении capacity
+   - Sequence conformance для iteration
+   - Thread-safe (@MainActor)
+
+2. **TransactionCacheManager Integration**
+   - parsedDatesCache: Dictionary → LRUCache (capacity: 10,000)
+   - Защита от unbounded memory growth
+   - Автоматическое удаление старых entries
+
+3. **Code Deprecation**
+   - RecurringTransactionService: помечен как deprecated
+   - Все mutation методы закомментированы с пояснениями
+   - updateRecurringTransaction(): deprecated (73 LOC unused code)
+   - Добавлены deprecation warnings для миграции
+
+4. **Protocol Updates**
+   - TransactionStorageDelegate.recurringSeries: { get set } → { get }
+   - Обновлена документация в протоколах
+
+**Результаты Phase 1-3:**
+- **Код удалён (дублирование):** -403 LOC (-79%)
+- **Код добавлен (переиспользуемый):** +1,270 LOC
+- **Deprecated (неиспользуемый):** 73 LOC
+- **Новые компоненты:** 5 (Coordinator, Validator, Helper, View, Cache)
+- **Новые протоколы:** 1 (RecurringTransactionCoordinatorProtocol)
+- **Рефакторено компонентов:** 5 (SubscriptionCard, StaticSubscriptionIconsView, SubscriptionCalendarView, SubscriptionDetailView, TransactionCacheManager)
+
+**Ключевые паттерны Phase 3:**
+1. **Single Source of Truth** - recurringSeries только в SubscriptionsViewModel
+2. **Coordinator Pattern** - RecurringTransactionCoordinator как единая точка входа
+3. **Protocol-Oriented Design** - RecurringTransactionCoordinatorProtocol
+4. **Delegate Pattern** - weak references для координации
+5. **LRU Eviction** - автоматическое управление памятью
+6. **Component Composition** - BrandLogoDisplayView + Helper
+7. **Computed Properties** - reactive data flow
+
+**Файлы Phase 3:**
+
+*Созданные:*
+- `Protocols/RecurringTransactionCoordinatorProtocol.swift` (60 LOC)
+- `Services/Recurring/RecurringTransactionCoordinator.swift` (370 LOC)
+- `Services/Recurring/RecurringValidationService.swift` (120 LOC)
+- `Utils/BrandLogoDisplayHelper.swift` (90 LOC)
+- `Views/Components/BrandLogoDisplayView.swift` (130 LOC)
+- `Services/Cache/LRUCache.swift` (235 LOC)
+
+*Модифицированные:*
+- `ViewModels/SubscriptionsViewModel.swift` (+105 LOC getPlannedTransactions)
+- `ViewModels/TransactionsViewModel.swift` (recurringSeries → computed)
+- `ViewModels/AppCoordinator.swift` (+coordinator initialization)
+- `Services/TransactionCacheManager.swift` (Dictionary → LRUCache)
+- `Services/Transactions/RecurringTransactionService.swift` (deprecated)
+- `Protocols/TransactionStorageCoordinatorProtocol.swift` (get-only)
+- `Views/Subscriptions/Components/SubscriptionCard.swift` (-19 LOC)
+- `Views/Subscriptions/Components/StaticSubscriptionIconsView.swift` (-30 LOC)
+- `Views/Subscriptions/Components/SubscriptionCalendarView.swift` (-15 LOC)
+- `Views/Subscriptions/SubscriptionDetailView.swift` (-95 LOC)
+- `Localization/en.lproj/Localizable.strings` (+8 keys)
+- `Localization/ru.lproj/Localizable.strings` (+8 keys)
+
+**Документация:**
+- `docs/RECURRING_REFACTORING_PHASE1_COMPLETE.md` - отчёт Phase 1
+- `docs/RECURRING_REFACTORING_PHASE2_COMPLETE.md` - отчёт Phase 2
+- `docs/RECURRING_REFACTORING_COMPLETE_FINAL.md` - финальная сводка
+
+**Impact:**
+- ✅ Single Source of Truth для recurringSeries
+- ✅ Единая точка входа для recurring operations
+- ✅ Устранено дублирование brandLogo logic (-79%)
+- ✅ Устранено дублирование transaction generation logic (-87%)
+- ✅ LRU cache предотвращает memory leaks
+- ✅ Deprecated 73 LOC неиспользуемого кода
+- ✅ Полная локализация error messages
+- ✅ BUILD SUCCEEDED без ошибок
+- ✅ Все функции работают корректно
+
+**Архитектура Recurring System (после Phase 3):**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Recurring Transaction Architecture (Phase 3)           │
+│                                                          │
+│  RecurringTransactionCoordinator (Single Entry Point)   │
+│    ├── subscriptionsViewModel (weak) — Owner of data   │
+│    ├── transactionsViewModel (weak) — Consumer         │
+│    ├── generator: RecurringTransactionGenerator        │
+│    ├── validator: RecurringValidationService           │
+│    └── repository: DataRepositoryProtocol              │
+│                                                          │
+│  Data Flow:                                             │
+│    User Action → View → Coordinator                     │
+│      → Validator.validate()                             │
+│      → SubscriptionsViewModel (internal methods)        │
+│      → Generator.generateTransactions()                 │
+│      → Repository.save()                                │
+│      → Notifications scheduling                         │
+│                                                          │
+│  Components:                                            │
+│    ├── SubscriptionsViewModel (Single Source of Truth) │
+│    │   └── recurringSeries: [RecurringSeries] @Published│
+│    ├── TransactionsViewModel                            │
+│    │   └── recurringSeries: computed (from Subscriptions)│
+│    ├── RecurringValidationService (Business Rules)     │
+│    └── RecurringTransactionService (⚠️ DEPRECATED)      │
+│                                                          │
+│  UI Components (deduplicated):                          │
+│    ├── BrandLogoDisplayHelper (Logic)                  │
+│    ├── BrandLogoDisplayView (Component)                │
+│    └── Used in: SubscriptionCard, StaticIcons,         │
+│        Calendar, DetailView                             │
+│                                                          │
+│  Performance:                                           │
+│    ├── LRUCache<Key, Value> (Generic)                  │
+│    └── TransactionCacheManager.parsedDatesCache        │
+│        (capacity: 10,000 entries)                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Критические правила для работы с Recurring System:**
+
+1. **Single Source of Truth:**
+   - recurringSeries ТОЛЬКО в SubscriptionsViewModel
+   - TransactionsViewModel использует computed property
+   - Никогда не модифицируй recurringSeries из TransactionsViewModel
+
+2. **Координатор - единая точка входа:**
+   - ВСЕГДА используй RecurringTransactionCoordinator для операций
+   - НЕ вызывай internal методы SubscriptionsViewModel напрямую
+   - Coordinator гарантирует правильный порядок операций
+
+3. **Brand Logo Display:**
+   - Используй BrandLogoDisplayView для всех brand logos
+   - BrandLogoDisplayHelper.resolveSource() для определения источника
+   - НЕ дублируй brandId.hasPrefix() logic
+
+4. **LRU Cache:**
+   - Capacity должен быть достаточным для expected dataset
+   - parsedDatesCache: 10,000 entries (~2x expected unique dates)
+   - Cache автоматически управляет eviction
+
+5. **Deprecation Migration:**
+   - RecurringTransactionService помечен deprecated
+   - Мигрируй на RecurringTransactionCoordinator
+   - updateRecurringTransaction() больше не используется
 
 ### Оставшиеся рекомендации
 
