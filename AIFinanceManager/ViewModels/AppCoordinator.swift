@@ -27,6 +27,11 @@ class AppCoordinator: ObservableObject {
     let depositsViewModel: DepositsViewModel
     let transactionsViewModel: TransactionsViewModel
 
+    // MARK: - Coordinators
+
+    /// REFACTORED 2026-02-02: Single entry point for recurring transaction operations
+    let recurringCoordinator: RecurringTransactionCoordinator
+
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
@@ -60,7 +65,16 @@ class AppCoordinator: ObservableObject {
 
         // 5. Deposits (depends on Accounts)
         self.depositsViewModel = DepositsViewModel(repository: self.repository, accountsViewModel: accountsViewModel)
-        
+
+        // 6. REFACTORED 2026-02-02: Setup RecurringTransactionCoordinator
+        // Single entry point for all recurring operations
+        self.recurringCoordinator = RecurringTransactionCoordinator(
+            subscriptionsViewModel: subscriptionsViewModel,
+            transactionsViewModel: transactionsViewModel,
+            generator: transactionsViewModel.recurringGenerator,
+            validator: RecurringValidationService(),
+            repository: self.repository
+        )
 
         // CRITICAL: Подписываемся на изменения всех дочерних ViewModels
         // Это гарантирует, что AppCoordinator будет уведомлять SwiftUI о любых изменениях
@@ -70,6 +84,10 @@ class AppCoordinator: ObservableObject {
         // TransactionsViewModel subscribes to CategoriesViewModel.categoriesPublisher
         // This eliminates manual sync in 3 places (CategoriesManagementView, CSVImportService)
         transactionsViewModel.setCategoriesViewModel(categoriesViewModel)
+
+        // ✅ RECURRING REFACTORING: Setup Single Source of Truth for recurring series
+        // TransactionsViewModel now delegates to SubscriptionsViewModel for recurringSeries
+        transactionsViewModel.subscriptionsViewModel = subscriptionsViewModel
 
         #if DEBUG
         print("✅ [AppCoordinator] Category SSOT established via Combine")

@@ -48,43 +48,16 @@ private struct SubscriptionIconView: View {
     let subscription: RecurringSeries
     let index: Int
     let size: CGFloat
-    
+
     var body: some View {
-        Group {
-            if let brandLogo = subscription.brandLogo {
-                brandLogo.image(size: size)
-            } else if let brandId = subscription.brandId, !brandId.isEmpty {
-                if brandId.hasPrefix("sf:") {
-                    let iconName = String(brandId.dropFirst(3))
-                    Image(systemName: iconName)
-                        .font(.system(size: size * 0.5))
-                        .foregroundColor(.primary)
-                        .frame(width: size, height: size)
-                        .background(Color(.systemGray5))
-                        .clipShape(Circle())
-                } else if brandId.hasPrefix("icon:") {
-                    let iconName = String(brandId.dropFirst(5))
-                    Image(systemName: iconName)
-                        .font(.system(size: size * 0.5))
-                        .foregroundColor(.primary)
-                        .frame(width: size, height: size)
-                        .background(Color(.systemGray5))
-                        .clipShape(Circle())
-                } else {
-                    // Используем BrandLogoView для логотипов из logo.dev
-                    BrandLogoView(brandName: brandId, size: size)
-                        .frame(width: size, height: size)
-                        .clipShape(Circle())
-                }
-            } else {
-                Image(systemName: "creditcard")
-                    .font(.system(size: size * 0.5))
-                    .foregroundColor(.primary)
-                    .frame(width: size, height: size)
-                    .background(Color(.systemGray5))
-                    .clipShape(Circle())
-            }
-        }
+        // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
+        BrandLogoDisplayView(
+            brandLogo: subscription.brandLogo,
+            brandId: subscription.brandId,
+            brandName: subscription.description,
+            size: size
+        )
+        .clipShape(Circle())
         .overlay(
             Circle()
                 .stroke(Color(.systemBackground), lineWidth: 2)

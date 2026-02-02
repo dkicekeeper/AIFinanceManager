@@ -42,7 +42,9 @@ protocol RecurringTransactionServiceProtocol {
     /// Generate recurring transactions for all active series
     func generateRecurringTransactions()
 
-    /// Update a single recurring transaction (this occurrence or all future)
+    /// DEPRECATED 2026-02-02: This method is not used anywhere
+    /// Use RecurringTransactionCoordinator.updateSeries() instead
+    @available(*, deprecated, message: "Use RecurringTransactionCoordinator.updateSeries() instead")
     func updateRecurringTransaction(
         _ transactionId: String,
         updateAllFuture: Bool,
@@ -60,7 +62,8 @@ protocol RecurringTransactionServiceProtocol {
 protocol RecurringTransactionServiceDelegate: AnyObject {
     // State access
     var allTransactions: [Transaction] { get set }
-    var recurringSeries: [RecurringSeries] { get set }
+    /// REFACTORED 2026-02-02: Now read-only computed property from SubscriptionsViewModel (Single Source of Truth)
+    var recurringSeries: [RecurringSeries] { get }
     var recurringOccurrences: [RecurringOccurrence] { get set }
     var accounts: [Account] { get }
 

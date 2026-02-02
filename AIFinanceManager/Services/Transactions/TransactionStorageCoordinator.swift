@@ -190,7 +190,8 @@ class TransactionStorageCoordinator: TransactionStorageCoordinatorProtocol {
         // This happens asynchronously in the background task above
 
         delegate.customCategories = delegate.repository.loadCategories()
-        delegate.recurringSeries = delegate.repository.loadRecurringSeries()
+        // REFACTORED 2026-02-02: recurringSeries now loaded by SubscriptionsViewModel (Single Source of Truth)
+        // delegate.recurringSeries is now a computed property
         delegate.recurringOccurrences = delegate.repository.loadRecurringOccurrences()
         delegate.subcategories = delegate.repository.loadSubcategories()
         delegate.categorySubcategoryLinks = delegate.repository.loadCategorySubcategoryLinks()

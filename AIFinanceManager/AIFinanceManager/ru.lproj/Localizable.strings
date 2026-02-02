@@ -419,3 +419,12 @@
 "transactionForm.createSubcategory" = "Создать \"%@\"";
 "transactionForm.searchAndAddSubcategories" = "Поиск и добавление подкатегорий";
 "transactionForm.searchOrCreateSubcategory" = "Найти или создать подкатегорию";
+// MARK: - Recurring Transactions Errors
+"recurring.error.seriesNotFound" = "Повторяющаяся транзакция не найдена";
+"recurring.error.invalidFrequency" = "Выбрана неверная частота";
+"recurring.error.invalidAmount" = "Сумма должна быть больше нуля";
+"recurring.error.invalidStartDate" = "Неверная дата начала";
+"recurring.error.missingAccount" = "Пожалуйста, выберите счёт";
+"recurring.validation.amountRequired" = "Требуется указать сумму";
+"recurring.validation.descriptionRequired" = "Требуется указать описание";
+

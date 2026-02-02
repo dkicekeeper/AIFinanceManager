@@ -419,3 +419,12 @@
 "transactionForm.createSubcategory" = "Create \"%@\"";
 "transactionForm.searchAndAddSubcategories" = "Search and add subcategories";
 "transactionForm.searchOrCreateSubcategory" = "Find or create subcategory";
+// MARK: - Recurring Transactions Errors
+"recurring.error.seriesNotFound" = "Recurring series not found";
+"recurring.error.invalidFrequency" = "Invalid frequency selected";
+"recurring.error.invalidAmount" = "Amount must be greater than zero";
+"recurring.error.invalidStartDate" = "Invalid start date";
+"recurring.error.missingAccount" = "Please select an account";
+"recurring.validation.amountRequired" = "Amount is required";
+"recurring.validation.descriptionRequired" = "Description is required";
+

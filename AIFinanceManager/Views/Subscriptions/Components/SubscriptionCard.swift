@@ -13,29 +13,13 @@ struct SubscriptionCard: View {
 
     var body: some View {
         HStack(spacing: AppSpacing.md) {
-            // Logo - показываем сохраненный brandLogo, иконку или fallback
-            if let brandLogo = subscription.brandLogo {
-                brandLogo.image(size: AppIconSize.xxl)
-            } else if let brandId = subscription.brandId, !brandId.isEmpty {
-                // Проверяем, является ли brandId иконкой (начинается с "sf:" или "icon:")
-                if brandId.hasPrefix("sf:") {
-                    let iconName = String(brandId.dropFirst(3))
-                    Image(systemName: iconName)
-                        .fallbackIconStyle(size: AppIconSize.xxl)
-                } else if brandId.hasPrefix("icon:") {
-                    let iconName = String(brandId.dropFirst(5))
-                    Image(systemName: iconName)
-                        .fallbackIconStyle(size: AppIconSize.xxl)
-                } else {
-                    // Если есть brandId (название бренда), показываем через BrandLogoView
-                    BrandLogoView(brandName: brandId, size: AppIconSize.xxl)
-                        .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
-                }
-            } else {
-                // Fallback
-                Image(systemName: "creditcard")
-                    .fallbackIconStyle(size: AppIconSize.xxl)
-            }
+            // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
+            BrandLogoDisplayView(
+                brandLogo: subscription.brandLogo,
+                brandId: subscription.brandId,
+                brandName: subscription.description, // fallback to description as brand name
+                size: AppIconSize.xxl
+            )
             
             // Info
             VStack(alignment: .leading, spacing: AppSpacing.xs) {

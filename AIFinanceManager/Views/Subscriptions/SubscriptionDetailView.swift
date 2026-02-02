@@ -15,115 +15,23 @@ struct SubscriptionDetailView: View {
     @State private var showingEditView = false
     @State private var showingDeleteConfirmation = false
     @Environment(\.dismiss) var dismiss
-    
+
+    // REFACTORED 2026-02-02: Removed 110 LOC of duplicated logic
+    // Now delegates to SubscriptionsViewModel.getPlannedTransactions()
     private var subscriptionTransactions: [Transaction] {
-        // Получаем существующие транзакции
-        let existingTransactions = transactionsViewModel.allTransactions.filter { $0.recurringSeriesId == subscription.id }
-            .sorted { $0.date > $1.date }
-        
-        // Получаем диапазон дат из фильтра
+        // Get all planned transactions (past + future)
+        let plannedTransactions = subscriptionsViewModel.getPlannedTransactions(for: subscription.id, horizonMonths: 3)
+
+        // Apply time filter if needed
         let dateRange = timeFilterManager.currentFilter.dateRange()
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
         let dateFormatter = DateFormatters.dateFormatter
-        
-        // Генерируем планируемые транзакции в рамках фильтра (как в "в планах")
-        var allTransactions: [Transaction] = existingTransactions
-        
-        // Если фильтр включает будущие даты, генерируем планируемые транзакции
-        if dateRange.end > today && subscription.subscriptionStatus == .active {
-            guard let seriesStartDate = dateFormatter.date(from: subscription.startDate) else {
-                return existingTransactions.sorted { $0.date > $1.date }
+
+        return plannedTransactions.filter { transaction in
+            guard let transactionDate = dateFormatter.date(from: transaction.date) else {
+                return false
             }
-            
-            // Определяем начало планирования
-            var firstRecurringDate: Date
-            if seriesStartDate <= today {
-                // Серия уже началась - первая будущая транзакция будет на следующей дате по частоте
-                guard let nextDate = {
-                    switch subscription.frequency {
-                    case .daily:
-                        return calendar.date(byAdding: .day, value: 1, to: today)
-                    case .weekly:
-                        return calendar.date(byAdding: .day, value: 7, to: today)
-                    case .monthly:
-                        return calendar.date(byAdding: .month, value: 1, to: today)
-                    case .yearly:
-                        return calendar.date(byAdding: .year, value: 1, to: today)
-                    }
-                }() else {
-                    return existingTransactions.sorted { $0.date > $1.date }
-                }
-                firstRecurringDate = nextDate
-            } else {
-                // Серия начинается в будущем - первая транзакция на startDate
-                firstRecurringDate = seriesStartDate
-            }
-            
-            // Генерируем транзакции в рамках фильтра
-            let planningEnd = min(dateRange.end, calendar.date(byAdding: .year, value: 2, to: today) ?? dateRange.end)
-            var currentDate = firstRecurringDate
-            
-            while currentDate < planningEnd {
-                let dateString = dateFormatter.string(from: currentDate)
-                
-                // Проверяем, не существует ли уже транзакция на эту дату
-                let existingOnDate = existingTransactions.first { $0.date == dateString }
-                if existingOnDate == nil {
-                    // Создаем виртуальную транзакцию для отображения
-                    let plannedTransaction = Transaction(
-                        id: "planned-\(subscription.id)-\(dateString)",
-                        date: dateString,
-                        description: subscription.description,
-                        amount: NSDecimalNumber(decimal: subscription.amount).doubleValue,
-                        currency: subscription.currency,
-                        convertedAmount: nil,
-                        type: .expense,
-                        category: subscription.category,
-                        subcategory: subscription.subcategory,
-                        accountId: subscription.accountId,
-                        targetAccountId: nil,
-                        recurringSeriesId: subscription.id,
-                        recurringOccurrenceId: nil,
-                        createdAt: currentDate.timeIntervalSince1970
-                    )
-                    allTransactions.append(plannedTransaction)
-                }
-                
-                // Переходим к следующей дате по частоте
-                guard let nextDate = {
-                    switch subscription.frequency {
-                    case .daily:
-                        return calendar.date(byAdding: .day, value: 1, to: currentDate)
-                    case .weekly:
-                        return calendar.date(byAdding: .day, value: 7, to: currentDate)
-                    case .monthly:
-                        return calendar.date(byAdding: .month, value: 1, to: currentDate)
-                    case .yearly:
-                        return calendar.date(byAdding: .year, value: 1, to: currentDate)
-                    }
-                }() else {
-                    break
-                }
-                currentDate = nextDate
-            }
+            return transactionDate >= dateRange.start && transactionDate < dateRange.end
         }
-        
-        // Фильтруем транзакции по диапазону дат и сортируем: ближайшие сверху, дальние снизу
-        return allTransactions
-            .filter { transaction in
-                guard let transactionDate = dateFormatter.date(from: transaction.date) else {
-                    return false
-                }
-                return transactionDate >= dateRange.start && transactionDate < dateRange.end
-            }
-            .sorted { transaction1, transaction2 in
-                guard let date1 = dateFormatter.date(from: transaction1.date),
-                      let date2 = dateFormatter.date(from: transaction2.date) else {
-                    return transaction1.date < transaction2.date // Fallback: строковое сравнение
-                }
-                return date1 < date2 // Ближайшие сверху
-            }
     }
     
     private var nextChargeDate: Date? {
@@ -200,29 +108,13 @@ struct SubscriptionDetailView: View {
     private var subscriptionInfoCard: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             HStack(spacing: AppSpacing.md) {
-                // Logo - показываем сохраненный brandLogo, иконку или fallback
-                if let brandLogo = subscription.brandLogo {
-                    brandLogo.image(size: AppIconSize.xxxl)
-                } else if let brandId = subscription.brandId, !brandId.isEmpty {
-                    // Проверяем, является ли brandId иконкой (начинается с "sf:" или "icon:")
-                    if brandId.hasPrefix("sf:") {
-                        let iconName = String(brandId.dropFirst(3))
-                        Image(systemName: iconName)
-                            .fallbackIconStyle(size: AppIconSize.xxxl)
-                    } else if brandId.hasPrefix("icon:") {
-                        let iconName = String(brandId.dropFirst(5))
-                        Image(systemName: iconName)
-                            .fallbackIconStyle(size: AppIconSize.xxxl)
-                    } else {
-                        // Если есть brandId (название бренда), показываем через BrandLogoView
-                        BrandLogoView(brandName: brandId, size: AppIconSize.xxxl)
-                            .frame(width: AppIconSize.xxxl, height: AppIconSize.xxxl)
-                    }
-                } else {
-                    // Fallback
-                    Image(systemName: "creditcard")
-                        .fallbackIconStyle(size: AppIconSize.xxxl)
-                }
+                // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
+                BrandLogoDisplayView(
+                    brandLogo: subscription.brandLogo,
+                    brandId: subscription.brandId,
+                    brandName: subscription.description,
+                    size: AppIconSize.xxxl
+                )
                 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(subscription.description)

@@ -24,7 +24,12 @@ class TransactionsViewModel: ObservableObject {
     /// This property is kept for backward compatibility but synced via Combine
     @Published var customCategories: [CustomCategory] = []
 
-    @Published var recurringSeries: [RecurringSeries] = []
+    /// REFACTORED 2026-02-02: Now computed property delegating to SubscriptionsViewModel (Single Source of Truth)
+    /// This eliminates data duplication and manual synchronization
+    var recurringSeries: [RecurringSeries] {
+        subscriptionsViewModel?.recurringSeries ?? []
+    }
+
     @Published var recurringOccurrences: [RecurringOccurrence] = []
     @Published var subcategories: [Subcategory] = []
     @Published var categorySubcategoryLinks: [CategorySubcategoryLink] = []
@@ -46,6 +51,10 @@ class TransactionsViewModel: ObservableObject {
     let repository: DataRepositoryProtocol
     let accountBalanceService: AccountBalanceServiceProtocol
     let balanceCalculationService: BalanceCalculationServiceProtocol
+
+    /// REFACTORED 2026-02-02: Single Source of Truth for recurring series
+    /// Weak reference to avoid retain cycles
+    weak var subscriptionsViewModel: SubscriptionsViewModel?
 
     // MARK: - Cache & Managers (Direct Access)
 
@@ -598,6 +607,9 @@ class TransactionsViewModel: ObservableObject {
         recurringService.generateRecurringTransactions()
     }
 
+    /// DEPRECATED 2026-02-02: This method is not used anywhere and will be removed
+    /// Use RecurringTransactionCoordinator.updateSeries() instead
+    @available(*, deprecated, message: "Use RecurringTransactionCoordinator.updateSeries() instead")
     func updateRecurringTransaction(_ transactionId: String, updateAllFuture: Bool, newAmount: Decimal? = nil, newCategory: String? = nil, newSubcategory: String? = nil) {
         recurringService.updateRecurringTransaction(
             transactionId,
@@ -676,7 +688,9 @@ class TransactionsViewModel: ObservableObject {
         categoryRules = []
         accounts = []
         customCategories = []
-        recurringSeries = []
+        // REFACTORED 2026-02-02: recurringSeries is now computed from SubscriptionsViewModel
+        // Clear in SubscriptionsViewModel instead
+        subscriptionsViewModel?.recurringSeries = []
         recurringOccurrences = []
         subcategories = []
         categorySubcategoryLinks = []

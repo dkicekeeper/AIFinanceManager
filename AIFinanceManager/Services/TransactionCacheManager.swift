@@ -52,7 +52,9 @@ class TransactionCacheManager {
 
     // MARK: - Parsed Dates Cache
 
-    private var parsedDatesCache: [String: Date] = [:]
+    /// REFACTORED 2026-02-02: Changed to LRU cache to prevent memory leaks
+    /// Capacity: 10,000 entries (reasonable for ~3 years of daily transactions)
+    private lazy var parsedDatesCache = LRUCache<String, Date>(capacity: 10_000)
 
     // MARK: - Index Manager
 
@@ -68,7 +70,7 @@ class TransactionCacheManager {
         balanceCacheInvalidated = true
         accountsCacheInvalidated = true
         subcategoryIndexInvalidated = true
-        parsedDatesCache.removeAll(keepingCapacity: true)
+        parsedDatesCache.removeAll()
         indexManager.invalidate()
     }
 
@@ -195,14 +197,26 @@ class TransactionCacheManager {
     // MARK: - Date Parsing Cache
 
     /// Get parsed date from cache or parse and cache it (O(1) for cached dates)
+    /// REFACTORED 2026-02-02: Now uses LRU cache with automatic eviction
     func getParsedDate(for dateString: String) -> Date? {
-        if let cached = parsedDatesCache[dateString] {
+        // Try cache first
+        if let cached = parsedDatesCache.get(dateString) {
             return cached
         }
+
+        // Parse and cache
         if let parsed = DateFormatters.dateFormatter.date(from: dateString) {
-            parsedDatesCache[dateString] = parsed
+            parsedDatesCache.set(dateString, value: parsed)
             return parsed
         }
+
         return nil
     }
+
+    #if DEBUG
+    /// Get cache statistics for monitoring
+    var parsedDatesCacheStats: String {
+        parsedDatesCache.debugDescription
+    }
+    #endif
 }

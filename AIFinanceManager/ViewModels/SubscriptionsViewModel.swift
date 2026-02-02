@@ -315,6 +315,195 @@ class SubscriptionsViewModel: ObservableObject {
         repository.saveRecurringSeries(recurringSeries)
     }
 
+    // MARK: - Internal Methods (for RecurringTransactionCoordinator)
+
+    /// Internal method to create a series without notifications
+    /// Used by RecurringTransactionCoordinator to avoid duplication
+    func createSeriesInternal(_ series: RecurringSeries) {
+        // ✅ CRITICAL: Reassign array to trigger @Published
+        recurringSeries = recurringSeries + [series]
+        saveRecurringSeries()
+    }
+
+    /// Internal method to update a series without notifications
+    /// Used by RecurringTransactionCoordinator
+    func updateSeriesInternal(_ series: RecurringSeries) {
+        guard let index = recurringSeries.firstIndex(where: { $0.id == series.id }) else { return }
+
+        var newSeries = recurringSeries
+        newSeries[index] = series
+        recurringSeries = newSeries
+
+        saveRecurringSeries()
+    }
+
+    /// Internal method to stop a series
+    /// Used by RecurringTransactionCoordinator
+    func stopRecurringSeriesInternal(_ seriesId: String) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == seriesId }) {
+            var newSeries = recurringSeries
+            newSeries[index].isActive = false
+            recurringSeries = newSeries
+            saveRecurringSeries()
+        }
+    }
+
+    /// Internal method to delete a series
+    /// Used by RecurringTransactionCoordinator
+    func deleteRecurringSeriesInternal(_ seriesId: String, deleteTransactions: Bool) {
+        recurringOccurrences = recurringOccurrences.filter { $0.seriesId != seriesId }
+        recurringSeries = recurringSeries.filter { $0.id != seriesId }
+
+        saveRecurringSeries()
+        repository.saveRecurringOccurrences(recurringOccurrences)
+    }
+
+    /// Internal method to pause a subscription
+    /// Used by RecurringTransactionCoordinator
+    func pauseSubscriptionInternal(_ subscriptionId: String) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == subscriptionId && $0.isSubscription }) {
+            var newSeries = recurringSeries
+            newSeries[index].status = .paused
+            newSeries[index].isActive = false
+            recurringSeries = newSeries
+            saveRecurringSeries()
+        }
+    }
+
+    /// Internal method to resume a subscription
+    /// Used by RecurringTransactionCoordinator
+    func resumeSubscriptionInternal(_ subscriptionId: String) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == subscriptionId && $0.isSubscription }) {
+            var newSeries = recurringSeries
+            newSeries[index].status = .active
+            newSeries[index].isActive = true
+            recurringSeries = newSeries
+            saveRecurringSeries()
+        }
+    }
+
+    /// Internal method to archive a subscription
+    /// Used by RecurringTransactionCoordinator
+    func archiveSubscriptionInternal(_ subscriptionId: String) {
+        if let index = recurringSeries.firstIndex(where: { $0.id == subscriptionId && $0.isSubscription }) {
+            var newSeries = recurringSeries
+            newSeries[index].status = .archived
+            newSeries[index].isActive = false
+            recurringSeries = newSeries
+            saveRecurringSeries()
+        }
+    }
+
+    // MARK: - Planned Transactions (for SubscriptionDetailView)
+
+    /// Get planned transactions for a subscription (past + future)
+    /// REFACTORED 2026-02-02: Extracted from SubscriptionDetailView to eliminate 110 LOC duplication
+    /// - Parameters:
+    ///   - subscriptionId: The subscription ID
+    ///   - horizonMonths: Number of months ahead to generate (default: 3)
+    /// - Returns: Array of planned transactions sorted by date descending
+    func getPlannedTransactions(for subscriptionId: String, horizonMonths: Int = 3) -> [Transaction] {
+        guard let subscription = recurringSeries.first(where: { $0.id == subscriptionId }) else {
+            return []
+        }
+
+        let dateFormatter = DateFormatters.dateFormatter
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        guard let startDate = dateFormatter.date(from: subscription.startDate) else {
+            return []
+        }
+
+        guard let horizonDate = calendar.date(byAdding: .month, value: horizonMonths, to: today) else {
+            return []
+        }
+
+        var transactions: [Transaction] = []
+        var currentDate = startDate
+        let maxIterations = calculateMaxIterations(frequency: subscription.frequency, horizonMonths: horizonMonths)
+        var iterationCount = 0
+
+        while currentDate <= horizonDate && iterationCount < maxIterations {
+            iterationCount += 1
+
+            let dateString = dateFormatter.string(from: currentDate)
+            let amountDouble = NSDecimalNumber(decimal: subscription.amount).doubleValue
+            let createdAt = dateFormatter.date(from: dateString)?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+
+            let transactionId = TransactionIDGenerator.generateID(
+                date: dateString,
+                description: subscription.description,
+                amount: amountDouble,
+                type: .expense,
+                currency: subscription.currency,
+                createdAt: createdAt
+            )
+
+            let transaction = Transaction(
+                id: transactionId,
+                date: dateString,
+                description: subscription.description,
+                amount: amountDouble,
+                currency: subscription.currency,
+                convertedAmount: nil,
+                type: .expense,
+                category: subscription.category,
+                subcategory: subscription.subcategory,
+                accountId: subscription.accountId,
+                targetAccountId: nil,
+                accountName: nil,
+                targetAccountName: nil,
+                recurringSeriesId: subscription.id,
+                recurringOccurrenceId: nil,
+                createdAt: createdAt
+            )
+
+            transactions.append(transaction)
+
+            guard let nextDate = calculateNextDate(from: currentDate, frequency: subscription.frequency) else {
+                break
+            }
+
+            if nextDate <= currentDate {
+                break
+            }
+
+            currentDate = nextDate
+        }
+
+        return transactions.sorted { $0.date > $1.date }
+    }
+
+    /// Calculate next date based on frequency
+    private func calculateNextDate(from date: Date, frequency: RecurringFrequency) -> Date? {
+        let calendar = Calendar.current
+        switch frequency {
+        case .daily:
+            return calendar.date(byAdding: .day, value: 1, to: date)
+        case .weekly:
+            return calendar.date(byAdding: .day, value: 7, to: date)
+        case .monthly:
+            return calendar.date(byAdding: .month, value: 1, to: date)
+        case .yearly:
+            return calendar.date(byAdding: .year, value: 1, to: date)
+        }
+    }
+
+    /// Calculate max iterations to prevent infinite loops
+    private func calculateMaxIterations(frequency: RecurringFrequency, horizonMonths: Int) -> Int {
+        switch frequency {
+        case .daily:
+            return min(horizonMonths * 30 + 10, 10000)
+        case .weekly:
+            return min(horizonMonths * 4 + 10, 2000)
+        case .monthly:
+            return min(horizonMonths + 10, 500)
+        case .yearly:
+            return min(horizonMonths / 12 + 10, 100)
+        }
+    }
+
     // MARK: - Currency Conversion Helpers
 
     /// Вычисляет суммарный объём активных подписок в указанной валюте.

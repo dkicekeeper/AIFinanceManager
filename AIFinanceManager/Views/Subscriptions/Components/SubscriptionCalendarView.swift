@@ -157,28 +157,13 @@ struct SubscriptionCalendarView: View {
     }
     
     private func logoView(for sub: RecurringSeries, size: CGFloat) -> some View {
-        Group {
-            if let brandLogo = sub.brandLogo {
-                brandLogo.image(size: size)
-            } else if let brandId = sub.brandId, !brandId.isEmpty {
-                if brandId.hasPrefix("sf:") || brandId.hasPrefix("icon:") {
-                    let iconName = String(brandId.dropFirst(brandId.hasPrefix("sf:") ? 3 : 5))
-                    Image(systemName: iconName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
-                        .foregroundColor(.secondary)
-                } else {
-                    BrandLogoView(brandName: brandId, size: size)
-                }
-            } else {
-                Image(systemName: "creditcard")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: size, height: size)
-                    .foregroundColor(.secondary)
-            }
-        }
+        // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
+        BrandLogoDisplayView(
+            brandLogo: sub.brandLogo,
+            brandId: sub.brandId,
+            brandName: sub.description,
+            size: size
+        )
     }
     
     // MARK: - Helpers

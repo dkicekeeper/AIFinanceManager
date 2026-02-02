@@ -79,10 +79,9 @@ struct SubscriptionsListView: View {
                                 brandId: newSubscription.brandId,
                                 reminderOffsets: newSubscription.reminderOffsets
                             )
+                            // REFACTORED 2026-02-02: No manual sync needed - recurringSeries is now computed from SubscriptionsViewModel
                             // Regenerate recurring transactions
                             transactionsViewModel.generateRecurringTransactions()
-                            // Sync subscriptionsViewModel with latest data
-                            subscriptionsViewModel.recurringSeries = transactionsViewModel.recurringSeries
                             showingEditView = false
                         },
                         onCancel: {

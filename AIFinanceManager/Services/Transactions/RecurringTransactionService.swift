@@ -206,10 +206,9 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             PerformanceProfiler.end("generateRecurringTransactions")
         }
 
-        // CRITICAL: Reload recurringSeries and recurringOccurrences from repository to get latest data
-        // This ensures we have the latest subscriptions created by SubscriptionsViewModel
-        // and prevents deleted occurrences from being restored
-        delegate.recurringSeries = delegate.repository.loadRecurringSeries()
+        // REFACTORED 2026-02-02: recurringSeries is now computed from SubscriptionsViewModel (Single Source of Truth)
+        // No need to reload - it's always up to date from SubscriptionsViewModel
+        // Still reload recurringOccurrences to prevent deleted ones from being restored
         delegate.recurringOccurrences = delegate.repository.loadRecurringOccurrences()
 
         // Skip if no active recurring series
@@ -259,6 +258,10 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         }
     }
 
+    /// DEPRECATED 2026-02-02: This method is not used anywhere (73 LOC of dead code)
+    /// Use RecurringTransactionCoordinator.updateSeries() instead
+    /// NOTE: This method tries to modify delegate.recurringSeries which is now read-only (computed property)
+    @available(*, deprecated, message: "Use RecurringTransactionCoordinator.updateSeries() instead. Will be removed in future version.")
     func updateRecurringTransaction(
         _ transactionId: String,
         updateAllFuture: Bool,
