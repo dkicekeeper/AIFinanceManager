@@ -78,7 +78,7 @@ struct BrandLogoDisplayHelper {
         case .brandService(let name):
             return "Brand: \(name)"
         case .bankLogo(let logo):
-            return "Bank: \(logo.name)"
+            return "Bank: \(logo.displayName)"
         }
     }
 }

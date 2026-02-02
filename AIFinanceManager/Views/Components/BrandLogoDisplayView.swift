@@ -75,11 +75,7 @@ struct BrandLogoDisplayView: View {
 
     @ViewBuilder
     private func bankLogoView(_ logo: BankLogo) -> some View {
-        Image(logo.imageName)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: size, height: size)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+        logo.image(size: size)
     }
 }
 
@@ -114,7 +110,7 @@ struct BrandLogoDisplayView: View {
 
 #Preview("Bank Logo") {
     BrandLogoDisplayView(
-        brandLogo: .sberbank,
+        brandLogo: .sber,
         brandId: nil,
         brandName: nil,
         size: 40

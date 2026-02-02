@@ -37,7 +37,8 @@ protocol TransactionStorageDelegate: AnyObject {
     var categoryRules: [CategoryRule] { get set }
     var accounts: [Account] { get set }
     var customCategories: [CustomCategory] { get set }
-    var recurringSeries: [RecurringSeries] { get set }
+    /// REFACTORED 2026-02-02: Now read-only computed property from SubscriptionsViewModel (Single Source of Truth)
+    var recurringSeries: [RecurringSeries] { get }
     var recurringOccurrences: [RecurringOccurrence] { get set }
     var subcategories: [Subcategory] { get set }
     var categorySubcategoryLinks: [CategorySubcategoryLink] { get set }

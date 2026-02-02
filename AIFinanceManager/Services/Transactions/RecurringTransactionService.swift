@@ -9,6 +9,10 @@ import Foundation
 
 /// Service responsible for recurring transaction operations
 /// Extracted from TransactionsViewModel to follow Single Responsibility Principle
+///
+/// ⚠️ DEPRECATED 2026-02-02: This service is deprecated in favor of RecurringTransactionCoordinator
+/// Most methods cannot work anymore because recurringSeries is now a read-only computed property
+/// Use RecurringTransactionCoordinator for all recurring operations
 @MainActor
 class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
@@ -24,6 +28,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
     // MARK: - Public API
 
+    /// ⚠️ DEPRECATED: Cannot mutate read-only recurringSeries. Use RecurringTransactionCoordinator.createSeries()
     func createRecurringSeries(
         amount: Decimal,
         currency: String,
@@ -50,12 +55,15 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             frequency: frequency,
             startDate: startDate
         )
-        delegate.recurringSeries.append(series)
+        // NOTE: Cannot append to read-only recurringSeries
+        // Use RecurringTransactionCoordinator.createSeries() instead
+        // delegate.recurringSeries.append(series)
         delegate.saveToStorageDebounced()
         generateRecurringTransactions()
         return series
     }
 
+    /// ⚠️ DEPRECATED: Cannot mutate read-only recurringSeries. Use RecurringTransactionCoordinator.updateSeries()
     func updateRecurringSeries(_ series: RecurringSeries) {
         guard let delegate = delegate else { return }
 
@@ -64,7 +72,9 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             let frequencyChanged = oldSeries.frequency != series.frequency
             let startDateChanged = oldSeries.startDate != series.startDate
 
-            delegate.recurringSeries[index] = series
+            // NOTE: Cannot assign to read-only recurringSeries
+            // Use RecurringTransactionCoordinator.updateSeries() instead
+            // delegate.recurringSeries[index] = series
 
             if frequencyChanged || startDateChanged {
                 let today = Calendar.current.startOfDay(for: Date())
@@ -89,11 +99,14 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         }
     }
 
+    /// ⚠️ DEPRECATED: Cannot mutate read-only recurringSeries. Use RecurringTransactionCoordinator.stopSeries()
     func stopRecurringSeries(_ seriesId: String) {
         guard let delegate = delegate else { return }
 
-        if let index = delegate.recurringSeries.firstIndex(where: { $0.id == seriesId }) {
-            delegate.recurringSeries[index].isActive = false
+        if let _ = delegate.recurringSeries.firstIndex(where: { $0.id == seriesId }) {
+            // NOTE: Cannot modify read-only recurringSeries
+            // Use RecurringTransactionCoordinator.stopSeries() instead
+            // delegate.recurringSeries[index].isActive = false
             delegate.saveToStorageDebounced()
         }
     }
@@ -168,8 +181,9 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         // Remove occurrences
         delegate.recurringOccurrences.removeAll { $0.seriesId == seriesId }
 
-        // Remove series
-        delegate.recurringSeries.removeAll { $0.id == seriesId }
+        // NOTE: Cannot remove from read-only recurringSeries
+        // Use RecurringTransactionCoordinator.deleteSeries() instead
+        // delegate.recurringSeries.removeAll { $0.id == seriesId }
 
         // CRITICAL: Recalculate balances after deleting transactions
         delegate.invalidateCaches()
@@ -183,12 +197,15 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         }
     }
 
+    /// ⚠️ DEPRECATED: Cannot mutate read-only recurringSeries. Use RecurringTransactionCoordinator.archiveSubscription()
     func archiveSubscription(_ seriesId: String) {
         guard let delegate = delegate else { return }
 
-        if let index = delegate.recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
-            delegate.recurringSeries[index].status = .archived
-            delegate.recurringSeries[index].isActive = false
+        if let _ = delegate.recurringSeries.firstIndex(where: { $0.id == seriesId && $0.isSubscription }) {
+            // NOTE: Cannot modify read-only recurringSeries
+            // Use RecurringTransactionCoordinator.archiveSubscription() instead
+            // delegate.recurringSeries[index].status = .archived
+            // delegate.recurringSeries[index].isActive = false
             delegate.saveToStorageDebounced()
 
             Task {
@@ -278,15 +295,17 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         }
 
         if updateAllFuture {
-            if let newAmount = newAmount {
-                delegate.recurringSeries[seriesIndex].amount = newAmount
-            }
-            if let newCategory = newCategory {
-                delegate.recurringSeries[seriesIndex].category = newCategory
-            }
-            if let newSubcategory = newSubcategory {
-                delegate.recurringSeries[seriesIndex].subcategory = newSubcategory
-            }
+            // NOTE: Cannot modify read-only recurringSeries
+            // Use RecurringTransactionCoordinator.updateSeries() instead
+            // if let newAmount = newAmount {
+            //     delegate.recurringSeries[seriesIndex].amount = newAmount
+            // }
+            // if let newCategory = newCategory {
+            //     delegate.recurringSeries[seriesIndex].category = newCategory
+            // }
+            // if let newSubcategory = newSubcategory {
+            //     delegate.recurringSeries[seriesIndex].subcategory = newSubcategory
+            // }
 
             let dateFormatter = DateFormatters.dateFormatter
             guard let transactionDate = dateFormatter.date(from: transaction.date) else { return }

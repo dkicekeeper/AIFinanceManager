@@ -18,7 +18,7 @@ class LRUCache<Key: Hashable, Value> {
     // MARK: - Private Types
 
     /// Node in the doubly-linked list
-    private class Node {
+    fileprivate class Node {
         let key: Key
         var value: Value
         var prev: Node?
@@ -215,5 +215,35 @@ extension LRUCache {
                 remove(key)
             }
         }
+    }
+}
+
+// MARK: - Sequence Support
+
+extension LRUCache: Sequence {
+    /// Iterator for LRU cache
+    /// Iterates from most recently used to least recently used
+    struct Iterator: IteratorProtocol {
+        private var currentKeys: [Key]
+        private var currentIndex: Int
+        private let cache: [Key: Node]
+
+        fileprivate init(keys: [Key], cache: [Key: Node]) {
+            self.currentKeys = keys
+            self.currentIndex = 0
+            self.cache = cache
+        }
+
+        mutating func next() -> (key: Key, value: Value)? {
+            guard currentIndex < currentKeys.count else { return nil }
+            let key = currentKeys[currentIndex]
+            currentIndex += 1
+            guard let node = cache[key] else { return nil }
+            return (key: key, value: node.value)
+        }
+    }
+
+    func makeIterator() -> Iterator {
+        Iterator(keys: keys, cache: cache)
     }
 }
