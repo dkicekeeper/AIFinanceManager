@@ -32,6 +32,10 @@ class AppCoordinator: ObservableObject {
     /// REFACTORED 2026-02-02: Single entry point for recurring transaction operations
     let recurringCoordinator: RecurringTransactionCoordinator
 
+    /// REFACTORED 2026-02-02: Single entry point for balance operations
+    /// Phase 1-4: Foundation completed - Store, Engine, Queue, Cache, Coordinator
+    let balanceCoordinator: BalanceCoordinator
+
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
@@ -45,7 +49,15 @@ class AppCoordinator: ObservableObject {
         // 1. Accounts (no dependencies)
         self.accountsViewModel = AccountsViewModel(repository: self.repository)
 
-        // 2. Transactions (depends on Accounts for balance updates)
+        // 2. REFACTORED 2026-02-02: Initialize BalanceCoordinator FIRST
+        // This is the Single Source of Truth for all balances
+        // Created before TransactionsViewModel to avoid circular dependencies
+        self.balanceCoordinator = BalanceCoordinator(
+            repository: self.repository,
+            cacheManager: nil  // Will be set later after TransactionsViewModel is created
+        )
+
+        // 3. Transactions (depends on Accounts for balance updates)
         // Create first to access currencyService and appSettings
         // Use Protocol-based DI to prevent silent failures from weak references
         self.transactionsViewModel = TransactionsViewModel(
@@ -89,8 +101,18 @@ class AppCoordinator: ObservableObject {
         // TransactionsViewModel now delegates to SubscriptionsViewModel for recurringSeries
         transactionsViewModel.subscriptionsViewModel = subscriptionsViewModel
 
+        // ✅ BALANCE REFACTORING: Inject BalanceCoordinator into ViewModels
+        // This establishes Single Source of Truth for balances
+        accountsViewModel.balanceCoordinator = balanceCoordinator
+        transactionsViewModel.balanceCoordinator = balanceCoordinator
+        depositsViewModel.balanceCoordinator = balanceCoordinator
+
+        // Setup observer for balance updates
+        setupBalanceCoordinatorObserver()
+
         #if DEBUG
         print("✅ [AppCoordinator] Category SSOT established via Combine")
+        print("✅ [AppCoordinator] Balance SSOT established via BalanceCoordinator")
         #endif
     }
 
@@ -105,13 +127,17 @@ class AppCoordinator: ObservableObject {
         guard !isInitialized else {
             return
         }
-        
+
         isInitialized = true
         PerformanceProfiler.start("AppCoordinator.initialize")
 
         // Load data asynchronously - this is non-blocking
         await transactionsViewModel.loadDataAsync()
-        
+
+        // REFACTORED 2026-02-02: Register accounts with BalanceCoordinator
+        // This initializes the balance store with current account data
+        await balanceCoordinator.registerAccounts(accountsViewModel.accounts)
+
         PerformanceProfiler.end("AppCoordinator.initialize")
     }
     
@@ -149,5 +175,44 @@ class AppCoordinator: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+    }
+
+    /// REFACTORED 2026-02-02: Setup observer for BalanceCoordinator updates
+    /// When balances change, sync to Account.balance and notify SwiftUI
+    private func setupBalanceCoordinatorObserver() {
+        balanceCoordinator.$balances
+            .sink { [weak self] updatedBalances in
+                guard let self = self else { return }
+
+                // Sync balances from BalanceCoordinator to Account objects
+                self.syncBalancesToAccounts(updatedBalances)
+
+                // Notify SwiftUI
+                self.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Sync balances from BalanceCoordinator to Account objects
+    /// This ensures UI components reading account.balance get updated values
+    private func syncBalancesToAccounts(_ balances: [String: Double]) {
+        var accountsChanged = false
+
+        for (accountId, newBalance) in balances {
+            if let index = accountsViewModel.accounts.firstIndex(where: { $0.id == accountId }) {
+                let currentBalance = accountsViewModel.accounts[index].balance
+
+                // Only update if balance changed (avoid unnecessary UI refreshes)
+                if abs(currentBalance - newBalance) > 0.001 {
+                    accountsViewModel.accounts[index].balance = newBalance
+                    accountsChanged = true
+                }
+            }
+        }
+
+        // Trigger UI update if any accounts changed
+        if accountsChanged {
+            accountsViewModel.objectWillChange.send()
+        }
     }
 }

@@ -14,11 +14,17 @@ import Combine
 @MainActor
 class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     // MARK: - Published Properties
-    
+
     @Published var accounts: [Account] = []
-    
+
+    // MARK: - Dependencies
+
+    /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth
+    /// Injected by AppCoordinator, optional for backward compatibility
+    var balanceCoordinator: BalanceCoordinator?
+
     // MARK: - Private Properties
-    
+
     private let repository: DataRepositoryProtocol
     private var initialAccountBalances: [String: Double] = [:]
     
@@ -56,12 +62,20 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
         // Сохраняем начальный баланс для корректного расчета в TransactionsViewModel
         initialAccountBalances[account.id] = balance
         saveAccounts()
+
+        // NEW: Register account with BalanceCoordinator
+        if let coordinator = balanceCoordinator {
+            Task {
+                await coordinator.registerAccounts([account])
+                await coordinator.setInitialBalance(balance, for: account.id)
+            }
+        }
     }
     
     func updateAccount(_ account: Account) {
 
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-            _ = accounts[index].balance
+            let oldBalance = accounts[index].balance
 
             // Создаем новый массив вместо модификации элемента на месте
             // Это необходимо для корректной работы @Published property wrapper
@@ -77,6 +91,14 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             // NOTE: @Published automatically sends objectWillChange notification
 
             saveAccounts()  // ✅ Sync save
+
+            // NEW: Update BalanceCoordinator if balance changed
+            if let coordinator = balanceCoordinator, abs(oldBalance - account.balance) > 0.001 {
+                Task {
+                    await coordinator.updateForAccount(account, newBalance: account.balance)
+                    await coordinator.setInitialBalance(account.balance, for: account.id)
+                }
+            }
         } else {
         }
     }
@@ -86,6 +108,13 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
         initialAccountBalances.removeValue(forKey: account.id)
         saveAccounts()  // ✅ Sync save
         // Note: Transaction deletion is handled by the calling view
+
+        // NEW: Remove account from BalanceCoordinator
+        if let coordinator = balanceCoordinator {
+            Task {
+                await coordinator.removeAccount(account.id)
+            }
+        }
     }
     
     // MARK: - Account Balance Management
@@ -142,7 +171,7 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             interestRateAnnual: interestRateAnnual,
             interestPostingDay: interestPostingDay
         )
-        
+
         let balance = NSDecimalNumber(decimal: principalBalance).doubleValue
         let account = Account(
             name: name,
@@ -151,10 +180,21 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             bankLogo: bankLogo,
             depositInfo: depositInfo
         )
-        
+
         accounts.append(account)
         initialAccountBalances[account.id] = balance
         saveAccounts()  // ✅ Sync save
+
+        // NEW: Register deposit with BalanceCoordinator
+        if let coordinator = balanceCoordinator {
+            Task {
+                await coordinator.registerAccounts([account])
+                await coordinator.setInitialBalance(balance, for: account.id)
+                if let depositInfo = account.depositInfo {
+                    await coordinator.updateDepositInfo(account, depositInfo: depositInfo)
+                }
+            }
+        }
     }
     
     func updateDeposit(_ account: Account) {
@@ -175,6 +215,16 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             // NOTE: @Published automatically sends objectWillChange notification
 
             saveAccounts()  // ✅ Sync save
+
+            // NEW: Update deposit in BalanceCoordinator
+            if let coordinator = balanceCoordinator, let depositInfo = account.depositInfo {
+                let balance = NSDecimalNumber(decimal: depositInfo.principalBalance).doubleValue
+                Task {
+                    await coordinator.updateForAccount(account, newBalance: balance)
+                    await coordinator.updateDepositInfo(account, depositInfo: depositInfo)
+                    await coordinator.setInitialBalance(balance, for: account.id)
+                }
+            }
         }
     }
     

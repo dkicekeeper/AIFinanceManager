@@ -56,6 +56,10 @@ class TransactionsViewModel: ObservableObject {
     /// Weak reference to avoid retain cycles
     weak var subscriptionsViewModel: SubscriptionsViewModel?
 
+    /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth for balances
+    /// Injected by AppCoordinator - replaces old TransactionBalanceCoordinator
+    var balanceCoordinator: BalanceCoordinator?
+
     // MARK: - Cache & Managers (Direct Access)
 
     let cacheManager = TransactionCacheManager()
@@ -69,10 +73,6 @@ class TransactionsViewModel: ObservableObject {
 
     private lazy var crudService: TransactionCRUDServiceProtocol = {
         TransactionCRUDService(delegate: self)
-    }()
-
-    private lazy var balanceCoordinator: TransactionBalanceCoordinatorProtocol = {
-        TransactionBalanceCoordinator(delegate: self)
     }()
 
     private lazy var storageCoordinator: TransactionStorageCoordinatorProtocol = {
@@ -250,7 +250,13 @@ class TransactionsViewModel: ObservableObject {
 
     func addTransaction(_ transaction: Transaction) {
         crudService.addTransaction(transaction)
-        balanceCoordinator.applyTransactionDirectly(transaction)
+
+        // Update balance through BalanceCoordinator
+        if let coordinator = balanceCoordinator {
+            Task {
+                await coordinator.updateForTransaction(transaction, operation: .add(transaction))
+            }
+        }
     }
 
     func addTransactions(_ newTransactions: [Transaction]) {
@@ -525,15 +531,26 @@ class TransactionsViewModel: ObservableObject {
     // MARK: - Balance Management
 
     func recalculateAccountBalances() {
-        balanceCoordinator.recalculateAllBalances()
+        // Recalculate all balances through BalanceCoordinator
+        if let coordinator = balanceCoordinator {
+            Task {
+                await coordinator.recalculateAll(accounts: accounts, transactions: allTransactions)
+            }
+        }
     }
 
     func scheduleBalanceRecalculation() {
-        balanceCoordinator.scheduleRecalculation()
+        // Flush balance update queue (coordinator has automatic debouncing)
+        if let coordinator = balanceCoordinator {
+            Task {
+                await coordinator.flushQueue()
+            }
+        }
     }
 
     func calculateTransactionsBalance(for accountId: String) -> Double {
-        return balanceCoordinator.calculateTransactionsBalance(for: accountId)
+        // Direct balance access from BalanceCoordinator (O(1))
+        return balanceCoordinator?.balances[accountId] ?? 0.0
     }
 
     func resetAndRecalculateAllBalances() {
@@ -543,7 +560,9 @@ class TransactionsViewModel: ObservableObject {
         initialAccountBalances = [:]
 
         for account in accounts {
-            let transactionsSum = balanceCoordinator.calculateTransactionsBalance(for: account.id)
+            // Get balance from BalanceCoordinator
+            let transactionsSum = balanceCoordinator?.balances[account.id] ?? 0.0
+
             let initialBalance = account.balance - transactionsSum
             initialAccountBalances[account.id] = initialBalance
             _ = oldInitialBalances[account.id]
@@ -834,7 +853,7 @@ class TransactionsViewModel: ObservableObject {
 // MARK: - Delegate Conformances
 
 extension TransactionsViewModel: TransactionCRUDDelegate {}
-extension TransactionsViewModel: TransactionBalanceDelegate {}
+// REMOVED: TransactionBalanceDelegate extension - no longer needed after BalanceCoordinator migration
 extension TransactionsViewModel: TransactionStorageDelegate {
     func notifyDataChanged() {
         // ✅ CRITICAL FIX: Force @Published to trigger by changing UUID

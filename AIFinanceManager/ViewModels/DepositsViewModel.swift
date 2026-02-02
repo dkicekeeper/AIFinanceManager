@@ -13,13 +13,17 @@ import Combine
 @MainActor
 class DepositsViewModel: ObservableObject {
     // MARK: - Published Properties
-    
+
     @Published var deposits: [Account] = []
-    
-    // MARK: - Private Properties
-    
+
+    // MARK: - Dependencies
+
     let repository: DataRepositoryProtocol
     let accountsViewModel: AccountsViewModel
+
+    /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth
+    /// Injected by AppCoordinator
+    var balanceCoordinator: BalanceCoordinator?
     
     // MARK: - Initialization
     
