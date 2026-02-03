@@ -254,7 +254,7 @@ class TransactionsViewModel: ObservableObject {
 
         // Update balance through BalanceCoordinator
         if let coordinator = balanceCoordinator {
-            Task {
+            Task { @MainActor in
                 await coordinator.updateForTransaction(transaction, operation: .add(transaction))
             }
         }
@@ -534,17 +534,21 @@ class TransactionsViewModel: ObservableObject {
     func recalculateAccountBalances() {
         // Recalculate all balances through BalanceCoordinator
         if let coordinator = balanceCoordinator {
-            Task {
+            Task { @MainActor in
                 await coordinator.recalculateAll(accounts: accounts, transactions: allTransactions)
             }
         }
     }
 
     func scheduleBalanceRecalculation() {
-        // Flush balance update queue (coordinator has automatic debouncing)
+        // CRITICAL: Recalculate all account balances after transaction changes
+        // This is called after recurring transaction generation, CSV import, etc.
         if let coordinator = balanceCoordinator {
-            Task {
-                await coordinator.flushQueue()
+            Task { @MainActor in
+                await coordinator.recalculateAll(
+                    accounts: accounts,
+                    transactions: allTransactions
+                )
             }
         }
     }
@@ -557,15 +561,13 @@ class TransactionsViewModel: ObservableObject {
     func resetAndRecalculateAllBalances() {
         cacheCoordinator.invalidate(scope: .summaryAndCurrency)
 
-        // MIGRATED: Initial balances now in BalanceCoordinator
+        // MIGRATED: Initial balances are already in account.initialBalance
         for account in accounts {
-            // Get balance from BalanceCoordinator
-            let transactionsSum = balanceCoordinator?.balances[account.id] ?? 0.0
-
-            let initialBalance = account.balance - transactionsSum
-            // Update BalanceCoordinator with calculated initial balance
-            Task {
-                await balanceCoordinator?.setInitialBalance(initialBalance, for: account.id)
+            // Update BalanceCoordinator with initial balance from account
+            if let initialBalance = account.initialBalance {
+                Task { @MainActor in
+                    await balanceCoordinator?.setInitialBalance(initialBalance, for: account.id)
+                }
             }
         }
 
@@ -674,7 +676,7 @@ class TransactionsViewModel: ObservableObject {
         // 🔧 FIX: Register all accounts in BalanceCoordinator when syncing
         // This ensures BalanceCoordinator knows about all accounts and their initial balances
         if let balanceCoordinator = balanceCoordinator {
-            Task {
+            Task { @MainActor in
                 // Register all accounts
                 await balanceCoordinator.registerAccounts(accounts)
 
@@ -759,7 +761,7 @@ class TransactionsViewModel: ObservableObject {
 
     func cleanupDeletedAccount(_ accountId: String) {
         // MIGRATED: BalanceCoordinator handles account removal
-        Task {
+        Task { @MainActor in
             await balanceCoordinator?.removeAccount(accountId)
         }
         cacheManager.cachedAccountBalances.removeValue(forKey: accountId)
@@ -833,9 +835,9 @@ class TransactionsViewModel: ObservableObject {
     // MARK: - Initial Balance Access (MIGRATED to BalanceCoordinator)
 
     func getInitialBalance(for accountId: String) -> Double? {
-        // MIGRATED: Get from BalanceCoordinator (async, so return account.balance as fallback)
+        // MIGRATED: Get from account.initialBalance
         // Note: This method is primarily for backward compatibility
-        return accounts.first(where: { $0.id == accountId })?.balance
+        return accounts.first(where: { $0.id == accountId })?.initialBalance
     }
 
     func isAccountImported(_ accountId: String) -> Bool {

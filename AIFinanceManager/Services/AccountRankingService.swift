@@ -88,11 +88,13 @@ class AccountRankingService {
     ///   - accounts: Список счетов для ранжирования
     ///   - transactions: История транзакций
     ///   - context: Контекст транзакции (опционально)
+    ///   - balances: Словарь текущих балансов счетов [accountId: balance]
     /// - Returns: Отсортированный список счетов
     static func rankAccounts(
         accounts: [Account],
         transactions: [Transaction],
-        context: AccountRankingContext? = nil
+        context: AccountRankingContext? = nil,
+        balances: [String: Double] = [:]
     ) -> [Account] {
 
         guard !accounts.isEmpty else { return [] }
@@ -106,7 +108,7 @@ class AccountRankingService {
 
         // Если нет транзакций - используем smart defaults
         if transactions.isEmpty {
-            return applySmartDefaults(accounts: accounts, context: context)
+            return applySmartDefaults(accounts: accounts, context: context, balances: balances)
         }
 
         #if DEBUG
@@ -140,7 +142,8 @@ class AccountRankingService {
                 for: account,
                 accountTransactions: accountTransactions,
                 context: context,
-                now: now
+                now: now,
+                balances: balances
             )
             return RankedAccount(account: account, score: score, reason: reason)
         }
@@ -175,12 +178,14 @@ class AccountRankingService {
     ///   - accounts: Список доступных счетов
     ///   - transactions: История транзакций
     ///   - amount: Сумма транзакции (опционально)
+    ///   - balances: Словарь текущих балансов счетов
     /// - Returns: Рекомендуемый счет или nil
     static func suggestedAccount(
         forCategory category: String,
         accounts: [Account],
         transactions: [Transaction],
-        amount: Double? = nil
+        amount: Double? = nil,
+        balances: [String: Double] = [:]
     ) -> Account? {
         
         // Находим счет, наиболее часто используемый для этой категории
@@ -230,24 +235,29 @@ class AccountRankingService {
         // Проверяем, что рекомендуемый счет все еще существует и активен
         if let topAccountId = sortedAccounts.first?.key,
            let account = accounts.first(where: { $0.id == topAccountId }) {
-            
+
             // Проверяем баланс, если указана сумма
-            if let amount = amount, account.balance < amount {
-                // Ищем следующий подходящий счет с достаточным балансом
-                for (accountId, _) in sortedAccounts {
-                    if let account = accounts.first(where: { $0.id == accountId }),
-                       account.balance >= amount {
-                        return account
+            if let amount = amount {
+                let accountBalance = balances[account.id] ?? 0
+                if accountBalance < amount {
+                    // Ищем следующий подходящий счет с достаточным балансом
+                    for (accountId, _) in sortedAccounts {
+                        if let account = accounts.first(where: { $0.id == accountId }) {
+                            let balance = balances[account.id] ?? 0
+                            if balance >= amount {
+                                return account
+                            }
+                        }
                     }
                 }
             }
-            
+
             return account
         }
-        
+
         // Fallback - общее ранжирование
         let context = AccountRankingContext(type: .expense, amount: amount, category: category)
-        return rankAccounts(accounts: accounts, transactions: transactions, context: context).first
+        return rankAccounts(accounts: accounts, transactions: transactions, context: context, balances: balances).first
     }
     
     // MARK: - Private Methods
@@ -257,7 +267,8 @@ class AccountRankingService {
         for account: Account,
         accountTransactions: [Transaction],
         context: AccountRankingContext?,
-        now: Date
+        now: Date,
+        balances: [String: Double]
     ) -> (score: Double, reason: RankingReason) {
 
         var score: Double = 0
@@ -305,12 +316,13 @@ class AccountRankingService {
         
         // 7. Штраф для неактивных счетов
         // ✅ PERFORMANCE: Use cached date parsing
+        let accountBalance = balances[account.id] ?? 0
         if let lastDate = accountTransactions.map({ $0.date }).compactMap({ parseDateCached($0) }).max() {
-            if daysAgo(from: lastDate, to: now) > TimeThreshold.inactivityPenalty && account.balance == 0 {
+            if daysAgo(from: lastDate, to: now) > TimeThreshold.inactivityPenalty && accountBalance == 0 {
                 score += ScoreModifier.inactivePenalty
                 primaryReason = .inactive
             }
-        } else if account.balance == 0 && allTimeCount == 0 {
+        } else if accountBalance == 0 && allTimeCount == 0 {
             // Счет никогда не использовался и баланс нулевой
             score += ScoreModifier.inactivePenalty
             primaryReason = .inactive
@@ -333,7 +345,7 @@ class AccountRankingService {
             
             // 8b. Бонус за достаточный баланс при расходе
             if context.type == .expense, let amount = context.amount {
-                if account.balance >= amount {
+                if accountBalance >= amount {
                     score += ScoreModifier.sufficientBalance
                     if primaryReason == .defaultFallback {
                         primaryReason = .sufficientBalance
@@ -353,27 +365,31 @@ class AccountRankingService {
     /// Smart defaults для новых пользователей (без истории транзакций)
     private static func applySmartDefaults(
         accounts: [Account],
-        context: AccountRankingContext?
+        context: AccountRankingContext?,
+        balances: [String: Double]
     ) -> [Account] {
-        
+
         return accounts.sorted { account1, account2 in
             // 1. Обычные счета выше депозитов
             if account1.isDeposit != account2.isDeposit {
                 return !account1.isDeposit
             }
-            
+
+            let balance1 = balances[account1.id] ?? 0
+            let balance2 = balances[account2.id] ?? 0
+
             // 2. При расходе - счета с балансом выше
             if let context = context, context.type == .expense, let amount = context.amount {
-                let has1 = account1.balance >= amount
-                let has2 = account2.balance >= amount
+                let has1 = balance1 >= amount
+                let has2 = balance2 >= amount
                 if has1 != has2 {
                     return has1
                 }
             }
-            
+
             // 3. По балансу (больше = выше)
-            if account1.balance != account2.balance {
-                return account1.balance > account2.balance
+            if balance1 != balance2 {
+                return balance1 > balance2
             }
             
             // 4. По дате создания (новее = выше)

@@ -93,7 +93,8 @@ struct HistoryTransactionsList: View {
                                 customCategories: categoriesViewModel.customCategories,
                                 accounts: accountsViewModel.accounts,
                                 viewModel: transactionsViewModel,
-                                categoriesViewModel: categoriesViewModel
+                                categoriesViewModel: categoriesViewModel,
+                                balanceCoordinator: accountsViewModel.balanceCoordinator
                             )
                             .listRowInsets(EdgeInsets(
                                 top: AppSpacing.sm,

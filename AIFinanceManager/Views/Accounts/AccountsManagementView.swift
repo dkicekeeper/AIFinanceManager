@@ -47,6 +47,7 @@ struct AccountsManagementView: View {
                                 accountToDelete = account
                                 showingAccountDeleteDialog = true
                             },
+                            balanceCoordinator: accountsViewModel.balanceCoordinator!,
                             interestToday: account.depositInfo.flatMap {
                                 let val = DepositInterestService.calculateInterestToToday(depositInfo: $0)
                                 return val > 0 ? NSDecimalNumber(decimal: val).doubleValue : nil
@@ -98,7 +99,7 @@ struct AccountsManagementView: View {
                 onSave: { account in
                     HapticManager.success()
                     Task {
-                        await accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
+                        await accountsViewModel.addAccount(name: account.name, initialBalance: account.initialBalance ?? 0, currency: account.currency, bankLogo: account.bankLogo)
                         transactionsViewModel.syncAccountsFrom(accountsViewModel)
                         showingAddAccount = false
                     }
@@ -247,21 +248,20 @@ struct AccountsManagementView: View {
         Account(
             id: "preview-1",
             name: "Kaspi Gold",
-            balance: 500000,
             currency: "KZT",
-            bankLogo: .kaspi
+            bankLogo: .kaspi,
+            initialBalance: 500000
         ),
         Account(
             id: "preview-2",
             name: "Main Savings",
-            balance: 15000,
             currency: "USD",
-            bankLogo: .halykBank
+            bankLogo: .halykBank,
+            initialBalance: 15000
         ),
         Account(
             id: "preview-3",
             name: "Halyk Deposit",
-            balance: 1000000,
             currency: "KZT",
             bankLogo: .halykBank,
             depositInfo: DepositInfo(
@@ -270,19 +270,19 @@ struct AccountsManagementView: View {
                 capitalizationEnabled: true,
                 interestRateAnnual: Decimal(12.5),
                 interestPostingDay: 15
-            )
+            ),
+            initialBalance: 1000000
         ),
         Account(
             id: "preview-4",
             name: "EUR Account",
-            balance: 2500,
             currency: "EUR",
-            bankLogo: .alatauCityBank
+            bankLogo: .alatauCityBank,
+            initialBalance: 2500
         ),
         Account(
             id: "preview-5",
             name: "Jusan Deposit",
-            balance: 2000000,
             currency: "KZT",
             bankLogo: .jusan,
             depositInfo: DepositInfo(
@@ -291,17 +291,21 @@ struct AccountsManagementView: View {
                 capitalizationEnabled: false,
                 interestRateAnnual: Decimal(10.0),
                 interestPostingDay: 1
-            )
+            ),
+            initialBalance: 2000000
         )
     ]
     
+    let coordinator = AppCoordinator()
+
     return List {
         ForEach(sampleAccounts) { account in
             AccountRow(
                 account: account,
                 currency: account.currency,
                 onEdit: {},
-                onDelete: {}
+                onDelete: {},
+                balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
             )
         }
     }

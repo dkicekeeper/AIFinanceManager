@@ -101,13 +101,21 @@ final class AddTransactionCoordinator: ObservableObject {
     /// Get accounts sorted by balance (fast, no transaction scanning needed)
     func rankedAccounts() -> [Account] {
         // Simply sort by balance - instant and no need to scan transactions!
+        guard let balanceCoordinator = accountsViewModel.balanceCoordinator else {
+            return accountsViewModel.accounts
+        }
+
+        let balances = balanceCoordinator.balances
+
         return accountsViewModel.accounts.sorted { account1, account2 in
             // Deposits at the end
             if account1.isDeposit != account2.isDeposit {
                 return !account1.isDeposit
             }
             // Higher balance first
-            return account1.balance > account2.balance
+            let balance1 = balances[account1.id] ?? 0
+            let balance2 = balances[account2.id] ?? 0
+            return balance1 > balance2
         }
     }
 

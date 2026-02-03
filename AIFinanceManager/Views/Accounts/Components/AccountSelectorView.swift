@@ -13,19 +13,22 @@ struct AccountSelectorView: View {
     let onSelectionChange: ((String?) -> Void)?
     let emptyStateMessage: String?
     let warningMessage: String?
-    
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
+
     init(
         accounts: [Account],
         selectedAccountId: Binding<String?>,
         onSelectionChange: ((String?) -> Void)? = nil,
         emptyStateMessage: String? = nil,
-        warningMessage: String? = nil
+        warningMessage: String? = nil,
+        balanceCoordinator: BalanceCoordinator
     ) {
         self.accounts = accounts
         self._selectedAccountId = selectedAccountId
         self.onSelectionChange = onSelectionChange
         self.emptyStateMessage = emptyStateMessage
         self.warningMessage = warningMessage
+        self.balanceCoordinator = balanceCoordinator
     }
     
     var body: some View {
@@ -48,11 +51,12 @@ struct AccountSelectorView: View {
                                 onTap: {
                                     selectedAccountId = account.id
                                     onSelectionChange?(account.id)
-                                }
+                                },
+                                balanceCoordinator: balanceCoordinator
                             )
                         }
                     }
-                    
+
                 }
                 .padding(AppSpacing.lg)
                 .scrollClipDisabled()
@@ -68,32 +72,36 @@ struct AccountSelectorView: View {
 
 #Preview {
     @Previewable @State var selectedAccountId: String? = nil
-    
+    let coordinator = AppCoordinator()
+
     return VStack {
         AccountSelectorView(
             accounts: [
-                Account(name: "Main Account", balance: 1000, currency: "USD", bankLogo: .none),
-                Account(name: "Savings", balance: 5000, currency: "USD", bankLogo: .none)
+                Account(name: "Main Account", currency: "USD", bankLogo: .none, initialBalance: 1000),
+                Account(name: "Savings", currency: "USD", bankLogo: .none, initialBalance: 5000)
             ],
             selectedAccountId: $selectedAccountId,
             emptyStateMessage: nil,
-            warningMessage: nil
+            warningMessage: nil,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
-        
+
         AccountSelectorView(
             accounts: [],
             selectedAccountId: $selectedAccountId,
             emptyStateMessage: "No accounts available",
-            warningMessage: nil
+            warningMessage: nil,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
-        
+
         AccountSelectorView(
             accounts: [
-                Account(name: "Main Account", balance: 1000, currency: "USD", bankLogo: .none)
+                Account(name: "Main Account", currency: "USD", bankLogo: .none, initialBalance: 1000)
             ],
             selectedAccountId: $selectedAccountId,
             emptyStateMessage: nil,
-            warningMessage: "Please select an account"
+            warningMessage: "Please select an account",
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
     }
     .padding()

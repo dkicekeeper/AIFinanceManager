@@ -308,9 +308,9 @@ enum DepositInterestService {
         if !depositInfo.capitalizationEnabled {
             totalBalance += depositInfo.interestAccruedNotCapitalized
         }
-        // Для отображения "проценты на сегодня" не добавляем interestAccruedForCurrentPeriod к балансу,
-        // так как они еще не начислены. Баланс = principalBalance (+ начисленные проценты без капитализации)
-        account.balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+        // MIGRATED: Balance is now managed by BalanceCoordinator
+        // This method no longer updates account.balance directly
+        // Balance will be calculated from transactions + initialBalance by BalanceCoordinator
     }
     
     /// Генерирует детерминированный ID для транзакции начисления процентов

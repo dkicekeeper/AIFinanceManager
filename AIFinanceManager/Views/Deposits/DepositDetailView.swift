@@ -10,6 +10,7 @@ import SwiftUI
 struct DepositDetailView: View {
     @ObservedObject var depositsViewModel: DepositsViewModel
     @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
     let accountId: String
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var showingEditView = false
@@ -223,7 +224,8 @@ struct DepositDetailView: View {
                 Text(String(localized: "deposit.balance"))
                     .font(AppTypography.bodySmall)
                     .foregroundColor(.secondary)
-                Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                let balance = balanceCoordinator.balances[account.id] ?? 0
+                Text(Formatting.formatCurrency(balance, currency: account.currency))
                     .font(AppTypography.h2)
             }
             
@@ -299,10 +301,12 @@ struct DepositDetailView: View {
 
 #Preview("Deposit Detail View") {
     let coordinator = AppCoordinator()
+
     NavigationView {
         DepositDetailView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
             accountId: coordinator.depositsViewModel.deposits.first?.id ?? "test"
         )
         .environmentObject(TimeFilterManager())
@@ -311,10 +315,12 @@ struct DepositDetailView: View {
 
 #Preview("Deposit Detail View - Not Found") {
     let coordinator = AppCoordinator()
+
     NavigationView {
         DepositDetailView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
             accountId: "non-existent"
         )
         .environmentObject(TimeFilterManager())

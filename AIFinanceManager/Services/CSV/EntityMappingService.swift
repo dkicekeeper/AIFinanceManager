@@ -68,12 +68,13 @@ class EntityMappingService: EntityMappingServiceProtocol {
                 return .existing(id: account.id)
             }
 
-            // Create new account
+            // Create new account with shouldCalculateFromTransactions=true for CSV imports
             await accountsVM.addAccount(
                 name: name,
-                balance: 0.0,
+                initialBalance: 0.0,
                 currency: currency,
-                bankLogo: .none
+                bankLogo: .none,
+                shouldCalculateFromTransactions: true
             )
 
             // Get newly created account ID

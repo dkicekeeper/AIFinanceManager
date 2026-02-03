@@ -13,6 +13,7 @@ struct AccountsCarousel: View {
     // MARK: - Properties
     let accounts: [Account]
     let onAccountTap: (Account) -> Void
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
 
     // MARK: - Body
     var body: some View {
@@ -24,9 +25,11 @@ struct AccountsCarousel: View {
                         onTap: {
                             HapticManager.light()
                             onAccountTap(account)
-                        }
+                        },
+                        balanceCoordinator: balanceCoordinator
                     )
-                    .id("\(account.id)-\(account.balance)")
+                    // Use balance from coordinator for proper identity tracking
+                    .id("\(account.id)-\(balanceCoordinator.balances[account.id] ?? 0)")
                 }
             }
             .padding(.vertical, AppSpacing.xs)
@@ -38,25 +41,28 @@ struct AccountsCarousel: View {
 
 // MARK: - Preview
 #Preview {
-    AccountsCarousel(
+    let coordinator = AppCoordinator()
+
+    return AccountsCarousel(
         accounts: [
             Account(
                 id: "1",
                 name: "Kaspi Bank",
-                balance: 150000,
                 currency: "KZT",
                 bankLogo: .kaspi,
-                depositInfo: nil
+                depositInfo: nil,
+                initialBalance: 150000
             ),
             Account(
                 id: "2",
                 name: "Halyk Bank",
-                balance: 250000,
                 currency: "KZT",
                 bankLogo: .halykBank,
-                depositInfo: nil
+                depositInfo: nil,
+                initialBalance: 250000
             )
         ],
-        onAccountTap: { _ in }
+        onAccountTap: { _ in },
+        balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
     )
 }

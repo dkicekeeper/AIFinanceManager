@@ -45,8 +45,8 @@ struct AccountBalance: Equatable, Identifiable {
     static func from(_ account: Account) -> AccountBalance {
         return AccountBalance(
             accountId: account.id,
-            currentBalance: account.balance,
-            initialBalance: nil,
+            currentBalance: account.initialBalance ?? 0,
+            initialBalance: account.initialBalance,
             depositInfo: account.depositInfo,
             currency: account.currency,
             isDeposit: account.isDeposit

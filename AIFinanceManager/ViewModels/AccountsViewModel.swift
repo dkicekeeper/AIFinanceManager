@@ -57,21 +57,20 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     
     // MARK: - Account CRUD Operations
     
-    func addAccount(name: String, balance: Double, currency: String, bankLogo: BankLogo = .none, shouldCalculateFromTransactions: Bool = false) async {
+    func addAccount(name: String, initialBalance: Double, currency: String, bankLogo: BankLogo = .none, shouldCalculateFromTransactions: Bool = false) async {
         #if DEBUG
         print("🔍 [AccountsVM] addAccount called:")
         print("   📝 Name: \(name)")
-        print("   💰 Balance: \(balance)")
+        print("   💰 InitialBalance: \(initialBalance)")
         print("   🧮 shouldCalculateFromTransactions: \(shouldCalculateFromTransactions)")
         #endif
 
         let account = Account(
             name: name,
-            balance: 0,  // DEPRECATED - не сохраняем рассчитанный баланс
             currency: currency,
             bankLogo: bankLogo,
             shouldCalculateFromTransactions: shouldCalculateFromTransactions,
-            initialBalance: shouldCalculateFromTransactions ? 0.0 : balance
+            initialBalance: shouldCalculateFromTransactions ? 0.0 : initialBalance
         )
         accounts.append(account)
         saveAccounts()
@@ -93,7 +92,7 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             } else {
                 #if DEBUG
                 print("   🧮 [AccountsVM] NOT marking as manual - will calculate from transactions: \(account.id)")
-                print("   ✅ [AccountsVM] Initial balance set to: \(balance)")
+                print("   ✅ [AccountsVM] Initial balance set to: \(initialBalance)")
                 #endif
             }
         }
@@ -102,7 +101,7 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     func updateAccount(_ account: Account) {
 
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-            let oldBalance = accounts[index].balance
+            let oldInitialBalance = accounts[index].initialBalance ?? 0
 
             // Создаем новый массив вместо модификации элемента на месте
             // Это необходимо для корректной работы @Published property wrapper
@@ -115,11 +114,11 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
 
             saveAccounts()  // ✅ Sync save
 
-            // NEW: Update BalanceCoordinator if balance changed
-            if let coordinator = balanceCoordinator, abs(oldBalance - account.balance) > 0.001 {
+            // NEW: Update BalanceCoordinator if initialBalance changed
+            let newInitialBalance = account.initialBalance ?? 0
+            if let coordinator = balanceCoordinator, abs(oldInitialBalance - newInitialBalance) > 0.001 {
                 Task {
-                    await coordinator.updateForAccount(account, newBalance: account.balance)
-                    await coordinator.setInitialBalance(account.balance, for: account.id)
+                    await coordinator.setInitialBalance(newInitialBalance, for: account.id)
                     await coordinator.markAsManual(account.id)
                 }
             }
@@ -145,8 +144,8 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     /// MIGRATED: Get initial balance from BalanceCoordinator (Single Source of Truth)
     func getInitialBalance(for accountId: String) -> Double? {
         // Direct access to BalanceCoordinator not possible (async)
-        // Use account.balance as fallback for backward compatibility
-        return accounts.first(where: { $0.id == accountId })?.balance
+        // Use account.initialBalance as fallback for backward compatibility
+        return accounts.first(where: { $0.id == accountId })?.initialBalance
     }
 
     /// MIGRATED: Set initial balance via BalanceCoordinator (Single Source of Truth)
@@ -205,7 +204,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
         let balance = NSDecimalNumber(decimal: principalBalance).doubleValue
         let account = Account(
             name: name,
-            balance: 0,  // DEPRECATED - не сохраняем рассчитанный баланс
             currency: currency,
             bankLogo: bankLogo,
             depositInfo: depositInfo,

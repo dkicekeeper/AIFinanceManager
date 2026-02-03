@@ -97,11 +97,8 @@ class CSVStorageCoordinator: CSVStorageCoordinatorProtocol {
         from transactionsVM: TransactionsViewModel,
         to accountsVM: AccountsViewModel
     ) {
-        for (index, account) in accountsVM.accounts.enumerated() {
-            if let updatedAccount = transactionsVM.accounts.first(where: { $0.id == account.id }) {
-                accountsVM.accounts[index].balance = updatedAccount.balance
-            }
-        }
+        // Note: Balance syncing is now handled by BalanceCoordinator
+        // No need to manually copy balances between AccountsVM and TransactionsVM
     }
 
     private func registerAccountsInBalanceCoordinator(
@@ -113,9 +110,13 @@ class CSVStorageCoordinator: CSVStorageCoordinatorProtocol {
         await balanceCoordinator.registerAccounts(accountsVM.accounts)
 
         for account in accountsVM.accounts {
-            let initialBalance = accountsVM.getInitialBalance(for: account.id) ?? account.balance
+            let initialBalance = accountsVM.getInitialBalance(for: account.id) ?? 0
             await balanceCoordinator.setInitialBalance(initialBalance, for: account.id)
-            await balanceCoordinator.markAsManual(account.id)
+
+            // Mark as manual if not calculating from transactions
+            if !account.shouldCalculateFromTransactions {
+                await balanceCoordinator.markAsManual(account.id)
+            }
         }
     }
 }

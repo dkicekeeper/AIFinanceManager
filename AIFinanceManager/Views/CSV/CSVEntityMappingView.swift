@@ -205,7 +205,7 @@ struct CSVEntityMappingView: View {
     }
     
     private func createAccount(name: String) async {
-        await accountsViewModel.addAccount(name: name, balance: 0, currency: "KZT", bankLogo: .none)
+        await accountsViewModel.addAccount(name: name, initialBalance: 0, currency: "KZT", bankLogo: .none, shouldCalculateFromTransactions: true)
         if let account = accountsViewModel.accounts.first(where: { $0.name == name }) {
             accountMappings[name] = account.id
         }

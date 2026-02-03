@@ -12,21 +12,26 @@ struct AccountRow: View {
     let currency: String
     let onEdit: () -> Void
     let onDelete: () -> Void
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
     /// Pre-computed interest accrued to today (from parent via DepositInterestService)
     var interestToday: Double? = nil
     /// Pre-computed next interest posting date (from parent via DepositInterestService)
     var nextPostingDate: Date? = nil
-    
+
+    private var balance: Double {
+        balanceCoordinator.balances[account.id] ?? 0
+    }
+
     var body: some View {
             HStack(spacing: AppSpacing.md) {
                 // Логотип банка
                 account.bankLogo.image(size: AppIconSize.xl)
-                
+
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
                         .font(AppTypography.h4)
-                    
-                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+
+                    Text(Formatting.formatCurrency(balance, currency: account.currency))
                         .font(AppTypography.bodySmall)
                         .foregroundColor(.secondary)
                     
@@ -69,17 +74,19 @@ struct AccountRow: View {
     let sampleAccount = Account(
         id: "test",
         name: "Test Account",
-        balance: 10000,
         currency: "USD",
-        bankLogo: .none
+        bankLogo: .none,
+        initialBalance: 10000
     )
-    
-    return List {
+    let coordinator = AppCoordinator()
+
+    List {
         AccountRow(
             account: sampleAccount,
             currency: "USD",
             onEdit: {},
-            onDelete: {}
+            onDelete: {},
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
         .padding(.horizontal)
         .padding(.vertical, AppSpacing.xs)

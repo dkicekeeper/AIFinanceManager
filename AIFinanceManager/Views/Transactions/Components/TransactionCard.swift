@@ -14,6 +14,7 @@ struct TransactionCard: View {
     let accounts: [Account]
     let viewModel: TransactionsViewModel?
     let categoriesViewModel: CategoriesViewModel?
+    let balanceCoordinator: BalanceCoordinator?
 
     @State private var showingStopRecurringConfirmation = false
     @State private var showingEditModal = false
@@ -23,13 +24,14 @@ struct TransactionCard: View {
         CategoryStyleHelper.cached(category: transaction.category, type: transaction.type, customCategories: customCategories)
     }
 
-    init(transaction: Transaction, currency: String, customCategories: [CustomCategory], accounts: [Account], viewModel: TransactionsViewModel? = nil, categoriesViewModel: CategoriesViewModel? = nil) {
+    init(transaction: Transaction, currency: String, customCategories: [CustomCategory], accounts: [Account], viewModel: TransactionsViewModel? = nil, categoriesViewModel: CategoriesViewModel? = nil, balanceCoordinator: BalanceCoordinator? = nil) {
         self.transaction = transaction
         self.currency = currency
         self.customCategories = customCategories
         self.accounts = accounts
         self.viewModel = viewModel
         self.categoriesViewModel = categoriesViewModel
+        self.balanceCoordinator = balanceCoordinator
     }
     
     private var isFutureDate: Bool {
@@ -134,13 +136,14 @@ struct TransactionCard: View {
             showingEditModal = true
         }
         .sheet(isPresented: $showingEditModal) {
-            if let viewModel = viewModel, let categoriesViewModel = categoriesViewModel {
+            if let viewModel = viewModel, let categoriesViewModel = categoriesViewModel, let balanceCoordinator = balanceCoordinator {
                 EditTransactionView(
                     transaction: transaction,
                     transactionsViewModel: viewModel,
                     categoriesViewModel: categoriesViewModel,
                     accounts: accounts,
-                    customCategories: customCategories
+                    customCategories: customCategories,
+                    balanceCoordinator: balanceCoordinator
                 )
             }
         }

@@ -10,6 +10,11 @@ import SwiftUI
 struct AccountCard: View {
     let account: Account
     let onTap: () -> Void
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
+
+    private var balance: Double {
+        balanceCoordinator.balances[account.id] ?? 0
+    }
 
     var body: some View {
         Button(action: onTap) {
@@ -20,7 +25,7 @@ struct AccountCard: View {
                     Text(account.name)
                         .font(AppTypography.h4)
                         .foregroundColor(.primary)
-                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                    Text(Formatting.formatCurrency(balance, currency: account.currency))
                         .font(AppTypography.bodySmall)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
@@ -29,15 +34,18 @@ struct AccountCard: View {
             .glassCardStyle()
         }
         .buttonStyle(.bounce)
-        .accessibilityLabel(String(format: String(localized: "accessibility.accountCard.label"), account.name, Formatting.formatCurrency(account.balance, currency: account.currency)))
+        .accessibilityLabel(String(format: String(localized: "accessibility.accountCard.label"), account.name, Formatting.formatCurrency(balance, currency: account.currency)))
         .accessibilityHint(String(localized: "accessibility.accountCard.hint"))
     }
 }
 
 #Preview("Account Card") {
-    AccountCard(
-        account: Account(name: "Main Account", balance: 1000, currency: "USD", bankLogo: .none),
-        onTap: {}
+    let coordinator = AppCoordinator()
+
+    return AccountCard(
+        account: Account(name: "Main Account", currency: "USD", bankLogo: .none, initialBalance: 1000),
+        onTap: {},
+        balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
     )
     .padding()
 }

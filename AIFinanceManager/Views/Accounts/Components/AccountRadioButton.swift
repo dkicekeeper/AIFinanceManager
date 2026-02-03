@@ -11,17 +11,22 @@ struct AccountRadioButton: View {
     let account: Account
     let isSelected: Bool
     let onTap: () -> Void
-    
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
+
+    private var balance: Double {
+        balanceCoordinator.balances[account.id] ?? 0
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.md) {
                 account.bankLogo.image(size: AppIconSize.lg)
-                
+
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
                         .font(AppTypography.caption)
                         .foregroundColor(.secondary)
-                    Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                    Text(Formatting.formatCurrency(balance, currency: account.currency))
                         .font(AppTypography.bodySmall)
                         .foregroundColor(.primary)
                         .fontWeight(.semibold)
@@ -38,16 +43,20 @@ struct AccountRadioButton: View {
 }
 
 #Preview {
-    HStack {
+    let coordinator = AppCoordinator()
+
+    return HStack {
         AccountRadioButton(
-            account: Account(name: "Main Account", balance: 1000, currency: "USD", bankLogo: .none),
+            account: Account(name: "Main Account", currency: "USD", bankLogo: .none, initialBalance: 1000),
             isSelected: false,
-            onTap: {}
+            onTap: {},
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
         AccountRadioButton(
-            account: Account(name: "Savings", balance: 5000, currency: "USD", bankLogo: .none),
+            account: Account(name: "Savings", currency: "USD", bankLogo: .none, initialBalance: 5000),
             isSelected: true,
-            onTap: {}
+            onTap: {},
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
     }
     .padding()

@@ -193,7 +193,7 @@ actor BalanceCalculator {
     /// - Returns: The calculated balance
     func calculateDepositBalance(account: Account) -> Double {
         guard let depositInfo = account.depositInfo else {
-            return account.balance
+            return account.initialBalance ?? 0
         }
 
         var totalBalance: Decimal = depositInfo.principalBalance

@@ -306,7 +306,7 @@ class CSVImportService {
 
                         await accountsVM.addAccount(
                             name: effectiveAccountValue,
-                            balance: 0.0,
+                            initialBalance: 0.0,
                             currency: currency,
                             bankLogo: .none,
                             shouldCalculateFromTransactions: true
@@ -368,7 +368,7 @@ class CSVImportService {
 
                         await accountsVM.addAccount(
                             name: targetAccountValue,
-                            balance: 0.0,
+                            initialBalance: 0.0,
                             currency: targetAccountCurrency,
                             bankLogo: .none,
                             shouldCalculateFromTransactions: true
@@ -678,17 +678,9 @@ class CSVImportService {
 
             // Синхронизируем обновленные балансы обратно в accountsViewModel и сохраняем их
             if let accountsVM = accountsViewModel {
-                // Обновляем балансы в accountsViewModel на основе пересчитанных балансов
-                for (index, account) in accountsVM.accounts.enumerated() {
-                    if let updatedAccount = transactionsViewModel.accounts.first(where: { $0.id == account.id }) {
-                        // Обновляем счет с новым балансом
-                        accountsVM.accounts[index].balance = updatedAccount.balance
-                        // MIGRATED: Initial balances now managed directly by BalanceCoordinator
-                        // No need to sync through AccountsViewModel - will be handled in registration below
-                    }
-                }
-                // Сохраняем обновленные балансы счетов одним батчем (синхронно для импорта)
-                accountsVM.saveAllAccountsSync()
+                // MIGRATED: Balance syncing is now handled by BalanceCoordinator
+                // No need to manually update account.balance - it's calculated dynamically
+                // Accounts are already registered and balances calculated during import
 
                 // NOTE: We don't need to register accounts or set balances here because:
                 // 1. Accounts are already registered during import in AccountsViewModel.addAccount()

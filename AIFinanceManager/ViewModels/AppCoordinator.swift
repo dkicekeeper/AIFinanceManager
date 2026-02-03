@@ -138,6 +138,16 @@ class AppCoordinator: ObservableObject {
         // This initializes the balance store with current account data
         await balanceCoordinator.registerAccounts(accountsViewModel.accounts)
 
+        // CRITICAL: Recalculate balances after loading transactions
+        // This ensures accounts with shouldCalculateFromTransactions get correct balances
+        #if DEBUG
+        print("🔄 [AppCoordinator] Recalculating all balances after initialization...")
+        #endif
+        await balanceCoordinator.recalculateAll(
+            accounts: accountsViewModel.accounts,
+            transactions: transactionsViewModel.allTransactions
+        )
+
         PerformanceProfiler.end("AppCoordinator.initialize")
     }
     
@@ -196,23 +206,8 @@ class AppCoordinator: ObservableObject {
     /// Sync balances from BalanceCoordinator to Account objects
     /// This ensures UI components reading account.balance get updated values
     private func syncBalancesToAccounts(_ balances: [String: Double]) {
-        var accountsChanged = false
-
-        for (accountId, newBalance) in balances {
-            if let index = accountsViewModel.accounts.firstIndex(where: { $0.id == accountId }) {
-                let currentBalance = accountsViewModel.accounts[index].balance
-
-                // Only update if balance changed (avoid unnecessary UI refreshes)
-                if abs(currentBalance - newBalance) > 0.001 {
-                    accountsViewModel.accounts[index].balance = newBalance
-                    accountsChanged = true
-                }
-            }
-        }
-
-        // Trigger UI update if any accounts changed
-        if accountsChanged {
-            accountsViewModel.objectWillChange.send()
-        }
+        // MIGRATED: Balances are now managed by BalanceCoordinator
+        // No need to sync balances to Account.balance field
+        // UI components read balances directly from BalanceCoordinator
     }
 }

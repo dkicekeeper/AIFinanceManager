@@ -96,7 +96,8 @@ struct ContentView: View {
                     accounts: accountsViewModel.accounts,
                     onAccountTap: { account in
                         selectedAccount = account
-                    }
+                    },
+                    balanceCoordinator: accountsViewModel.balanceCoordinator!
                 )
             }
         }
@@ -269,6 +270,7 @@ struct ContentView: View {
             DepositDetailView(
                 depositsViewModel: coordinator.depositsViewModel,
                 transactionsViewModel: viewModel,
+                balanceCoordinator: accountsViewModel.balanceCoordinator!,
                 accountId: account.id
             )
             .environmentObject(timeFilterManager)
@@ -365,7 +367,7 @@ struct ContentView: View {
         Task {
             await accountsViewModel.addAccount(
                 name: account.name,
-                balance: account.balance,
+                initialBalance: account.initialBalance ?? 0,
                 currency: account.currency,
                 bankLogo: account.bankLogo
             )

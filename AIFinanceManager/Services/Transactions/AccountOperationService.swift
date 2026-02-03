@@ -104,7 +104,8 @@ class AccountOperationService: AccountOperationServiceProtocol {
         from account: inout Account,
         amount: Double
     ) {
-        account.balance -= amount
+        // MIGRATED: Balance is now managed by BalanceCoordinator
+        // No need to update account.balance directly
 
         if var depositInfo = account.depositInfo {
             let amountDecimal = Decimal(amount)
@@ -125,12 +126,8 @@ class AccountOperationService: AccountOperationServiceProtocol {
 
             account.depositInfo = depositInfo
 
-            // Recalculate total balance
-            var totalBalance: Decimal = depositInfo.principalBalance
-            if !depositInfo.capitalizationEnabled {
-                totalBalance += depositInfo.interestAccruedNotCapitalized
-            }
-            account.balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+            // MIGRATED: Balance calculation is now handled by BalanceCoordinator
+            // No need to recalculate account.balance here
         }
     }
 
@@ -145,15 +142,11 @@ class AccountOperationService: AccountOperationServiceProtocol {
             depositInfo.principalBalance += amountDecimal
             account.depositInfo = depositInfo
 
-            // Recalculate total balance
-            var totalBalance: Decimal = depositInfo.principalBalance
-            if !depositInfo.capitalizationEnabled {
-                totalBalance += depositInfo.interestAccruedNotCapitalized
-            }
-            account.balance = NSDecimalNumber(decimal: totalBalance).doubleValue
+            // MIGRATED: Balance calculation is now handled by BalanceCoordinator
+            // No need to recalculate account.balance here
         } else {
-            // Regular account - simple addition
-            account.balance += amount
+            // MIGRATED: Balance is now managed by BalanceCoordinator
+            // No need to update account.balance directly
         }
     }
 

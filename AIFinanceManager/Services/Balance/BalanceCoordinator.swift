@@ -73,12 +73,16 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         let accountBalances = accounts.map { AccountBalance.from($0) }
         store.registerAccounts(accountBalances)
 
-        // Initialize cache
-        let initialBalances = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0.balance) })
+        // Initialize cache with initial balances (or 0 if nil)
+        let initialBalances = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0.initialBalance ?? 0) })
         cache.setBalances(initialBalances)
+
+        // CRITICAL: Publish initial balances to trigger UI updates
+        self.balances = initialBalances
 
         #if DEBUG
         print("📝 Registered \(accounts.count) accounts")
+        print("✅ Published initial balances to UI")
         #endif
     }
 
@@ -434,28 +438,76 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
     /// Process add transaction
     private func processAddTransaction(_ transaction: Transaction) async {
-        guard let accountId = transaction.accountId,
-              var account = store.getAccount(accountId) else {
-            return
+        var updatedBalances = self.balances
+
+        // Process source account
+        if let accountId = transaction.accountId,
+           var account = store.getAccount(accountId) {
+            let currentBalance = account.currentBalance
+            let newBalance = engine.applyTransaction(transaction, to: currentBalance, for: account)
+
+            store.setBalance(newBalance, for: accountId, source: .transaction(transaction.id))
+            updatedBalances[accountId] = newBalance
+
+            #if DEBUG
+            print("✅ [BalanceCoordinator] Updated balance for source \(accountId): \(newBalance)")
+            #endif
         }
 
-        let currentBalance = account.currentBalance
-        let newBalance = engine.applyTransaction(transaction, to: currentBalance, for: account)
+        // For internal transfers, also process target account
+        if transaction.type == .internalTransfer,
+           let targetAccountId = transaction.targetAccountId,
+           var targetAccount = store.getAccount(targetAccountId) {
+            let currentBalance = targetAccount.currentBalance
+            let newBalance = engine.applyTransaction(transaction, to: currentBalance, for: targetAccount)
 
-        store.setBalance(newBalance, for: accountId, source: .transaction(transaction.id))
+            store.setBalance(newBalance, for: targetAccountId, source: .transaction(transaction.id))
+            updatedBalances[targetAccountId] = newBalance
+
+            #if DEBUG
+            print("✅ [BalanceCoordinator] Updated balance for target \(targetAccountId): \(newBalance)")
+            #endif
+        }
+
+        // CRITICAL: Publish entire dictionary to trigger SwiftUI update
+        self.balances = updatedBalances
     }
 
     /// Process remove transaction
     private func processRemoveTransaction(_ transaction: Transaction) async {
-        guard let accountId = transaction.accountId,
-              var account = store.getAccount(accountId) else {
-            return
+        var updatedBalances = self.balances
+
+        // Process source account
+        if let accountId = transaction.accountId,
+           var account = store.getAccount(accountId) {
+            let currentBalance = account.currentBalance
+            let newBalance = engine.revertTransaction(transaction, from: currentBalance, for: account)
+
+            store.setBalance(newBalance, for: accountId, source: .recalculation)
+            updatedBalances[accountId] = newBalance
+
+            #if DEBUG
+            print("✅ [BalanceCoordinator] Updated balance for source \(accountId): \(newBalance)")
+            #endif
         }
 
-        let currentBalance = account.currentBalance
-        let newBalance = engine.revertTransaction(transaction, from: currentBalance, for: account)
+        // For internal transfers, also process target account
+        if transaction.type == .internalTransfer,
+           let targetAccountId = transaction.targetAccountId,
+           var targetAccount = store.getAccount(targetAccountId) {
+            let currentBalance = targetAccount.currentBalance
+            let newBalance = engine.revertTransaction(transaction, from: currentBalance, for: targetAccount)
 
-        store.setBalance(newBalance, for: accountId, source: .recalculation)
+            store.setBalance(newBalance, for: targetAccountId, source: .recalculation)
+            updatedBalances[targetAccountId] = newBalance
+
+            #if DEBUG
+            print("✅ [BalanceCoordinator] Updated balance for target \(targetAccountId): \(newBalance)")
+            #endif
+        }
+
+        // CRITICAL: Publish entire dictionary to trigger SwiftUI update
+        self.balances = updatedBalances
     }
 
     /// Process update transaction
@@ -495,6 +547,13 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
         store.updateBalances(newBalances, source: .recalculation)
         cache.setBalances(newBalances)
+
+        // CRITICAL: Publish balances to trigger UI updates
+        self.balances = newBalances
+
+        #if DEBUG
+        print("✅ [BalanceCoordinator] Published \(newBalances.count) balances to UI")
+        #endif
     }
 
     /// Process recalculation for specific accounts
@@ -532,6 +591,18 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
         store.updateBalances(newBalances, source: .recalculation)
         cache.setBalances(newBalances)
+
+        // CRITICAL: Merge and publish balances to trigger UI updates
+        // SwiftUI only detects changes when the entire dictionary is replaced
+        var updatedBalances = self.balances
+        for (accountId, balance) in newBalances {
+            updatedBalances[accountId] = balance
+        }
+        self.balances = updatedBalances
+
+        #if DEBUG
+        print("✅ [BalanceCoordinator] Published \(newBalances.count) updated balances to UI")
+        #endif
     }
 }
 

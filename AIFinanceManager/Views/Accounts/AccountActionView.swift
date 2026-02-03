@@ -78,7 +78,8 @@ struct AccountActionView: View {
                         AccountSelectorView(
                             accounts: availableAccounts,
                             selectedAccountId: $selectedTargetAccountId,
-                            emptyStateMessage: String(localized: "transactionForm.noAccountsForTransfer")
+                            emptyStateMessage: String(localized: "transactionForm.noAccountsForTransfer"),
+                            balanceCoordinator: accountsViewModel.balanceCoordinator!
                         )
                     }
                     
@@ -490,6 +491,6 @@ struct AccountActionView: View {
     AccountActionView(
         transactionsViewModel: coordinator.transactionsViewModel,
         accountsViewModel: coordinator.accountsViewModel,
-        account: Account(name: "Main", balance: 1000, currency: "USD", bankLogo: .none)
+        account: Account(name: "Main", currency: "USD", bankLogo: .none, initialBalance: 1000)
     )
 }

@@ -118,7 +118,8 @@ struct AddTransactionModal: View {
                         accounts: coordinator.rankedAccounts(),
                         // ✅ PERFORMANCE FIX: Simple binding - no heavy computation in get
                         // Suggested account is set asynchronously in onAppear
-                        selectedAccountId: $coordinator.formData.accountId
+                        selectedAccountId: $coordinator.formData.accountId,
+                        balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
                     )
                 }
 

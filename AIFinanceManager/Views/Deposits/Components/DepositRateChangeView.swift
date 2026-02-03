@@ -84,7 +84,6 @@ struct DepositRateChangeView: View {
     let sampleAccount = Account(
         id: "test",
         name: "Test Deposit",
-        balance: 1000000,
         currency: "KZT",
         bankLogo: .halykBank,
         depositInfo: DepositInfo(
@@ -93,7 +92,8 @@ struct DepositRateChangeView: View {
             capitalizationEnabled: true,
             interestRateAnnual: Decimal(12.5),
             interestPostingDay: 15
-        )
+        ),
+        initialBalance: 1000000
     )
 
     DepositRateChangeView(

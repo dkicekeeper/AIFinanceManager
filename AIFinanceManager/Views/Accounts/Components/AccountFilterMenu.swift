@@ -10,7 +10,8 @@ import SwiftUI
 struct AccountFilterMenu: View {
     let accounts: [Account]
     @Binding var selectedAccountId: String?
-    
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
+
     var body: some View {
         Menu {
             Button(action: { selectedAccountId = nil }) {
@@ -22,7 +23,7 @@ struct AccountFilterMenu: View {
                     }
                 }
             }
-            
+
             ForEach(accounts) { account in
                 Button(action: { selectedAccountId = account.id }) {
                     HStack(spacing: AppSpacing.sm) {
@@ -30,7 +31,8 @@ struct AccountFilterMenu: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(account.name)
                                 .font(AppTypography.bodySmall)
-                            Text(Formatting.formatCurrency(account.balance, currency: account.currency))
+                            let balance = balanceCoordinator.balances[account.id] ?? 0
+                            Text(Formatting.formatCurrency(balance, currency: account.currency))
                                 .font(AppTypography.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -57,9 +59,12 @@ struct AccountFilterMenu: View {
 }
 
 #Preview {
-    AccountFilterMenu(
+    let coordinator = AppCoordinator()
+
+    return AccountFilterMenu(
         accounts: [],
-        selectedAccountId: .constant(nil)
+        selectedAccountId: .constant(nil),
+        balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
     )
     .padding()
 }

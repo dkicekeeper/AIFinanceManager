@@ -13,6 +13,7 @@ struct EditTransactionView: View {
     @ObservedObject var categoriesViewModel: CategoriesViewModel
     let accounts: [Account]
     let customCategories: [CustomCategory]
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
     @Environment(\.dismiss) var dismiss
     
     @State private var amountText: String = ""
@@ -92,18 +93,21 @@ struct EditTransactionView: View {
                         if transaction.type == .internalTransfer {
                             AccountSelectorView(
                                 accounts: accounts,
-                                selectedAccountId: $selectedAccountId
+                                selectedAccountId: $selectedAccountId,
+                                balanceCoordinator: balanceCoordinator
                             )
-                            
+
                             AccountSelectorView(
                                 accounts: accounts,
-                                selectedAccountId: $selectedTargetAccountId
+                                selectedAccountId: $selectedTargetAccountId,
+                                balanceCoordinator: balanceCoordinator
                             )
                             .padding(.top, AppSpacing.md)
                         } else {
                             AccountSelectorView(
                                 accounts: accounts,
-                                selectedAccountId: $selectedAccountId
+                                selectedAccountId: $selectedAccountId,
+                                balanceCoordinator: balanceCoordinator
                             )
                         }
                     }
@@ -378,13 +382,14 @@ struct EditTransactionView: View {
         category: "Food",
         accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
     )
-    NavigationView {
+    return NavigationView {
         EditTransactionView(
             transaction: sampleTransaction,
             transactionsViewModel: coordinator.transactionsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             accounts: coordinator.accountsViewModel.accounts,
-            customCategories: coordinator.categoriesViewModel.customCategories
+            customCategories: coordinator.categoriesViewModel.customCategories,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
     }
 }

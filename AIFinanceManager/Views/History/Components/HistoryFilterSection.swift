@@ -16,6 +16,7 @@ struct HistoryFilterSection: View {
     @Binding var selectedAccountFilter: String?
     @Binding var showingCategoryFilter: Bool
     let onTimeFilterTap: () -> Void
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -30,7 +31,8 @@ struct HistoryFilterSection: View {
                 // Account filter menu
                 AccountFilterMenu(
                     accounts: accounts,
-                    selectedAccountId: $selectedAccountFilter
+                    selectedAccountId: $selectedAccountFilter,
+                    balanceCoordinator: balanceCoordinator
                 )
 
                 // Category filter button
@@ -48,7 +50,9 @@ struct HistoryFilterSection: View {
 }
 
 #Preview {
-    HistoryFilterSection(
+    let coordinator = AppCoordinator()
+
+    return HistoryFilterSection(
         timeFilterDisplayName: "Этот месяц",
         accounts: [],
         selectedCategories: nil,
@@ -56,6 +60,7 @@ struct HistoryFilterSection: View {
         incomeCategories: ["Salary"],
         selectedAccountFilter: .constant(nil),
         showingCategoryFilter: .constant(false),
-        onTimeFilterTap: {}
+        onTimeFilterTap: {},
+        balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
     )
 }

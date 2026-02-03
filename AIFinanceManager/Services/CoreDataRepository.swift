@@ -210,7 +210,7 @@ final class CoreDataRepository: DataRepositoryProtocol {
                         if let existing = existingDict[account.id] {
                             // Update existing
                             existing.name = account.name
-                            existing.balance = account.balance
+                            existing.balance = account.initialBalance ?? 0
                             existing.currency = account.currency
                             existing.logo = account.bankLogo.rawValue
                             existing.isDeposit = account.isDeposit
@@ -374,7 +374,7 @@ final class CoreDataRepository: DataRepositoryProtocol {
             if let existing = existingDict[account.id] {
                 // Update existing
                 existing.name = account.name
-                existing.balance = account.balance
+                existing.balance = account.initialBalance ?? 0
                 existing.currency = account.currency
                 existing.logo = account.bankLogo.rawValue
                 existing.isDeposit = account.isDeposit

@@ -39,20 +39,20 @@ extension AccountEntity {
         return Account(
             id: id ?? "",
             name: name ?? "",
-            balance: balance,
             currency: currency ?? "KZT",
             bankLogo: bankLogo,
             depositInfo: depositInfo,
-            createdDate: createdAt
+            createdDate: createdAt,
+            initialBalance: balance
         )
     }
-    
+
     /// Create from domain model
     static func from(_ account: Account, context: NSManagedObjectContext) -> AccountEntity {
         let entity = AccountEntity(context: context)
         entity.id = account.id
         entity.name = account.name
-        entity.balance = account.balance
+        entity.balance = account.initialBalance ?? 0
         entity.currency = account.currency
         entity.logo = account.bankLogo.rawValue
         entity.isDeposit = account.isDeposit

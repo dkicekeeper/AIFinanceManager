@@ -120,7 +120,8 @@ struct VoiceInputConfirmationView: View {
                             validateAccount()
                         },
                         emptyStateMessage: String(localized: "voiceConfirmation.noAccounts"),
-                        warningMessage: accountWarning
+                        warningMessage: accountWarning,
+                        balanceCoordinator: accountsViewModel.balanceCoordinator!
                     )
                     
                     // 4. Категория

@@ -81,7 +81,8 @@ struct HistoryView: View {
                     incomeCategories: transactionsViewModel.incomeCategories,
                     selectedAccountFilter: $filterCoordinator.selectedAccountFilter,
                     showingCategoryFilter: $filterCoordinator.showingCategoryFilter,
-                    onTimeFilterTap: { showingTimeFilter = true }
+                    onTimeFilterTap: { showingTimeFilter = true },
+                    balanceCoordinator: accountsViewModel.balanceCoordinator!
                 )
             }
             .background(Color(.clear))

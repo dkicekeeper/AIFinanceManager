@@ -49,10 +49,11 @@ struct DepositEditView: View {
                 let newAccount = Account(
                     id: account?.id ?? UUID().uuidString,
                     name: name,
-                    balance: balance,
                     currency: currency,
                     bankLogo: selectedBankLogo,
-                    depositInfo: depositInfo
+                    depositInfo: depositInfo,
+                    shouldCalculateFromTransactions: false,
+                    initialBalance: balance
                 )
                 HapticManager.success()
                 onSave(newAccount)
@@ -173,7 +174,6 @@ struct DepositEditView: View {
     let sampleAccount = Account(
         id: "test",
         name: "Halyk Deposit",
-        balance: 1000000,
         currency: "KZT",
         bankLogo: .halykBank,
         depositInfo: DepositInfo(
@@ -182,10 +182,11 @@ struct DepositEditView: View {
             capitalizationEnabled: true,
             interestRateAnnual: Decimal(12.5),
             interestPostingDay: 15
-        )
+        ),
+        initialBalance: 1000000
     )
-    
-    return NavigationView {
+
+    NavigationView {
         DepositEditView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,

@@ -18,6 +18,7 @@ struct DepositTransferView: View {
     let transferDirection: DepositTransferDirection
     let onTransferSaved: (String, String, Double, String, String) -> Void // (fromId, toId, amount, date, description)
     let onComplete: () -> Void
+    @ObservedObject var balanceCoordinator: BalanceCoordinator
 
     @State private var selectedSourceAccountId: String? = nil
     @State private var amountText: String = ""
@@ -49,7 +50,8 @@ struct DepositTransferView: View {
                                         onTap: {
                                             HapticManager.selection()
                                             selectedSourceAccountId = sourceAccount.id
-                                        }
+                                        },
+                                        balanceCoordinator: balanceCoordinator
                                     )
                                 }
                             }
@@ -131,23 +133,29 @@ struct DepositTransferView: View {
 }
 
 #Preview("Deposit Transfer - Top Up") {
-    DepositTransferView(
+    let coordinator = AppCoordinator()
+
+    return DepositTransferView(
         accounts: [],
-        depositAccount: Account(id: "test", name: "Test Deposit", balance: 100000, currency: "KZT", bankLogo: .kaspi),
+        depositAccount: Account(id: "test", name: "Test Deposit", currency: "KZT", bankLogo: .kaspi, initialBalance: 100000),
         transferDirection: .toDeposit,
         onTransferSaved: { from, to, amount, date, desc in
         },
-        onComplete: {}
+        onComplete: {},
+        balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
     )
 }
 
 #Preview("Deposit Transfer - Transfer From") {
-    DepositTransferView(
+    let coordinator = AppCoordinator()
+
+    return DepositTransferView(
         accounts: [],
-        depositAccount: Account(id: "test", name: "Test Deposit", balance: 100000, currency: "KZT", bankLogo: .kaspi),
+        depositAccount: Account(id: "test", name: "Test Deposit", currency: "KZT", bankLogo: .kaspi, initialBalance: 100000),
         transferDirection: .fromDeposit,
         onTransferSaved: { from, to, amount, date, desc in
         },
-        onComplete: {}
+        onComplete: {},
+        balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
     )
 }

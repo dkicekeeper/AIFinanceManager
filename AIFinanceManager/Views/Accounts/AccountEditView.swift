@@ -36,9 +36,10 @@ struct AccountEditView: View {
                 let newAccount = Account(
                     id: account?.id ?? UUID().uuidString,
                     name: name,
-                    balance: parsedBalance,
                     currency: currency,
-                    bankLogo: selectedBankLogo
+                    bankLogo: selectedBankLogo,
+                    shouldCalculateFromTransactions: false,
+                    initialBalance: parsedBalance
                 )
                 onSave(newAccount)
             },
@@ -79,7 +80,9 @@ struct AccountEditView: View {
         .onAppear {
             if let account = account {
                 name = account.name
-                balanceText = String(format: "%.2f", account.balance)
+                // Используем initialBalance для редактирования (для manual счетов)
+                let balanceValue = account.initialBalance ?? 0
+                balanceText = String(format: "%.2f", balanceValue)
                 currency = account.currency
                 selectedBankLogo = account.bankLogo
                 isNameFocused = false
@@ -103,7 +106,7 @@ struct AccountEditView: View {
 #Preview("Account Edit View - New") {
     let coordinator = AppCoordinator()
 
-    return AccountEditView(
+    AccountEditView(
         accountsViewModel: coordinator.accountsViewModel,
         transactionsViewModel: coordinator.transactionsViewModel,
         account: nil,
@@ -117,12 +120,12 @@ struct AccountEditView: View {
     let sampleAccount = Account(
         id: "preview",
         name: "Test Account",
-        balance: 10000,
         currency: "USD",
-        bankLogo: .kaspi
+        bankLogo: .kaspi,
+        initialBalance: 10000
     )
 
-    return AccountEditView(
+    AccountEditView(
         accountsViewModel: coordinator.accountsViewModel,
         transactionsViewModel: coordinator.transactionsViewModel,
         account: sampleAccount,
