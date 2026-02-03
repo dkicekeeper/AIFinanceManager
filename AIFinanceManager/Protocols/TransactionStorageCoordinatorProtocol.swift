@@ -48,7 +48,7 @@ protocol TransactionStorageDelegate: AnyObject {
 
     // Dependencies
     var repository: DataRepositoryProtocol { get }
-    var accountBalanceService: AccountBalanceServiceProtocol { get }
+    // MIGRATED: accountBalanceService removed - using BalanceCoordinator instead
     var cacheManager: TransactionCacheManager { get }
 
     // Coordination methods

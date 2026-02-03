@@ -12,7 +12,7 @@ import CoreData
 import Combine
 
 @MainActor
-class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
+class AccountsViewModel: ObservableObject {
     // MARK: - Published Properties
 
     @Published var accounts: [Account] = []
@@ -340,26 +340,11 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
         }
     }
 
-    /// Синхронизировать балансы с обновленными счетами (вызывается из TransactionsViewModel)
-    func syncAccountBalances(_ updatedAccounts: [Account]) {
+    // MIGRATED: syncAccountBalances removed - now managed by BalanceCoordinator (Single Source of Truth)
+    // Balances are no longer synced manually between ViewModels
+    // All balance updates go through BalanceCoordinator.updateForTransaction()
 
-        // Создаем новый массив вместо модификации элементов на месте
-        // Это необходимо для корректной работы @Published property wrapper
-        var newAccounts = accounts
 
-        for updatedAccount in updatedAccounts {
-            if let index = newAccounts.firstIndex(where: { $0.id == updatedAccount.id }) {
-                newAccounts[index] = updatedAccount
-            } else {
-                // Аккаунт не найден - добавляем его (например, при импорте CSV)
-                newAccounts.append(updatedAccount)
-            }
-        }
-
-        // Переприсваиваем весь массив для триггера @Published
-        accounts = newAccounts
-    }
-    
     // MARK: - Intelligent Account Ranking
     
     /// Получить счета, отсортированные по частоте использования с учетом контекста

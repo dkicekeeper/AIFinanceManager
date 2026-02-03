@@ -248,10 +248,7 @@ struct RecordingIndicatorView: View {
         parser: VoiceInputParser(
             categoriesViewModel: CategoriesViewModel(),
             accountsViewModel: AccountsViewModel(),
-            transactionsViewModel: {
-                let accountsVM = AccountsViewModel()
-                return TransactionsViewModel(accountBalanceService: accountsVM)
-            }()
+            transactionsViewModel: TransactionsViewModel()
         )
     )
 }

@@ -57,13 +57,9 @@ class AppCoordinator: ObservableObject {
             cacheManager: nil  // Will be set later after TransactionsViewModel is created
         )
 
-        // 3. Transactions (depends on Accounts for balance updates)
+        // 3. Transactions (MIGRATED: now independent, uses BalanceCoordinator)
         // Create first to access currencyService and appSettings
-        // Use Protocol-based DI to prevent silent failures from weak references
-        self.transactionsViewModel = TransactionsViewModel(
-            repository: self.repository,
-            accountBalanceService: accountsViewModel  // AccountsViewModel conforms to AccountBalanceServiceProtocol
-        )
+        self.transactionsViewModel = TransactionsViewModel(repository: self.repository)
 
         // 3. Categories (depends on TransactionsViewModel for currency conversion)
         self.categoriesViewModel = CategoriesViewModel(

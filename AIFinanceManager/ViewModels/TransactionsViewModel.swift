@@ -49,7 +49,7 @@ class TransactionsViewModel: ObservableObject {
     // MARK: - Dependencies (Injected)
 
     let repository: DataRepositoryProtocol
-    let accountBalanceService: AccountBalanceServiceProtocol
+    // MIGRATED: accountBalanceService removed - using BalanceCoordinator instead
     // MIGRATED: balanceCalculationService removed - using BalanceCoordinator instead
 
     /// REFACTORED 2026-02-02: Single Source of Truth for recurring series
@@ -145,14 +145,10 @@ class TransactionsViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(
-        repository: DataRepositoryProtocol = UserDefaultsRepository(),
-        accountBalanceService: AccountBalanceServiceProtocol
-    ) {
+    init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
         self.repository = repository
-        self.accountBalanceService = accountBalanceService
+        // MIGRATED: accountBalanceService removed - using BalanceCoordinator instead
         // MIGRATED: balanceCalculationService removed - using BalanceCoordinator instead
-
         // MIGRATED: Performance optimization removed with BalanceCalculationService
 
         setupRecurringSeriesObserver()
@@ -280,11 +276,7 @@ class TransactionsViewModel: ObservableObject {
     func updateTransaction(_ transaction: Transaction) {
         guard let index = allTransactions.firstIndex(where: { $0.id == transaction.id }) else { return }
 
-        // CRITICAL: Clear calculated balance flags for affected accounts
-        let oldTransaction = allTransactions[index]
-        clearBalanceFlags(for: oldTransaction)
-        clearBalanceFlags(for: transaction)
-
+        // Balance updates handled by BalanceCoordinator (via crudService)
         crudService.updateTransaction(transaction)
     }
 
@@ -294,9 +286,7 @@ class TransactionsViewModel: ObservableObject {
             recurringOccurrences.removeAll { $0.id == occurrenceId }
         }
 
-        // CRITICAL: Clear calculated balance flags for affected accounts
-        clearBalanceFlags(for: transaction)
-
+        // Balance updates handled by BalanceCoordinator (via crudService)
         crudService.deleteTransaction(transaction)
     }
 
@@ -356,7 +346,7 @@ class TransactionsViewModel: ObservableObject {
             description: description,
             accounts: &accounts,
             allTransactions: &allTransactions,
-            accountBalanceService: accountBalanceService,
+            balanceCoordinator: balanceCoordinator,  // ✅ CRITICAL FIX: Pass BalanceCoordinator
             saveCallback: { [weak self] in self?.saveToStorageDebounced() }
         )
     }
@@ -862,11 +852,7 @@ class TransactionsViewModel: ObservableObject {
     }
 
     // MARK: - Private Helpers
-
-    private func clearBalanceFlags(for transaction: Transaction) {
-        // MIGRATED: accountsWithCalculatedInitialBalance removed - using BalanceCoordinator modes
-        // This method kept for backward compatibility but does nothing now
-    }
+    // MIGRATED: clearBalanceFlags removed - balance modes managed by BalanceCoordinator
 }
 
 // MARK: - Delegate Conformances

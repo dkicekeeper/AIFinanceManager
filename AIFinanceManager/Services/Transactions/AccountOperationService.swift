@@ -24,7 +24,7 @@ class AccountOperationService: AccountOperationServiceProtocol {
         description: String,
         accounts: inout [Account],
         allTransactions: inout [Transaction],
-        accountBalanceService: AccountBalanceServiceProtocol,
+        balanceCoordinator: BalanceCoordinatorProtocol?,
         saveCallback: () -> Void
     ) {
         guard
@@ -33,26 +33,15 @@ class AccountOperationService: AccountOperationServiceProtocol {
             amount > 0
         else { return }
 
-        // CRITICAL: Create new array instead of modifying in-place
-        // This is necessary for @Published property wrapper to trigger updates
-        var newAccounts = accounts
-
-        // Deduct from source account (with deposit handling)
-        deduct(from: &newAccounts[sourceIndex], amount: amount)
+        let sourceAccount = accounts[sourceIndex]
+        let targetAccount = accounts[targetIndex]
 
         // Calculate target amount with currency conversion
-        let targetAccount = newAccounts[targetIndex]
         let targetAmount = convertCurrency(
             amount: amount,
             from: currency,
             to: targetAccount.currency
         )
-
-        // Add to target account (with deposit handling)
-        add(to: &newAccounts[targetIndex], amount: targetAmount)
-
-        // Update accounts reference
-        accounts = newAccounts
 
         // Create transfer transaction
         let createdAt = Date().timeIntervalSince1970
@@ -66,9 +55,8 @@ class AccountOperationService: AccountOperationServiceProtocol {
         )
 
         // Store converted amounts for the transfer
-        let sourceAccount = newAccounts[sourceIndex]
         let convertedAmountForSource: Double? = (currency != sourceAccount.currency) ? amount : nil
-        let resolvedTargetCurrency = newAccounts[targetIndex].currency
+        let resolvedTargetCurrency = targetAccount.currency
 
         let transferTx = Transaction(
             id: id,
@@ -82,8 +70,8 @@ class AccountOperationService: AccountOperationServiceProtocol {
             subcategory: nil,
             accountId: sourceId,
             targetAccountId: targetId,
-            accountName: newAccounts[sourceIndex].name,
-            targetAccountName: newAccounts[targetIndex].name,
+            accountName: sourceAccount.name,
+            targetAccountName: targetAccount.name,
             targetCurrency: resolvedTargetCurrency,
             targetAmount: targetAmount,
             recurringSeriesId: nil,
@@ -91,66 +79,28 @@ class AccountOperationService: AccountOperationServiceProtocol {
             createdAt: createdAt
         )
 
-        // Insert transaction sorted by date (descending)
+        // Add transaction to list (sorted by date descending)
         allTransactions.append(transferTx)
         allTransactions.sort { $0.date > $1.date }
 
-        // Sync balances and save
-        accountBalanceService.syncAccountBalances(accounts)
+        // ✅ CRITICAL FIX: Update balances through BalanceCoordinator (Single Source of Truth)
+        if let coordinator = balanceCoordinator {
+            Task { @MainActor in
+                await coordinator.updateForTransaction(
+                    transferTx,
+                    operation: .add(transferTx),
+                    priority: .immediate
+                )
+            }
+        }
+
         saveCallback()
     }
 
-    func deduct(
-        from account: inout Account,
-        amount: Double
-    ) {
-        // MIGRATED: Balance is now managed by BalanceCoordinator
-        // No need to update account.balance directly
+    // MARK: - Private Helpers
 
-        if var depositInfo = account.depositInfo {
-            let amountDecimal = Decimal(amount)
-
-            if !depositInfo.capitalizationEnabled && depositInfo.interestAccruedNotCapitalized > 0 {
-                // Deduct from interest first, then principal
-                if amountDecimal <= depositInfo.interestAccruedNotCapitalized {
-                    depositInfo.interestAccruedNotCapitalized -= amountDecimal
-                } else {
-                    let remaining = amountDecimal - depositInfo.interestAccruedNotCapitalized
-                    depositInfo.interestAccruedNotCapitalized = 0
-                    depositInfo.principalBalance -= remaining
-                }
-            } else {
-                // Deduct directly from principal
-                depositInfo.principalBalance -= amountDecimal
-            }
-
-            account.depositInfo = depositInfo
-
-            // MIGRATED: Balance calculation is now handled by BalanceCoordinator
-            // No need to recalculate account.balance here
-        }
-    }
-
-    func add(
-        to account: inout Account,
-        amount: Double
-    ) {
-        if var depositInfo = account.depositInfo {
-            let amountDecimal = Decimal(amount)
-
-            // Add to principal balance
-            depositInfo.principalBalance += amountDecimal
-            account.depositInfo = depositInfo
-
-            // MIGRATED: Balance calculation is now handled by BalanceCoordinator
-            // No need to recalculate account.balance here
-        } else {
-            // MIGRATED: Balance is now managed by BalanceCoordinator
-            // No need to update account.balance directly
-        }
-    }
-
-    func convertCurrency(
+    /// Convert currency internally (not exposed in protocol)
+    private func convertCurrency(
         amount: Double,
         from fromCurrency: String,
         to toCurrency: String

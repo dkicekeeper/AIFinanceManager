@@ -183,8 +183,8 @@ class TransactionStorageCoordinator: TransactionStorageCoordinatorProtocol {
 
         delegate.categoryRules = delegate.repository.loadCategoryRules()
 
-        // Load accounts from AccountBalanceService (single source of truth)
-        delegate.accounts = delegate.accountBalanceService.accounts
+        // MIGRATED: Load accounts directly from repository
+        delegate.accounts = delegate.repository.loadAccounts()
 
         // Note: Initial balances will be calculated after ALL transactions are loaded
         // This happens asynchronously in the background task above
