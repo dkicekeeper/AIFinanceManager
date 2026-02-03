@@ -304,7 +304,16 @@ final class BalanceStore: ObservableObject {
 
     /// Get initial balance for account
     func getInitialBalance(for accountId: String) -> Double? {
-        return accounts[accountId]?.initialBalance
+        let balance = accounts[accountId]?.initialBalance
+
+        #if DEBUG
+        print("🔍 [BalanceStore] getInitialBalance for \(accountId):")
+        print("   Account exists: \(accounts[accountId] != nil)")
+        print("   InitialBalance: \(balance?.description ?? "nil")")
+        print("   Mode: \(calculationModes[accountId] ?? .fromInitialBalance)")
+        #endif
+
+        return balance
     }
 
     /// Clear initial balance for account

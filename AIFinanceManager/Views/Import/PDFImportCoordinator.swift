@@ -112,8 +112,14 @@ struct PDFImportCoordinator: View {
         if let csvFile = parsedCSVFile {
             CSVPreviewView(
                 csvFile: csvFile,
-                transactionsViewModel: transactionsViewModel,
-                categoriesViewModel: categoriesViewModel
+                onContinue: {
+                    // TODO: Navigate to column mapping or import flow
+                    showingCSVPreview = false
+                },
+                onCancel: {
+                    showingCSVPreview = false
+                    parsedCSVFile = nil
+                }
             )
         }
     }

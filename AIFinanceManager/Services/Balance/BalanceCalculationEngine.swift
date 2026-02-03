@@ -50,6 +50,15 @@ struct BalanceCalculationEngine {
         transactions: [Transaction],
         mode: BalanceMode
     ) -> Double {
+        #if DEBUG
+        print("🧮 [BalanceEngine] calculateBalance:")
+        print("   AccountID: \(account.accountId)")
+        print("   Mode: \(mode)")
+        print("   InitialBalance: \(account.initialBalance?.description ?? "nil")")
+        print("   CurrentBalance: \(account.currentBalance)")
+        print("   Transactions count: \(transactions.count)")
+        #endif
+
         // Deposits have their own balance calculation
         if account.isDeposit, let depositInfo = account.depositInfo {
             return calculateDepositBalance(depositInfo: depositInfo)
@@ -59,21 +68,37 @@ struct BalanceCalculationEngine {
         case .preserveImported:
             // For imported accounts, balance is already correct
             // New transactions should be applied incrementally
+            #if DEBUG
+            print("   ✅ Using preserveImported mode - returning current balance: \(account.currentBalance)")
+            #endif
             return account.currentBalance
 
         case .fromInitialBalance:
             // Calculate from initial balance + transactions
             guard let initialBalance = account.initialBalance else {
                 // No initial balance set, return current
+                #if DEBUG
+                print("   ⚠️ No initial balance set - returning current balance: \(account.currentBalance)")
+                #endif
                 return account.currentBalance
             }
 
-            return calculateBalanceFromInitial(
+            #if DEBUG
+            print("   🧮 Calculating from initial balance: \(initialBalance)")
+            #endif
+
+            let calculated = calculateBalanceFromInitial(
                 initialBalance: initialBalance,
                 accountId: account.accountId,
                 accountCurrency: account.currency,
                 transactions: transactions
             )
+
+            #if DEBUG
+            print("   ✅ Calculated balance: \(calculated)")
+            #endif
+
+            return calculated
         }
     }
 

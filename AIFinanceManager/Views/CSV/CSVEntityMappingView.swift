@@ -42,7 +42,9 @@ struct CSVEntityMappingView: View {
                                     set: { accountMappings[accountValue] = $0 }
                                 ),
                                 onCreateNew: {
-                                    createAccount(name: accountValue)
+                                    Task {
+                                        await createAccount(name: accountValue)
+                                    }
                                 }
                             )) {
                                 HStack {
@@ -202,8 +204,8 @@ struct CSVEntityMappingView: View {
         uniqueIncomeCategories = Array(incomeCategorySet).sorted()
     }
     
-    private func createAccount(name: String) {
-        accountsViewModel.addAccount(name: name, balance: 0, currency: "KZT", bankLogo: .none)
+    private func createAccount(name: String) async {
+        await accountsViewModel.addAccount(name: name, balance: 0, currency: "KZT", bankLogo: .none)
         if let account = accountsViewModel.accounts.first(where: { $0.name == name }) {
             accountMappings[name] = account.id
         }

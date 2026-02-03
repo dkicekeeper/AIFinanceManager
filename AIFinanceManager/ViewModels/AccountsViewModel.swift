@@ -39,7 +39,17 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
+        #if DEBUG
+        print("🔄 [AccountsVM] reloadFromStorage called")
+        print("   📊 Current accounts count: \(accounts.count)")
+        #endif
+
         accounts = repository.loadAccounts()
+
+        #if DEBUG
+        print("   📊 After reload accounts count: \(accounts.count)")
+        print("   ⚠️ About to call syncInitialBalancesToCoordinator - THIS WILL MARK ALL AS MANUAL")
+        #endif
 
         // MIGRATED: Sync accounts with BalanceCoordinator after reload
         syncInitialBalancesToCoordinator()
@@ -47,17 +57,44 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     
     // MARK: - Account CRUD Operations
     
-    func addAccount(name: String, balance: Double, currency: String, bankLogo: BankLogo = .none) {
-        let account = Account(name: name, balance: balance, currency: currency, bankLogo: bankLogo)
+    func addAccount(name: String, balance: Double, currency: String, bankLogo: BankLogo = .none, shouldCalculateFromTransactions: Bool = false) async {
+        #if DEBUG
+        print("🔍 [AccountsVM] addAccount called:")
+        print("   📝 Name: \(name)")
+        print("   💰 Balance: \(balance)")
+        print("   🧮 shouldCalculateFromTransactions: \(shouldCalculateFromTransactions)")
+        #endif
+
+        let account = Account(
+            name: name,
+            balance: 0,  // DEPRECATED - не сохраняем рассчитанный баланс
+            currency: currency,
+            bankLogo: bankLogo,
+            shouldCalculateFromTransactions: shouldCalculateFromTransactions,
+            initialBalance: shouldCalculateFromTransactions ? 0.0 : balance
+        )
         accounts.append(account)
         saveAccounts()
 
-        // NEW: Register account with BalanceCoordinator
+        // NEW: Register account with BalanceCoordinator (now synchronous)
         if let coordinator = balanceCoordinator {
-            Task {
-                await coordinator.registerAccounts([account])
-                await coordinator.setInitialBalance(balance, for: account.id)
+            await coordinator.registerAccounts([account])
+            // Используем initialBalance вместо balance
+            let initialBal = account.initialBalance ?? 0.0
+            await coordinator.setInitialBalance(initialBal, for: account.id)
+
+            // If shouldCalculateFromTransactions is true, DON'T mark as manual
+            // This allows the account balance to be calculated from transactions
+            if !shouldCalculateFromTransactions {
+                #if DEBUG
+                print("   ✏️ [AccountsVM] Marking as manual: \(account.id)")
+                #endif
                 await coordinator.markAsManual(account.id)
+            } else {
+                #if DEBUG
+                print("   🧮 [AccountsVM] NOT marking as manual - will calculate from transactions: \(account.id)")
+                print("   ✅ [AccountsVM] Initial balance set to: \(balance)")
+                #endif
             }
         }
     }
@@ -168,10 +205,12 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
         let balance = NSDecimalNumber(decimal: principalBalance).doubleValue
         let account = Account(
             name: name,
-            balance: balance,
+            balance: 0,  // DEPRECATED - не сохраняем рассчитанный баланс
             currency: currency,
             bankLogo: bankLogo,
-            depositInfo: depositInfo
+            depositInfo: depositInfo,
+            shouldCalculateFromTransactions: false,  // Депозиты всегда manual
+            initialBalance: balance
         )
 
         accounts.append(account)
@@ -226,18 +265,42 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     private func syncInitialBalancesToCoordinator() {
         guard let coordinator = balanceCoordinator else { return }
 
+        #if DEBUG
+        print("🔄 [AccountsVM] syncInitialBalancesToCoordinator called")
+        print("   📊 Syncing \(accounts.count) accounts")
+        #endif
+
         Task {
             // Register all accounts
             await coordinator.registerAccounts(accounts)
 
-            // Set initial balances from account.balance and mark as manual mode
+            // Set initial balances and modes based on account configuration
             for account in accounts {
-                await coordinator.setInitialBalance(account.balance, for: account.id)
-                await coordinator.markAsManual(account.id)
+                #if DEBUG
+                print("   🔍 [AccountsVM] Processing account: \(account.name)")
+                print("      💰 Initial Balance: \(account.initialBalance ?? 0)")
+                print("      🧮 shouldCalculateFromTransactions: \(account.shouldCalculateFromTransactions)")
+                #endif
+
+                // Используем initialBalance вместо balance
+                let initialBal = account.initialBalance ?? 0.0
+                await coordinator.setInitialBalance(initialBal, for: account.id)
+
+                // Only mark as manual if shouldCalculateFromTransactions is false
+                if !account.shouldCalculateFromTransactions {
+                    await coordinator.markAsManual(account.id)
+                    #if DEBUG
+                    print("      ✏️ [AccountsVM] Marked as MANUAL")
+                    #endif
+                } else {
+                    #if DEBUG
+                    print("      🧮 [AccountsVM] Will calculate from transactions")
+                    #endif
+                }
             }
 
             #if DEBUG
-            print("✅ Synced \(accounts.count) accounts to BalanceCoordinator")
+            print("✅ [AccountsVM] Synced \(accounts.count) accounts to BalanceCoordinator")
             #endif
         }
     }

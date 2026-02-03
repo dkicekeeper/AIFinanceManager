@@ -234,13 +234,15 @@ struct DepositInfo: Codable, Equatable {
 struct Account: Identifiable, Codable, Equatable {
     let id: String
     var name: String
-    var balance: Double
+    var balance: Double  // DEPRECATED - use BalanceCoordinator.balances instead
     var currency: String
     var bankLogo: BankLogo
     var depositInfo: DepositInfo? // Опциональная информация о депозите (nil для обычных счетов)
     var createdDate: Date?
+    var shouldCalculateFromTransactions: Bool // Режим расчета баланса: true = из транзакций, false = manual
+    var initialBalance: Double?  // Начальный баланс для manual счетов (nil для shouldCalculateFromTransactions=true)
 
-    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String, bankLogo: BankLogo = .none, depositInfo: DepositInfo? = nil, createdDate: Date? = nil) {
+    init(id: String = UUID().uuidString, name: String, balance: Double, currency: String, bankLogo: BankLogo = .none, depositInfo: DepositInfo? = nil, createdDate: Date? = nil, shouldCalculateFromTransactions: Bool = false, initialBalance: Double? = nil) {
         self.id = id
         self.name = name
         self.balance = balance
@@ -248,11 +250,14 @@ struct Account: Identifiable, Codable, Equatable {
         self.bankLogo = bankLogo
         self.depositInfo = depositInfo
         self.createdDate = createdDate ?? Date()
+        self.shouldCalculateFromTransactions = shouldCalculateFromTransactions
+        // Если initialBalance не указан, используем balance
+        self.initialBalance = initialBalance ?? (shouldCalculateFromTransactions ? 0.0 : balance)
     }
 
     // Кастомный decoder для обратной совместимости со старыми данными
     enum CodingKeys: String, CodingKey {
-        case id, name, balance, currency, bankLogo, depositInfo, createdDate
+        case id, name, balance, currency, bankLogo, depositInfo, createdDate, shouldCalculateFromTransactions, initialBalance
     }
 
     init(from decoder: Decoder) throws {
@@ -264,6 +269,16 @@ struct Account: Identifiable, Codable, Equatable {
         bankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) ?? .none
         depositInfo = try container.decodeIfPresent(DepositInfo.self, forKey: .depositInfo)
         createdDate = try container.decodeIfPresent(Date.self, forKey: .createdDate)
+        // Для обратной совместимости: если поля нет, используем false (manual mode)
+        shouldCalculateFromTransactions = try container.decodeIfPresent(Bool.self, forKey: .shouldCalculateFromTransactions) ?? false
+
+        // Для обратной совместимости: если initialBalance не сохранен, берем из balance
+        if let savedInitialBalance = try container.decodeIfPresent(Double.self, forKey: .initialBalance) {
+            initialBalance = savedInitialBalance
+        } else {
+            // Старые данные: используем balance как initialBalance
+            initialBalance = shouldCalculateFromTransactions ? 0.0 : balance
+        }
     }
 
     func encode(to encoder: Encoder) throws {
@@ -275,6 +290,8 @@ struct Account: Identifiable, Codable, Equatable {
         try container.encode(bankLogo, forKey: .bankLogo)
         try container.encodeIfPresent(depositInfo, forKey: .depositInfo)
         try container.encodeIfPresent(createdDate, forKey: .createdDate)
+        try container.encode(shouldCalculateFromTransactions, forKey: .shouldCalculateFromTransactions)
+        try container.encodeIfPresent(initialBalance, forKey: .initialBalance)
     }
     
     // Computed property для проверки, является ли счет депозитом

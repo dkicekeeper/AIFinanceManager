@@ -3,6 +3,17 @@
 //  AIFinanceManager
 //
 //  Created on 2024
+//  DEPRECATED: 2026-02-03 - Use CSVImportCoordinator instead
+//
+//  This service has been replaced by a modular architecture with:
+//  - CSVImportCoordinator (orchestration)
+//  - CSVParsingService (parsing)
+//  - CSVValidationService (validation)
+//  - EntityMappingService (entity resolution)
+//  - TransactionConverterService (conversion)
+//  - CSVStorageCoordinator (storage)
+//
+//  Migration Guide: See docs/CSV_IMPORT_MIGRATION_GUIDE.md
 //
 
 import Foundation
@@ -46,7 +57,13 @@ struct TransactionFingerprint: Hashable {
     }
 }
 
+/// DEPRECATED: Use CSVImportCoordinator instead
+/// This monolithic service (784 LOC) has been replaced by a modular architecture
+/// See CSVImportCoordinator.create(for:) for the new API
+@available(*, deprecated, message: "Use CSVImportCoordinator.create(for:) instead. See docs/CSV_IMPORT_MIGRATION_GUIDE.md")
 class CSVImportService {
+
+    @available(*, deprecated, message: "Use CSVImportCoordinator.importTransactions() instead")
     static func importTransactions(
         csvFile: CSVFile,
         columnMapping: CSVColumnMapping,
@@ -275,25 +292,35 @@ class CSVImportService {
                     createdAccountsDuringImport[normalizedAccountName] = account.id
                 } else if let accountsVM = accountsViewModel {
                     // Автоматически создаем счет
-                    await MainActor.run {
-                        // Проверяем еще раз перед созданием (на случай параллельного создания)
-                        if let existingAccount = findAccount(by: effectiveAccountValue, in: accountsVM, in: transactionsViewModel) {
-                            accountId = existingAccount.id
-                            createdAccountsDuringImport[normalizedAccountName] = existingAccount.id
-                        } else {
-                            accountsVM.addAccount(
-                                name: effectiveAccountValue,
-                                balance: 0.0,
-                                currency: currency,
-                                bankLogo: .none
-                            )
-                            createdAccounts += 1
-                            
-                            // Получаем ID только что созданного счета
-                            if let newAccount = accountsVM.accounts.first(where: { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedAccountName }) {
-                                accountId = newAccount.id
-                                createdAccountsDuringImport[normalizedAccountName] = newAccount.id
-                            }
+                    // Проверяем еще раз перед созданием (на случай параллельного создания)
+                    if let existingAccount = findAccount(by: effectiveAccountValue, in: accountsVM, in: transactionsViewModel) {
+                        accountId = existingAccount.id
+                        createdAccountsDuringImport[normalizedAccountName] = existingAccount.id
+                    } else {
+                        #if DEBUG
+                        print("🏦 [CSVImport] Creating NEW account during import:")
+                        print("   📝 Name: \(effectiveAccountValue)")
+                        print("   💰 Balance: 0.0")
+                        print("   🧮 shouldCalculateFromTransactions: TRUE")
+                        #endif
+
+                        await accountsVM.addAccount(
+                            name: effectiveAccountValue,
+                            balance: 0.0,
+                            currency: currency,
+                            bankLogo: .none,
+                            shouldCalculateFromTransactions: true
+                        )
+                        createdAccounts += 1
+
+                        #if DEBUG
+                        print("   ✅ [CSVImport] Account registration completed, ready for balance calculation")
+                        #endif
+
+                        // Получаем ID только что созданного счета
+                        if let newAccount = accountsVM.accounts.first(where: { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedAccountName }) {
+                            accountId = newAccount.id
+                            createdAccountsDuringImport[normalizedAccountName] = newAccount.id
                         }
                     }
                 }
@@ -327,25 +354,35 @@ class CSVImportService {
                     createdAccountsDuringImport[normalizedTargetAccountName] = account.id
                 } else if let accountsVM = accountsViewModel {
                     // Автоматически создаем счет получателя, если не выбран в маппинге
-                    await MainActor.run {
-                        // Проверяем еще раз перед созданием (на случай параллельного создания)
-                        if let existingAccount = findAccount(by: targetAccountValue, in: accountsVM, in: transactionsViewModel) {
-                            targetAccountId = existingAccount.id
-                            createdAccountsDuringImport[normalizedTargetAccountName] = existingAccount.id
-                        } else {
-                            accountsVM.addAccount(
-                                name: targetAccountValue,
-                                balance: 0.0,
-                                currency: targetAccountCurrency,
-                                bankLogo: .none
-                            )
-                            createdAccounts += 1
-                            
-                            // Получаем ID только что созданного счета
-                            if let newAccount = accountsVM.accounts.first(where: { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedTargetAccountName }) {
-                                targetAccountId = newAccount.id
-                                createdAccountsDuringImport[normalizedTargetAccountName] = newAccount.id
-                            }
+                    // Проверяем еще раз перед созданием (на случай параллельного создания)
+                    if let existingAccount = findAccount(by: targetAccountValue, in: accountsVM, in: transactionsViewModel) {
+                        targetAccountId = existingAccount.id
+                        createdAccountsDuringImport[normalizedTargetAccountName] = existingAccount.id
+                    } else {
+                        #if DEBUG
+                        print("🏦 [CSVImport] Creating NEW target account during import:")
+                        print("   📝 Name: \(targetAccountValue)")
+                        print("   💰 Balance: 0.0")
+                        print("   🧮 shouldCalculateFromTransactions: TRUE")
+                        #endif
+
+                        await accountsVM.addAccount(
+                            name: targetAccountValue,
+                            balance: 0.0,
+                            currency: targetAccountCurrency,
+                            bankLogo: .none,
+                            shouldCalculateFromTransactions: true
+                        )
+                        createdAccounts += 1
+
+                        #if DEBUG
+                        print("   ✅ [CSVImport] Target account registration completed")
+                        #endif
+
+                        // Получаем ID только что созданного счета
+                        if let newAccount = accountsVM.accounts.first(where: { $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedTargetAccountName }) {
+                            targetAccountId = newAccount.id
+                            createdAccountsDuringImport[normalizedTargetAccountName] = newAccount.id
                         }
                     }
                 }
@@ -653,25 +690,11 @@ class CSVImportService {
                 // Сохраняем обновленные балансы счетов одним батчем (синхронно для импорта)
                 accountsVM.saveAllAccountsSync()
 
-                // 🔧 FIX: Register all accounts in BalanceCoordinator after CSV import
-                // This ensures BalanceCoordinator knows about imported accounts and their initial balances
-                if let balanceCoordinator = transactionsViewModel.balanceCoordinator {
-                    Task {
-                        // Register all accounts
-                        await balanceCoordinator.registerAccounts(accountsVM.accounts)
-
-                        // Set initial balances and mark as manual mode
-                        for account in accountsVM.accounts {
-                            // CRITICAL FIX: Use account.balance as fallback if initialBalance not set
-                            // For CSV-imported accounts, initial balance may not be in initialAccountBalances dict yet
-                            let initialBalance = accountsVM.getInitialBalance(for: account.id) ?? account.balance
-                            await balanceCoordinator.setInitialBalance(initialBalance, for: account.id)
-
-                            // Mark as manual mode (fromInitialBalance) so transactions are applied correctly
-                            await balanceCoordinator.markAsManual(account.id)
-                        }
-                    }
-                }
+                // NOTE: We don't need to register accounts or set balances here because:
+                // 1. Accounts are already registered during import in AccountsViewModel.addAccount()
+                // 2. shouldCalculateFromTransactions: true was set, so they will calculate from transactions
+                // 3. Calling markAsManual() here would override that setting and break balance calculation
+                // 4. BalanceCoordinator already has the accounts and will calculate balances automatically
             }
 
             // ОПТИМИЗАЦИЯ: Убран избыточный вызов saveToStorageSync()

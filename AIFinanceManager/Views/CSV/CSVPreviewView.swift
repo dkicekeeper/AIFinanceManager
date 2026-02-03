@@ -3,145 +3,164 @@
 //  AIFinanceManager
 //
 //  Created on 2024
+//  Refactored: 2026-02-03 (Phase 4 - Props + Callbacks)
 //
 
 import SwiftUI
 
+/// CSV file preview with stats and header/data display
+/// Refactored to use Props + Callbacks pattern (no ViewModel dependencies)
 struct CSVPreviewView: View {
+    // MARK: - Props
+
     let csvFile: CSVFile
-    let transactionsViewModel: TransactionsViewModel
-    let categoriesViewModel: CategoriesViewModel?
-    @Environment(\.dismiss) var dismiss
-    @State private var showingMapping = false
-    
-    init(csvFile: CSVFile, transactionsViewModel: TransactionsViewModel, categoriesViewModel: CategoriesViewModel? = nil) {
-        self.csvFile = csvFile
-        self.transactionsViewModel = transactionsViewModel
-        self.categoriesViewModel = categoriesViewModel
-    }
-    
+    let onContinue: () -> Void
+    let onCancel: () -> Void
+
+    // MARK: - Body
+
     var body: some View {
         NavigationView {
             VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                // Информация о файле
-                VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                    Text("Информация о файле")
-                        .font(AppTypography.h4)
+                // File information card
+                fileInfoSection
 
-                    HStack {
-                        Text("Колонок:")
-                        Spacer()
-                        Text("\(csvFile.headers.count)")
-                    }
+                // Headers section
+                headersSection
 
-                    HStack {
-                        Text("Строк данных:")
-                        Spacer()
-                        Text("\(csvFile.rowCount)")
-                    }
-                }
-                .cardContentPadding()
-                .background(AppColors.surface)
-                .cornerRadius(AppRadius.card)
-
-                // Заголовки
-                VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                    Text("Колонки в файле")
-                        .font(AppTypography.h4)
-
-                    ScrollView(.horizontal, showsIndicators: true) {
-                        HStack(spacing: AppSpacing.sm) {
-                            ForEach(csvFile.headers, id: \.self) { header in
-                                Text(header)
-                                    .font(AppTypography.caption)
-                                    .padding(AppSpacing.sm)
-                                    .background(AppColors.accent.opacity(0.2))
-                                    .cornerRadius(AppRadius.compact)
-                            }
-                        }
-                    }
-                }
-                .cardContentPadding()
-
-                // Превью данных
-                VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                    Text("Превью данных (первые \(csvFile.preview.count) строк)")
-                        .font(AppTypography.h4)
-
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                            ForEach(Array(csvFile.preview.enumerated()), id: \.offset) { index, row in
-                                HStack(alignment: .top) {
-                                    Text("\(index + 1).")
-                                        .font(AppTypography.caption)
-                                        .foregroundColor(AppColors.textSecondary)
-                                        .frame(width: 30, alignment: .leading)
-
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: AppSpacing.sm) {
-                                            ForEach(Array(row.enumerated()), id: \.offset) { colIndex, value in
-                                                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                                                    Text(csvFile.headers[safe: colIndex] ?? "?")
-                                                        .font(AppTypography.caption2)
-                                                        .foregroundColor(AppColors.textSecondary)
-                                                    Text(value.isEmpty ? "(пусто)" : value)
-                                                        .font(AppTypography.caption)
-                                                        .lineLimit(2)
-                                                }
-                                                .padding(AppSpacing.compact)
-                                                .frame(width: AppSize.subscriptionCardWidth, alignment: .leading)
-                                                .background(AppColors.surface)
-                                                .cornerRadius(AppRadius.xs)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .frame(maxHeight: AppSize.previewScrollHeight)
-                }
-                .cardContentPadding()
+                // Data preview section
+                dataPreviewSection
 
                 Spacer()
 
-                Button(action: {
-                    showingMapping = true
-                }) {
-                    Text("Продолжить")
-                        .frame(maxWidth: .infinity)
-                        .padding(AppSpacing.md)
-                        .background(AppColors.accent)
-                        .foregroundColor(.white)
-                        .cornerRadius(AppRadius.button)
-                }
-                .cardContentPadding()
+                // Continue button
+                continueButton
             }
-            .navigationTitle("Превью CSV")
+            .navigationTitle(String(localized: "csvImport.preview.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
-                        dismiss()
+                        onCancel()
                     } label: {
                         Image(systemName: "xmark")
                     }
                 }
             }
-            .sheet(isPresented: $showingMapping) {
-                CSVColumnMappingView(
-                    csvFile: csvFile,
-                    transactionsViewModel: transactionsViewModel,
-                    categoriesViewModel: categoriesViewModel,
-                    onComplete: {
-                        // Закрываем все модалки после успешного импорта
-                        dismiss()
+        }
+    }
+
+    // MARK: - Sections
+
+    private var fileInfoSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Text(String(localized: "csvImport.preview.fileInfo"))
+                .font(AppTypography.h4)
+
+            HStack {
+                Text(String(localized: "csvImport.preview.columns"))
+                Spacer()
+                Text("\(csvFile.headers.count)")
+                    .font(AppTypography.bodyLarge)
+            }
+
+            HStack {
+                Text(String(localized: "csvImport.preview.rows"))
+                Spacer()
+                Text("\(csvFile.rowCount)")
+                    .font(AppTypography.bodyLarge)
+            }
+        }
+        .cardContentPadding()
+        .background(AppColors.surface)
+        .cornerRadius(AppRadius.card)
+    }
+
+    private var headersSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Text(String(localized: "csvImport.preview.headersTitle"))
+                .font(AppTypography.h4)
+
+            ScrollView(.horizontal, showsIndicators: true) {
+                HStack(spacing: AppSpacing.sm) {
+                    ForEach(csvFile.headers, id: \.self) { header in
+                        Text(header)
+                            .font(AppTypography.caption)
+                            .padding(AppSpacing.sm)
+                            .background(AppColors.accent.opacity(0.2))
+                            .cornerRadius(AppRadius.compact)
                     }
-                )
+                }
+            }
+        }
+        .cardContentPadding()
+    }
+
+    private var dataPreviewSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Text(String(
+                format: String(localized: "csvImport.preview.dataPreview"),
+                csvFile.preview.count
+            ))
+            .font(AppTypography.h4)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                    ForEach(Array(csvFile.preview.enumerated()), id: \.offset) { index, row in
+                        previewRow(index: index, row: row)
+                    }
+                }
+            }
+            .frame(maxHeight: AppSize.previewScrollHeight)
+        }
+        .cardContentPadding()
+    }
+
+    private func previewRow(index: Int, row: [String]) -> some View {
+        HStack(alignment: .top) {
+            Text("\(index + 1).")
+                .font(AppTypography.caption)
+                .foregroundColor(AppColors.textSecondary)
+                .frame(width: 30, alignment: .leading)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppSpacing.sm) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { colIndex, value in
+                        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                            Text(csvFile.headers[safe: colIndex] ?? "?")
+                                .font(AppTypography.caption2)
+                                .foregroundColor(AppColors.textSecondary)
+                            Text(value.isEmpty
+                                ? String(localized: "csvImport.preview.empty")
+                                : value
+                            )
+                            .font(AppTypography.caption)
+                            .lineLimit(2)
+                        }
+                        .padding(AppSpacing.compact)
+                        .frame(width: AppSize.subscriptionCardWidth, alignment: .leading)
+                        .background(AppColors.surface)
+                        .cornerRadius(AppRadius.xs)
+                    }
+                }
             }
         }
     }
+
+    private var continueButton: some View {
+        Button(action: onContinue) {
+            Text(String(localized: "button.continue"))
+                .frame(maxWidth: .infinity)
+                .padding(AppSpacing.md)
+                .background(AppColors.accent)
+                .foregroundColor(.white)
+                .cornerRadius(AppRadius.button)
+        }
+        .cardContentPadding()
+    }
 }
+
+// MARK: - Collection Extension
 
 extension Collection {
     subscript(safe index: Index) -> Element? {

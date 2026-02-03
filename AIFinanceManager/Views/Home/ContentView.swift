@@ -362,14 +362,16 @@ struct ContentView: View {
 
     private func handleAccountSave(_ account: Account) {
         HapticManager.success()
-        accountsViewModel.addAccount(
-            name: account.name,
-            balance: account.balance,
-            currency: account.currency,
-            bankLogo: account.bankLogo
-        )
-        viewModel.syncAccountsFrom(accountsViewModel)
-        showingAddAccount = false
+        Task {
+            await accountsViewModel.addAccount(
+                name: account.name,
+                balance: account.balance,
+                currency: account.currency,
+                bankLogo: account.bankLogo
+            )
+            viewModel.syncAccountsFrom(accountsViewModel)
+            showingAddAccount = false
+        }
     }
 
     // MARK: - Combine Publishers

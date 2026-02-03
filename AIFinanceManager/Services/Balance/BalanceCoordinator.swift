@@ -473,7 +473,15 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         var newBalances: [String: Double] = [:]
 
         for account in accounts {
-            let accountBalance = AccountBalance.from(account)
+            // Get AccountBalance from store (contains initialBalance)
+            // Don't create new AccountBalance from Account model!
+            guard let accountBalance = store.getAccount(account.id) else {
+                #if DEBUG
+                print("⚠️ [BalanceCoordinator] Account not found in store: \(account.id)")
+                #endif
+                continue
+            }
+
             let mode = store.getCalculationMode(for: account.id)
 
             let calculatedBalance = engine.calculateBalance(
@@ -502,7 +510,15 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
                 continue
             }
 
-            let accountBalance = AccountBalance.from(account)
+            // Get AccountBalance from store (contains initialBalance)
+            // Don't create new AccountBalance from Account model!
+            guard let accountBalance = store.getAccount(account.id) else {
+                #if DEBUG
+                print("⚠️ [BalanceCoordinator] Account not found in store: \(account.id)")
+                #endif
+                continue
+            }
+
             let mode = store.getCalculationMode(for: account.id)
 
             let calculatedBalance = engine.calculateBalance(

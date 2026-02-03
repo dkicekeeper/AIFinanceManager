@@ -97,9 +97,11 @@ struct AccountsManagementView: View {
                 account: nil,
                 onSave: { account in
                     HapticManager.success()
-                    accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
-                    transactionsViewModel.syncAccountsFrom(accountsViewModel)
-                    showingAddAccount = false
+                    Task {
+                        await accountsViewModel.addAccount(name: account.name, balance: account.balance, currency: account.currency, bankLogo: account.bankLogo)
+                        transactionsViewModel.syncAccountsFrom(accountsViewModel)
+                        showingAddAccount = false
+                    }
                 },
                 onCancel: { showingAddAccount = false }
             )
