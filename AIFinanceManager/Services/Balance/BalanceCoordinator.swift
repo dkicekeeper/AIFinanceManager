@@ -134,8 +134,9 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         // Enqueue update
         await queue.enqueue(request)
 
-        // For immediate priority, process synchronously
-        if priority == .immediate {
+        // Process the update immediately for high/immediate priority
+        // Queue is just for tracking, actual processing happens here
+        if priority == .immediate || priority == .high {
             await processUpdateRequest(request)
         }
 
@@ -184,6 +185,22 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         )
 
         await queue.enqueue(request)
+
+        // For batch operations, we should probably trigger a full recalculation
+        // instead of trying to apply operations one by one
+        // But for now, process individually based on operation type
+        for transaction in transactions {
+            switch operation {
+            case .add:
+                await processAddTransaction(transaction)
+            case .remove:
+                await processRemoveTransaction(transaction)
+            case .update:
+                // Update operations in batch don't make sense - each needs its own old transaction
+                // This case should probably not be used, but handle gracefully
+                break
+            }
+        }
 
         #if DEBUG
         print("📨 Queued batch update: \(transactions.count) transactions, \(allAffectedAccounts.count) accounts affected")

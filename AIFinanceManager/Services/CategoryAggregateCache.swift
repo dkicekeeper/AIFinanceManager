@@ -10,7 +10,7 @@ import Foundation
 
 /// In-memory кеш поверх CoreData агрегатов для быстрых чтений
 @MainActor
-class CategoryAggregateCache {
+class CategoryAggregateCache: CategoryAggregateCacheProtocol {
 
     // MARK: - Properties
 
@@ -18,7 +18,7 @@ class CategoryAggregateCache {
     private var aggregatesByKey: [String: CategoryAggregate] = [:]
 
     /// Флаг загрузки из CoreData
-    private var isLoaded = false
+    private(set) var isLoaded = false
 
     private let service = CategoryAggregateService()
 
@@ -389,12 +389,4 @@ class CategoryAggregateCache {
         aggregatesByKey.removeAll()
         isLoaded = false
     }
-}
-
-// MARK: - Supporting Types
-
-enum AggregateOperation {
-    case add
-    case delete
-    case update(oldTransaction: Transaction)
 }

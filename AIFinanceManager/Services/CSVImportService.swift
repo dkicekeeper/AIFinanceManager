@@ -646,16 +646,32 @@ class CSVImportService {
                     if let updatedAccount = transactionsViewModel.accounts.first(where: { $0.id == account.id }) {
                         // Обновляем счет с новым балансом
                         accountsVM.accounts[index].balance = updatedAccount.balance
-                        // ИСПРАВЛЕНО: Используем правильный initialBalance из TransactionsViewModel
-                        // Это значение было вычислено как (balance - Σtransactions) при recalculateAccountBalances()
-                        // НЕ устанавливаем текущий баланс как initialBalance - это была причина бага!
-                        if let correctInitialBalance = transactionsViewModel.getInitialBalance(for: account.id) {
-                            accountsVM.setInitialBalance(correctInitialBalance, for: account.id)
-                        }
+                        // MIGRATED: Initial balances now managed directly by BalanceCoordinator
+                        // No need to sync through AccountsViewModel - will be handled in registration below
                     }
                 }
                 // Сохраняем обновленные балансы счетов одним батчем (синхронно для импорта)
                 accountsVM.saveAllAccountsSync()
+
+                // 🔧 FIX: Register all accounts in BalanceCoordinator after CSV import
+                // This ensures BalanceCoordinator knows about imported accounts and their initial balances
+                if let balanceCoordinator = transactionsViewModel.balanceCoordinator {
+                    Task {
+                        // Register all accounts
+                        await balanceCoordinator.registerAccounts(accountsVM.accounts)
+
+                        // Set initial balances and mark as manual mode
+                        for account in accountsVM.accounts {
+                            // CRITICAL FIX: Use account.balance as fallback if initialBalance not set
+                            // For CSV-imported accounts, initial balance may not be in initialAccountBalances dict yet
+                            let initialBalance = accountsVM.getInitialBalance(for: account.id) ?? account.balance
+                            await balanceCoordinator.setInitialBalance(initialBalance, for: account.id)
+
+                            // Mark as manual mode (fromInitialBalance) so transactions are applied correctly
+                            await balanceCoordinator.markAsManual(account.id)
+                        }
+                    }
+                }
             }
 
             // ОПТИМИЗАЦИЯ: Убран избыточный вызов saveToStorageSync()

@@ -283,7 +283,7 @@ final class BalanceCacheManager {
 struct BalanceMetadata {
     let lastUpdated: Date
     let transactionCount: Int
-    let calculationMode: BalanceCalculationMode
+    let calculationMode: BalanceMode // MIGRATED: Using BalanceMode from BalanceStore
 
     var age: TimeInterval {
         return Date().timeIntervalSince(lastUpdated)

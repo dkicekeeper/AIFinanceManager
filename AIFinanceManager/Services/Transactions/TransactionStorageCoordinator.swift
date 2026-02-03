@@ -197,25 +197,8 @@ class TransactionStorageCoordinator: TransactionStorageCoordinatorProtocol {
         delegate.categorySubcategoryLinks = delegate.repository.loadCategorySubcategoryLinks()
         delegate.transactionSubcategoryLinks = delegate.repository.loadTransactionSubcategoryLinks()
 
-        // Calculate initial balances with displayTransactions for now
-        // Will be recalculated when all transactions load in background
-        for account in delegate.accounts {
-            if delegate.initialAccountBalances[account.id] == nil {
-                // Calculate the sum of display transactions for this account (temporary)
-                let transactionsSum = delegate.displayTransactions
-                    .filter { $0.accountId == account.id || $0.targetAccountId == account.id }
-                    .reduce(0.0) { sum, tx in
-                        if tx.accountId == account.id {
-                            return sum + (tx.type == .income ? tx.amount : -tx.amount)
-                        } else if tx.targetAccountId == account.id {
-                            return sum + tx.amount // Transfer in
-                        }
-                        return sum
-                    }
-                let initialBalance = account.balance - transactionsSum
-                delegate.initialAccountBalances[account.id] = initialBalance
-            }
-        }
+        // MIGRATED: Initial balance calculation moved to BalanceCoordinator
+        // Will be handled by BalanceCoordinator during account registration
 
         // NOTE: Do NOT call recalculateAccountBalances() here!
         // Balances are already calculated and saved in Core Data.

@@ -94,7 +94,7 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
         timeFilter: TimeFilter,
         baseCurrency: String,
         validCategoryNames: Set<String>?,
-        aggregateCache: CategoryAggregateCache,
+        aggregateCache: CategoryAggregateCacheProtocol,
         cacheManager: TransactionCacheManager,
         transactions: [Transaction]? = nil,
         currencyService: TransactionCurrencyService? = nil

@@ -17,14 +17,14 @@ class CacheCoordinator: CacheCoordinatorProtocol {
 
     private let cacheManager: TransactionCacheManager
     private let currencyService: TransactionCurrencyService
-    private let aggregateCache: CategoryAggregateCache
+    private let aggregateCache: CategoryAggregateCacheProtocol
 
     // MARK: - Initialization
 
     init(
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
-        aggregateCache: CategoryAggregateCache
+        aggregateCache: CategoryAggregateCacheProtocol
     ) {
         self.cacheManager = cacheManager
         self.currencyService = currencyService

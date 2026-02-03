@@ -15,7 +15,7 @@ import Foundation
 /// - Smart prefetching based on access patterns
 /// - 98% memory reduction on large datasets
 @MainActor
-final class CategoryAggregateCacheOptimized {
+final class CategoryAggregateCacheOptimized: CategoryAggregateCacheProtocol {
 
     // MARK: - Properties
 
@@ -36,12 +36,21 @@ final class CategoryAggregateCacheOptimized {
 
     private let service = CategoryAggregateService()
 
+    /// Repository reference for lazy loading (optional)
+    private weak var repository: CoreDataRepository?
+
     // MARK: - Initialization
 
     /// Initialize with capacity
     /// - Parameter maxSize: Maximum number of aggregates to cache (default: 1000)
     init(maxSize: Int = 1000) {
         self.lruCache = LRUCache(capacity: maxSize)
+    }
+
+    /// Set repository for lazy loading
+    /// - Parameter repository: CoreData repository
+    func setRepository(_ repository: CoreDataRepository) {
+        self.repository = repository
     }
 
     /// Public getter for cache count (for logging/debugging)
@@ -203,6 +212,133 @@ final class CategoryAggregateCacheOptimized {
         #if DEBUG
         print("✅ [CategoryAggregateCacheOptimized] Returned \(result.count) categories")
         #endif
+
+        return result
+    }
+
+    /// Protocol-conforming sync wrapper for getCategoryExpenses
+    /// - Parameters:
+    ///   - timeFilter: Time filter
+    ///   - baseCurrency: Base currency
+    ///   - validCategoryNames: Valid category names
+    /// - Returns: Category expenses (sync version returns cached data only)
+    func getCategoryExpenses(
+        timeFilter: TimeFilter,
+        baseCurrency: String,
+        validCategoryNames: Set<String>? = nil
+    ) -> [String: CategoryExpense] {
+        // Synchronous version - returns only cached data without lazy loading
+        // For full async functionality, use getCategoryExpenses(repository:)
+        guard isLoaded else { return [:] }
+
+        let (targetYear, targetMonth) = getYearMonth(from: timeFilter)
+        var result: [String: CategoryExpense] = [:]
+
+        for (_, aggregate) in lruCache {
+            guard aggregate.currency == baseCurrency else { continue }
+
+            let category = aggregate.categoryName.isEmpty ? "Другое" : aggregate.categoryName
+            let subcategory = aggregate.subcategoryName ?? ""
+
+            // Skip if not in valid categories
+            if let validNames = validCategoryNames, !validNames.contains(category) {
+                continue
+            }
+
+            // Apply time filter
+            guard matchesTimeFilter(
+                aggregate: aggregate,
+                targetYear: targetYear,
+                targetMonth: targetMonth
+            ) else { continue }
+
+            // Accumulate expenses
+            if !subcategory.isEmpty {
+                if var existing = result[category] {
+                    existing.subcategories[subcategory] = (existing.subcategories[subcategory] ?? 0) + aggregate.totalAmount
+                    existing.total += aggregate.totalAmount
+                    result[category] = existing
+                } else {
+                    result[category] = CategoryExpense(
+                        total: aggregate.totalAmount,
+                        subcategories: [subcategory: aggregate.totalAmount]
+                    )
+                }
+            } else {
+                if var existing = result[category] {
+                    existing.total += aggregate.totalAmount
+                    result[category] = existing
+                } else {
+                    result[category] = CategoryExpense(
+                        total: aggregate.totalAmount,
+                        subcategories: [:]
+                    )
+                }
+            }
+        }
+
+        return result
+    }
+
+    /// Get daily aggregates for date range (protocol conformance)
+    /// - Parameters:
+    ///   - dateRange: Start and end dates
+    ///   - baseCurrency: Base currency
+    ///   - validCategoryNames: Valid category names
+    /// - Returns: Category expenses for date range
+    func getDailyAggregates(
+        dateRange: (start: Date, end: Date),
+        baseCurrency: String,
+        validCategoryNames: Set<String>? = nil
+    ) -> [String: CategoryExpense] {
+        // Synchronous version - returns cached data only
+        guard isLoaded else { return [:] }
+
+        var result: [String: CategoryExpense] = [:]
+
+        // Get year range
+        let calendar = Calendar.current
+        let startYear = Int16(calendar.component(.year, from: dateRange.start))
+        let endYear = Int16(calendar.component(.year, from: dateRange.end))
+
+        for (_, aggregate) in lruCache {
+            guard aggregate.currency == baseCurrency else { continue }
+            guard aggregate.year >= startYear && aggregate.year <= endYear else { continue }
+
+            // Check if aggregate has daily data (day > 0)
+            guard aggregate.day > 0 else { continue }
+
+            let category = aggregate.categoryName.isEmpty ? "Другое" : aggregate.categoryName
+            let subcategory = aggregate.subcategoryName ?? ""
+
+            if let validNames = validCategoryNames, !validNames.contains(category) {
+                continue
+            }
+
+            // Accumulate
+            if !subcategory.isEmpty {
+                if var existing = result[category] {
+                    existing.subcategories[subcategory] = (existing.subcategories[subcategory] ?? 0) + aggregate.totalAmount
+                    existing.total += aggregate.totalAmount
+                    result[category] = existing
+                } else {
+                    result[category] = CategoryExpense(
+                        total: aggregate.totalAmount,
+                        subcategories: [subcategory: aggregate.totalAmount]
+                    )
+                }
+            } else {
+                if var existing = result[category] {
+                    existing.total += aggregate.totalAmount
+                    result[category] = existing
+                } else {
+                    result[category] = CategoryExpense(
+                        total: aggregate.totalAmount,
+                        subcategories: [:]
+                    )
+                }
+            }
+        }
 
         return result
     }

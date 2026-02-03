@@ -43,7 +43,7 @@ protocol TransactionStorageDelegate: AnyObject {
     var subcategories: [Subcategory] { get set }
     var categorySubcategoryLinks: [CategorySubcategoryLink] { get set }
     var transactionSubcategoryLinks: [TransactionSubcategoryLink] { get set }
-    var initialAccountBalances: [String: Double] { get set }
+    // MIGRATED: initialAccountBalances removed - managed by BalanceCoordinator
     var displayMonthsRange: Int { get }
 
     // Dependencies

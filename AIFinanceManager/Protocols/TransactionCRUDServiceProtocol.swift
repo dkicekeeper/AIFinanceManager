@@ -47,7 +47,7 @@ protocol TransactionCRUDDelegate: AnyObject {
     var appSettings: AppSettings { get }
 
     // Dependencies
-    var aggregateCache: CategoryAggregateCache { get }
+    var aggregateCache: CategoryAggregateCacheProtocol { get }
     var cacheManager: TransactionCacheManager { get }
 
     // Coordination methods

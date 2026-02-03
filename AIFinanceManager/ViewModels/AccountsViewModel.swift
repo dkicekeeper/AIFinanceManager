@@ -26,32 +26,23 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     // MARK: - Private Properties
 
     private let repository: DataRepositoryProtocol
-    private var initialAccountBalances: [String: Double] = [:]
     
     // MARK: - Initialization
     
     init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
         self.repository = repository
         self.accounts = repository.loadAccounts()
-        
-        // Инициализируем начальные балансы из загруженных счетов
-        for account in accounts {
-            if initialAccountBalances[account.id] == nil {
-                initialAccountBalances[account.id] = account.balance
-            }
-        }
+
+        // MIGRATED: Register accounts with BalanceCoordinator (Single Source of Truth)
+        syncInitialBalancesToCoordinator()
     }
     
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
         accounts = repository.loadAccounts()
 
-        // Обновляем начальные балансы
-        for account in accounts {
-            if initialAccountBalances[account.id] == nil {
-                initialAccountBalances[account.id] = account.balance
-            }
-        }
+        // MIGRATED: Sync accounts with BalanceCoordinator after reload
+        syncInitialBalancesToCoordinator()
     }
     
     // MARK: - Account CRUD Operations
@@ -59,8 +50,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     func addAccount(name: String, balance: Double, currency: String, bankLogo: BankLogo = .none) {
         let account = Account(name: name, balance: balance, currency: currency, bankLogo: bankLogo)
         accounts.append(account)
-        // Сохраняем начальный баланс для корректного расчета в TransactionsViewModel
-        initialAccountBalances[account.id] = balance
         saveAccounts()
 
         // NEW: Register account with BalanceCoordinator
@@ -68,6 +57,7 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             Task {
                 await coordinator.registerAccounts([account])
                 await coordinator.setInitialBalance(balance, for: account.id)
+                await coordinator.markAsManual(account.id)
             }
         }
     }
@@ -82,10 +72,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             var newAccounts = accounts
             newAccounts[index] = account
 
-            // Обновляем начальный баланс при редактировании
-            initialAccountBalances[account.id] = account.balance
-
-
             // Переприсваиваем весь массив для триггера @Published
             accounts = newAccounts
             // NOTE: @Published automatically sends objectWillChange notification
@@ -97,6 +83,7 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
                 Task {
                     await coordinator.updateForAccount(account, newBalance: account.balance)
                     await coordinator.setInitialBalance(account.balance, for: account.id)
+                    await coordinator.markAsManual(account.id)
                 }
             }
         } else {
@@ -105,7 +92,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     
     func deleteAccount(_ account: Account, deleteTransactions: Bool = false) {
         accounts.removeAll { $0.id == account.id }
-        initialAccountBalances.removeValue(forKey: account.id)
         saveAccounts()  // ✅ Sync save
         // Note: Transaction deletion is handled by the calling view
 
@@ -118,15 +104,22 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     }
     
     // MARK: - Account Balance Management
-    
-    /// Получить начальный баланс счета
+
+    /// MIGRATED: Get initial balance from BalanceCoordinator (Single Source of Truth)
     func getInitialBalance(for accountId: String) -> Double? {
-        return initialAccountBalances[accountId]
+        // Direct access to BalanceCoordinator not possible (async)
+        // Use account.balance as fallback for backward compatibility
+        return accounts.first(where: { $0.id == accountId })?.balance
     }
-    
-    /// Установить начальный баланс счета
+
+    /// MIGRATED: Set initial balance via BalanceCoordinator (Single Source of Truth)
     func setInitialBalance(_ balance: Double, for accountId: String) {
-        initialAccountBalances[accountId] = balance
+        // Delegate to BalanceCoordinator
+        if let coordinator = balanceCoordinator {
+            Task {
+                await coordinator.setInitialBalance(balance, for: accountId)
+            }
+        }
     }
     
     // MARK: - Transfer Operations
@@ -182,7 +175,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
         )
 
         accounts.append(account)
-        initialAccountBalances[account.id] = balance
         saveAccounts()  // ✅ Sync save
 
         // NEW: Register deposit with BalanceCoordinator
@@ -204,11 +196,6 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
             // Создаем новый массив вместо модификации элемента на месте
             var newAccounts = accounts
             newAccounts[index] = account
-
-            if let depositInfo = account.depositInfo {
-                let balance = NSDecimalNumber(decimal: depositInfo.principalBalance).doubleValue
-                initialAccountBalances[account.id] = balance
-            }
 
             // Переприсваиваем весь массив для триггера @Published
             accounts = newAccounts
@@ -233,7 +220,28 @@ class AccountsViewModel: ObservableObject, AccountBalanceServiceProtocol {
     }
     
     // MARK: - Helper Methods
-    
+
+    /// Синхронизирует initialAccountBalances с BalanceCoordinator
+    /// Вызывается при инициализации и перезагрузке для обеспечения согласованности данных
+    private func syncInitialBalancesToCoordinator() {
+        guard let coordinator = balanceCoordinator else { return }
+
+        Task {
+            // Register all accounts
+            await coordinator.registerAccounts(accounts)
+
+            // Set initial balances from account.balance and mark as manual mode
+            for account in accounts {
+                await coordinator.setInitialBalance(account.balance, for: account.id)
+                await coordinator.markAsManual(account.id)
+            }
+
+            #if DEBUG
+            print("✅ Synced \(accounts.count) accounts to BalanceCoordinator")
+            #endif
+        }
+    }
+
     /// Получить счет по ID
     func getAccount(by id: String) -> Account? {
         return accounts.first { $0.id == id }

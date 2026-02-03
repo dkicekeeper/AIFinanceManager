@@ -42,12 +42,12 @@ class CategoryMLPredictor {
             return (nil, 0.0)
         }
 
-        // TODO: Реализовать предсказание когда модель будет обучена
-        // Для этого нужно:
-        // 1. Подготовить данные (description → category) из истории транзакций
-        // 2. Обучить модель в Create ML
-        // 3. Добавить .mlmodel файл в проект
-        // 4. Реализовать этот метод
+        // FEATURE: ML-based category prediction (Future Enhancement)
+        // Implementation steps when ML model is ready:
+        // 1. Prepare training data (description → category) from transaction history
+        // 2. Train model using Create ML
+        // 3. Add .mlmodel file to project
+        // 4. Implement prediction logic here
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {

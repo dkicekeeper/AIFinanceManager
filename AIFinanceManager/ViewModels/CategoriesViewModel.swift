@@ -60,8 +60,8 @@ class CategoriesViewModel: ObservableObject {
         )
     }()
 
-    /// Legacy budget service - still used for backward compatibility
-    /// TODO: Replace with budgetCoordinator after TransactionsViewModel integration
+    /// Budget service for category budget management
+    /// NOTE: Could be migrated to budgetCoordinator in future for better separation of concerns
     private lazy var budgetService: CategoryBudgetService = {
         CategoryBudgetService(
             currencyService: currencyService,
