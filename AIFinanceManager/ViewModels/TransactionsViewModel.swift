@@ -276,8 +276,26 @@ class TransactionsViewModel: ObservableObject {
     func updateTransaction(_ transaction: Transaction) {
         guard let index = allTransactions.firstIndex(where: { $0.id == transaction.id }) else { return }
 
-        // Balance updates handled by BalanceCoordinator (via crudService)
+        let oldTransaction = allTransactions[index]
+
+        #if DEBUG
+        print("📝 [TransactionsViewModel] Updating transaction:")
+        print("   Old: \(oldTransaction.amount) \(oldTransaction.currency) - \(oldTransaction.description)")
+        print("   New: \(transaction.amount) \(transaction.currency) - \(transaction.description)")
+        print("   AccountID: \(oldTransaction.accountId ?? "nil") → \(transaction.accountId ?? "nil")")
+        #endif
+
         crudService.updateTransaction(transaction)
+
+        // Update balance incrementally through BalanceCoordinator
+        if let coordinator = balanceCoordinator {
+            Task { @MainActor in
+                await coordinator.updateForTransaction(
+                    transaction,
+                    operation: .update(old: oldTransaction, new: transaction)
+                )
+            }
+        }
     }
 
     func deleteTransaction(_ transaction: Transaction) {
@@ -286,8 +304,17 @@ class TransactionsViewModel: ObservableObject {
             recurringOccurrences.removeAll { $0.id == occurrenceId }
         }
 
-        // Balance updates handled by BalanceCoordinator (via crudService)
         crudService.deleteTransaction(transaction)
+
+        // Update balance incrementally through BalanceCoordinator
+        if let coordinator = balanceCoordinator {
+            Task { @MainActor in
+                await coordinator.updateForTransaction(
+                    transaction,
+                    operation: .remove(transaction)
+                )
+            }
+        }
     }
 
     func updateTransactionCategory(_ transactionId: String, category: String, subcategory: String?) {

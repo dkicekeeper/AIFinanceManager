@@ -124,7 +124,12 @@ struct HistoryView: View {
         }
         .onChange(of: transactionsViewModel.allTransactions) { _, _ in
             expensesCache.invalidate()
-            updateTransactions()
+            // Debounce update to avoid excessive recalculations during rapid changes
+            // (e.g., when deleting/updating multiple transactions)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms delay
+                updateTransactions()
+            }
         }
         .onChange(of: transactionsViewModel.appSettings.baseCurrency) { _, _ in
             expensesCache.invalidate()

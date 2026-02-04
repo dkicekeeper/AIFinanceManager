@@ -114,10 +114,11 @@ class TransactionCRUDService: TransactionCRUDServiceProtocol {
             baseCurrency: delegate.appSettings.baseCurrency
         )
 
-        // Invalidate caches and trigger recalculation
+        // Invalidate caches
+        // NOTE: Balance is updated incrementally by the caller (TransactionsViewModel.addTransaction)
+        // via BalanceCoordinator.updateForTransaction - no need for full recalculation here
         delegate.invalidateCaches()
         delegate.rebuildIndexes()
-        delegate.scheduleBalanceRecalculation()
         delegate.scheduleSave()
     }
 
@@ -240,9 +241,10 @@ class TransactionCRUDService: TransactionCRUDServiceProtocol {
             baseCurrency: delegate.appSettings.baseCurrency
         )
 
-        // Invalidate caches and trigger recalculation
+        // Invalidate caches
+        // NOTE: Balance is updated incrementally by the caller (TransactionsViewModel.updateTransaction)
+        // via BalanceCoordinator.updateForTransaction - no need for full recalculation here
         delegate.invalidateCaches()
-        delegate.scheduleBalanceRecalculation()
         delegate.scheduleSave()
     }
 
@@ -260,9 +262,10 @@ class TransactionCRUDService: TransactionCRUDServiceProtocol {
             baseCurrency: delegate.appSettings.baseCurrency
         )
 
+        // Invalidate caches
+        // NOTE: Balance is updated incrementally by the caller (TransactionsViewModel.deleteTransaction)
+        // via BalanceCoordinator.updateForTransaction - no need for full recalculation here
         delegate.invalidateCaches()
-
-        delegate.scheduleBalanceRecalculation()
         delegate.scheduleSave()
     }
 

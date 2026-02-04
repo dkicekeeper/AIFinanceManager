@@ -532,9 +532,97 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
     /// Process update transaction
     private func processUpdateTransaction(old: Transaction, new: Transaction) async {
-        // Revert old, apply new
-        await processRemoveTransaction(old)
-        await processAddTransaction(new)
+        var updatedBalances = self.balances
+        var tempBalances: [String: Double] = [:]  // Temporary storage for intermediate balances
+
+        // Step 1: Revert old transaction from source account
+        if let accountId = old.accountId,
+           let account = store.getAccount(accountId) {
+            let currentBalance = account.currentBalance
+            let balanceAfterRevert = engine.revertTransaction(old, from: currentBalance, for: account)
+
+            tempBalances[accountId] = balanceAfterRevert  // Store temporarily, don't update store yet
+
+            #if DEBUG
+            print("🔄 [BalanceCoordinator] Reverted old transaction for \(accountId): \(currentBalance) → \(balanceAfterRevert)")
+            #endif
+        }
+
+        // Step 2: Revert old transaction from target account (for internal transfers)
+        if old.type == .internalTransfer,
+           let targetAccountId = old.targetAccountId,
+           let targetAccount = store.getAccount(targetAccountId) {
+            let currentBalance = targetAccount.currentBalance
+            let balanceAfterRevert = engine.revertTransaction(
+                old,
+                from: currentBalance,
+                for: targetAccount,
+                isSource: false
+            )
+
+            tempBalances[targetAccountId] = balanceAfterRevert  // Store temporarily
+
+            #if DEBUG
+            print("🔄 [BalanceCoordinator] Reverted old transaction for target \(targetAccountId): \(currentBalance) → \(balanceAfterRevert)")
+            #endif
+        }
+
+        // Step 3: Apply new transaction to source account
+        if let accountId = new.accountId {
+            // Use temporary balance if available (from revert step), otherwise get from store
+            let intermediateBalance = tempBalances[accountId] ?? (store.getAccount(accountId)?.currentBalance ?? 0.0)
+
+            // Create temporary account with intermediate balance for calculation
+            let tempAccount = AccountBalance(
+                accountId: accountId,
+                currentBalance: intermediateBalance,
+                initialBalance: nil,
+                currency: store.getAccount(accountId)?.currency ?? "KZT"
+            )
+
+            let balanceAfterApply = engine.applyTransaction(new, to: intermediateBalance, for: tempAccount)
+
+            // Update store with final balance
+            store.setBalance(balanceAfterApply, for: accountId, source: .transaction(new.id))
+            updatedBalances[accountId] = balanceAfterApply
+
+            #if DEBUG
+            print("✅ [BalanceCoordinator] Applied new transaction for \(accountId): \(intermediateBalance) → \(balanceAfterApply)")
+            #endif
+        }
+
+        // Step 4: Apply new transaction to target account (for internal transfers)
+        if new.type == .internalTransfer,
+           let targetAccountId = new.targetAccountId {
+            // Use temporary balance if available (from revert step), otherwise get from store
+            let intermediateBalance = tempBalances[targetAccountId] ?? (store.getAccount(targetAccountId)?.currentBalance ?? 0.0)
+
+            // Create temporary account with intermediate balance for calculation
+            let tempAccount = AccountBalance(
+                accountId: targetAccountId,
+                currentBalance: intermediateBalance,
+                initialBalance: nil,
+                currency: store.getAccount(targetAccountId)?.currency ?? "KZT"
+            )
+
+            let balanceAfterApply = engine.applyTransaction(
+                new,
+                to: intermediateBalance,
+                for: tempAccount,
+                isSource: false
+            )
+
+            // Update store with final balance
+            store.setBalance(balanceAfterApply, for: targetAccountId, source: .transaction(new.id))
+            updatedBalances[targetAccountId] = balanceAfterApply
+
+            #if DEBUG
+            print("✅ [BalanceCoordinator] Applied new transaction for target \(targetAccountId): \(intermediateBalance) → \(balanceAfterApply)")
+            #endif
+        }
+
+        // CRITICAL: Publish entire dictionary ONCE to trigger SwiftUI update
+        self.balances = updatedBalances
     }
 
     // MARK: - LRU Cache Helpers

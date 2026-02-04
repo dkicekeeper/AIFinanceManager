@@ -463,4 +463,61 @@ struct BalanceCalculationEngineTests {
         // Should use converted amount: 1000 + 550 = 1550
         #expect(newBalance == 1550.0)
     }
+
+    @Test("Expense with targetAmount - different currency from account")
+    func testExpenseWithTargetAmount() async throws {
+        let engine = BalanceCalculationEngine()
+
+        // Account in KZT with balance 117204.85
+        let account = createAccount(balance: 117204.85, currency: "KZT")
+
+        // Expense: 100 USD → should deduct 50517 KZT from balance
+        var transaction = createTransaction(
+            type: .expense,
+            amount: 100.0,
+            currency: "USD",
+            accountId: "acc-1"
+        )
+        // convertedAmount = conversion to base currency for display (50517 KZT)
+        transaction.convertedAmount = 50517.0
+        // targetAmount = conversion to account currency for balance calculation (50517 KZT)
+        transaction.targetAmount = 50517.0
+
+        let newBalance = engine.applyTransaction(
+            transaction,
+            to: account.currentBalance,
+            for: account
+        )
+
+        // Expected: 117204.85 - 50517.0 = 66687.85
+        // But reported bug shows: 16170.85 (incorrect - seems to deduct twice)
+        #expect(newBalance == 66687.85, "Balance should be 66687.85 after deducting 50517 KZT")
+    }
+
+    @Test("Income with targetAmount - different currency from account")
+    func testIncomeWithTargetAmount() async throws {
+        let engine = BalanceCalculationEngine()
+
+        // Account in KZT
+        let account = createAccount(balance: 100000.0, currency: "KZT")
+
+        // Income: 50 USD → should add 25000 KZT to balance
+        var transaction = createTransaction(
+            type: .income,
+            amount: 50.0,
+            currency: "USD",
+            accountId: "acc-1"
+        )
+        transaction.convertedAmount = 25000.0  // Base currency display
+        transaction.targetAmount = 25000.0      // Account currency amount
+
+        let newBalance = engine.applyTransaction(
+            transaction,
+            to: account.currentBalance,
+            for: account
+        )
+
+        // Expected: 100000 + 25000 = 125000
+        #expect(newBalance == 125000.0, "Balance should be 125000 after adding 25000 KZT")
+    }
 }

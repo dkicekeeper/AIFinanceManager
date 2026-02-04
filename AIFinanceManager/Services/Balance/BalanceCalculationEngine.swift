@@ -405,10 +405,20 @@ struct BalanceCalculationEngine {
     /// Get transaction amount in target currency
     /// Uses convertedAmount if transaction currency differs from account currency
     private func getTransactionAmount(_ transaction: Transaction, for targetCurrency: String) -> Double {
-        if transaction.currency == targetCurrency {
-            return transaction.amount
+        // For expenses/income with different currencies, use targetAmount (converted to account currency)
+        // This ensures balance updates use the correct amount in the account's currency
+        if transaction.currency != targetCurrency {
+            // Use targetAmount if available (amount in account currency)
+            if let targetAmount = transaction.targetAmount {
+                return targetAmount
+            }
+            // Fallback to convertedAmount for backward compatibility
+            if let convertedAmount = transaction.convertedAmount {
+                return convertedAmount
+            }
         }
-        return transaction.convertedAmount ?? transaction.amount
+        // Same currency or no conversion available - use original amount
+        return transaction.amount
     }
 
     /// Get source amount for internal transfer
