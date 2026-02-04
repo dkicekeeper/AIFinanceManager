@@ -10,7 +10,7 @@ import Foundation
 
 /// Main coordinator for CSV import operations
 /// Orchestrates the entire import flow with dependency injection and progress tracking
-/// Replaces the monolithic CSVImportService.importTransactions() method
+/// Replaced the deprecated monolithic CSVImportService (deleted 2026-02-04)
 @MainActor
 class CSVImportCoordinator: CSVImportCoordinatorProtocol {
 

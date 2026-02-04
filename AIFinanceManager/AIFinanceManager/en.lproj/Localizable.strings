@@ -493,3 +493,68 @@
 "csvImport.result.successRate" = "Success Rate";
 "csvImport.result.errors" = "Errors";
 "csvImport.result.moreErrors" = "... and %d more errors";
+
+// MARK: - Settings Errors (Phase 1 - 2026-02-04)
+"error.settings.loadFailed" = "Failed to load settings: %@";
+"error.settings.saveFailed" = "Failed to save settings: %@";
+"error.settings.corruptedData" = "Settings data is corrupted";
+"error.settings.migrationFailed" = "Failed to migrate settings";
+"error.settings.invalidCurrency" = "Invalid currency: %@";
+"error.settings.wallpaperNotFound" = "Wallpaper file not found: %@";
+"error.settings.wallpaperCorrupted" = "Wallpaper file is corrupted: %@";
+"error.settings.invalidLanguage" = "Invalid language: %@";
+
+// MARK: - Wallpaper Errors
+"error.wallpaper.compressionFailed" = "Failed to compress wallpaper image";
+"error.wallpaper.fileTooLarge" = "Wallpaper file is too large (max 10 MB)";
+"error.wallpaper.insufficientSpace" = "Insufficient disk space";
+"error.wallpaper.fileNotFound" = "Wallpaper file not found";
+"error.wallpaper.corruptedFile" = "Wallpaper file is corrupted";
+"error.wallpaper.invalidFormat" = "Invalid image format";
+"error.wallpaper.saveFailed" = "Failed to save wallpaper: %@";
+"error.wallpaper.loadFailed" = "Failed to load wallpaper: %@";
+
+// MARK: - Data Reset Errors
+"error.reset.failed" = "Failed to reset data: %@";
+"error.recalculation.failed" = "Failed to recalculate balances: %@";
+"error.reset.viewModelNotAvailable" = "Required view model not available: %@";
+
+// MARK: - Export Errors
+"error.export.noData" = "No data to export";
+"error.export.failed" = "Failed to export data: %@";
+"error.export.fileWriteFailed" = "Failed to write export file: %@";
+"error.export.insufficientSpace" = "Insufficient disk space for export";
+
+// MARK: - Alert Titles (Settings)
+"alert.recalculateBalances.title" = "Recalculate Balances?";
+"alert.recalculateBalances.message" = "This will recalculate all account balances from scratch based on transactions. Use this if balances are displayed incorrectly.";
+"alert.recalculateBalances.confirm" = "Recalculate";
+"alert.selectWallpaper.title" = "Select Wallpaper";
+"alert.removeWallpaper.title" = "Remove Wallpaper?";
+"alert.removeWallpaper.message" = "This will remove the current wallpaper from the home screen";
+"alert.exportSuccess.title" = "Export Successful";
+"alert.exportSuccess.message" = "Data exported to %@";
+"alert.importSuccess.title" = "Import Successful";
+"alert.importSuccess.message" = "Imported %d transactions";
+
+// MARK: - Settings Labels (Additional)
+"settings.recalculateBalances" = "Recalculate Account Balances";
+"settings.wallpaperHistory" = "Wallpaper History";
+"settings.recentCurrencies" = "Recent Currencies";
+"settings.exportProgress" = "Exporting... %d%%";
+"settings.importProgress" = "Importing... %d%%";
+
+// MARK: - Success Messages
+"success.settings.currencyUpdated" = "Currency updated successfully";
+"success.settings.wallpaperUpdated" = "Wallpaper updated successfully";
+"success.settings.wallpaperRemoved" = "Wallpaper removed successfully";
+"success.export.completed" = "Data exported successfully";
+"success.reset.completed" = "All data has been reset";
+"success.recalculation.completed" = "Balances recalculated successfully";
+
+// MARK: - Import Errors (Phase 2)
+"error.import.coordinatorNotAvailable" = "Import coordinator not available";
+"error.import.viewModelsNotAvailable" = "Required view models not available";
+
+// MARK: - Import Progress (Phase 2)
+"progress.importing" = "Importing...";

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct CSVColumnMapping {
     var dateColumn: String?

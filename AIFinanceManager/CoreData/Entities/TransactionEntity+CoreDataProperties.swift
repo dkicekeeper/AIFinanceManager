@@ -8,6 +8,7 @@
 
 public import Foundation
 public import CoreData
+public import Combine
 
 
 public typealias TransactionEntityCoreDataPropertiesSet = NSSet

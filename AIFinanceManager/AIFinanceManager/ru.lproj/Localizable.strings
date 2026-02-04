@@ -493,3 +493,68 @@
 "csvImport.result.successRate" = "Успешность";
 "csvImport.result.errors" = "Ошибки";
 "csvImport.result.moreErrors" = "... и ещё %d ошибок";
+
+// MARK: - Settings Errors (Phase 1 - 2026-02-04)
+"error.settings.loadFailed" = "Не удалось загрузить настройки: %@";
+"error.settings.saveFailed" = "Не удалось сохранить настройки: %@";
+"error.settings.corruptedData" = "Данные настроек повреждены";
+"error.settings.migrationFailed" = "Не удалось мигрировать настройки";
+"error.settings.invalidCurrency" = "Недопустимая валюта: %@";
+"error.settings.wallpaperNotFound" = "Файл обоев не найден: %@";
+"error.settings.wallpaperCorrupted" = "Файл обоев поврежден: %@";
+"error.settings.invalidLanguage" = "Недопустимый язык: %@";
+
+// MARK: - Wallpaper Errors
+"error.wallpaper.compressionFailed" = "Не удалось сжать изображение обоев";
+"error.wallpaper.fileTooLarge" = "Файл обоев слишком большой (макс 10 МБ)";
+"error.wallpaper.insufficientSpace" = "Недостаточно места на диске";
+"error.wallpaper.fileNotFound" = "Файл обоев не найден";
+"error.wallpaper.corruptedFile" = "Файл обоев поврежден";
+"error.wallpaper.invalidFormat" = "Недопустимый формат изображения";
+"error.wallpaper.saveFailed" = "Не удалось сохранить обои: %@";
+"error.wallpaper.loadFailed" = "Не удалось загрузить обои: %@";
+
+// MARK: - Data Reset Errors
+"error.reset.failed" = "Не удалось сбросить данные: %@";
+"error.recalculation.failed" = "Не удалось пересчитать балансы: %@";
+"error.reset.viewModelNotAvailable" = "Требуемая ViewModel недоступна: %@";
+
+// MARK: - Export Errors
+"error.export.noData" = "Нет данных для экспорта";
+"error.export.failed" = "Не удалось экспортировать данные: %@";
+"error.export.fileWriteFailed" = "Не удалось записать файл экспорта: %@";
+"error.export.insufficientSpace" = "Недостаточно места на диске для экспорта";
+
+// MARK: - Alert Titles (Settings)
+"alert.recalculateBalances.title" = "Пересчитать балансы?";
+"alert.recalculateBalances.message" = "Это пересчитает балансы всех счетов с нуля на основе транзакций. Используйте это, если балансы отображаются неправильно.";
+"alert.recalculateBalances.confirm" = "Пересчитать";
+"alert.selectWallpaper.title" = "Выбрать обои";
+"alert.removeWallpaper.title" = "Удалить обои?";
+"alert.removeWallpaper.message" = "Это удалит текущие обои с главного экрана";
+"alert.exportSuccess.title" = "Экспорт завершен";
+"alert.exportSuccess.message" = "Данные экспортированы в %@";
+"alert.importSuccess.title" = "Импорт завершен";
+"alert.importSuccess.message" = "Импортировано транзакций: %d";
+
+// MARK: - Settings Labels (Additional)
+"settings.recalculateBalances" = "Пересчитать балансы счетов";
+"settings.wallpaperHistory" = "История обоев";
+"settings.recentCurrencies" = "Недавние валюты";
+"settings.exportProgress" = "Экспорт... %d%%";
+"settings.importProgress" = "Импорт... %d%%";
+
+// MARK: - Success Messages
+"success.settings.currencyUpdated" = "Валюта успешно обновлена";
+"success.settings.wallpaperUpdated" = "Обои успешно обновлены";
+"success.settings.wallpaperRemoved" = "Обои успешно удалены";
+"success.export.completed" = "Данные успешно экспортированы";
+"success.reset.completed" = "Все данные сброшены";
+"success.recalculation.completed" = "Балансы успешно пересчитаны";
+
+// MARK: - Import Errors (Phase 2)
+"error.import.coordinatorNotAvailable" = "Координатор импорта недоступен";
+"error.import.viewModelsNotAvailable" = "Требуемые ViewModels недоступны";
+
+// MARK: - Import Progress (Phase 2)
+"progress.importing" = "Импорт...";

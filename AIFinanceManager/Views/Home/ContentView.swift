@@ -182,6 +182,7 @@ struct ContentView: View {
 
     private var settingsDestination: some View {
         SettingsView(
+            settingsViewModel: coordinator.settingsViewModel,
             transactionsViewModel: viewModel,
             accountsViewModel: accountsViewModel,
             categoriesViewModel: categoriesViewModel,

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 /// Manages indexes for fast transaction filtering
 /// Provides O(1) lookups instead of O(n) linear searches

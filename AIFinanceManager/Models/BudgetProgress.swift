@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct BudgetProgress {
     let budgetAmount: Double

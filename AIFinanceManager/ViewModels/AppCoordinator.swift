@@ -26,6 +26,7 @@ class AppCoordinator: ObservableObject {
     let subscriptionsViewModel: SubscriptionsViewModel
     let depositsViewModel: DepositsViewModel
     let transactionsViewModel: TransactionsViewModel
+    let settingsViewModel: SettingsViewModel  // NEW: Phase 1 - Settings refactoring
 
     // MARK: - Coordinators
 
@@ -84,13 +85,51 @@ class AppCoordinator: ObservableObject {
             repository: self.repository
         )
 
+        // 7. REFACTORED 2026-02-04: Setup SettingsViewModel (Phase 1)
+        // Initialize Settings services with Protocol-Oriented Design
+        let storageService = SettingsStorageService()
+        let wallpaperService = WallpaperManagementService()
+        let validationService = SettingsValidationService()
+
+        // Initialize coordinators for dangerous operations
+        let dataResetCoordinator = DataResetCoordinator(
+            transactionsViewModel: transactionsViewModel,
+            accountsViewModel: accountsViewModel,
+            categoriesViewModel: categoriesViewModel,
+            subscriptionsViewModel: subscriptionsViewModel,
+            depositsViewModel: depositsViewModel
+        )
+
+        let exportCoordinator = ExportCoordinator(
+            transactionsViewModel: transactionsViewModel,
+            accountsViewModel: accountsViewModel
+        )
+
+        // Phase 2: CSVImportCoordinator will be created lazily in ImportFlowCoordinator
+        // because it requires csvFile headers during initialization
+        let csvImportCoordinator: CSVImportCoordinatorProtocol? = nil
+
+        // Create SettingsViewModel with all dependencies
+        self.settingsViewModel = SettingsViewModel(
+            storageService: storageService,
+            wallpaperService: wallpaperService,
+            resetCoordinator: dataResetCoordinator,
+            validationService: validationService,
+            exportCoordinator: exportCoordinator,
+            importCoordinator: csvImportCoordinator,
+            transactionsViewModel: transactionsViewModel,
+            categoriesViewModel: categoriesViewModel,
+            accountsViewModel: accountsViewModel,
+            initialSettings: transactionsViewModel.appSettings
+        )
+
         // CRITICAL: Подписываемся на изменения всех дочерних ViewModels
         // Это гарантирует, что AppCoordinator будет уведомлять SwiftUI о любых изменениях
         setupViewModelObservers()
 
         // ✅ CATEGORY REFACTORING: Setup Single Source of Truth for categories
         // TransactionsViewModel subscribes to CategoriesViewModel.categoriesPublisher
-        // This eliminates manual sync in 3 places (CategoriesManagementView, CSVImportService)
+        // This eliminates manual sync in 3 places (CategoriesManagementView, deprecated CSVImportService)
         transactionsViewModel.setCategoriesViewModel(categoriesViewModel)
 
         // ✅ RECURRING REFACTORING: Setup Single Source of Truth for recurring series
@@ -109,6 +148,7 @@ class AppCoordinator: ObservableObject {
         #if DEBUG
         print("✅ [AppCoordinator] Category SSOT established via Combine")
         print("✅ [AppCoordinator] Balance SSOT established via BalanceCoordinator")
+        print("✅ [AppCoordinator] Settings SSOT established via SettingsViewModel (Phase 1)")
         #endif
     }
 
@@ -143,6 +183,12 @@ class AppCoordinator: ObservableObject {
             accounts: accountsViewModel.accounts,
             transactions: transactionsViewModel.allTransactions
         )
+
+        // REFACTORED 2026-02-04: Load Settings data (Phase 1)
+        #if DEBUG
+        print("⚙️ [AppCoordinator] Loading settings data...")
+        #endif
+        await settingsViewModel.loadInitialData()
 
         PerformanceProfiler.end("AppCoordinator.initialize")
     }
