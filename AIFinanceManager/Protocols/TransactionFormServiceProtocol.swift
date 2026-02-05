@@ -28,6 +28,7 @@ enum ValidationError: LocalizedError {
     case amountMustBePositive
     case accountNotSelected
     case accountNotFound
+    case custom(String)  // NEW: For arbitrary error messages (e.g., from TransactionStore)
 
     var errorDescription: String? {
         switch self {
@@ -39,6 +40,8 @@ enum ValidationError: LocalizedError {
             return String(localized: "error.validation.selectAccount")
         case .accountNotFound:
             return String(localized: "error.validation.accountNotFound")
+        case .custom(let message):
+            return message
         }
     }
 }

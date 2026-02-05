@@ -15,6 +15,9 @@ struct EditTransactionView: View {
     let customCategories: [CustomCategory]
     @ObservedObject var balanceCoordinator: BalanceCoordinator
     @Environment(\.dismiss) var dismiss
+
+    // NEW: TransactionStore for refactored update operations
+    @EnvironmentObject var transactionStore: TransactionStore
     
     @State private var amountText: String = ""
     @State private var descriptionText: String = ""
@@ -327,7 +330,7 @@ struct EditTransactionView: View {
         Task {
             var convertedAmount: Double? = nil
             let accountCurrency = accounts.first(where: { $0.id == selectedAccountId })?.currency ?? transaction.currency
-            
+
             if selectedCurrency != accountCurrency {
                 convertedAmount = await CurrencyConverter.convert(
                     amount: amount,
@@ -335,35 +338,45 @@ struct EditTransactionView: View {
                     to: accountCurrency
                 )
             }
-            
-            await MainActor.run {
-                let updatedTransaction = Transaction(
-                    id: transaction.id,
-                    date: dateString,
-                    description: descriptionText,
-                    amount: amount,
-                    currency: selectedCurrency,
-                    convertedAmount: convertedAmount,
-                    type: transaction.type,
-                    category: selectedCategory,
-                    subcategory: nil,
-                    accountId: selectedAccountId,
-                    targetAccountId: selectedTargetAccountId,
-                    recurringSeriesId: finalRecurringSeriesId,
-                    recurringOccurrenceId: finalRecurringOccurrenceId,
-                    createdAt: transaction.createdAt // Сохраняем оригинальный createdAt при редактировании
-                )
-                
-                transactionsViewModel.updateTransaction(updatedTransaction)
-                
-                // Обновляем подкатегории
-                categoriesViewModel.linkSubcategoriesToTransaction(
-                    transactionId: transaction.id,
-                    subcategoryIds: Array(selectedSubcategoryIds)
-                )
-                
-                HapticManager.success()
-                dismiss()
+
+            let updatedTransaction = Transaction(
+                id: transaction.id,
+                date: dateString,
+                description: descriptionText,
+                amount: amount,
+                currency: selectedCurrency,
+                convertedAmount: convertedAmount,
+                type: transaction.type,
+                category: selectedCategory,
+                subcategory: nil,
+                accountId: selectedAccountId,
+                targetAccountId: selectedTargetAccountId,
+                recurringSeriesId: finalRecurringSeriesId,
+                recurringOccurrenceId: finalRecurringOccurrenceId,
+                createdAt: transaction.createdAt // Сохраняем оригинальный createdAt при редактировании
+            )
+
+            // NEW: Use TransactionStore for update
+            do {
+                try await transactionStore.update(updatedTransaction)
+
+                // Обновляем подкатегории (MainActor already)
+                await MainActor.run {
+                    categoriesViewModel.linkSubcategoriesToTransaction(
+                        transactionId: transaction.id,
+                        subcategoryIds: Array(selectedSubcategoryIds)
+                    )
+
+                    HapticManager.success()
+                    dismiss()
+                }
+            } catch {
+                // Handle error on MainActor
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showingError = true
+                    HapticManager.error()
+                }
             }
         }
     }

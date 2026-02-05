@@ -18,6 +18,11 @@ struct TransactionCard: View {
 
     @State private var showingStopRecurringConfirmation = false
     @State private var showingEditModal = false
+    @State private var showingDeleteError = false
+    @State private var deleteErrorMessage = ""
+
+    // NEW: TransactionStore for refactored delete operations
+    @EnvironmentObject var transactionStore: TransactionStore
 
     // ✅ CATEGORY REFACTORING: Use cached style data instead of recreating helper
     private var styleData: CategoryStyleData {
@@ -102,8 +107,20 @@ struct TransactionCard: View {
             // Удаление
             Button(role: .destructive) {
                 HapticManager.warning()
-                if let viewModel = viewModel {
-                    viewModel.deleteTransaction(transaction)
+
+                // NEW: Use TransactionStore for delete
+                Task {
+                    do {
+                        try await transactionStore.delete(transaction)
+                        HapticManager.success()
+                    } catch {
+                        // Handle error
+                        await MainActor.run {
+                            deleteErrorMessage = error.localizedDescription
+                            showingDeleteError = true
+                            HapticManager.error()
+                        }
+                    }
                 }
             } label: {
                 Label(String(localized: "button.delete"), systemImage: "trash")
@@ -131,6 +148,11 @@ struct TransactionCard: View {
             }
         } message: {
             Text(String(localized: "transaction.stopRecurring.message"))
+        }
+        .alert("Error", isPresented: $showingDeleteError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(deleteErrorMessage)
         }
         .onTapGesture {
             showingEditModal = true

@@ -21,6 +21,9 @@ final class AddTransactionCoordinator: ObservableObject {
     let accountsViewModel: AccountsViewModel
     private let formService: TransactionFormServiceProtocol
 
+    // NEW: TransactionStore for refactored operations
+    private var transactionStore: TransactionStore?
+
     // MARK: - Published State
 
     @Published var formData: TransactionFormData
@@ -39,7 +42,8 @@ final class AddTransactionCoordinator: ObservableObject {
         transactionsViewModel: TransactionsViewModel,
         categoriesViewModel: CategoriesViewModel,
         accountsViewModel: AccountsViewModel,
-        formService: TransactionFormServiceProtocol? = nil
+        formService: TransactionFormServiceProtocol? = nil,
+        transactionStore: TransactionStore? = nil
     ) {
         // ✅ PERFORMANCE: Don't compute suggested account in init
         // Deferred to lazy computed property to make sheet opening instant
@@ -55,9 +59,15 @@ final class AddTransactionCoordinator: ObservableObject {
         self.accountsViewModel = accountsViewModel
         // Create service inside @MainActor context if not provided
         self.formService = formService ?? TransactionFormService()
+        self.transactionStore = transactionStore
     }
 
     // MARK: - Public Methods
+
+    /// Set TransactionStore (called from View's onAppear)
+    func setTransactionStore(_ store: TransactionStore) {
+        self.transactionStore = store
+    }
 
     /// Get suggested account ID (sync - returns cached value or nil)
     /// Use computeSuggestedAccountIdAsync() for initial computation
@@ -187,11 +197,21 @@ final class AddTransactionCoordinator: ObservableObject {
             targetAmounts: targetAmounts
         )
 
-        transactionsViewModel.addTransaction(transaction)
+        // NEW: Use TransactionStore if available, otherwise fallback to legacy
+        if let transactionStore = transactionStore {
+            do {
+                try await transactionStore.add(transaction)
+            } catch {
+                return ValidationResult(isValid: false, errors: [.custom(error.localizedDescription)])
+            }
+        } else {
+            // Legacy path for backward compatibility
+            transactionsViewModel.addTransaction(transaction)
+        }
 
         // Step 6: Link subcategories if any selected
         if !formData.subcategoryIds.isEmpty {
-            linkSubcategories(to: transaction)
+            await linkSubcategories(to: transaction)
         }
 
         return .valid
@@ -237,15 +257,29 @@ final class AddTransactionCoordinator: ObservableObject {
         )
     }
 
-    private func linkSubcategories(to transaction: Transaction) {
+    private func linkSubcategories(to transaction: Transaction) async {
         // Find the added transaction in the list
-        let addedTransaction = transactionsViewModel.allTransactions.first { tx in
-            tx.date == DateFormatters.dateFormatter.string(from: formData.selectedDate) &&
-            tx.description == formData.description &&
-            tx.amount == formData.amountDouble &&
-            tx.category == formData.category &&
-            tx.accountId == formData.accountId &&
-            tx.type == formData.type
+        // NEW: Check TransactionStore first if available
+        let addedTransaction: Transaction?
+        if let transactionStore = transactionStore {
+            addedTransaction = transactionStore.transactions.first { tx in
+                tx.date == DateFormatters.dateFormatter.string(from: formData.selectedDate) &&
+                tx.description == formData.description &&
+                tx.amount == formData.amountDouble &&
+                tx.category == formData.category &&
+                tx.accountId == formData.accountId &&
+                tx.type == formData.type
+            }
+        } else {
+            // Legacy fallback
+            addedTransaction = transactionsViewModel.allTransactions.first { tx in
+                tx.date == DateFormatters.dateFormatter.string(from: formData.selectedDate) &&
+                tx.description == formData.description &&
+                tx.amount == formData.amountDouble &&
+                tx.category == formData.category &&
+                tx.accountId == formData.accountId &&
+                tx.type == formData.type
+            }
         }
 
         if let transactionId = addedTransaction?.id {

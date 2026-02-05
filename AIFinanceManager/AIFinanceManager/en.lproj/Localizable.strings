@@ -558,3 +558,14 @@
 
 // MARK: - Import Progress (Phase 2)
 "progress.importing" = "Importing...";
+
+// MARK: - TransactionStore Errors (Phase 7 - 2026-02-05)
+"error.transaction.invalidAmount" = "Invalid transaction amount";
+"error.transaction.accountNotFound" = "Source account not found";
+"error.transaction.targetAccountNotFound" = "Target account not found";
+"error.transaction.categoryNotFound" = "Category not found";
+"error.transaction.notFound" = "Transaction not found";
+"error.transaction.idMismatch" = "Transaction ID mismatch";
+"error.transaction.cannotRemoveRecurring" = "Cannot remove recurring series from transaction";
+"error.transaction.cannotDeleteDepositInterest" = "Cannot delete deposit interest transaction";
+"error.transaction.persistenceFailed" = "Failed to save transaction";

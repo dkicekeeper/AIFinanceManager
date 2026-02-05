@@ -17,6 +17,7 @@ struct AddTransactionModal: View {
     // MARK: - Environment
 
     @EnvironmentObject var timeFilterManager: TimeFilterManager
+    @EnvironmentObject var transactionStore: TransactionStore
 
     // MARK: - State
 
@@ -42,13 +43,15 @@ struct AddTransactionModal: View {
         accountsViewModel: AccountsViewModel,
         onDismiss: @escaping () -> Void
     ) {
+        // Note: TransactionStore will be injected via @EnvironmentObject in onAppear
         _coordinator = StateObject(wrappedValue: AddTransactionCoordinator(
             category: category,
             type: type,
             currency: currency,
             transactionsViewModel: transactionsViewModel,
             categoriesViewModel: categoriesViewModel,
-            accountsViewModel: accountsViewModel
+            accountsViewModel: accountsViewModel,
+            transactionStore: nil  // Will be set in onAppear
         ))
         self.onDismiss = onDismiss
     }
@@ -84,6 +87,9 @@ struct AddTransactionModal: View {
                 coordinator.updateCurrencyForSelectedAccount()
             }
             .onAppear {
+                // NEW: Inject TransactionStore from @EnvironmentObject
+                coordinator.setTransactionStore(transactionStore)
+
                 // ✅ PERFORMANCE FIX: Compute suggested account asynchronously
                 // UI shows immediately, suggestion loads in background
                 Task {

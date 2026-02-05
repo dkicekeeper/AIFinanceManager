@@ -386,9 +386,8 @@ class TransactionsViewModel: ObservableObject {
             timeFilter: timeFilterManager.currentFilter
         )
 
-        // IMPORTANT: Temporarily invalidate summary cache to force recalculation
-        // The cache doesn't account for time filters, so we need fresh calculation
-        let wasInvalidated = cacheManager.summaryCacheInvalidated
+        // IMPORTANT: Always invalidate summary cache because time filtering produces different results
+        // The cache doesn't account for time filters, so we need fresh calculation each time
         cacheManager.summaryCacheInvalidated = true
 
         let result = queryService.calculateSummary(
@@ -398,8 +397,9 @@ class TransactionsViewModel: ObservableObject {
             currencyService: currencyService
         )
 
-        // Restore invalidation state to allow caching for non-filtered queries
-        cacheManager.summaryCacheInvalidated = wasInvalidated
+        // ✅ FIX: Don't restore invalidation state
+        // calculateSummary() already sets it to false after computing the new summary
+        // Restoring the old state was breaking the invalidation flow when transactions changed
 
         return result
     }

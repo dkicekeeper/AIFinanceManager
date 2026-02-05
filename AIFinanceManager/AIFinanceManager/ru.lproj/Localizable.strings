@@ -558,3 +558,14 @@
 
 // MARK: - Import Progress (Phase 2)
 "progress.importing" = "Импорт...";
+
+// MARK: - TransactionStore Errors (Phase 7 - 2026-02-05)
+"error.transaction.invalidAmount" = "Неверная сумма транзакции";
+"error.transaction.accountNotFound" = "Счёт-источник не найден";
+"error.transaction.targetAccountNotFound" = "Счёт-получатель не найден";
+"error.transaction.categoryNotFound" = "Категория не найдена";
+"error.transaction.notFound" = "Транзакция не найдена";
+"error.transaction.idMismatch" = "Несовпадение ID транзакции";
+"error.transaction.cannotRemoveRecurring" = "Невозможно удалить повторяющуюся серию из транзакции";
+"error.transaction.cannotDeleteDepositInterest" = "Невозможно удалить транзакцию начисления процентов";
+"error.transaction.persistenceFailed" = "Не удалось сохранить транзакцию";

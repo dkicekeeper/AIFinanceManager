@@ -28,6 +28,12 @@ class AppCoordinator: ObservableObject {
     let transactionsViewModel: TransactionsViewModel
     let settingsViewModel: SettingsViewModel  // NEW: Phase 1 - Settings refactoring
 
+    // MARK: - New Architecture (Phase 7)
+
+    /// NEW 2026-02-05: TransactionStore - Single Source of Truth for transactions
+    /// Replaces multiple services: TransactionCRUDService, CategoryAggregateService, etc.
+    let transactionStore: TransactionStore
+
     // MARK: - Coordinators
 
     /// REFACTORED 2026-02-02: Single entry point for recurring transaction operations
@@ -61,6 +67,13 @@ class AppCoordinator: ObservableObject {
         // 3. Transactions (MIGRATED: now independent, uses BalanceCoordinator)
         // Create first to access currencyService and appSettings
         self.transactionsViewModel = TransactionsViewModel(repository: self.repository)
+
+        // 3.1 NEW 2026-02-05: Initialize TransactionStore
+        // Single Source of Truth for all transaction operations
+        self.transactionStore = TransactionStore(
+            repository: self.repository,
+            cacheCapacity: 1000
+        )
 
         // 3. Categories (depends on TransactionsViewModel for currency conversion)
         self.categoriesViewModel = CategoriesViewModel(
@@ -169,6 +182,9 @@ class AppCoordinator: ObservableObject {
 
         // Load data asynchronously - this is non-blocking
         await transactionsViewModel.loadDataAsync()
+
+        // NEW 2026-02-05: Load data into TransactionStore
+        try? await transactionStore.loadData()
 
         // REFACTORED 2026-02-02: Register accounts with BalanceCoordinator
         // This initializes the balance store with current account data
