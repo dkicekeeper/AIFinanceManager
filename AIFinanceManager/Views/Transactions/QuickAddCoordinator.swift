@@ -56,12 +56,10 @@ final class QuickAddCoordinator: ObservableObject {
 
     private func setupBindings() {
         // Combine approach with debounce + distinctUntilChanged
-        // Updates only when relevant data changes
+        // Updates when transactions change (not just count), categories change, or filter changes
         Publishers.CombineLatest(
             Publishers.CombineLatest4(
-                transactionsViewModel.$allTransactions
-                    .map { $0.count }
-                    .removeDuplicates(),
+                transactionsViewModel.$allTransactions,  // ✅ Observe actual transactions, not just count
                 categoriesViewModel.$customCategories
                     .map { $0.count }
                     .removeDuplicates(),
