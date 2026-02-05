@@ -378,6 +378,13 @@ final class CategoryAggregateCacheOptimized: CategoryAggregateCacheProtocol {
             )
         }
 
+        #if DEBUG
+        print("📦 [CategoryAggregateCacheOptimized] Received \(aggregates.count) aggregates to update:")
+        for agg in aggregates {
+            print("   - \(agg.id): \(agg.totalAmount)")
+        }
+        #endif
+
         // Update LRU cache
         for aggregate in aggregates {
             if let existing = lruCache.get(aggregate.id) {
@@ -396,9 +403,18 @@ final class CategoryAggregateCacheOptimized: CategoryAggregateCacheProtocol {
                         aggregate.lastTransactionDate ?? Date()
                     )
                 )
+                #if DEBUG
+                print("🔄 [CategoryAggregateCacheOptimized] Updated aggregate \(aggregate.id):")
+                print("   Existing: \(existing.totalAmount)")
+                print("   Delta: \(aggregate.totalAmount)")
+                print("   New total: \(updated.totalAmount)")
+                #endif
                 lruCache.set(aggregate.id, value: updated)
             } else {
                 // New aggregate
+                #if DEBUG
+                print("➕ [CategoryAggregateCacheOptimized] New aggregate \(aggregate.id): \(aggregate.totalAmount)")
+                #endif
                 lruCache.set(aggregate.id, value: aggregate)
             }
         }

@@ -501,7 +501,9 @@ class TransactionsViewModel: ObservableObject {
 
     func invalidateCaches() {
         cacheCoordinator.invalidate(scope: .summaryAndCurrency)
-        // ✅ Also invalidate category expenses cache when transactions change
+        // ✅ Invalidate category expenses cache when transactions change
+        // This is a derived cache computed from aggregates, so it must be cleared
+        // to reflect the updated aggregate values after incremental updates
         cacheManager.invalidateCategoryExpenses()
     }
 

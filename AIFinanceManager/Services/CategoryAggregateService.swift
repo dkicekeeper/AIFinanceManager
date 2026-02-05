@@ -166,6 +166,12 @@ class CategoryAggregateService {
         newTransaction: Transaction,
         baseCurrency: String
     ) -> [CategoryAggregate] {
+        #if DEBUG
+        print("📊 [CategoryAggregateService] updateAggregatesForUpdate:")
+        print("   Old: \(oldTransaction.amount) \(oldTransaction.currency) - \(oldTransaction.category)")
+        print("   New: \(newTransaction.amount) \(newTransaction.currency) - \(newTransaction.category)")
+        #endif
+
         // Удаляем старую транзакцию и добавляем новую
         let deletionAggregates = updateAggregatesForDeletion(
             transaction: oldTransaction,
@@ -177,14 +183,56 @@ class CategoryAggregateService {
             baseCurrency: baseCurrency
         )
 
-        // Объединяем агрегаты
+        #if DEBUG
+        print("   Deletion aggregates: \(deletionAggregates.count)")
+        for agg in deletionAggregates {
+            print("      - \(agg.id): \(agg.totalAmount)")
+        }
+        print("   Addition aggregates: \(additionAggregates.count)")
+        for agg in additionAggregates {
+            print("      + \(agg.id): \(agg.totalAmount)")
+        }
+        #endif
+
+        // Объединяем агрегаты, суммируя значения для одинаковых ключей
         var combined: [String: CategoryAggregate] = [:]
         for aggregate in deletionAggregates {
             combined[aggregate.id] = aggregate
         }
         for aggregate in additionAggregates {
-            combined[aggregate.id] = aggregate
+            if let existing = combined[aggregate.id] {
+                // Если агрегат с таким id уже есть, суммируем значения
+                let updatedAggregate = CategoryAggregate(
+                    categoryName: aggregate.categoryName,
+                    subcategoryName: aggregate.subcategoryName,
+                    year: aggregate.year,
+                    month: aggregate.month,
+                    day: aggregate.day,
+                    totalAmount: existing.totalAmount + aggregate.totalAmount,
+                    transactionCount: existing.transactionCount + aggregate.transactionCount,
+                    currency: baseCurrency,
+                    lastUpdated: Date(),
+                    lastTransactionDate: max(
+                        existing.lastTransactionDate ?? aggregate.lastTransactionDate ?? Date(),
+                        aggregate.lastTransactionDate ?? Date()
+                    )
+                )
+                #if DEBUG
+                print("   ✅ MERGED \(aggregate.id): \(existing.totalAmount) + \(aggregate.totalAmount) = \(updatedAggregate.totalAmount)")
+                #endif
+                combined[aggregate.id] = updatedAggregate
+            } else {
+                // Если агрегата с таким id нет, просто добавляем
+                combined[aggregate.id] = aggregate
+            }
         }
+
+        #if DEBUG
+        print("   Final combined aggregates: \(combined.count)")
+        for (id, agg) in combined {
+            print("      = \(id): \(agg.totalAmount)")
+        }
+        #endif
 
         return Array(combined.values)
     }
