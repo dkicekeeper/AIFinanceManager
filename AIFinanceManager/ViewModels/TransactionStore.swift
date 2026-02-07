@@ -69,6 +69,9 @@ final class TransactionStore: ObservableObject {
     private let repository: DataRepositoryProtocol
     private let cache: UnifiedTransactionCache
 
+    // NEW Phase 7.1: Balance coordinator for automatic balance updates
+    private weak var balanceCoordinator: BalanceCoordinator?
+
     // Settings
     private var baseCurrency: String = "KZT"
 
@@ -76,9 +79,11 @@ final class TransactionStore: ObservableObject {
 
     init(
         repository: DataRepositoryProtocol,
+        balanceCoordinator: BalanceCoordinator? = nil,
         cacheCapacity: Int = 1000
     ) {
         self.repository = repository
+        self.balanceCoordinator = balanceCoordinator
         self.cache = UnifiedTransactionCache(capacity: cacheCapacity)
     }
 
@@ -475,21 +480,38 @@ final class TransactionStore: ObservableObject {
     }
 
     /// Update balances for affected accounts
-    /// Phase 1-4: Incremental balance updates
-    /// TODO: Integrate with BalanceCoordinator
+    /// Phase 7.1: Integrated with BalanceCoordinator
     private func updateBalances(for event: TransactionEvent) {
-        // TEMPORARILY DISABLED: Account doesn't have balance property
-        // Balance is managed separately by BalanceCoordinator
-        // This will be integrated in Phase 7.1 by notifying BalanceCoordinator of changes
+        // Get affected account IDs from event
+        let affectedAccounts = event.affectedAccounts
 
-        #if DEBUG
-        print("⚠️ [TransactionStore] Balance updates temporarily disabled")
-        print("   Event: \(event.debugDescription)")
-        print("   Affected accounts: \(event.affectedAccounts)")
-        #endif
+        guard !affectedAccounts.isEmpty else {
+            return
+        }
 
-        // Future implementation:
-        // balanceCoordinator?.recalculate(for: event.affectedAccounts)
+        // Notify BalanceCoordinator to recalculate affected accounts
+        if let balanceCoordinator = balanceCoordinator {
+            Task {
+                await balanceCoordinator.recalculateAccounts(
+                    affectedAccounts,
+                    accounts: accounts,
+                    transactions: transactions
+                )
+
+                #if DEBUG
+                print("✅ [TransactionStore] Notified BalanceCoordinator")
+                print("   Event: \(event.debugDescription)")
+                print("   Affected accounts: \(affectedAccounts)")
+                #endif
+            }
+        } else {
+            #if DEBUG
+            print("⚠️ [TransactionStore] BalanceCoordinator not available")
+            print("   Event: \(event.debugDescription)")
+            print("   Affected accounts: \(affectedAccounts)")
+            print("   Balance updates will not occur - ensure balanceCoordinator is injected")
+            #endif
+        }
     }
 
     /// Update balance when adding a transaction

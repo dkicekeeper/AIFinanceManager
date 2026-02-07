@@ -70,8 +70,10 @@ class AppCoordinator: ObservableObject {
 
         // 3.1 NEW 2026-02-05: Initialize TransactionStore
         // Single Source of Truth for all transaction operations
+        // UPDATED 2026-02-05 Phase 7.1: Added balanceCoordinator for automatic balance updates
         self.transactionStore = TransactionStore(
             repository: self.repository,
+            balanceCoordinator: self.balanceCoordinator,
             cacheCapacity: 1000
         )
 
@@ -154,6 +156,10 @@ class AppCoordinator: ObservableObject {
         accountsViewModel.balanceCoordinator = balanceCoordinator
         transactionsViewModel.balanceCoordinator = balanceCoordinator
         depositsViewModel.balanceCoordinator = balanceCoordinator
+
+        // Phase 8: Inject TransactionStore into TransactionsViewModel
+        // Completes migration to Single Source of Truth for transactions
+        transactionsViewModel.transactionStore = transactionStore
 
         // Setup observer for balance updates
         setupBalanceCoordinatorObserver()

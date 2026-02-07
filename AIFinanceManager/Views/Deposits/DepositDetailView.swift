@@ -11,6 +11,7 @@ struct DepositDetailView: View {
     @ObservedObject var depositsViewModel: DepositsViewModel
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @ObservedObject var balanceCoordinator: BalanceCoordinator
+    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.5: TransactionStore integration
     let accountId: String
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var showingEditView = false
@@ -188,11 +189,17 @@ struct DepositDetailView: View {
             Text(String(localized: "deposit.deleteMessage"))
         }
         .task {
-            // Пересчитываем проценты при открытии
+            // Phase 7.5: Пересчитываем проценты при открытии с TransactionStore
             depositsViewModel.reconcileAllDeposits(
                 allTransactions: transactionsViewModel.allTransactions,
                 onTransactionCreated: { transaction in
-                    transactionsViewModel.addTransaction(transaction)
+                    Task {
+                        do {
+                            try await transactionStore.add(transaction)
+                        } catch {
+                            print("❌ Failed to create interest transaction: \(error.localizedDescription)")
+                        }
+                    }
                 }
             )
         }

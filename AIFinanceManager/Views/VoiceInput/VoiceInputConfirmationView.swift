@@ -11,6 +11,7 @@ struct VoiceInputConfirmationView: View {
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @ObservedObject var accountsViewModel: AccountsViewModel
     @ObservedObject var categoriesViewModel: CategoriesViewModel
+    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.5: TransactionStore integration
     @Environment(\.dismiss) var dismiss
     
     let parsedOperation: ParsedOperation
@@ -411,27 +412,37 @@ struct VoiceInputConfirmationView: View {
                 recurringOccurrenceId: nil
             )
             
-            await MainActor.run {
-                transactionsViewModel.addTransaction(transaction)
-                // Получаем ID транзакции после добавления
-                // Ищем транзакцию по более точным критериям
-                let addedTransaction = transactionsViewModel.allTransactions.first { tx in
-                    tx.date == dateString &&
-                    tx.description == (noteText.isEmpty ? originalText : noteText) &&
-                    tx.amount == amount &&
-                    tx.category == categoryName &&
-                    tx.accountId == accountId &&
-                    tx.type == selectedType
+            // Phase 7.5: Use TransactionStore for add operation
+            do {
+                try await transactionStore.add(transaction)
+
+                await MainActor.run {
+                    // Получаем ID транзакции после добавления из TransactionStore
+                    let addedTransaction = transactionStore.transactions.first { tx in
+                        tx.date == dateString &&
+                        tx.description == (noteText.isEmpty ? originalText : noteText) &&
+                        tx.amount == amount &&
+                        tx.category == categoryName &&
+                        tx.accountId == accountId &&
+                        tx.type == selectedType
+                    }
+
+                    // Связываем подкатегории с транзакцией
+                    if let transactionId = addedTransaction?.id, !selectedSubcategoryIds.isEmpty {
+                        categoriesViewModel.linkSubcategoriesToTransaction(
+                            transactionId: transactionId,
+                            subcategoryIds: Array(selectedSubcategoryIds)
+                        )
+                    }
+                    HapticManager.success()
+                    dismiss()
                 }
-                
-                // Связываем подкатегории с транзакцией
-                if let transactionId = addedTransaction?.id, !selectedSubcategoryIds.isEmpty {
-                    categoriesViewModel.linkSubcategoriesToTransaction(
-                        transactionId: transactionId,
-                        subcategoryIds: Array(selectedSubcategoryIds)
-                    )
+            } catch {
+                await MainActor.run {
+                    // TODO: Show error alert to user
+                    HapticManager.error()
+                    print("❌ Failed to save voice transaction: \(error.localizedDescription)")
                 }
-                dismiss()
             }
         }
     }

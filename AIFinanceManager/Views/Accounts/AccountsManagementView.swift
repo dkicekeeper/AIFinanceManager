@@ -11,6 +11,7 @@ struct AccountsManagementView: View {
     @ObservedObject var accountsViewModel: AccountsViewModel
     @ObservedObject var depositsViewModel: DepositsViewModel
     @ObservedObject var transactionsViewModel: TransactionsViewModel
+    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.5: TransactionStore integration
     @Environment(\.dismiss) var dismiss
     @State private var showingAddAccount = false
     @State private var showingAddDeposit = false
@@ -63,11 +64,17 @@ struct AccountsManagementView: View {
         .navigationTitle(String(localized: "settings.accounts"))
         .navigationBarTitleDisplayMode(.large)
         .task {
-            // Пересчитываем проценты депозитов при открытии экрана (асинхронно)
+            // Phase 7.5: Пересчитываем проценты депозитов с TransactionStore
             depositsViewModel.reconcileAllDeposits(
                 allTransactions: transactionsViewModel.allTransactions,
                 onTransactionCreated: { transaction in
-                    transactionsViewModel.addTransaction(transaction)
+                    Task {
+                        do {
+                            try await transactionStore.add(transaction)
+                        } catch {
+                            print("❌ Failed to create interest transaction: \(error.localizedDescription)")
+                        }
+                    }
                 }
             )
         }
@@ -125,11 +132,17 @@ struct AccountsManagementView: View {
                             interestPostingDay: depositInfo.interestPostingDay,
                             capitalizationEnabled: depositInfo.capitalizationEnabled
                         )
-                        // Reconcile deposits after adding
+                        // Phase 7.5: Reconcile deposits after adding with TransactionStore
                         depositsViewModel.reconcileAllDeposits(
                             allTransactions: transactionsViewModel.allTransactions,
                             onTransactionCreated: { transaction in
-                                transactionsViewModel.addTransaction(transaction)
+                                Task {
+                                    do {
+                                        try await transactionStore.add(transaction)
+                                    } catch {
+                                        print("❌ Failed to create interest transaction: \(error.localizedDescription)")
+                                    }
+                                }
                             }
                         )
                     }

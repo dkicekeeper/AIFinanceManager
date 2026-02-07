@@ -60,30 +60,25 @@ class TransactionsViewModel: ObservableObject {
     /// Injected by AppCoordinator - replaces old TransactionBalanceCoordinator
     var balanceCoordinator: BalanceCoordinator?
 
-    // MARK: - Cache & Managers (Direct Access)
+    /// Phase 8: TransactionStore as Single Source of Truth for all transaction operations
+    /// Replaces legacy CRUD services, cache managers, and coordinators
+    var transactionStore: TransactionStore?
 
-    let cacheManager = TransactionCacheManager()
+    // MARK: - Services (Remaining)
+
     let currencyService = TransactionCurrencyService()
 
-    // ✅ OPTIMIZED: Using CategoryAggregateCacheOptimized with protocol
-    // Provides 98% memory reduction via LRU cache and lazy loading
-    let aggregateCache: CategoryAggregateCacheProtocol = CategoryAggregateCacheOptimized(maxSize: 1000)
+    /// Phase 8: Minimal cache for read-only display operations
+    /// Write operations handled by TransactionStore + UnifiedTransactionCache
+    let cacheManager = TransactionCacheManager()
 
-    // MARK: - Services (Lazy Initialized - Phase 1)
-
-    private lazy var crudService: TransactionCRUDServiceProtocol = {
-        TransactionCRUDService(delegate: self)
-    }()
-
-    private lazy var storageCoordinator: TransactionStorageCoordinatorProtocol = {
-        TransactionStorageCoordinator(delegate: self)
-    }()
+    /// Phase 8: Stub aggregate cache for backward compatibility
+    /// Aggregate caching now handled by TransactionStore
+    private let aggregateCache: CategoryAggregateCacheProtocol = CategoryAggregateCacheStub()
 
     private lazy var recurringService: RecurringTransactionServiceProtocol = {
         RecurringTransactionService(delegate: self)
     }()
-
-    // MARK: - Services (Lazy Initialized - Phase 2)
 
     private lazy var filterCoordinator: TransactionFilterCoordinatorProtocol = {
         let filterService = TransactionFilterService(dateFormatter: DateFormatters.dateFormatter)
@@ -92,14 +87,6 @@ class TransactionsViewModel: ObservableObject {
 
     private lazy var accountOperationService: AccountOperationServiceProtocol = {
         AccountOperationService()
-    }()
-
-    private lazy var cacheCoordinator: CacheCoordinatorProtocol = {
-        CacheCoordinator(
-            cacheManager: cacheManager,
-            currencyService: currencyService,
-            aggregateCache: aggregateCache
-        )
     }()
 
     private lazy var queryService: TransactionQueryServiceProtocol = {
@@ -174,7 +161,7 @@ class TransactionsViewModel: ObservableObject {
             defer { self.isProcessingRecurringNotification = false }
 
             self.generateRecurringTransactions()
-            self.cacheCoordinator.invalidate(scope: .summaryAndCurrency)
+            // Phase 8: Cache invalidation handled by TransactionStore
             self.rebuildIndexes()
             self.scheduleBalanceRecalculation()
             self.scheduleSave()
@@ -206,12 +193,12 @@ class TransactionsViewModel: ObservableObject {
         await MainActor.run { isLoading = true }
 
         // PERFORMANCE OPTIMIZATION: Concurrent loading (Phase 2)
-        async let storageTask = storageCoordinator.loadFromStorage()
+        // Phase 8: Storage loading handled by TransactionStore
         async let recurringTask = generateRecurringAsync()
         async let aggregatesTask = loadAggregateCacheAsync()
 
         // Wait for all tasks to complete
-        await (storageTask, recurringTask, aggregatesTask)
+        await (recurringTask, aggregatesTask)
 
         await MainActor.run { isLoading = false }
         PerformanceProfiler.end("TransactionsViewModel.loadDataAsync")
@@ -224,20 +211,11 @@ class TransactionsViewModel: ObservableObject {
         }
     }
 
-    /// Load aggregate cache asynchronously (NO MIGRATION - Phase 2)
+    /// Load aggregate cache asynchronously
+    /// Phase 8: Aggregate caching handled by TransactionStore
     private func loadAggregateCacheAsync() async {
-        guard let coreDataRepo = repository as? CoreDataRepository else { return }
-
-        // Set repository for optimized cache (if using optimized version)
-        if let optimizedCache = aggregateCache as? CategoryAggregateCacheOptimized {
-            optimizedCache.setRepository(coreDataRepo)
-        }
-
-        // MIGRATION REMOVED: Simply load from CoreData (no version check)
-        await aggregateCache.loadFromCoreData(repository: coreDataRepo)
-
-        // ✅ FIX: Invalidate CategoryExpenses cache after loading aggregate cache
-        // This ensures daily aggregates are used instead of old cached data
+        // Phase 8: Aggregate caching handled by TransactionStore
+        // No action needed
         await MainActor.run {
             cacheManager.invalidateCategoryExpenses()
         }
@@ -246,73 +224,111 @@ class TransactionsViewModel: ObservableObject {
     // MARK: - CRUD Operations (Delegated to Services)
 
     func addTransaction(_ transaction: Transaction) {
-        crudService.addTransaction(transaction)
+        // Phase 8: Delegate to TransactionStore
+        guard let transactionStore = transactionStore else {
+            print("⚠️ TransactionStore not available, cannot add transaction")
+            return
+        }
 
-        // Update balance through BalanceCoordinator
-        if let coordinator = balanceCoordinator {
-            Task { @MainActor in
-                await coordinator.updateForTransaction(transaction, operation: .add(transaction))
+        Task { @MainActor in
+            do {
+                try await transactionStore.add(transaction)
+            } catch {
+                print("❌ Failed to add transaction: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
             }
         }
     }
 
     func addTransactions(_ newTransactions: [Transaction]) {
-        crudService.addTransactions(newTransactions, mode: .regular)
-        cacheCoordinator.invalidate(scope: .summaryAndCurrency)
-        rebuildIndexes()
-        scheduleBalanceRecalculation()
-        scheduleSave()
+        // Phase 8: Batch add via TransactionStore
+        guard let transactionStore = transactionStore else {
+            print("⚠️ TransactionStore not available, cannot add transactions")
+            return
+        }
+
+        Task { @MainActor in
+            do {
+                for transaction in newTransactions {
+                    try await transactionStore.add(transaction)
+                }
+                // Cache and balance updates handled automatically by TransactionStore
+                rebuildIndexes()
+            } catch {
+                print("❌ Failed to add transactions: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     func addTransactionsForImport(_ newTransactions: [Transaction]) {
-        crudService.addTransactions(newTransactions, mode: .csvImport)
+        // Phase 8: Import via TransactionStore
+        guard let transactionStore = transactionStore else {
+            print("⚠️ TransactionStore not available, cannot import transactions")
+            return
+        }
 
-        if isBatchMode {
-            pendingBalanceRecalculation = true
-            pendingSave = true
+        Task { @MainActor in
+            do {
+                for transaction in newTransactions {
+                    try await transactionStore.add(transaction)
+                }
+                // Cache and balance updates handled automatically by TransactionStore
+                if isBatchMode {
+                    pendingBalanceRecalculation = true
+                    pendingSave = true
+                }
+            } catch {
+                print("❌ Failed to import transactions: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     func updateTransaction(_ transaction: Transaction) {
-        guard let index = allTransactions.firstIndex(where: { $0.id == transaction.id }) else { return }
-
-        let oldTransaction = allTransactions[index]
+        // Phase 8: Delegate to TransactionStore
+        guard let transactionStore = transactionStore else {
+            print("⚠️ TransactionStore not available, cannot update transaction")
+            return
+        }
 
         #if DEBUG
-        print("📝 [TransactionsViewModel] Updating transaction:")
-        print("   Old: \(oldTransaction.amount) \(oldTransaction.currency) - \(oldTransaction.description)")
-        print("   New: \(transaction.amount) \(transaction.currency) - \(transaction.description)")
-        print("   AccountID: \(oldTransaction.accountId ?? "nil") → \(transaction.accountId ?? "nil")")
+        if let oldTransaction = allTransactions.first(where: { $0.id == transaction.id }) {
+            print("📝 [TransactionsViewModel] Updating transaction:")
+            print("   Old: \(oldTransaction.amount) \(oldTransaction.currency) - \(oldTransaction.description)")
+            print("   New: \(transaction.amount) \(transaction.currency) - \(transaction.description)")
+            print("   AccountID: \(oldTransaction.accountId ?? "nil") → \(transaction.accountId ?? "nil")")
+        }
         #endif
 
-        crudService.updateTransaction(transaction)
-
-        // Update balance incrementally through BalanceCoordinator
-        if let coordinator = balanceCoordinator {
-            Task { @MainActor in
-                await coordinator.updateForTransaction(
-                    transaction,
-                    operation: .update(old: oldTransaction, new: transaction)
-                )
+        Task { @MainActor in
+            do {
+                try await transactionStore.update(transaction)
+            } catch {
+                print("❌ Failed to update transaction: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
             }
         }
     }
 
     func deleteTransaction(_ transaction: Transaction) {
+        // Phase 8: Delegate to TransactionStore
+        guard let transactionStore = transactionStore else {
+            print("⚠️ TransactionStore not available, cannot delete transaction")
+            return
+        }
+
         // CRITICAL: Remove recurring occurrence if linked
         if let occurrenceId = transaction.recurringOccurrenceId {
             recurringOccurrences.removeAll { $0.id == occurrenceId }
         }
 
-        crudService.deleteTransaction(transaction)
-
-        // Update balance incrementally through BalanceCoordinator
-        if let coordinator = balanceCoordinator {
-            Task { @MainActor in
-                await coordinator.updateForTransaction(
-                    transaction,
-                    operation: .remove(transaction)
-                )
+        Task { @MainActor in
+            do {
+                try await transactionStore.delete(transaction)
+            } catch {
+                print("❌ Failed to delete transaction: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
             }
         }
     }
@@ -354,28 +370,40 @@ class TransactionsViewModel: ObservableObject {
             }
         }
 
-        cacheCoordinator.invalidate(scope: .summaryAndCurrency)
         saveToStorageDebounced()
     }
 
     // MARK: - Account Operations (Delegated to AccountOperationService)
 
     func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {
+        // Phase 8: Delegate to TransactionStore
+        guard let transactionStore = transactionStore else {
+            print("⚠️ TransactionStore not available, cannot transfer")
+            return
+        }
+
         guard let sourceIndex = accounts.firstIndex(where: { $0.id == sourceId }) else { return }
         let currency = accounts[sourceIndex].currency
 
-        accountOperationService.transfer(
-            from: sourceId,
-            to: targetId,
-            amount: amount,
-            currency: currency,
-            date: date,
-            description: description,
-            accounts: &accounts,
-            allTransactions: &allTransactions,
-            balanceCoordinator: balanceCoordinator,  // ✅ CRITICAL FIX: Pass BalanceCoordinator
-            saveCallback: { [weak self] in self?.saveToStorageDebounced() }
-        )
+        Task { @MainActor in
+            do {
+                // Convert date string to Date
+                let dateFormatter = DateFormatters.dateFormatter
+                let dateObj = dateFormatter.date(from: date) ?? Date()
+
+                try await transactionStore.transfer(
+                    from: sourceId,
+                    to: targetId,
+                    amount: amount,
+                    currency: currency,
+                    date: date,
+                    description: description
+                )
+            } catch {
+                print("❌ Failed to transfer: \(error.localizedDescription)")
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     // MARK: - Queries (Delegated to QueryService)
@@ -414,12 +442,12 @@ class TransactionsViewModel: ObservableObject {
 
         // ✅ FIX: Pass transactions and currencyService for date-based filters
         // Date-based filters (last30Days, thisWeek) need direct calculation from transactions
-        // Month/year filters use aggregate cache (more efficient)
+        // Phase 8: Stub aggregate cache - will fall back to transaction calculation
         let result = queryService.getCategoryExpenses(
             timeFilter: timeFilterManager.currentFilter,
             baseCurrency: appSettings.baseCurrency,
             validCategoryNames: validCategoryNames,
-            aggregateCache: aggregateCache,
+            aggregateCache: aggregateCache,  // Phase 8: Stub that returns empty, forces fallback
             cacheManager: cacheManager,
             transactions: allTransactions,
             currencyService: currencyService
@@ -500,7 +528,6 @@ class TransactionsViewModel: ObservableObject {
     // MARK: - Cache Management (Delegated to CacheCoordinator)
 
     func invalidateCaches() {
-        cacheCoordinator.invalidate(scope: .summaryAndCurrency)
         // ✅ Invalidate category expenses cache when transactions change
         // This is a derived cache computed from aggregates, so it must be cleared
         // to reflect the updated aggregate values after incremental updates
@@ -508,44 +535,32 @@ class TransactionsViewModel: ObservableObject {
     }
 
     func rebuildAggregateCacheAfterImport() async {
-        guard let coreDataRepo = repository as? CoreDataRepository else { return }
-        await cacheCoordinator.rebuildAggregates(
-            transactions: allTransactions,
-            baseCurrency: appSettings.baseCurrency,
-            repository: coreDataRepo
-        )
+        // Phase 8: Cache rebuilding handled by TransactionStore automatically
+        await MainActor.run { [weak self] in
+            self?.cacheManager.invalidateAll()
+            self?.notifyDataChanged()
+        }
     }
 
     func rebuildAggregateCacheInBackground() {
-        guard let coreDataRepo = repository as? CoreDataRepository else { return }
-        cacheCoordinator.rebuildAggregatesAsync(
-            transactions: allTransactions,
-            baseCurrency: appSettings.baseCurrency,
-            repository: coreDataRepo,
-            onComplete: { [weak self] in
-                // Callback after rebuild completes
-            }
-        )
+        // Phase 8: Cache rebuilding handled by TransactionStore automatically
+        Task { @MainActor in
+            cacheManager.invalidateAll()
+            notifyDataChanged()
+        }
     }
 
     func clearAndRebuildAggregateCache() {
-        cacheCoordinator.invalidate(scope: .aggregates)
-
-        Task {
-            await rebuildAggregateCacheAfterImport()
-            await MainActor.run { [weak self] in
-                self?.cacheManager.invalidateAll()
-                // ✅ FIX: Trigger UI update after aggregate rebuild
-                self?.notifyDataChanged()
-            }
+        // Phase 8: Cache rebuilding handled by TransactionStore automatically
+        Task { @MainActor in
+            cacheManager.invalidateAll()
+            notifyDataChanged()
         }
     }
 
     func precomputeCurrencyConversions() {
-        cacheCoordinator.precomputeCurrencyConversions(
-            transactions: allTransactions,
-            baseCurrency: appSettings.baseCurrency
-        )
+        // Phase 8: Currency conversion caching handled by TransactionStore
+        // No action needed - conversions computed on-demand
     }
 
     // MARK: - Balance Management
@@ -578,7 +593,6 @@ class TransactionsViewModel: ObservableObject {
     }
 
     func resetAndRecalculateAllBalances() {
-        cacheCoordinator.invalidate(scope: .summaryAndCurrency)
 
         // MIGRATED: Initial balances are already in account.initialBalance
         for account in accounts {
@@ -674,19 +688,23 @@ class TransactionsViewModel: ObservableObject {
     // MARK: - Storage
 
     func saveToStorage() {
-        storageCoordinator.saveToStorage()
+        // Phase 8: Persistence handled by TransactionStore automatically
+        // This is a backward compatibility stub
     }
 
     func saveToStorageDebounced() {
-        storageCoordinator.saveToStorageDebounced()
+        // Phase 8: Persistence handled by TransactionStore automatically
+        // This is a backward compatibility stub
     }
 
     func saveToStorageSync() {
-        storageCoordinator.saveToStorageSync()
+        // Phase 8: Persistence handled by TransactionStore automatically
+        // This is a backward compatibility stub
     }
 
     func loadOlderTransactions() {
-        storageCoordinator.loadOlderTransactions()
+        // Phase 8: Loading handled by TransactionStore
+        // This is a backward compatibility stub
     }
 
     func syncAccountsFrom(_ accountsViewModel: AccountsViewModel) {
@@ -756,7 +774,6 @@ class TransactionsViewModel: ObservableObject {
         transactionSubcategoryLinks = []
         // MIGRATED: initialAccountBalances removed - managed by BalanceCoordinator
         selectedCategories = nil
-        cacheCoordinator.invalidate(scope: .all)
         repository.clearAllData()
         objectWillChange.send()
     }
@@ -838,7 +855,6 @@ class TransactionsViewModel: ObservableObject {
             pendingBalanceRecalculation = false
         }
 
-        cacheCoordinator.invalidate(scope: .summaryAndCurrency)
         pendingSave = false
         refreshDisplayTransactions()
     }
@@ -886,8 +902,7 @@ class TransactionsViewModel: ObservableObject {
 
 // MARK: - Delegate Conformances
 
-extension TransactionsViewModel: TransactionCRUDDelegate {}
-// REMOVED: TransactionBalanceDelegate extension - no longer needed after BalanceCoordinator migration
+// Phase 8: TransactionCRUDDelegate removed - CRUD operations now via TransactionStore
 extension TransactionsViewModel: TransactionStorageDelegate {
     func notifyDataChanged() {
         // ✅ CRITICAL FIX: Force @Published to trigger by changing UUID

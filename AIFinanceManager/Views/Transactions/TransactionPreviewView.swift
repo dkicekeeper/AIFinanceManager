@@ -10,6 +10,7 @@ import SwiftUI
 struct TransactionPreviewView: View {
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @ObservedObject var accountsViewModel: AccountsViewModel
+    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.5: TransactionStore integration
     let transactions: [Transaction]
     @Environment(\.dismiss) var dismiss
     @State private var selectedTransactions: Set<String> = Set()
@@ -133,29 +134,39 @@ struct TransactionPreviewView: View {
     
     private func addSelectedTransactions() {
         let transactionsToAdd = transactions.filter { selectedTransactions.contains($0.id) }
-        
-        for transaction in transactionsToAdd {
-            let accountId = accountMapping[transaction.id]
-            let updatedTransaction = Transaction(
-                id: transaction.id,
-                date: transaction.date,
-                description: transaction.description,
-                amount: transaction.amount,
-                currency: transaction.currency,
-                convertedAmount: transaction.convertedAmount,
-                type: transaction.type,
-                category: transaction.category,
-                subcategory: transaction.subcategory,
-                accountId: accountId,
-                targetAccountId: transaction.targetAccountId,
-                recurringSeriesId: transaction.recurringSeriesId,
-                recurringOccurrenceId: transaction.recurringOccurrenceId,
-                createdAt: transaction.createdAt // Сохраняем оригинальный createdAt
-            )
-            transactionsViewModel.addTransaction(updatedTransaction)
+
+        // Phase 7.5: Use TransactionStore for bulk add operation
+        Task {
+            for transaction in transactionsToAdd {
+                let accountId = accountMapping[transaction.id]
+                let updatedTransaction = Transaction(
+                    id: transaction.id,
+                    date: transaction.date,
+                    description: transaction.description,
+                    amount: transaction.amount,
+                    currency: transaction.currency,
+                    convertedAmount: transaction.convertedAmount,
+                    type: transaction.type,
+                    category: transaction.category,
+                    subcategory: transaction.subcategory,
+                    accountId: accountId,
+                    targetAccountId: transaction.targetAccountId,
+                    recurringSeriesId: transaction.recurringSeriesId,
+                    recurringOccurrenceId: transaction.recurringOccurrenceId,
+                    createdAt: transaction.createdAt
+                )
+
+                do {
+                    try await transactionStore.add(updatedTransaction)
+                } catch {
+                    print("❌ Failed to add transaction: \(error.localizedDescription)")
+                }
+            }
+
+            await MainActor.run {
+                dismiss()
+            }
         }
-        
-        dismiss()
     }
 }
 

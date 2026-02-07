@@ -10,6 +10,7 @@ import SwiftUI
 struct AccountActionView: View {
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @ObservedObject var accountsViewModel: AccountsViewModel
+    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.4: TransactionStore integration
     let account: Account
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var timeFilterManager: TimeFilterManager
@@ -392,9 +393,23 @@ struct AccountActionView: View {
                         accountId: account.id,
                         targetAccountId: nil
                     )
-                    transactionsViewModel.addTransaction(transaction)
-                    HapticManager.success()
-                    dismiss()
+
+                    // Phase 7.4: Use TransactionStore for add operation
+                    Task {
+                        do {
+                            try await transactionStore.add(transaction)
+                            await MainActor.run {
+                                HapticManager.success()
+                                dismiss()
+                            }
+                        } catch {
+                            await MainActor.run {
+                                errorMessage = error.localizedDescription
+                                showingError = true
+                                HapticManager.error()
+                            }
+                        }
+                    }
                 } else {
                     // Перевод между счетами
                     guard let targetAccountId = selectedTargetAccountId else {
@@ -446,38 +461,37 @@ struct AccountActionView: View {
                         targetId = targetAccountId
                     }
                     
-                    // Для депозитов всегда используем addTransaction, чтобы можно было указать валюту депозита
-                    // Для обычных счетов используем transfer() если валюты совпадают
-                    if account.isDeposit || selectedCurrency != account.currency {
-                        let transaction = Transaction(
-                            id: "",
-                            date: transactionDate,
-                            description: finalDescription,
-                            amount: amount,
-                            currency: selectedCurrency,
-                            convertedAmount: convertedAmount,
-                            type: .internalTransfer,
-                            category: String(localized: "transactionForm.transfer"),
-                            subcategory: nil,
-                            accountId: sourceId,
-                            targetAccountId: targetId,
-                            targetCurrency: precomputedTargetCurrency,
-                            targetAmount: precomputedTargetAmount
-                        )
-                        transactionsViewModel.addTransaction(transaction)
-                    } else {
-                        // Для обычных счетов с одинаковыми валютами - используем transfer()
-                        transactionsViewModel.transfer(
-                            from: sourceId,
-                            to: targetId,
-                            amount: amount,
-                            date: transactionDate,
-                            description: finalDescription
-                        )
+                    // Phase 7.4: Use TransactionStore for transfer operations
+                    // For all transfers (deposits and regular accounts), use transactionStore.transfer()
+                    Task {
+                        do {
+                            // Get target account currency
+                            let targetAccount = accountsViewModel.accounts.first(where: { $0.id == targetId })
+                            let targetCurrency = targetAccount?.currency ?? account.currency
+
+                            try await transactionStore.transfer(
+                                from: sourceId,
+                                to: targetId,
+                                amount: amount,
+                                currency: selectedCurrency,
+                                targetAmount: precomputedTargetAmount,
+                                targetCurrency: targetCurrency,
+                                date: dateFormatter.string(from: selectedDate),
+                                description: finalDescription
+                            )
+
+                            await MainActor.run {
+                                HapticManager.success()
+                                dismiss()
+                            }
+                        } catch {
+                            await MainActor.run {
+                                errorMessage = error.localizedDescription
+                                showingError = true
+                                HapticManager.error()
+                            }
+                        }
                     }
-                    
-                    HapticManager.success()
-                    dismiss()
                 }
             }
         }
