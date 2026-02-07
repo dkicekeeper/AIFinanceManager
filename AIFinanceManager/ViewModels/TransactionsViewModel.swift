@@ -710,6 +710,10 @@ class TransactionsViewModel: ObservableObject {
     func syncAccountsFrom(_ accountsViewModel: AccountsViewModel) {
         accounts = accountsViewModel.accounts
 
+        // 🔧 CRITICAL FIX: Sync accounts to TransactionStore
+        // This ensures TransactionStore knows about new/updated accounts
+        transactionStore?.syncAccounts(accounts)
+
         // 🔧 FIX: Register all accounts in BalanceCoordinator when syncing
         // This ensures BalanceCoordinator knows about all accounts and their initial balances
         if let balanceCoordinator = balanceCoordinator {

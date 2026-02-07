@@ -161,12 +161,17 @@ class AppCoordinator: ObservableObject {
         // Completes migration to Single Source of Truth for transactions
         transactionsViewModel.transactionStore = transactionStore
 
+        // 🔧 CRITICAL FIX: Setup TransactionStore → TransactionsViewModel sync
+        // When TransactionStore updates transactions, sync them back to TransactionsViewModel
+        setupTransactionStoreObserver()
+
         // Setup observer for balance updates
         setupBalanceCoordinatorObserver()
 
         #if DEBUG
         print("✅ [AppCoordinator] Category SSOT established via Combine")
         print("✅ [AppCoordinator] Balance SSOT established via BalanceCoordinator")
+        print("✅ [AppCoordinator] TransactionStore SSOT established with sync")
         print("✅ [AppCoordinator] Settings SSOT established via SettingsViewModel (Phase 1)")
         #endif
     }
@@ -191,6 +196,17 @@ class AppCoordinator: ObservableObject {
 
         // NEW 2026-02-05: Load data into TransactionStore
         try? await transactionStore.loadData()
+
+        // 🔧 CRITICAL FIX: Sync data between TransactionStore and TransactionsViewModel
+        // This ensures both stores have consistent initial data
+        transactionStore.syncAccounts(accountsViewModel.accounts)
+        transactionStore.syncCategories(categoriesViewModel.customCategories)
+        transactionsViewModel.allTransactions = transactionStore.transactions
+        transactionsViewModel.displayTransactions = transactionStore.transactions
+
+        #if DEBUG
+        print("🔄 [AppCoordinator] Synced initial data: \(transactionStore.transactions.count) transactions, \(accountsViewModel.accounts.count) accounts")
+        #endif
 
         // REFACTORED 2026-02-02: Register accounts with BalanceCoordinator
         // This initializes the balance store with current account data
@@ -247,6 +263,29 @@ class AppCoordinator: ObservableObject {
         depositsViewModel.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
+
+    /// 🔧 CRITICAL FIX: Setup observer for TransactionStore updates
+    /// When TransactionStore updates transactions, sync them back to TransactionsViewModel
+    /// This ensures history view and other legacy code sees the new transactions
+    private func setupTransactionStoreObserver() {
+        transactionStore.$transactions
+            .sink { [weak self] updatedTransactions in
+                guard let self = self else { return }
+
+                #if DEBUG
+                print("🔄 [AppCoordinator] TransactionStore updated: \(updatedTransactions.count) transactions")
+                #endif
+
+                // Sync transactions back to TransactionsViewModel for legacy views
+                self.transactionsViewModel.allTransactions = updatedTransactions
+                self.transactionsViewModel.displayTransactions = updatedTransactions
+
+                // Trigger UI refresh
+                self.transactionsViewModel.notifyDataChanged()
+                self.objectWillChange.send()
             }
             .store(in: &cancellables)
     }
