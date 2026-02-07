@@ -155,7 +155,7 @@ class RecurringTransactionCoordinator: RecurringTransactionCoordinatorProtocol {
 
         // Recalculate balances
         transactionsVM.recalculateAccountBalances()
-        transactionsVM.saveToStorage()
+        // Phase 9: saveToStorage removed - persistence automatic via TransactionStore
 
         // Cancel notifications if subscription
         await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)

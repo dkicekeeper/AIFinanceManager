@@ -900,10 +900,10 @@ class TransactionsViewModel: ObservableObject {
     // MIGRATED: clearBalanceFlags removed - balance modes managed by BalanceCoordinator
 }
 
-// MARK: - Delegate Conformances
+// MARK: - Helper Methods
 
-// Phase 8: TransactionCRUDDelegate removed - CRUD operations now via TransactionStore
-extension TransactionsViewModel: TransactionStorageDelegate {
+// Phase 9: Standalone helper method (protocol removed with TransactionStorageCoordinator)
+extension TransactionsViewModel {
     func notifyDataChanged() {
         // ✅ CRITICAL FIX: Force @Published to trigger by changing UUID
         // Creating new array doesn't work if count doesn't change, because Combine

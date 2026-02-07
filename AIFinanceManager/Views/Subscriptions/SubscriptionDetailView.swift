@@ -89,7 +89,7 @@ struct SubscriptionDetailView: View {
             Button(String(localized: "subscriptions.deleteOnlySubscription"), role: .destructive) {
                 subscriptionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: false)
                 transactionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: false)
-                transactionsViewModel.saveToStorage()
+                // Phase 8: saveToStorage removed - persistence automatic via TransactionStore
                 dismiss()
             }
 
@@ -97,7 +97,7 @@ struct SubscriptionDetailView: View {
                 subscriptionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: true)
                 transactionsViewModel.allTransactions.removeAll { $0.recurringSeriesId == subscription.id }
                 transactionsViewModel.recalculateAccountBalances()
-                transactionsViewModel.saveToStorage()
+                // Phase 8: saveToStorage removed - persistence automatic via TransactionStore
                 dismiss()
             }
         } message: {

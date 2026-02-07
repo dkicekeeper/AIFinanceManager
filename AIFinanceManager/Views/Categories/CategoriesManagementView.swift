@@ -135,8 +135,8 @@ struct CategoriesManagementView: View {
                 // ✅ CATEGORY REFACTORING: No manual sync needed!
                 // customCategories automatically synced via Combine publisher
 
-                // CRITICAL: Save to storage so deletions persist after app restart
-                transactionsViewModel.saveToStorageSync()
+                // Phase 8: saveToStorage removed - persistence automatic via TransactionStore
+                // Phase 8: Cache rebuild removed - automatic via TransactionStore
 
                 // CRITICAL: Clear and rebuild aggregate cache to remove deleted category entity
                 // Even though transactions remain, we need to rebuild so the category disappears from UI
@@ -168,8 +168,8 @@ struct CategoriesManagementView: View {
                 // ✅ CATEGORY REFACTORING: No manual sync needed!
                 // customCategories automatically synced via Combine publisher
 
-                // CRITICAL: Save to storage so deletions persist after app restart
-                transactionsViewModel.saveToStorageSync()
+                // Phase 8: saveToStorage removed - persistence automatic via TransactionStore
+                // Phase 8: Cache rebuild removed - automatic via TransactionStore
 
                 // CRITICAL: Clear and rebuild aggregate cache since transactions deleted
                 transactionsViewModel.clearAndRebuildAggregateCache()
