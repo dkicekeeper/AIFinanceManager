@@ -142,8 +142,36 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         guard let delegate = delegate else { return }
 
         if deleteTransactions {
-            // Remove transactions
-            delegate.allTransactions.removeAll { $0.recurringSeriesId == seriesId }
+            // 🔧 FIX 2026-02-08: Delete transactions from TransactionStore (database)
+            // Previously only removed from memory (allTransactions), so they reappeared after app restart
+            if let transactionStore = delegate.transactionStore {
+                // Find all transactions for this series
+                let transactionsToDelete = delegate.allTransactions.filter { $0.recurringSeriesId == seriesId }
+
+                #if DEBUG
+                print("🗑️ [RecurringTransactionService] Deleting \(transactionsToDelete.count) transactions for series \(seriesId)")
+                #endif
+
+                // Delete from TransactionStore (will sync back to allTransactions via observer)
+                Task { @MainActor in
+                    for transaction in transactionsToDelete {
+                        do {
+                            try await transactionStore.delete(transaction)
+                            #if DEBUG
+                            print("   ✅ Deleted: \(transaction.description) - \(transaction.amount) \(transaction.currency)")
+                            #endif
+                        } catch {
+                            print("   ⚠️ Failed to delete transaction: \(error)")
+                        }
+                    }
+                }
+            } else {
+                // Fallback: remove from memory only (legacy path)
+                #if DEBUG
+                print("⚠️ [RecurringTransactionService] TransactionStore NOT available, using legacy deletion path")
+                #endif
+                delegate.allTransactions.removeAll { $0.recurringSeriesId == seriesId }
+            }
         } else {
             // Clear the recurring series link, transactions become regular
             var updatedTransactions: [Transaction] = []
