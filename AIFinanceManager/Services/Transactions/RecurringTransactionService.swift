@@ -89,15 +89,17 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                 }
 
                 // 🔧 FIX 2026-02-08: Delete future transactions from TransactionStore (database)
-                // When frequency/startDate changes, regenerate future transactions
+                // ⚠️ CRITICAL FIX: Must wait for deletion to complete using semaphore
                 if let transactionStore = delegate.transactionStore {
                     let transactionsToDelete = delegate.allTransactions.filter { tx in
                         futureOccurrences.contains { $0.transactionId == tx.id }
                     }
 
                     #if DEBUG
-                    print("🗑️ [RecurringTransactionService] Updating series \(series.id): deleting \(transactionsToDelete.count) future transactions")
+                    print("🗑️ [RecurringTransactionService] Updating series \(series.id): deleting \(transactionsToDelete.count) future transactions (BLOCKING)")
                     #endif
+
+                    let semaphore = DispatchSemaphore(value: 0)
 
                     Task { @MainActor in
                         for transaction in transactionsToDelete {
@@ -107,7 +109,14 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                                 print("   ⚠️ Failed to delete transaction: \(error)")
                             }
                         }
+                        semaphore.signal()
                     }
+
+                    semaphore.wait()
+
+                    #if DEBUG
+                    print("✅ [RecurringTransactionService] Update deletion completed")
+                    #endif
                 } else {
                     // Fallback: legacy path
                     for occurrence in futureOccurrences {
@@ -115,7 +124,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                     }
                 }
 
-                // Remove occurrences
+                // Remove occurrences (now safe - deletions completed)
                 for occurrence in futureOccurrences {
                     delegate.recurringOccurrences.removeAll { $0.id == occurrence.id }
                 }
@@ -157,7 +166,8 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         }
 
         // 🔧 FIX 2026-02-08: Delete future transactions from TransactionStore (database)
-        // Same issue as deleteRecurringSeries - need to persist deletions
+        // ⚠️ CRITICAL FIX: Deletions were async and didn't complete before method returned!
+        // Solution: Use DispatchSemaphore to wait for async deletion to complete
         if let transactionStore = delegate.transactionStore {
             // Find transactions to delete
             let transactionsToDelete = delegate.allTransactions.filter { tx in
@@ -165,10 +175,12 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             }
 
             #if DEBUG
-            print("🗑️ [RecurringTransactionService] Stopping series \(seriesId): deleting \(transactionsToDelete.count) future transactions")
+            print("🗑️ [RecurringTransactionService] Stopping series \(seriesId): deleting \(transactionsToDelete.count) future transactions (BLOCKING)")
             #endif
 
-            // Delete from TransactionStore (will sync back to allTransactions via observer)
+            // Use semaphore to block until deletion completes
+            let semaphore = DispatchSemaphore(value: 0)
+
             Task { @MainActor in
                 for transaction in transactionsToDelete {
                     do {
@@ -180,7 +192,15 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                         print("   ⚠️ Failed to delete transaction: \(error)")
                     }
                 }
+                semaphore.signal() // Signal completion
             }
+
+            // ⚠️ BLOCK until deletion completes
+            semaphore.wait()
+
+            #if DEBUG
+            print("✅ [RecurringTransactionService] Deletion completed, continuing...")
+            #endif
         } else {
             // Fallback: remove from memory only (legacy path)
             #if DEBUG
@@ -191,7 +211,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             }
         }
 
-        // Remove occurrences
+        // Remove occurrences (now safe - deletions completed)
         for occurrence in futureOccurrences {
             delegate.recurringOccurrences.removeAll { $0.id == occurrence.id }
         }
@@ -205,16 +225,18 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
         if deleteTransactions {
             // 🔧 FIX 2026-02-08: Delete transactions from TransactionStore (database)
-            // Previously only removed from memory (allTransactions), so they reappeared after app restart
+            // ⚠️ CRITICAL FIX: Must wait for deletion to complete using semaphore
             if let transactionStore = delegate.transactionStore {
                 // Find all transactions for this series
                 let transactionsToDelete = delegate.allTransactions.filter { $0.recurringSeriesId == seriesId }
 
                 #if DEBUG
-                print("🗑️ [RecurringTransactionService] Deleting \(transactionsToDelete.count) transactions for series \(seriesId)")
+                print("🗑️ [RecurringTransactionService] Deleting \(transactionsToDelete.count) transactions for series \(seriesId) (BLOCKING)")
                 #endif
 
-                // Delete from TransactionStore (will sync back to allTransactions via observer)
+                // Use semaphore to block until deletion completes
+                let semaphore = DispatchSemaphore(value: 0)
+
                 Task { @MainActor in
                     for transaction in transactionsToDelete {
                         do {
@@ -226,7 +248,15 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                             print("   ⚠️ Failed to delete transaction: \(error)")
                         }
                     }
+                    semaphore.signal()
                 }
+
+                // ⚠️ BLOCK until deletion completes
+                semaphore.wait()
+
+                #if DEBUG
+                print("✅ [RecurringTransactionService] Deletion completed")
+                #endif
             } else {
                 // Fallback: remove from memory only (legacy path)
                 #if DEBUG
@@ -476,15 +506,17 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             }
 
             // 🔧 FIX 2026-02-08: Delete future transactions from TransactionStore (database)
-            // When updating recurring transaction, delete future ones before regenerating
+            // ⚠️ CRITICAL FIX: Must wait for deletion to complete using semaphore
             if let transactionStore = delegate.transactionStore {
                 let transactionsToDelete = delegate.allTransactions.filter { tx in
                     futureOccurrences.contains { $0.transactionId == tx.id }
                 }
 
                 #if DEBUG
-                print("🗑️ [RecurringTransactionService] Updating transaction \(transactionId): deleting \(transactionsToDelete.count) future transactions")
+                print("🗑️ [RecurringTransactionService] Updating transaction \(transactionId): deleting \(transactionsToDelete.count) future transactions (BLOCKING)")
                 #endif
+
+                let semaphore = DispatchSemaphore(value: 0)
 
                 Task { @MainActor in
                     for transaction in transactionsToDelete {
@@ -494,7 +526,14 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                             print("   ⚠️ Failed to delete transaction: \(error)")
                         }
                     }
+                    semaphore.signal()
                 }
+
+                semaphore.wait()
+
+                #if DEBUG
+                print("✅ [RecurringTransactionService] Update transaction deletion completed")
+                #endif
             } else {
                 // Fallback: legacy path
                 for occurrence in futureOccurrences {
@@ -502,7 +541,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                 }
             }
 
-            // Remove occurrences
+            // Remove occurrences (now safe - deletions completed)
             for occurrence in futureOccurrences {
                 delegate.recurringOccurrences.removeAll { $0.id == occurrence.id }
             }
