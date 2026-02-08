@@ -75,7 +75,8 @@ struct SubscriptionDetailView: View {
                 subscription: subscription,
                 onSave: { updatedSubscription in
                     subscriptionsViewModel.updateSubscription(updatedSubscription)
-                    transactionsViewModel.generateRecurringTransactions()
+                    // ✅ FIX 2026-02-08: Transaction regeneration is handled automatically via .recurringSeriesUpdated notification
+                    // No need to call generateRecurringTransactions() manually
                     showingEditView = false
                 },
                 onCancel: {

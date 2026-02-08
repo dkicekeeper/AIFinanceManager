@@ -52,8 +52,8 @@ struct SubscriptionsListView: View {
                         subscription: subscription,
                         onSave: { updatedSubscription in
                             subscriptionsViewModel.updateSubscription(updatedSubscription)
-                            // Regenerate recurring transactions
-                            transactionsViewModel.generateRecurringTransactions()
+                            // ✅ FIX 2026-02-08: Transaction regeneration is handled automatically via .recurringSeriesUpdated notification
+                            // No need to call generateRecurringTransactions() manually
                             showingEditView = false
                         },
                         onCancel: {
@@ -79,9 +79,8 @@ struct SubscriptionsListView: View {
                                 brandId: newSubscription.brandId,
                                 reminderOffsets: newSubscription.reminderOffsets
                             )
-                            // REFACTORED 2026-02-02: No manual sync needed - recurringSeries is now computed from SubscriptionsViewModel
-                            // Regenerate recurring transactions
-                            transactionsViewModel.generateRecurringTransactions()
+                            // ✅ FIX 2026-02-08: Transaction generation is handled automatically via .recurringSeriesCreated notification
+                            // No need to call generateRecurringTransactions() manually - it causes duplicate generation
                             showingEditView = false
                         },
                         onCancel: {
