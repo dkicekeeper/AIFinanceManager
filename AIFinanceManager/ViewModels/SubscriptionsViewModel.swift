@@ -156,8 +156,11 @@ class SubscriptionsViewModel: ObservableObject {
         recurringSeries = recurringSeries + [series]
         
         saveRecurringSeries()  // ✅ Sync save
-        
+
         // Notify TransactionsViewModel to generate transactions for new subscription
+        #if DEBUG
+        print("📢 [SubscriptionsViewModel] Posting .recurringSeriesCreated notification for series: \(series.id)")
+        #endif
         NotificationCenter.default.post(
             name: .recurringSeriesCreated,
             object: nil,

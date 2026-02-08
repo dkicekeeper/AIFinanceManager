@@ -154,17 +154,39 @@ class TransactionsViewModel: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let self = self, let _ = notification.userInfo?["seriesId"] as? String else { return }
-            guard !self.isProcessingRecurringNotification else { return }
+            guard let self = self, let seriesId = notification.userInfo?["seriesId"] as? String else { return }
+
+            #if DEBUG
+            print("📨 [TransactionsViewModel] Received .recurringSeriesCreated notification for series: \(seriesId)")
+            print("   isProcessingRecurringNotification: \(self.isProcessingRecurringNotification)")
+            #endif
+
+            guard !self.isProcessingRecurringNotification else {
+                #if DEBUG
+                print("⚠️ [TransactionsViewModel] Already processing recurring notification, skipping")
+                #endif
+                return
+            }
 
             self.isProcessingRecurringNotification = true
             defer { self.isProcessingRecurringNotification = false }
 
+            #if DEBUG
+            print("🔄 [TransactionsViewModel] Processing .recurringSeriesCreated notification")
+            #endif
+
+            // 🔧 FIX: Only call generateRecurringTransactions() - it handles everything internally
+            // RecurringTransactionService already calls scheduleBalanceRecalculation() and scheduleSave() inside
+            // Calling them again here causes duplicate balance recalculations
             self.generateRecurringTransactions()
             // Phase 8: Cache invalidation handled by TransactionStore
             self.rebuildIndexes()
-            self.scheduleBalanceRecalculation()
-            self.scheduleSave()
+            // 🔧 REMOVED: scheduleBalanceRecalculation() - already called in RecurringTransactionService
+            // 🔧 REMOVED: scheduleSave() - already called in RecurringTransactionService
+
+            #if DEBUG
+            print("✅ [TransactionsViewModel] Finished processing .recurringSeriesCreated notification")
+            #endif
         }
 
         // Listen for UPDATED recurring series
