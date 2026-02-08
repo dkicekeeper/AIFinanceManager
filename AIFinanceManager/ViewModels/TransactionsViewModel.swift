@@ -577,13 +577,38 @@ class TransactionsViewModel: ObservableObject {
     func scheduleBalanceRecalculation() {
         // CRITICAL: Recalculate all account balances after transaction changes
         // This is called after recurring transaction generation, CSV import, etc.
+        #if DEBUG
+        print("🔄 [TransactionsViewModel] scheduleBalanceRecalculation() called")
+        print("   📊 State at recalculation:")
+        print("      - accounts.count: \(accounts.count)")
+        print("      - allTransactions.count: \(allTransactions.count)")
+        print("      - balanceCoordinator available: \(balanceCoordinator != nil)")
+        #endif
+
         if let coordinator = balanceCoordinator {
             Task { @MainActor in
+                #if DEBUG
+                print("🔄 [TransactionsViewModel] Calling coordinator.recalculateAll with:")
+                print("      - \(accounts.count) accounts")
+                print("      - \(allTransactions.count) transactions")
+                for account in accounts.prefix(3) {
+                    print("      - Account: \(account.name) (id: \(account.id))")
+                }
+                #endif
+
                 await coordinator.recalculateAll(
                     accounts: accounts,
                     transactions: allTransactions
                 )
+
+                #if DEBUG
+                print("✅ [TransactionsViewModel] coordinator.recalculateAll completed")
+                #endif
             }
+        } else {
+            #if DEBUG
+            print("⚠️ [TransactionsViewModel] balanceCoordinator is nil!")
+            #endif
         }
     }
 

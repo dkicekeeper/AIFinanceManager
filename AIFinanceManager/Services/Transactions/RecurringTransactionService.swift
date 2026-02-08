@@ -283,12 +283,22 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                     if failCount > 0 {
                         print("⚠️ [RecurringTransactionService] Failed to add \(failCount) transactions")
                     }
+                    print("🔄 [RecurringTransactionService] About to recalculate balances...")
+                    print("   📊 Current state:")
+                    print("      - TransactionStore.transactions: \(transactionStore.transactions.count)")
+                    print("      - TransactionStore.accounts: \(transactionStore.accounts.count)")
+                    print("      - delegate.allTransactions: \(delegate.allTransactions.count)")
+                    print("      - delegate.accounts: \(delegate.accounts.count)")
                     #endif
 
                     // ✅ CRITICAL: Only recalculate balances AFTER transactions are added to store
                     // This ensures TransactionStore has the latest data
                     delegate.scheduleBalanceRecalculation()
                     delegate.scheduleSave()
+
+                    #if DEBUG
+                    print("✅ [RecurringTransactionService] Balance recalculation scheduled")
+                    #endif
 
                     // Schedule notifications for subscriptions
                     for series in delegate.recurringSeries where series.isSubscription && series.subscriptionStatus == .active {

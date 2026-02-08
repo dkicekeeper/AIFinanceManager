@@ -253,6 +253,20 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         accounts: [Account],
         transactions: [Transaction]
     ) async {
+        #if DEBUG
+        print("🔄 [BalanceCoordinator] recalculateAll() called")
+        print("   📊 Input parameters:")
+        print("      - accounts: \(accounts.count)")
+        print("      - transactions: \(transactions.count)")
+        print("   📊 Store state:")
+        print("      - store.accounts: \(store.getAllAccounts().count)")
+        print("   💰 Current balances BEFORE recalculation:")
+        for (accountId, balance) in balances.prefix(5) {
+            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
+            print("      - \(accountName): \(balance)")
+        }
+        #endif
+
         let request = BalanceQueueRequest(
             accountIds: Set(accounts.map { $0.id }),
             operation: .recalculateAll,
@@ -263,7 +277,12 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         await processRecalculateAll(accounts: accounts, transactions: transactions)
 
         #if DEBUG
-        print("🔄 Recalculated all balances: \(accounts.count) accounts")
+        print("✅ [BalanceCoordinator] Recalculated all balances: \(accounts.count) accounts")
+        print("   💰 New balances AFTER recalculation:")
+        for (accountId, balance) in balances.prefix(5) {
+            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
+            print("      - \(accountName): \(balance)")
+        }
         #endif
     }
 
@@ -651,20 +670,35 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         accounts: [Account],
         transactions: [Transaction]
     ) async {
+        #if DEBUG
+        print("🔄 [BalanceCoordinator] processRecalculateAll() started")
+        print("   📊 Processing \(accounts.count) accounts with \(transactions.count) transactions")
+        #endif
+
         var newBalances: [String: Double] = [:]
 
         // Calculate hash of transactions for cache key
         let transactionsHash = transactions.map { $0.id }.hashValue
+
+        #if DEBUG
+        print("   🔑 Transactions hash: \(transactionsHash)")
+        #endif
 
         for account in accounts {
             // Get AccountBalance from store (contains initialBalance)
             // Don't create new AccountBalance from Account model!
             guard let accountBalance = store.getAccount(account.id) else {
                 #if DEBUG
-                print("⚠️ [BalanceCoordinator] Account not found in store: \(account.id)")
+                print("⚠️ [BalanceCoordinator] Account not found in store: \(account.id) (\(account.name))")
                 #endif
                 continue
             }
+
+            #if DEBUG
+            print("   🔍 Processing account: \(account.name) (id: \(account.id))")
+            print("      - Initial balance: \(accountBalance.initialBalance ?? 0.0)")
+            print("      - Current balance: \(accountBalance.currentBalance)")
+            #endif
 
             // ✅ OPTIMIZATION: Check LRU cache first (10x performance boost)
             if let cachedBalance = getCachedBalance(accountId: account.id, transactionsHash: transactionsHash) {
