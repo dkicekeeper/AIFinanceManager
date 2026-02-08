@@ -180,8 +180,13 @@ try await transactionStore.add(transaction)
 
 ### Locations to Audit
 - [x] `RecurringTransactionService.deleteRecurringSeries()` - **FIXED**
-- [x] `RecurringTransactionService.stopRecurringSeriesAndCleanup()` - Uses same method, **FIXED**
-- [ ] Any other direct manipulation of `allTransactions` array
+- [x] `RecurringTransactionService.stopRecurringSeriesAndCleanup()` - **FIXED**
+- [x] `RecurringTransactionService.updateRecurringSeries()` - **FIXED**
+- [x] `RecurringTransactionService.updateRecurringTransaction()` - **FIXED** (deprecated method)
+- [x] `RecurringTransactionCoordinator.updateSeries()` - **FIXED**
+- [x] `RecurringTransactionCoordinator.stopSeries()` - **FIXED**
+- [x] `RecurringTransactionCoordinator.deleteSeries()` - **FIXED**
+- [ ] View layer modifications (SubscriptionDetailView, DepositDetailView, etc.) - Lower priority
 
 ---
 

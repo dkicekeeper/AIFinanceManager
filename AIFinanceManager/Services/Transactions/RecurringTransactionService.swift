@@ -88,8 +88,35 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                     return occurrenceDate > today
                 }
 
+                // 🔧 FIX 2026-02-08: Delete future transactions from TransactionStore (database)
+                // When frequency/startDate changes, regenerate future transactions
+                if let transactionStore = delegate.transactionStore {
+                    let transactionsToDelete = delegate.allTransactions.filter { tx in
+                        futureOccurrences.contains { $0.transactionId == tx.id }
+                    }
+
+                    #if DEBUG
+                    print("🗑️ [RecurringTransactionService] Updating series \(series.id): deleting \(transactionsToDelete.count) future transactions")
+                    #endif
+
+                    Task { @MainActor in
+                        for transaction in transactionsToDelete {
+                            do {
+                                try await transactionStore.delete(transaction)
+                            } catch {
+                                print("   ⚠️ Failed to delete transaction: \(error)")
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback: legacy path
+                    for occurrence in futureOccurrences {
+                        delegate.allTransactions.removeAll { $0.id == occurrence.transactionId }
+                    }
+                }
+
+                // Remove occurrences
                 for occurrence in futureOccurrences {
-                    delegate.allTransactions.removeAll { $0.id == occurrence.transactionId }
                     delegate.recurringOccurrences.removeAll { $0.id == occurrence.id }
                 }
             }
@@ -129,8 +156,43 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             return occurrenceDate > txDate && occurrenceDate > today
         }
 
+        // 🔧 FIX 2026-02-08: Delete future transactions from TransactionStore (database)
+        // Same issue as deleteRecurringSeries - need to persist deletions
+        if let transactionStore = delegate.transactionStore {
+            // Find transactions to delete
+            let transactionsToDelete = delegate.allTransactions.filter { tx in
+                futureOccurrences.contains { $0.transactionId == tx.id }
+            }
+
+            #if DEBUG
+            print("🗑️ [RecurringTransactionService] Stopping series \(seriesId): deleting \(transactionsToDelete.count) future transactions")
+            #endif
+
+            // Delete from TransactionStore (will sync back to allTransactions via observer)
+            Task { @MainActor in
+                for transaction in transactionsToDelete {
+                    do {
+                        try await transactionStore.delete(transaction)
+                        #if DEBUG
+                        print("   ✅ Deleted future: \(transaction.description) - \(transaction.date)")
+                        #endif
+                    } catch {
+                        print("   ⚠️ Failed to delete transaction: \(error)")
+                    }
+                }
+            }
+        } else {
+            // Fallback: remove from memory only (legacy path)
+            #if DEBUG
+            print("⚠️ [RecurringTransactionService] TransactionStore NOT available, using legacy path for stopping series")
+            #endif
+            for occurrence in futureOccurrences {
+                delegate.allTransactions.removeAll { $0.id == occurrence.transactionId }
+            }
+        }
+
+        // Remove occurrences
         for occurrence in futureOccurrences {
-            delegate.allTransactions.removeAll { $0.id == occurrence.transactionId }
             delegate.recurringOccurrences.removeAll { $0.id == occurrence.id }
         }
 
@@ -413,8 +475,35 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                 return occurrenceDate >= transactionDate
             }
 
+            // 🔧 FIX 2026-02-08: Delete future transactions from TransactionStore (database)
+            // When updating recurring transaction, delete future ones before regenerating
+            if let transactionStore = delegate.transactionStore {
+                let transactionsToDelete = delegate.allTransactions.filter { tx in
+                    futureOccurrences.contains { $0.transactionId == tx.id }
+                }
+
+                #if DEBUG
+                print("🗑️ [RecurringTransactionService] Updating transaction \(transactionId): deleting \(transactionsToDelete.count) future transactions")
+                #endif
+
+                Task { @MainActor in
+                    for transaction in transactionsToDelete {
+                        do {
+                            try await transactionStore.delete(transaction)
+                        } catch {
+                            print("   ⚠️ Failed to delete transaction: \(error)")
+                        }
+                    }
+                }
+            } else {
+                // Fallback: legacy path
+                for occurrence in futureOccurrences {
+                    delegate.allTransactions.removeAll { $0.id == occurrence.transactionId }
+                }
+            }
+
+            // Remove occurrences
             for occurrence in futureOccurrences {
-                delegate.allTransactions.removeAll { $0.id == occurrence.transactionId }
                 delegate.recurringOccurrences.removeAll { $0.id == occurrence.id }
             }
 

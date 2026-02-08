@@ -97,9 +97,24 @@ class RecurringTransactionCoordinator: RecurringTransactionCoordinatorProtocol {
                 return occurrenceDate > today
             }
 
-            // Remove future transactions and occurrences
+            // 🔧 FIX 2026-02-08: Delete future transactions from TransactionStore (database)
+            if let transactionStore = transactionsVM.transactionStore {
+                let transactionsToDelete = transactionsVM.allTransactions.filter { tx in
+                    futureOccurrences.contains { $0.transactionId == tx.id }
+                }
+
+                for transaction in transactionsToDelete {
+                    try? await transactionStore.delete(transaction)
+                }
+            } else {
+                // Fallback: legacy path
+                for occurrence in futureOccurrences {
+                    transactionsVM.allTransactions.removeAll { $0.id == occurrence.transactionId }
+                }
+            }
+
+            // Remove occurrences
             for occurrence in futureOccurrences {
-                transactionsVM.allTransactions.removeAll { $0.id == occurrence.transactionId }
                 transactionsVM.recurringOccurrences.removeAll { $0.id == occurrence.id }
             }
 
@@ -148,8 +163,24 @@ class RecurringTransactionCoordinator: RecurringTransactionCoordinatorProtocol {
             return occurrenceDate > txDate && occurrenceDate > today
         }
 
+        // 🔧 FIX 2026-02-08: Delete future transactions from TransactionStore (database)
+        if let transactionStore = transactionsVM.transactionStore {
+            let transactionsToDelete = transactionsVM.allTransactions.filter { tx in
+                futureOccurrences.contains { $0.transactionId == tx.id }
+            }
+
+            for transaction in transactionsToDelete {
+                try? await transactionStore.delete(transaction)
+            }
+        } else {
+            // Fallback: legacy path
+            for occurrence in futureOccurrences {
+                transactionsVM.allTransactions.removeAll { $0.id == occurrence.transactionId }
+            }
+        }
+
+        // Remove occurrences
         for occurrence in futureOccurrences {
-            transactionsVM.allTransactions.removeAll { $0.id == occurrence.transactionId }
             transactionsVM.recurringOccurrences.removeAll { $0.id == occurrence.id }
         }
 
@@ -171,8 +202,19 @@ class RecurringTransactionCoordinator: RecurringTransactionCoordinatorProtocol {
         _ = try validator.findSeries(id: seriesId, in: subscriptionsVM.recurringSeries)
 
         if deleteTransactions {
-            // Remove all transactions
-            transactionsVM.allTransactions.removeAll { $0.recurringSeriesId == seriesId }
+            // 🔧 FIX 2026-02-08: Delete transactions from TransactionStore (database)
+            if let transactionStore = transactionsVM.transactionStore {
+                let transactionsToDelete = transactionsVM.allTransactions.filter {
+                    $0.recurringSeriesId == seriesId
+                }
+
+                for transaction in transactionsToDelete {
+                    try? await transactionStore.delete(transaction)
+                }
+            } else {
+                // Fallback: legacy path
+                transactionsVM.allTransactions.removeAll { $0.recurringSeriesId == seriesId }
+            }
         } else {
             // Convert to regular transactions (remove recurring IDs)
             var updatedTransactions: [Transaction] = []
