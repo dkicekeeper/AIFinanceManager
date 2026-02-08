@@ -78,6 +78,10 @@ class TransactionFilterCoordinator: TransactionFilterCoordinatorProtocol {
     ) -> [Transaction] {
         var filtered = transactions
 
+        // ✅ FIX 2026-02-08: Filter out future transactions from history
+        // History should only show transactions up to today (no future recurring transactions)
+        filtered = filterService.filterUpToDate(filtered, date: Date())
+
         // Filter by account if specified
         if let accountId = accountId {
             filtered = filterService.filterByAccount(filtered, accountId: accountId)

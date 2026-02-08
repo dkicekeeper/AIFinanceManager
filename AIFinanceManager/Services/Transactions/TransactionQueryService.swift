@@ -187,6 +187,8 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
         let dateFormatter = Self.dateFormatter
         var result: [String: CategoryExpense] = [:]
 
+        let now = Date()
+
         for transaction in transactions {
             // Only expense transactions
             guard transaction.type == .expense else { continue }
@@ -194,6 +196,12 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
             // Filter by date range
             guard let transactionDate = dateFormatter.date(from: transaction.date),
                   transactionDate >= dateRange.start && transactionDate < dateRange.end else {
+                continue
+            }
+
+            // ✅ FIX 2026-02-08: Exclude future transactions from expense calculations
+            // Future recurring transactions should not count as expenses until their date arrives
+            guard transactionDate <= now else {
                 continue
             }
 
