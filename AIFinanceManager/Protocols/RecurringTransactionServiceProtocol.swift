@@ -70,6 +70,7 @@ protocol RecurringTransactionServiceDelegate: AnyObject {
     // Dependencies
     var repository: DataRepositoryProtocol { get }
     var recurringGenerator: RecurringTransactionGenerator { get }
+    var transactionStore: TransactionStore? { get }
 
     // Coordination methods
     func insertTransactionsSorted(_ newTransactions: [Transaction])

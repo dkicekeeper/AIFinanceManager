@@ -245,7 +245,79 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
         // First, insert new transactions if any
         if !newTransactions.isEmpty {
-            delegate.insertTransactionsSorted(newTransactions)
+            #if DEBUG
+            print("🔄 [RecurringTransactionService] Generated \(newTransactions.count) new transactions")
+            for tx in newTransactions.prefix(3) {
+                print("   📝 \(tx.description) - \(tx.amount) \(tx.currency) - category: \(tx.category) - account: \(tx.accountId ?? "nil")")
+            }
+            #endif
+
+            // 🔧 CRITICAL FIX: Add transactions to TransactionStore ONLY
+            // TransactionStore will propagate changes back to TransactionsViewModel via observer
+            // This ensures Single Source of Truth and avoids duplicate transactions
+            if let transactionStore = delegate.transactionStore {
+                #if DEBUG
+                print("✅ [RecurringTransactionService] TransactionStore available, adding transactions...")
+                print("   📊 TransactionStore has \(transactionStore.accounts.count) accounts, \(transactionStore.categories.count) categories")
+                #endif
+
+                // Add to TransactionStore (will sync back to allTransactions via observer)
+                // IMPORTANT: Use Task and await to ensure transactions are added before balance recalculation
+                Task { @MainActor in
+                    var successCount = 0
+                    var failCount = 0
+
+                    for transaction in newTransactions {
+                        do {
+                            _ = try await transactionStore.add(transaction)
+                            successCount += 1
+                        } catch {
+                            failCount += 1
+                            print("⚠️ [RecurringTransactionService] Failed to add transaction to store: \(error)")
+                            print("   📝 Transaction: \(transaction.description) - category: \(transaction.category) - account: \(transaction.accountId ?? "nil")")
+                        }
+                    }
+
+                    #if DEBUG
+                    print("✅ [RecurringTransactionService] Added \(successCount)/\(newTransactions.count) transactions to TransactionStore")
+                    if failCount > 0 {
+                        print("⚠️ [RecurringTransactionService] Failed to add \(failCount) transactions")
+                    }
+                    #endif
+
+                    // ✅ CRITICAL: Only recalculate balances AFTER transactions are added to store
+                    // This ensures TransactionStore has the latest data
+                    delegate.scheduleBalanceRecalculation()
+                    delegate.scheduleSave()
+
+                    // Schedule notifications for subscriptions
+                    for series in delegate.recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
+                        if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
+                            await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
+                        }
+                    }
+                }
+            } else {
+                // Fallback: add directly if TransactionStore not available (legacy path)
+                #if DEBUG
+                print("⚠️ [RecurringTransactionService] TransactionStore NOT available, using legacy path")
+                #endif
+
+                delegate.insertTransactionsSorted(newTransactions)
+
+                // For legacy path, recalculate immediately
+                delegate.scheduleBalanceRecalculation()
+                delegate.scheduleSave()
+
+                Task {
+                    for series in delegate.recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
+                        if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
+                            await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
+                        }
+                    }
+                }
+            }
+
             delegate.recurringOccurrences.append(contentsOf: newOccurrences)
         }
 
@@ -255,23 +327,8 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         let convertedCount = zip(delegate.allTransactions, updatedAllTransactions).filter { $0.0.recurringSeriesId != $0.1.recurringSeriesId }.count
 
         // Reassign to trigger @Published if conversions happened
-        let needsSave = !newTransactions.isEmpty || convertedCount > 0
         if convertedCount > 0 {
             delegate.allTransactions = updatedAllTransactions
-        }
-
-        // Recalculate and save if there were any changes
-        if needsSave {
-            delegate.scheduleBalanceRecalculation()
-            delegate.scheduleSave()
-
-            Task {
-                for series in delegate.recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
-                    if let nextChargeDate = SubscriptionNotificationScheduler.shared.calculateNextChargeDate(for: series) {
-                        await SubscriptionNotificationScheduler.shared.scheduleNotifications(for: series, nextChargeDate: nextChargeDate)
-                    }
-                }
-            }
         }
     }
 

@@ -538,9 +538,12 @@ final class TransactionStore: ObservableObject {
             throw TransactionStoreError.invalidAmount
         }
 
-        // Account exists
-        guard accounts.contains(where: { $0.id == transaction.accountId }) else {
-            throw TransactionStoreError.accountNotFound
+        // Account exists (if specified)
+        // Allow transactions without accountId (e.g., recurring subscriptions without account)
+        if let accountId = transaction.accountId, !accountId.isEmpty {
+            guard accounts.contains(where: { $0.id == accountId }) else {
+                throw TransactionStoreError.accountNotFound
+            }
         }
 
         // Target account exists (for transfers)

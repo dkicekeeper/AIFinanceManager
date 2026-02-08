@@ -138,6 +138,19 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
                 baseCurrency: baseCurrency,
                 validCategoryNames: validCategoryNames
             )
+
+            // 🔧 CRITICAL FIX: Fallback for non-date-based filters too!
+            // aggregateCache is a stub (Phase 8) that returns empty results
+            // Need to calculate from transactions as fallback
+            if result.isEmpty, let transactions = transactions, let currencyService = currencyService {
+                return calculateCategoryExpensesFromTransactions(
+                    transactions: transactions,
+                    timeFilter: timeFilter,
+                    baseCurrency: baseCurrency,
+                    validCategoryNames: validCategoryNames,
+                    currencyService: currencyService
+                )
+            }
         }
 
         // ✅ CRITICAL FIX: Only cache non-empty results
