@@ -19,6 +19,7 @@ final class QuickAddCoordinator: ObservableObject {
     let transactionsViewModel: TransactionsViewModel
     let categoriesViewModel: CategoriesViewModel
     let accountsViewModel: AccountsViewModel
+    let transactionStore: TransactionStore
     private var timeFilterManager: TimeFilterManager
     private let categoryMapper: CategoryDisplayDataMapperProtocol
 
@@ -39,12 +40,14 @@ final class QuickAddCoordinator: ObservableObject {
         transactionsViewModel: TransactionsViewModel,
         categoriesViewModel: CategoriesViewModel,
         accountsViewModel: AccountsViewModel,
+        transactionStore: TransactionStore,
         timeFilterManager: TimeFilterManager,
         categoryMapper: CategoryDisplayDataMapperProtocol? = nil
     ) {
         self.transactionsViewModel = transactionsViewModel
         self.categoriesViewModel = categoriesViewModel
         self.accountsViewModel = accountsViewModel
+        self.transactionStore = transactionStore
         self.timeFilterManager = timeFilterManager
         self.categoryMapper = categoryMapper ?? CategoryDisplayDataMapper()
 
@@ -82,11 +85,23 @@ final class QuickAddCoordinator: ObservableObject {
     func updateCategories() {
         PerformanceProfiler.start("QuickAddCoordinator.updateCategories")
 
+        #if DEBUG
+        print("🔄 [QuickAddCoordinator] updateCategories() called")
+        print("   📊 Transactions count: \(transactionsViewModel.allTransactions.count)")
+        #endif
+
         // Get category expenses from TransactionsViewModel
         let categoryExpenses = transactionsViewModel.categoryExpenses(
             timeFilterManager: timeFilterManager,
             categoriesViewModel: categoriesViewModel
         )
+
+        #if DEBUG
+        print("   💰 Category expenses: \(categoryExpenses.count) categories")
+        for (category, expense) in categoryExpenses.prefix(3) {
+            print("      - \(category): $\(expense.total)")
+        }
+        #endif
 
         // Map to display data
         let newCategories = categoryMapper.mapCategories(
@@ -96,9 +111,17 @@ final class QuickAddCoordinator: ObservableObject {
             baseCurrency: transactionsViewModel.appSettings.baseCurrency
         )
 
+        #if DEBUG
+        print("   📋 Mapped categories: \(newCategories.count)")
+        #endif
+
         // ✅ CRITICAL: Assign to @Published property to trigger SwiftUI update
         // Even though categories is @Published, we need to ensure SwiftUI sees the change
         categories = newCategories
+
+        #if DEBUG
+        print("✅ [QuickAddCoordinator] Categories updated, SwiftUI should refresh")
+        #endif
 
         PerformanceProfiler.end("QuickAddCoordinator.updateCategories")
     }

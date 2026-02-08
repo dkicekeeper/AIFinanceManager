@@ -17,7 +17,6 @@ struct AddTransactionModal: View {
     // MARK: - Environment
 
     @EnvironmentObject var timeFilterManager: TimeFilterManager
-    @EnvironmentObject var transactionStore: TransactionStore
 
     // MARK: - State
 
@@ -41,9 +40,10 @@ struct AddTransactionModal: View {
         transactionsViewModel: TransactionsViewModel,
         categoriesViewModel: CategoriesViewModel,
         accountsViewModel: AccountsViewModel,
+        transactionStore: TransactionStore,
         onDismiss: @escaping () -> Void
     ) {
-        // Note: TransactionStore will be injected via @EnvironmentObject in onAppear
+        // ✅ REFACTORED: TransactionStore now passed directly, not via @EnvironmentObject
         _coordinator = StateObject(wrappedValue: AddTransactionCoordinator(
             category: category,
             type: type,
@@ -51,7 +51,7 @@ struct AddTransactionModal: View {
             transactionsViewModel: transactionsViewModel,
             categoriesViewModel: categoriesViewModel,
             accountsViewModel: accountsViewModel,
-            transactionStore: nil  // Will be set in onAppear
+            transactionStore: transactionStore
         ))
         self.onDismiss = onDismiss
     }
@@ -86,20 +86,14 @@ struct AddTransactionModal: View {
             .onChange(of: coordinator.formData.accountId) { _, _ in
                 coordinator.updateCurrencyForSelectedAccount()
             }
-            .onAppear {
-                // NEW: Inject TransactionStore from @EnvironmentObject
-                coordinator.setTransactionStore(transactionStore)
-
-                // ✅ PERFORMANCE FIX: Compute suggested account asynchronously
-                // UI shows immediately, suggestion loads in background
-                Task {
-                    if coordinator.formData.accountId == nil {
-                        let suggested = await coordinator.computeSuggestedAccountIdAsync()
-                        coordinator.formData.accountId = suggested
-                        coordinator.updateCurrencyForSelectedAccount()
-                    } else {
-                        coordinator.updateCurrencyForSelectedAccount()
-                    }
+            .task {
+                // ✅ REFACTORED: Simplified account suggestion
+                // SwiftUI's .task{} automatically handles lifecycle
+                if coordinator.formData.accountId == nil {
+                    coordinator.formData.accountId = await coordinator.suggestedAccountId()
+                    coordinator.updateCurrencyForSelectedAccount()
+                } else {
+                    coordinator.updateCurrencyForSelectedAccount()
                 }
             }
         }

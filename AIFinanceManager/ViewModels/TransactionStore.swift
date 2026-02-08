@@ -69,8 +69,9 @@ final class TransactionStore: ObservableObject {
     private let repository: DataRepositoryProtocol
     private let cache: UnifiedTransactionCache
 
-    // NEW Phase 7.1: Balance coordinator for automatic balance updates
-    private weak var balanceCoordinator: BalanceCoordinator?
+    // ✅ REFACTORED: Balance coordinator is now REQUIRED (not optional)
+    // This ensures balance updates always occur, no silent failures
+    private let balanceCoordinator: BalanceCoordinator
 
     // Settings
     private var baseCurrency: String = "KZT"
@@ -79,7 +80,7 @@ final class TransactionStore: ObservableObject {
 
     init(
         repository: DataRepositoryProtocol,
-        balanceCoordinator: BalanceCoordinator? = nil,
+        balanceCoordinator: BalanceCoordinator,
         cacheCapacity: Int = 1000
     ) {
         self.repository = repository
@@ -116,21 +117,12 @@ final class TransactionStore: ObservableObject {
         cache.invalidateAll() // Currency change affects all cached calculations
     }
 
-    /// Sync accounts from AccountsViewModel (temporary during migration)
-    func syncAccounts(_ newAccounts: [Account]) {
-        accounts = newAccounts
-    }
-
-    /// Sync categories from CategoriesViewModel (temporary during migration)
-    func syncCategories(_ newCategories: [CustomCategory]) {
-        categories = newCategories
-    }
-
     // MARK: - CRUD Operations
 
     /// Add a new transaction
     /// Phase 1: Complete implementation with validation, balance updates, and persistence
-    func add(_ transaction: Transaction) async throws {
+    /// Returns the created transaction with generated ID
+    func add(_ transaction: Transaction) async throws -> Transaction {
         // 1. Validate transaction
         try validate(transaction)
 
@@ -171,6 +163,9 @@ final class TransactionStore: ObservableObject {
         #if DEBUG
         print("✅ [TransactionStore] Added: \(event.debugDescription)")
         #endif
+
+        // 5. Return the created transaction with ID
+        return tx
     }
 
     /// Update an existing transaction
@@ -268,6 +263,90 @@ final class TransactionStore: ObservableObject {
 
         #if DEBUG
         print("✅ [TransactionStore] Transfer: \(amount) \(currency) from \(sourceId) to \(targetId)")
+        #endif
+    }
+
+    // MARK: - Account CRUD Operations (Phase 3)
+
+    /// Add a new account
+    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
+    func addAccount(_ account: Account) {
+        accounts.append(account)
+        persistAccounts()
+
+        #if DEBUG
+        print("✅ [TransactionStore] Added account: \(account.name)")
+        #endif
+    }
+
+    /// Update an existing account
+    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
+    func updateAccount(_ account: Account) {
+        guard let index = accounts.firstIndex(where: { $0.id == account.id }) else {
+            #if DEBUG
+            print("⚠️ [TransactionStore] Account not found for update: \(account.id)")
+            #endif
+            return
+        }
+
+        accounts[index] = account
+        persistAccounts()
+
+        #if DEBUG
+        print("✅ [TransactionStore] Updated account: \(account.name)")
+        #endif
+    }
+
+    /// Delete an account
+    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
+    func deleteAccount(_ accountId: String) {
+        accounts.removeAll { $0.id == accountId }
+        persistAccounts()
+
+        #if DEBUG
+        print("✅ [TransactionStore] Deleted account: \(accountId)")
+        #endif
+    }
+
+    // MARK: - Category CRUD Operations (Phase 3)
+
+    /// Add a new category
+    /// Phase 3: TransactionStore is now Single Source of Truth for categories
+    func addCategory(_ category: CustomCategory) {
+        categories.append(category)
+        persistCategories()
+
+        #if DEBUG
+        print("✅ [TransactionStore] Added category: \(category.name)")
+        #endif
+    }
+
+    /// Update an existing category
+    /// Phase 3: TransactionStore is now Single Source of Truth for categories
+    func updateCategory(_ category: CustomCategory) {
+        guard let index = categories.firstIndex(where: { $0.id == category.id }) else {
+            #if DEBUG
+            print("⚠️ [TransactionStore] Category not found for update: \(category.id)")
+            #endif
+            return
+        }
+
+        categories[index] = category
+        persistCategories()
+
+        #if DEBUG
+        print("✅ [TransactionStore] Updated category: \(category.name)")
+        #endif
+    }
+
+    /// Delete a category
+    /// Phase 3: TransactionStore is now Single Source of Truth for categories
+    func deleteCategory(_ categoryId: String) {
+        categories.removeAll { $0.id == categoryId }
+        persistCategories()
+
+        #if DEBUG
+        print("✅ [TransactionStore] Deleted category: \(categoryId)")
         #endif
     }
 
@@ -480,7 +559,7 @@ final class TransactionStore: ObservableObject {
     }
 
     /// Update balances for affected accounts
-    /// Phase 7.1: Integrated with BalanceCoordinator
+    /// ✅ REFACTORED: BalanceCoordinator is now required, guaranteed to update balances
     private func updateBalances(for event: TransactionEvent) {
         // Get affected account IDs from event
         let affectedAccounts = event.affectedAccounts
@@ -490,26 +569,18 @@ final class TransactionStore: ObservableObject {
         }
 
         // Notify BalanceCoordinator to recalculate affected accounts
-        if let balanceCoordinator = balanceCoordinator {
-            Task {
-                await balanceCoordinator.recalculateAccounts(
-                    affectedAccounts,
-                    accounts: accounts,
-                    transactions: transactions
-                )
+        // No optional chaining - guaranteed to work!
+        Task {
+            await balanceCoordinator.recalculateAccounts(
+                affectedAccounts,
+                accounts: accounts,
+                transactions: transactions
+            )
 
-                #if DEBUG
-                print("✅ [TransactionStore] Notified BalanceCoordinator")
-                print("   Event: \(event.debugDescription)")
-                print("   Affected accounts: \(affectedAccounts)")
-                #endif
-            }
-        } else {
             #if DEBUG
-            print("⚠️ [TransactionStore] BalanceCoordinator not available")
+            print("✅ [TransactionStore] Notified BalanceCoordinator")
             print("   Event: \(event.debugDescription)")
             print("   Affected accounts: \(affectedAccounts)")
-            print("   Balance updates will not occur - ensure balanceCoordinator is injected")
             #endif
         }
     }
@@ -535,6 +606,26 @@ final class TransactionStore: ObservableObject {
         } catch {
             throw TransactionStoreError.persistenceFailed(error)
         }
+    }
+
+    /// Persist accounts to repository
+    /// Phase 3: TransactionStore now manages account persistence
+    private func persistAccounts() {
+        repository.saveAccounts(accounts)
+
+        #if DEBUG
+        print("💾 [TransactionStore] Persisted accounts to repository")
+        #endif
+    }
+
+    /// Persist categories to repository
+    /// Phase 3: TransactionStore now manages category persistence
+    private func persistCategories() {
+        repository.saveCategories(categories)
+
+        #if DEBUG
+        print("💾 [TransactionStore] Persisted categories to repository")
+        #endif
     }
 
     /// Convert amount between currencies

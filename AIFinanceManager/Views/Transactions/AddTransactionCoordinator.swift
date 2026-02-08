@@ -19,19 +19,14 @@ final class AddTransactionCoordinator: ObservableObject {
     let transactionsViewModel: TransactionsViewModel
     let categoriesViewModel: CategoriesViewModel
     let accountsViewModel: AccountsViewModel
-    private let formService: TransactionFormServiceProtocol
 
-    // NEW: TransactionStore for refactored operations
-    private var transactionStore: TransactionStore?
+    // ✅ REFACTORED: TransactionStore is now REQUIRED (not optional)
+    // No more dual paths - always use TransactionStore
+    private let transactionStore: TransactionStore
 
     // MARK: - Published State
 
     @Published var formData: TransactionFormData
-
-    // MARK: - Private State
-
-    private var _cachedSuggestedAccountId: String?
-    private var _hasCachedSuggestion = false
 
     // MARK: - Initialization
 
@@ -42,70 +37,32 @@ final class AddTransactionCoordinator: ObservableObject {
         transactionsViewModel: TransactionsViewModel,
         categoriesViewModel: CategoriesViewModel,
         accountsViewModel: AccountsViewModel,
-        formService: TransactionFormServiceProtocol? = nil,
-        transactionStore: TransactionStore? = nil
+        transactionStore: TransactionStore
     ) {
-        // ✅ PERFORMANCE: Don't compute suggested account in init
-        // Deferred to lazy computed property to make sheet opening instant
         self.formData = TransactionFormData(
             category: category,
             type: type,
             currency: currency,
-            suggestedAccountId: nil  // Will be computed on-demand
+            suggestedAccountId: nil  // Will be computed in onAppear
         )
 
         self.transactionsViewModel = transactionsViewModel
         self.categoriesViewModel = categoriesViewModel
         self.accountsViewModel = accountsViewModel
-        // Create service inside @MainActor context if not provided
-        self.formService = formService ?? TransactionFormService()
         self.transactionStore = transactionStore
     }
 
     // MARK: - Public Methods
 
-    /// Set TransactionStore (called from View's onAppear)
-    func setTransactionStore(_ store: TransactionStore) {
-        self.transactionStore = store
-    }
-
-    /// Get suggested account ID (sync - returns cached value or nil)
-    /// Use computeSuggestedAccountIdAsync() for initial computation
-    var suggestedAccountId: String? {
-        // Only return cached value - don't compute synchronously
-        guard _hasCachedSuggestion else { return nil }
-        return _cachedSuggestedAccountId
-    }
-
-    /// Compute suggested account ID asynchronously (call once on appear)
-    func computeSuggestedAccountIdAsync() async -> String? {
-        // Return cached value if already computed
-        guard !_hasCachedSuggestion else {
-            return _cachedSuggestedAccountId
-        }
-
-        // ✅ PERFORMANCE: Compute on background thread to avoid blocking UI
-        let result: String? = await Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self = self else { return nil }
-
-            let suggested = await MainActor.run {
-                self.accountsViewModel.suggestedAccount(
-                    forCategory: self.formData.category,
-                    transactions: self.transactionsViewModel.allTransactions,
-                    amount: self.formData.amountDouble
-                )
-            }
-
-            return await MainActor.run {
-                suggested?.id ?? self.accountsViewModel.accounts.first?.id
-            }
-        }.value
-
-        // Cache the result
-        _cachedSuggestedAccountId = result
-        _hasCachedSuggestion = true
-
-        return result
+    /// ✅ REFACTORED: Simplified account suggestion - no manual caching
+    /// Compute suggested account ID asynchronously
+    func suggestedAccountId() async -> String? {
+        let suggested = accountsViewModel.suggestedAccount(
+            forCategory: formData.category,
+            transactions: transactionsViewModel.allTransactions,
+            amount: formData.amountDouble
+        )
+        return suggested?.id ?? accountsViewModel.accounts.first?.id
     }
 
     /// Get accounts sorted by balance (fast, no transaction scanning needed)
@@ -155,7 +112,7 @@ final class AddTransactionCoordinator: ObservableObject {
         let accounts = accountsViewModel.accounts
 
         // Step 1: Validate form data
-        let validationResult = formService.validate(formData, accounts: accounts)
+        let validationResult = validate(accounts: accounts)
         guard validationResult.isValid else {
             return validationResult
         }
@@ -169,49 +126,44 @@ final class AddTransactionCoordinator: ObservableObject {
             createRecurringSeries()
 
             // If future date, only create series (not individual transaction)
-            if formService.isFutureDate(formData.selectedDate) {
+            if isFutureDate(formData.selectedDate) {
                 return .valid
             }
         }
 
         // Step 3: Convert currency to base currency
         let baseCurrency = transactionsViewModel.appSettings.baseCurrency
-        let conversionResult = await formService.convertCurrency(
+        let conversionResult = await convertCurrency(
             amount: formData.parsedAmount!,
             from: formData.currency,
-            to: baseCurrency,
-            baseCurrency: baseCurrency
+            to: baseCurrency
         )
 
         // Step 4: Calculate target amounts (for different currency scenarios)
-        let targetAmounts = await formService.calculateTargetAmounts(
+        let targetAmounts = await calculateTargetAmounts(
             amount: formData.parsedAmount!,
             currency: formData.currency,
             account: account,
             baseCurrency: baseCurrency
         )
 
-        // Step 5: Create and add transaction
+        // Step 5: Create and add transaction via TransactionStore
         let transaction = createTransaction(
             convertedAmount: conversionResult.convertedAmount,
             targetAmounts: targetAmounts
         )
 
-        // NEW: Use TransactionStore if available, otherwise fallback to legacy
-        if let transactionStore = transactionStore {
-            do {
-                try await transactionStore.add(transaction)
-            } catch {
-                return ValidationResult(isValid: false, errors: [.custom(error.localizedDescription)])
-            }
-        } else {
-            // Legacy path for backward compatibility
-            transactionsViewModel.addTransaction(transaction)
+        // ✅ REFACTORED: Single code path - always use TransactionStore
+        let createdTransaction: Transaction
+        do {
+            createdTransaction = try await transactionStore.add(transaction)
+        } catch {
+            return ValidationResult(isValid: false, errors: [.custom(error.localizedDescription)])
         }
 
         // Step 6: Link subcategories if any selected
         if !formData.subcategoryIds.isEmpty {
-            await linkSubcategories(to: transaction)
+            await linkSubcategories(to: createdTransaction)
         }
 
         return .valid
@@ -258,35 +210,141 @@ final class AddTransactionCoordinator: ObservableObject {
     }
 
     private func linkSubcategories(to transaction: Transaction) async {
-        // Find the added transaction in the list
-        // NEW: Check TransactionStore first if available
-        let addedTransaction: Transaction?
-        if let transactionStore = transactionStore {
-            addedTransaction = transactionStore.transactions.first { tx in
-                tx.date == DateFormatters.dateFormatter.string(from: formData.selectedDate) &&
-                tx.description == formData.description &&
-                tx.amount == formData.amountDouble &&
-                tx.category == formData.category &&
-                tx.accountId == formData.accountId &&
-                tx.type == formData.type
-            }
-        } else {
-            // Legacy fallback
-            addedTransaction = transactionsViewModel.allTransactions.first { tx in
-                tx.date == DateFormatters.dateFormatter.string(from: formData.selectedDate) &&
-                tx.description == formData.description &&
-                tx.amount == formData.amountDouble &&
-                tx.category == formData.category &&
-                tx.accountId == formData.accountId &&
-                tx.type == formData.type
+        // ✅ SIMPLIFIED: No need to search - transaction already has ID!
+        categoriesViewModel.linkSubcategoriesToTransaction(
+            transactionId: transaction.id,
+            subcategoryIds: Array(formData.subcategoryIds)
+        )
+    }
+
+    // MARK: - Phase 2: Inline Validation & Conversion (formerly FormService)
+
+    /// ✅ REFACTORED: Validation logic moved from FormService
+    private func validate(accounts: [Account]) -> ValidationResult {
+        var errors: [ValidationError] = []
+
+        // Validate amount
+        guard let decimalAmount = formData.parsedAmount else {
+            errors.append(.invalidAmount)
+            return .invalid(errors)
+        }
+
+        guard decimalAmount > 0 else {
+            errors.append(.amountMustBePositive)
+            return .invalid(errors)
+        }
+
+        // Validate account selection
+        guard let accountId = formData.accountId else {
+            errors.append(.accountNotSelected)
+            return .invalid(errors)
+        }
+
+        // Validate account exists
+        guard accounts.contains(where: { $0.id == accountId }) else {
+            errors.append(.accountNotFound)
+            return .invalid(errors)
+        }
+
+        return .valid
+    }
+
+    /// ✅ REFACTORED: Currency conversion moved from FormService
+    private func convertCurrency(
+        amount: Decimal,
+        from sourceCurrency: String,
+        to targetCurrency: String
+    ) async -> CurrencyConversionResult {
+        // No conversion needed if currencies match
+        guard sourceCurrency != targetCurrency else {
+            return CurrencyConversionResult(convertedAmount: nil, exchangeRate: nil)
+        }
+
+        let amountDouble = NSDecimalNumber(decimal: amount).doubleValue
+
+        // Pre-fetch exchange rates
+        _ = await CurrencyConverter.getExchangeRate(for: sourceCurrency)
+        _ = await CurrencyConverter.getExchangeRate(for: targetCurrency)
+
+        // Try sync conversion first (uses cache)
+        if let convertedAmount = CurrencyConverter.convertSync(
+            amount: amountDouble,
+            from: sourceCurrency,
+            to: targetCurrency
+        ) {
+            let rate = convertedAmount / amountDouble
+            return CurrencyConversionResult(
+                convertedAmount: convertedAmount,
+                exchangeRate: rate
+            )
+        }
+
+        // Fallback to async conversion
+        if let convertedAmount = await CurrencyConverter.convert(
+            amount: amountDouble,
+            from: sourceCurrency,
+            to: targetCurrency
+        ) {
+            let rate = convertedAmount / amountDouble
+            return CurrencyConversionResult(
+                convertedAmount: convertedAmount,
+                exchangeRate: rate
+            )
+        }
+
+        return CurrencyConversionResult(convertedAmount: nil, exchangeRate: nil)
+    }
+
+    /// ✅ REFACTORED: Target amounts calculation moved from FormService
+    private func calculateTargetAmounts(
+        amount: Decimal,
+        currency: String,
+        account: Account,
+        baseCurrency: String
+    ) async -> TargetAmounts {
+        let accountCurrency = account.currency
+
+        // Case 1: Transaction currency differs from account currency
+        // Need to convert to account currency for correct balance update
+        if currency != accountCurrency {
+            let conversionResult = await convertCurrency(
+                amount: amount,
+                from: currency,
+                to: accountCurrency
+            )
+
+            return TargetAmounts(
+                targetCurrency: accountCurrency,
+                targetAmount: conversionResult.convertedAmount
+            )
+        }
+
+        // Case 2: Transaction currency == Account currency, but differs from base currency
+        // Show equivalent in base currency for UI display
+        if currency == accountCurrency && currency != baseCurrency {
+            let conversionResult = await convertCurrency(
+                amount: amount,
+                from: currency,
+                to: baseCurrency
+            )
+
+            if conversionResult.convertedAmount != nil {
+                return TargetAmounts(
+                    targetCurrency: baseCurrency,
+                    targetAmount: conversionResult.convertedAmount
+                )
             }
         }
 
-        if let transactionId = addedTransaction?.id {
-            categoriesViewModel.linkSubcategoriesToTransaction(
-                transactionId: transactionId,
-                subcategoryIds: Array(formData.subcategoryIds)
-            )
-        }
+        // Case 3: All currencies match or no conversion available
+        return .none
+    }
+
+    /// ✅ REFACTORED: Date utility moved from FormService
+    private func isFutureDate(_ date: Date) -> Bool {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let transactionDate = calendar.startOfDay(for: date)
+        return transactionDate > today
     }
 }

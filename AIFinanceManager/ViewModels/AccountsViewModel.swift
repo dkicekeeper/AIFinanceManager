@@ -15,6 +15,8 @@ import Combine
 class AccountsViewModel: ObservableObject {
     // MARK: - Published Properties
 
+    /// PHASE 3: Accounts are now observed from TransactionStore (Single Source of Truth)
+    /// This is a computed property - ViewModels no longer own the data
     @Published var accounts: [Account] = []
 
     // MARK: - Dependencies
@@ -23,18 +25,49 @@ class AccountsViewModel: ObservableObject {
     /// Injected by AppCoordinator, optional for backward compatibility
     var balanceCoordinator: BalanceCoordinator?
 
+    /// PHASE 3: TransactionStore as Single Source of Truth for accounts
+    /// ViewModels observe this instead of owning data
+    weak var transactionStore: TransactionStore?
+
     // MARK: - Private Properties
 
     private let repository: DataRepositoryProtocol
-    
+    private var accountsSubscription: AnyCancellable?
+
     // MARK: - Initialization
-    
+
     init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
         self.repository = repository
-        self.accounts = repository.loadAccounts()
+        // PHASE 3: Don't load accounts here anymore - will be synced from TransactionStore
+        // self.accounts = repository.loadAccounts()
+    }
 
-        // MIGRATED: Register accounts with BalanceCoordinator (Single Source of Truth)
-        syncInitialBalancesToCoordinator()
+    /// PHASE 3: Setup subscription to TransactionStore.$accounts
+    /// Called by AppCoordinator after TransactionStore is initialized
+    func setupTransactionStoreObserver() {
+        guard let transactionStore = transactionStore else {
+            #if DEBUG
+            print("⚠️ [AccountsVM] TransactionStore not set, cannot setup observer")
+            #endif
+            return
+        }
+
+        accountsSubscription = transactionStore.$accounts
+            .sink { [weak self] updatedAccounts in
+                guard let self = self else { return }
+                self.accounts = updatedAccounts
+
+                #if DEBUG
+                print("✅ [AccountsVM] Received \(updatedAccounts.count) accounts from TransactionStore")
+                #endif
+
+                // MIGRATED: Register accounts with BalanceCoordinator (Single Source of Truth)
+                self.syncInitialBalancesToCoordinator()
+            }
+
+        #if DEBUG
+        print("✅ [AccountsVM] Setup TransactionStore observer")
+        #endif
     }
     
     /// Перезагружает все данные из хранилища (используется после импорта)
@@ -44,10 +77,11 @@ class AccountsViewModel: ObservableObject {
         print("   📊 Current accounts count: \(accounts.count)")
         #endif
 
-        accounts = repository.loadAccounts()
+        // PHASE 3: TransactionStore is the owner - it will reload and publish to observers
+        // No need to reload here - accounts will be updated via subscription
+        // Just trigger syncInitialBalancesToCoordinator when accounts change
 
         #if DEBUG
-        print("   📊 After reload accounts count: \(accounts.count)")
         print("   ⚠️ About to call syncInitialBalancesToCoordinator - THIS WILL MARK ALL AS MANUAL")
         #endif
 
@@ -72,8 +106,9 @@ class AccountsViewModel: ObservableObject {
             shouldCalculateFromTransactions: shouldCalculateFromTransactions,
             initialBalance: shouldCalculateFromTransactions ? 0.0 : initialBalance
         )
-        accounts.append(account)
-        saveAccounts()
+
+        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+        transactionStore?.addAccount(account)
 
         // NEW: Register account with BalanceCoordinator (now synchronous)
         if let coordinator = balanceCoordinator {
@@ -99,20 +134,11 @@ class AccountsViewModel: ObservableObject {
     }
     
     func updateAccount(_ account: Account) {
-
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
             let oldInitialBalance = accounts[index].initialBalance ?? 0
 
-            // Создаем новый массив вместо модификации элемента на месте
-            // Это необходимо для корректной работы @Published property wrapper
-            var newAccounts = accounts
-            newAccounts[index] = account
-
-            // Переприсваиваем весь массив для триггера @Published
-            accounts = newAccounts
-            // NOTE: @Published automatically sends objectWillChange notification
-
-            saveAccounts()  // ✅ Sync save
+            // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+            transactionStore?.updateAccount(account)
 
             // NEW: Update BalanceCoordinator if initialBalance changed
             let newInitialBalance = account.initialBalance ?? 0
@@ -123,12 +149,15 @@ class AccountsViewModel: ObservableObject {
                 }
             }
         } else {
+            #if DEBUG
+            print("⚠️ [AccountsVM] Account not found for update: \(account.id)")
+            #endif
         }
     }
     
     func deleteAccount(_ account: Account, deleteTransactions: Bool = false) {
-        accounts.removeAll { $0.id == account.id }
-        saveAccounts()  // ✅ Sync save
+        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+        transactionStore?.deleteAccount(account.id)
         // Note: Transaction deletion is handled by the calling view
 
         // NEW: Remove account from BalanceCoordinator
@@ -176,9 +205,8 @@ class AccountsViewModel: ObservableObject {
         // Создаем транзакцию перевода
         // Note: Transaction creation should be handled by TransactionsViewModel
         // This method is kept for backward compatibility but should be refactored
-        
-        // Обновляем балансы (это будет пересчитано через recalculateAccountBalances в TransactionsViewModel)
-        saveAccounts()  // ✅ Sync save
+
+        // PHASE 3: No need to save - TransactionStore handles persistence
     }
     
     // MARK: - Deposit Operations
@@ -211,8 +239,8 @@ class AccountsViewModel: ObservableObject {
             initialBalance: balance
         )
 
-        accounts.append(account)
-        saveAccounts()  // ✅ Sync save
+        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+        transactionStore?.addAccount(account)
 
         // NEW: Register deposit with BalanceCoordinator
         if let coordinator = balanceCoordinator {
@@ -229,16 +257,8 @@ class AccountsViewModel: ObservableObject {
     func updateDeposit(_ account: Account) {
         guard account.isDeposit else { return }
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-
-            // Создаем новый массив вместо модификации элемента на месте
-            var newAccounts = accounts
-            newAccounts[index] = account
-
-            // Переприсваиваем весь массив для триггера @Published
-            accounts = newAccounts
-            // NOTE: @Published automatically sends objectWillChange notification
-
-            saveAccounts()  // ✅ Sync save
+            // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+            transactionStore?.updateAccount(account)
 
             // NEW: Update deposit in BalanceCoordinator
             if let coordinator = balanceCoordinator, let depositInfo = account.depositInfo {
@@ -319,25 +339,19 @@ class AccountsViewModel: ObservableObject {
     }
     
     /// Сохранить все счета (используется после массового обновления балансов)
+    /// PHASE 3: Deprecated - TransactionStore handles persistence
     func saveAllAccounts() {
-        repository.saveAccounts(accounts)
+        #if DEBUG
+        print("⚠️ [AccountsVM] saveAllAccounts is deprecated - TransactionStore handles persistence")
+        #endif
     }
 
     /// Синхронно сохранить все счета (используется при импорте)
+    /// PHASE 3: Deprecated - TransactionStore handles persistence
     func saveAllAccountsSync() {
-        // Use repository to save synchronously
-        if let coreDataRepo = repository as? CoreDataRepository {
-            do {
-                try coreDataRepo.saveAccountsSync(accounts)
-            } catch {
-                // Critical error - log but don't fallback to UserDefaults
-                // This ensures data consistency with the primary storage
-            }
-        } else {
-            // For non-CoreData repositories (e.g., UserDefaultsRepository in tests)
-            // use the standard async save method
-            repository.saveAccounts(accounts)
-        }
+        #if DEBUG
+        print("⚠️ [AccountsVM] saveAllAccountsSync is deprecated - TransactionStore handles persistence")
+        #endif
     }
 
     // MIGRATED: syncAccountBalances removed - now managed by BalanceCoordinator (Single Source of Truth)
@@ -394,20 +408,7 @@ class AccountsViewModel: ObservableObject {
             amount: amount
         )
     }
-    
+
     // MARK: - Private Helpers
-    
-    /// Save accounts synchronously to prevent data loss on app termination
-    private func saveAccounts() {
-        if let coreDataRepo = repository as? CoreDataRepository {
-            do {
-                try coreDataRepo.saveAccountsSync(accounts)
-            } catch {
-                // Fallback to async save
-                repository.saveAccounts(accounts)
-            }
-        } else {
-            repository.saveAccounts(accounts)
-        }
-    }
+    // PHASE 3: saveAccounts removed - TransactionStore handles persistence
 }

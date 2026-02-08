@@ -34,12 +34,14 @@ struct QuickAddTransactionView: View {
     init(
         transactionsViewModel: TransactionsViewModel,
         categoriesViewModel: CategoriesViewModel,
-        accountsViewModel: AccountsViewModel
+        accountsViewModel: AccountsViewModel,
+        transactionStore: TransactionStore
     ) {
         _coordinator = StateObject(wrappedValue: QuickAddCoordinator(
             transactionsViewModel: transactionsViewModel,
             categoriesViewModel: categoriesViewModel,
             accountsViewModel: accountsViewModel,
+            transactionStore: transactionStore,
             timeFilterManager: TimeFilterManager() // Will be replaced by @EnvironmentObject
         ))
     }
@@ -104,6 +106,7 @@ struct QuickAddTransactionView: View {
             transactionsViewModel: coordinator.transactionsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             accountsViewModel: coordinator.accountsViewModel,
+            transactionStore: coordinator.transactionStore,
             onDismiss: coordinator.dismissModal
         )
         .environmentObject(timeFilterManager)
@@ -128,7 +131,8 @@ struct QuickAddTransactionView: View {
     QuickAddTransactionView(
         transactionsViewModel: coordinator.transactionsViewModel,
         categoriesViewModel: coordinator.categoriesViewModel,
-        accountsViewModel: coordinator.accountsViewModel
+        accountsViewModel: coordinator.accountsViewModel,
+        transactionStore: coordinator.transactionStore
     )
     .environmentObject(TimeFilterManager())
 }

@@ -161,6 +161,16 @@ class AppCoordinator: ObservableObject {
         // Completes migration to Single Source of Truth for transactions
         transactionsViewModel.transactionStore = transactionStore
 
+        // PHASE 3: Inject TransactionStore into AccountsViewModel and CategoriesViewModel
+        // They will observe accounts/categories from TransactionStore instead of owning them
+        accountsViewModel.transactionStore = transactionStore
+        categoriesViewModel.transactionStore = transactionStore
+
+        // PHASE 3: Setup observers for TransactionStore → ViewModels
+        // ViewModels observe TransactionStore instead of owning data
+        accountsViewModel.setupTransactionStoreObserver()
+        categoriesViewModel.setupTransactionStoreObserver()
+
         // 🔧 CRITICAL FIX: Setup TransactionStore → TransactionsViewModel sync
         // When TransactionStore updates transactions, sync them back to TransactionsViewModel
         setupTransactionStoreObserver()
@@ -173,6 +183,7 @@ class AppCoordinator: ObservableObject {
         print("✅ [AppCoordinator] Balance SSOT established via BalanceCoordinator")
         print("✅ [AppCoordinator] TransactionStore SSOT established with sync")
         print("✅ [AppCoordinator] Settings SSOT established via SettingsViewModel (Phase 1)")
+        print("✅ [AppCoordinator] PHASE 3: Accounts/Categories SSOT via TransactionStore observers")
         #endif
     }
 
@@ -197,15 +208,13 @@ class AppCoordinator: ObservableObject {
         // NEW 2026-02-05: Load data into TransactionStore
         try? await transactionStore.loadData()
 
-        // 🔧 CRITICAL FIX: Sync data between TransactionStore and TransactionsViewModel
-        // This ensures both stores have consistent initial data
-        transactionStore.syncAccounts(accountsViewModel.accounts)
-        transactionStore.syncCategories(categoriesViewModel.customCategories)
+        // PHASE 3: TransactionStore now owns accounts/categories - they are published to ViewModels
+        // No need to sync - ViewModels observe TransactionStore.$accounts and .$categories
         transactionsViewModel.allTransactions = transactionStore.transactions
         transactionsViewModel.displayTransactions = transactionStore.transactions
 
         #if DEBUG
-        print("🔄 [AppCoordinator] Synced initial data: \(transactionStore.transactions.count) transactions, \(accountsViewModel.accounts.count) accounts")
+        print("✅ [AppCoordinator] TransactionStore loaded: \(transactionStore.transactions.count) transactions, \(transactionStore.accounts.count) accounts, \(transactionStore.categories.count) categories")
         #endif
 
         // REFACTORED 2026-02-02: Register accounts with BalanceCoordinator
@@ -279,13 +288,23 @@ class AppCoordinator: ObservableObject {
                 print("🔄 [AppCoordinator] TransactionStore updated: \(updatedTransactions.count) transactions")
                 #endif
 
-                // Sync transactions back to TransactionsViewModel for legacy views
-                self.transactionsViewModel.allTransactions = updatedTransactions
-                self.transactionsViewModel.displayTransactions = updatedTransactions
+                // 🔧 CRITICAL FIX: Force SwiftUI to see the change by creating new array
+                // Direct assignment might not trigger @Published if it's the same array reference
+                self.transactionsViewModel.allTransactions = Array(updatedTransactions)
+                self.transactionsViewModel.displayTransactions = Array(updatedTransactions)
+
+                // 🔧 CRITICAL FIX: Invalidate caches when transactions change
+                // This ensures category expenses are recalculated with new transactions
+                // Fixes bug: category balances not updating in CategoryGridView
+                self.transactionsViewModel.invalidateCaches()
 
                 // Trigger UI refresh
                 self.transactionsViewModel.notifyDataChanged()
                 self.objectWillChange.send()
+
+                #if DEBUG
+                print("✅ [AppCoordinator] Synced transactions, invalidated caches, triggered refresh")
+                #endif
             }
             .store(in: &cancellables)
     }

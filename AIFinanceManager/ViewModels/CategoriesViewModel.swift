@@ -15,8 +15,8 @@ import Combine
 class CategoriesViewModel: ObservableObject {
     // MARK: - Published Properties
 
-    /// SINGLE SOURCE OF TRUTH for categories
-    /// Other ViewModels subscribe to changes via categoriesPublisher
+    /// PHASE 3: Categories are now observed from TransactionStore (Single Source of Truth)
+    /// This is synced from TransactionStore - ViewModels no longer own the data
     @Published private(set) var customCategories: [CustomCategory] = []
 
     @Published var categoryRules: [CategoryRule] = []
@@ -37,6 +37,12 @@ class CategoriesViewModel: ObservableObject {
     private let repository: DataRepositoryProtocol
     private var currencyService: TransactionCurrencyService?
     private var appSettings: AppSettings?
+
+    /// PHASE 3: TransactionStore as Single Source of Truth for categories
+    /// ViewModels observe this instead of owning data
+    weak var transactionStore: TransactionStore?
+
+    private var categoriesSubscription: AnyCancellable?
 
     // MARK: - Services (Lazy Initialization)
 
@@ -79,16 +85,43 @@ class CategoriesViewModel: ObservableObject {
         self.repository = repository
         self.currencyService = currencyService
         self.appSettings = appSettings
-        self.customCategories = repository.loadCategories()
+        // PHASE 3: Don't load categories here anymore - will be synced from TransactionStore
+        // self.customCategories = repository.loadCategories()
         self.categoryRules = repository.loadCategoryRules()
         self.subcategories = repository.loadSubcategories()
         self.categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         self.transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
     }
 
+    /// PHASE 3: Setup subscription to TransactionStore.$categories
+    /// Called by AppCoordinator after TransactionStore is initialized
+    func setupTransactionStoreObserver() {
+        guard let transactionStore = transactionStore else {
+            #if DEBUG
+            print("⚠️ [CategoriesVM] TransactionStore not set, cannot setup observer")
+            #endif
+            return
+        }
+
+        categoriesSubscription = transactionStore.$categories
+            .sink { [weak self] updatedCategories in
+                guard let self = self else { return }
+                self.customCategories = updatedCategories
+
+                #if DEBUG
+                print("✅ [CategoriesVM] Received \(updatedCategories.count) categories from TransactionStore")
+                #endif
+            }
+
+        #if DEBUG
+        print("✅ [CategoriesVM] Setup TransactionStore observer")
+        #endif
+    }
+
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
-        customCategories = repository.loadCategories()
+        // PHASE 3: TransactionStore is the owner - it will reload and publish to observers
+        // No need to reload categories here - they will be updated via subscription
         categoryRules = repository.loadCategoryRules()
         subcategories = repository.loadSubcategories()
         categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
@@ -106,17 +139,20 @@ class CategoriesViewModel: ObservableObject {
     // MARK: - Category CRUD Operations
 
     func addCategory(_ category: CustomCategory) {
-        crudService.addCategory(category)
+        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+        transactionStore?.addCategory(category)
     }
 
     func updateCategory(_ category: CustomCategory) {
-        crudService.updateCategory(category)
+        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+        transactionStore?.updateCategory(category)
     }
 
     func deleteCategory(_ category: CustomCategory, deleteTransactions: Bool = false) {
         // Note: deleteTransactions logic should be handled by TransactionsViewModel
         // This method only handles category deletion
-        crudService.deleteCategory(category)
+        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+        transactionStore?.deleteCategory(category.id)
     }
 
     // MARK: - Category Rules Operations
@@ -220,26 +256,14 @@ class CategoriesViewModel: ObservableObject {
     // MARK: - Batch Operations
 
     /// Сохраняет все данные CategoriesViewModel (используется после массового импорта)
+    /// PHASE 3: Category persistence now handled by TransactionStore
     func saveAllData() {
         subcategoryCoordinator.saveAllData()
 
-        // Save categories synchronously for import
-        saveCategoriesSync(customCategories)
-    }
-
-    /// Синхронно сохраняет категории (используется для импорта)
-    private func saveCategoriesSync(_ categories: [CustomCategory]) {
-        if let coreDataRepo = repository as? CoreDataRepository {
-            do {
-                try coreDataRepo.saveCategoriesSync(categories)
-            } catch {
-                #if DEBUG
-                print("❌ [CategoriesViewModel] Failed to save categories sync: \(error)")
-                #endif
-            }
-        } else {
-            repository.saveCategories(categories)
-        }
+        // PHASE 3: Categories are saved by TransactionStore
+        #if DEBUG
+        print("⚠️ [CategoriesVM] saveAllData - category persistence now handled by TransactionStore")
+        #endif
     }
 
     // MARK: - Budget Management

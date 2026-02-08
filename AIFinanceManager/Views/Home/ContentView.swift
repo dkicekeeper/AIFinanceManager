@@ -130,7 +130,8 @@ struct ContentView: View {
         QuickAddTransactionView(
             transactionsViewModel: viewModel,
             categoriesViewModel: categoriesViewModel,
-            accountsViewModel: accountsViewModel
+            accountsViewModel: accountsViewModel,
+            transactionStore: coordinator.transactionStore
         )
         .screenPadding()
     }

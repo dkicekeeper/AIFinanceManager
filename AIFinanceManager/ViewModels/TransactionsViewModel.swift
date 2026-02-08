@@ -707,32 +707,17 @@ class TransactionsViewModel: ObservableObject {
         // This is a backward compatibility stub
     }
 
+    /// PHASE 3: DEPRECATED - Accounts are now managed by TransactionStore
+    /// AccountsViewModel observes TransactionStore.$accounts instead
+    /// This method is kept for backward compatibility but does nothing
     func syncAccountsFrom(_ accountsViewModel: AccountsViewModel) {
-        accounts = accountsViewModel.accounts
+        #if DEBUG
+        print("⚠️ [TransactionsVM] syncAccountsFrom is deprecated - accounts managed by TransactionStore")
+        #endif
 
-        // 🔧 CRITICAL FIX: Sync accounts to TransactionStore
-        // This ensures TransactionStore knows about new/updated accounts
-        transactionStore?.syncAccounts(accounts)
-
-        // 🔧 FIX: Register all accounts in BalanceCoordinator when syncing
-        // This ensures BalanceCoordinator knows about all accounts and their initial balances
-        if let balanceCoordinator = balanceCoordinator {
-            Task { @MainActor in
-                // Register all accounts
-                await balanceCoordinator.registerAccounts(accounts)
-
-                // Set initial balances from AccountsViewModel
-                for account in accounts {
-                    if let initialBalance = accountsViewModel.getInitialBalance(for: account.id) {
-                        await balanceCoordinator.setInitialBalance(initialBalance, for: account.id)
-                        await balanceCoordinator.markAsManual(account.id)
-                    }
-                }
-            }
-        }
-
-        recalculateAccountBalances()
-        saveToStorage()
+        // PHASE 3: TransactionStore is Single Source of Truth
+        // Accounts are automatically synced via Combine subscription
+        // No manual sync needed!
     }
 
     /// Setup Combine subscription to CategoriesViewModel (Single Source of Truth)
@@ -747,12 +732,18 @@ class TransactionsViewModel: ObservableObject {
                 // Update local copy
                 self.customCategories = categories
 
+                // PHASE 3: No need to sync to TransactionStore
+                // CategoriesViewModel already observes TransactionStore.$categories
+                // This subscription is kept for backward compatibility with TransactionsViewModel.customCategories
+
                 // Invalidate caches that depend on categories
                 self.invalidateCaches()
             }
 
         // Set initial value
         customCategories = categoriesViewModel.customCategories
+
+        // PHASE 3: No need to sync - CategoriesViewModel observes TransactionStore.$categories
     }
 
     // MARK: - Data Management
