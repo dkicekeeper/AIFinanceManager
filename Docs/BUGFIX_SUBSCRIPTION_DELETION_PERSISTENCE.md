@@ -224,8 +224,70 @@ try await transactionStore.add(transaction)
 
 ---
 
-## ✅ Commit Message
+## 🔴 CRITICAL RACE CONDITION FIX (2026-02-08 - Second Fix)
 
+After the initial fix, user reported the problem still persisted. Investigation revealed a **critical race condition**:
+
+### Problem: Async Deletions Not Completing
+
+**Code Pattern (BROKEN)**:
+```swift
+Task { @MainActor in
+    for transaction in transactionsToDelete {
+        try await transactionStore.delete(transaction)
+    }
+}
+// ❌ Method returns IMMEDIATELY, before deletions complete!
+delegate.recalculateAccountBalances()
+delegate.saveToStorage()
+```
+
+**What Happened**:
+1. User pauses subscription
+2. Method launches Task to delete transactions
+3. Method returns **immediately** (Task runs in background)
+4. UI updates, user closes app
+5. Only **later** (if at all) do deletions complete
+6. Result: Deletions never persisted to database
+
+### Solution: Synchronous Blocking with DispatchSemaphore
+
+**Code Pattern (FIXED)**:
+```swift
+let semaphore = DispatchSemaphore(value: 0)
+
+Task { @MainActor in
+    for transaction in transactionsToDelete {
+        try await transactionStore.delete(transaction)
+    }
+    semaphore.signal() // Signal completion
+}
+
+semaphore.wait() // ⚠️ BLOCK until deletion completes
+
+// Now safe - deletions completed
+delegate.recalculateAccountBalances()
+delegate.saveToStorage()
+```
+
+### Impact
+- **Before**: Deletions often didn't complete before app restart
+- **After**: Method blocks until ALL deletions complete in database
+
+### Files Modified (Commit 9f37564)
+- `RecurringTransactionService.swift` - 4 methods with semaphore blocking:
+  - stopRecurringSeriesAndCleanup()
+  - deleteRecurringSeries()
+  - updateRecurringSeries()
+  - updateRecurringTransaction()
+
+**Note**: `RecurringTransactionCoordinator` methods already use `await` directly (already blocking) ✅
+
+---
+
+## ✅ Commit Messages
+
+### Commit 1: Initial Fix
 ```
 Fix: Deleted subscription transactions persisting after app restart
 
@@ -248,6 +310,20 @@ Files Modified:
 - RecurringTransactionService.swift: Use TransactionStore.delete()
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+```
+
+### Commit 2: Pause/Update Fix
+```
+Fix all subscription pause/update operations to persist deletions
+
+[Same as commit 5b8bc45]
+```
+
+### Commit 3: Race Condition Fix ⚠️ CRITICAL
+```
+CRITICAL: Fix async deletion race condition in RecurringTransactionService
+
+[See commit 9f37564 - This was the actual root cause!]
 ```
 
 ---
