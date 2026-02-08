@@ -307,6 +307,30 @@ class AppCoordinator: ObservableObject {
                 #endif
             }
             .store(in: &cancellables)
+
+        // 🔧 CRITICAL FIX 2026-02-08: Sync accounts from TransactionStore to TransactionsViewModel
+        // When TransactionStore updates accounts, sync them to TransactionsViewModel.accounts
+        // This fixes the bug where balance recalculation runs with 0 accounts after subscription creation
+        transactionStore.$accounts
+            .sink { [weak self] updatedAccounts in
+                guard let self = self else { return }
+
+                #if DEBUG
+                print("🔄 [AppCoordinator] TransactionStore accounts updated: \(updatedAccounts.count) accounts")
+                #endif
+
+                // 🔧 CRITICAL: Sync accounts to TransactionsViewModel
+                // This ensures scheduleBalanceRecalculation() has correct accounts
+                self.transactionsViewModel.accounts = Array(updatedAccounts)
+
+                // Trigger UI refresh
+                self.objectWillChange.send()
+
+                #if DEBUG
+                print("✅ [AppCoordinator] Synced accounts to TransactionsViewModel")
+                #endif
+            }
+            .store(in: &cancellables)
     }
 
     /// REFACTORED 2026-02-02: Setup observer for BalanceCoordinator updates
