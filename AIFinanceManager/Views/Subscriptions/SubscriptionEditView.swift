@@ -8,16 +8,17 @@
 import SwiftUI
 
 struct SubscriptionEditView: View {
-    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
+    @ObservedObject var transactionStore: TransactionStore
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     let subscription: RecurringSeries?
     let onSave: (RecurringSeries) -> Void
     let onCancel: () -> Void
-    
+
     @State private var description: String = ""
     @State private var amountText: String = ""
     @State private var currency: String = "USD"
-    @State private var selectedCategory: String = ""
+    @State private var selectedCategory: String? = nil
     @State private var selectedAccountId: String? = nil
     @State private var selectedFrequency: RecurringFrequency = .monthly
     @State private var startDate: Date = Date()
@@ -27,9 +28,9 @@ struct SubscriptionEditView: View {
     @State private var selectedReminderOffsets: Set<Int> = []
     @State private var showingLogoSearch = false
     @State private var showingIconPicker = false
+    @State private var validationError: String? = nil
     @FocusState private var isDescriptionFocused: Bool
-    
-    private let currencies = ["USD", "EUR", "KZT", "RUB", "GBP"]
+
     private let reminderOptions: [Int] = [1, 3, 7, 30]
     
     private var availableCategories: [String] {
@@ -57,11 +58,23 @@ struct SubscriptionEditView: View {
             },
             onCancel: onCancel
         ) {
+                // ✨ Amount Input - Reusable Component
+                AmountInputView(
+                    amount: $amountText,
+                    selectedCurrency: $currency,
+                    errorMessage: validationError,
+                    onAmountChange: { _ in
+                        validationError = nil
+                    }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+
                 Section(header: Text("Название")) {
                     TextField("Название подписки", text: $description)
                         .focused($isDescriptionFocused)
                 }
-                
+
                 Section(header: Text("Логотип/Иконка")) {
                     Button(action: { showingLogoSearch = true }) {
                         HStack {
@@ -130,39 +143,32 @@ struct SubscriptionEditView: View {
                         }
                     }
                 }
-                
-                Section(header: Text("Сумма")) {
-                    HStack {
-                        TextField("0.00", text: $amountText)
-                            .keyboardType(.decimalPad)
-                        
-                        Picker("Валюта", selection: $currency) {
-                            ForEach(currencies, id: \.self) { curr in
-                                Text(Formatting.currencySymbol(for: curr)).tag(curr)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                    }
-                }
-                
+
+                // ✨ Category Selector - Reusable Component
                 Section(header: Text("Категория")) {
-                    Picker("Категория", selection: $selectedCategory) {
-                        ForEach(availableCategories, id: \.self) { category in
-                            Text(category).tag(category)
-                        }
-                    }
+                    CategorySelectorView(
+                        categories: availableCategories,
+                        type: .expense,
+                        customCategories: transactionsViewModel.customCategories,
+                        selectedCategory: $selectedCategory,
+                        warningMessage: selectedCategory == nil ? "Выберите категорию" : nil
+                    )
                 }
-                
-                if !transactionsViewModel.accounts.isEmpty {
-                    Section(header: Text("Счёт оплаты")) {
-                        Picker("Счёт", selection: $selectedAccountId) {
-                            Text("Без счёта").tag(nil as String?)
-                            ForEach(transactionsViewModel.accounts) { account in
-                                Text(account.name).tag(account.id as String?)
-                            }
-                        }
-                    }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+
+                // ✨ Account Selector - Reusable Component
+                Section(header: Text("Счёт оплаты")) {
+                    AccountSelectorView(
+                        accounts: transactionsViewModel.accounts,
+                        selectedAccountId: $selectedAccountId,
+                        emptyStateMessage: transactionsViewModel.accounts.isEmpty ? "Нет доступных счетов" : nil,
+                        warningMessage: selectedAccountId == nil ? "Выберите счёт" : nil,
+                        balanceCoordinator: transactionsViewModel.balanceCoordinator!
+                    )
                 }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
                 
                 Section(header: Text("Частота")) {
                     Picker("Частота", selection: $selectedFrequency) {
@@ -197,7 +203,7 @@ struct SubscriptionEditView: View {
                 description = subscription.description
                 amountText = NSDecimalNumber(decimal: subscription.amount).stringValue
                 currency = subscription.currency
-                selectedCategory = subscription.category
+                selectedCategory = subscription.category.isEmpty ? nil : subscription.category
                 selectedAccountId = subscription.accountId
                 selectedFrequency = subscription.frequency
                 if let date = DateFormatters.dateFormatter.date(from: subscription.startDate) {
@@ -218,6 +224,10 @@ struct SubscriptionEditView: View {
                 currency = transactionsViewModel.appSettings.baseCurrency
                 if !availableCategories.isEmpty {
                     selectedCategory = availableCategories[0]
+                }
+                // Set first account as default
+                if !transactionsViewModel.accounts.isEmpty {
+                    selectedAccountId = transactionsViewModel.accounts[0].id
                 }
             }
         }
@@ -254,24 +264,42 @@ struct SubscriptionEditView: View {
     }
     
     private func saveSubscription() {
-        guard !description.isEmpty,
-              let amount = Decimal(string: amountText.replacingOccurrences(of: ",", with: ".")),
-              !selectedCategory.isEmpty else {
+        // Validate required fields: description, amount, category, and account
+        guard !description.isEmpty else {
+            validationError = "Введите название подписки"
             return
         }
-        
+
+        guard let amount = Decimal(string: amountText.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: " ", with: "")),
+              amount > 0 else {
+            validationError = "Введите корректную сумму"
+            return
+        }
+
+        guard let category = selectedCategory, !category.isEmpty else {
+            validationError = "Выберите категорию"
+            return
+        }
+
+        guard let accountId = selectedAccountId, !accountId.isEmpty else {
+            validationError = "Выберите счёт оплаты"
+            return
+        }
+
+        validationError = nil
+
         let dateFormatter = DateFormatters.dateFormatter
         let dateString = dateFormatter.string(from: startDate)
-        
+
         let series = RecurringSeries(
             id: subscription?.id ?? UUID().uuidString,
             isActive: subscription?.isActive ?? true,
             amount: amount,
             currency: currency,
-            category: selectedCategory,
+            category: category,
             subcategory: nil,
             description: description,
-            accountId: selectedAccountId,
+            accountId: accountId,
             targetAccountId: nil,
             frequency: selectedFrequency,
             startDate: dateString,
@@ -282,7 +310,7 @@ struct SubscriptionEditView: View {
             reminderOffsets: selectedReminderOffsets.isEmpty ? nil : Array(selectedReminderOffsets).sorted(),
             status: subscription?.status ?? .active
         )
-        
+
         onSave(series)
     }
 }
@@ -290,7 +318,7 @@ struct SubscriptionEditView: View {
 #Preview {
     let coordinator = AppCoordinator()
     SubscriptionEditView(
-        subscriptionsViewModel: coordinator.subscriptionsViewModel,
+        transactionStore: coordinator.transactionStore,
         transactionsViewModel: coordinator.transactionsViewModel,
         subscription: nil,
         onSave: { _ in },

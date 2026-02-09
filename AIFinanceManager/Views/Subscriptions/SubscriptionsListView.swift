@@ -8,21 +8,22 @@
 import SwiftUI
 
 struct SubscriptionsListView: View {
-    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
+    @ObservedObject var transactionStore: TransactionStore
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     @State private var showingEditView = false
     @State private var editingSubscription: RecurringSeries?
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
-                if !subscriptionsViewModel.subscriptions.isEmpty {
-                    SubscriptionCalendarView(subscriptions: subscriptionsViewModel.subscriptions)
+                if !transactionStore.subscriptions.isEmpty {
+                    SubscriptionCalendarView(subscriptions: transactionStore.subscriptions)
                         .screenPadding()
                 }
-                
-                if subscriptionsViewModel.subscriptions.isEmpty {
+
+                if transactionStore.subscriptions.isEmpty {
                     emptyState
                         .screenPadding()
                 } else {
@@ -47,14 +48,14 @@ struct SubscriptionsListView: View {
             .sheet(isPresented: $showingEditView) {
                 if let subscription = editingSubscription {
                     SubscriptionEditView(
-                        subscriptionsViewModel: subscriptionsViewModel,
+                        transactionStore: transactionStore,
                         transactionsViewModel: transactionsViewModel,
                         subscription: subscription,
                         onSave: { updatedSubscription in
-                            subscriptionsViewModel.updateSubscription(updatedSubscription)
-                            // ✅ FIX 2026-02-08: Transaction regeneration is handled automatically via .recurringSeriesUpdated notification
-                            // No need to call generateRecurringTransactions() manually
-                            showingEditView = false
+                            Task {
+                                try await transactionStore.updateSeries(updatedSubscription)
+                                showingEditView = false
+                            }
                         },
                         onCancel: {
                             showingEditView = false
@@ -62,26 +63,14 @@ struct SubscriptionsListView: View {
                     )
                 } else {
                     SubscriptionEditView(
-                        subscriptionsViewModel: subscriptionsViewModel,
+                        transactionStore: transactionStore,
                         transactionsViewModel: transactionsViewModel,
                         subscription: nil,
                         onSave: { newSubscription in
-                            _ = subscriptionsViewModel.createSubscription(
-                                amount: newSubscription.amount,
-                                currency: newSubscription.currency,
-                                category: newSubscription.category,
-                                subcategory: newSubscription.subcategory,
-                                description: newSubscription.description,
-                                accountId: newSubscription.accountId,
-                                frequency: newSubscription.frequency,
-                                startDate: newSubscription.startDate,
-                                brandLogo: newSubscription.brandLogo,
-                                brandId: newSubscription.brandId,
-                                reminderOffsets: newSubscription.reminderOffsets
-                            )
-                            // ✅ FIX 2026-02-08: Transaction generation is handled automatically via .recurringSeriesCreated notification
-                            // No need to call generateRecurringTransactions() manually - it causes duplicate generation
-                            showingEditView = false
+                            Task {
+                                try await transactionStore.createSeries(newSubscription)
+                                showingEditView = false
+                            }
                         },
                         onCancel: {
                             showingEditView = false
@@ -106,11 +95,11 @@ struct SubscriptionsListView: View {
     
     private var subscriptionsList: some View {
         VStack(spacing: AppSpacing.md) {
-            ForEach(subscriptionsViewModel.subscriptions) { subscription in
-                let nextChargeDate = subscriptionsViewModel.nextChargeDate(for: subscription.id)
+            ForEach(transactionStore.subscriptions) { subscription in
+                let nextChargeDate = transactionStore.nextChargeDate(for: subscription.id)
 
                 NavigationLink(destination: SubscriptionDetailView(
-                    subscriptionsViewModel: subscriptionsViewModel,
+                    transactionStore: transactionStore,
                     transactionsViewModel: transactionsViewModel,
                     subscription: subscription
                 )
@@ -132,7 +121,7 @@ struct SubscriptionsListView: View {
     let coordinator = AppCoordinator()
     return NavigationView {
         SubscriptionsListView(
-            subscriptionsViewModel: coordinator.subscriptionsViewModel,
+            transactionStore: coordinator.transactionStore,
             transactionsViewModel: coordinator.transactionsViewModel
         )
         .environmentObject(TimeFilterManager())
@@ -141,13 +130,13 @@ struct SubscriptionsListView: View {
 
 #Preview("Subscriptions List - With Data") {
     let coordinator = AppCoordinator()
-    let subscriptionsViewModel = coordinator.subscriptionsViewModel
+    let transactionStore = coordinator.transactionStore
     let transactionsViewModel = coordinator.transactionsViewModel
-    
+
     // Add sample subscriptions for preview
     let dateFormatter = DateFormatters.dateFormatter
     let today = dateFormatter.string(from: Date())
-    
+
     let sampleSubscriptions = [
         RecurringSeries(
             id: "preview-1",
@@ -189,13 +178,13 @@ struct SubscriptionsListView: View {
             status: .paused
         )
     ]
-    
-    // Temporarily add subscriptions for preview
-    subscriptionsViewModel.recurringSeries = sampleSubscriptions
-    
-    return NavigationView {
+
+    // Note: In real preview, subscriptions would be loaded from repository
+    // For now, preview shows empty state or you can add test data via repository
+
+    NavigationView {
         SubscriptionsListView(
-            subscriptionsViewModel: subscriptionsViewModel,
+            transactionStore: transactionStore,
             transactionsViewModel: transactionsViewModel
         )
         .environmentObject(TimeFilterManager())

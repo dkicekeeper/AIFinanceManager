@@ -23,7 +23,7 @@ class AppCoordinator: ObservableObject {
 
     let accountsViewModel: AccountsViewModel
     let categoriesViewModel: CategoriesViewModel
-    let subscriptionsViewModel: SubscriptionsViewModel
+    // ✨ Phase 9: Removed SubscriptionsViewModel - recurring operations now in TransactionStore
     let depositsViewModel: DepositsViewModel
     let transactionsViewModel: TransactionsViewModel
     let settingsViewModel: SettingsViewModel  // NEW: Phase 1 - Settings refactoring
@@ -31,13 +31,13 @@ class AppCoordinator: ObservableObject {
     // MARK: - New Architecture (Phase 7)
 
     /// NEW 2026-02-05: TransactionStore - Single Source of Truth for transactions
+    /// ✨ Phase 9: Now includes recurring operations (subscriptions + recurring transactions)
     /// Replaces multiple services: TransactionCRUDService, CategoryAggregateService, etc.
     let transactionStore: TransactionStore
 
     // MARK: - Coordinators
 
-    /// REFACTORED 2026-02-02: Single entry point for recurring transaction operations
-    let recurringCoordinator: RecurringTransactionCoordinator
+    // ✨ Phase 9: Removed RecurringTransactionCoordinator - operations now in TransactionStore
 
     /// REFACTORED 2026-02-02: Single entry point for balance operations
     /// Phase 1-4: Foundation completed - Store, Engine, Queue, Cache, Coordinator
@@ -71,6 +71,7 @@ class AppCoordinator: ObservableObject {
         // 3.1 NEW 2026-02-05: Initialize TransactionStore
         // Single Source of Truth for all transaction operations
         // UPDATED 2026-02-05 Phase 7.1: Added balanceCoordinator for automatic balance updates
+        // ✨ UPDATED 2026-02-09 Phase 9: Now includes recurring operations with LRU cache
         self.transactionStore = TransactionStore(
             repository: self.repository,
             balanceCoordinator: self.balanceCoordinator,
@@ -84,21 +85,12 @@ class AppCoordinator: ObservableObject {
             appSettings: transactionsViewModel.appSettings
         )
 
-        // 4. Subscriptions (no dependencies on other ViewModels)
-        self.subscriptionsViewModel = SubscriptionsViewModel(repository: self.repository)
+        // ✨ Phase 9: Removed SubscriptionsViewModel initialization - recurring now in TransactionStore
 
         // 5. Deposits (depends on Accounts)
         self.depositsViewModel = DepositsViewModel(repository: self.repository, accountsViewModel: accountsViewModel)
 
-        // 6. REFACTORED 2026-02-02: Setup RecurringTransactionCoordinator
-        // Single entry point for all recurring operations
-        self.recurringCoordinator = RecurringTransactionCoordinator(
-            subscriptionsViewModel: subscriptionsViewModel,
-            transactionsViewModel: transactionsViewModel,
-            generator: transactionsViewModel.recurringGenerator,
-            validator: RecurringValidationService(),
-            repository: self.repository
-        )
+        // ✨ Phase 9: Removed RecurringTransactionCoordinator initialization - operations now in TransactionStore
 
         // 7. REFACTORED 2026-02-04: Setup SettingsViewModel (Phase 1)
         // Initialize Settings services with Protocol-Oriented Design
@@ -107,11 +99,12 @@ class AppCoordinator: ObservableObject {
         let validationService = SettingsValidationService()
 
         // Initialize coordinators for dangerous operations
+        // ✨ Phase 9: Use TransactionStore instead of SubscriptionsViewModel
         let dataResetCoordinator = DataResetCoordinator(
             transactionsViewModel: transactionsViewModel,
             accountsViewModel: accountsViewModel,
             categoriesViewModel: categoriesViewModel,
-            subscriptionsViewModel: subscriptionsViewModel,
+            transactionStore: transactionStore,
             depositsViewModel: depositsViewModel
         )
 
@@ -147,9 +140,7 @@ class AppCoordinator: ObservableObject {
         // This eliminates manual sync in 3 places (CategoriesManagementView, deprecated CSVImportService)
         transactionsViewModel.setCategoriesViewModel(categoriesViewModel)
 
-        // ✅ RECURRING REFACTORING: Setup Single Source of Truth for recurring series
-        // TransactionsViewModel now delegates to SubscriptionsViewModel for recurringSeries
-        transactionsViewModel.subscriptionsViewModel = subscriptionsViewModel
+        // ✨ Phase 9: Removed - TransactionStore now handles recurring operations
 
         // ✅ BALANCE REFACTORING: Inject BalanceCoordinator into ViewModels
         // This establishes Single Source of Truth for balances
@@ -263,11 +254,7 @@ class AppCoordinator: ObservableObject {
             }
             .store(in: &cancellables)
 
-        subscriptionsViewModel.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
+        // ✨ Phase 9: Removed subscriptionsViewModel observer - now using TransactionStore
 
         depositsViewModel.objectWillChange
             .sink { [weak self] _ in

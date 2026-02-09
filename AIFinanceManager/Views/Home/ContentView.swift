@@ -37,8 +37,9 @@ struct ContentView: View {
     private var categoriesViewModel: CategoriesViewModel {
         coordinator.categoriesViewModel
     }
-    private var subscriptionsViewModel: SubscriptionsViewModel {
-        coordinator.subscriptionsViewModel
+    // ✨ Phase 9: Use TransactionStore instead of SubscriptionsViewModel
+    private var transactionStore: TransactionStore {
+        coordinator.transactionStore
     }
 
     // MARK: - Body
@@ -118,7 +119,7 @@ struct ContentView: View {
     private var subscriptionsNavigationLink: some View {
         NavigationLink(destination: subscriptionsDestination) {
             SubscriptionsCardView(
-                subscriptionsViewModel: subscriptionsViewModel,
+                transactionStore: transactionStore,
                 transactionsViewModel: viewModel
             )
         }
@@ -175,7 +176,7 @@ struct ContentView: View {
 
     private var subscriptionsDestination: some View {
         SubscriptionsListView(
-            subscriptionsViewModel: subscriptionsViewModel,
+            transactionStore: transactionStore,
             transactionsViewModel: viewModel
         )
         .environmentObject(timeFilterManager)
@@ -187,7 +188,7 @@ struct ContentView: View {
             transactionsViewModel: viewModel,
             accountsViewModel: accountsViewModel,
             categoriesViewModel: categoriesViewModel,
-            subscriptionsViewModel: subscriptionsViewModel,
+            transactionStore: transactionStore,
             depositsViewModel: coordinator.depositsViewModel
         )
     }

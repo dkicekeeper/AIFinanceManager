@@ -21,7 +21,8 @@ struct SettingsView: View {
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @ObservedObject var accountsViewModel: AccountsViewModel
     @ObservedObject var categoriesViewModel: CategoriesViewModel
-    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    // ✨ Phase 9: Use TransactionStore instead of SubscriptionsViewModel
+    @ObservedObject var transactionStore: TransactionStore
     @ObservedObject var depositsViewModel: DepositsViewModel
 
     // MARK: - State
@@ -201,7 +202,7 @@ struct SettingsView: View {
             transactionsViewModel: coordinator.transactionsViewModel,
             accountsViewModel: coordinator.accountsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
-            subscriptionsViewModel: coordinator.subscriptionsViewModel,
+            transactionStore: coordinator.transactionStore,
             depositsViewModel: coordinator.depositsViewModel
         )
     }

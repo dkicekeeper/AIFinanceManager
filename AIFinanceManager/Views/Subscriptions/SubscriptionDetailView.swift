@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct SubscriptionDetailView: View {
-    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
+    @ObservedObject var transactionStore: TransactionStore
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @EnvironmentObject var timeFilterManager: TimeFilterManager
     let subscription: RecurringSeries
@@ -16,26 +17,25 @@ struct SubscriptionDetailView: View {
     @State private var showingDeleteConfirmation = false
     @Environment(\.dismiss) var dismiss
 
-    // REFACTORED 2026-02-02: Removed 110 LOC of duplicated logic
-    // Now delegates to SubscriptionsViewModel.getPlannedTransactions()
+    // ✨ Phase 9: Use TransactionStore.getPlannedTransactions()
     private var subscriptionTransactions: [Transaction] {
-        // Get all planned transactions (past + future)
-        let plannedTransactions = subscriptionsViewModel.getPlannedTransactions(for: subscription.id, horizonMonths: 3)
-
-        // Apply time filter if needed
-        let dateRange = timeFilterManager.currentFilter.dateRange()
-        let dateFormatter = DateFormatters.dateFormatter
-
-        return plannedTransactions.filter { transaction in
-            guard let transactionDate = dateFormatter.date(from: transaction.date) else {
-                return false
-            }
-            return transactionDate >= dateRange.start && transactionDate < dateRange.end
+        // Get all existing transactions for this subscription from store
+        let existingTransactions = transactionStore.transactions.filter {
+            $0.recurringSeriesId == subscription.id
         }
+
+        // Get future planned transactions (next 6 months)
+        let plannedTransactions = transactionStore.getPlannedTransactions(for: subscription.id, horizon: 6)
+
+        // Combine and sort by date (ascending - nearest first, furthest last)
+        let allTransactions = (existingTransactions + plannedTransactions)
+            .sorted { $0.date < $1.date } // Nearest first (ascending order)
+
+        return allTransactions
     }
-    
+
     private var nextChargeDate: Date? {
-        subscriptionsViewModel.nextChargeDate(for: subscription.id)
+        transactionStore.nextChargeDate(for: subscription.id)
     }
     
     var body: some View {
@@ -70,14 +70,14 @@ struct SubscriptionDetailView: View {
         }
         .sheet(isPresented: $showingEditView) {
             SubscriptionEditView(
-                subscriptionsViewModel: subscriptionsViewModel,
+                transactionStore: transactionStore,
                 transactionsViewModel: transactionsViewModel,
                 subscription: subscription,
                 onSave: { updatedSubscription in
-                    subscriptionsViewModel.updateSubscription(updatedSubscription)
-                    // ✅ FIX 2026-02-08: Transaction regeneration is handled automatically via .recurringSeriesUpdated notification
-                    // No need to call generateRecurringTransactions() manually
-                    showingEditView = false
+                    Task {
+                        try await transactionStore.updateSeries(updatedSubscription)
+                        showingEditView = false
+                    }
                 },
                 onCancel: {
                     showingEditView = false
@@ -88,18 +88,17 @@ struct SubscriptionDetailView: View {
             Button(String(localized: "quickAdd.cancel"), role: .cancel) {}
 
             Button(String(localized: "subscriptions.deleteOnlySubscription"), role: .destructive) {
-                subscriptionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: false)
-                transactionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: false)
-                // Phase 8: saveToStorage removed - persistence automatic via TransactionStore
-                dismiss()
+                Task {
+                    try await transactionStore.deleteSeries(id: subscription.id, deleteTransactions: false)
+                    dismiss()
+                }
             }
 
             Button(String(localized: "subscriptions.deleteSubscriptionAndTransactions"), role: .destructive) {
-                subscriptionsViewModel.deleteRecurringSeries(subscription.id, deleteTransactions: true)
-                transactionsViewModel.allTransactions.removeAll { $0.recurringSeriesId == subscription.id }
-                transactionsViewModel.recalculateAccountBalances()
-                // Phase 8: saveToStorage removed - persistence automatic via TransactionStore
-                dismiss()
+                Task {
+                    try await transactionStore.deleteSeries(id: subscription.id, deleteTransactions: true)
+                    dismiss()
+                }
             }
         } message: {
             Text(String(localized: "subscriptions.deleteConfirmMessage"))
@@ -170,7 +169,9 @@ struct SubscriptionDetailView: View {
         VStack(spacing: AppSpacing.sm) {
             if subscription.subscriptionStatus == .active {
                 Button {
-                    subscriptionsViewModel.pauseSubscription(subscription.id)
+                    Task {
+                        try await transactionStore.pauseSubscription(id: subscription.id)
+                    }
                 } label: {
                     Label(String(localized: "subscriptions.pause"), systemImage: "pause.circle")
                         .frame(maxWidth: .infinity)
@@ -178,8 +179,9 @@ struct SubscriptionDetailView: View {
                 .secondaryButton()
             } else if subscription.subscriptionStatus == .paused {
                 Button {
-                    subscriptionsViewModel.resumeSubscription(subscription.id)
-                    transactionsViewModel.generateRecurringTransactions()
+                    Task {
+                        try await transactionStore.resumeSubscription(id: subscription.id)
+                    }
                 } label: {
                     Label(String(localized: "subscriptions.resume"), systemImage: "play.circle")
                         .frame(maxWidth: .infinity)
@@ -221,7 +223,7 @@ struct SubscriptionDetailView: View {
     let coordinator = AppCoordinator()
     NavigationView {
         SubscriptionDetailView(
-            subscriptionsViewModel: coordinator.subscriptionsViewModel,
+            transactionStore: coordinator.transactionStore,
             transactionsViewModel: coordinator.transactionsViewModel,
             subscription: RecurringSeries(
                 amount: 9.99,

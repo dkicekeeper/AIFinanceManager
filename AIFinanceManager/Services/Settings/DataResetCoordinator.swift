@@ -11,6 +11,7 @@ import Combine
 
 /// Coordinator for dangerous data operations
 /// Centralizes reset and recalculation logic that affects multiple ViewModels
+/// ✨ Phase 9: Updated to use TransactionStore instead of SubscriptionsViewModel
 @MainActor
 final class DataResetCoordinator: DataResetCoordinatorProtocol {
     // MARK: - Dependencies (weak to prevent retain cycles)
@@ -18,20 +19,20 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
     private weak var transactionsViewModel: TransactionsViewModel?
     private weak var accountsViewModel: AccountsViewModel?
     private weak var categoriesViewModel: CategoriesViewModel?
-    private weak var subscriptionsViewModel: SubscriptionsViewModel?
+    private weak var transactionStore: TransactionStore?
     private weak var depositsViewModel: DepositsViewModel?
 
     init(
         transactionsViewModel: TransactionsViewModel? = nil,
         accountsViewModel: AccountsViewModel? = nil,
         categoriesViewModel: CategoriesViewModel? = nil,
-        subscriptionsViewModel: SubscriptionsViewModel? = nil,
+        transactionStore: TransactionStore? = nil,
         depositsViewModel: DepositsViewModel? = nil
     ) {
         self.transactionsViewModel = transactionsViewModel
         self.accountsViewModel = accountsViewModel
         self.categoriesViewModel = categoriesViewModel
-        self.subscriptionsViewModel = subscriptionsViewModel
+        self.transactionStore = transactionStore
         self.depositsViewModel = depositsViewModel
     }
 
@@ -67,8 +68,8 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
             categoriesViewModel.objectWillChange.send()
             transactionsViewModel.objectWillChange.send()
 
-            // Subscriptions and Deposits will update automatically through ObservableObject
-            // No need to reload as they load from repository in init()
+            // ✨ Phase 9: TransactionStore will reload recurring data automatically
+            // Deposits will update automatically through ObservableObject
 
             #if DEBUG
             print("✅ [DataResetCoordinator] Data reset completed")
@@ -118,17 +119,18 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
 
     // MARK: - Dependency Injection
 
+    /// ✨ Phase 9: Updated to use TransactionStore instead of SubscriptionsViewModel
     func setDependencies(
         transactionsViewModel: TransactionsViewModel,
         accountsViewModel: AccountsViewModel,
         categoriesViewModel: CategoriesViewModel,
-        subscriptionsViewModel: SubscriptionsViewModel,
+        transactionStore: TransactionStore,
         depositsViewModel: DepositsViewModel
     ) {
         self.transactionsViewModel = transactionsViewModel
         self.accountsViewModel = accountsViewModel
         self.categoriesViewModel = categoriesViewModel
-        self.subscriptionsViewModel = subscriptionsViewModel
+        self.transactionStore = transactionStore
         self.depositsViewModel = depositsViewModel
     }
 }

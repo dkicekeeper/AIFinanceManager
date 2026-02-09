@@ -8,15 +8,16 @@
 import SwiftUI
 
 struct SubscriptionsCardView: View {
-    @ObservedObject var subscriptionsViewModel: SubscriptionsViewModel
+    // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
+    @ObservedObject var transactionStore: TransactionStore
     @ObservedObject var transactionsViewModel: TransactionsViewModel
     @State private var totalAmount: Decimal = 0
     @State private var isLoadingTotal: Bool = false
-    
+
     private var subscriptions: [RecurringSeries] {
-        subscriptionsViewModel.activeSubscriptions
+        transactionStore.activeSubscriptions
     }
-    
+
     private var baseCurrency: String {
         transactionsViewModel.appSettings.baseCurrency
     }
@@ -79,10 +80,10 @@ struct SubscriptionsCardView: View {
         }
     }
 
-    /// Делегирует конвертацию валют в SubscriptionsViewModel
+    /// Calculate total subscription amount in base currency
     private func refreshTotal() async {
         isLoadingTotal = true
-        let result = await subscriptionsViewModel.calculateTotalInCurrency(baseCurrency)
+        let result = await transactionStore.calculateSubscriptionsTotalInCurrency(baseCurrency)
         totalAmount = result.total
         isLoadingTotal = false
     }
@@ -92,7 +93,7 @@ struct SubscriptionsCardView: View {
 #Preview {
     let coordinator = AppCoordinator()
     SubscriptionsCardView(
-        subscriptionsViewModel: coordinator.subscriptionsViewModel,
+        transactionStore: coordinator.transactionStore,
         transactionsViewModel: coordinator.transactionsViewModel
     )
 }

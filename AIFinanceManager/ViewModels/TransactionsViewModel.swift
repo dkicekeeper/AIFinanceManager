@@ -24,10 +24,10 @@ class TransactionsViewModel: ObservableObject {
     /// This property is kept for backward compatibility but synced via Combine
     @Published var customCategories: [CustomCategory] = []
 
-    /// REFACTORED 2026-02-02: Now computed property delegating to SubscriptionsViewModel (Single Source of Truth)
+    /// ✨ Phase 9: Now computed property delegating to TransactionStore (Single Source of Truth)
     /// This eliminates data duplication and manual synchronization
     var recurringSeries: [RecurringSeries] {
-        subscriptionsViewModel?.recurringSeries ?? []
+        transactionStore?.recurringSeries ?? []
     }
 
     @Published var recurringOccurrences: [RecurringOccurrence] = []
@@ -52,15 +52,14 @@ class TransactionsViewModel: ObservableObject {
     // MIGRATED: accountBalanceService removed - using BalanceCoordinator instead
     // MIGRATED: balanceCalculationService removed - using BalanceCoordinator instead
 
-    /// REFACTORED 2026-02-02: Single Source of Truth for recurring series
-    /// Weak reference to avoid retain cycles
-    weak var subscriptionsViewModel: SubscriptionsViewModel?
+    // ✨ Phase 9: Removed subscriptionsViewModel - recurring operations now in TransactionStore
 
     /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth for balances
     /// Injected by AppCoordinator - replaces old TransactionBalanceCoordinator
     var balanceCoordinator: BalanceCoordinator?
 
     /// Phase 8: TransactionStore as Single Source of Truth for all transaction operations
+    /// ✨ Phase 9: Now includes recurring operations (subscriptions + recurring transactions)
     /// Replaces legacy CRUD services, cache managers, and coordinators
     var transactionStore: TransactionStore?
 
@@ -807,9 +806,8 @@ class TransactionsViewModel: ObservableObject {
         categoryRules = []
         accounts = []
         customCategories = []
-        // REFACTORED 2026-02-02: recurringSeries is now computed from SubscriptionsViewModel
-        // Clear in SubscriptionsViewModel instead
-        subscriptionsViewModel?.recurringSeries = []
+        // ✨ Phase 9: recurringSeries is now computed from TransactionStore
+        // Data will be cleared via repository.clearAllData()
         recurringOccurrences = []
         subcategories = []
         categorySubcategoryLinks = []

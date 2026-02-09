@@ -25,6 +25,11 @@ enum TransactionStoreError: LocalizedError {
     case cannotDeleteDepositInterest
     case persistenceFailed(Error)
 
+    // ✨ Phase 9: Recurring errors
+    case seriesNotFound
+    case invalidSeriesData
+    case invalidStartDate
+
     var errorDescription: String? {
         switch self {
         case .invalidAmount:
@@ -45,6 +50,14 @@ enum TransactionStoreError: LocalizedError {
             return String(localized: "error.transaction.cannotDeleteDepositInterest", defaultValue: "Cannot delete deposit interest")
         case .persistenceFailed(let error):
             return String(localized: "error.transaction.persistenceFailed", defaultValue: "Failed to save: \(error.localizedDescription)")
+
+        // ✨ Phase 9: Recurring errors
+        case .seriesNotFound:
+            return String(localized: "error.recurring.seriesNotFound", defaultValue: "Recurring series not found")
+        case .invalidSeriesData:
+            return String(localized: "error.recurring.invalidData", defaultValue: "Invalid recurring series data")
+        case .invalidStartDate:
+            return String(localized: "error.recurring.invalidStartDate", defaultValue: "Invalid start date format")
         }
     }
 }
@@ -64,14 +77,27 @@ final class TransactionStore: ObservableObject {
     /// All categories - needed for validation
     @Published private(set) var categories: [CustomCategory] = []
 
+    // MARK: - Recurring Data (Phase 9: Aggressive Integration) ✨
+
+    /// All recurring series - subscriptions and generic recurring transactions
+    @Published private(set) var recurringSeries: [RecurringSeries] = []
+
+    /// All recurring occurrences - tracks which transactions were generated from which series
+    @Published private(set) var recurringOccurrences: [RecurringOccurrence] = []
+
     // MARK: - Dependencies
 
-    private let repository: DataRepositoryProtocol
+    internal let repository: DataRepositoryProtocol  // ✨ Phase 9: internal for access from extension
     private let cache: UnifiedTransactionCache
 
     // ✅ REFACTORED: Balance coordinator is now REQUIRED (not optional)
     // This ensures balance updates always occur, no silent failures
     private let balanceCoordinator: BalanceCoordinator
+
+    // ✨ Phase 9: Recurring dependencies (internal for access from extension)
+    internal let recurringGenerator: RecurringTransactionGenerator
+    internal let recurringValidator: RecurringValidationService
+    internal let recurringCache: LRUCache<String, [Transaction]>
 
     // Settings
     private var baseCurrency: String = "KZT"
@@ -86,6 +112,11 @@ final class TransactionStore: ObservableObject {
         self.repository = repository
         self.balanceCoordinator = balanceCoordinator
         self.cache = UnifiedTransactionCache(capacity: cacheCapacity)
+
+        // ✨ Phase 9: Initialize recurring dependencies (internal for access from extension)
+        self.recurringGenerator = RecurringTransactionGenerator(dateFormatter: DateFormatters.dateFormatter)
+        self.recurringValidator = RecurringValidationService()
+        self.recurringCache = LRUCache<String, [Transaction]>(capacity: 100)
     }
 
     // MARK: - Data Loading
@@ -101,6 +132,10 @@ final class TransactionStore: ObservableObject {
         // Load categories
         categories = repository.loadCategories()
 
+        // ✨ Phase 9: Load recurring data
+        recurringSeries = repository.loadRecurringSeries()
+        recurringOccurrences = repository.loadRecurringOccurrences()
+
         // Note: baseCurrency will be set via updateBaseCurrency() from AppCoordinator
 
         #if DEBUG
@@ -108,6 +143,8 @@ final class TransactionStore: ObservableObject {
         print("   - Transactions: \(transactions.count)")
         print("   - Accounts: \(accounts.count)")
         print("   - Categories: \(categories.count)")
+        print("   - Recurring Series: \(recurringSeries.count)")
+        print("   - Recurring Occurrences: \(recurringOccurrences.count)")
         #endif
     }
 
@@ -490,7 +527,8 @@ final class TransactionStore: ObservableObject {
 
     /// Apply an event to the store
     /// Phase 1-4: Core event processing - validates, updates state, balances, cache, persists
-    private func apply(_ event: TransactionEvent) async throws {
+    /// ✨ Phase 9: Made internal for access from TransactionStore+Recurring extension
+    internal func apply(_ event: TransactionEvent) async throws {
         #if DEBUG
         print("🔄 [TransactionStore] Applying event: \(event.debugDescription)")
         #endif
@@ -527,6 +565,111 @@ final class TransactionStore: ObservableObject {
 
         case .bulkAdded(let txs):
             transactions.append(contentsOf: txs)
+
+        // MARK: - Recurring Series Events (Phase 9)
+
+        case .seriesCreated(let series):
+            updateStateForSeriesCreated(series)
+
+        case .seriesUpdated(let old, let new):
+            updateStateForSeriesUpdated(old: old, new: new)
+
+        case .seriesStopped(let seriesId, let fromDate):
+            updateStateForSeriesStopped(seriesId: seriesId, fromDate: fromDate)
+
+        case .seriesDeleted(let seriesId, let deleteTransactions):
+            updateStateForSeriesDeleted(seriesId: seriesId, deleteTransactions: deleteTransactions)
+        }
+    }
+
+    // MARK: - Recurring State Update Helpers (Phase 9)
+
+    /// Update state when a recurring series is created
+    private func updateStateForSeriesCreated(_ series: RecurringSeries) {
+        // Simply add series to array
+        // Transaction generation is handled in TransactionStore+Recurring.createSeries()
+        recurringSeries.append(series)
+
+        #if DEBUG
+        print("✅ [TransactionStore] Series created: \(series.description)")
+        #endif
+    }
+
+    /// Update state when a recurring series is updated
+    private func updateStateForSeriesUpdated(old: RecurringSeries, new: RecurringSeries) {
+        // Update series in array
+        if let index = recurringSeries.firstIndex(where: { $0.id == old.id }) {
+            recurringSeries[index] = new
+        }
+
+        #if DEBUG
+        print("✅ [TransactionStore] Series updated: \(new.description)")
+        #endif
+
+        // Note: Transaction regeneration is handled in TransactionStore+Recurring.updateSeries()
+    }
+
+    /// Update state when a recurring series is stopped
+    private func updateStateForSeriesStopped(seriesId: String, fromDate: String) {
+        // Update series status to inactive
+        if let index = recurringSeries.firstIndex(where: { $0.id == seriesId }) {
+            var updatedSeries = recurringSeries[index]
+            updatedSeries.isActive = false
+            recurringSeries[index] = updatedSeries
+        }
+
+        #if DEBUG
+        print("✅ [TransactionStore] Series stopped: \(seriesId) from \(fromDate)")
+        #endif
+
+        // Note: Transaction cleanup is handled in TransactionStore+Recurring.stopSeries()
+        // before calling apply()
+    }
+
+    /// Update state when a recurring series is deleted
+    private func updateStateForSeriesDeleted(seriesId: String, deleteTransactions: Bool) {
+        // Remove series from array
+        recurringSeries.removeAll { $0.id == seriesId }
+
+        #if DEBUG
+        print("✅ [TransactionStore] Series deleted: \(seriesId), deleteTxns=\(deleteTransactions)")
+        #endif
+
+        // Note: Transaction cleanup and occurrence removal is handled in
+        // TransactionStore+Recurring.deleteSeries() before calling apply()
+    }
+
+    // MARK: - Recurring Transaction Generation (Phase 9)
+
+    /// Generate and add transactions for a recurring series
+    /// Helper method used by createSeries and updateSeries
+    /// - Parameters:
+    ///   - series: The recurring series to generate transactions for
+    ///   - horizonMonths: Number of months ahead to generate (default: 3)
+    internal func generateAndAddTransactions(for series: RecurringSeries, horizonMonths: Int = 3) async throws {
+        let existingTransactionIds = Set(transactions.map { $0.id })
+        let result = recurringGenerator.generateTransactions(
+            series: [series],
+            existingOccurrences: recurringOccurrences,
+            existingTransactionIds: existingTransactionIds,
+            accounts: accounts,
+            horizonMonths: horizonMonths
+        )
+
+        // Add generated transactions via bulkAdded event
+        if !result.transactions.isEmpty {
+            let bulkEvent = TransactionEvent.bulkAdded(result.transactions)
+            try await apply(bulkEvent)
+
+            // Track occurrences
+            recurringOccurrences.append(contentsOf: result.occurrences)
+
+            // Persist occurrences
+            repository.saveRecurringOccurrences(recurringOccurrences)
+
+            #if DEBUG
+            print("✅ [TransactionStore] Generated \(result.transactions.count) transactions for series \(series.id)")
+            #endif
         }
     }
 
@@ -595,16 +738,21 @@ final class TransactionStore: ObservableObject {
 
     /// Persist current state to repository
     /// Phase 1: Persistence for transactions only (accounts handled separately)
+    /// Phase 9: Added recurring series and occurrences persistence
     private func persist() async throws {
         do {
             // Save transactions
             repository.saveTransactions(transactions)
 
+            // ✨ Phase 9: Save recurring data
+            repository.saveRecurringSeries(recurringSeries)
+            repository.saveRecurringOccurrences(recurringOccurrences)
+
             // Note: Accounts are not saved here - balance is managed by BalanceCoordinator
             // and will trigger its own save when balances are recalculated
 
             #if DEBUG
-            print("💾 [TransactionStore] Persisted transactions to repository")
+            print("💾 [TransactionStore] Persisted transactions + recurring data to repository")
             #endif
         } catch {
             throw TransactionStoreError.persistenceFailed(error)
