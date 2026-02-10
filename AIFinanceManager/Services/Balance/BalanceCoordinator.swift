@@ -80,12 +80,24 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         let accountBalances = accounts.map { AccountBalance.from($0) }
         store.registerAccounts(accountBalances)
 
-        // Initialize cache with initial balances (or 0 if nil)
-        let initialBalances = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0.initialBalance ?? 0) })
-        cache.setBalances(initialBalances)
+        // ⚠️ CRITICAL FIX: Only initialize balances for NEW accounts, preserve existing balances
+        var updatedBalances = self.balances  // Start with current balances
 
-        // CRITICAL: Publish initial balances to trigger UI updates
-        self.balances = initialBalances
+        for account in accounts {
+            // Only set initial balance if account is NOT already registered
+            if updatedBalances[account.id] == nil {
+                let initialBalance = account.initialBalance ?? 0
+                updatedBalances[account.id] = initialBalance
+                cache.setBalance(initialBalance, for: account.id)
+
+                #if DEBUG
+                print("💾 Cached balance for \(account.id): \(initialBalance)")
+                #endif
+            }
+        }
+
+        // Update published balances (preserves existing non-zero balances)
+        self.balances = updatedBalances
 
         #if DEBUG
         print("📝 Registered \(accounts.count) accounts")
