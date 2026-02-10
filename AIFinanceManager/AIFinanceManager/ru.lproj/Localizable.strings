@@ -453,8 +453,8 @@
 "csvImport.result.createdAccounts" = "%d счетов создано";
 "csvImport.result.createdCategories" = "%d категорий создано";
 "csvImport.result.createdSubcategories" = "%d подкатегорий создано";
-"csvImport.result.duration" = "Время: %.1fс";
-"csvImport.result.speed" = "Скорость: %.0f строк/с";
+"csvImport.result.duration" = "Время";
+"csvImport.result.speed" = "Скорость";
 "csvImport.result.title" = "Импорт завершён";
 "csvImport.button.cancel" = "Отменить импорт";
 "csvImport.button.retry" = "Повторить";

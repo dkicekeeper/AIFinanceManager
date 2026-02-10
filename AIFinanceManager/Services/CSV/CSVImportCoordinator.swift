@@ -64,6 +64,11 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             transactionsViewModel.allTransactions.map { TransactionFingerprint(from: $0) }
         )
 
+        // Begin import mode in TransactionStore (defers persistence)
+        if let transactionStore = transactionsViewModel.transactionStore {
+            await transactionStore.beginImport()
+        }
+
         // Begin batch mode
         transactionsViewModel.beginBatch()
 

@@ -453,8 +453,8 @@
 "csvImport.result.createdAccounts" = "%d accounts created";
 "csvImport.result.createdCategories" = "%d categories created";
 "csvImport.result.createdSubcategories" = "%d subcategories created";
-"csvImport.result.duration" = "Duration: %.1fs";
-"csvImport.result.speed" = "Speed: %.0f rows/s";
+"csvImport.result.duration" = "Duration";
+"csvImport.result.speed" = "Speed";
 "csvImport.result.title" = "Import Complete";
 "csvImport.button.cancel" = "Cancel Import";
 "csvImport.button.retry" = "Retry";

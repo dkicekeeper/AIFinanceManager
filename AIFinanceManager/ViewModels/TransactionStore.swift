@@ -102,6 +102,9 @@ final class TransactionStore: ObservableObject {
     // Settings
     private var baseCurrency: String = "KZT"
 
+    // Import mode flag - when true, persistence is deferred until finishImport()
+    private var isImporting: Bool = false
+
     // MARK: - Initialization
 
     init(
@@ -203,6 +206,99 @@ final class TransactionStore: ObservableObject {
 
         // 5. Return the created transaction with ID
         return tx
+    }
+
+    /// Add multiple transactions in a single batch (optimized for CSV import)
+    /// Phase 8: Batch import without per-transaction persistence
+    func addBatch(_ transactions: [Transaction]) async throws {
+        guard !transactions.isEmpty else { return }
+
+        // 1. Validate all transactions
+        for transaction in transactions {
+            try validate(transaction)
+        }
+
+        // 2. Generate IDs for transactions that need them
+        let txsWithIds = transactions.map { tx -> Transaction in
+            if tx.id.isEmpty {
+                let newId = TransactionIDGenerator.generateID(for: tx)
+                return Transaction(
+                    id: newId,
+                    date: tx.date,
+                    description: tx.description,
+                    amount: tx.amount,
+                    currency: tx.currency,
+                    convertedAmount: tx.convertedAmount,
+                    type: tx.type,
+                    category: tx.category,
+                    subcategory: tx.subcategory,
+                    accountId: tx.accountId,
+                    targetAccountId: tx.targetAccountId,
+                    accountName: tx.accountName,
+                    targetAccountName: tx.targetAccountName,
+                    targetCurrency: tx.targetCurrency,
+                    targetAmount: tx.targetAmount,
+                    recurringSeriesId: tx.recurringSeriesId,
+                    recurringOccurrenceId: tx.recurringOccurrenceId,
+                    createdAt: tx.createdAt
+                )
+            } else {
+                return tx
+            }
+        }
+
+        // 3. Create bulk event
+        let event = TransactionEvent.bulkAdded(txsWithIds)
+
+        // 4. Apply event (updates state, balances, cache)
+        // Note: If in import mode, persistence is deferred
+        try await apply(event)
+
+        #if DEBUG
+        print("✅ [TransactionStore] Bulk added \(txsWithIds.count) transactions (import mode: \(isImporting))")
+        #endif
+    }
+
+    /// Begin import mode (defers persistence until finishImport)
+    func beginImport() {
+        isImporting = true
+        #if DEBUG
+        print("🔄 [TransactionStore] Import mode started")
+        #endif
+    }
+
+    /// Finish import mode and persist all changes
+    func finishImport() async throws {
+        isImporting = false
+
+        // CRITICAL: Use synchronous save to ensure data is persisted before returning
+        // This prevents data loss if app is terminated immediately after import
+        do {
+            if let coreDataRepo = repository as? CoreDataRepository {
+                // Use synchronous save for all data (blocks until complete)
+                try coreDataRepo.saveTransactionsSync(transactions)
+                try coreDataRepo.saveAccountsSync(accounts)
+                try coreDataRepo.saveCategoriesSync(categories)
+            } else {
+                // Fallback to async save for non-CoreData repositories
+                repository.saveTransactions(transactions)
+                repository.saveAccounts(accounts)
+                repository.saveCategories(categories)
+            }
+
+            // Save recurring data (these are less critical, can be async)
+            repository.saveRecurringSeries(recurringSeries)
+            repository.saveRecurringOccurrences(recurringOccurrences)
+
+            #if DEBUG
+            print("✅ [TransactionStore] Import finished, all data persisted synchronously")
+            #endif
+        } catch {
+            #if DEBUG
+            print("❌ [TransactionStore] Failed to persist import data: \(error)")
+            #endif
+            throw TransactionStoreError.persistenceFailed(error)
+        }
     }
 
     /// Update an existing transaction
@@ -309,10 +405,14 @@ final class TransactionStore: ObservableObject {
     /// Phase 3: TransactionStore is now Single Source of Truth for accounts
     func addAccount(_ account: Account) {
         accounts.append(account)
-        persistAccounts()
+
+        // Don't persist during import mode - will be done in finishImport()
+        if !isImporting {
+            persistAccounts()
+        }
 
         #if DEBUG
-        print("✅ [TransactionStore] Added account: \(account.name)")
+        print("✅ [TransactionStore] Added account: \(account.name) (import mode: \(isImporting))")
         #endif
     }
 
@@ -327,10 +427,14 @@ final class TransactionStore: ObservableObject {
         }
 
         accounts[index] = account
-        persistAccounts()
+
+        // Don't persist during import mode - will be done in finishImport()
+        if !isImporting {
+            persistAccounts()
+        }
 
         #if DEBUG
-        print("✅ [TransactionStore] Updated account: \(account.name)")
+        print("✅ [TransactionStore] Updated account: \(account.name) (import mode: \(isImporting))")
         #endif
     }
 
@@ -338,10 +442,14 @@ final class TransactionStore: ObservableObject {
     /// Phase 3: TransactionStore is now Single Source of Truth for accounts
     func deleteAccount(_ accountId: String) {
         accounts.removeAll { $0.id == accountId }
-        persistAccounts()
+
+        // Don't persist during import mode - will be done in finishImport()
+        if !isImporting {
+            persistAccounts()
+        }
 
         #if DEBUG
-        print("✅ [TransactionStore] Deleted account: \(accountId)")
+        print("✅ [TransactionStore] Deleted account: \(accountId) (import mode: \(isImporting))")
         #endif
     }
 
@@ -542,8 +650,10 @@ final class TransactionStore: ObservableObject {
         // 3. Invalidate cache (automatic)
         cache.invalidateAll()
 
-        // 4. Persist to repository
-        try await persist()
+        // 4. Persist to repository (unless in import mode)
+        if !isImporting {
+            try await persist()
+        }
 
         // 5. Notify observers (via @Published)
         objectWillChange.send()

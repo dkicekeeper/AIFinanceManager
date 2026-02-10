@@ -31,10 +31,17 @@ class CSVStorageCoordinator: CSVStorageCoordinatorProtocol {
         // This ensures TransactionStore knows about newly created categories
         if let transactionStore = transactionsViewModel.transactionStore {
             await transactionStore.syncCategories(categoriesViewModel.customCategories)
-        }
 
-        // Add transactions without triggering save/recalc
-        transactionsViewModel.addTransactionsForImport(transactions)
+            // Use batch add for better performance (single persistence operation)
+            do {
+                try await transactionStore.addBatch(transactions)
+            } catch {
+                print("❌ Failed to add batch: \(error.localizedDescription)")
+            }
+        } else {
+            // Fallback to old method if TransactionStore not available
+            transactionsViewModel.addTransactionsForImport(transactions)
+        }
 
         // Batch link subcategories
         if !subcategoryLinks.isEmpty {
@@ -51,6 +58,15 @@ class CSVStorageCoordinator: CSVStorageCoordinatorProtocol {
         categoriesViewModel: CategoriesViewModel
     ) async {
 
+        // Finish import mode and persist all changes
+        if let transactionStore = transactionsViewModel.transactionStore {
+            do {
+                try await transactionStore.finishImport()
+            } catch {
+                print("❌ Failed to finish import: \(error.localizedDescription)")
+            }
+        }
+
         // Sync accounts
         if let accountsVM = accountsViewModel {
             transactionsViewModel.accounts = accountsVM.accounts
@@ -64,11 +80,19 @@ class CSVStorageCoordinator: CSVStorageCoordinatorProtocol {
         // Save all category data
         categoriesViewModel.saveAllData()
 
+        // CRITICAL: Force sync save of Core Data context to ensure subcategory links are persisted
+        // saveAllData() uses Task.detached which may not complete before app terminates
+        do {
+            try CoreDataStack.shared.saveContextSync(CoreDataStack.shared.viewContext)
+            #if DEBUG
+            print("✅ [CSVStorageCoordinator] Forced sync save of subcategory data")
+            #endif
+        } catch {
+            print("❌ [CSVStorageCoordinator] Failed to sync save subcategory data: \(error)")
+        }
+
         // End batch + recalculate balances (without async save)
         transactionsViewModel.endBatchWithoutSave()
-
-        // CRITICAL: Sync save for data safety
-        transactionsViewModel.saveToStorageSync()
 
         // Rebuild indexes
         transactionsViewModel.rebuildIndexes()
