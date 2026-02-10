@@ -14,6 +14,7 @@ struct CustomCategory: Identifiable, Codable, Equatable {
     var iconName: String
     var colorHex: String
     var type: TransactionType
+    var order: Int? // Order for displaying categories
 
     // Budget fields
     var budgetAmount: Double?
@@ -21,7 +22,7 @@ struct CustomCategory: Identifiable, Codable, Equatable {
     var budgetStartDate: Date?
     var budgetResetDay: Int
 
-    init(id: String = UUID().uuidString, name: String, iconName: String? = nil, colorHex: String, type: TransactionType, budgetAmount: Double? = nil, budgetPeriod: BudgetPeriod = .monthly, budgetResetDay: Int = 1) {
+    init(id: String = UUID().uuidString, name: String, iconName: String? = nil, colorHex: String, type: TransactionType, budgetAmount: Double? = nil, budgetPeriod: BudgetPeriod = .monthly, budgetResetDay: Int = 1, order: Int? = nil) {
         self.id = id
         self.name = name
         self.iconName = iconName ?? CategoryIcon.iconName(for: name, type: type)
@@ -31,6 +32,7 @@ struct CustomCategory: Identifiable, Codable, Equatable {
         self.budgetPeriod = budgetPeriod
         self.budgetStartDate = budgetAmount != nil ? Date() : nil
         self.budgetResetDay = budgetResetDay
+        self.order = order
     }
 
     enum BudgetPeriod: String, Codable {
@@ -40,10 +42,10 @@ struct CustomCategory: Identifiable, Codable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, iconName, colorHex, type
+        case id, name, iconName, colorHex, type, order
         case budgetAmount, budgetPeriod, budgetStartDate, budgetResetDay
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -57,13 +59,16 @@ struct CustomCategory: Identifiable, Codable, Equatable {
             iconName = CategoryIcon.iconName(for: name, type: type)
         }
 
+        // Order field (with backward compatibility)
+        order = try? container.decode(Int.self, forKey: .order)
+
         // Budget fields (with backward compatibility)
         budgetAmount = try? container.decode(Double.self, forKey: .budgetAmount)
         budgetPeriod = (try? container.decode(BudgetPeriod.self, forKey: .budgetPeriod)) ?? .monthly
         budgetStartDate = try? container.decode(Date.self, forKey: .budgetStartDate)
         budgetResetDay = (try? container.decode(Int.self, forKey: .budgetResetDay)) ?? 1
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -71,6 +76,7 @@ struct CustomCategory: Identifiable, Codable, Equatable {
         try container.encode(iconName, forKey: .iconName)
         try container.encode(colorHex, forKey: .colorHex)
         try container.encode(type, forKey: .type)
+        try container.encodeIfPresent(order, forKey: .order)
         try container.encodeIfPresent(budgetAmount, forKey: .budgetAmount)
         try container.encode(budgetPeriod, forKey: .budgetPeriod)
         try container.encodeIfPresent(budgetStartDate, forKey: .budgetStartDate)

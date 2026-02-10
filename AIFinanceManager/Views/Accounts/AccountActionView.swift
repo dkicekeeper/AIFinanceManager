@@ -152,8 +152,8 @@ struct AccountActionView: View {
     private var incomeCategories: [String] {
         transactionsViewModel.customCategories
             .filter { $0.type == .income }
+            .sortedByOrder()
             .map { $0.name }
-            .sorted()
     }
     
     private var availableAccounts: [Account] {

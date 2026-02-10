@@ -41,6 +41,7 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
         var totalIncome: Double = 0
         var totalExpenses: Double = 0
         var totalInternal: Double = 0
+        var plannedExpenses: Double = 0
 
         for transaction in transactions {
             // Use cached conversion if available
@@ -66,6 +67,11 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
                 case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
                     break
                 }
+            } else {
+                // Calculate planned amount from future expense transactions
+                if transaction.type == .expense {
+                    plannedExpenses += amountInBaseCurrency
+                }
             }
         }
 
@@ -79,7 +85,7 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
             currency: baseCurrency,
             startDate: dates.first ?? "",
             endDate: dates.last ?? "",
-            plannedAmount: 0  // Skip planned amount for performance
+            plannedAmount: plannedExpenses
         )
 
 

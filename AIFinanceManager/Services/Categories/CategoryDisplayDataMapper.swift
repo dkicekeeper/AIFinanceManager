@@ -60,8 +60,29 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             )
         }
 
-        // Sort by total (descending), then by name (ascending)
+        // Create a lookup for category order
+        let orderLookup = Dictionary(uniqueKeysWithValues: filteredCategories.compactMap { category -> (String, Int)? in
+            guard let order = category.order else { return nil }
+            return (category.name, order)
+        })
+
+        // Sort by custom order if available, then by total (descending), then by name (ascending)
         let result = displayData.sorted { category1, category2 in
+            let order1 = orderLookup[category1.name]
+            let order2 = orderLookup[category2.name]
+
+            // If both have custom order, sort by order
+            if let o1 = order1, let o2 = order2 {
+                return o1 < o2
+            }
+            // If only one has custom order, it goes first
+            if order1 != nil {
+                return true
+            }
+            if order2 != nil {
+                return false
+            }
+            // If neither has custom order, sort by total then name
             if category1.total != category2.total {
                 return category1.total > category2.total
             }

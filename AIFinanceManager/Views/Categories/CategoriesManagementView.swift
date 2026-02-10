@@ -19,11 +19,43 @@ struct CategoriesManagementView: View {
     
     // Кешируем отфильтрованные категории для оптимизации
     private var filteredCategories: [CustomCategory] {
-        categoriesViewModel.customCategories
+        let filtered = categoriesViewModel.customCategories
             .filter { $0.type == selectedType }
-            .sorted { $0.name < $1.name }
+
+        // Sort by custom order if available, otherwise by name
+        return filtered.sorted { cat1, cat2 in
+            // If both have order, sort by order
+            if let order1 = cat1.order, let order2 = cat2.order {
+                return order1 < order2
+            }
+            // If only one has order, it goes first
+            if cat1.order != nil {
+                return true
+            }
+            if cat2.order != nil {
+                return false
+            }
+            // If neither has order, sort by name
+            return cat1.name < cat2.name
+        }
     }
-    
+
+    // MARK: - Methods
+
+    private func moveCategory(from source: IndexSet, to destination: Int) {
+        var updatedCategories = filteredCategories
+        updatedCategories.move(fromOffsets: source, toOffset: destination)
+
+        // Update order for all categories of this type
+        for (index, category) in updatedCategories.enumerated() {
+            var updatedCategory = category
+            updatedCategory.order = index
+            categoriesViewModel.updateCategory(updatedCategory)
+        }
+
+        HapticManager.selection()
+    }
+
     var body: some View {
         Group {
             if filteredCategories.isEmpty {
@@ -50,7 +82,9 @@ struct CategoriesManagementView: View {
                             }
                         )
                     }
+                    .onMove(perform: moveCategory)
                 }
+                .environment(\.editMode, .constant(.active))
             }
         }
         .navigationTitle(String(localized: "navigation.categories"))
@@ -64,34 +98,20 @@ struct CategoriesManagementView: View {
                     Image(systemName: "plus")
                 }
             }
-            ToolbarItem(placement: .bottomBar) {
-                Picker("", selection: $selectedType) {
-                    Text(String(localized: "transactionType.expense")).tag(TransactionType.expense)
-                    Text(String(localized: "transactionType.income")).tag(TransactionType.income)
-                }
-                .pickerStyle(.segmented)
-                //                .padding(.horizontal, AppSpacing.lg)
-                //                .padding(.vertical, AppSpacing.md)
-                //                .background(Color(.clear))
-                .onChange(of: selectedType) { _, _ in
-                    HapticManager.selection()
-                }
-                .toolbarBackground(Color(.clear), for: .navigationBar)
+        }
+        .safeAreaInset(edge: .top) {
+            Picker("", selection: $selectedType) {
+                Text(String(localized: "transactionType.expense")).tag(TransactionType.expense)
+                Text(String(localized: "transactionType.income")).tag(TransactionType.income)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.vertical, AppSpacing.md)
+            .background(Color(.clear))
+            .onChange(of: selectedType) { _, _ in
+                HapticManager.selection()
             }
         }
-//        .safeAreaInset(edge: .top) {
-//            Picker("", selection: $selectedType) {
-//                Text(String(localized: "transactionType.expense")).tag(TransactionType.expense)
-//                Text(String(localized: "transactionType.income")).tag(TransactionType.income)
-//            }
-//            .pickerStyle(.segmented)
-//            .padding(.horizontal, AppSpacing.lg)
-//            .padding(.vertical, AppSpacing.md)
-//            .background(Color(.clear))
-//            .onChange(of: selectedType) { _, _ in
-//                HapticManager.selection()
-//            }
-//        }
         .sheet(isPresented: $showingAddCategory) {
             CategoryEditView(
                 categoriesViewModel: categoriesViewModel,

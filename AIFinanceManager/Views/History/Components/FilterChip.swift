@@ -28,6 +28,8 @@ struct FilterChip: View {
                         .font(.system(size: AppIconSize.sm))
                 }
                 Text(title)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: AppIconSize.xs))
             }
             .filterChipStyle(isSelected: isSelected)
         }

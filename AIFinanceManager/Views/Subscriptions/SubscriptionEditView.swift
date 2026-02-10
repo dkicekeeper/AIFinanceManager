@@ -46,7 +46,7 @@ struct SubscriptionEditView: View {
         if categories.isEmpty {
             categories.insert("Uncategorized")
         }
-        return Array(categories).sorted()
+        return Array(categories).sortedByCustomOrder(customCategories: transactionsViewModel.customCategories, type: .expense)
     }
     
     var body: some View {

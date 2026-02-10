@@ -38,25 +38,25 @@ struct EditTransactionView: View {
     private var availableCategories: [String] {
         var categories: Set<String> = []
         let transactionType = transaction.type
-        
+
         // Добавляем пользовательские категории нужного типа
         for customCategory in customCategories where customCategory.type == transactionType {
             categories.insert(customCategory.name)
         }
-        
+
         // Добавляем категории из существующих транзакций того же типа
         for tx in transactionsViewModel.allTransactions where tx.type == transactionType {
             if !tx.category.isEmpty {
                 categories.insert(tx.category)
             }
         }
-        
+
         // Если категория текущей транзакции не найдена, добавляем её
         if !transaction.category.isEmpty {
             categories.insert(transaction.category)
         }
-        
-        return Array(categories).sorted()
+
+        return Array(categories).sortedByCustomOrder(customCategories: customCategories, type: transactionType)
     }
     
     private var categoryId: String? {

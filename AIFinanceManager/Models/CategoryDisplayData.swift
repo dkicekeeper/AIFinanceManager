@@ -30,8 +30,8 @@ struct CategoryDisplayData: Identifiable, Hashable {
     var hasBudget: Bool { budgetAmount != nil }
 
     /// Formatted total for display
+    /// Always returns a value, even if total is 0
     func formattedTotal(currency: String) -> String? {
-        guard hasTotal else { return nil }
         return Formatting.formatCurrency(total, currency: currency)
     }
 

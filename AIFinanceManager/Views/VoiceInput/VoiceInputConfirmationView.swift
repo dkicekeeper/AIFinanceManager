@@ -127,7 +127,10 @@ struct VoiceInputConfirmationView: View {
                     
                     // 4. Категория
                     CategorySelectorView(
-                        categories: categoriesViewModel.customCategories.filter { $0.type == selectedType }.map { $0.name },
+                        categories: categoriesViewModel.customCategories
+                            .filter { $0.type == selectedType }
+                            .sortedByOrder()
+                            .map { $0.name },
                         type: selectedType,
                         customCategories: categoriesViewModel.customCategories,
                         selectedCategory: $selectedCategoryName,
