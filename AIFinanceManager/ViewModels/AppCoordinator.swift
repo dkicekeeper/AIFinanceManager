@@ -212,15 +212,13 @@ class AppCoordinator: ObservableObject {
         // This initializes the balance store with current account data
         await balanceCoordinator.registerAccounts(accountsViewModel.accounts)
 
-        // CRITICAL: Recalculate balances after loading transactions
-        // This ensures accounts with shouldCalculateFromTransactions get correct balances
+        // ✅ OPTIMIZED 2026-02-10: No need to recalculate on launch
+        // Balances are now persisted to Core Data and loaded correctly during registerAccounts()
+        // Only recalculate when truly needed (not on every app launch)
+        // Old code: await balanceCoordinator.recalculateAll(accounts, transactions)
         #if DEBUG
-        print("🔄 [AppCoordinator] Recalculating all balances after initialization...")
+        print("✅ [AppCoordinator] Balances loaded from Core Data - skipping recalculation")
         #endif
-        await balanceCoordinator.recalculateAll(
-            accounts: accountsViewModel.accounts,
-            transactions: transactionsViewModel.allTransactions
-        )
 
         // REFACTORED 2026-02-04: Load Settings data (Phase 1)
         #if DEBUG

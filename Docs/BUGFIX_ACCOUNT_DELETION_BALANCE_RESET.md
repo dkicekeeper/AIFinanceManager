@@ -260,5 +260,191 @@ func registerAccounts(_ accounts: [Account]) async {
 ## Статус
 
 ✅ **ИСПРАВЛЕНО** - баланс больше не обнуляется при удалении счета
+✅ **ОПТИМИЗИРОВАНО** - балансы сохраняются в Core Data, пересчет при запуске устранен
 
 Дата исправления: 2026-02-10
+
+---
+
+## Оптимизация: Устранение пересчета балансов при запуске
+
+### Проблема производительности
+
+После исправления основного бага выяснилось, что приложение пересчитывает балансы всех 36 счетов из 18,248 транзакций при каждом запуске, что занимает значительное время.
+
+### Решение
+
+Реализована система персистентности балансов в Core Data:
+
+#### 1. Методы сохранения балансов в `CoreDataRepository.swift`
+
+**Одиночное обновление:**
+```swift
+func updateAccountBalance(accountId: String, balance: Double) {
+    Task.detached(priority: .userInitiated) { [weak self] in
+        try await self.saveCoordinator.performSave(operation: "updateAccountBalance") { context in
+            let fetchRequest = AccountEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "id == %@", accountId)
+            if let account = try context.fetch(fetchRequest).first {
+                account.balance = balance
+            }
+        }
+    }
+}
+```
+
+**Пакетное обновление (критично для избежания конфликтов):**
+```swift
+func updateAccountBalances(_ balances: [String: Double]) {
+    Task.detached(priority: .userInitiated) { [weak self] in
+        try await self.saveCoordinator.performSave(operation: "updateAccountBalances") { context in
+            let accountIds = Array(balances.keys)
+            let fetchRequest = AccountEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "id IN %@", accountIds)
+            let accounts = try context.fetch(fetchRequest)
+            for account in accounts {
+                if let accountId = account.id, let newBalance = balances[accountId] {
+                    account.balance = newBalance
+                }
+            }
+        }
+    }
+}
+```
+
+#### 2. Интеграция в `BalanceCoordinator.swift`
+
+**Сохранение после пересчета:**
+```swift
+private func persistBalances(_ balances: [String: Double]) {
+    guard let coreDataRepo = repository as? CoreDataRepository else { return }
+    coreDataRepo.updateAccountBalances(balances)  // ✅ Batch update
+}
+```
+
+**Вызовы в методах обработки транзакций:**
+- `processAddTransaction()` → вызывает `persistBalance()` после обновления баланса
+- `processRemoveTransaction()` → вызывает `persistBalance()` после обновления баланса
+- `processRecalculateAll()` → вызывает `persistBalances()` после пересчета всех балансов
+
+#### 3. Удаление пересчета при запуске в `AppCoordinator.swift`
+
+**До:**
+```swift
+// CRITICAL: Recalculate balances after loading transactions
+await balanceCoordinator.recalculateAll(
+    accounts: accountsViewModel.accounts,
+    transactions: transactionsViewModel.allTransactions
+)
+```
+
+**После:**
+```swift
+// ✅ OPTIMIZED 2026-02-10: No need to recalculate on launch
+// Balances are now persisted to Core Data and loaded correctly during registerAccounts()
+#if DEBUG
+print("✅ [AppCoordinator] Balances loaded from Core Data - skipping recalculation")
+#endif
+```
+
+### Поток данных
+
+```
+App Launch
+----------
+1. TransactionStore loads accounts from Core Data
+   AccountEntity.balance → Account.initialBalance  ✅ Restored from DB
+
+2. BalanceCoordinator.registerAccounts() called
+   account.initialBalance → balances[accountId]  ✅ Loaded from Core Data
+
+3. UI displays balances  ✅ Instant, no recalculation needed
+
+
+Transaction Added
+----------------
+1. BalanceCoordinator.updateForTransaction() called
+2. Balance recalculated for affected account(s)
+3. persistBalance() saves to Core Data  💾
+4. UI updates
+
+
+Account Deleted
+--------------
+1. TransactionStore.deleteAccount() removes account
+2. AccountsViewModel observer triggers
+3. BalanceCoordinator.registerAccounts() called
+4. Preserves existing balances  ✅ (our bug fix)
+5. No recalculation needed
+```
+
+### Результаты
+
+- ✅ Балансы загружаются из Core Data мгновенно
+- ✅ Пересчет только при изменении транзакций
+- ✅ Пакетное обновление избегает конфликтов сохранения
+- ✅ Устранена задержка при запуске приложения
+
+### Связанные файлы (Оптимизация)
+
+- `AIFinanceManager/ViewModels/AppCoordinator.swift` - удален `recalculateAll()` при инициализации
+- `AIFinanceManager/Services/Balance/BalanceCoordinator.swift` - добавлены `persistBalance()` и `persistBalances()`
+- `AIFinanceManager/Services/CoreDataRepository.swift` - добавлены `updateAccountBalance()` и `updateAccountBalances()`
+- `AIFinanceManager/Services/DataRepositoryProtocol.swift` - расширен протокол методами обновления балансов
+- `AIFinanceManager/Services/UserDefaultsRepository.swift` - добавлены заглушки для протокола
+- `AIFinanceManager/Services/CSV/CSVImportCoordinator.swift` - добавлен `recalculateAll()` после завершения импорта
+
+Дата оптимизации: 2026-02-10
+
+---
+
+## Дополнительное исправление: Балансы при CSV импорте
+
+### Проблема
+
+После импорта CSV большинство балансов остаются 0, только некоторые обновляются. Это происходит потому, что `CSVImportCoordinator` регистрирует счета и устанавливает начальные балансы, но **не пересчитывает балансы на основе импортированных транзакций**.
+
+### Решение
+
+Добавлен вызов `recalculateAll()` в конце `CSVImportCoordinator.importTransactions()`:
+
+```swift
+// Register accounts in BalanceCoordinator
+if let accountsVM = accountsViewModel,
+   let balanceCoordinator = transactionsViewModel.balanceCoordinator {
+    await balanceCoordinator.registerAccounts(accountsVM.accounts)
+
+    for account in accountsVM.accounts {
+        let initialBalance = accountsVM.getInitialBalance(for: account.id) ?? 0
+        await balanceCoordinator.setInitialBalance(initialBalance, for: account.id)
+
+        if !account.shouldCalculateFromTransactions {
+            await balanceCoordinator.markAsManual(account.id)
+        }
+    }
+
+    // ✅ CRITICAL: Recalculate balances after CSV import
+    // This ensures all accounts reflect the imported transactions
+    await balanceCoordinator.recalculateAll(
+        accounts: accountsVM.accounts,
+        transactions: transactionsViewModel.allTransactions
+    )
+}
+```
+
+### Логика
+
+1. CSV импортирует транзакции → добавляет их в TransactionStore
+2. Регистрирует счета в BalanceCoordinator
+3. **НОВОЕ:** Пересчитывает балансы всех счетов на основе всех транзакций (включая импортированные)
+4. Сохраняет пересчитанные балансы в Core Data через `persistBalances()`
+5. При следующем запуске балансы загружаются из Core Data
+
+### Отличие от запуска приложения
+
+- **При запуске приложения:** Балансы загружаются из Core Data (НЕТ пересчета)
+- **После CSV импорта:** Балансы **ПЕРЕСЧИТЫВАЮТСЯ** на основе ВСЕХ транзакций (старых + новых), затем сохраняются в Core Data
+
+Это правильное поведение, так как:
+- После импорта данные изменились → нужен пересчет
+- После пересчета балансы сохраняются → следующий запуск будет быстрым

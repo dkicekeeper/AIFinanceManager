@@ -273,6 +273,16 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
                     await balanceCoordinator.markAsManual(account.id)
                 }
             }
+
+            // ✅ CRITICAL: Recalculate balances after CSV import
+            // This ensures all accounts reflect the imported transactions
+            #if DEBUG
+            print("🔄 [CSVImport] Recalculating all balances after import...")
+            #endif
+            await balanceCoordinator.recalculateAll(
+                accounts: accountsVM.accounts,
+                transactions: transactionsViewModel.allTransactions
+            )
         }
 
         // Rebuild aggregate cache
