@@ -26,13 +26,25 @@ struct ImportProgressSheet: View {
                 .font(AppTypography.h4)
                 .foregroundColor(AppColors.textPrimary)
 
-            ProgressView(value: progress)
-                .progressViewStyle(.linear)
-                .tint(AppColors.accent)
+            VStack(spacing: AppSpacing.sm) {
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .tint(AppColors.accent)
+                    .scaleEffect(y: 2.0)
 
-            Text("\(currentRow) / \(totalRows)")
-                .font(AppTypography.caption)
-                .foregroundColor(AppColors.textSecondary)
+                HStack {
+                    Text("\(currentRow) / \(totalRows)")
+                        .font(AppTypography.body)
+                        .foregroundColor(AppColors.textPrimary)
+
+                    Spacer()
+
+                    Text("\(Int(progress * 100))%")
+                        .font(AppTypography.body)
+                        .foregroundColor(AppColors.textPrimary)
+                        .fontWeight(.semibold)
+                }
+            }
 
             Button(String(localized: "button.cancel")) {
                 onCancel()

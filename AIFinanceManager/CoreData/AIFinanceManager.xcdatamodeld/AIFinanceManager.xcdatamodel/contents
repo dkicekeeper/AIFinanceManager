@@ -9,6 +9,7 @@
         <attribute name="isDeposit" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="logo" optional="YES" attributeType="String"/>
         <attribute name="name" attributeType="String"/>
+        <attribute name="shouldCalculateFromTransactions" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <relationship name="recurringSeries" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="RecurringSeriesEntity" inverseName="account" inverseEntity="RecurringSeriesEntity"/>
         <relationship name="targetTransactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TransactionEntity" inverseName="targetAccount" inverseEntity="TransactionEntity"/>
         <relationship name="transactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="TransactionEntity" inverseName="account" inverseEntity="TransactionEntity"/>

@@ -267,12 +267,20 @@ final class SettingsViewModel: ObservableObject {
         do {
             try await resetCoordinator.resetAllData()
 
+            // Add haptic feedback for successful reset
+            await MainActor.run {
+                HapticManager.success()
+            }
+
             await showSuccess(String(localized: "success.reset.completed", defaultValue: "All data has been reset"))
 
             #if DEBUG
             print("✅ [SettingsViewModel] Data reset completed")
             #endif
         } catch {
+            await MainActor.run {
+                HapticManager.error()
+            }
             await showError(error.localizedDescription)
         }
 
@@ -290,12 +298,20 @@ final class SettingsViewModel: ObservableObject {
         do {
             try await resetCoordinator.recalculateAllBalances()
 
+            // Add haptic feedback for successful recalculation
+            await MainActor.run {
+                HapticManager.success()
+            }
+
             await showSuccess(String(localized: "success.recalculation.completed", defaultValue: "Balances recalculated successfully"))
 
             #if DEBUG
             print("✅ [SettingsViewModel] Recalculation completed")
             #endif
         } catch {
+            await MainActor.run {
+                HapticManager.error()
+            }
             await showError(error.localizedDescription)
         }
 

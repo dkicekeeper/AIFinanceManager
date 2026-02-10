@@ -27,6 +27,7 @@ extension AccountEntity {
     @NSManaged public var isDeposit: Bool
     @NSManaged public var logo: String?
     @NSManaged public var name: String?
+    @NSManaged public var shouldCalculateFromTransactions: Bool  // ✨ Phase 10: Track balance calculation mode
     @NSManaged public var targetTransactions: NSSet?
     @NSManaged public var transactions: NSSet?
 

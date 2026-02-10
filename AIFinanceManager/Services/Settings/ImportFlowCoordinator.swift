@@ -67,8 +67,15 @@ final class ImportFlowCoordinator: ObservableObject {
             let file = try CSVImporter.parseCSV(from: url)
             csvFile = file
 
-            // Create CSVImportCoordinator with factory now that we have the file
-            importCoordinator = CSVImportCoordinator.create(for: file)
+            // ✨ Phase 11: Create CSVImportCoordinator with TransactionStore
+            if let transactionStore = transactionsViewModel?.transactionStore {
+                importCoordinator = CSVImportCoordinator.create(
+                    for: file,
+                    transactionStore: transactionStore
+                )
+            } else {
+                throw CSVImportError.missingDependency("TransactionStore not available")
+            }
 
             currentStep = .preview
 

@@ -1,18 +1,18 @@
 //
-//  ErrorMessageView.swift
+//  SuccessMessageView.swift
 //  AIFinanceManager
 //
-//  Created on 2024
+//  Created on 2026-02-10
 //
 
 import SwiftUI
 
-struct ErrorMessageView: View {
+struct SuccessMessageView: View {
     let message: String
 
     var body: some View {
         HStack(spacing: AppSpacing.md) {
-            Image(systemName: "exclamationmark.triangle")
+            Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: AppIconSize.md))
             Text(message)
                 .font(AppTypography.body)
@@ -20,7 +20,7 @@ struct ErrorMessageView: View {
         .padding(AppSpacing.md)
         .cornerRadius(AppRadius.pill)
         .glassEffect(.regular
-            .tint(.red.opacity(0.5))
+            .tint(.green.opacity(0.5))
             .interactive())
     }
 }

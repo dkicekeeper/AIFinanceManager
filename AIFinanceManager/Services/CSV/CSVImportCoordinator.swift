@@ -2,15 +2,15 @@
 //  CSVImportCoordinator.swift
 //  AIFinanceManager
 //
-//  Created on 2026-02-03
-//  CSV Import Refactoring Phase 2
+//  Simplified CSV Import Architecture - Phase 11
+//  Removed CSVStorageCoordinator - direct TransactionStore interaction
 //
 
 import Foundation
+import Combine
 
-/// Main coordinator for CSV import operations
-/// Orchestrates the entire import flow with dependency injection and progress tracking
-/// Replaced the deprecated monolithic CSVImportService (deleted 2026-02-04)
+/// Simplified coordinator for CSV import operations
+/// Works directly with TransactionStore - removed CSVStorageCoordinator layer
 @MainActor
 class CSVImportCoordinator: CSVImportCoordinatorProtocol {
 
@@ -20,7 +20,6 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
     private let validator: CSVValidationServiceProtocol
     private let mapper: EntityMappingServiceProtocol
     private let converter: TransactionConverterServiceProtocol
-    private let storage: CSVStorageCoordinatorProtocol
     private let cache: ImportCacheManager
 
     // MARK: - Initialization
@@ -30,14 +29,12 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
         validator: CSVValidationServiceProtocol,
         mapper: EntityMappingServiceProtocol,
         converter: TransactionConverterServiceProtocol,
-        storage: CSVStorageCoordinatorProtocol,
         cache: ImportCacheManager
     ) {
         self.parser = parser
         self.validator = validator
         self.mapper = mapper
         self.converter = converter
-        self.storage = storage
         self.cache = cache
     }
 
@@ -87,6 +84,11 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             // Update progress
             progress.currentRow = rowIndex + 1
 
+            // Yield to allow UI updates every 10 rows
+            if rowIndex % 10 == 0 {
+                await Task.yield()
+            }
+
             // Validate row
             let validationResult = validator.validateRow(
                 row,
@@ -106,8 +108,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             let accountResult = await mapper.resolveAccount(
                 name: csvRow.effectiveAccountValue,
                 currency: csvRow.currency,
-                mapping: entityMapping,
-                accountsViewModel: accountsViewModel
+                mapping: entityMapping
             )
 
             let accountId: String?
@@ -130,8 +131,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
                 let targetResult = await mapper.resolveAccount(
                     name: targetAccountValue,
                     currency: csvRow.targetCurrency ?? csvRow.currency,
-                    mapping: entityMapping,
-                    accountsViewModel: accountsViewModel
+                    mapping: entityMapping
                 )
 
                 switch targetResult {
@@ -151,8 +151,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             let categoryResult = await mapper.resolveCategory(
                 name: categoryName,
                 type: csvRow.type,
-                mapping: entityMapping,
-                categoriesViewModel: categoriesViewModel
+                mapping: entityMapping
             )
 
             let categoryId: String
@@ -172,8 +171,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             if !csvRow.subcategoryNames.isEmpty {
                 let subcategoryResults = await mapper.resolveSubcategories(
                     names: csvRow.subcategoryNames,
-                    categoryId: categoryId,
-                    categoriesViewModel: categoriesViewModel
+                    categoryId: categoryId
                 )
 
                 for result in subcategoryResults {
@@ -216,24 +214,74 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
 
             // Process batch if full or last row
             if transactionsBatch.count >= 500 || rowIndex == csvFile.rowCount - 1 {
-                await storage.saveBatch(
-                    transactionsBatch,
-                    subcategoryLinks: subcategoryLinksBatch,
-                    transactionsViewModel: transactionsViewModel,
-                    categoriesViewModel: categoriesViewModel
-                )
+                // ✨ Phase 11: Direct TransactionStore interaction (no CSVStorageCoordinator)
+                if let transactionStore = transactionsViewModel.transactionStore {
+                    do {
+                        try await transactionStore.addBatch(transactionsBatch)
+                    } catch {
+                        print("❌ Failed to add batch: \(error.localizedDescription)")
+                    }
+
+                    // Batch link subcategories
+                    if !subcategoryLinksBatch.isEmpty {
+                        var updatedLinks = transactionStore.transactionSubcategoryLinks
+                        let transactionIds = Set(subcategoryLinksBatch.keys)
+                        updatedLinks.removeAll { transactionIds.contains($0.transactionId) }
+
+                        for (transactionId, subcategoryIds) in subcategoryLinksBatch {
+                            for subcategoryId in subcategoryIds {
+                                let link = TransactionSubcategoryLink(transactionId: transactionId, subcategoryId: subcategoryId)
+                                updatedLinks.append(link)
+                            }
+                        }
+
+                        transactionStore.updateTransactionSubcategoryLinks(updatedLinks)
+                    }
+                }
 
                 transactionsBatch.removeAll(keepingCapacity: true)
                 subcategoryLinksBatch.removeAll(keepingCapacity: true)
             }
         }
 
-        // Finalize import
-        await storage.finalizeImport(
-            accountsViewModel: accountsViewModel,
-            transactionsViewModel: transactionsViewModel,
-            categoriesViewModel: categoriesViewModel
-        )
+        // ✨ Phase 11: Finalize import - direct TransactionStore interaction
+        if let transactionStore = transactionsViewModel.transactionStore {
+            do {
+                try await transactionStore.finishImport()
+            } catch {
+                print("❌ Failed to finish import: \(error.localizedDescription)")
+            }
+        }
+
+        // End batch + recalculate balances
+        transactionsViewModel.endBatchWithoutSave()
+
+        // Rebuild indexes and caches
+        transactionsViewModel.rebuildIndexes()
+        transactionsViewModel.precomputeCurrencyConversions()
+
+        // Register accounts in BalanceCoordinator
+        if let accountsVM = accountsViewModel,
+           let balanceCoordinator = transactionsViewModel.balanceCoordinator {
+            await balanceCoordinator.registerAccounts(accountsVM.accounts)
+
+            for account in accountsVM.accounts {
+                let initialBalance = accountsVM.getInitialBalance(for: account.id) ?? 0
+                await balanceCoordinator.setInitialBalance(initialBalance, for: account.id)
+
+                if !account.shouldCalculateFromTransactions {
+                    await balanceCoordinator.markAsManual(account.id)
+                }
+            }
+        }
+
+        // Rebuild aggregate cache
+        await transactionsViewModel.rebuildAggregateCacheAfterImport()
+
+        // Notify UI
+        transactionsViewModel.objectWillChange.send()
+        categoriesViewModel.objectWillChange.send()
+        accountsViewModel?.objectWillChange.send()
 
         // Clear cache
         cache.clear()

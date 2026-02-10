@@ -94,6 +94,7 @@ class CategoriesViewModel: ObservableObject {
     }
 
     /// PHASE 3: Setup subscription to TransactionStore.$categories
+    /// ✨ Phase 10: Also subscribe to subcategories and links
     /// Called by AppCoordinator after TransactionStore is initialized
     func setupTransactionStoreObserver() {
         guard let transactionStore = transactionStore else {
@@ -103,15 +104,28 @@ class CategoriesViewModel: ObservableObject {
             return
         }
 
-        categoriesSubscription = transactionStore.$categories
-            .sink { [weak self] updatedCategories in
-                guard let self = self else { return }
-                self.customCategories = updatedCategories
+        // Subscribe to categories
+        categoriesSubscription = Publishers.CombineLatest4(
+            transactionStore.$categories,
+            transactionStore.$subcategories,
+            transactionStore.$categorySubcategoryLinks,
+            transactionStore.$transactionSubcategoryLinks
+        )
+        .sink { [weak self] (updatedCategories, updatedSubcategories, updatedCategoryLinks, updatedTransactionLinks) in
+            guard let self = self else { return }
+            self.customCategories = updatedCategories
+            self.subcategories = updatedSubcategories
+            self.categorySubcategoryLinks = updatedCategoryLinks
+            self.transactionSubcategoryLinks = updatedTransactionLinks
 
-                #if DEBUG
-                print("✅ [CategoriesVM] Received \(updatedCategories.count) categories from TransactionStore")
-                #endif
-            }
+            #if DEBUG
+            print("✅ [CategoriesVM] Received updates from TransactionStore:")
+            print("   - Categories: \(updatedCategories.count)")
+            print("   - Subcategories: \(updatedSubcategories.count)")
+            print("   - Category-Subcategory Links: \(updatedCategoryLinks.count)")
+            print("   - Transaction-Subcategory Links: \(updatedTransactionLinks.count)")
+            #endif
+        }
 
         #if DEBUG
         print("✅ [CategoriesVM] Setup TransactionStore observer")

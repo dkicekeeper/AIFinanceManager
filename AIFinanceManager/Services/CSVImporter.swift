@@ -143,7 +143,8 @@ enum CSVImportError: LocalizedError {
     case emptyFile
     case noHeaders
     case invalidFormat
-    
+    case missingDependency(String)  // ✨ Phase 11: For missing TransactionStore or other deps
+
     var errorDescription: String? {
         switch self {
         case .fileAccessDenied:
@@ -156,6 +157,8 @@ enum CSVImportError: LocalizedError {
             return "В файле отсутствуют заголовки"
         case .invalidFormat:
             return "Неверный формат CSV"
+        case .missingDependency(let message):
+            return "Отсутствует зависимость: \(message)"
         }
     }
 }

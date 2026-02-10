@@ -44,6 +44,7 @@ extension AccountEntity {
             bankLogo: bankLogo,
             depositInfo: depositInfo,
             createdDate: createdAt,
+            shouldCalculateFromTransactions: shouldCalculateFromTransactions,  // ✨ Phase 10: Restore calculation mode
             initialBalance: balance
         )
     }
@@ -59,6 +60,7 @@ extension AccountEntity {
         entity.isDeposit = account.isDeposit
         entity.bankName = account.depositInfo?.bankName
         entity.createdAt = account.createdDate ?? Date()
+        entity.shouldCalculateFromTransactions = account.shouldCalculateFromTransactions  // ✨ Phase 10: Save calculation mode
         // Note: depositInfo details are not stored in AccountEntity
         // This would need to be extended if full deposit support is required
         return entity

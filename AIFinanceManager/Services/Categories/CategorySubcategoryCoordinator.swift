@@ -49,7 +49,14 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
 
         let subcategory = Subcategory(name: name)
         delegate.subcategories.append(subcategory)
-        repository.saveSubcategories(delegate.subcategories)
+
+        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
+        if let transactionStore = delegate.transactionStore {
+            transactionStore.addSubcategory(subcategory)
+        } else {
+            // Fallback: save directly to repository
+            repository.saveSubcategories(delegate.subcategories)
+        }
 
         #if DEBUG
         print("✅ [CategorySubcategoryCoordinator] Added subcategory: \(name)")
@@ -78,7 +85,14 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
         newSubcategories[index] = subcategory
 
         delegate.subcategories = newSubcategories
-        repository.saveSubcategories(delegate.subcategories)
+
+        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
+        if let transactionStore = delegate.transactionStore {
+            transactionStore.updateSubcategories(newSubcategories)
+        } else {
+            // Fallback: save directly to repository
+            repository.saveSubcategories(delegate.subcategories)
+        }
 
         #if DEBUG
         print("✅ [CategorySubcategoryCoordinator] Updated subcategory: \(subcategory.name)")
@@ -100,10 +114,17 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
         // Remove the subcategory itself
         delegate.subcategories.removeAll { $0.id == subcategoryId }
 
-        // Save all changes
-        repository.saveSubcategories(delegate.subcategories)
-        repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
-        repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
+        if let transactionStore = delegate.transactionStore {
+            transactionStore.updateSubcategories(delegate.subcategories)
+            transactionStore.updateCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+            transactionStore.updateTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        } else {
+            // Fallback: save directly to repository
+            repository.saveSubcategories(delegate.subcategories)
+            repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+            repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        }
 
         #if DEBUG
         print("✅ [CategorySubcategoryCoordinator] Deleted subcategory: \(subcategoryId)")
@@ -123,7 +144,14 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
         linkSubcategoryToCategoryWithoutSaving(subcategoryId: subcategoryId, categoryId: categoryId)
 
         guard let delegate = delegate else { return }
-        repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+
+        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
+        if let transactionStore = delegate.transactionStore {
+            transactionStore.updateCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+        } else {
+            // Fallback: save directly to repository
+            repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+        }
 
         #if DEBUG
         print("✅ [CategorySubcategoryCoordinator] Linked subcategory \(subcategoryId) to category \(categoryId)")
@@ -166,7 +194,13 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             link.categoryId == categoryId && link.subcategoryId == subcategoryId
         }
 
-        repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
+        if let transactionStore = delegate.transactionStore {
+            transactionStore.updateCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+        } else {
+            // Fallback: save directly to repository
+            repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+        }
 
         #if DEBUG
         print("✅ [CategorySubcategoryCoordinator] Unlinked subcategory \(subcategoryId) from category \(categoryId)")
@@ -212,7 +246,13 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             delegate.transactionSubcategoryLinks.append(link)
         }
 
-        repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
+        if let transactionStore = delegate.transactionStore {
+            transactionStore.updateTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        } else {
+            // Fallback: save directly to repository
+            repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        }
 
         #if DEBUG
         print("✅ [CategorySubcategoryCoordinator] Linked \(subcategoryIds.count) subcategories to transaction \(transactionId)")
@@ -258,8 +298,13 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             }
         }
 
-        // Save once at the end
-        repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
+        if let transactionStore = delegate.transactionStore {
+            transactionStore.updateTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        } else {
+            // Fallback: save directly to repository (legacy behavior for CSV import)
+            repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
+        }
 
         #if DEBUG
         print("✅ [CategorySubcategoryCoordinator] Batch linked subcategories for \(transactionIds.count) transactions")

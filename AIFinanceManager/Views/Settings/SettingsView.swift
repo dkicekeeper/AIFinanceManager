@@ -53,14 +53,37 @@ struct SettingsView: View {
     // MARK: - Main List
 
     private var settingsList: some View {
-        List {
-            generalSection
-            dataManagementSection
-            exportImportSection
-            dangerZoneSection
+        ZStack(alignment: .top) {
+            List {
+                generalSection
+                dataManagementSection
+                exportImportSection
+                dangerZoneSection
+            }
+            .navigationTitle(String(localized: "settings.title"))
+            .navigationBarTitleDisplayMode(.large)
+
+            // Toast messages
+            VStack {
+                if let successMessage = settingsViewModel.successMessage {
+                    SuccessMessageView(message: successMessage)
+                        .padding(.horizontal, AppSpacing.md)
+                        .padding(.top, AppSpacing.sm)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(1)
+                }
+
+                if let errorMessage = settingsViewModel.errorMessage {
+                    ErrorMessageView(message: errorMessage)
+                        .padding(.horizontal, AppSpacing.md)
+                        .padding(.top, AppSpacing.sm)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(1)
+                }
+
+                Spacer()
+            }
         }
-        .navigationTitle(String(localized: "settings.title"))
-        .navigationBarTitleDisplayMode(.large)
         .alert(
             String(localized: "alert.recalculateBalances.title"),
             isPresented: $showingRecalculateBalancesConfirmation

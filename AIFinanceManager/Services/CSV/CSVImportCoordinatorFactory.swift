@@ -2,29 +2,33 @@
 //  CSVImportCoordinatorFactory.swift
 //  AIFinanceManager
 //
-//  Created on 2026-02-03
-//  CSV Import Refactoring Phase 5
+//  Simplified CSV Import Architecture - Phase 11
+//  Removed CSVStorageCoordinator dependency
 //
 
 import Foundation
 
 /// Factory for creating CSVImportCoordinator with all dependencies
-/// Simplifies initialization in views and tests
+/// Simplified to work directly with TransactionStore
 @MainActor
 extension CSVImportCoordinator {
 
     /// Creates a fully configured CSVImportCoordinator with default dependencies
-    /// - Parameter csvFile: CSV file to configure validator with headers
+    /// - Parameters:
+    ///   - csvFile: CSV file to configure validator with headers
+    ///   - transactionStore: TransactionStore instance for direct data manipulation
     /// - Returns: Configured coordinator ready for import
-    static func create(for csvFile: CSVFile) -> CSVImportCoordinator {
+    static func create(
+        for csvFile: CSVFile,
+        transactionStore: TransactionStore
+    ) -> CSVImportCoordinator {
         let cache = ImportCacheManager(capacity: 1000)
 
         return CSVImportCoordinator(
             parser: CSVParsingService(),
             validator: CSVValidationService(headers: csvFile.headers),
-            mapper: EntityMappingService(cache: cache),
+            mapper: EntityMappingService(cache: cache, transactionStore: transactionStore),
             converter: TransactionConverterService(),
-            storage: CSVStorageCoordinator(),
             cache: cache
         )
     }
@@ -32,10 +36,12 @@ extension CSVImportCoordinator {
     /// Creates a coordinator with custom cache capacity
     /// - Parameters:
     ///   - csvFile: CSV file to configure validator
+    ///   - transactionStore: TransactionStore instance for direct data manipulation
     ///   - cacheCapacity: LRU cache capacity (default: 1000)
     /// - Returns: Configured coordinator
     static func create(
         for csvFile: CSVFile,
+        transactionStore: TransactionStore,
         cacheCapacity: Int = 1000
     ) -> CSVImportCoordinator {
         let cache = ImportCacheManager(capacity: cacheCapacity)
@@ -43,9 +49,8 @@ extension CSVImportCoordinator {
         return CSVImportCoordinator(
             parser: CSVParsingService(),
             validator: CSVValidationService(headers: csvFile.headers),
-            mapper: EntityMappingService(cache: cache),
+            mapper: EntityMappingService(cache: cache, transactionStore: transactionStore),
             converter: TransactionConverterService(),
-            storage: CSVStorageCoordinator(),
             cache: cache
         )
     }

@@ -2,57 +2,52 @@
 //  EntityMappingServiceProtocol.swift
 //  AIFinanceManager
 //
-//  Created on 2026-02-03
-//  CSV Import Refactoring Phase 1
+//  Simplified CSV Import Architecture - Phase 11
+//  Removed ViewModels dependencies - works with TransactionStore only
 //
 
 import Foundation
 
 /// Protocol for entity (account, category, subcategory) resolution during CSV import
-/// Handles lookups, cache management, and entity creation
+/// Works directly with TransactionStore (Single Source of Truth)
+/// ViewModels update automatically via Combine subscriptions
 @MainActor
 protocol EntityMappingServiceProtocol {
-    /// Resolves an account by name, checking cache, mapping, and existing accounts
-    /// Creates a new account if needed
+    /// Resolves an account by name, checking cache, mapping, and TransactionStore
+    /// Creates a new account if needed directly in TransactionStore
     /// - Parameters:
     ///   - name: Account name from CSV
     ///   - currency: Account currency
     ///   - mapping: Entity mapping configuration
-    ///   - accountsViewModel: Accounts view model for lookups and creation
     /// - Returns: Resolution result indicating if account was found or created
     func resolveAccount(
         name: String,
         currency: String,
-        mapping: EntityMapping,
-        accountsViewModel: AccountsViewModel?
+        mapping: EntityMapping
     ) async -> AccountResolutionResult
 
-    /// Resolves a category by name, checking cache, mapping, and existing categories
-    /// Creates a new category if needed
+    /// Resolves a category by name, checking cache, mapping, and TransactionStore
+    /// Creates a new category if needed directly in TransactionStore
     /// - Parameters:
     ///   - name: Category name from CSV
     ///   - type: Transaction type for category
     ///   - mapping: Entity mapping configuration
-    ///   - categoriesViewModel: Categories view model for lookups and creation
     /// - Returns: Resolution result indicating if category was found or created
     func resolveCategory(
         name: String,
         type: TransactionType,
-        mapping: EntityMapping,
-        categoriesViewModel: CategoriesViewModel
+        mapping: EntityMapping
     ) async -> CategoryResolutionResult
 
-    /// Resolves multiple subcategories, checking cache and existing subcategories
+    /// Resolves multiple subcategories, checking cache and TransactionStore
     /// Creates new subcategories if needed and links them to the category
     /// - Parameters:
     ///   - names: Array of subcategory names from CSV
     ///   - categoryId: Parent category ID for linking
-    ///   - categoriesViewModel: Categories view model for lookups and creation
     /// - Returns: Array of resolution results for each subcategory
     func resolveSubcategories(
         names: [String],
-        categoryId: String,
-        categoriesViewModel: CategoriesViewModel
+        categoryId: String
     ) async -> [SubcategoryResolutionResult]
 }
 

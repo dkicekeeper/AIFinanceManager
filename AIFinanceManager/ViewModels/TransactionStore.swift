@@ -77,6 +77,17 @@ final class TransactionStore: ObservableObject {
     /// All categories - needed for validation
     @Published private(set) var categories: [CustomCategory] = []
 
+    // MARK: - Subcategory Data (Phase 10: CSV Import Fix - Single Source of Truth)
+
+    /// All subcategories - managed alongside categories
+    @Published private(set) var subcategories: [Subcategory] = []
+
+    /// Links between categories and subcategories
+    @Published private(set) var categorySubcategoryLinks: [CategorySubcategoryLink] = []
+
+    /// Links between transactions and subcategories
+    @Published private(set) var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
+
     // MARK: - Recurring Data (Phase 9: Aggressive Integration) ✨
 
     /// All recurring series - subscriptions and generic recurring transactions
@@ -135,6 +146,11 @@ final class TransactionStore: ObservableObject {
         // Load categories
         categories = repository.loadCategories()
 
+        // ✨ Phase 10: Load subcategory data
+        subcategories = repository.loadSubcategories()
+        categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
+        transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
+
         // ✨ Phase 9: Load recurring data
         recurringSeries = repository.loadRecurringSeries()
         recurringOccurrences = repository.loadRecurringOccurrences()
@@ -146,6 +162,9 @@ final class TransactionStore: ObservableObject {
         print("   - Transactions: \(transactions.count)")
         print("   - Accounts: \(accounts.count)")
         print("   - Categories: \(categories.count)")
+        print("   - Subcategories: \(subcategories.count)")
+        print("   - Category-Subcategory Links: \(categorySubcategoryLinks.count)")
+        print("   - Transaction-Subcategory Links: \(transactionSubcategoryLinks.count)")
         print("   - Recurring Series: \(recurringSeries.count)")
         print("   - Recurring Occurrences: \(recurringOccurrences.count)")
         #endif
@@ -273,17 +292,31 @@ final class TransactionStore: ObservableObject {
 
         // CRITICAL: Use synchronous save to ensure data is persisted before returning
         // This prevents data loss if app is terminated immediately after import
+        // IMPORTANT: Save in correct order - accounts FIRST, then transactions (for relationships)
         do {
             if let coreDataRepo = repository as? CoreDataRepository {
-                // Use synchronous save for all data (blocks until complete)
-                try coreDataRepo.saveTransactionsSync(transactions)
+                // ✨ Phase 10: Save accounts BEFORE transactions (required for Core Data relationships)
                 try coreDataRepo.saveAccountsSync(accounts)
                 try coreDataRepo.saveCategoriesSync(categories)
+
+                // ✨ Phase 10: Save subcategory data synchronously
+                try coreDataRepo.saveSubcategoriesSync(subcategories)
+                try coreDataRepo.saveCategorySubcategoryLinksSync(categorySubcategoryLinks)
+
+                // ✨ Phase 10: Save transactions AFTER accounts (so account relationships can be established)
+                try coreDataRepo.saveTransactionsSync(transactions)
+                try coreDataRepo.saveTransactionSubcategoryLinksSync(transactionSubcategoryLinks)
             } else {
                 // Fallback to async save for non-CoreData repositories
-                repository.saveTransactions(transactions)
                 repository.saveAccounts(accounts)
                 repository.saveCategories(categories)
+
+                // ✨ Phase 10: Save subcategory data
+                repository.saveSubcategories(subcategories)
+                repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
+
+                repository.saveTransactions(transactions)
+                repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
             }
 
             // Save recurring data (these are less critical, can be async)
@@ -292,6 +325,12 @@ final class TransactionStore: ObservableObject {
 
             #if DEBUG
             print("✅ [TransactionStore] Import finished, all data persisted synchronously")
+            print("   - Transactions: \(transactions.count)")
+            print("   - Accounts: \(accounts.count)")
+            print("   - Categories: \(categories.count)")
+            print("   - Subcategories: \(subcategories.count)")
+            print("   - Category-Subcategory Links: \(categorySubcategoryLinks.count)")
+            print("   - Transaction-Subcategory Links: \(transactionSubcategoryLinks.count)")
             #endif
         } catch {
             #if DEBUG
@@ -404,6 +443,14 @@ final class TransactionStore: ObservableObject {
     /// Add a new account
     /// Phase 3: TransactionStore is now Single Source of Truth for accounts
     func addAccount(_ account: Account) {
+        // Check if account already exists
+        if accounts.contains(where: { $0.id == account.id }) {
+            #if DEBUG
+            print("⚠️ [TransactionStore] Account already exists: \(account.name) - skipping")
+            #endif
+            return
+        }
+
         accounts.append(account)
 
         // Don't persist during import mode - will be done in finishImport()
@@ -412,7 +459,7 @@ final class TransactionStore: ObservableObject {
         }
 
         #if DEBUG
-        print("✅ [TransactionStore] Added account: \(account.name) (import mode: \(isImporting))")
+        print("✅ [TransactionStore] Added account: \(account.name) (import mode: \(isImporting), total accounts: \(accounts.count))")
         #endif
     }
 
@@ -458,11 +505,23 @@ final class TransactionStore: ObservableObject {
     /// Add a new category
     /// Phase 3: TransactionStore is now Single Source of Truth for categories
     func addCategory(_ category: CustomCategory) {
+        // Check if category already exists
+        if categories.contains(where: { $0.id == category.id }) {
+            #if DEBUG
+            print("⚠️ [TransactionStore] Category already exists: \(category.name) - skipping")
+            #endif
+            return
+        }
+
         categories.append(category)
-        persistCategories()
+
+        // Don't persist during import mode - will be done in finishImport()
+        if !isImporting {
+            persistCategories()
+        }
 
         #if DEBUG
-        print("✅ [TransactionStore] Added category: \(category.name)")
+        print("✅ [TransactionStore] Added category: \(category.name) (import mode: \(isImporting), total categories: \(categories.count))")
         #endif
     }
 
@@ -492,6 +551,68 @@ final class TransactionStore: ObservableObject {
 
         #if DEBUG
         print("✅ [TransactionStore] Deleted category: \(categoryId)")
+        #endif
+    }
+
+    // MARK: - Subcategory CRUD Operations (Phase 10: CSV Import Fix)
+
+    /// Add a new subcategory
+    /// Phase 10: TransactionStore is now Single Source of Truth for subcategories
+    func addSubcategory(_ subcategory: Subcategory) {
+        subcategories.append(subcategory)
+
+        // Don't persist during import mode - will be done in finishImport()
+        if !isImporting {
+            persistSubcategories()
+        }
+
+        #if DEBUG
+        print("✅ [TransactionStore] Added subcategory: \(subcategory.name) (import mode: \(isImporting))")
+        #endif
+    }
+
+    /// Update subcategories array (for bulk operations)
+    /// Phase 10: Used by CategoriesViewModel during CSV import
+    func updateSubcategories(_ newSubcategories: [Subcategory]) {
+        subcategories = newSubcategories
+
+        // Don't persist during import mode - will be done in finishImport()
+        if !isImporting {
+            persistSubcategories()
+        }
+
+        #if DEBUG
+        print("✅ [TransactionStore] Updated subcategories: \(newSubcategories.count) (import mode: \(isImporting))")
+        #endif
+    }
+
+    /// Update category-subcategory links (for bulk operations)
+    /// Phase 10: Used by CategoriesViewModel during CSV import
+    func updateCategorySubcategoryLinks(_ newLinks: [CategorySubcategoryLink]) {
+        categorySubcategoryLinks = newLinks
+
+        // Don't persist during import mode - will be done in finishImport()
+        if !isImporting {
+            persistCategorySubcategoryLinks()
+        }
+
+        #if DEBUG
+        print("✅ [TransactionStore] Updated category-subcategory links: \(newLinks.count) (import mode: \(isImporting))")
+        #endif
+    }
+
+    /// Update transaction-subcategory links (for bulk operations)
+    /// Phase 10: Used by CategoriesViewModel during CSV import
+    func updateTransactionSubcategoryLinks(_ newLinks: [TransactionSubcategoryLink]) {
+        transactionSubcategoryLinks = newLinks
+
+        // Don't persist during import mode - will be done in finishImport()
+        if !isImporting {
+            persistTransactionSubcategoryLinks()
+        }
+
+        #if DEBUG
+        print("✅ [TransactionStore] Updated transaction-subcategory links: \(newLinks.count) (import mode: \(isImporting))")
         #endif
     }
 
@@ -889,6 +1010,36 @@ final class TransactionStore: ObservableObject {
         #endif
     }
 
+    /// Persist subcategories to repository
+    /// Phase 10: TransactionStore now manages subcategory persistence
+    private func persistSubcategories() {
+        repository.saveSubcategories(subcategories)
+
+        #if DEBUG
+        print("💾 [TransactionStore] Persisted subcategories to repository")
+        #endif
+    }
+
+    /// Persist category-subcategory links to repository
+    /// Phase 10: TransactionStore now manages category-subcategory link persistence
+    private func persistCategorySubcategoryLinks() {
+        repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
+
+        #if DEBUG
+        print("💾 [TransactionStore] Persisted category-subcategory links to repository")
+        #endif
+    }
+
+    /// Persist transaction-subcategory links to repository
+    /// Phase 10: TransactionStore now manages transaction-subcategory link persistence
+    private func persistTransactionSubcategoryLinks() {
+        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
+
+        #if DEBUG
+        print("💾 [TransactionStore] Persisted transaction-subcategory links to repository")
+        #endif
+    }
+
     /// Convert amount between currencies
     private func convertToCurrency(amount: Double, from: String, to: String) -> Double {
         // Same currency - no conversion
@@ -907,22 +1058,31 @@ final class TransactionStore: ObservableObject {
     /// Synchronize categories from CategoriesViewModel during CSV import
     /// This ensures TransactionStore knows about newly created categories
     /// before transactions are added
+    /// ✨ Phase 10: Updated to just update in-memory array, persistence happens in finishImport()
     func syncCategories(_ newCategories: [CustomCategory]) async {
         #if DEBUG
-        print("🔄 [TransactionStore] Syncing \(newCategories.count) categories")
+        print("🔄 [TransactionStore] Syncing \(newCategories.count) categories (import mode: \(isImporting))")
         #endif
 
         categories = newCategories
 
-        // Persist to repository
-        do {
-            try await repository.saveCategories(newCategories)
+        // ✨ Phase 10: Don't persist during import - will be done in finishImport()
+        // This ensures all categories are saved synchronously at once
+        if !isImporting {
+            // Only persist if not in import mode (e.g., manual sync)
+            do {
+                try await repository.saveCategories(newCategories)
+                #if DEBUG
+                print("✅ [TransactionStore] Categories synced and persisted")
+                #endif
+            } catch {
+                #if DEBUG
+                print("❌ [TransactionStore] Failed to persist categories: \(error)")
+                #endif
+            }
+        } else {
             #if DEBUG
-            print("✅ [TransactionStore] Categories synced and persisted")
-            #endif
-        } catch {
-            #if DEBUG
-            print("❌ [TransactionStore] Failed to persist categories: \(error)")
+            print("✅ [TransactionStore] Categories synced (persistence deferred to finishImport)")
             #endif
         }
     }

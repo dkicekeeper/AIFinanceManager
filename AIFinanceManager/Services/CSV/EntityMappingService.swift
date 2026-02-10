@@ -2,27 +2,29 @@
 //  EntityMappingService.swift
 //  AIFinanceManager
 //
-//  Created on 2026-02-03
-//  CSV Import Refactoring Phase 2
+//  Simplified CSV Import Architecture - Phase 11
+//  Works ONLY with TransactionStore (Single Source of Truth)
+//  Removed ViewModels dependencies - they update automatically via Combine
 //
 
 import Foundation
 import SwiftUI
 
-/// Service for mapping and resolving entities (accounts, categories, subcategories)
-/// Centralizes all lookup logic with LRU cache integration
-/// Eliminates duplication of account/category resolution code (was 3 copies)
+/// Simplified service for resolving entities during CSV import
+/// Works directly with TransactionStore - ViewModels update automatically via Combine subscriptions
 @MainActor
 class EntityMappingService: EntityMappingServiceProtocol {
 
     // MARK: - Properties
 
     private let cache: ImportCacheManager
+    private let transactionStore: TransactionStore
 
     // MARK: - Initialization
 
-    init(cache: ImportCacheManager) {
+    init(cache: ImportCacheManager, transactionStore: TransactionStore) {
         self.cache = cache
+        self.transactionStore = transactionStore
     }
 
     // MARK: - Account Resolution
@@ -30,8 +32,7 @@ class EntityMappingService: EntityMappingServiceProtocol {
     func resolveAccount(
         name: String,
         currency: String,
-        mapping: EntityMapping,
-        accountsViewModel: AccountsViewModel?
+        mapping: EntityMapping
     ) async -> AccountResolutionResult {
 
         // Reserved names (never create accounts with these names)
@@ -59,34 +60,31 @@ class EntityMappingService: EntityMappingServiceProtocol {
             return .existing(id: cachedId)
         }
 
-        // Check AccountsViewModel
-        if let accountsVM = accountsViewModel {
-            if let account = accountsVM.accounts.first(where: {
-                $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedName
-            }) {
-                cache.cacheAccount(name: name, id: account.id)
-                return .existing(id: account.id)
-            }
-
-            // Create new account with shouldCalculateFromTransactions=true for CSV imports
-            await accountsVM.addAccount(
-                name: name,
-                initialBalance: 0.0,
-                currency: currency,
-                bankLogo: .none,
-                shouldCalculateFromTransactions: true
-            )
-
-            // Get newly created account ID
-            if let newAccount = accountsVM.accounts.first(where: {
-                $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedName
-            }) {
-                cache.cacheAccount(name: name, id: newAccount.id)
-                return .created(id: newAccount.id)
-            }
+        // Check TransactionStore (Single Source of Truth)
+        if let account = transactionStore.accounts.first(where: {
+            $0.name.trimmingCharacters(in: .whitespaces).lowercased() == normalizedName
+        }) {
+            cache.cacheAccount(name: name, id: account.id)
+            return .existing(id: account.id)
         }
 
-        return .skipped
+        // Create new account directly in TransactionStore
+        let newAccount = Account(
+            name: name,
+            currency: currency,
+            bankLogo: .none,
+            shouldCalculateFromTransactions: true,  // CSV imports always calculate from transactions
+            initialBalance: 0.0
+        )
+
+        transactionStore.addAccount(newAccount)
+        cache.cacheAccount(name: name, id: newAccount.id)
+
+        #if DEBUG
+        print("✅ [EntityMappingService] Created account in TransactionStore: \(name)")
+        #endif
+
+        return .created(id: newAccount.id)
     }
 
     // MARK: - Category Resolution
@@ -94,31 +92,27 @@ class EntityMappingService: EntityMappingServiceProtocol {
     func resolveCategory(
         name: String,
         type: TransactionType,
-        mapping: EntityMapping,
-        categoriesViewModel: CategoriesViewModel
+        mapping: EntityMapping
     ) async -> CategoryResolutionResult {
 
         // Check mapping first
         if let mappedName = mapping.categoryMappings[name] {
             return await resolveCategoryByName(
                 mappedName,
-                type: type,
-                categoriesViewModel: categoriesViewModel
+                type: type
             )
         }
 
         // Resolve by actual name
         return await resolveCategoryByName(
             name,
-            type: type,
-            categoriesViewModel: categoriesViewModel
+            type: type
         )
     }
 
     private func resolveCategoryByName(
         _ name: String,
-        type: TransactionType,
-        categoriesViewModel: CategoriesViewModel
+        type: TransactionType
     ) async -> CategoryResolutionResult {
 
         // Check cache
@@ -126,23 +120,23 @@ class EntityMappingService: EntityMappingServiceProtocol {
             return .existing(id: cachedId, name: name)
         }
 
-        // Check existing categories
-        if let existing = categoriesViewModel.customCategories.first(where: {
+        // Check TransactionStore (Single Source of Truth)
+        if let existing = transactionStore.categories.first(where: {
             $0.name == name && $0.type == type
         }) {
             cache.cacheCategory(name: name, type: type, id: existing.id)
             return .existing(id: existing.id, name: name)
         }
 
-        // Create new category
+        // Create new category directly in TransactionStore
         let iconName = CategoryIcon.iconName(
             for: name,
             type: type,
-            customCategories: categoriesViewModel.customCategories
+            customCategories: transactionStore.categories
         )
         let colorHex = CategoryColors.hexColor(
             for: name,
-            customCategories: categoriesViewModel.customCategories
+            customCategories: transactionStore.categories
         )
         let hexString = colorToHex(colorHex)
 
@@ -153,11 +147,13 @@ class EntityMappingService: EntityMappingServiceProtocol {
             type: type
         )
 
-        var newCategories = categoriesViewModel.customCategories
-        newCategories.append(newCategory)
-        categoriesViewModel.updateCategories(newCategories)
-
+        transactionStore.addCategory(newCategory)
         cache.cacheCategory(name: name, type: type, id: newCategory.id)
+
+        #if DEBUG
+        print("✅ [EntityMappingService] Created category in TransactionStore: \(newCategory.name)")
+        #endif
+
         return .created(id: newCategory.id, name: name)
     }
 
@@ -165,8 +161,7 @@ class EntityMappingService: EntityMappingServiceProtocol {
 
     func resolveSubcategories(
         names: [String],
-        categoryId: String,
-        categoriesViewModel: CategoriesViewModel
+        categoryId: String
     ) async -> [SubcategoryResolutionResult] {
 
         var results: [SubcategoryResolutionResult] = []
@@ -175,8 +170,7 @@ class EntityMappingService: EntityMappingServiceProtocol {
         for name in names {
             let result = await resolveSubcategory(
                 name: name,
-                categoryId: categoryId,
-                categoriesViewModel: categoriesViewModel
+                categoryId: categoryId
             )
             results.append(result)
         }
@@ -186,43 +180,60 @@ class EntityMappingService: EntityMappingServiceProtocol {
 
     private func resolveSubcategory(
         name: String,
-        categoryId: String,
-        categoriesViewModel: CategoriesViewModel
+        categoryId: String
     ) async -> SubcategoryResolutionResult {
 
         // Check cache
         if let cachedId = cache.getSubcategory(name: name) {
-            // Ensure link exists
-            categoriesViewModel.linkSubcategoryToCategoryWithoutSaving(
-                subcategoryId: cachedId,
-                categoryId: categoryId
-            )
+            // Ensure link exists in TransactionStore
+            ensureCategorySubcategoryLink(categoryId: categoryId, subcategoryId: cachedId)
             return .existing(id: cachedId)
         }
 
-        // Check existing subcategories
-        if let existing = categoriesViewModel.subcategories.first(where: {
+        // Check TransactionStore (Single Source of Truth)
+        if let existing = transactionStore.subcategories.first(where: {
             $0.name.lowercased() == name.lowercased()
         }) {
             cache.cacheSubcategory(name: name, id: existing.id)
-            categoriesViewModel.linkSubcategoryToCategoryWithoutSaving(
-                subcategoryId: existing.id,
-                categoryId: categoryId
-            )
+            ensureCategorySubcategoryLink(categoryId: categoryId, subcategoryId: existing.id)
             return .existing(id: existing.id)
         }
 
-        // Create new subcategory
-        let newSubcategory = categoriesViewModel.addSubcategory(name: name)
+        // Create new subcategory directly in TransactionStore
+        let newSubcategory = Subcategory(name: name)
+        transactionStore.addSubcategory(newSubcategory)
         cache.cacheSubcategory(name: name, id: newSubcategory.id)
-        categoriesViewModel.linkSubcategoryToCategoryWithoutSaving(
-            subcategoryId: newSubcategory.id,
-            categoryId: categoryId
-        )
+
+        // Create link
+        ensureCategorySubcategoryLink(categoryId: categoryId, subcategoryId: newSubcategory.id)
+
+        #if DEBUG
+        print("✅ [EntityMappingService] Created subcategory in TransactionStore: \(name)")
+        #endif
+
         return .created(id: newSubcategory.id)
     }
 
-    // MARK: - Helper
+    // MARK: - Helper Methods
+
+    private func ensureCategorySubcategoryLink(categoryId: String, subcategoryId: String) {
+        // Check if link already exists
+        let linkExists = transactionStore.categorySubcategoryLinks.contains(where: {
+            $0.categoryId == categoryId && $0.subcategoryId == subcategoryId
+        })
+
+        guard !linkExists else { return }
+
+        // Create new link
+        let link = CategorySubcategoryLink(categoryId: categoryId, subcategoryId: subcategoryId)
+        var updatedLinks = transactionStore.categorySubcategoryLinks
+        updatedLinks.append(link)
+        transactionStore.updateCategorySubcategoryLinks(updatedLinks)
+
+        #if DEBUG
+        print("✅ [EntityMappingService] Created category-subcategory link: \(categoryId) → \(subcategoryId)")
+        #endif
+    }
 
     private func colorToHex(_ color: Color) -> String {
         let uiColor = UIColor(color)

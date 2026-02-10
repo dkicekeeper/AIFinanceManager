@@ -55,6 +55,10 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
             throw DataResetError.viewModelNotAvailable("CategoriesViewModel")
         }
 
+        guard let transactionStore = transactionStore else {
+            throw DataResetError.viewModelNotAvailable("TransactionStore")
+        }
+
         do {
             // Reset transactions (includes accounts)
             transactionsViewModel.resetAllData()
@@ -63,13 +67,19 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
             accountsViewModel.reloadFromStorage()
             categoriesViewModel.reloadFromStorage()
 
+            // ✨ Phase 9: Reload TransactionStore to clear recurring data
+            try await transactionStore.loadData()
+
             // Trigger UI updates for all ViewModels
             accountsViewModel.objectWillChange.send()
             categoriesViewModel.objectWillChange.send()
             transactionsViewModel.objectWillChange.send()
+            transactionStore.objectWillChange.send()
 
-            // ✨ Phase 9: TransactionStore will reload recurring data automatically
-            // Deposits will update automatically through ObservableObject
+            // ✨ Deposits will update automatically through ObservableObject
+            if let depositsViewModel = depositsViewModel {
+                depositsViewModel.objectWillChange.send()
+            }
 
             #if DEBUG
             print("✅ [DataResetCoordinator] Data reset completed")
