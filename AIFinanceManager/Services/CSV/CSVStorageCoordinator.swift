@@ -27,6 +27,12 @@ class CSVStorageCoordinator: CSVStorageCoordinatorProtocol {
         categoriesViewModel: CategoriesViewModel
     ) async {
 
+        // CRITICAL: Sync categories to TransactionStore BEFORE adding transactions
+        // This ensures TransactionStore knows about newly created categories
+        if let transactionStore = transactionsViewModel.transactionStore {
+            await transactionStore.syncCategories(categoriesViewModel.customCategories)
+        }
+
         // Add transactions without triggering save/recalc
         transactionsViewModel.addTransactionsForImport(transactions)
 

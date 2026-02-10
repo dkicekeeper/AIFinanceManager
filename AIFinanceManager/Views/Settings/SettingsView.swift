@@ -36,11 +36,17 @@ struct SettingsView: View {
     // MARK: - Body
 
     var body: some View {
-        ImportFlowSheetsContainer(
-            flowCoordinator: settingsViewModel.importFlowCoordinator,
-            onCancel: { settingsViewModel.cancelImportFlow() }
-        ) {
-            settingsList
+        Group {
+            if let flowCoordinator = settingsViewModel.importFlowCoordinator {
+                ImportFlowSheetsContainer(
+                    flowCoordinator: flowCoordinator,
+                    onCancel: { settingsViewModel.cancelImportFlow() }
+                ) {
+                    settingsList
+                }
+            } else {
+                settingsList
+            }
         }
     }
 

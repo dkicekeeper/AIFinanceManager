@@ -62,16 +62,16 @@ struct CSVImportResultView: View {
     private var statisticsSection: some View {
         VStack(spacing: AppSpacing.lg) {
             StatRow(
-                label: String(localized: "csvImport.result.imported"),
-                value: "\(statistics.importedCount)",
+                label: String(format: String(localized: "csvImport.result.imported"), statistics.importedCount),
+                value: "",
                 color: AppColors.success,
                 icon: "checkmark.circle"
             )
 
             if statistics.duplicatesSkipped > 0 {
                 StatRow(
-                    label: String(localized: "csvImport.result.duplicates"),
-                    value: "\(statistics.duplicatesSkipped)",
+                    label: String(format: String(localized: "csvImport.result.duplicates"), statistics.duplicatesSkipped),
+                    value: "",
                     color: .purple,
                     icon: "arrow.triangle.2.circlepath"
                 )
@@ -79,8 +79,8 @@ struct CSVImportResultView: View {
 
             if statistics.skippedCount - statistics.duplicatesSkipped > 0 {
                 StatRow(
-                    label: String(localized: "csvImport.result.skipped"),
-                    value: "\(statistics.skippedCount - statistics.duplicatesSkipped)",
+                    label: String(format: String(localized: "csvImport.result.skipped"), statistics.skippedCount - statistics.duplicatesSkipped),
+                    value: "",
                     color: AppColors.warning,
                     icon: "exclamationmark.circle"
                 )
@@ -90,8 +90,8 @@ struct CSVImportResultView: View {
 
             if statistics.createdAccounts > 0 {
                 StatRow(
-                    label: String(localized: "csvImport.result.createdAccounts"),
-                    value: "\(statistics.createdAccounts)",
+                    label: String(format: String(localized: "csvImport.result.createdAccounts"), statistics.createdAccounts),
+                    value: "",
                     color: AppColors.accent,
                     icon: "plus.circle"
                 )
@@ -99,8 +99,8 @@ struct CSVImportResultView: View {
 
             if statistics.createdCategories > 0 {
                 StatRow(
-                    label: String(localized: "csvImport.result.createdCategories"),
-                    value: "\(statistics.createdCategories)",
+                    label: String(format: String(localized: "csvImport.result.createdCategories"), statistics.createdCategories),
+                    value: "",
                     color: AppColors.accent,
                     icon: "plus.circle"
                 )
@@ -108,8 +108,8 @@ struct CSVImportResultView: View {
 
             if statistics.createdSubcategories > 0 {
                 StatRow(
-                    label: String(localized: "csvImport.result.createdSubcategories"),
-                    value: "\(statistics.createdSubcategories)",
+                    label: String(format: String(localized: "csvImport.result.createdSubcategories"), statistics.createdSubcategories),
+                    value: "",
                     color: AppColors.accent,
                     icon: "plus.circle"
                 )

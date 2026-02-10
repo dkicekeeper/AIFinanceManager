@@ -148,7 +148,12 @@ struct CSVPreviewView: View {
     }
 
     private var continueButton: some View {
-        Button(action: onContinue) {
+        Button(action: {
+            #if DEBUG
+            print("🔘 [CSVPreviewView] Continue button pressed")
+            #endif
+            onContinue()
+        }) {
             Text(String(localized: "button.continue"))
                 .frame(maxWidth: .infinity)
                 .padding(AppSpacing.md)

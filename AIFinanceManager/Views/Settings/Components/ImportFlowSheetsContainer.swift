@@ -13,18 +13,18 @@ import SwiftUI
 struct ImportFlowSheetsContainer<Content: View>: View {
     // MARK: - Props
 
-    let flowCoordinator: ImportFlowCoordinator?
+    @ObservedObject var flowCoordinator: ImportFlowCoordinator
     let onCancel: () -> Void
     let content: Content
 
     // MARK: - Initializer
 
     init(
-        flowCoordinator: ImportFlowCoordinator?,
+        flowCoordinator: ImportFlowCoordinator,
         onCancel: @escaping () -> Void,
         @ViewBuilder content: () -> Content
     ) {
-        self.flowCoordinator = flowCoordinator
+        self._flowCoordinator = ObservedObject(wrappedValue: flowCoordinator)
         self.onCancel = onCancel
         self.content = content()
     }
@@ -36,31 +36,55 @@ struct ImportFlowSheetsContainer<Content: View>: View {
             // Preview Sheet
             .sheet(isPresented: Binding(
                 get: {
-                    if case .preview = flowCoordinator?.currentStep {
-                        return true
+                    let isPreview = if case .preview = flowCoordinator.currentStep {
+                        true
+                    } else {
+                        false
                     }
-                    return false
+                    #if DEBUG
+                    if isPreview {
+                        print("📋 [ImportFlowSheets] Preview sheet should be presented")
+                    }
+                    #endif
+                    return isPreview
                 },
-                set: { if !$0 { onCancel() } }
+                set: { newValue in
+                    #if DEBUG
+                    print("📋 [ImportFlowSheets] Preview sheet dismissed: \(!newValue)")
+                    #endif
+                    if !newValue { onCancel() }
+                }
             )) {
                 previewSheet
             }
             // Column Mapping Sheet
             .sheet(isPresented: Binding(
                 get: {
-                    if case .columnMapping = flowCoordinator?.currentStep {
-                        return true
+                    let isMapping = if case .columnMapping = flowCoordinator.currentStep {
+                        true
+                    } else {
+                        false
                     }
-                    return false
+                    #if DEBUG
+                    if isMapping {
+                        print("🗺️ [ImportFlowSheets] Column mapping sheet should be presented")
+                    }
+                    #endif
+                    return isMapping
                 },
-                set: { if !$0 { onCancel() } }
+                set: { newValue in
+                    #if DEBUG
+                    print("🗺️ [ImportFlowSheets] Column mapping sheet dismissed: \(!newValue)")
+                    #endif
+                    if !newValue { onCancel() }
+                }
             )) {
                 columnMappingSheet
             }
             // Progress Sheet
             .sheet(isPresented: Binding(
                 get: {
-                    if case .importing = flowCoordinator?.currentStep {
+                    if case .importing = flowCoordinator.currentStep {
                         return true
                     }
                     return false
@@ -72,7 +96,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
             // Result Sheet
             .sheet(isPresented: Binding(
                 get: {
-                    if case .result = flowCoordinator?.currentStep {
+                    if case .result = flowCoordinator.currentStep {
                         return true
                     }
                     return false
@@ -84,7 +108,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
             // Error Alert
             .alert(String(localized: "alert.importError.title"), isPresented: Binding(
                 get: {
-                    if case .error = flowCoordinator?.currentStep {
+                    if case .error = flowCoordinator.currentStep {
                         return true
                     }
                     return false
@@ -95,7 +119,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
                     onCancel()
                 }
             } message: {
-                if let errorMessage = flowCoordinator?.errorMessage {
+                if let errorMessage = flowCoordinator.errorMessage {
                     Text(errorMessage)
                 }
             }
@@ -105,8 +129,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
 
     @ViewBuilder
     private var previewSheet: some View {
-        if let flowCoordinator = flowCoordinator,
-           let csvFile = flowCoordinator.csvFile {
+        if let csvFile = flowCoordinator.csvFile {
             CSVPreviewView(
                 csvFile: csvFile,
                 onContinue: {
@@ -119,8 +142,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
 
     @ViewBuilder
     private var columnMappingSheet: some View {
-        if let flowCoordinator = flowCoordinator,
-           let csvFile = flowCoordinator.csvFile {
+        if let csvFile = flowCoordinator.csvFile {
             CSVColumnMappingView(
                 csvFile: csvFile,
                 onComplete: { mapping in
@@ -136,8 +158,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
 
     @ViewBuilder
     private var progressSheet: some View {
-        if let flowCoordinator = flowCoordinator,
-           let progress = flowCoordinator.importProgress {
+        if let progress = flowCoordinator.importProgress {
             ImportProgressSheet(
                 currentRow: progress.currentRow,
                 totalRows: progress.totalRows,
@@ -152,8 +173,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
 
     @ViewBuilder
     private var resultSheet: some View {
-        if let flowCoordinator = flowCoordinator,
-           let result = flowCoordinator.importResult {
+        if let result = flowCoordinator.importResult {
             CSVImportResultView(
                 statistics: result,
                 onDone: onCancel,

@@ -51,6 +51,7 @@
 "button.add" = "Добавить";
 "button.edit" = "Редактировать";
 "button.done" = "Готово";
+"button.continue" = "Продолжить";
 "button.ok" = "ОК";
 "button.retry" = "Повторить";
 "button.change" = "Изменить";

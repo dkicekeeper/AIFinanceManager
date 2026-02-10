@@ -82,11 +82,25 @@ final class ImportFlowCoordinator: ObservableObject {
 
     /// Continue to column mapping
     func continueToColumnMapping() {
+        #if DEBUG
+        print("🔄 [ImportFlow] Continue button tapped")
+        print("   📄 CSV file exists: \(csvFile != nil)")
+        print("   🎯 Current step before: \(currentStep)")
+        #endif
+
         guard csvFile != nil else {
+            #if DEBUG
+            print("   ❌ No CSV file loaded")
+            #endif
             currentStep = .error("No CSV file loaded")
             return
         }
+
         currentStep = .columnMapping
+
+        #if DEBUG
+        print("   ✅ Transitioned to: \(currentStep)")
+        #endif
     }
 
     /// Continue to entity mapping

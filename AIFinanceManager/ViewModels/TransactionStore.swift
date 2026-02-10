@@ -791,6 +791,31 @@ final class TransactionStore: ObservableObject {
     }
 
     /// Convert amount to base currency
+
+    // MARK: - Category Synchronization
+
+    /// Synchronize categories from CategoriesViewModel during CSV import
+    /// This ensures TransactionStore knows about newly created categories
+    /// before transactions are added
+    func syncCategories(_ newCategories: [CustomCategory]) async {
+        #if DEBUG
+        print("🔄 [TransactionStore] Syncing \(newCategories.count) categories")
+        #endif
+
+        categories = newCategories
+
+        // Persist to repository
+        do {
+            try await repository.saveCategories(newCategories)
+            #if DEBUG
+            print("✅ [TransactionStore] Categories synced and persisted")
+            #endif
+        } catch {
+            #if DEBUG
+            print("❌ [TransactionStore] Failed to persist categories: \(error)")
+            #endif
+        }
+    }
 }
 
 // MARK: - Debug Helpers
