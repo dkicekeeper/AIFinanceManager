@@ -403,7 +403,35 @@ final class CoreDataRepository: DataRepositoryProtocol {
         } else {
         }
     }
-    
+
+    /// Обновить баланс счёта в Core Data
+    /// Вызывается из BalanceCoordinator после расчёта нового баланса
+    func updateAccountBalance(accountId: String, balance: Double) {
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+
+            do {
+                try await self.saveCoordinator.performSave(operation: "updateAccountBalance") { context in
+                    let fetchRequest = AccountEntity.fetchRequest()
+                    fetchRequest.predicate = NSPredicate(format: "id == %@", accountId)
+                    fetchRequest.fetchLimit = 1
+
+                    if let account = try context.fetch(fetchRequest).first {
+                        account.balance = balance
+
+                        #if DEBUG
+                        print("💾 [CoreData] Updated balance for \(accountId): \(balance)")
+                        #endif
+                    }
+                }
+            } catch {
+                #if DEBUG
+                print("❌ [CoreData] Failed to update balance for \(accountId): \(error)")
+                #endif
+            }
+        }
+    }
+
     /// Синхронно сохранить транзакции в Core Data (для импорта CSV)
     /// ОПТИМИЗИРОВАНО: Использует background context для избежания блокировки UI
     func saveTransactionsSync(_ transactions: [Transaction]) throws {

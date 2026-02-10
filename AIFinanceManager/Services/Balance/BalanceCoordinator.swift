@@ -489,6 +489,7 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
             store.setBalance(newBalance, for: accountId, source: .transaction(transaction.id))
             updatedBalances[accountId] = newBalance
+            persistBalance(newBalance, for: accountId)  // 💾 Persist to Core Data
 
             #if DEBUG
             print("✅ [BalanceCoordinator] Updated balance for source \(accountId): \(newBalance)")
@@ -509,6 +510,7 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
             store.setBalance(newBalance, for: targetAccountId, source: .transaction(transaction.id))
             updatedBalances[targetAccountId] = newBalance
+            persistBalance(newBalance, for: targetAccountId)  // 💾 Persist to Core Data
 
             #if DEBUG
             print("✅ [BalanceCoordinator] Updated balance for target \(targetAccountId): \(newBalance) (isSource=false)")
@@ -531,6 +533,7 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
             store.setBalance(newBalance, for: accountId, source: .recalculation)
             updatedBalances[accountId] = newBalance
+            persistBalance(newBalance, for: accountId)  // 💾 Persist to Core Data
 
             #if DEBUG
             print("✅ [BalanceCoordinator] Updated balance for source \(accountId): \(newBalance)")
@@ -551,6 +554,7 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
             store.setBalance(newBalance, for: targetAccountId, source: .recalculation)
             updatedBalances[targetAccountId] = newBalance
+            persistBalance(newBalance, for: targetAccountId)  // 💾 Persist to Core Data
 
             #if DEBUG
             print("✅ [BalanceCoordinator] Updated balance for target \(targetAccountId): \(newBalance) (isSource=false)")
@@ -741,6 +745,9 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         store.updateBalances(newBalances, source: .recalculation)
         cache.setBalances(newBalances)
 
+        // 💾 Persist all balances to Core Data
+        persistBalances(newBalances)
+
         // CRITICAL: Publish balances to trigger UI updates
         self.balances = newBalances
 
@@ -795,6 +802,34 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
         #if DEBUG
         print("✅ [BalanceCoordinator] Published \(newBalances.count) updated balances to UI")
+        #endif
+    }
+
+    // MARK: - Persistence
+
+    /// Persist balance to Core Data
+    /// Called after balance calculation to keep Core Data in sync with in-memory balances
+    private func persistBalance(_ balance: Double, for accountId: String) {
+        guard let coreDataRepo = repository as? CoreDataRepository else {
+            return  // Only persist for CoreDataRepository
+        }
+
+        coreDataRepo.updateAccountBalance(accountId: accountId, balance: balance)
+    }
+
+    /// Persist multiple balances to Core Data
+    /// Called after batch recalculation
+    private func persistBalances(_ balances: [String: Double]) {
+        guard let coreDataRepo = repository as? CoreDataRepository else {
+            return
+        }
+
+        for (accountId, balance) in balances {
+            coreDataRepo.updateAccountBalance(accountId: accountId, balance: balance)
+        }
+
+        #if DEBUG
+        print("💾 [BalanceCoordinator] Persisted \(balances.count) balances to Core Data")
         #endif
     }
 }

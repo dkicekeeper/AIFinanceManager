@@ -85,16 +85,24 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     func saveAccounts(_ accounts: [Account]) {
         Task.detached(priority: .utility) {
             PerformanceProfiler.start("saveAccounts")
-            
+
             let encoder = JSONEncoder()
             if let encoded = try? encoder.encode(accounts) {
                 UserDefaults.standard.set(encoded, forKey: self.storageKeyAccounts)
             }
-            
+
             PerformanceProfiler.end("saveAccounts")
         }
     }
-    
+
+    func updateAccountBalance(accountId: String, balance: Double) {
+        // UserDefaults implementation: noop (balance stored in Account.initialBalance)
+        // This method exists only for protocol conformance
+        #if DEBUG
+        print("💾 [UserDefaults] updateAccountBalance called for \(accountId): \(balance) (noop)")
+        #endif
+    }
+
     // MARK: - Categories
     
     func loadCategories() -> [CustomCategory] {
