@@ -13,7 +13,9 @@
 5. Перезапустить приложение
 6. **Результат:** Балансы восстанавливаются
 
-## Корневая причина
+## Корневая причина (ОБНОВЛЕНО)
+
+**Примечание:** Первоначально была найдена и исправлена проблема в `CoreDataRepository`, но тестирование показало, что настоящая корневая причина находилась в `BalanceCoordinator`.
 
 ### Архитектура баланса счетов
 
@@ -25,19 +27,22 @@
 2. **В Core Data** (кеш для быстрой загрузки):
    - `AccountEntity.balance: Double` - используется при инициализации `Account.initialBalance`
 
-### Поток ошибки
+### Поток ошибки (НАСТОЯЩАЯ ПРИЧИНА)
 
 1. Пользователь удаляет счет
-2. `TransactionStore.deleteAccount()` вызывает `persistAccounts()`
-3. `CoreDataRepository.saveAccounts()` обновляет **все** счета в Core Data
-4. **Проблема:** При обновлении происходило:
+2. `TransactionStore.deleteAccount()` удаляет счет из массива и вызывает `persistAccounts()`
+3. Observer в `AccountsViewModel` получает обновление: `accounts` теперь содержит на 1 счет меньше
+4. Срабатывает `setupTransactionStoreObserver()` → вызывается `syncInitialBalancesToCoordinator()`
+5. **ПРОБЛЕМА:** `syncInitialBalancesToCoordinator()` вызывает `coordinator.registerAccounts(accounts)`
+6. **КРИТИЧЕСКАЯ ОШИБКА в `BalanceCoordinator.registerAccounts()`:**
    ```swift
-   existing.balance = account.initialBalance ?? 0  // ❌ ОШИБКА
+   let initialBalances = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0.initialBalance ?? 0) })
+   self.balances = initialBalances  // ❌ Перезаписывает ВСЕ балансы нулями!
    ```
-5. Для счетов с `shouldCalculateFromTransactions = true`, `initialBalance` часто равен 0
-6. Это перезаписывало актуальный баланс в `AccountEntity.balance` нулем
-7. При следующей загрузке UI обновлялся, но `BalanceCoordinator` ещё не пересчитал балансы
-8. После перезапуска `BalanceCoordinator` правильно инициализировался и пересчитывал балансы
+7. Для счетов с `shouldCalculateFromTransactions = true`, `initialBalance` равен 0
+8. `self.balances` **полностью перезаписывается** → все текущие балансы заменяются на 0
+9. UI обновляется из `balances` → показывает 0 для всех счетов
+10. После перезапуска `BalanceCoordinator` правильно инициализируется и пересчитывает балансы из транзакций
 
 ### Диаграмма потока данных
 
@@ -64,26 +69,33 @@ balances["account123"] = 500  ✅ Current balance in memory
 AccountEntity.balance = 1000  ⚠️ Still shows initialBalance in DB
 
 
-Account Deletion (BEFORE FIX)
------------------------------
+Account Deletion (BEFORE FIX) - REAL BUG
+-----------------------------------------
 User deletes another account
   ↓
-TransactionStore.deleteAccount()
+TransactionStore.deleteAccount() removes from array
   ↓
-persistAccounts() saves ALL remaining accounts
+Observer triggers in AccountsViewModel
   ↓
-saveAccounts() loops through accounts
+syncInitialBalancesToCoordinator() called
   ↓
-existing.balance = account.initialBalance ?? 0  ❌ BUG!
+coordinator.registerAccounts(accounts) called  ❌ HERE!
   ↓
-AccountEntity.balance = 0  ❌ Overwrites with initialBalance
+self.balances = [
+  "account1": 0,  // was 500
+  "account3": 0   // was 2500
+]  ❌ ALL BALANCES RESET TO initialBalance (which is 0)!
   ↓
-UI updates from AccountEntity  ❌ Shows 0 balance
+UI updates from coordinator.balances  ❌ Shows 0 balance
   ↓
 App restart → BalanceCoordinator recalculates → Shows 500  ✅
 ```
 
 ## Решение
+
+### Двухэтапное исправление
+
+#### Этап 1: CoreDataRepository (Профилактическое исправление)
 
 ### Изменения в `CoreDataRepository.swift`
 
@@ -121,17 +133,59 @@ if let existing = existingDict[account.id] {
 
 Аналогичное исправление для синхронной версии метода.
 
+#### Этап 2: BalanceCoordinator (НАСТОЯЩЕЕ ИСПРАВЛЕНИЕ)
+
+**Изменения в `BalanceCoordinator.swift`:**
+
+**До:**
+```swift
+func registerAccounts(_ accounts: [Account]) async {
+    let accountBalances = accounts.map { AccountBalance.from($0) }
+    store.registerAccounts(accountBalances)
+
+    let initialBalances = Dictionary(uniqueKeysWithValues: accounts.map {
+        ($0.id, $0.initialBalance ?? 0)
+    })
+    cache.setBalances(initialBalances)
+
+    self.balances = initialBalances  // ❌ Bug - overwrites ALL balances!
+}
+```
+
+**После:**
+```swift
+func registerAccounts(_ accounts: [Account]) async {
+    let accountBalances = accounts.map { AccountBalance.from($0) }
+    store.registerAccounts(accountBalances)
+
+    // ⚠️ CRITICAL FIX: Only initialize balances for NEW accounts
+    var updatedBalances = self.balances  // Preserve existing balances
+
+    for account in accounts {
+        // Only set initial balance if account is NOT already registered
+        if updatedBalances[account.id] == nil {
+            let initialBalance = account.initialBalance ?? 0
+            updatedBalances[account.id] = initialBalance
+            cache.setBalance(initialBalance, for: account.id)
+        }
+    }
+
+    self.balances = updatedBalances  // ✅ Preserves existing balances!
+}
+```
+
 ### Логика исправления
 
 **Принцип:**
-- `AccountEntity.balance` должен обновляться **только при создании** нового счета
-- При обновлении существующего счета `balance` **не трогаем**, так как это поле управляется `BalanceCoordinator`
-- `BalanceCoordinator` хранит актуальные балансы в памяти и пересчитывает их при необходимости
+- `BalanceCoordinator.balances` содержит **актуальные** балансы, рассчитанные из транзакций
+- При повторной регистрации счетов (например, после удаления одного) нужно **сохранить** существующие балансы
+- Только **новые** счета инициализируются с `initialBalance`
+- Существующие счета **сохраняют** свои текущие балансы
 
 **Почему это работает:**
-1. При создании счета `AccountEntity.balance` устанавливается из `initialBalance` ✅
-2. При обновлении счета (изменение имени, валюты и т.д.) `balance` сохраняется ✅
-3. При удалении другого счета `balance` остальных счетов не перезаписывается ✅
+1. При создании НОВОГО счета `balances[accountId]` равен `nil` → устанавливается `initialBalance` ✅
+2. При повторной регистрации существующих счетов `balances[accountId]` уже существует → баланс сохраняется ✅
+3. При удалении счета остальные счета перерегистрируются, но их балансы НЕ перезаписываются ✅
 4. `BalanceCoordinator` продолжает управлять актуальными балансами в памяти ✅
 
 ## Тестирование
@@ -185,10 +239,23 @@ if let existing = existingDict[account.id] {
 
 ### Связанные файлы
 
-- `AIFinanceManager/Services/CoreDataRepository.swift` - исправлены методы сохранения
+- `AIFinanceManager/Services/Balance/BalanceCoordinator.swift` - **ОСНОВНОЕ ИСПРАВЛЕНИЕ** - сохранение балансов при перерегистрации
+- `AIFinanceManager/Services/CoreDataRepository.swift` - профилактическое исправление методов сохранения
+- `AIFinanceManager/ViewModels/AccountsViewModel.swift` - вызывает `syncInitialBalancesToCoordinator()`
 - `AIFinanceManager/ViewModels/TransactionStore.swift` - вызывает `persistAccounts()`
-- `AIFinanceManager/Services/Balance/BalanceCoordinator.swift` - управляет балансами в памяти
 - `AIFinanceManager/CoreData/Entities/AccountEntity+CoreDataClass.swift` - конвертация между моделями
+
+## Хронология исправления
+
+### 2026-02-10 (Попытка 1)
+- Исправлена проблема в `CoreDataRepository.saveAccounts()`
+- Закомментирована строка `existing.balance = account.initialBalance ?? 0`
+- **Результат:** Проблема НЕ решена - балансы всё равно обнулялись
+
+### 2026-02-10 (Попытка 2 - УСПЕХ)
+- Найдена настоящая причина в `BalanceCoordinator.registerAccounts()`
+- Исправлена перезапись `self.balances` при повторной регистрации
+- **Результат:** Проблема РЕШЕНА ✅
 
 ## Статус
 
