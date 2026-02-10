@@ -824,12 +824,11 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             return
         }
 
-        for (accountId, balance) in balances {
-            coreDataRepo.updateAccountBalance(accountId: accountId, balance: balance)
-        }
+        // Use batch method instead of individual updates
+        coreDataRepo.updateAccountBalances(balances)
 
         #if DEBUG
-        print("💾 [BalanceCoordinator] Persisted \(balances.count) balances to Core Data")
+        print("💾 [BalanceCoordinator] Queued \(balances.count) balances for Core Data persistence")
         #endif
     }
 }

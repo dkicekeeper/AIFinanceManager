@@ -103,6 +103,13 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
         #endif
     }
 
+    func updateAccountBalances(_ balances: [String: Double]) {
+        // UserDefaults implementation: noop
+        #if DEBUG
+        print("💾 [UserDefaults] updateAccountBalances called for \(balances.count) accounts (noop)")
+        #endif
+    }
+
     // MARK: - Categories
     
     func loadCategories() -> [CustomCategory] {

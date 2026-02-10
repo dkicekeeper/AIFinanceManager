@@ -432,6 +432,40 @@ final class CoreDataRepository: DataRepositoryProtocol {
         }
     }
 
+    /// Batch-обновление балансов нескольких счетов
+    /// Более эффективно, чем множественные вызовы updateAccountBalance
+    func updateAccountBalances(_ balances: [String: Double]) {
+        guard !balances.isEmpty else { return }
+
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+
+            do {
+                try await self.saveCoordinator.performSave(operation: "updateAccountBalances") { context in
+                    let accountIds = Array(balances.keys)
+                    let fetchRequest = AccountEntity.fetchRequest()
+                    fetchRequest.predicate = NSPredicate(format: "id IN %@", accountIds)
+
+                    let accounts = try context.fetch(fetchRequest)
+
+                    for account in accounts {
+                        if let accountId = account.id, let newBalance = balances[accountId] {
+                            account.balance = newBalance
+                        }
+                    }
+
+                    #if DEBUG
+                    print("💾 [CoreData] Batch updated \(accounts.count) account balances")
+                    #endif
+                }
+            } catch {
+                #if DEBUG
+                print("❌ [CoreData] Failed to batch update balances: \(error)")
+                #endif
+            }
+        }
+    }
+
     /// Синхронно сохранить транзакции в Core Data (для импорта CSV)
     /// ОПТИМИЗИРОВАНО: Использует background context для избежания блокировки UI
     func saveTransactionsSync(_ transactions: [Transaction]) throws {

@@ -24,6 +24,7 @@ protocol DataRepositoryProtocol {
     func loadAccounts() -> [Account]
     func saveAccounts(_ accounts: [Account])
     func updateAccountBalance(accountId: String, balance: Double)
+    func updateAccountBalances(_ balances: [String: Double])
 
     // MARK: - Categories
     func loadCategories() -> [CustomCategory]
