@@ -66,7 +66,7 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             return (category.name, order)
         })
 
-        // Sort by custom order if available, then by total (descending), then by name (ascending)
+        // Sort by custom order if available, otherwise by name
         let result = displayData.sorted { category1, category2 in
             let order1 = orderLookup[category1.name]
             let order2 = orderLookup[category2.name]
@@ -82,10 +82,7 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             if order2 != nil {
                 return false
             }
-            // If neither has custom order, sort by total then name
-            if category1.total != category2.total {
-                return category1.total > category2.total
-            }
+            // If neither has custom order, sort by name
             return category1.name < category2.name
         }
 

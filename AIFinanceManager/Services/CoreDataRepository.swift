@@ -636,6 +636,12 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 existing.type = category.type.rawValue
                 existing.iconName = category.iconName
                 existing.colorHex = category.colorHex
+
+                // Update budget fields
+                existing.budgetAmount = category.budgetAmount ?? 0.0
+                existing.budgetPeriod = category.budgetPeriod.rawValue
+                existing.budgetStartDate = category.budgetStartDate
+                existing.budgetResetDay = Int64(category.budgetResetDay)
             } else {
                 // Create new
                 _ = CustomCategoryEntity.from(category, context: context)
@@ -1004,6 +1010,12 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existing.type = category.type.rawValue
                             existing.iconName = category.iconName
                             existing.colorHex = category.colorHex
+
+                            // Update budget fields
+                            existing.budgetAmount = category.budgetAmount ?? 0.0
+                            existing.budgetPeriod = category.budgetPeriod.rawValue
+                            existing.budgetStartDate = category.budgetStartDate
+                            existing.budgetResetDay = Int64(category.budgetResetDay)
                         } else {
                             // Create new
                             _ = CustomCategoryEntity.from(category, context: context)

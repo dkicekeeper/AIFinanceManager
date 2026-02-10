@@ -146,6 +146,13 @@ final class TransactionStore: ObservableObject {
         // Load categories
         categories = repository.loadCategories()
 
+        // ✅ Apply stored order from UserDefaults (UI preference)
+        categories = CategoryOrderManager.shared.applyOrders(to: categories)
+
+        #if DEBUG
+        print("📝 [TransactionStore] Loaded \(categories.count) categories with order applied")
+        #endif
+
         // ✨ Phase 10: Load subcategory data
         subcategories = repository.loadSubcategories()
         categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
@@ -513,15 +520,31 @@ final class TransactionStore: ObservableObject {
             return
         }
 
-        categories.append(category)
+        // Assign order if not set
+        var categoryToAdd = category
+        if categoryToAdd.order == nil {
+            // Get max order for this type
+            let maxOrder = categories
+                .filter { $0.type == category.type }
+                .compactMap { $0.order }
+                .max() ?? -1
+            categoryToAdd.order = maxOrder + 1
+        }
+
+        categories.append(categoryToAdd)
 
         // Don't persist during import mode - will be done in finishImport()
         if !isImporting {
             persistCategories()
+
+            // ✅ Save order to UserDefaults (UI preference)
+            if let order = categoryToAdd.order {
+                CategoryOrderManager.shared.setOrder(order, for: categoryToAdd.id)
+            }
         }
 
         #if DEBUG
-        print("✅ [TransactionStore] Added category: \(category.name) (import mode: \(isImporting), total categories: \(categories.count))")
+        print("✅ [TransactionStore] Added category: \(categoryToAdd.name) with order: \(categoryToAdd.order ?? -1) (import mode: \(isImporting), total categories: \(categories.count))")
         #endif
     }
 
@@ -538,8 +561,13 @@ final class TransactionStore: ObservableObject {
         categories[index] = category
         persistCategories()
 
+        // ✅ Save order to UserDefaults (UI preference, separate from CoreData)
+        if let order = category.order {
+            CategoryOrderManager.shared.setOrder(order, for: category.id)
+        }
+
         #if DEBUG
-        print("✅ [TransactionStore] Updated category: \(category.name)")
+        print("✅ [TransactionStore] Updated category: \(category.name), order: \(category.order?.description ?? "nil")")
         #endif
     }
 
@@ -548,6 +576,9 @@ final class TransactionStore: ObservableObject {
     func deleteCategory(_ categoryId: String) {
         categories.removeAll { $0.id == categoryId }
         persistCategories()
+
+        // ✅ Remove order from UserDefaults
+        CategoryOrderManager.shared.removeOrder(for: categoryId)
 
         #if DEBUG
         print("✅ [TransactionStore] Deleted category: \(categoryId)")

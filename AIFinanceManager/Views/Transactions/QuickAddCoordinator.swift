@@ -63,9 +63,7 @@ final class QuickAddCoordinator: ObservableObject {
         Publishers.CombineLatest(
             Publishers.CombineLatest4(
                 transactionsViewModel.$allTransactions,  // ✅ Observe actual transactions, not just count
-                categoriesViewModel.$customCategories
-                    .map { $0.count }
-                    .removeDuplicates(),
+                categoriesViewModel.$customCategories,  // ✅ FIX: Observe actual categories, not just count (for order changes)
                 timeFilterManager.$currentFilter
                     .removeDuplicates(),
                 transactionsViewModel.$dataRefreshTrigger  // ✅ NEW: Observe refresh trigger for aggregate rebuild

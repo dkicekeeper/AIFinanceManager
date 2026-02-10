@@ -121,11 +121,15 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     }
     
     func saveCategories(_ categories: [CustomCategory]) {
-        Task.detached(priority: .utility) {
-            let encoder = JSONEncoder()
-            if let encoded = try? encoder.encode(categories) {
-                UserDefaults.standard.set(encoded, forKey: self.storageKeyCustomCategories)
-            }
+        // ✅ FIX: Make synchronous to prevent data loss on app termination
+        // UserDefaults writes are fast enough and need to complete immediately
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(categories) {
+            userDefaults.set(encoded, forKey: storageKeyCustomCategories)
+
+            #if DEBUG
+            print("💾 [UserDefaultsRepository] Saved \(categories.count) categories to UserDefaults")
+            #endif
         }
     }
     

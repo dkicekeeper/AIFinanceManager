@@ -53,6 +53,9 @@ struct CategoriesManagementView: View {
             categoriesViewModel.updateCategory(updatedCategory)
         }
 
+        // Invalidate caches to ensure the new order is reflected everywhere
+        transactionsViewModel.invalidateCaches()
+
         HapticManager.selection()
     }
 

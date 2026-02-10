@@ -88,10 +88,12 @@ struct QuickAddTransactionView: View {
         }
     }
 
-    // Compute hash of all category totals to detect changes
+    // Compute hash of all category totals AND order to detect changes
     private var categoriesHash: Int {
-        coordinator.categories.reduce(0) { hash, category in
-            hash ^ category.total.hashValue
+        coordinator.categories.enumerated().reduce(0) { hash, element in
+            let (index, category) = element
+            // Include index to detect reordering, name for identity, and total for value changes
+            return hash ^ index.hashValue ^ category.name.hashValue ^ category.total.hashValue
         }
     }
 

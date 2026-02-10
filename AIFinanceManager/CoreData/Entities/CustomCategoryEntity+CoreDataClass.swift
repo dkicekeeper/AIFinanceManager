@@ -22,13 +22,13 @@ extension CustomCategoryEntity {
     /// Convert to domain model
     func toCustomCategory() -> CustomCategory {
         let transactionType = TransactionType(rawValue: type ?? "expense") ?? .expense
-        
+
         // Parse budget period
         let budgetPeriodEnum = CustomCategory.BudgetPeriod(rawValue: budgetPeriod ?? "monthly") ?? .monthly
-        
+
         // Convert budgetAmount (0.0 means nil)
         let budgetAmountValue = budgetAmount == 0.0 ? nil : budgetAmount
-        
+
         return CustomCategory(
             id: id ?? UUID().uuidString,
             name: name ?? "",
@@ -49,13 +49,13 @@ extension CustomCategoryEntity {
         entity.type = category.type.rawValue
         entity.iconName = category.iconName
         entity.colorHex = category.colorHex
-        
+
         // Budget fields
         entity.budgetAmount = category.budgetAmount ?? 0.0
         entity.budgetPeriod = category.budgetPeriod.rawValue
         entity.budgetStartDate = category.budgetStartDate
         entity.budgetResetDay = Int64(category.budgetResetDay)
-        
+
         return entity
     }
 }
