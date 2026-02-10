@@ -210,7 +210,9 @@ final class CoreDataRepository: DataRepositoryProtocol {
                         if let existing = existingDict[account.id] {
                             // Update existing
                             existing.name = account.name
-                            existing.balance = account.initialBalance ?? 0
+                            // ⚠️ CRITICAL FIX: Don't overwrite balance here - it's managed by BalanceCoordinator
+                            // Only update balance when creating new accounts
+                            // existing.balance = account.initialBalance ?? 0  // ❌ This was causing balance reset on account deletion
                             existing.currency = account.currency
                             existing.logo = account.bankLogo.rawValue
                             existing.isDeposit = account.isDeposit
@@ -374,11 +376,14 @@ final class CoreDataRepository: DataRepositoryProtocol {
             if let existing = existingDict[account.id] {
                 // Update existing
                 existing.name = account.name
-                existing.balance = account.initialBalance ?? 0
+                // ⚠️ CRITICAL FIX: Don't overwrite balance here - it's managed by BalanceCoordinator
+                // Only update balance when creating new accounts
+                // existing.balance = account.initialBalance ?? 0  // ❌ This was causing balance reset on account deletion
                 existing.currency = account.currency
                 existing.logo = account.bankLogo.rawValue
                 existing.isDeposit = account.isDeposit
                 existing.bankName = account.depositInfo?.bankName
+                existing.shouldCalculateFromTransactions = account.shouldCalculateFromTransactions  // ✨ Phase 10: Update calculation mode
             } else {
                 // Create new
                 _ = AccountEntity.from(account, context: context)
@@ -539,13 +544,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
     
     /// Синхронно сохранить категории в Core Data (для импорта CSV)
     func saveCategoriesSync(_ categories: [CustomCategory]) throws {
-        
+
         let context = stack.viewContext
-        
+
         // Fetch all existing categories
         let fetchRequest = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
         let existingEntities = try context.fetch(fetchRequest)
-        
+
         // Build dictionary safely
         var existingDict: [String: CustomCategoryEntity] = [:]
         for entity in existingEntities {
@@ -556,13 +561,13 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 context.delete(entity)
             }
         }
-        
+
         var keptIds = Set<String>()
-        
+
         // Update or create categories
         for category in categories {
             keptIds.insert(category.id)
-            
+
             if let existing = existingDict[category.id] {
                 // Update existing
                 existing.name = category.name
@@ -574,19 +579,204 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 _ = CustomCategoryEntity.from(category, context: context)
             }
         }
-        
+
         // Delete categories that no longer exist
         for entity in existingEntities {
             if let id = entity.id, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }
-        
+
         // Save if there are changes
         if context.hasChanges {
             try context.save()
         } else {
         }
+    }
+
+    /// Синхронно сохранить подкатегории в Core Data (для импорта CSV)
+    /// Phase 10: CSV Import Fix - ensure subcategories are saved synchronously
+    func saveSubcategoriesSync(_ subcategories: [Subcategory]) throws {
+        PerformanceProfiler.start("CoreDataRepository.saveSubcategoriesSync")
+
+        // Use background context to avoid blocking UI
+        let backgroundContext = stack.persistentContainer.newBackgroundContext()
+        backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+
+        try backgroundContext.performAndWait {
+            // Fetch all existing subcategories
+            let fetchRequest = NSFetchRequest<SubcategoryEntity>(entityName: "SubcategoryEntity")
+            let existingEntities = try backgroundContext.fetch(fetchRequest)
+
+            // Build dictionary safely
+            var existingDict: [String: SubcategoryEntity] = [:]
+            for entity in existingEntities {
+                let id = entity.id ?? ""
+                if !id.isEmpty && existingDict[id] == nil {
+                    existingDict[id] = entity
+                } else if !id.isEmpty {
+                    backgroundContext.delete(entity)
+                }
+            }
+
+            var keptIds = Set<String>()
+
+            // Update or create subcategories
+            for subcategory in subcategories {
+                keptIds.insert(subcategory.id)
+
+                if let existing = existingDict[subcategory.id] {
+                    // Update existing
+                    existing.name = subcategory.name
+                } else {
+                    // Create new
+                    _ = SubcategoryEntity.from(subcategory, context: backgroundContext)
+                }
+            }
+
+            // Delete subcategories that no longer exist
+            for entity in existingEntities {
+                if let id = entity.id, !keptIds.contains(id) {
+                    backgroundContext.delete(entity)
+                }
+            }
+
+            // Save if there are changes
+            if backgroundContext.hasChanges {
+                try backgroundContext.save()
+            }
+        }
+
+        PerformanceProfiler.end("CoreDataRepository.saveSubcategoriesSync")
+    }
+
+    /// Синхронно сохранить связи категория-подкатегория в Core Data (для импорта CSV)
+    /// Phase 10: CSV Import Fix - ensure category-subcategory links are saved synchronously
+    func saveCategorySubcategoryLinksSync(_ links: [CategorySubcategoryLink]) throws {
+        PerformanceProfiler.start("CoreDataRepository.saveCategorySubcategoryLinksSync")
+
+        print("💾 [CoreData] Saving \(links.count) category-subcategory links...")
+
+        // Use background context to avoid blocking UI
+        let backgroundContext = stack.persistentContainer.newBackgroundContext()
+        backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+
+        try backgroundContext.performAndWait {
+            // Fetch all existing links
+            let fetchRequest = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
+            let existingEntities = try backgroundContext.fetch(fetchRequest)
+
+            print("💾 [CoreData] Found \(existingEntities.count) existing links in database")
+
+            // Build dictionary safely
+            var existingDict: [String: CategorySubcategoryLinkEntity] = [:]
+            for entity in existingEntities {
+                let id = entity.id ?? ""
+                if !id.isEmpty && existingDict[id] == nil {
+                    existingDict[id] = entity
+                } else if !id.isEmpty {
+                    backgroundContext.delete(entity)
+                }
+            }
+
+            var keptIds = Set<String>()
+            var createdCount = 0
+            var updatedCount = 0
+
+            // Update or create links
+            for link in links {
+                keptIds.insert(link.id)
+
+                if let existing = existingDict[link.id] {
+                    // Update existing
+                    existing.categoryId = link.categoryId
+                    existing.subcategoryId = link.subcategoryId
+                    updatedCount += 1
+                } else {
+                    // Create new
+                    _ = CategorySubcategoryLinkEntity.from(link, context: backgroundContext)
+                    createdCount += 1
+                }
+            }
+
+            // Delete links that no longer exist
+            var deletedCount = 0
+            for entity in existingEntities {
+                if let id = entity.id, !keptIds.contains(id) {
+                    backgroundContext.delete(entity)
+                    deletedCount += 1
+                }
+            }
+
+            print("💾 [CoreData] Created: \(createdCount), Updated: \(updatedCount), Deleted: \(deletedCount)")
+
+            // Save if there are changes
+            if backgroundContext.hasChanges {
+                try backgroundContext.save()
+                print("✅ [CoreData] Saved \(links.count) category-subcategory links to Core Data")
+            } else {
+                print("⚠️ [CoreData] No changes to save for category-subcategory links")
+            }
+        }
+
+        PerformanceProfiler.end("CoreDataRepository.saveCategorySubcategoryLinksSync")
+    }
+
+    /// Синхронно сохранить связи транзакция-подкатегория в Core Data (для импорта CSV)
+    /// Phase 10: CSV Import Fix - ensure transaction-subcategory links are saved synchronously
+    func saveTransactionSubcategoryLinksSync(_ links: [TransactionSubcategoryLink]) throws {
+        PerformanceProfiler.start("CoreDataRepository.saveTransactionSubcategoryLinksSync")
+
+        // Use background context to avoid blocking UI
+        let backgroundContext = stack.persistentContainer.newBackgroundContext()
+        backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+
+        try backgroundContext.performAndWait {
+            // Fetch all existing links
+            let fetchRequest = NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
+            let existingEntities = try backgroundContext.fetch(fetchRequest)
+
+            // Build dictionary safely
+            var existingDict: [String: TransactionSubcategoryLinkEntity] = [:]
+            for entity in existingEntities {
+                let id = entity.id ?? ""
+                if !id.isEmpty && existingDict[id] == nil {
+                    existingDict[id] = entity
+                } else if !id.isEmpty {
+                    backgroundContext.delete(entity)
+                }
+            }
+
+            var keptIds = Set<String>()
+
+            // Update or create links
+            for link in links {
+                keptIds.insert(link.id)
+
+                if let existing = existingDict[link.id] {
+                    // Update existing
+                    existing.transactionId = link.transactionId
+                    existing.subcategoryId = link.subcategoryId
+                } else {
+                    // Create new
+                    _ = TransactionSubcategoryLinkEntity.from(link, context: backgroundContext)
+                }
+            }
+
+            // Delete links that no longer exist
+            for entity in existingEntities {
+                if let id = entity.id, !keptIds.contains(id) {
+                    backgroundContext.delete(entity)
+                }
+            }
+
+            // Save if there are changes
+            if backgroundContext.hasChanges {
+                try backgroundContext.save()
+            }
+        }
+
+        PerformanceProfiler.end("CoreDataRepository.saveTransactionSubcategoryLinksSync")
     }
     
     // MARK: - Recurring Series
@@ -991,16 +1181,19 @@ final class CoreDataRepository: DataRepositoryProtocol {
     // MARK: - Category-Subcategory Links
     
     func loadCategorySubcategoryLinks() -> [CategorySubcategoryLink] {
-        
+
         let context = stack.viewContext
         let request = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
         request.sortDescriptors = [NSSortDescriptor(key: "categoryId", ascending: true)]
-        
+
         do {
             let entities = try context.fetch(request)
             let links = entities.map { $0.toCategorySubcategoryLink() }
+            print("📥 [CoreData] Loaded \(links.count) category-subcategory links from Core Data")
             return links
         } catch {
+            print("❌ [CoreData] Failed to load category-subcategory links: \(error.localizedDescription)")
+            print("⚠️ [CoreData] Falling back to UserDefaults")
             return userDefaultsRepository.loadCategorySubcategoryLinks()
         }
     }
