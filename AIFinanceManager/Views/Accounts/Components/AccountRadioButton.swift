@@ -26,10 +26,14 @@ struct AccountRadioButton: View {
                     Text(account.name)
                         .font(AppTypography.caption)
                         .foregroundColor(.secondary)
-                    Text(Formatting.formatCurrency(balance, currency: account.currency))
-                        .font(AppTypography.bodySmall)
-                        .foregroundColor(.primary)
-                        .fontWeight(.semibold)
+
+                    FormattedAmountText(
+                        amount: balance,
+                        currency: account.currency,
+                        fontSize: AppTypography.bodySmall,
+                        fontWeight: .semibold,
+                        color: .primary
+                    )
                 }
             }
             .glassCardStyle()

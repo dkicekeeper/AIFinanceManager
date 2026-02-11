@@ -32,13 +32,13 @@ struct CategoryDisplayData: Identifiable, Hashable {
     /// Formatted total for display
     /// Always returns a value, even if total is 0
     func formattedTotal(currency: String) -> String? {
-        return Formatting.formatCurrency(total, currency: currency)
+        return Formatting.formatCurrencySmart(total, currency: currency)
     }
 
     /// Formatted budget for display
     func formattedBudget(currency: String) -> String? {
         guard let budget = budgetAmount else { return nil }
-        return Formatting.formatCurrency(budget, currency: currency)
+        return Formatting.formatCurrencySmart(budget, currency: currency)
     }
 
     // MARK: - Hashable

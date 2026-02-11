@@ -25,13 +25,13 @@ struct SubscriptionCard: View {
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 Text(subscription.description)
                     .font(AppTypography.bodyLarge.weight(.semibold))
-                
-                Text(Formatting.formatCurrency(
-                    NSDecimalNumber(decimal: subscription.amount).doubleValue,
-                    currency: subscription.currency
-                ))
-                .font(AppTypography.body)
-                .foregroundColor(.secondary)
+
+                FormattedAmountText(
+                    amount: NSDecimalNumber(decimal: subscription.amount).doubleValue,
+                    currency: subscription.currency,
+                    fontSize: AppTypography.body,
+                    color: .secondary
+                )
                 
                 if let nextChargeDate = nextChargeDate {
                     Text(String(format: String(localized: "subscriptions.nextCharge"), formatDate(nextChargeDate)))

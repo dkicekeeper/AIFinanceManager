@@ -25,10 +25,14 @@ struct AccountCard: View {
                     Text(account.name)
                         .font(AppTypography.h4)
                         .foregroundColor(.primary)
-                    Text(Formatting.formatCurrency(balance, currency: account.currency))
-                        .font(AppTypography.bodySmall)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+
+                    FormattedAmountText(
+                        amount: balance,
+                        currency: account.currency,
+                        fontSize: AppTypography.bodySmall,
+                        fontWeight: .semibold,
+                        color: .primary
+                    )
                 }
             }
             .glassCardStyle()

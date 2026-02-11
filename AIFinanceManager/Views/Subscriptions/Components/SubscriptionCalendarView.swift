@@ -80,12 +80,12 @@ struct SubscriptionCalendarView: View {
             Spacer()
 
             if let total = monthlyTotals[currentMonthIndex], total > 0 {
-                Text(Formatting.formatCurrency(
-                    NSDecimalNumber(decimal: total).doubleValue,
-                    currency: baseCurrency
-                ))
-                .font(AppTypography.bodyLarge)
-                .foregroundColor(AppColors.textPrimary)
+                FormattedAmountText(
+                    amount: NSDecimalNumber(decimal: total).doubleValue,
+                    currency: baseCurrency,
+                    fontSize: AppTypography.bodyLarge,
+                    color: AppColors.textPrimary
+                )
             }
         }
         .animation(.easeInOut(duration: AppAnimation.standard), value: currentMonthIndex)

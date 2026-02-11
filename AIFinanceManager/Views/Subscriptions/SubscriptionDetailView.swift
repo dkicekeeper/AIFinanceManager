@@ -119,13 +119,13 @@ struct SubscriptionDetailView: View {
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(subscription.description)
                         .font(AppTypography.h3)
-                    
-                    Text(Formatting.formatCurrency(
-                        NSDecimalNumber(decimal: subscription.amount).doubleValue,
-                        currency: subscription.currency
-                    ))
-                    .font(AppTypography.h4)
-                    .foregroundColor(.secondary)
+
+                    FormattedAmountText(
+                        amount: NSDecimalNumber(decimal: subscription.amount).doubleValue,
+                        currency: subscription.currency,
+                        fontSize: AppTypography.h4,
+                        color: .secondary
+                    )
                 }
                 
                 Spacer()

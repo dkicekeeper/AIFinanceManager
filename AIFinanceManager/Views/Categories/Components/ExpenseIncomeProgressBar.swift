@@ -50,17 +50,23 @@ struct ExpenseIncomeProgressBar: View {
             
             // Amounts below progress bar
             HStack {
-                Text(Formatting.formatCurrency(expenseAmount, currency: currency))
-                    .font(AppTypography.bodySmall)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
+                FormattedAmountText(
+                    amount: expenseAmount,
+                    currency: currency,
+                    fontSize: AppTypography.bodySmall,
+                    fontWeight: .semibold,
+                    color: .primary
+                )
+
                 Spacer()
-                
-                Text(Formatting.formatCurrency(incomeAmount, currency: currency))
-                    .font(AppTypography.bodySmall)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.green)
+
+                FormattedAmountText(
+                    amount: incomeAmount,
+                    currency: currency,
+                    fontSize: AppTypography.bodySmall,
+                    fontWeight: .semibold,
+                    color: .green
+                )
             }
         }
     }

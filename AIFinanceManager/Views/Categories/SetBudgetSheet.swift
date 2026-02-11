@@ -55,8 +55,13 @@ struct SetBudgetSheet: View {
                         HStack {
                             Text(String(localized: "current_budget"))
                             Spacer()
-                            Text("\(Int(existingBudget))₸")
-                                .foregroundColor(.secondary)
+
+                            FormattedAmountText(
+                                amount: existingBudget,
+                                currency: "₸",
+                                fontSize: AppTypography.body,
+                                color: .secondary
+                            )
                         }
                     } header: {
                         Text(String(localized: "current_settings"))

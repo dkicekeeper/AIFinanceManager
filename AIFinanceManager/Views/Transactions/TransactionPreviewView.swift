@@ -208,9 +208,12 @@ struct TransactionPreviewRow: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: AppSpacing.xs) {
-                    Text(Formatting.formatCurrency(transaction.amount, currency: transaction.currency))
-                        .font(AppTypography.amount)
-                        .foregroundColor(transaction.type == .income ? AppColors.income : AppColors.expense)
+                    FormattedAmountText(
+                        amount: transaction.amount,
+                        currency: transaction.currency,
+                        fontSize: AppTypography.amount,
+                        color: transaction.type == .income ? AppColors.income : AppColors.expense
+                    )
 
                     Text(transaction.type == .income ? "Доход" : transaction.type == .expense ? "Расход" : "Перевод")
                         .font(AppTypography.caption)

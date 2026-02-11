@@ -50,13 +50,27 @@ struct CategoryRow: View {
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(category.name)
                         .font(AppTypography.h4)
-                    
+
                     if let progress = budgetProgress {
                         HStack(spacing: AppSpacing.xs) {
-                            Text("\(formatAmount(progress.spent)) / \(formatAmount(progress.budgetAmount))₸")
-                                .font(AppTypography.bodySmall)
-                                .foregroundColor(progress.isOverBudget ? .red : .secondary)
-                            
+                            HStack(spacing: 0) {
+                                FormattedAmountText(
+                                    amount: progress.spent,
+                                    currency: "₸",
+                                    fontSize: AppTypography.bodySmall,
+                                    color: progress.isOverBudget ? .red : .secondary
+                                )
+                                Text(" / ")
+                                    .font(AppTypography.bodySmall)
+                                    .foregroundColor(progress.isOverBudget ? .red : .secondary)
+                                FormattedAmountText(
+                                    amount: progress.budgetAmount,
+                                    currency: "₸",
+                                    fontSize: AppTypography.bodySmall,
+                                    color: progress.isOverBudget ? .red : .secondary
+                                )
+                            }
+
                             Text("(\(Int(progress.percentage))%)")
                                 .font(AppTypography.bodySmall)
                                 .foregroundColor(.secondary)
@@ -85,13 +99,7 @@ struct CategoryRow: View {
         }
     }
 
-    private func formatAmount(_ amount: Double) -> String {
-        if amount >= 1000 {
-            return String(format: "%.0f", amount)
-        } else {
-            return String(format: "%.0f", amount)
-    }
-}
+// formatAmount больше не нужен - используем FormattedAmountText
 
 #Preview {
     let sampleCategory = CustomCategory(

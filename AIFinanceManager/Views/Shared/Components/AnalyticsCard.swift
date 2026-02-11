@@ -35,10 +35,14 @@ struct AnalyticsCard: View {
                         .font(AppTypography.bodySmall)
                         .foregroundStyle(.primary)
                     Spacer()
-                    Text(Formatting.formatCurrency(summary.plannedAmount, currency: currency))
-                        .font(AppTypography.bodySmall)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
+
+                    FormattedAmountText(
+                        amount: summary.plannedAmount,
+                        currency: currency,
+                        fontSize: AppTypography.bodySmall,
+                        fontWeight: .semibold,
+                        color: .primary
+                    )
                 }
             }
         }

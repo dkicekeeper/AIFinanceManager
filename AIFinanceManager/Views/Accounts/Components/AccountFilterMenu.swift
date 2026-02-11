@@ -32,7 +32,7 @@ struct AccountFilterMenu: View {
                             Text(account.name)
                                 .font(AppTypography.bodySmall)
                             let balance = balanceCoordinator.balances[account.id] ?? 0
-                            Text(Formatting.formatCurrency(balance, currency: account.currency))
+                            Text(Formatting.formatCurrencySmart(balance, currency: account.currency))
                                 .font(AppTypography.caption)
                                 .foregroundColor(.secondary)
                         }

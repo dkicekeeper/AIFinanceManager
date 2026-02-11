@@ -232,18 +232,24 @@ struct DepositDetailView: View {
                     .font(AppTypography.bodySmall)
                     .foregroundColor(.secondary)
                 let balance = balanceCoordinator.balances[account.id] ?? 0
-                Text(Formatting.formatCurrency(balance, currency: account.currency))
-                    .font(AppTypography.h2)
+                FormattedAmountText(
+                    amount: balance,
+                    currency: account.currency,
+                    fontSize: AppTypography.h2
+                )
             }
-            
+
             // Interest info
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 Text(String(localized: "deposit.interestToday"))
                     .font(AppTypography.bodySmall)
                     .foregroundColor(.secondary)
-                Text(Formatting.formatCurrency(NSDecimalNumber(decimal: interestToToday).doubleValue, currency: account.currency))
-                    .font(AppTypography.h4)
-                    .foregroundColor(.blue)
+                FormattedAmountText(
+                    amount: NSDecimalNumber(decimal: interestToToday).doubleValue,
+                    currency: account.currency,
+                    fontSize: AppTypography.h4,
+                    color: .blue
+                )
             }
             
             Divider()

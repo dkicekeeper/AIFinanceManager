@@ -31,15 +31,26 @@ struct AccountRow: View {
                     Text(account.name)
                         .font(AppTypography.h4)
 
-                    Text(Formatting.formatCurrency(balance, currency: account.currency))
-                        .font(AppTypography.bodySmall)
-                        .foregroundColor(.secondary)
-                    
+                    FormattedAmountText(
+                        amount: balance,
+                        currency: account.currency,
+                        fontSize: AppTypography.bodySmall,
+                        color: .secondary
+                    )
+
                     if let interest = interestToday, interest > 0 {
-                        let formattedAmount = Formatting.formatCurrency(interest, currency: account.currency)
-                        Text(String(format: String(localized: "account.interestToday"), formattedAmount))
-                            .font(AppTypography.caption)
-                            .foregroundColor(.secondary)
+                        HStack(spacing: 0) {
+                            Text(String(localized: "account.interestToday").replacingOccurrences(of: "%@", with: ""))
+                                .font(AppTypography.caption)
+                                .foregroundColor(.secondary)
+
+                            FormattedAmountText(
+                                amount: interest,
+                                currency: account.currency,
+                                fontSize: AppTypography.caption,
+                                color: .secondary
+                            )
+                        }
                     }
 
                     if let posting = nextPostingDate {

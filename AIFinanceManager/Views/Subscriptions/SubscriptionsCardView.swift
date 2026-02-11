@@ -39,13 +39,13 @@ struct SubscriptionsCardView: View {
                             ProgressView()
                                 .frame(height: AppSize.skeletonHeight)
                         } else {
-                            Text(Formatting.formatCurrency(
-                                NSDecimalNumber(decimal: totalAmount).doubleValue,
-                                currency: baseCurrency
-                            ))
-                            .font(AppTypography.h2)
-                            .fontWeight(.bold)
-                            .foregroundStyle(AppColors.textPrimary)
+                            FormattedAmountText(
+                                amount: NSDecimalNumber(decimal: totalAmount).doubleValue,
+                                currency: baseCurrency,
+                                fontSize: AppTypography.h2,
+                                fontWeight: .bold,
+                                color: AppColors.textPrimary
+                            )
                         }
 
                         Text("Активных \(subscriptions.count)")

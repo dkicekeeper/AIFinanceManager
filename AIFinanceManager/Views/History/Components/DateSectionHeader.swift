@@ -18,14 +18,18 @@ struct DateSectionHeader: View {
                 .font(AppTypography.bodySmall)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
-            
+
             Spacer()
-            
+
             if dayExpenses > 0 {
-                Text("-" + Formatting.formatCurrency(dayExpenses, currency: currency))
-                    .font(AppTypography.bodySmall)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.gray)
+                FormattedAmountText(
+                    amount: dayExpenses,
+                    currency: currency,
+                    prefix: "-",
+                    fontSize: AppTypography.bodySmall,
+                    fontWeight: .semibold,
+                    color: .gray
+                )
             }
         }
         .textCase(nil)
