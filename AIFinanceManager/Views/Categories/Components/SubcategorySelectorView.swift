@@ -39,18 +39,12 @@ struct SubcategorySelectorView: View {
                         FilterChip(
                             title: subcategory.name,
                             isSelected: selectedSubcategoryIds.contains(subcategory.id),
+                            showChevron: false,
                             onTap: {
                                 if selectedSubcategoryIds.contains(subcategory.id) {
                                     selectedSubcategoryIds.remove(subcategory.id)
                                 } else {
                                     selectedSubcategoryIds.insert(subcategory.id)
-                                    // Автоматически привязываем к категории, если еще не привязана
-                                    if let categoryId = categoryId {
-                                        categoriesViewModel.linkSubcategoryToCategory(
-                                            subcategoryId: subcategory.id,
-                                            categoryId: categoryId
-                                        )
-                                    }
                                 }
                                 HapticManager.selection()
                             }

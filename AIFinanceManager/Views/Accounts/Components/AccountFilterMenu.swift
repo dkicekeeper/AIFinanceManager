@@ -53,7 +53,7 @@ struct AccountFilterMenu: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: AppIconSize.sm))
             }
-            .filterChipStyle()
+            .filterChipStyle(isSelected: selectedAccountId != nil)
         }
     }
 }

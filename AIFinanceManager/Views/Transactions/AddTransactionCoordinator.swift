@@ -210,7 +210,17 @@ final class AddTransactionCoordinator: ObservableObject {
     }
 
     private func linkSubcategories(to transaction: Transaction) async {
-        // ✅ SIMPLIFIED: No need to search - transaction already has ID!
+        // First, ensure subcategories are linked to the category
+        if let categoryId = categoriesViewModel.customCategories.first(where: { $0.name == formData.category })?.id {
+            for subcategoryId in formData.subcategoryIds {
+                categoriesViewModel.linkSubcategoryToCategory(
+                    subcategoryId: subcategoryId,
+                    categoryId: categoryId
+                )
+            }
+        }
+
+        // Then link subcategories to the transaction
         categoriesViewModel.linkSubcategoriesToTransaction(
             transactionId: transaction.id,
             subcategoryIds: Array(formData.subcategoryIds)

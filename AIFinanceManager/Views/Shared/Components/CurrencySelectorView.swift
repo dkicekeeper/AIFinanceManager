@@ -41,7 +41,7 @@ struct CurrencySelectorView: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: AppIconSize.sm))
             }
-            .filterChipStyle()
+            .filterChipStyle(isSelected: !availableCurrencies.isEmpty && selectedCurrency != availableCurrencies.first)
         }
     }
 }
