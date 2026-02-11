@@ -54,12 +54,15 @@ struct SubscriptionCard: View {
             switch subscription.subscriptionStatus {
             case .active:
                 Image(systemName: "checkmark.circle.fill")
+                    .font(AppTypography.h4)
                     .foregroundColor(.green)
             case .paused:
                 Image(systemName: "pause.circle.fill")
+                    .font(AppTypography.h4)
                     .foregroundColor(.orange)
             case .archived:
                 Image(systemName: "archive.circle.fill")
+                    .font(AppTypography.h4)
                     .foregroundColor(.gray)
             case .none:
                 EmptyView()

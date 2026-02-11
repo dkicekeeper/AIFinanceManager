@@ -570,3 +570,6 @@
 "error.transaction.cannotRemoveRecurring" = "Cannot remove recurring series from transaction";
 "error.transaction.cannotDeleteDepositInterest" = "Cannot delete deposit interest transaction";
 "error.transaction.persistenceFailed" = "Failed to save transaction";
+
+// MARK: - Currency Conversion
+"currency.conversion.approximate" = "≈";

@@ -92,6 +92,7 @@ struct VoiceInputConfirmationView: View {
                         amount: $amountText,
                         selectedCurrency: $selectedCurrency,
                         errorMessage: amountWarning,
+                        baseCurrency: transactionsViewModel.appSettings.baseCurrency,
                         onAmountChange: { _ in
                             // Очищаем предупреждение сразу при вводе
                             amountWarning = nil

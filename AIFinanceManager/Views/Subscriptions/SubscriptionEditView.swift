@@ -58,6 +58,7 @@ struct SubscriptionEditView: View {
                         amount: $amountText,
                         selectedCurrency: $currency,
                         errorMessage: validationError,
+                        baseCurrency: transactionsViewModel.appSettings.baseCurrency,
                         onAmountChange: { _ in
                             validationError = nil
                         }

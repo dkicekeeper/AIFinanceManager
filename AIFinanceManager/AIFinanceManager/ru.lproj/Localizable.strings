@@ -570,3 +570,6 @@
 "error.transaction.cannotRemoveRecurring" = "Невозможно удалить повторяющуюся серию из транзакции";
 "error.transaction.cannotDeleteDepositInterest" = "Невозможно удалить транзакцию начисления процентов";
 "error.transaction.persistenceFailed" = "Не удалось сохранить транзакцию";
+
+// MARK: - Currency Conversion
+"currency.conversion.approximate" = "≈";

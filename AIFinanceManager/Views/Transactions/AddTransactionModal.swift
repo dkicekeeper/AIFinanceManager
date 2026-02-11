@@ -108,6 +108,7 @@ struct AddTransactionModal: View {
                     amount: $coordinator.formData.amountText,
                     selectedCurrency: $coordinator.formData.currency,
                     errorMessage: validationError,
+                    baseCurrency: coordinator.transactionsViewModel.appSettings.baseCurrency,
                     onAmountChange: { _ in
                         validationError = nil
                     }

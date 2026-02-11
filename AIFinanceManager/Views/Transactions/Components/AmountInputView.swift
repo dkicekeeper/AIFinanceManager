@@ -11,8 +11,9 @@ struct AmountInputView: View {
     @Binding var amount: String
     @Binding var selectedCurrency: String
     let errorMessage: String?
+    let baseCurrency: String
     var onAmountChange: ((String) -> Void)? = nil
-    
+
     @FocusState private var isFocused: Bool
     @State private var displayAmount: String = "0"
     @State private var previousAmount: String = ""
@@ -20,6 +21,10 @@ struct AmountInputView: View {
     @State private var animatedCharacters: [AnimatedChar] = []
     @State private var currentFontSize: CGFloat = 56
     @State private var containerWidth: CGFloat = 0
+
+    // MARK: - Currency Conversion
+    @State private var convertedAmount: Double?
+    @State private var conversionTask: Task<Void, Never>?
     
     private let formatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -47,7 +52,7 @@ struct AmountInputView: View {
                         )
                         .id("\(charState.id)-\(charState.character)")
                     }
-                    
+
                     if isFocused {
                         BlinkingCursor()
                     }
@@ -59,7 +64,10 @@ struct AmountInputView: View {
             .onTapGesture {
                 isFocused = true
             }
-            
+
+            // Конвертированная сумма
+            convertedAmountView
+
             // Скрытый TextField для ввода
             TextField("", text: $amount)
                 .keyboardType(.decimalPad)
@@ -69,10 +77,16 @@ struct AmountInputView: View {
                 .onChange(of: amount) { _, newValue in
                     updateDisplayAmount(newValue)
                     onAmountChange?(newValue)
+                    updateConvertedAmountDebounced()
                 }
-            
+
             // Выбор валюты (центрированный)
             CurrencySelectorView(selectedCurrency: $selectedCurrency)
+                .onChange(of: selectedCurrency) { _, _ in
+                    Task {
+                        await updateConvertedAmount()
+                    }
+                }
 
             // Ошибка (по центру)
             if let error = errorMessage {
@@ -118,6 +132,125 @@ struct AmountInputView: View {
             previousRawAmount = cleaned.isEmpty ? "0" : cleaned
             animatedCharacters = Array(displayAmount).enumerated().map { index, char in
                 AnimatedChar(id: UUID(), character: char, isNew: false)
+            }
+
+            // Автоматически активируем фокус при появлении
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isFocused = true
+            }
+        }
+        .task {
+            await updateConvertedAmount()
+        }
+    }
+
+    // MARK: - Converted Amount View
+
+    @ViewBuilder
+    private var convertedAmountView: some View {
+        if shouldShowConversion {
+            HStack(spacing: AppSpacing.xs) {
+                Text(String(localized: "currency.conversion.approximate"))
+                    .font(AppTypography.h4)
+                    .foregroundColor(AppColors.textSecondary)
+
+                if let converted = convertedAmount {
+                    Text(formatConvertedAmount(converted))
+                        .font(AppTypography.h4)
+                        .fontWeight(.medium)
+                        .foregroundColor(AppColors.textSecondary)
+
+                    Text(Formatting.currencySymbol(for: baseCurrency))
+                        .font(AppTypography.h4)
+                        .fontWeight(.medium)
+                        .foregroundColor(AppColors.textSecondary)
+                } else {
+                    // Loader placeholder
+                    ProgressView()
+                        .scaleEffect(0.6)
+                }
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+        }
+    }
+
+    // MARK: - Currency Conversion Logic
+
+    private var shouldShowConversion: Bool {
+        guard selectedCurrency != baseCurrency else { return false }
+        guard let numericAmount = parseAmount(amount), numericAmount > 0 else { return false }
+        return true
+    }
+
+    private func parseAmount(_ text: String) -> Double? {
+        let cleaned = text
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: ",", with: ".")
+            .replacingOccurrences(of: "₸", with: "")
+            .replacingOccurrences(of: "$", with: "")
+            .replacingOccurrences(of: "€", with: "")
+            .replacingOccurrences(of: "₽", with: "")
+            .replacingOccurrences(of: "£", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        return Double(cleaned)
+    }
+
+    private func formatConvertedAmount(_ amount: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = " "
+        formatter.usesGroupingSeparator = true
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 0
+
+        return formatter.string(from: NSNumber(value: amount)) ?? "0"
+    }
+
+    private func updateConvertedAmountDebounced() {
+        conversionTask?.cancel()
+
+        conversionTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await updateConvertedAmount()
+        }
+    }
+
+    private func updateConvertedAmount() async {
+        guard selectedCurrency != baseCurrency else {
+            await MainActor.run {
+                convertedAmount = nil
+            }
+            return
+        }
+
+        guard let numericAmount = parseAmount(amount), numericAmount > 0 else {
+            await MainActor.run {
+                convertedAmount = nil
+            }
+            return
+        }
+
+        // Попытка синхронной конвертации через кэш
+        if let syncConverted = CurrencyConverter.convertSync(
+            amount: numericAmount,
+            from: selectedCurrency,
+            to: baseCurrency
+        ) {
+            await MainActor.run {
+                convertedAmount = syncConverted
+            }
+            return
+        }
+
+        // Асинхронная загрузка курса
+        if let asyncConverted = await CurrencyConverter.convert(
+            amount: numericAmount,
+            from: selectedCurrency,
+            to: baseCurrency
+        ) {
+            await MainActor.run {
+                convertedAmount = asyncConverted
             }
         }
     }
@@ -453,32 +586,35 @@ struct BlinkingCursor: View {
 #Preview("Amount Input - Empty") {
     @Previewable @State var amount = ""
     @Previewable @State var currency = "KZT"
-    
+
     return AmountInputView(
         amount: $amount,
         selectedCurrency: $currency,
-        errorMessage: nil
+        errorMessage: nil,
+        baseCurrency: "KZT"
     )
 }
 
 #Preview("Amount Input - With Value") {
     @Previewable @State var amount = "1234.56"
     @Previewable @State var currency = "USD"
-    
+
     return AmountInputView(
         amount: $amount,
         selectedCurrency: $currency,
-        errorMessage: nil
+        errorMessage: nil,
+        baseCurrency: "KZT"
     )
 }
 
 #Preview("Amount Input - Error") {
     @Previewable @State var amount = "abc"
     @Previewable @State var currency = "EUR"
-    
+
     return AmountInputView(
         amount: $amount,
         selectedCurrency: $currency,
-        errorMessage: "Введите корректную сумму"
+        errorMessage: "Введите корректную сумму",
+        baseCurrency: "KZT"
     )
 }

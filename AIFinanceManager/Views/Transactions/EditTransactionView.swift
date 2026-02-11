@@ -88,7 +88,8 @@ struct EditTransactionView: View {
                     AmountInputView(
                         amount: $amountText,
                         selectedCurrency: $selectedCurrency,
-                        errorMessage: showingError ? errorMessage : nil
+                        errorMessage: showingError ? errorMessage : nil,
+                        baseCurrency: transactionsViewModel.appSettings.baseCurrency
                     )
                     
                     // 3. Счет
