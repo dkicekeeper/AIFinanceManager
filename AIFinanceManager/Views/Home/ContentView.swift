@@ -60,7 +60,14 @@ struct ContentView: View {
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
                 loadWallpaperOnce()
             }
-            .onReceive(summaryUpdatePublisher) { _ in
+            // @Observable automatically tracks changes - use onChange for specific updates
+            .onChange(of: timeFilterManager.currentFilter) { _, _ in
+                updateSummary()
+            }
+            .onChange(of: viewModel.allTransactions.count) { _, _ in
+                updateSummary()
+            }
+            .onChange(of: viewModel.dataRefreshTrigger) { _, _ in
                 updateSummary()
             }
         }
@@ -379,18 +386,9 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Combine Publishers
-
-    /// Combines time filter, transactions changes, and data refresh trigger with debounce to prevent duplicate updates
-    private var summaryUpdatePublisher: AnyPublisher<Void, Never> {
-        Publishers.Merge3(
-            timeFilterManager.$currentFilter.map { _ in () },
-            viewModel.$allTransactions.map { _ in () },
-            viewModel.$dataRefreshTrigger.map { _ in () }  // ✅ NEW: Observe refresh trigger for aggregate rebuild
-        )
-        .debounce(for: 0.1, scheduler: RunLoop.main)
-        .eraseToAnyPublisher()
-    }
+    // MARK: - Observable Pattern
+    // With @Observable, SwiftUI automatically tracks dependencies
+    // We use onChange modifiers above to trigger updates when specific properties change
 }
 
 // MARK: - Preview

@@ -9,9 +9,11 @@
 import Foundation
 import Combine
 import SwiftUI
+import Observation
 
+@Observable
 @MainActor
-final class QuickAddCoordinator: ObservableObject {
+final class QuickAddCoordinator {
 
     // MARK: - Dependencies
 
@@ -23,12 +25,12 @@ final class QuickAddCoordinator: ObservableObject {
     private var timeFilterManager: TimeFilterManager
     private let categoryMapper: CategoryDisplayDataMapperProtocol
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published private(set) var categories: [CategoryDisplayData] = []
-    @Published var selectedCategory: String?
-    @Published var selectedType: TransactionType = .expense
-    @Published var showingAddCategory = false
+    private(set) var categories: [CategoryDisplayData] = []
+    var selectedCategory: String?
+    var selectedType: TransactionType = .expense
+    var showingAddCategory = false
 
     // MARK: - Private State
 
@@ -58,23 +60,16 @@ final class QuickAddCoordinator: ObservableObject {
     // MARK: - Setup
 
     private func setupBindings() {
-        // Combine approach with debounce + distinctUntilChanged
-        // Updates when transactions change (not just count), categories change, or filter changes
-        Publishers.CombineLatest(
-            Publishers.CombineLatest4(
-                transactionsViewModel.$allTransactions,  // ✅ Observe actual transactions, not just count
-                categoriesViewModel.$customCategories,  // ✅ FIX: Observe actual categories, not just count (for order changes)
-                timeFilterManager.$currentFilter
-                    .removeDuplicates(),
-                transactionsViewModel.$dataRefreshTrigger  // ✅ NEW: Observe refresh trigger for aggregate rebuild
-            ),
-            Just(()).eraseToAnyPublisher()
-        )
-        .debounce(for: .milliseconds(150), scheduler: DispatchQueue.main)
-        .sink { [weak self] combined, _ in
-            self?.updateCategories()
-        }
-        .store(in: &cancellables)
+        // With @Observable, we call updateCategories() explicitly when data changes
+        // The view that uses QuickAddCoordinator should call refreshData() when needed
+        // Initial update
+        updateCategories()
+    }
+
+    /// Call this method when transactions, categories, or filter changes
+    /// With @Observable, we refresh on-demand instead of using Combine subscriptions
+    func refreshData() {
+        updateCategories()
     }
 
     // MARK: - Public Methods

@@ -17,6 +17,7 @@ struct AIFinanceManagerApp: App {
             ContentView()
                 .environment(timeFilterManager)
                 .environment(coordinator)
+                .environment(coordinator.transactionStore)
         }
     }
 }

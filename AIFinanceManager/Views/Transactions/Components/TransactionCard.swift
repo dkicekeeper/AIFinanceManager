@@ -14,7 +14,7 @@ struct TransactionCard: View {
     let accounts: [Account]
     let viewModel: TransactionsViewModel?
     let categoriesViewModel: CategoriesViewModel?
-    let balanceCoordinator: BalanceCoordinator?
+    let balanceCoordinator: BalanceCoordinator?  // Optional - can't use @ObservedObject with optionals
 
     @State private var showingStopRecurringConfirmation = false
     @State private var showingEditModal = false

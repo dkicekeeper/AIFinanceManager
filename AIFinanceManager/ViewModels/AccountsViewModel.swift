@@ -44,8 +44,9 @@ class AccountsViewModel {
         // self.accounts = repository.loadAccounts()
     }
 
-    /// PHASE 3: Setup subscription to TransactionStore.$accounts
+    /// PHASE 3: Setup subscription to TransactionStore.accounts
     /// Called by AppCoordinator after TransactionStore is initialized
+    /// NOTE: With @Observable, we sync directly instead of using Combine publishers
     func setupTransactionStoreObserver() {
         guard let transactionStore = transactionStore else {
             #if DEBUG
@@ -54,24 +55,37 @@ class AccountsViewModel {
             return
         }
 
-        accountsSubscription = transactionStore.$accounts
-            .sink { [weak self] updatedAccounts in
-                guard let self = self else { return }
-                self.accounts = updatedAccounts
+        // Direct sync from TransactionStore - @Observable handles change notifications
+        self.accounts = transactionStore.accounts
 
-                #if DEBUG
-                print("✅ [AccountsVM] Received \(updatedAccounts.count) accounts from TransactionStore")
-                #endif
+        #if DEBUG
+        print("✅ [AccountsVM] Received \(transactionStore.accounts.count) accounts from TransactionStore")
+        #endif
 
-                // MIGRATED: Register accounts with BalanceCoordinator (Single Source of Truth)
-                self.syncInitialBalancesToCoordinator()
-            }
+        // DON'T sync initial balances here - they are loaded by AppCoordinator.initialize()
+        // through balanceCoordinator.registerAccounts() which loads from Core Data
 
         #if DEBUG
         print("✅ [AccountsVM] Setup TransactionStore observer")
         #endif
     }
-    
+
+    /// Sync accounts from TransactionStore
+    /// Called by AppCoordinator when TransactionStore.accounts changes
+    func syncAccountsFromStore() {
+        guard let transactionStore = transactionStore else { return }
+
+        // Simply sync the accounts list
+        // DON'T sync balances here - they are managed by BalanceCoordinator
+        // BalanceCoordinator loads correct balances from Core Data on startup
+        // and updates them after each transaction
+        self.accounts = transactionStore.accounts
+
+        #if DEBUG
+        print("🔄 [AccountsVM] Synced \(accounts.count) accounts from TransactionStore")
+        #endif
+    }
+
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
         #if DEBUG

@@ -759,30 +759,22 @@ class TransactionsViewModel {
         // No manual sync needed!
     }
 
-    /// Setup Combine subscription to CategoriesViewModel (Single Source of Truth)
+    /// Setup reference to CategoriesViewModel (Single Source of Truth)
     /// Call this from AppCoordinator after both ViewModels are initialized
     /// - Parameter categoriesViewModel: The single source of truth for categories
+    /// NOTE: With @Observable, we sync directly instead of using Combine publishers
     func setCategoriesViewModel(_ categoriesViewModel: CategoriesViewModel) {
-        // Subscribe to categories changes
-        categoriesSubscription = categoriesViewModel.categoriesPublisher
-            .sink { [weak self] categories in
-                guard let self = self else { return }
+        // Direct sync from CategoriesViewModel - @Observable handles change notifications
+        self.customCategories = categoriesViewModel.customCategories
 
-                // Update local copy
-                self.customCategories = categories
+        // PHASE 3: No need to sync to TransactionStore
+        // CategoriesViewModel already observes TransactionStore.categories
+        // This sync is kept for backward compatibility with TransactionsViewModel.customCategories
 
-                // PHASE 3: No need to sync to TransactionStore
-                // CategoriesViewModel already observes TransactionStore.$categories
-                // This subscription is kept for backward compatibility with TransactionsViewModel.customCategories
+        // Invalidate caches that depend on categories - already done above
 
-                // Invalidate caches that depend on categories
-                self.invalidateCaches()
-            }
-
-        // Set initial value
-        customCategories = categoriesViewModel.customCategories
-
-        // PHASE 3: No need to sync - CategoriesViewModel observes TransactionStore.$categories
+        // PHASE 3: No need to subscribe - CategoriesViewModel observes TransactionStore.categories
+        // We just sync once on setup, views will observe CategoriesViewModel directly
     }
 
     // MARK: - Data Management

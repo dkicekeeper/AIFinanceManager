@@ -8,10 +8,10 @@
 
 import Foundation
 import SwiftUI
-import Combine
 
+@Observable
 @MainActor
-final class AddTransactionCoordinator: ObservableObject {
+final class AddTransactionCoordinator {
 
     // MARK: - Dependencies
 
@@ -24,9 +24,9 @@ final class AddTransactionCoordinator: ObservableObject {
     // No more dual paths - always use TransactionStore
     private let transactionStore: TransactionStore
 
-    // MARK: - Published State
+    // MARK: - State
 
-    @Published var formData: TransactionFormData
+    var formData: TransactionFormData
 
     // MARK: - Initialization
 

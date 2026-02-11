@@ -28,11 +28,9 @@ class CategoriesViewModel {
 
     // MARK: - Publishers
 
-    /// Publisher for customCategories changes
-    /// Other ViewModels can subscribe to this instead of duplicating data
-    var categoriesPublisher: AnyPublisher<[CustomCategory], Never> {
-        $customCategories.eraseToAnyPublisher()
-    }
+    /// REMOVED: categoriesPublisher - not needed with @Observable
+    /// With @Observable, other objects can directly observe customCategories property
+    /// SwiftUI automatically tracks dependencies
 
     // MARK: - Private Properties
 
@@ -73,11 +71,11 @@ class CategoriesViewModel {
         self.currencyService = currencyService
         self.appSettings = appSettings
 
-        // Initialize services (required for @Observable compatibility)
-        self.crudService = CategoryCRUDService(delegate: nil, repository: repository)
-        self.subcategoryCoordinator = CategorySubcategoryCoordinator(delegate: nil, repository: repository)
+        // Initialize services without delegates (required for @Observable compatibility)
+        // Use delegate-less initializers, then set delegate after all properties are initialized
+        self.crudService = CategoryCRUDService(repository: repository)
+        self.subcategoryCoordinator = CategorySubcategoryCoordinator(repository: repository)
         self.budgetCoordinator = CategoryBudgetCoordinator(
-            delegate: nil,
             currencyService: currencyService,
             appSettings: appSettings
         )
@@ -95,19 +93,20 @@ class CategoriesViewModel {
 
         // Set delegates after all properties are initialized
         if let service = self.crudService as? CategoryCRUDService {
-            // Delegate should be self, but we need to handle this carefully
+            service.delegate = self
         }
         if let coordinator = self.subcategoryCoordinator as? CategorySubcategoryCoordinator {
-            // Delegate should be self
+            coordinator.delegate = self
         }
         if let coordinator = self.budgetCoordinator as? CategoryBudgetCoordinator {
-            // Delegate should be self
+            coordinator.delegate = self
         }
     }
 
-    /// PHASE 3: Setup subscription to TransactionStore.$categories
-    /// ✨ Phase 10: Also subscribe to subcategories and links
+    /// PHASE 3: Setup initial sync from TransactionStore
+    /// ✨ Phase 10: Sync categories, subcategories and links
     /// Called by AppCoordinator after TransactionStore is initialized
+    /// NOTE: With @Observable, we sync directly instead of using Combine publishers
     func setupTransactionStoreObserver() {
         guard let transactionStore = transactionStore else {
             #if DEBUG
@@ -116,32 +115,29 @@ class CategoriesViewModel {
             return
         }
 
-        // Subscribe to categories
-        categoriesSubscription = Publishers.CombineLatest4(
-            transactionStore.$categories,
-            transactionStore.$subcategories,
-            transactionStore.$categorySubcategoryLinks,
-            transactionStore.$transactionSubcategoryLinks
-        )
-        .sink { [weak self] (updatedCategories, updatedSubcategories, updatedCategoryLinks, updatedTransactionLinks) in
-            guard let self = self else { return }
-            self.customCategories = updatedCategories
-            self.subcategories = updatedSubcategories
-            self.categorySubcategoryLinks = updatedCategoryLinks
-            self.transactionSubcategoryLinks = updatedTransactionLinks
-
-            #if DEBUG
-            print("✅ [CategoriesVM] Received updates from TransactionStore:")
-            print("   - Categories: \(updatedCategories.count)")
-            print("   - Subcategories: \(updatedSubcategories.count)")
-            print("   - Category-Subcategory Links: \(updatedCategoryLinks.count)")
-            print("   - Transaction-Subcategory Links: \(updatedTransactionLinks.count)")
-            #endif
-        }
+        // Direct sync from TransactionStore - @Observable handles change notifications
+        self.customCategories = transactionStore.categories
+        self.subcategories = transactionStore.subcategories
+        self.categorySubcategoryLinks = transactionStore.categorySubcategoryLinks
+        self.transactionSubcategoryLinks = transactionStore.transactionSubcategoryLinks
 
         #if DEBUG
-        print("✅ [CategoriesVM] Setup TransactionStore observer")
+        print("✅ [CategoriesVM] Received updates from TransactionStore:")
+        print("   - Categories: \(transactionStore.categories.count)")
+        print("   - Subcategories: \(transactionStore.subcategories.count)")
+        print("   - Category-Subcategory Links: \(transactionStore.categorySubcategoryLinks.count)")
+        print("   - Transaction-Subcategory Links: \(transactionStore.transactionSubcategoryLinks.count)")
         #endif
+    }
+
+    /// Sync categories from TransactionStore
+    /// Called when TransactionStore data changes
+    func syncCategoriesFromStore() {
+        guard let transactionStore = transactionStore else { return }
+        self.customCategories = transactionStore.categories
+        self.subcategories = transactionStore.subcategories
+        self.categorySubcategoryLinks = transactionStore.categorySubcategoryLinks
+        self.transactionSubcategoryLinks = transactionStore.transactionSubcategoryLinks
     }
 
     /// Перезагружает все данные из хранилища (используется после импорта)

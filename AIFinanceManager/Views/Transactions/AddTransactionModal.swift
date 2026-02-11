@@ -59,6 +59,8 @@ struct AddTransactionModal: View {
     // MARK: - Body
 
     var body: some View {
+        @Bindable var bindableCoordinator = coordinator
+
         NavigationStack {
             VStack(spacing: 0) {
                 formContent
@@ -72,7 +74,7 @@ struct AddTransactionModal: View {
                 toolbarContent
             }
             .dateButtonsSafeArea(
-                selectedDate: $coordinator.formData.selectedDate,
+                selectedDate: $bindableCoordinator.formData.selectedDate,
                 isDisabled: isSaving,
                 onSave: { date in
                     coordinator.formData.selectedDate = date
@@ -102,11 +104,13 @@ struct AddTransactionModal: View {
     // MARK: - Form Content
 
     private var formContent: some View {
-        ScrollView {
+        @Bindable var bindableCoordinator = coordinator
+
+        return ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 AmountInputView(
-                    amount: $coordinator.formData.amountText,
-                    selectedCurrency: $coordinator.formData.currency,
+                    amount: $bindableCoordinator.formData.amountText,
+                    selectedCurrency: $bindableCoordinator.formData.currency,
                     errorMessage: validationError,
                     baseCurrency: coordinator.transactionsViewModel.appSettings.baseCurrency,
                     onAmountChange: { _ in
@@ -119,7 +123,7 @@ struct AddTransactionModal: View {
                         accounts: coordinator.rankedAccounts(),
                         // ✅ PERFORMANCE FIX: Simple binding - no heavy computation in get
                         // Suggested account is set asynchronously in onAppear
-                        selectedAccountId: $coordinator.formData.accountId,
+                        selectedAccountId: $bindableCoordinator.formData.accountId,
                         balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
                     )
                 }
@@ -128,7 +132,7 @@ struct AddTransactionModal: View {
                     SubcategorySelectorView(
                         categoriesViewModel: coordinator.categoriesViewModel,
                         categoryId: categoryId,
-                        selectedSubcategoryIds: $coordinator.formData.subcategoryIds,
+                        selectedSubcategoryIds: $bindableCoordinator.formData.subcategoryIds,
                         onSearchTap: {
                             showingSubcategorySearch = true
                         }
@@ -136,14 +140,14 @@ struct AddTransactionModal: View {
                 }
 
                 RecurringToggleView(
-                    isRecurring: $coordinator.formData.isRecurring,
-                    selectedFrequency: $coordinator.formData.frequency,
+                    isRecurring: $bindableCoordinator.formData.isRecurring,
+                    selectedFrequency: $bindableCoordinator.formData.frequency,
                     toggleTitle: String(localized: "quickAdd.makeRecurring"),
                     frequencyTitle: String(localized: "quickAdd.frequency")
                 )
 
                 DescriptionTextField(
-                    text: $coordinator.formData.description,
+                    text: $bindableCoordinator.formData.description,
                     placeholder: String(localized: "quickAdd.descriptionPlaceholder")
                 )
             }
@@ -186,10 +190,12 @@ struct AddTransactionModal: View {
     // MARK: - Sheets
 
     private var subcategorySearchSheet: some View {
-        SubcategorySearchView(
+        @Bindable var bindableCoordinator = coordinator
+
+        return SubcategorySearchView(
             categoriesViewModel: coordinator.categoriesViewModel,
             categoryId: categoryId ?? "",
-            selectedSubcategoryIds: $coordinator.formData.subcategoryIds,
+            selectedSubcategoryIds: $bindableCoordinator.formData.subcategoryIds,
             searchText: $subcategorySearchText
         )
         .onAppear {

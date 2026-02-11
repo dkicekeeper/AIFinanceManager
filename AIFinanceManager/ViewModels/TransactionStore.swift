@@ -119,6 +119,9 @@ final class TransactionStore {
     // Import mode flag - when true, persistence is deferred until finishImport()
     private var isImporting: Bool = false
 
+    // Coordinator for syncing changes to ViewModels (with @Observable we need manual sync)
+    weak var coordinator: AppCoordinator?
+
     // MARK: - Initialization
 
     init(
@@ -466,6 +469,8 @@ final class TransactionStore {
         // Don't persist during import mode - will be done in finishImport()
         if !isImporting {
             persistAccounts()
+            // Sync to ViewModels after persistence
+            coordinator?.syncTransactionStoreToViewModels()
         }
 
         #if DEBUG
@@ -488,6 +493,8 @@ final class TransactionStore {
         // Don't persist during import mode - will be done in finishImport()
         if !isImporting {
             persistAccounts()
+            // Sync to ViewModels after persistence
+            coordinator?.syncTransactionStoreToViewModels()
         }
 
         #if DEBUG
@@ -503,6 +510,8 @@ final class TransactionStore {
         // Don't persist during import mode - will be done in finishImport()
         if !isImporting {
             persistAccounts()
+            // Sync to ViewModels after persistence
+            coordinator?.syncTransactionStoreToViewModels()
         }
 
         #if DEBUG
@@ -544,6 +553,9 @@ final class TransactionStore {
             if let order = categoryToAdd.order {
                 CategoryOrderManager.shared.setOrder(order, for: categoryToAdd.id)
             }
+
+            // Sync to ViewModels after persistence
+            coordinator?.syncTransactionStoreToViewModels()
         }
 
         #if DEBUG
@@ -569,6 +581,9 @@ final class TransactionStore {
             CategoryOrderManager.shared.setOrder(order, for: category.id)
         }
 
+        // Sync to ViewModels after persistence
+        coordinator?.syncTransactionStoreToViewModels()
+
         #if DEBUG
         print("✅ [TransactionStore] Updated category: \(category.name), order: \(category.order?.description ?? "nil")")
         #endif
@@ -582,6 +597,9 @@ final class TransactionStore {
 
         // ✅ Remove order from UserDefaults
         CategoryOrderManager.shared.removeOrder(for: categoryId)
+
+        // Sync to ViewModels after persistence
+        coordinator?.syncTransactionStoreToViewModels()
 
         #if DEBUG
         print("✅ [TransactionStore] Deleted category: \(categoryId)")
@@ -810,7 +828,9 @@ final class TransactionStore {
             try await persist()
         }
 
-        // 5. Notify observers automatically via @Observable - no need for manual objectWillChange.send()
+        // 5. Notify observers automatically via @Observable
+        // SwiftUI views will update automatically, but ViewModels need manual sync
+        coordinator?.syncTransactionStoreToViewModels()
     }
 
     /// Update state based on event
@@ -969,7 +989,8 @@ final class TransactionStore {
     }
 
     /// Update balances for affected accounts
-    /// ✅ REFACTORED: BalanceCoordinator is now required, guaranteed to update balances
+    /// ✅ REFACTORED: Use incremental updates instead of full recalculation
+    /// This fixes the balance doubling bug by applying transaction deltas instead of recalculating from initialBalance
     private func updateBalances(for event: TransactionEvent) {
         // Get affected account IDs from event
         let affectedAccounts = event.affectedAccounts
@@ -978,14 +999,49 @@ final class TransactionStore {
             return
         }
 
-        // Notify BalanceCoordinator to recalculate affected accounts
-        // No optional chaining - guaranteed to work!
+        // ✅ FIX: Use updateForTransaction() for incremental updates
+        // instead of recalculateAccounts() which recalculates from initialBalance
         Task {
-            await balanceCoordinator.recalculateAccounts(
-                affectedAccounts,
-                accounts: accounts,
-                transactions: transactions
-            )
+            switch event {
+            case .added(let transaction):
+                // Apply transaction incrementally (O(1) instead of O(n))
+                await balanceCoordinator.updateForTransaction(
+                    transaction,
+                    operation: .add(transaction),
+                    priority: .high
+                )
+
+            case .deleted(let transaction):
+                // Revert transaction incrementally
+                await balanceCoordinator.updateForTransaction(
+                    transaction,
+                    operation: .remove(transaction),
+                    priority: .high
+                )
+
+            case .updated(let old, let new):
+                // Update transaction (revert old, apply new)
+                await balanceCoordinator.updateForTransaction(
+                    new,
+                    operation: .update(old: old, new: new),
+                    priority: .high
+                )
+
+            case .bulkAdded(let transactions):
+                // Bulk add - apply each transaction
+                for transaction in transactions {
+                    await balanceCoordinator.updateForTransaction(
+                        transaction,
+                        operation: .add(transaction),
+                        priority: .normal
+                    )
+                }
+
+            // Handle other event types (recurring series events, etc.)
+            default:
+                // For other events, do nothing - they don't affect balances directly
+                break
+            }
 
             #if DEBUG
             print("✅ [TransactionStore] Notified BalanceCoordinator")

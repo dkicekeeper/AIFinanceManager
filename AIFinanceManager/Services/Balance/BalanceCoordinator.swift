@@ -12,18 +12,20 @@
 
 import Foundation
 import Combine
+import Observation
 
 // MARK: - Balance Coordinator
 
 /// Main coordinator for balance management
 /// Facade pattern - hides complexity of balance calculation system
 /// All balance operations should go through this coordinator
+@Observable
 @MainActor
 final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
-    @Published private(set) var balances: [String: Double] = [:]
+    private(set) var balances: [String: Double] = [:]
 
     // MARK: - Dependencies
 
@@ -68,40 +70,93 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
     // MARK: - Setup
 
     private func setupBindings() {
-        // Subscribe to store updates and publish to our @Published property
-        store.$balances
-            .assign(to: \.balances, on: self)
-            .store(in: &cancellables)
+        // ✅ @Observable: No need for Combine bindings
+        // SwiftUI automatically tracks changes to `balances` property
+        // We update it directly in processAddTransaction/processRemoveTransaction
     }
 
     // MARK: - Account Management
 
     func registerAccounts(_ accounts: [Account]) async {
-        let accountBalances = accounts.map { AccountBalance.from($0) }
-        store.registerAccounts(accountBalances)
+        #if DEBUG
+        print("🔄 [BalanceCoordinator] registerAccounts() called with \(accounts.count) accounts")
+        #endif
 
-        // ⚠️ CRITICAL FIX: Only initialize balances for NEW accounts, preserve existing balances
-        var updatedBalances = self.balances  // Start with current balances
-
-        for account in accounts {
-            // Only set initial balance if account is NOT already registered
-            if updatedBalances[account.id] == nil {
-                let initialBalance = account.initialBalance ?? 0
-                updatedBalances[account.id] = initialBalance
-                cache.setBalance(initialBalance, for: account.id)
-
-                #if DEBUG
-                print("💾 Cached balance for \(account.id): \(initialBalance)")
-                #endif
-            }
+        // ✅ FIX: Load persisted balances from Core Data FIRST
+        // This ensures we use the real current balances, not stale account.initialBalance values
+        guard let coreDataRepo = repository as? CoreDataRepository else {
+            #if DEBUG
+            print("⚠️ [BalanceCoordinator] Repository is not CoreDataRepository, using Account.initialBalance fallback")
+            #endif
+            // Fallback for non-Core Data repositories
+            let accountBalances = accounts.map { AccountBalance.from($0) }
+            store.registerAccounts(accountBalances)
+            return
         }
 
-        // Update published balances (preserves existing non-zero balances)
+        // Load persisted balances from Core Data for all accounts
+        let persistedBalances = coreDataRepo.loadAllAccountBalances()
+
+        #if DEBUG
+        print("💾 [BalanceCoordinator] Loaded \(persistedBalances.count) persisted balances from Core Data")
+        for (accountId, balance) in persistedBalances.prefix(5) {
+            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
+            print("   - \(accountName): \(balance)")
+        }
+        #endif
+
+        // Create AccountBalance objects with CORRECT currentBalance from Core Data
+        var accountBalances: [AccountBalance] = []
+        for account in accounts {
+            // Use persisted balance if available, otherwise use initialBalance
+            let currentBalance = persistedBalances[account.id] ?? (account.initialBalance ?? 0)
+
+            let accountBalance = AccountBalance(
+                accountId: account.id,
+                currentBalance: currentBalance,  // ✅ Use real balance from Core Data!
+                initialBalance: account.initialBalance,  // Keep initialBalance for calculations
+                depositInfo: account.depositInfo,
+                currency: account.currency,
+                isDeposit: account.isDeposit
+            )
+            accountBalances.append(accountBalance)
+
+            #if DEBUG
+            if let persistedBalance = persistedBalances[account.id] {
+                print("✅ [BalanceCoordinator] \(account.name): loaded balance \(persistedBalance) from Core Data")
+            } else {
+                print("⚠️ [BalanceCoordinator] \(account.name): no persisted balance, using initialBalance \(account.initialBalance ?? 0)")
+            }
+            #endif
+        }
+
+        // ✅ CRITICAL FIX: Register accounts with correct balances in BalanceStore
+        store.registerAccounts(accountBalances)
+
+        // ✅ CRITICAL FIX: Update BalanceStore with correct current balances
+        // This ensures processAddTransaction/processRemoveTransaction use correct currentBalance
+        var balancesToUpdate: [String: Double] = [:]
+        for accountBalance in accountBalances {
+            balancesToUpdate[accountBalance.accountId] = accountBalance.currentBalance
+        }
+        store.updateBalances(balancesToUpdate, source: .manual)
+
+        // Publish balances to UI and cache
+        var updatedBalances: [String: Double] = [:]
+        for accountBalance in accountBalances {
+            updatedBalances[accountBalance.accountId] = accountBalance.currentBalance
+            cache.setBalance(accountBalance.currentBalance, for: accountBalance.accountId)
+        }
+
         self.balances = updatedBalances
 
         #if DEBUG
-        print("📝 Registered \(accounts.count) accounts")
-        print("✅ Published initial balances to UI")
+        print("✅ [BalanceCoordinator] Registered \(accounts.count) accounts with correct balances")
+        print("   Published balances to UI:")
+        for (accountId, balance) in updatedBalances.prefix(5) {
+            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
+            print("      - \(accountName): \(balance)")
+        }
         #endif
     }
 

@@ -8,7 +8,6 @@
 
 import Foundation
 import SwiftUI
-import Combine
 import CoreData
 import Observation
 
@@ -47,7 +46,7 @@ class AppCoordinator {
 
     // MARK: - Private Properties
 
-    private var cancellables = Set<AnyCancellable>()
+    private var isInitialized = false
 
     // MARK: - Initialization
 
@@ -133,9 +132,7 @@ class AppCoordinator {
             initialSettings: transactionsViewModel.appSettings
         )
 
-        // CRITICAL: Подписываемся на изменения всех дочерних ViewModels
-        // Это гарантирует, что AppCoordinator будет уведомлять SwiftUI о любых изменениях
-        setupViewModelObservers()
+        // @Observable handles change propagation automatically - no manual observer setup needed
 
         // ✅ CATEGORY REFACTORING: Setup Single Source of Truth for categories
         // TransactionsViewModel subscribes to CategoriesViewModel.categoriesPublisher
@@ -159,17 +156,19 @@ class AppCoordinator {
         accountsViewModel.transactionStore = transactionStore
         categoriesViewModel.transactionStore = transactionStore
 
-        // PHASE 3: Setup observers for TransactionStore → ViewModels
-        // ViewModels observe TransactionStore instead of owning data
+        // Set coordinator reference in TransactionStore for automatic sync after mutations
+        transactionStore.coordinator = self
+
+        // PHASE 3: Setup initial sync from TransactionStore → ViewModels
+        // With @Observable, we sync on-demand instead of using Combine subscriptions
         accountsViewModel.setupTransactionStoreObserver()
         categoriesViewModel.setupTransactionStoreObserver()
 
-        // 🔧 CRITICAL FIX: Setup TransactionStore → TransactionsViewModel sync
-        // When TransactionStore updates transactions, sync them back to TransactionsViewModel
-        setupTransactionStoreObserver()
+        // Initial sync from TransactionStore to ViewModels
+        syncTransactionStoreToViewModels()
 
-        // Setup observer for balance updates
-        setupBalanceCoordinatorObserver()
+        // ✅ @Observable: No need for Combine observer
+        // SwiftUI automatically tracks changes to BalanceCoordinator.balances
 
         #if DEBUG
         print("✅ [AppCoordinator] Category SSOT established via Combine")
@@ -181,9 +180,7 @@ class AppCoordinator {
     }
 
     // MARK: - Public Methods
-    
-    private var isInitialized = false
-    
+
     /// Initialize all ViewModels asynchronously
     /// Should be called once after AppCoordinator is created
     func initialize() async {
@@ -201,10 +198,9 @@ class AppCoordinator {
         // NEW 2026-02-05: Load data into TransactionStore
         try? await transactionStore.loadData()
 
-        // PHASE 3: TransactionStore now owns accounts/categories - they are published to ViewModels
-        // No need to sync - ViewModels observe TransactionStore.$accounts and .$categories
-        transactionsViewModel.allTransactions = transactionStore.transactions
-        transactionsViewModel.displayTransactions = transactionStore.transactions
+        // CRITICAL: Sync data from TransactionStore to ViewModels
+        // With @Observable, we need to manually sync after data loads
+        syncTransactionStoreToViewModels()
 
         #if DEBUG
         print("✅ [AppCoordinator] TransactionStore loaded: \(transactionStore.transactions.count) transactions, \(transactionStore.accounts.count) accounts, \(transactionStore.categories.count) categories")
@@ -233,114 +229,41 @@ class AppCoordinator {
     
     // MARK: - Private Methods
 
-    /// Настройка наблюдателей за изменениями в дочерних ViewModels
-    /// Когда любой ViewModel меняется, AppCoordinator уведомляет SwiftUI
-    private func setupViewModelObservers() {
-        accountsViewModel.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
+    /// REMOVED: setupViewModelObservers() - not needed with @Observable
+    /// @Observable automatically notifies SwiftUI of changes, no manual propagation needed
 
-        transactionsViewModel.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
+    /// Setup manual syncing from TransactionStore to ViewModels
+    /// With @Observable, we don't have Combine publishers, so we sync on-demand
+    /// This method should be called after TransactionStore updates
+    func syncTransactionStoreToViewModels() {
+        #if DEBUG
+        print("🔄 [AppCoordinator] Syncing TransactionStore to ViewModels")
+        print("   Transactions: \(transactionStore.transactions.count)")
+        print("   Accounts: \(transactionStore.accounts.count)")
+        print("   Categories: \(transactionStore.categories.count)")
+        #endif
 
-        categoriesViewModel.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
+        // Sync transactions to TransactionsViewModel
+        self.transactionsViewModel.allTransactions = Array(transactionStore.transactions)
+        self.transactionsViewModel.displayTransactions = Array(transactionStore.transactions)
 
-        // ✨ Phase 9: Removed subscriptionsViewModel observer - now using TransactionStore
+        // Invalidate caches when transactions change
+        self.transactionsViewModel.invalidateCaches()
 
-        depositsViewModel.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-    }
+        // Trigger data changed notification
+        self.transactionsViewModel.notifyDataChanged()
 
-    /// 🔧 CRITICAL FIX: Setup observer for TransactionStore updates
-    /// When TransactionStore updates transactions, sync them back to TransactionsViewModel
-    /// This ensures history view and other legacy code sees the new transactions
-    private func setupTransactionStoreObserver() {
-        transactionStore.$transactions
-            .sink { [weak self] updatedTransactions in
-                guard let self = self else { return }
+        // Sync accounts to TransactionsViewModel
+        self.transactionsViewModel.accounts = Array(transactionStore.accounts)
 
-                #if DEBUG
-                print("🔄 [AppCoordinator] TransactionStore updated: \(updatedTransactions.count) transactions")
-                #endif
+        // Sync accounts to AccountsViewModel
+        self.accountsViewModel.syncAccountsFromStore()
 
-                // 🔧 CRITICAL FIX: Force SwiftUI to see the change by creating new array
-                // Direct assignment might not trigger @Published if it's the same array reference
-                self.transactionsViewModel.allTransactions = Array(updatedTransactions)
-                self.transactionsViewModel.displayTransactions = Array(updatedTransactions)
+        // Sync categories to CategoriesViewModel
+        self.categoriesViewModel.syncCategoriesFromStore()
 
-                // 🔧 CRITICAL FIX: Invalidate caches when transactions change
-                // This ensures category expenses are recalculated with new transactions
-                // Fixes bug: category balances not updating in CategoryGridView
-                self.transactionsViewModel.invalidateCaches()
-
-                // Trigger UI refresh
-                self.transactionsViewModel.notifyDataChanged()
-                self.objectWillChange.send()
-
-                #if DEBUG
-                print("✅ [AppCoordinator] Synced transactions, invalidated caches, triggered refresh")
-                #endif
-            }
-            .store(in: &cancellables)
-
-        // 🔧 CRITICAL FIX 2026-02-08: Sync accounts from TransactionStore to TransactionsViewModel
-        // When TransactionStore updates accounts, sync them to TransactionsViewModel.accounts
-        // This fixes the bug where balance recalculation runs with 0 accounts after subscription creation
-        transactionStore.$accounts
-            .sink { [weak self] updatedAccounts in
-                guard let self = self else { return }
-
-                #if DEBUG
-                print("🔄 [AppCoordinator] TransactionStore accounts updated: \(updatedAccounts.count) accounts")
-                #endif
-
-                // 🔧 CRITICAL: Sync accounts to TransactionsViewModel
-                // This ensures scheduleBalanceRecalculation() has correct accounts
-                self.transactionsViewModel.accounts = Array(updatedAccounts)
-
-                // Trigger UI refresh
-                self.objectWillChange.send()
-
-                #if DEBUG
-                print("✅ [AppCoordinator] Synced accounts to TransactionsViewModel")
-                #endif
-            }
-            .store(in: &cancellables)
-    }
-
-    /// REFACTORED 2026-02-02: Setup observer for BalanceCoordinator updates
-    /// When balances change, sync to Account.balance and notify SwiftUI
-    private func setupBalanceCoordinatorObserver() {
-        balanceCoordinator.$balances
-            .sink { [weak self] updatedBalances in
-                guard let self = self else { return }
-
-                // Sync balances from BalanceCoordinator to Account objects
-                self.syncBalancesToAccounts(updatedBalances)
-
-                // Notify SwiftUI
-                self.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-    }
-
-    /// Sync balances from BalanceCoordinator to Account objects
-    /// This ensures UI components reading account.balance get updated values
-    private func syncBalancesToAccounts(_ balances: [String: Double]) {
-        // MIGRATED: Balances are now managed by BalanceCoordinator
-        // No need to sync balances to Account.balance field
-        // UI components read balances directly from BalanceCoordinator
+        #if DEBUG
+        print("✅ [AppCoordinator] Synced TransactionStore to ViewModels")
+        #endif
     }
 }

@@ -8,13 +8,13 @@
 import SwiftUI
 
 struct TimeFilterView: View {
-    @ObservedObject var filterManager: TimeFilterManager
+    @Bindable var filterManager: TimeFilterManager
     @Environment(\.dismiss) var dismiss
     @State private var selectedPreset: TimeFilterPreset
     @State private var customStartDate: Date
     @State private var customEndDate: Date
     @State private var showingCustomPicker = false
-    
+
     init(filterManager: TimeFilterManager) {
         self.filterManager = filterManager
         _selectedPreset = State(initialValue: filterManager.currentFilter.preset)

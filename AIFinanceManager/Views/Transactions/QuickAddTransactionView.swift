@@ -86,6 +86,14 @@ struct QuickAddTransactionView: View {
             // ✅ FIX: Ensure coordinator uses correct filter when it changes
             coordinator.updateCategories()
         }
+        .onChange(of: coordinator.categoriesViewModel.customCategories.count) { _, _ in
+            // ✅ Refresh when categories change (added/deleted)
+            coordinator.refreshData()
+        }
+        .onChange(of: coordinator.transactionsViewModel.allTransactions.count) { _, _ in
+            // ✅ Refresh when transactions change (added/deleted)
+            coordinator.refreshData()
+        }
     }
 
     // Compute hash of all category totals AND order to detect changes

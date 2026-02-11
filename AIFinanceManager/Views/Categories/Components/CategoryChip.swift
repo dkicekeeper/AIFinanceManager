@@ -52,22 +52,24 @@ struct CategoryChip: View {
                     
                     Group {
                         if #available(iOS 26, *) {
-                            Circle()
-                                .foregroundStyle(.clear)
-                                .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                                .overlay(
-                                    Image(systemName: styleData.iconName)
-                                        .font(.title2)
-                                        .foregroundStyle(styleData.iconColor)
-                                )
-                                .overlay(
-                                    Circle()
-                                        .stroke(isSelected ? styleData.coinBorderColor : Color.clear, lineWidth: 3)
-                                )
-                                .glassEffect(.regular
-                                    .tint(isSelected ? styleData.coinColor : styleData.coinColor.opacity(1.0))
-                                    .interactive()
-                                )
+                            ZStack {
+                                Circle()
+                                    .foregroundStyle(.clear)
+                                    .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                                    .glassEffect(.regular
+                                        .tint(isSelected ? styleData.coinColor : styleData.coinColor.opacity(1.0))
+                                    )
+                                    .allowsHitTesting(false)
+
+                                Image(systemName: styleData.iconName)
+                                    .font(.title2)
+                                    .foregroundStyle(styleData.iconColor)
+
+                                Circle()
+                                    .stroke(isSelected ? styleData.coinBorderColor : Color.clear, lineWidth: 3)
+                                    .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                                    .allowsHitTesting(false)
+                            }
                         } else {
                             Circle()
                                 .fill(isSelected ? styleData.coinColor.opacity(0.2) : Color(.systemGray6))

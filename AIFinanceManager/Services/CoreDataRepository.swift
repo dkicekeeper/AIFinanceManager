@@ -466,6 +466,36 @@ final class CoreDataRepository: DataRepositoryProtocol {
         }
     }
 
+    /// Load all persisted account balances from Core Data
+    /// Returns dictionary of [accountId: balance]
+    /// Used by BalanceCoordinator to restore balances on app launch
+    func loadAllAccountBalances() -> [String: Double] {
+        let context = stack.viewContext
+        let request = AccountEntity.fetchRequest()
+
+        do {
+            let entities = try context.fetch(request)
+            var balances: [String: Double] = [:]
+
+            for entity in entities {
+                if let accountId = entity.id {
+                    balances[accountId] = entity.balance
+                }
+            }
+
+            #if DEBUG
+            print("💾 [CoreData] Loaded \(balances.count) persisted balances")
+            #endif
+
+            return balances
+        } catch {
+            #if DEBUG
+            print("❌ [CoreData] Failed to load balances: \(error)")
+            #endif
+            return [:]
+        }
+    }
+
     /// Синхронно сохранить транзакции в Core Data (для импорта CSV)
     /// ОПТИМИЗИРОВАНО: Использует background context для избежания блокировки UI
     func saveTransactionsSync(_ transactions: [Transaction]) throws {
