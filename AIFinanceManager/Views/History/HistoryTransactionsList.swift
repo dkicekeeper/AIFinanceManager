@@ -12,12 +12,13 @@
 import SwiftUI
 
 /// Displays paginated list of transactions with sections and auto-scroll
+/// ✅ MIGRATED 2026-02-12: Updated for @Observable managers
 struct HistoryTransactionsList: View {
 
     // MARK: - Dependencies
 
-    @ObservedObject var paginationManager: TransactionPaginationManager
-    @ObservedObject var expensesCache: DateSectionExpensesCache
+    let paginationManager: TransactionPaginationManager
+    let expensesCache: DateSectionExpensesCache
     let transactionsViewModel: TransactionsViewModel
     let categoriesViewModel: CategoriesViewModel
     let accountsViewModel: AccountsViewModel

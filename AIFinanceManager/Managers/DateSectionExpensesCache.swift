@@ -10,12 +10,14 @@
 
 import Foundation
 import SwiftUI
-import Combine
+import Observation
 
 /// Manages caching of daily expenses for transaction sections
 /// Provides memoization to avoid expensive recalculations during scrolling
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
 @MainActor
-class DateSectionExpensesCache: ObservableObject {
+class DateSectionExpensesCache {
 
     // MARK: - Private Properties
 

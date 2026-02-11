@@ -7,25 +7,27 @@
 
 import Foundation
 import SwiftUI
-import Combine
+import Observation
 
 /// Manages pagination for large transaction lists
 /// Loads transactions incrementally to improve performance
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
 @MainActor
-class TransactionPaginationManager: ObservableObject {
-    // MARK: - Published Properties
+class TransactionPaginationManager {
+    // MARK: - Observable Properties
 
     /// Currently visible date sections with their transactions
-    @Published private(set) var visibleSections: [String] = []
+    private(set) var visibleSections: [String] = []
 
     /// Grouped transactions by date key
-    @Published private(set) var groupedTransactions: [String: [Transaction]] = [:]
+    private(set) var groupedTransactions: [String: [Transaction]] = [:]
 
     /// Whether there are more sections to load
-    @Published private(set) var hasMore = true
+    private(set) var hasMore = true
 
     /// Whether currently loading more data
-    @Published private(set) var isLoadingMore = false
+    private(set) var isLoadingMore = false
 
     // MARK: - Private Properties
 

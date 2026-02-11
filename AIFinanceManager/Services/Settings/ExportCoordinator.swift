@@ -7,14 +7,17 @@
 //
 
 import Foundation
-import Combine
+import Observation
 
 /// Coordinator for data export operations
 /// Handles CSV export with progress tracking and async operations
-final class ExportCoordinator: ExportCoordinatorProtocol, ObservableObject {
-    // MARK: - Published State
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
+@MainActor
+final class ExportCoordinator: ExportCoordinatorProtocol {
+    // MARK: - Observable State
 
-    @Published private(set) var exportProgress: Double = 0
+    private(set) var exportProgress: Double = 0
 
     // MARK: - Dependencies (weak to prevent retain cycles)
 
@@ -145,7 +148,7 @@ final class ExportCoordinator: ExportCoordinatorProtocol, ObservableObject {
 
     // MARK: - Private Helpers
 
-    @MainActor
+    /// Update export progress (already on MainActor via class isolation)
     private func updateProgress(_ value: Double) {
         exportProgress = value
     }

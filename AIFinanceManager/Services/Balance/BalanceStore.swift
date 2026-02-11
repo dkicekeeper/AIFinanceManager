@@ -10,7 +10,7 @@
 //
 
 import Foundation
-import Combine
+import Observation
 
 // MARK: - Account Balance Model
 
@@ -105,14 +105,17 @@ struct BalanceStoreUpdate: Equatable, Identifiable {
 
 /// Thread-safe store for account balances
 /// SINGLE SOURCE OF TRUTH - all balance data flows through this store
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
 @MainActor
-final class BalanceStore: ObservableObject {
+final class BalanceStore {
 
-    // MARK: - Published State
+    // MARK: - Observable State
 
     /// Current balances for all accounts
     /// UI components observe this for real-time updates
-    @Published private(set) var balances: [String: Double] = [:]
+    /// ✅ No @Published needed - @Observable provides automatic tracking
+    private(set) var balances: [String: Double] = [:]
 
     // MARK: - Private State
 

@@ -9,7 +9,8 @@ import SwiftUI
 import UIKit
 
 struct VoiceInputView: View {
-    @ObservedObject var voiceService: VoiceInputService
+    /// ✅ MIGRATED 2026-02-12: Changed from @ObservedObject to let for @Observable
+    let voiceService: VoiceInputService
     @Environment(\.dismiss) var dismiss
     let onComplete: (String) -> Void
     let parser: VoiceInputParser
@@ -21,15 +22,18 @@ struct VoiceInputView: View {
     @State private var errorAlertMessage = ""
     
     var body: some View {
+        /// ✅ MIGRATED 2026-02-12: Use @Bindable for two-way bindings with @Observable
+        @Bindable var bindableService = voiceService
+
         NavigationStack {
             VStack(spacing: 0) {
                 Spacer()
-                
+
                 // Live транскрипция с подсветкой сущностей (по центру)
                 ScrollView {
                     VStack {
                         Spacer()
-                        
+
                         if voiceService.transcribedText.isEmpty {
                             Text(String(localized: "voice.speak"))
                                 .font(AppTypography.h4)
@@ -45,7 +49,7 @@ struct VoiceInputView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, AppSpacing.lg)
                         }
-                        
+
                         Spacer()
                     }
                     .frame(maxWidth: .infinity)
@@ -55,7 +59,7 @@ struct VoiceInputView: View {
                 // VAD Toggle (показываем только когда НЕ записываем)
                 if !voiceService.isRecording {
                     VStack(spacing: AppSpacing.sm) {
-                        Toggle(String(localized: "voice.vadToggle"), isOn: $voiceService.isVADEnabled)
+                        Toggle(String(localized: "voice.vadToggle"), isOn: $bindableService.isVADEnabled)
                             .font(AppTypography.caption)
                             .padding(.horizontal, AppSpacing.lg)
 

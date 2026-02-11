@@ -9,7 +9,7 @@ import Foundation
 import Speech
 import AVFoundation
 import AVFAudio
-import Combine
+import Observation
 
 enum VoiceInputError: LocalizedError {
     case speechRecognitionNotAvailable
@@ -34,11 +34,13 @@ enum VoiceInputError: LocalizedError {
     }
 }
 
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
 @MainActor
-class VoiceInputService: NSObject, ObservableObject {
-    @Published var isRecording = false
-    @Published var transcribedText = ""
-    @Published var errorMessage: String?
+class VoiceInputService: NSObject {
+    var isRecording = false
+    var transcribedText = ""
+    var errorMessage: String?
 
     private var audioEngine: AVAudioEngine?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -53,7 +55,7 @@ class VoiceInputService: NSObject, ObservableObject {
     private var silenceDetector: SilenceDetector?
 
     /// VAD enabled flag (can be toggled by user)
-    @Published var isVADEnabled: Bool = VoiceInputConstants.vadEnabled
+    var isVADEnabled: Bool = VoiceInputConstants.vadEnabled
 
     // MARK: - Dynamic Context (iOS 17+)
 

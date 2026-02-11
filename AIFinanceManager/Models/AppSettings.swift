@@ -8,15 +8,18 @@
 
 import Foundation
 import SwiftUI
-import Combine
+import Observation
 
 /// Application settings model
 /// Enhanced with validation, defaults, and factory methods
-class AppSettings: ObservableObject, Codable {
-    // MARK: - Published Properties
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
+@MainActor
+class AppSettings: Codable {
+    // MARK: - Observable Properties
 
-    @Published var baseCurrency: String
-    @Published var wallpaperImageName: String?
+    var baseCurrency: String
+    var wallpaperImageName: String?
 
     // MARK: - Constants
 

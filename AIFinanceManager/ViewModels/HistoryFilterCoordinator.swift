@@ -11,29 +11,31 @@
 
 import Foundation
 import SwiftUI
-import Combine
+import Observation
 
 /// Coordinates filter state and debouncing for HistoryView
 /// Handles search text, account filter, and debouncing logic
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
 @MainActor
-class HistoryFilterCoordinator: ObservableObject {
+class HistoryFilterCoordinator {
 
-    // MARK: - Published Properties
+    // MARK: - Observable Properties
 
     /// Currently selected account filter (nil = all accounts)
-    @Published var selectedAccountFilter: String?
+    var selectedAccountFilter: String?
 
     /// Current search text (user input)
-    @Published var searchText: String = ""
+    var searchText: String = ""
 
     /// Debounced search text (used for actual filtering)
-    @Published var debouncedSearchText: String = ""
+    var debouncedSearchText: String = ""
 
     /// Whether search is currently active
-    @Published var isSearchActive: Bool = false
+    var isSearchActive: Bool = false
 
     /// Whether category filter sheet is shown
-    @Published var showingCategoryFilter: Bool = false
+    var showingCategoryFilter: Bool = false
 
     // MARK: - Private Properties
 

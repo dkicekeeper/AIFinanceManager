@@ -7,22 +7,24 @@
 //
 
 import Foundation
-import Combine
+import Observation
 
 /// Observable progress tracker for CSV import operations
 /// Supports cancellation and real-time progress updates
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
 @MainActor
-class ImportProgress: ObservableObject {
-    // MARK: - Published Properties
+class ImportProgress {
+    // MARK: - Observable Properties
 
     /// Current row being processed (0-based)
-    @Published var currentRow: Int = 0
+    var currentRow: Int = 0
 
     /// Total number of rows to process
-    @Published var totalRows: Int = 0
+    var totalRows: Int = 0
 
     /// Flag indicating if import was cancelled by user
-    @Published var isCancelled: Bool = false
+    var isCancelled: Bool = false
 
     // MARK: - Computed Properties
 

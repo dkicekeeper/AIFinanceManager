@@ -8,21 +8,23 @@
 
 import Foundation
 import SwiftUI
-import Combine
+import Observation
 
 /// Coordinator for CSV import flow state management
 /// Manages multi-step import process: file selection → preview → mapping → import → results
+/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
+@Observable
 @MainActor
-final class ImportFlowCoordinator: ObservableObject {
-    // MARK: - Published State
+final class ImportFlowCoordinator {
+    // MARK: - Observable State
 
-    @Published var currentStep: ImportStep = .idle
-    @Published var csvFile: CSVFile?
-    @Published var columnMapping: CSVColumnMapping?
-    @Published var entityMapping: EntityMapping = EntityMapping()
-    @Published var importProgress: ImportProgress?
-    @Published var importResult: ImportStatistics?
-    @Published var errorMessage: String?
+    var currentStep: ImportStep = .idle
+    var csvFile: CSVFile?
+    var columnMapping: CSVColumnMapping?
+    var entityMapping: EntityMapping = EntityMapping()
+    var importProgress: ImportProgress?
+    var importResult: ImportStatistics?
+    var errorMessage: String?
 
     // MARK: - Import Steps
 

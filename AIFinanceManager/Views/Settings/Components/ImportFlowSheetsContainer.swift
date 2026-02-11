@@ -10,10 +10,11 @@ import SwiftUI
 
 /// Props-based container for Import Flow sheets
 /// Single Responsibility: Manage all import flow sheet presentations based on coordinator state
+/// ✅ MIGRATED 2026-02-12: Updated for @Observable ImportFlowCoordinator
 struct ImportFlowSheetsContainer<Content: View>: View {
     // MARK: - Props
 
-    @ObservedObject var flowCoordinator: ImportFlowCoordinator
+    let flowCoordinator: ImportFlowCoordinator
     let onCancel: () -> Void
     let content: Content
 
@@ -24,7 +25,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
         onCancel: @escaping () -> Void,
         @ViewBuilder content: () -> Content
     ) {
-        self._flowCoordinator = ObservedObject(wrappedValue: flowCoordinator)
+        self.flowCoordinator = flowCoordinator
         self.onCancel = onCancel
         self.content = content()
     }

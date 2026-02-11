@@ -88,7 +88,7 @@ struct CategoryChip: View {
                 }
             }
         }
-        
+        .buttonStyle(.plain) 
         .accessibilityLabel("\(category) category")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .accessibilityHint(budgetProgress != nil ? "Budget: \(Int(budgetProgress!.percentage))% spent" : "")
