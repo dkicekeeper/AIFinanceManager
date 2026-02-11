@@ -33,8 +33,9 @@ final class CategoryStyleCache {
     /// Cache key: "categoryName_transactionType"
     private var cache: [String: CategoryStyleData] = [:]
 
-    /// Categories snapshot for invalidation detection
-    private var cachedCategoriesHash: Int = 0
+    /// ✅ OPTIMIZATION: Categories snapshot using Set for stable comparison
+    /// Avoids false invalidations from array order changes
+    private var cachedCategoriesSnapshot: Set<String> = []
 
     // MARK: - Public Methods
 
@@ -49,14 +50,19 @@ final class CategoryStyleCache {
         type: TransactionType,
         customCategories: [CustomCategory]
     ) -> CategoryStyleData {
-        // Check if categories changed (invalidate cache)
-        let categoriesHash = customCategories.map { $0.id }.hashValue
-        if categoriesHash != cachedCategoriesHash {
+        // ✅ OPTIMIZATION: Check if categories actually changed using Set comparison
+        // This avoids false invalidations from array reordering
+        let currentSnapshot = Set(customCategories.map { $0.id })
+        if currentSnapshot != cachedCategoriesSnapshot {
             #if DEBUG
+            let added = currentSnapshot.subtracting(cachedCategoriesSnapshot)
+            let removed = cachedCategoriesSnapshot.subtracting(currentSnapshot)
             print("🔄 [CategoryStyleCache] Categories changed - invalidating cache")
+            print("   Added: \(added.count) categories")
+            print("   Removed: \(removed.count) categories")
             #endif
             cache.removeAll()
-            cachedCategoriesHash = categoriesHash
+            cachedCategoriesSnapshot = currentSnapshot
         }
 
         // Generate cache key
@@ -88,7 +94,7 @@ final class CategoryStyleCache {
     func invalidateCache() {
         let count = cache.count
         cache.removeAll()
-        cachedCategoriesHash = 0
+        cachedCategoriesSnapshot.removeAll()
 
         #if DEBUG
         print("🧹 [CategoryStyleCache] Cache invalidated - removed \(count) entries")

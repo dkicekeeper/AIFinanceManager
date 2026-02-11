@@ -32,6 +32,12 @@ final class QuickAddCoordinator {
     var selectedType: TransactionType = .expense
     var showingAddCategory = false
 
+    // MARK: - Performance Optimization State
+
+    /// ✅ OPTIMIZATION: Batch mode for CSV imports and bulk operations
+    /// When true, skips intermediate UI updates to prevent UI blocking
+    var isBatchMode = false
+
     // MARK: - Private State
 
     private var cancellables = Set<AnyCancellable>()
@@ -53,16 +59,8 @@ final class QuickAddCoordinator {
         self.timeFilterManager = timeFilterManager
         self.categoryMapper = categoryMapper ?? CategoryDisplayDataMapper()
 
-        setupBindings()
-        updateCategories()
-    }
-
-    // MARK: - Setup
-
-    private func setupBindings() {
-        // With @Observable, we call updateCategories() explicitly when data changes
-        // The view that uses QuickAddCoordinator should call refreshData() when needed
-        // Initial update
+        // ✅ OPTIMIZATION: Single update call instead of double (setupBindings + explicit call)
+        // With @Observable, no Combine subscriptions needed
         updateCategories()
     }
 
@@ -76,6 +74,14 @@ final class QuickAddCoordinator {
 
     /// Update categories with current data
     func updateCategories() {
+        // ✅ OPTIMIZATION: Skip updates in batch mode to prevent UI blocking during imports
+        guard !isBatchMode else {
+            #if DEBUG
+            print("⏭️ [QuickAddCoordinator] Skipping update - batch mode active")
+            #endif
+            return
+        }
+
         PerformanceProfiler.start("QuickAddCoordinator.updateCategories")
 
         #if DEBUG
@@ -151,9 +157,8 @@ final class QuickAddCoordinator {
 
         timeFilterManager = manager
 
-        // Re-setup bindings with new manager
+        // ✅ OPTIMIZATION: Single update call - no setupBindings() needed with @Observable
         cancellables.removeAll()
-        setupBindings()
         updateCategories()
     }
 

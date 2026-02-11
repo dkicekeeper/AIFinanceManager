@@ -29,6 +29,14 @@ struct QuickAddTransactionView: View {
 
     @Environment(TimeFilterManager.self) private var timeFilterManager
 
+    // MARK: - Performance Optimization State
+
+    /// ✅ OPTIMIZATION: Debounce task to prevent rapid consecutive updates
+    @State private var debounceTask: Task<Void, Never>?
+
+    /// ✅ OPTIMIZATION: Track last refresh trigger value to skip redundant updates
+    @State private var lastRefreshTrigger: Int = 0
+
     // MARK: - Initialization
 
     init(
@@ -58,7 +66,7 @@ struct QuickAddTransactionView: View {
             },
             emptyStateAction: coordinator.handleAddCategory
         )
-        .id(categoriesHash)  // ✅ Force SwiftUI to redraw when categories change
+        // ✅ OPTIMIZATION: Removed .id(categoriesHash) - @Observable automatically tracks changes
         // ✅ PERFORMANCE FIX: Use .sheet(item:) instead of custom Binding
         // This is much faster - SwiftUI optimizes item-based sheets
         .sheet(item: Binding(
@@ -82,27 +90,57 @@ struct QuickAddTransactionView: View {
             // ✅ FIX: Update coordinator's timeFilterManager to use @EnvironmentObject
             coordinator.setTimeFilterManager(timeFilterManager)
         }
-        .onChange(of: timeFilterManager.currentFilter) { _, _ in
-            // ✅ FIX: Ensure coordinator uses correct filter when it changes
-            coordinator.updateCategories()
-        }
-        .onChange(of: coordinator.categoriesViewModel.customCategories.count) { _, _ in
-            // ✅ Refresh when categories change (added/deleted)
-            coordinator.refreshData()
-        }
-        .onChange(of: coordinator.transactionsViewModel.allTransactions.count) { _, _ in
-            // ✅ Refresh when transactions change (added/deleted)
-            coordinator.refreshData()
+        // ✅ OPTIMIZATION: Single debounced trigger instead of three separate onChange handlers
+        // This prevents cascading updates during CSV imports and data loading
+        .onChange(of: refreshTrigger) { old, new in
+            // ✅ OPTIMIZATION: Skip if value didn't actually change (deduplication)
+            guard old != new else {
+                #if DEBUG
+                print("⏭️ [QuickAddView] Skipping update - trigger value unchanged")
+                #endif
+                return
+            }
+
+            // ✅ OPTIMIZATION: Skip if same as last processed value
+            guard new != lastRefreshTrigger else {
+                #if DEBUG
+                print("⏭️ [QuickAddView] Skipping update - already processed this trigger")
+                #endif
+                return
+            }
+
+            // Cancel previous debounce task
+            debounceTask?.cancel()
+
+            // Create new debounced task
+            debounceTask = Task {
+                // Wait 150ms to batch multiple rapid changes
+                try? await Task.sleep(for: .milliseconds(150))
+
+                // Check if task was cancelled
+                guard !Task.isCancelled else { return }
+
+                // Perform update on main actor
+                await MainActor.run {
+                    lastRefreshTrigger = new
+                    coordinator.refreshData()
+
+                    #if DEBUG
+                    print("✅ [QuickAddView] Executed debounced refresh (trigger: \(new))")
+                    #endif
+                }
+            }
         }
     }
 
-    // Compute hash of all category totals AND order to detect changes
-    private var categoriesHash: Int {
-        coordinator.categories.enumerated().reduce(0) { hash, element in
-            let (index, category) = element
-            // Include index to detect reordering, name for identity, and total for value changes
-            return hash ^ index.hashValue ^ category.name.hashValue ^ category.total.hashValue
-        }
+    // MARK: - Computed Properties
+
+    /// ✅ OPTIMIZATION: Combined refresh trigger that watches all data sources
+    /// Prevents multiple .onChange handlers and enables debouncing
+    private var refreshTrigger: Int {
+        timeFilterManager.currentFilter.hashValue
+            ^ coordinator.categoriesViewModel.customCategories.count
+            ^ coordinator.transactionsViewModel.allTransactions.count
     }
 
     // MARK: - Sheets

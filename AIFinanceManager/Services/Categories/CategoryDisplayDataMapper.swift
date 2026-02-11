@@ -12,6 +12,38 @@ import SwiftUI
 @MainActor
 final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
 
+    // MARK: - Memoization Cache
+
+    /// ✅ OPTIMIZATION: Cache key for memoization
+    private struct CacheKey: Hashable {
+        let categoriesHash: Int
+        let expensesHash: Int
+        let type: TransactionType
+        let baseCurrency: String
+
+        init(customCategories: [CustomCategory], categoryExpenses: [String: CategoryExpense], type: TransactionType, baseCurrency: String) {
+            // Create stable hash from categories (ID + order)
+            self.categoriesHash = customCategories
+                .map { "\($0.id)_\($0.order ?? 0)" }
+                .sorted()
+                .joined()
+                .hashValue
+
+            // Create stable hash from expenses (category:total pairs, sorted)
+            self.expensesHash = categoryExpenses
+                .map { "\($0.key):\(String(format: "%.2f", $0.value.total))" }
+                .sorted()
+                .joined()
+                .hashValue
+
+            self.type = type
+            self.baseCurrency = baseCurrency
+        }
+    }
+
+    /// ✅ OPTIMIZATION: Cached result to avoid redundant mapping
+    private var cache: (key: CacheKey, result: [CategoryDisplayData])?
+
     // MARK: - Public Methods
 
     func mapCategories(
@@ -20,6 +52,22 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         type: TransactionType,
         baseCurrency: String
     ) -> [CategoryDisplayData] {
+        // ✅ OPTIMIZATION: Check cache first
+        let cacheKey = CacheKey(
+            customCategories: customCategories,
+            categoryExpenses: categoryExpenses,
+            type: type,
+            baseCurrency: baseCurrency
+        )
+
+        if let cached = cache, cached.key == cacheKey {
+            #if DEBUG
+            print("🎯 [CategoryDisplayDataMapper] Cache HIT - skipping mapping")
+            print("   Returning \(cached.result.count) cached categories")
+            #endif
+            return cached.result
+        }
+
         #if DEBUG
         print("🗺️ [CategoryDisplayDataMapper] mapCategories() called")
         print("   Input: \(categoryExpenses.count) expense entries")
@@ -92,6 +140,9 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             print("   Example output: \(firstResult.name) = \(String(format: "%.2f", firstResult.total))")
         }
         #endif
+
+        // ✅ OPTIMIZATION: Cache the result
+        cache = (cacheKey, result)
 
         return result
     }

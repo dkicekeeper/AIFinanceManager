@@ -112,7 +112,7 @@ enum TimeFilterPreset: String, CaseIterable, Codable {
     }
 }
 
-struct TimeFilter: Codable, Equatable {
+struct TimeFilter: Codable, Equatable, Hashable {
     var preset: TimeFilterPreset
     var startDate: Date
     var endDate: Date

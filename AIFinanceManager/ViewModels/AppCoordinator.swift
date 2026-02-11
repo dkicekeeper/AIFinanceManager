@@ -235,9 +235,10 @@ class AppCoordinator {
     /// Setup manual syncing from TransactionStore to ViewModels
     /// With @Observable, we don't have Combine publishers, so we sync on-demand
     /// This method should be called after TransactionStore updates
-    func syncTransactionStoreToViewModels() {
+    /// - Parameter batchMode: When true, skips intermediate UI updates (for CSV imports, bulk operations)
+    func syncTransactionStoreToViewModels(batchMode: Bool = false) {
         #if DEBUG
-        print("🔄 [AppCoordinator] Syncing TransactionStore to ViewModels")
+        print("🔄 [AppCoordinator] Syncing TransactionStore to ViewModels\(batchMode ? " (BATCH MODE)" : "")")
         print("   Transactions: \(transactionStore.transactions.count)")
         print("   Accounts: \(transactionStore.accounts.count)")
         print("   Categories: \(transactionStore.categories.count)")

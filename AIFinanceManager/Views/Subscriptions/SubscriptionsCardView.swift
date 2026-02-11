@@ -23,17 +23,15 @@ struct SubscriptionsCardView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.lg) {
-            HStack {
+        HStack(alignment: .top, spacing: AppSpacing.md) {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 Text(String(localized: "subscriptions.title", defaultValue: "Подписки"))
                     .font(AppTypography.h3)
                     .foregroundStyle(.primary)
-            }
-            
-            if subscriptions.isEmpty {
-                EmptyStateView(title: String(localized: "emptyState.noActiveSubscriptions", defaultValue: "Нет активных подписок"), style: .compact)
-            } else {
-                HStack(alignment: .top) {
+
+                if subscriptions.isEmpty {
+                    EmptyStateView(title: String(localized: "emptyState.noActiveSubscriptions", defaultValue: "Нет активных подписок"), style: .compact)
+                } else {
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {
                         if isLoadingTotal {
                             ProgressView()
@@ -52,18 +50,15 @@ struct SubscriptionsCardView: View {
                             .font(AppTypography.bodySecondary)
                             .foregroundStyle(AppColors.textPrimary)
                     }
-
-                    Spacer()
-
-                    // Статичные логотипы подписок
-                    if !subscriptions.isEmpty {
-                        StaticSubscriptionIconsView(subscriptions: subscriptions)
-                            .frame(width: AppSize.subscriptionCardWidth, height: AppSize.subscriptionCardHeight)
-                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !subscriptions.isEmpty {
+                StaticSubscriptionIconsView(subscriptions: subscriptions)
+                    .frame(width: AppSize.subscriptionCardWidth, alignment: .top)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .glassCardStyle(radius: AppRadius.pill)
         .task {
             await refreshTotal()
@@ -87,7 +82,6 @@ struct SubscriptionsCardView: View {
         totalAmount = result.total
         isLoadingTotal = false
     }
-
 }
 
 #Preview {
