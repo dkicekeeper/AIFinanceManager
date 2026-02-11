@@ -13,17 +13,17 @@ import PhotosUI
 /// Main Settings screen with modular component-based architecture
 /// Follows Single Responsibility Principle with Props pattern
 struct SettingsView: View {
-    // MARK: - Dependencies
+    // MARK: - Dependencies (Observable - no wrappers needed!)
 
-    @ObservedObject var settingsViewModel: SettingsViewModel
+    let settingsViewModel: SettingsViewModel
 
     // Legacy ViewModels (navigation only)
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    let transactionsViewModel: TransactionsViewModel
+    let accountsViewModel: AccountsViewModel
+    let categoriesViewModel: CategoriesViewModel
     // ✨ Phase 9: Use TransactionStore instead of SubscriptionsViewModel
-    @ObservedObject var transactionStore: TransactionStore
-    @ObservedObject var depositsViewModel: DepositsViewModel
+    let transactionStore: TransactionStore
+    let depositsViewModel: DepositsViewModel
 
     // MARK: - State
 
@@ -225,7 +225,7 @@ struct SettingsView: View {
 
 #Preview {
     let coordinator = AppCoordinator()
-    NavigationView {
+    NavigationStack {
         SettingsView(
             settingsViewModel: coordinator.settingsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,

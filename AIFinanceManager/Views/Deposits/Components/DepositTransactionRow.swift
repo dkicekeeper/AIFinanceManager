@@ -42,7 +42,7 @@ struct DepositTransactionRow: View {
         )
         .padding(AppSpacing.sm)
         .background(isPlanned ? Color.blue.opacity(0.1) : AppColors.secondaryBackground)
-        .cornerRadius(AppRadius.sm)
+        .clipShape(.rect(cornerRadius: AppRadius.sm))
     }
 }
 

@@ -23,7 +23,7 @@ struct TimeFilterView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section(header: Text(String(localized: "timeFilter.presets", defaultValue: "Пресеты"))) {
                     ForEach(TimeFilterPreset.allCases.filter { $0 != .custom }, id: \.self) { preset in
@@ -36,11 +36,11 @@ struct TimeFilterView: View {
                         }) {
                             HStack {
                                 Text(preset.localizedName)
-                                    .foregroundColor(AppColors.textPrimary)
+                                    .foregroundStyle(AppColors.textPrimary)
                                 Spacer()
                                 if selectedPreset == preset {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(AppColors.accent)
+                                        .foregroundStyle(AppColors.accent)
                                 }
                             }
                         }
@@ -54,11 +54,11 @@ struct TimeFilterView: View {
                     }) {
                         HStack {
                             Text(String(localized: "timeFilter.customPeriod", defaultValue: "Пользовательский период"))
-                                .foregroundColor(AppColors.textPrimary)
+                                .foregroundStyle(AppColors.textPrimary)
                             Spacer()
                             if selectedPreset == .custom {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(AppColors.accent)
+                                    .foregroundStyle(AppColors.accent)
                             }
                         }
                     }
@@ -80,8 +80,8 @@ struct TimeFilterView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(AppSpacing.md)
                                 .background(customEndDate >= customStartDate ? AppColors.accent : AppColors.secondaryBackground)
-                                .foregroundColor(.white)
-                                .cornerRadius(AppRadius.button)
+                                .foregroundStyle(.white)
+                                .clipShape(.rect(cornerRadius: AppRadius.button))
                         }
                         .disabled(customEndDate < customStartDate)
                     }
@@ -103,7 +103,7 @@ struct TimeFilterView: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         TimeFilterView(filterManager: TimeFilterManager())
     }
 }

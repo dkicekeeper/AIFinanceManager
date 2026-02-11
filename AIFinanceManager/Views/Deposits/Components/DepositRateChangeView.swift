@@ -18,7 +18,7 @@ struct DepositRateChangeView: View {
     @FocusState private var isRateFocused: Bool
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text(String(localized: "deposit.newRate"))) {
                     HStack {
@@ -26,7 +26,7 @@ struct DepositRateChangeView: View {
                             .keyboardType(.decimalPad)
                             .focused($isRateFocused)
                         Text(String(localized: "deposit.rateAnnual"))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 

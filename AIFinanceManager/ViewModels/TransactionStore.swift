@@ -12,6 +12,7 @@
 
 import Foundation
 import Combine
+import Observation
 
 /// Errors that can occur during transaction operations
 enum TransactionStoreError: LocalizedError {
@@ -64,37 +65,39 @@ enum TransactionStoreError: LocalizedError {
 
 /// Single Source of Truth for all transaction data
 /// All transaction operations (add/update/delete/transfer) go through this store
+/// Modernized with @Observable macro for better performance and less boilerplate
+@Observable
 @MainActor
-final class TransactionStore: ObservableObject {
-    // MARK: - Published State (Single Source of Truth)
+final class TransactionStore {
+    // MARK: - Observable State (Single Source of Truth)
 
     /// All transactions - THE ONLY source of transaction data
-    @Published private(set) var transactions: [Transaction] = []
+    private(set) var transactions: [Transaction] = []
 
     /// All accounts - managed alongside transactions for balance updates
-    @Published private(set) var accounts: [Account] = []
+    private(set) var accounts: [Account] = []
 
     /// All categories - needed for validation
-    @Published private(set) var categories: [CustomCategory] = []
+    private(set) var categories: [CustomCategory] = []
 
     // MARK: - Subcategory Data (Phase 10: CSV Import Fix - Single Source of Truth)
 
     /// All subcategories - managed alongside categories
-    @Published private(set) var subcategories: [Subcategory] = []
+    private(set) var subcategories: [Subcategory] = []
 
     /// Links between categories and subcategories
-    @Published private(set) var categorySubcategoryLinks: [CategorySubcategoryLink] = []
+    private(set) var categorySubcategoryLinks: [CategorySubcategoryLink] = []
 
     /// Links between transactions and subcategories
-    @Published private(set) var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
+    private(set) var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
 
     // MARK: - Recurring Data (Phase 9: Aggressive Integration) ✨
 
     /// All recurring series - subscriptions and generic recurring transactions
-    @Published private(set) var recurringSeries: [RecurringSeries] = []
+    private(set) var recurringSeries: [RecurringSeries] = []
 
     /// All recurring occurrences - tracks which transactions were generated from which series
-    @Published private(set) var recurringOccurrences: [RecurringOccurrence] = []
+    private(set) var recurringOccurrences: [RecurringOccurrence] = []
 
     // MARK: - Dependencies
 
@@ -807,8 +810,7 @@ final class TransactionStore: ObservableObject {
             try await persist()
         }
 
-        // 5. Notify observers (via @Published)
-        objectWillChange.send()
+        // 5. Notify observers automatically via @Observable - no need for manual objectWillChange.send()
     }
 
     /// Update state based on event

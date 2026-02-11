@@ -9,9 +9,9 @@ import SwiftUI
 
 struct SubscriptionsListView: View {
     // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
-    @ObservedObject var transactionStore: TransactionStore
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    let transactionStore: TransactionStore
+    let transactionsViewModel: TransactionsViewModel
+    @Environment(TimeFilterManager.self) private var timeFilterManager
     @State private var showingEditView = false
     @State private var editingSubscription: RecurringSeries?
 
@@ -106,7 +106,7 @@ struct SubscriptionsListView: View {
                     transactionsViewModel: transactionsViewModel,
                     subscription: subscription
                 )
-                    .environmentObject(timeFilterManager)) {
+                    .environment(timeFilterManager)) {
                     SubscriptionCard(
                         subscription: subscription,
                         nextChargeDate: nextChargeDate
@@ -122,12 +122,12 @@ struct SubscriptionsListView: View {
 
 #Preview("Subscriptions List - Empty") {
     let coordinator = AppCoordinator()
-    return NavigationView {
+    return NavigationStack {
         SubscriptionsListView(
             transactionStore: coordinator.transactionStore,
             transactionsViewModel: coordinator.transactionsViewModel
         )
-        .environmentObject(TimeFilterManager())
+        .environment(TimeFilterManager())
     }
 }
 
@@ -185,12 +185,12 @@ struct SubscriptionsListView: View {
     // Note: In real preview, subscriptions would be loaded from repository
     // For now, preview shows empty state or you can add test data via repository
 
-    NavigationView {
+    NavigationStack {
         SubscriptionsListView(
             transactionStore: transactionStore,
             transactionsViewModel: transactionsViewModel
         )
-        .environmentObject(TimeFilterManager())
+        .environment(TimeFilterManager())
     }
 }
 

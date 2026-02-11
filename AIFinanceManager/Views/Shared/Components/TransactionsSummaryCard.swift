@@ -60,7 +60,7 @@ struct TransactionsSummaryCard: View {
                 .scaleEffect(1.2)
             Text(String(localized: "progress.loadingData"))
                 .font(AppTypography.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .frame(height: AppSize.analyticsCardHeight)

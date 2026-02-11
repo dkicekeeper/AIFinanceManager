@@ -12,7 +12,7 @@ struct AccountRow: View {
     let currency: String
     let onEdit: () -> Void
     let onDelete: () -> Void
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
+    let balanceCoordinator: BalanceCoordinator
     /// Pre-computed interest accrued to today (from parent via DepositInterestService)
     var interestToday: Double? = nil
     /// Pre-computed next interest posting date (from parent via DepositInterestService)
@@ -42,7 +42,7 @@ struct AccountRow: View {
                         HStack(spacing: 0) {
                             Text(String(localized: "account.interestToday").replacingOccurrences(of: "%@", with: ""))
                                 .font(AppTypography.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
 
                             FormattedAmountText(
                                 amount: interest,
@@ -57,7 +57,7 @@ struct AccountRow: View {
                         let dateString = DateFormatters.displayDateFormatter.string(from: posting)
                         Text(String(format: String(localized: "account.nextPosting"), dateString))
                             .font(AppTypography.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 
@@ -65,7 +65,7 @@ struct AccountRow: View {
                 
                 if account.isDeposit {
                     Image(systemName: "banknote")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .font(.system(size: AppIconSize.sm))
                 }
             }

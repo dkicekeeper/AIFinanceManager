@@ -17,7 +17,7 @@ struct DateSectionHeader: View {
             Text(dateKey)
                 .font(AppTypography.bodySmall)
                 .fontWeight(.semibold)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Spacer()
 

@@ -12,13 +12,13 @@ import SwiftUI
 /// Single responsibility: Voice input orchestration
 struct VoiceInputCoordinator: View {
     // MARK: - Dependencies
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
+    let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
+    let accountsViewModel: AccountsViewModel
 
     // MARK: - State
     @State private var showingVoiceInput = false
-    @StateObject private var voiceService = VoiceInputService()
+    @State private var voiceService = VoiceInputService()
     @State private var parsedOperation: ParsedOperation? = nil
 
     // MARK: - Body

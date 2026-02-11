@@ -310,7 +310,7 @@ extension View {
         self
             .padding(padding)
             .background(AppColors.cardBackground)
-            .cornerRadius(radius)
+            .clipShape(.rect(cornerRadius: radius))
     }
 
     /// Применяет стандартный стиль для list row
@@ -325,29 +325,48 @@ extension View {
     func chipStyle(isSelected: Bool = false) -> some View {
         self
             .font(AppTypography.bodySmall.weight(.medium))
-            .foregroundColor(AppColors.textPrimary)
+            .foregroundStyle(AppColors.textPrimary)
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.sm)
             .background(isSelected ? AppColors.accent.opacity(0.2) : AppColors.secondaryBackground)
-            .cornerRadius(AppRadius.pill)
+            .clipShape(.rect(cornerRadius: AppRadius.pill))
     }
 
     /// Применяет стандартный стиль для фильтров с glass effect (FilterChip, AccountFilterMenu, CategoryFilterButton)
-    /// Использует iOS 18+ glass morphism API для современного вида
+    /// Использует iOS 26+ glass morphism API для современного вида с fallback для iOS 25 и ранее
     /// - Parameter isSelected: Если true, применяет выделенный стиль (accent tint + glass effect)
     func filterChipStyle(isSelected: Bool = false) -> some View {
-        self
-            .font(AppTypography.bodySmall)
-            .fontWeight(.medium)
-            .foregroundColor(AppColors.textPrimary)
-            .padding(.horizontal, AppSpacing.lg)
-            .padding(.vertical, AppSpacing.sm)
-            .glassEffect(
-                isSelected
-                ? .regular.tint(AppColors.accent.opacity(0.2))
-                    : .regular
+        if #available(iOS 26, *) {
+            return AnyView(
+                self
+                    .font(AppTypography.bodySmall)
+                    .fontWeight(.medium)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .padding(.horizontal, AppSpacing.lg)
+                    .padding(.vertical, AppSpacing.sm)
+                    .clipShape(.rect(cornerRadius: AppRadius.pill))
+                    .glassEffect(
+                        isSelected
+                        ? .regular.tint(AppColors.accent.opacity(0.2)).interactive()
+                        : .regular.interactive()
+                    )
             )
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.pill))
+        } else {
+            return AnyView(
+                self
+                    .font(AppTypography.bodySmall)
+                    .fontWeight(.medium)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .padding(.horizontal, AppSpacing.lg)
+                    .padding(.vertical, AppSpacing.sm)
+                    .background(
+                        isSelected
+                        ? AppColors.accent.opacity(0.2)
+                        : AppColors.secondaryBackground,
+                        in: RoundedRectangle(cornerRadius: AppRadius.pill)
+                    )
+            )
+        }
     }
 
     /// Применяет тень
@@ -355,14 +374,28 @@ extension View {
         self.shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
     }
     
-    /// Применяет glass effect с стандартным cornerRadius для карточек
-    /// Автоматически добавляет padding и contentShape
+    /// Применяет glass effect с стандартным cornerRadius для карточек (iOS 26+)
+    /// Автоматически добавляет padding и contentShape с fallback для iOS 25 и ранее
     /// - Parameter radius: Corner radius (по умолчанию .pill)
     func glassCardStyle(radius: CGFloat = AppRadius.pill) -> some View {
-        self
-            .padding(AppSpacing.lg)
-            .contentShape(Rectangle())
-            .glassEffect(in: .rect(cornerRadius: radius))
+        if #available(iOS 26, *) {
+            return AnyView(
+                self
+                    .padding(AppSpacing.lg)
+                    .contentShape(Rectangle())
+                    .clipShape(.rect(cornerRadius: radius))
+                    .glassEffect(.regular, in: .rect(cornerRadius: radius))
+            )
+        } else {
+            return AnyView(
+                self
+                    .padding(AppSpacing.lg)
+                    .background(
+                        .ultraThinMaterial,
+                        in: RoundedRectangle(cornerRadius: radius)
+                    )
+            )
+        }
     }
     
     /// Применяет стиль для fallback иконок (используется в BrandLogoView, SubscriptionCard)
@@ -370,7 +403,7 @@ extension View {
     func fallbackIconStyle(size: CGFloat) -> some View {
         self
             .font(.system(size: size * 0.6))
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
             .frame(width: size, height: size)
             .background(Color(.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: size * 0.2))

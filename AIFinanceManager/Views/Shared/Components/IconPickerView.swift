@@ -23,14 +23,14 @@ struct IconPickerView: View {
     ]
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppSpacing.xxl) {
                     ForEach(iconCategories, id: \.0) { category in
                         VStack(alignment: .leading, spacing: AppSpacing.lg) {
                             Text(category.0)
                                 .font(AppTypography.h4)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .padding(.horizontal, AppSpacing.lg)
 
                             LazyVGrid(
@@ -45,14 +45,14 @@ struct IconPickerView: View {
                                     }) {
                                         Image(systemName: iconName)
                                             .font(.system(size: AppIconSize.lg))
-                                            .foregroundColor(selectedIconName == iconName ? .white : .primary)
+                                            .foregroundStyle(selectedIconName == iconName ? .white : .primary)
                                             .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                                             .background(
                                                 selectedIconName == iconName
                                                     ? Color.blue
                                                     : Color(.systemGray6)
                                             )
-                                            .cornerRadius(AppRadius.lg)
+                                            .clipShape(.rect(cornerRadius: AppRadius.lg))
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }

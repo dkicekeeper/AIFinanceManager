@@ -18,7 +18,7 @@ struct CategoryFilterView: View {
     @State private var selectedIncomeCategories: Set<String> = []
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // Опция "Все категории"
                 Section {
@@ -28,7 +28,7 @@ struct CategoryFilterView: View {
                         Spacer()
                         if currentFilter == nil {
                             Image(systemName: "checkmark")
-                                .foregroundColor(.blue)
+                                .foregroundStyle(.blue)
                         }
                     }
                     .contentShape(Rectangle())
@@ -43,7 +43,7 @@ struct CategoryFilterView: View {
                 Section(header: Text(String(localized: "transactionType.expense"))) {
                     if expenseCategories.isEmpty {
                         Text(String(localized: "categoryFilter.noExpenseCategories"))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     } else {
                         ForEach(expenseCategories, id: \.self) { category in
                             HStack {
@@ -51,7 +51,7 @@ struct CategoryFilterView: View {
                                 Spacer()
                                 if selectedExpenseCategories.contains(category) {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                        .foregroundStyle(.blue)
                                 }
                             }
                             .contentShape(Rectangle())
@@ -71,7 +71,7 @@ struct CategoryFilterView: View {
                 Section(header: Text(String(localized: "transactionType.income"))) {
                     if incomeCategories.isEmpty {
                         Text(String(localized: "categoryFilter.noIncomeCategories"))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     } else {
                         ForEach(incomeCategories, id: \.self) { category in
                             HStack {
@@ -79,7 +79,7 @@ struct CategoryFilterView: View {
                                 Spacer()
                                 if selectedIncomeCategories.contains(category) {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                        .foregroundStyle(.blue)
                                 }
                             }
                             .contentShape(Rectangle())

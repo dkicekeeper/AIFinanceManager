@@ -11,16 +11,16 @@ import SwiftUI
 struct HistoryView: View {
     // MARK: - Dependencies
 
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    let transactionsViewModel: TransactionsViewModel
+    let accountsViewModel: AccountsViewModel
+    let categoriesViewModel: CategoriesViewModel
+    @Environment(TimeFilterManager.self) private var timeFilterManager
 
     // MARK: - Managers
 
-    @StateObject private var filterCoordinator = HistoryFilterCoordinator()
-    @StateObject private var paginationManager = TransactionPaginationManager()
-    @StateObject private var expensesCache = DateSectionExpensesCache()
+    @State private var filterCoordinator = HistoryFilterCoordinator()
+    @State private var paginationManager = TransactionPaginationManager()
+    @State private var expensesCache = DateSectionExpensesCache()
 
     // MARK: - State
 
@@ -251,12 +251,12 @@ struct HistoryView: View {
 
 #Preview("History View") {
     let coordinator = AppCoordinator()
-    NavigationView {
+    NavigationStack {
         HistoryView(
             transactionsViewModel: coordinator.transactionsViewModel,
             accountsViewModel: coordinator.accountsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel
         )
-        .environmentObject(TimeFilterManager())
+        .environment(TimeFilterManager())
     }
 }

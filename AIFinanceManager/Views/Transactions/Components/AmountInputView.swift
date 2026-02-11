@@ -92,7 +92,7 @@ struct AmountInputView: View {
             if let error = errorMessage {
                 Text(error)
                     .font(AppTypography.caption)
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
 //                    .frame(maxWidth: .infinity)
 //                    .padding(.top, AppSpacing.xs)
@@ -152,18 +152,18 @@ struct AmountInputView: View {
             HStack(spacing: AppSpacing.xs) {
                 Text(String(localized: "currency.conversion.approximate"))
                     .font(AppTypography.h4)
-                    .foregroundColor(AppColors.textSecondary)
+                    .foregroundStyle(AppColors.textSecondary)
 
                 if let converted = convertedAmount {
                     Text(formatConvertedAmount(converted))
                         .font(AppTypography.h4)
                         .fontWeight(.medium)
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
 
                     Text(Formatting.currencySymbol(for: baseCurrency))
                         .font(AppTypography.h4)
                         .fontWeight(.medium)
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
                 } else {
                     // Loader placeholder
                     ProgressView()
@@ -485,7 +485,7 @@ struct AnimatedDigit: View {
     var body: some View {
         Text(String(character))
             .font(.system(size: fontSize, weight: .bold, design: .rounded))
-            .foregroundColor(color)
+            .foregroundStyle(color)
             .offset(y: offset)
             .scaleEffect(scale)
             .rotationEffect(.degrees(rotation))

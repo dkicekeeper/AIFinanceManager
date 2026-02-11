@@ -24,7 +24,7 @@ struct CSVImportResultView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: AppSpacing.xxl) {
                 // Result icon
                 resultIcon
@@ -56,7 +56,7 @@ struct CSVImportResultView: View {
     private var resultIcon: some View {
         Image(systemName: statistics.successRate > 0.8 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
             .font(.system(size: AppIconSize.coin))
-            .foregroundColor(statistics.successRate > 0.8 ? AppColors.success : AppColors.warning)
+            .foregroundStyle(statistics.successRate > 0.8 ? AppColors.success : AppColors.warning)
     }
 
     private var statisticsSection: some View {
@@ -117,7 +117,7 @@ struct CSVImportResultView: View {
         }
         .cardContentPadding()
         .background(AppColors.surface)
-        .cornerRadius(AppRadius.card)
+        .clipShape(.rect(cornerRadius: AppRadius.card))
     }
 
     private var performanceSection: some View {
@@ -144,12 +144,12 @@ struct CSVImportResultView: View {
                 Spacer()
                 Text("\(statistics.successPercentage)%")
                     .fontWeight(.semibold)
-                    .foregroundColor(statistics.successRate > 0.8 ? AppColors.success : AppColors.warning)
+                    .foregroundStyle(statistics.successRate > 0.8 ? AppColors.success : AppColors.warning)
             }
         }
         .cardContentPadding()
         .background(AppColors.surface)
-        .cornerRadius(AppRadius.card)
+        .clipShape(.rect(cornerRadius: AppRadius.card))
     }
 
     private var errorsSection: some View {
@@ -164,7 +164,7 @@ struct CSVImportResultView: View {
                     Button(action: onViewErrors) {
                         Text(String(localized: "csvImport.button.viewErrors"))
                             .font(AppTypography.caption)
-                            .foregroundColor(AppColors.accent)
+                            .foregroundStyle(AppColors.accent)
                     }
                 }
             }
@@ -174,7 +174,7 @@ struct CSVImportResultView: View {
                     ForEach(Array(statistics.errors.prefix(10).enumerated()), id: \.offset) { _, error in
                         Text("• \(error.localizedDescription)")
                             .font(AppTypography.caption)
-                            .foregroundColor(AppColors.destructive)
+                            .foregroundStyle(AppColors.destructive)
                     }
 
                     if statistics.validationErrorCount > 10 {
@@ -183,7 +183,7 @@ struct CSVImportResultView: View {
                             statistics.validationErrorCount - 10
                         ))
                         .font(AppTypography.caption)
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
                     }
                 }
             }
@@ -191,7 +191,7 @@ struct CSVImportResultView: View {
         }
         .cardContentPadding()
         .background(AppColors.surface)
-        .cornerRadius(AppRadius.card)
+        .clipShape(.rect(cornerRadius: AppRadius.card))
     }
 
     private var doneButton: some View {
@@ -203,8 +203,8 @@ struct CSVImportResultView: View {
                 .frame(maxWidth: .infinity)
                 .padding(AppSpacing.md)
                 .background(AppColors.accent)
-                .foregroundColor(.white)
-                .cornerRadius(AppRadius.button)
+                .foregroundStyle(.white)
+                .clipShape(.rect(cornerRadius: AppRadius.button))
         }
         .cardContentPadding()
     }
@@ -230,7 +230,7 @@ struct StatRow: View {
         HStack {
             if let icon = icon {
                 Image(systemName: icon)
-                    .foregroundColor(color)
+                    .foregroundStyle(color)
             }
             Text(label)
                 .font(AppTypography.body)
@@ -238,7 +238,7 @@ struct StatRow: View {
             Text(value)
                 .font(AppTypography.bodyLarge)
                 .fontWeight(.semibold)
-                .foregroundColor(color)
+                .foregroundStyle(color)
         }
     }
 }

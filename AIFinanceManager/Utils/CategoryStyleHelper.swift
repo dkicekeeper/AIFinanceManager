@@ -112,6 +112,6 @@ extension View {
                             .stroke(helper.coinBorderColor, lineWidth: 2)
                     )
             )
-            .foregroundColor(helper.iconColor)
+            .foregroundStyle(helper.iconColor)
     }
 }

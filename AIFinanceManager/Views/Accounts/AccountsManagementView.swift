@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct AccountsManagementView: View {
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @ObservedObject var depositsViewModel: DepositsViewModel
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.5: TransactionStore integration
+    let accountsViewModel: AccountsViewModel
+    let depositsViewModel: DepositsViewModel
+    let transactionsViewModel: TransactionsViewModel
+    @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
     @Environment(\.dismiss) var dismiss
     @State private var showingAddAccount = false
     @State private var showingAddDeposit = false
@@ -233,7 +233,7 @@ struct AccountsManagementView: View {
 
 #Preview("Accounts Management") {
     let coordinator = AppCoordinator()
-    NavigationView {
+    NavigationStack {
         AccountsManagementView(
             accountsViewModel: coordinator.accountsViewModel,
             depositsViewModel: coordinator.depositsViewModel,
@@ -246,7 +246,7 @@ struct AccountsManagementView: View {
     let coordinator = AppCoordinator()
     coordinator.accountsViewModel.accounts = []
     
-    return NavigationView {
+    return NavigationStack {
         AccountsManagementView(
             accountsViewModel: coordinator.accountsViewModel,
             depositsViewModel: coordinator.depositsViewModel,

@@ -17,7 +17,7 @@ struct LogoSearchView: View {
     @State private var errorMessage: String?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 if isLoading {
                     Spacer()
@@ -28,10 +28,10 @@ struct LogoSearchView: View {
                     VStack(spacing: AppSpacing.md) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: AppIconSize.xxxl))
-                            .foregroundColor(AppColors.warning)
+                            .foregroundStyle(AppColors.warning)
                         Text(error)
                             .font(AppTypography.bodyPrimary)
-                            .foregroundColor(AppColors.textSecondary)
+                            .foregroundStyle(AppColors.textSecondary)
                             .multilineTextAlignment(.center)
                     }
                     .cardContentPadding()
@@ -41,10 +41,10 @@ struct LogoSearchView: View {
                     VStack(spacing: AppSpacing.md) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: AppIconSize.xxxl))
-                            .foregroundColor(AppColors.textSecondary)
+                            .foregroundStyle(AppColors.textSecondary)
                         Text("Введите название бренда для поиска")
                             .font(AppTypography.bodyPrimary)
-                            .foregroundColor(AppColors.textSecondary)
+                            .foregroundStyle(AppColors.textSecondary)
                     }
                     .cardContentPadding()
                     Spacer()
@@ -266,31 +266,31 @@ struct LogoSearchResultRow: View {
                         case .failure(_):
                             Image(systemName: "photo")
                                 .font(.system(size: AppIconSize.lg))
-                                .foregroundColor(AppColors.textSecondary)
+                                .foregroundStyle(AppColors.textSecondary)
                                 .frame(width: AppIconSize.avatar, height: AppIconSize.avatar)
                         @unknown default:
                             Image(systemName: "photo")
                                 .font(.system(size: AppIconSize.lg))
-                                .foregroundColor(AppColors.textSecondary)
+                                .foregroundStyle(AppColors.textSecondary)
                                 .frame(width: AppIconSize.avatar, height: AppIconSize.avatar)
                         }
                     }
                 } else {
                     Image(systemName: "photo")
                         .font(.system(size: AppIconSize.lg))
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
                         .frame(width: AppIconSize.avatar, height: AppIconSize.avatar)
                 }
 
                 VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                     Text(result.name)
                         .font(AppTypography.bodyPrimary)
-                        .foregroundColor(AppColors.textPrimary)
+                        .foregroundStyle(AppColors.textPrimary)
 
                     if let domain = result.domain, domain != result.name {
                         Text(domain)
                             .font(AppTypography.caption)
-                            .foregroundColor(AppColors.textSecondary)
+                            .foregroundStyle(AppColors.textSecondary)
                     }
                 }
 
@@ -298,7 +298,7 @@ struct LogoSearchResultRow: View {
 
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .foregroundColor(AppColors.accent)
+                        .foregroundStyle(AppColors.accent)
                 }
             }
             .padding(.vertical, AppSpacing.xs)

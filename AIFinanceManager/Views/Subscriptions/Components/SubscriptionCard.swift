@@ -36,7 +36,7 @@ struct SubscriptionCard: View {
                 if let nextChargeDate = nextChargeDate {
                     Text(String(format: String(localized: "subscriptions.nextCharge"), formatDate(nextChargeDate)))
                         .font(AppTypography.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
             
@@ -55,15 +55,15 @@ struct SubscriptionCard: View {
             case .active:
                 Image(systemName: "checkmark.circle.fill")
                     .font(AppTypography.h4)
-                    .foregroundColor(.green)
+                    .foregroundStyle(.green)
             case .paused:
                 Image(systemName: "pause.circle.fill")
                     .font(AppTypography.h4)
-                    .foregroundColor(.orange)
+                    .foregroundStyle(.orange)
             case .archived:
                 Image(systemName: "archive.circle.fill")
                     .font(AppTypography.h4)
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
             case .none:
                 EmptyView()
             }

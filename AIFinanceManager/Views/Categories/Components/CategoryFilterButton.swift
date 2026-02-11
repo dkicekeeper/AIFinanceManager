@@ -40,7 +40,7 @@ struct CategoryFilterButton: View {
             let iconColor = CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: customCategories)
             Image(systemName: iconName)
                 .font(.system(size: 14))
-                .foregroundColor(isIncome ? Color.green : iconColor)
+                .foregroundStyle(isIncome ? Color.green : iconColor)
         }
     }
 

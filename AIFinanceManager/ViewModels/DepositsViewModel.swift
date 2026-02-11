@@ -9,12 +9,14 @@
 import Foundation
 import SwiftUI
 import Combine
+import Observation
 
+@Observable
 @MainActor
-class DepositsViewModel: ObservableObject {
-    // MARK: - Published Properties
+class DepositsViewModel {
+    // MARK: - Observable Properties
 
-    @Published var deposits: [Account] = []
+    var deposits: [Account] = []
 
     // MARK: - Dependencies
 

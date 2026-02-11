@@ -20,7 +20,7 @@ struct CSVPreviewView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 // File information card
                 fileInfoSection
@@ -73,7 +73,7 @@ struct CSVPreviewView: View {
         }
         .cardContentPadding()
         .background(AppColors.surface)
-        .cornerRadius(AppRadius.card)
+        .clipShape(.rect(cornerRadius: AppRadius.card))
     }
 
     private var headersSection: some View {
@@ -88,7 +88,7 @@ struct CSVPreviewView: View {
                             .font(AppTypography.caption)
                             .padding(AppSpacing.sm)
                             .background(AppColors.accent.opacity(0.2))
-                            .cornerRadius(AppRadius.compact)
+                            .clipShape(.rect(cornerRadius: AppRadius.compact))
                     }
                 }
             }
@@ -120,7 +120,7 @@ struct CSVPreviewView: View {
         HStack(alignment: .top) {
             Text("\(index + 1).")
                 .font(AppTypography.caption)
-                .foregroundColor(AppColors.textSecondary)
+                .foregroundStyle(AppColors.textSecondary)
                 .frame(width: 30, alignment: .leading)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -129,7 +129,7 @@ struct CSVPreviewView: View {
                         VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                             Text(csvFile.headers[safe: colIndex] ?? "?")
                                 .font(AppTypography.caption2)
-                                .foregroundColor(AppColors.textSecondary)
+                                .foregroundStyle(AppColors.textSecondary)
                             Text(value.isEmpty
                                 ? String(localized: "csvImport.preview.empty")
                                 : value
@@ -140,7 +140,7 @@ struct CSVPreviewView: View {
                         .padding(AppSpacing.compact)
                         .frame(width: AppSize.subscriptionCardWidth, alignment: .leading)
                         .background(AppColors.surface)
-                        .cornerRadius(AppRadius.xs)
+                        .clipShape(.rect(cornerRadius: AppRadius.xs))
                     }
                 }
             }
@@ -158,8 +158,8 @@ struct CSVPreviewView: View {
                 .frame(maxWidth: .infinity)
                 .padding(AppSpacing.md)
                 .background(AppColors.accent)
-                .foregroundColor(.white)
-                .cornerRadius(AppRadius.button)
+                .foregroundStyle(.white)
+                .clipShape(.rect(cornerRadius: AppRadius.button))
         }
         .cardContentPadding()
     }

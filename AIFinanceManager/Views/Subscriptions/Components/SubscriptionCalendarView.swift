@@ -26,7 +26,7 @@ struct SubscriptionCalendarView: View {
                     Text(symbol)
                         .font(AppTypography.bodySmall)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
                         .frame(height: 20)
                 }
             }
@@ -73,7 +73,7 @@ struct SubscriptionCalendarView: View {
             }) {
                 Text(formatMonthYear(allMonths[currentMonthIndex]))
                     .font(AppTypography.h4)
-                    .foregroundColor(AppColors.textPrimary)
+                    .foregroundStyle(AppColors.textPrimary)
             }
             .buttonStyle(.plain)
 
@@ -127,7 +127,7 @@ struct SubscriptionCalendarView: View {
         return VStack(spacing: AppSpacing.xs) {
             Text("\(calendar.component(.day, from: date))")
                 .font(isToday ? AppTypography.bodySmall.weight(.semibold) : AppTypography.bodySmall)
-                .foregroundColor(isToday ? AppColors.accent : AppColors.textPrimary)
+                .foregroundStyle(isToday ? AppColors.accent : AppColors.textPrimary)
                 .frame(width: 32, height: 32)
                 .background(isToday ? AppColors.accent.opacity(0.1) : Color.clear)
                 .clipShape(Circle())
@@ -145,7 +145,7 @@ struct SubscriptionCalendarView: View {
                     if occurrences.count > 3 {
                         Text("+\(occurrences.count - 3)")
                             .font(.system(size: AppIconSize.sm, weight: .bold))
-                            .foregroundColor(AppColors.textSecondary)
+                            .foregroundStyle(AppColors.textSecondary)
                             .frame(width: AppIconSize.md, height: AppIconSize.md)
                             .background(Circle().fill(AppColors.surface))
                             .transition(.scale.combined(with: .opacity))

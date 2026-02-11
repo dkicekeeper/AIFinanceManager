@@ -24,7 +24,7 @@ struct CSVColumnMappingView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 requiredFieldsSection
                 optionalFieldsSection

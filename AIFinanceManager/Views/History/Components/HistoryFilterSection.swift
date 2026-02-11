@@ -16,7 +16,7 @@ struct HistoryFilterSection: View {
     @Binding var selectedAccountFilter: String?
     @Binding var showingCategoryFilter: Bool
     let onTimeFilterTap: () -> Void
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
+    let balanceCoordinator: BalanceCoordinator
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {

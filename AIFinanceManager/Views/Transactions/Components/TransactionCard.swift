@@ -22,7 +22,7 @@ struct TransactionCard: View {
     @State private var deleteErrorMessage = ""
 
     // NEW: TransactionStore for refactored delete operations
-    @EnvironmentObject var transactionStore: TransactionStore
+    @Environment(TransactionStore.self) private var transactionStore
 
     // ✅ CATEGORY REFACTORING: Use cached style data instead of recreating helper
     private var styleData: CategoryStyleData {
@@ -81,7 +81,7 @@ struct TransactionCard: View {
                             Text("(")
                                 .font(AppTypography.body)
                                 .fontWeight(.semibold)
-                                .foregroundColor(amountColor.opacity(0.7))
+                                .foregroundStyle(amountColor.opacity(0.7))
                             FormattedAmountView(
                                 amount: targetAmount,
                                 currency: targetCurrency,
@@ -91,7 +91,7 @@ struct TransactionCard: View {
                             Text(")")
                                 .font(AppTypography.body)
                                 .fontWeight(.semibold)
-                                .foregroundColor(amountColor.opacity(0.7))
+                                .foregroundStyle(amountColor.opacity(0.7))
                         }
                     }
                 }

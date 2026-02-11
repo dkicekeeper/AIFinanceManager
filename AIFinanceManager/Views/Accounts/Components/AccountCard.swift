@@ -10,7 +10,7 @@ import SwiftUI
 struct AccountCard: View {
     let account: Account
     let onTap: () -> Void
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
+    let balanceCoordinator: BalanceCoordinator
 
     private var balance: Double {
         balanceCoordinator.balances[account.id] ?? 0
@@ -24,7 +24,7 @@ struct AccountCard: View {
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
                         .font(AppTypography.h4)
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
 
                     FormattedAmountText(
                         amount: balance,

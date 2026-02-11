@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct CategoriesManagementView: View {
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
+    let transactionsViewModel: TransactionsViewModel
     @Environment(\.dismiss) var dismiss
     @State private var selectedType: TransactionType = .expense
     @State private var showingAddCategory = false
@@ -103,7 +103,7 @@ struct CategoriesManagementView: View {
                         }
                     } label: {
                         Image(systemName: isReordering ? "checkmark" : "arrow.up.arrow.down")
-                            .foregroundColor(isReordering ? .blue : .primary)
+                            .foregroundStyle(isReordering ? .blue : .primary)
                     }
 
                     Button {
@@ -225,7 +225,7 @@ struct CategoriesManagementView: View {
 
 #Preview("Categories Management") {
     let coordinator = AppCoordinator()
-    NavigationView {
+    NavigationStack {
         CategoriesManagementView(
             categoriesViewModel: coordinator.categoriesViewModel,
             transactionsViewModel: coordinator.transactionsViewModel
@@ -238,7 +238,7 @@ struct CategoriesManagementView: View {
     // ✅ CATEGORY REFACTORING: Use updateCategories for controlled mutation
     coordinator.categoriesViewModel.updateCategories([])
 
-    return NavigationView {
+    return NavigationStack {
         CategoriesManagementView(
             categoriesViewModel: coordinator.categoriesViewModel,
             transactionsViewModel: coordinator.transactionsViewModel

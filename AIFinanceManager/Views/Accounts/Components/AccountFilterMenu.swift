@@ -10,7 +10,7 @@ import SwiftUI
 struct AccountFilterMenu: View {
     let accounts: [Account]
     @Binding var selectedAccountId: String?
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
+    let balanceCoordinator: BalanceCoordinator
 
     var body: some View {
         Menu {
@@ -34,7 +34,7 @@ struct AccountFilterMenu: View {
                             let balance = balanceCoordinator.balances[account.id] ?? 0
                             Text(Formatting.formatCurrencySmart(balance, currency: account.currency))
                                 .font(AppTypography.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         Spacer()
                         if selectedAccountId == account.id {

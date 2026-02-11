@@ -43,7 +43,7 @@ struct AccountCardSkeleton: View {
         .padding(AppSpacing.md)
         .frame(width: 200, height: 140)
         .background(Color(.systemBackground))
-        .cornerRadius(AppRadius.md)
+        .clipShape(.rect(cornerRadius: AppRadius.md))
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
@@ -89,7 +89,7 @@ struct AnalyticsCardSkeleton: View {
         .frame(minHeight: 120)
         .padding(AppSpacing.md)
         .background(Color(.systemBackground))
-        .cornerRadius(AppRadius.md)
+        .clipShape(.rect(cornerRadius: AppRadius.md))
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }

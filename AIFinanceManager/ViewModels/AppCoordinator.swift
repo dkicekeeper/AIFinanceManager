@@ -10,11 +10,13 @@ import Foundation
 import SwiftUI
 import Combine
 import CoreData
+import Observation
 
 /// Coordinator that manages all ViewModels and their dependencies
 /// Provides a single point of initialization and dependency injection
+@Observable
 @MainActor
-class AppCoordinator: ObservableObject {
+class AppCoordinator {
     // MARK: - Repository
 
     let repository: DataRepositoryProtocol

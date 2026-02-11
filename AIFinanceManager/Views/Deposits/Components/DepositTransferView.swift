@@ -18,7 +18,7 @@ struct DepositTransferView: View {
     let transferDirection: DepositTransferDirection
     let onTransferSaved: (String, String, Double, String, String) -> Void // (fromId, toId, amount, date, description)
     let onComplete: () -> Void
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
+    let balanceCoordinator: BalanceCoordinator
 
     @State private var selectedSourceAccountId: String? = nil
     @State private var amountText: String = ""
@@ -33,12 +33,12 @@ struct DepositTransferView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text(transferDirection == .toDeposit ? String(localized: "deposit.sourceAccount") : String(localized: "deposit.targetAccount"))) {
                     if availableAccounts.isEmpty {
                         Text(String(localized: "deposit.noOtherAccounts"))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .font(AppTypography.caption)
                     } else {
                         ScrollView(.horizontal, showsIndicators: false) {

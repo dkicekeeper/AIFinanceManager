@@ -70,16 +70,7 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
             // ✨ Phase 9: Reload TransactionStore to clear recurring data
             try await transactionStore.loadData()
 
-            // Trigger UI updates for all ViewModels
-            accountsViewModel.objectWillChange.send()
-            categoriesViewModel.objectWillChange.send()
-            transactionsViewModel.objectWillChange.send()
-            transactionStore.objectWillChange.send()
-
-            // ✨ Deposits will update automatically through ObservableObject
-            if let depositsViewModel = depositsViewModel {
-                depositsViewModel.objectWillChange.send()
-            }
+            // @Observable handles UI updates automatically - no need for objectWillChange.send()
 
             #if DEBUG
             print("✅ [DataResetCoordinator] Data reset completed")
@@ -112,9 +103,7 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
             // Reload accounts to get updated balances
             accountsViewModel.reloadFromStorage()
 
-            // Trigger UI updates
-            transactionsViewModel.objectWillChange.send()
-            accountsViewModel.objectWillChange.send()
+            // @Observable handles UI updates automatically
 
             #if DEBUG
             print("✅ [DataResetCoordinator] Balance recalculation completed")

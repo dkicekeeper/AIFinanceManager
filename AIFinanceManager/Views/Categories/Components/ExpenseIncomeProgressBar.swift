@@ -33,7 +33,7 @@ struct ExpenseIncomeProgressBar: View {
                         Rectangle()
                             .foregroundStyle(Color.red)
                             .frame(width: geometry.size.width * expensePercent)
-                            .cornerRadius(AppRadius.sm)
+                            .clipShape(.rect(cornerRadius: AppRadius.sm))
                             .shadow(color: Color.red.opacity(0.3), radius: 8)
                     }
                     
@@ -41,7 +41,7 @@ struct ExpenseIncomeProgressBar: View {
                         Rectangle()
                             .foregroundStyle(Color.green)
                             .frame(width: geometry.size.width * incomePercent)
-                            .cornerRadius(AppRadius.sm)
+                            .clipShape(.rect(cornerRadius: AppRadius.sm))
                             .shadow(color: Color.green.opacity(0.3), radius: 8)
                     }
                 }

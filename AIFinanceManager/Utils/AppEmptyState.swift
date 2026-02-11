@@ -55,17 +55,17 @@ struct EmptyStateView: View {
         VStack(spacing: AppSpacing.lg) {
             Image(systemName: icon)
                 .font(.system(size: AppIconSize.xxxl))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             VStack(spacing: AppSpacing.sm) {
                 Text(title)
                     .font(AppTypography.h4)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 if let description = description {
                     Text(description)
                         .font(AppTypography.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -86,12 +86,12 @@ struct EmptyStateView: View {
         VStack(spacing: AppSpacing.xs) {
             Text(title)
                 .font(AppTypography.bodySmall)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             if let description = description {
                 Text(description)
                     .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
         }

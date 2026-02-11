@@ -9,15 +9,15 @@ import SwiftUI
 
 struct EditTransactionView: View {
     let transaction: Transaction
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
     let accounts: [Account]
     let customCategories: [CustomCategory]
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
+    let balanceCoordinator: BalanceCoordinator
     @Environment(\.dismiss) var dismiss
 
     // NEW: TransactionStore for refactored update operations
-    @EnvironmentObject var transactionStore: TransactionStore
+    @Environment(TransactionStore.self) private var transactionStore
     
     @State private var amountText: String = ""
     @State private var descriptionText: String = ""
@@ -79,7 +79,7 @@ struct EditTransactionView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     // 1. Picker (нет в EditTransactionView - тип транзакции не меняется)
@@ -396,7 +396,7 @@ struct EditTransactionView: View {
         category: "Food",
         accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
     )
-    return NavigationView {
+    return NavigationStack {
         EditTransactionView(
             transaction: sampleTransaction,
             transactionsViewModel: coordinator.transactionsViewModel,

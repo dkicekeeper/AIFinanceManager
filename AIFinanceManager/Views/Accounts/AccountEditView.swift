@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct AccountEditView: View {
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    let accountsViewModel: AccountsViewModel
+    let transactionsViewModel: TransactionsViewModel
     let account: Account?
     let onSave: (Account) -> Void
     let onCancel: () -> Void
@@ -57,7 +57,7 @@ struct AccountEditView: View {
                         Spacer()
                         selectedBankLogo.image(size: 24)
                         Image(systemName: "chevron.right")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .font(.caption)
                     }
                 }

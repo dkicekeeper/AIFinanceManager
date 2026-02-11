@@ -132,7 +132,7 @@ struct SiriWaveRecordingView: View {
                 Spacer()
                 Text(String(localized: "voice.recording"))
                     .font(AppTypography.bodyLarge)
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.blue)
                     .opacity(isAnimating ? 0.5 : 1.0)
                     .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
             }

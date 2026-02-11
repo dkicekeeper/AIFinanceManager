@@ -20,7 +20,7 @@ struct SettingsSectionHeaderView: View {
     var body: some View {
         Text(title)
             .font(AppTypography.bodySmall)
-            .foregroundColor(AppColors.textSecondary)
+            .foregroundStyle(AppColors.textSecondary)
             .textCase(.uppercase)
     }
 }

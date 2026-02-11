@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SetBudgetSheet: View {
     let category: CustomCategory
-    @ObservedObject var viewModel: CategoriesViewModel
+    let viewModel: CategoriesViewModel
     @Binding var isPresented: Bool
 
     @State private var budgetAmount: String = ""
@@ -17,7 +17,7 @@ struct SetBudgetSheet: View {
     @State private var resetDay: Int = 1
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     TextField(String(localized: "budget.amount"), text: $budgetAmount)

@@ -39,11 +39,11 @@ struct NavigationSettingsRow<Destination: View>: View {
             HStack(spacing: AppSpacing.md) {
                 Image(systemName: icon)
                     .font(.system(size: AppIconSize.md))
-                    .foregroundColor(iconColor)
+                    .foregroundStyle(iconColor)
 
                 Text(title)
                     .font(AppTypography.body)
-                    .foregroundColor(AppColors.textPrimary)
+                    .foregroundStyle(AppColors.textPrimary)
             }
             .padding(.vertical, AppSpacing.xs)
         }
@@ -53,7 +53,7 @@ struct NavigationSettingsRow<Destination: View>: View {
 // MARK: - Preview
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         List {
             NavigationSettingsRow(
                 icon: "tag",

@@ -9,9 +9,9 @@ import SwiftUI
 
 struct SubscriptionDetailView: View {
     // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
-    @ObservedObject var transactionStore: TransactionStore
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    let transactionStore: TransactionStore
+    let transactionsViewModel: TransactionsViewModel
+    @Environment(TimeFilterManager.self) private var timeFilterManager
     let subscription: RecurringSeries
     @State private var showingEditView = false
     @State private var showingDeleteConfirmation = false
@@ -221,7 +221,7 @@ struct SubscriptionDetailView: View {
 
 #Preview {
     let coordinator = AppCoordinator()
-    NavigationView {
+    NavigationStack {
         SubscriptionDetailView(
             transactionStore: coordinator.transactionStore,
             transactionsViewModel: coordinator.transactionsViewModel,

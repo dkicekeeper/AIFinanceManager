@@ -12,11 +12,11 @@ struct AddTransactionModal: View {
 
     // MARK: - Coordinator
 
-    @StateObject private var coordinator: AddTransactionCoordinator
+    @State private var coordinator: AddTransactionCoordinator
 
     // MARK: - Environment
 
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    @Environment(TimeFilterManager.self) private var timeFilterManager
 
     // MARK: - State
 
@@ -44,7 +44,7 @@ struct AddTransactionModal: View {
         onDismiss: @escaping () -> Void
     ) {
         // ✅ REFACTORED: TransactionStore now passed directly, not via @EnvironmentObject
-        _coordinator = StateObject(wrappedValue: AddTransactionCoordinator(
+        _coordinator = State(initialValue: AddTransactionCoordinator(
             category: category,
             type: type,
             currency: currency,
@@ -59,7 +59,7 @@ struct AddTransactionModal: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 formContent
                     .sheet(isPresented: $showingSubcategorySearch) {
@@ -198,14 +198,14 @@ struct AddTransactionModal: View {
     }
 
     private var categoryHistorySheet: some View {
-        NavigationView {
+        NavigationStack {
             HistoryView(
                 transactionsViewModel: coordinator.transactionsViewModel,
                 accountsViewModel: coordinator.accountsViewModel,
                 categoriesViewModel: coordinator.categoriesViewModel,
                 initialCategory: coordinator.formData.category
             )
-            .environmentObject(timeFilterManager)
+            .environment(timeFilterManager)
         }
     }
 

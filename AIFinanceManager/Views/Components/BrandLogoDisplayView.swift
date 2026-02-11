@@ -56,7 +56,7 @@ struct BrandLogoDisplayView: View {
             .resizable()
             .aspectRatio(contentMode: .fit)
             .frame(width: size, height: size)
-            .foregroundColor(.accentColor)
+            .foregroundStyle(.accentColor)
     }
 
     @ViewBuilder

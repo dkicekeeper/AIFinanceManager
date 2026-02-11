@@ -63,7 +63,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
 
         // Begin import mode in TransactionStore (defers persistence)
         if let transactionStore = transactionsViewModel.transactionStore {
-            await transactionStore.beginImport()
+            transactionStore.beginImport()
         }
 
         // Begin batch mode
@@ -288,10 +288,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
         // Rebuild aggregate cache
         await transactionsViewModel.rebuildAggregateCacheAfterImport()
 
-        // Notify UI
-        transactionsViewModel.objectWillChange.send()
-        categoriesViewModel.objectWillChange.send()
-        accountsViewModel?.objectWillChange.send()
+        // @Observable handles UI updates automatically - no need for objectWillChange.send()
 
         // Clear cache
         cache.clear()

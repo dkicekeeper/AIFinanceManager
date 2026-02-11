@@ -19,7 +19,7 @@ struct RecognizedTextView: View {
     @State private var parseErrorMessage = ""
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Заголовок
                 VStack(spacing: AppSpacing.sm) {
@@ -27,7 +27,7 @@ struct RecognizedTextView: View {
                         .font(AppTypography.h4)
                     Text(String(localized: "modal.recognizedText.message"))
                         .font(AppTypography.bodySecondary)
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 .cardContentPadding()
@@ -72,8 +72,8 @@ struct RecognizedTextView: View {
                             .frame(maxWidth: .infinity)
                             .padding(AppSpacing.md)
                             .background(AppColors.accent)
-                            .foregroundColor(.white)
-                            .cornerRadius(AppRadius.button)
+                            .foregroundStyle(.white)
+                            .clipShape(.rect(cornerRadius: AppRadius.button))
                     }
                     .disabled(isParsing)
 
@@ -87,8 +87,8 @@ struct RecognizedTextView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(AppSpacing.md)
                                 .background(AppColors.secondaryBackground)
-                                .foregroundColor(AppColors.textPrimary)
-                                .cornerRadius(AppRadius.button)
+                                .foregroundStyle(AppColors.textPrimary)
+                                .clipShape(.rect(cornerRadius: AppRadius.button))
                         }
 
                         Button(action: onCancel) {
@@ -96,8 +96,8 @@ struct RecognizedTextView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(AppSpacing.md)
                                 .background(AppColors.secondaryBackground)
-                                .foregroundColor(AppColors.textPrimary)
-                                .cornerRadius(AppRadius.button)
+                                .foregroundStyle(AppColors.textPrimary)
+                                .clipShape(.rect(cornerRadius: AppRadius.button))
                         }
                     }
                 }
@@ -112,7 +112,7 @@ struct RecognizedTextView: View {
                     ProgressView(String(localized: "progress.parsingStatement"))
                         .cardContentPadding()
                         .background(AppColors.backgroundPrimary)
-                        .cornerRadius(AppRadius.card)
+                        .clipShape(.rect(cornerRadius: AppRadius.card))
                 }
             }
             .alert(String(localized: "alert.textCopied.title"), isPresented: $showingCopyAlert) {

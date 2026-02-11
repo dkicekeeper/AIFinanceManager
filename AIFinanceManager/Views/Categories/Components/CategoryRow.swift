@@ -38,7 +38,7 @@ struct CategoryRow: View {
                         .overlay(
                             Image(systemName: category.iconName)
                                 .font(.system(size: AppIconSize.md))
-                                .foregroundColor(category.color)
+                                .foregroundStyle(category.color)
                         )
                         .overlay(
                             Circle()
@@ -62,7 +62,7 @@ struct CategoryRow: View {
                                 )
                                 Text(" / ")
                                     .font(AppTypography.bodySmall)
-                                    .foregroundColor(progress.isOverBudget ? .red : .secondary)
+                                    .foregroundStyle(progress.isOverBudget ? .red : .secondary)
                                 FormattedAmountText(
                                     amount: progress.budgetAmount,
                                     currency: "₸",
@@ -73,12 +73,12 @@ struct CategoryRow: View {
 
                             Text("(\(Int(progress.percentage))%)")
                                 .font(AppTypography.bodySmall)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     } else if category.type == .expense {
                         Text(String(localized: "No budget set"))
                             .font(AppTypography.bodySmall)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 

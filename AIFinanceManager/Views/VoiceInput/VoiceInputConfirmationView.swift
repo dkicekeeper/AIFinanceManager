@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct VoiceInputConfirmationView: View {
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
-    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.5: TransactionStore integration
+    let transactionsViewModel: TransactionsViewModel
+    let accountsViewModel: AccountsViewModel
+    let categoriesViewModel: CategoriesViewModel
+    @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
     @Environment(\.dismiss) var dismiss
     
     let parsedOperation: ParsedOperation
@@ -74,7 +74,7 @@ struct VoiceInputConfirmationView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     // 1. Picker типа операции
@@ -462,7 +462,7 @@ struct VoiceInputConfirmationView: View {
         categoryName: "Food",
         note: "Test transaction"
     )
-    NavigationView {
+    NavigationStack {
         VoiceInputConfirmationView(
             transactionsViewModel: coordinator.transactionsViewModel,
             accountsViewModel: coordinator.accountsViewModel,

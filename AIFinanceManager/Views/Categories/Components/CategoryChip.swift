@@ -34,7 +34,7 @@ struct CategoryChip: View {
             VStack(spacing: AppSpacing.sm) {
                 Text(category)
                     .font(AppTypography.bodyLarge)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 ZStack {
                     // Budget progress stroke (if budget exists and is expense)
@@ -50,22 +50,39 @@ struct CategoryChip: View {
                             .animation(.easeInOut(duration: 0.3), value: progress.percentage)
                     }
                     
-                    Circle()
-                        .foregroundStyle(.clear)
-                        .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                        .overlay(
-                            Image(systemName: styleData.iconName)
-                                .font(.title2)
-                                .foregroundColor(styleData.iconColor)
-                        )
-                        .overlay(
+                    Group {
+                        if #available(iOS 26, *) {
                             Circle()
-                                .stroke(isSelected ? styleData.coinBorderColor : Color.clear, lineWidth: 3)
-                        )
-                        .glassEffect(.regular
-                            .tint(isSelected ? styleData.coinColor : styleData.coinColor.opacity(1.0))
-                            .interactive()
-                        )
+                                .foregroundStyle(.clear)
+                                .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                                .overlay(
+                                    Image(systemName: styleData.iconName)
+                                        .font(.title2)
+                                        .foregroundStyle(styleData.iconColor)
+                                )
+                                .overlay(
+                                    Circle()
+                                        .stroke(isSelected ? styleData.coinBorderColor : Color.clear, lineWidth: 3)
+                                )
+                                .glassEffect(.regular
+                                    .tint(isSelected ? styleData.coinColor : styleData.coinColor.opacity(1.0))
+                                    .interactive()
+                                )
+                        } else {
+                            Circle()
+                                .fill(isSelected ? styleData.coinColor.opacity(0.2) : Color(.systemGray6))
+                                .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                                .overlay(
+                                    Image(systemName: styleData.iconName)
+                                        .font(.title2)
+                                        .foregroundStyle(styleData.iconColor)
+                                )
+                                .overlay(
+                                    Circle()
+                                        .stroke(isSelected ? styleData.coinBorderColor : Color.clear, lineWidth: 3)
+                                )
+                        }
+                    }
                 }
             }
         }

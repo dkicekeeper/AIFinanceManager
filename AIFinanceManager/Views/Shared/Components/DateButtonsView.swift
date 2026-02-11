@@ -99,7 +99,7 @@ private struct DateButtonsDatePickerSheet: View {
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 DatePicker("Выберите дату", selection: $selectedDate, displayedComponents: .date)
                     .datePickerStyle(.graphical)

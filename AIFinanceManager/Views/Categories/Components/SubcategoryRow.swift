@@ -19,7 +19,7 @@ struct SubcategoryRow: View {
             Spacer()
             if isSelected {
                 Image(systemName: "checkmark")
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.blue)
                     .font(AppTypography.bodyLarge)
             }
         }

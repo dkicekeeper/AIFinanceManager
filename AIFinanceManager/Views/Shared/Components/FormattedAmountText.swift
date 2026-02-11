@@ -75,20 +75,20 @@ struct FormattedAmountText: View {
             Text(prefix + parts.integer)
                 .font(fontSize)
                 .fontWeight(fontWeight)
-                .foregroundColor(color)
+                .foregroundStyle(color)
 
             if shouldShowDecimal {
                 Text(AmountDisplayConfiguration.shared.decimalSeparator + parts.decimal)
                     .font(fontSize)
                     .fontWeight(fontWeight)
-                    .foregroundColor(color)
+                    .foregroundStyle(color)
                     .opacity(decimalOpacity)
             }
 
             Text(" " + parts.symbol)
                 .font(fontSize)
                 .fontWeight(fontWeight)
-                .foregroundColor(color)
+                .foregroundStyle(color)
         }
     }
 }

@@ -45,11 +45,11 @@ struct ActionSettingsRow: View {
             HStack(spacing: AppSpacing.md) {
                 Image(systemName: icon)
                     .font(.system(size: AppIconSize.md))
-                    .foregroundColor(iconColor ?? (isDestructive ? AppColors.destructive : AppColors.accent))
+                    .foregroundStyle(iconColor ?? (isDestructive ? AppColors.destructive : AppColors.accent))
 
                 Text(title)
                     .font(AppTypography.body)
-                    .foregroundColor(titleColor ?? (isDestructive ? AppColors.destructive : AppColors.textPrimary))
+                    .foregroundStyle(titleColor ?? (isDestructive ? AppColors.destructive : AppColors.textPrimary))
             }
             .padding(.vertical, AppSpacing.xs)
         }

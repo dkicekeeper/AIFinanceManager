@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SubcategorySelectorView: View {
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    let categoriesViewModel: CategoriesViewModel
     let categoryId: String?
     @Binding var selectedSubcategoryIds: Set<String>
     let onSearchTap: () -> Void

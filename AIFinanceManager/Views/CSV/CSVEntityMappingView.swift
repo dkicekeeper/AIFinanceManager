@@ -29,7 +29,7 @@ struct CSVEntityMappingView: View {
     @State private var selectedCategoryValue: String?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 if !uniqueAccounts.isEmpty {
                     Section(header: Text("Сопоставление счетов")) {
@@ -53,10 +53,10 @@ struct CSVEntityMappingView: View {
                                     if let accountId = accountMappings[accountValue],
                                        let account = accountsViewModel.accounts.first(where: { $0.id == accountId }) {
                                         Text(account.name)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     } else {
                                         Text("Не выбрано")
-                                            .foregroundColor(.orange)
+                                            .foregroundStyle(.orange)
                                     }
                                 }
                             }
@@ -84,10 +84,10 @@ struct CSVEntityMappingView: View {
                                     Spacer()
                                     if let categoryName = categoryMappings[categoryValue] {
                                         Text(categoryName)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     } else {
                                         Text("Не выбрано")
-                                            .foregroundColor(.orange)
+                                            .foregroundStyle(.orange)
                                     }
                                 }
                             }
@@ -115,10 +115,10 @@ struct CSVEntityMappingView: View {
                                     Spacer()
                                     if let categoryName = categoryMappings[categoryValue] {
                                         Text(categoryName)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     } else {
                                         Text("Не выбрано")
-                                            .foregroundColor(.orange)
+                                            .foregroundStyle(.orange)
                                     }
                                 }
                             }
@@ -263,7 +263,7 @@ struct AccountMappingDetailView: View {
                             Spacer()
                             if selectedAccountId == account.id {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+                                    .foregroundStyle(.blue)
                             }
                         }
                     }
@@ -303,12 +303,12 @@ struct CategoryMappingDetailView: View {
                     }) {
                         HStack {
                             Image(systemName: category.iconName)
-                                .foregroundColor(category.color)
+                                .foregroundStyle(category.color)
                             Text(category.name)
                             Spacer()
                             if selectedCategoryName == category.name {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+                                    .foregroundStyle(.blue)
                             }
                         }
                     }

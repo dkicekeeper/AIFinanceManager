@@ -21,14 +21,14 @@ struct TransactionIconView: View {
                 .overlay(
                     Image(systemName: styleData.iconName)
                         .font(.system(size: AppIconSize.md))
-                        .foregroundColor(transaction.type == .internalTransfer ? Color.blue : styleData.primaryColor)
+                        .foregroundStyle(transaction.type == .internalTransfer ? Color.blue : styleData.primaryColor)
                 )
             
             // Recurring badge
             if transaction.recurringSeriesId != nil {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: AppIconSize.sm))
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.blue)
                     .padding(AppSpacing.xs)
                     .background(Color.white)
                     .clipShape(Circle())
@@ -55,7 +55,7 @@ struct TransactionInfoView: View {
             if !linkedSubcategories.isEmpty {
                 Text(linkedSubcategories.map { $0.name }.joined(separator: ", "))
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
             }
             
             // Account info or transfer info
@@ -69,7 +69,7 @@ struct TransactionInfoView: View {
             if !transaction.description.isEmpty {
                 Text(transaction.description)
                     .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -91,19 +91,19 @@ struct TransferAccountInfo: View {
                     sourceAccount.bankLogo.image(size: AppIconSize.sm)
                     Text(sourceAccount.name)
                         .font(AppTypography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             } else if let accountName = transaction.accountName {
                 // Account was deleted - show name only
                 Text(accountName)
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .italic()
             }
 
             Image(systemName: "arrow.right")
                 .font(.system(size: AppIconSize.sm))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             // Target account
             if let targetId = transaction.targetAccountId,
@@ -113,13 +113,13 @@ struct TransferAccountInfo: View {
                     targetAccount.bankLogo.image(size: AppIconSize.sm)
                     Text(targetAccount.name)
                         .font(AppTypography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             } else if let targetAccountName = transaction.targetAccountName {
                 // Account was deleted - show name only
                 Text(targetAccountName)
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .italic()
             }
         }
@@ -140,13 +140,13 @@ struct RegularAccountInfo: View {
                 account.bankLogo.image(size: AppIconSize.sm)
                 Text(account.name)
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         } else if let accountName = transaction.accountName {
             // Account was deleted - show name only without logo
             Text(accountName)
                 .font(AppTypography.bodySmall)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .italic()
         }
     }

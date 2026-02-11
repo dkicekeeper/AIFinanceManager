@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SubcategorySearchView: View {
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    let categoriesViewModel: CategoriesViewModel
     let categoryId: String
     @Binding var selectedSubcategoryIds: Set<String>
     @Binding var searchText: String
@@ -74,7 +74,7 @@ struct SubcategorySearchView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if !searchText.isEmpty && searchResults.isEmpty {
                     // Empty state когда поиск не нашел результатов
@@ -91,7 +91,7 @@ struct SubcategorySearchView: View {
                                 Spacer()
                                 if selectionMode == .multiple && selectedSubcategoryIds.contains(subcategory.id) {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                        .foregroundStyle(.blue)
                                 }
                             }
                             .contentShape(Rectangle())
@@ -135,23 +135,45 @@ struct SubcategorySearchView: View {
             .safeAreaInset(edge: .bottom) {
                 // Кнопка создания внизу над полем поиска
                 if canCreateFromSearch {
-                    VStack(spacing: 0) {
-                        Button(action: {
-                            createSubcategoryFromSearch()
-                        }) {
-                            HStack(spacing: AppSpacing.sm) {
-                                Image(systemName: "plus.circle.fill")
-                                let subcategoryName = searchText.trimmingCharacters(in: .whitespaces)
-                                Text(String(format: String(localized: "transactionForm.createSubcategory"), subcategoryName))
-                                    .font(AppTypography.body)
+                    Group {
+                        if #available(iOS 26, *) {
+                            VStack(spacing: 0) {
+                                Button(action: {
+                                    createSubcategoryFromSearch()
+                                }) {
+                                    HStack(spacing: AppSpacing.sm) {
+                                        Image(systemName: "plus.circle.fill")
+                                        let subcategoryName = searchText.trimmingCharacters(in: .whitespaces)
+                                        Text(String(format: String(localized: "transactionForm.createSubcategory"), subcategoryName))
+                                            .font(AppTypography.body)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(AppSpacing.lg)
+                                }
+                                .foregroundStyle(.primary)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(AppSpacing.lg)
+                            .glassEffect(.regular)
+                            .padding(.horizontal, AppSpacing.lg)
+                        } else {
+                            VStack(spacing: 0) {
+                                Button(action: {
+                                    createSubcategoryFromSearch()
+                                }) {
+                                    HStack(spacing: AppSpacing.sm) {
+                                        Image(systemName: "plus.circle.fill")
+                                        let subcategoryName = searchText.trimmingCharacters(in: .whitespaces)
+                                        Text(String(format: String(localized: "transactionForm.createSubcategory"), subcategoryName))
+                                            .font(AppTypography.body)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(AppSpacing.lg)
+                                }
+                                .foregroundStyle(.primary)
+                                .background(.ultraThinMaterial)
+                            }
+                            .padding(.horizontal, AppSpacing.lg)
                         }
-                        .foregroundStyle(.primary)
                     }
-                    .glassEffect()
-                    .padding(.horizontal, AppSpacing.lg)
                 }
             }
             .toolbar {

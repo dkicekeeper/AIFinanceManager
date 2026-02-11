@@ -13,7 +13,7 @@ struct AccountsCarousel: View {
     // MARK: - Properties
     let accounts: [Account]
     let onAccountTap: (Account) -> Void
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
+    let balanceCoordinator: BalanceCoordinator
 
     // MARK: - Body
     var body: some View {

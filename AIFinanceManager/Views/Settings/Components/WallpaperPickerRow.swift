@@ -25,11 +25,11 @@ struct WallpaperPickerRow: View {
         HStack(spacing: AppSpacing.md) {
             Image(systemName: "photo")
                 .font(.system(size: AppIconSize.md))
-                .foregroundColor(AppColors.accent)
+                .foregroundStyle(AppColors.accent)
 
             Text(String(localized: "settings.wallpaper"))
                 .font(AppTypography.body)
-                .foregroundColor(AppColors.textPrimary)
+                .foregroundStyle(AppColors.textPrimary)
 
             Spacer()
 
@@ -38,14 +38,14 @@ struct WallpaperPickerRow: View {
                     if hasWallpaper {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: AppIconSize.sm))
-                            .foregroundColor(AppColors.success)
+                            .foregroundStyle(AppColors.success)
                     }
                     Text(hasWallpaper
                         ? String(localized: "button.change")
                         : String(localized: "button.select")
                     )
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(AppColors.accent)
+                    .foregroundStyle(AppColors.accent)
                 }
             }
             .onChange(of: selectedPhoto) { _, newItem in
@@ -62,7 +62,7 @@ struct WallpaperPickerRow: View {
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: AppIconSize.md))
-                        .foregroundColor(AppColors.destructive)
+                        .foregroundStyle(AppColors.destructive)
                 }
                 .buttonStyle(.plain)
             }

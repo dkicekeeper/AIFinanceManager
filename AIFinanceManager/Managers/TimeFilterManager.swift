@@ -8,10 +8,12 @@
 import Foundation
 import SwiftUI
 import Combine
+import Observation
 
+@Observable
 @MainActor
-class TimeFilterManager: ObservableObject {
-    @Published var currentFilter: TimeFilter {
+class TimeFilterManager {
+    var currentFilter: TimeFilter {
         didSet {
             saveToStorage()
         }

@@ -8,12 +8,12 @@
 import SwiftUI
 
 struct DepositDetailView: View {
-    @ObservedObject var depositsViewModel: DepositsViewModel
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
-    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.5: TransactionStore integration
+    let depositsViewModel: DepositsViewModel
+    let transactionsViewModel: TransactionsViewModel
+    let balanceCoordinator: BalanceCoordinator
+    @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
     let accountId: String
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    @Environment(TimeFilterManager.self) private var timeFilterManager
     @State private var showingEditView = false
     @State private var showingTransferTo = false // Пополнение депозита
     @State private var showingTransferFrom = false // Перевод с депозита на счет
@@ -99,7 +99,7 @@ struct DepositDetailView: View {
         }
         .sheet(isPresented: $showingHistory) {
             if let account = account {
-                NavigationView {
+                NavigationStack {
                     // Note: Need to pass CategoriesViewModel from coordinator
                     // For now using transactionsViewModel directly
                     HistoryView(
@@ -108,7 +108,7 @@ struct DepositDetailView: View {
                         categoriesViewModel: CategoriesViewModel(repository: depositsViewModel.repository),
                         initialAccountId: account.id
                     )
-                        .environmentObject(timeFilterManager)
+                        .environment(timeFilterManager)
                 }
             }
         }
@@ -138,7 +138,7 @@ struct DepositDetailView: View {
                     account: account,
                     transferDirection: .toDeposit
                 )
-                    .environmentObject(timeFilterManager)
+                    .environment(timeFilterManager)
             }
         }
         .sheet(isPresented: $showingTransferFrom) {
@@ -149,7 +149,7 @@ struct DepositDetailView: View {
                     account: account,
                     transferDirection: .fromDeposit
                 )
-                    .environmentObject(timeFilterManager)
+                    .environment(timeFilterManager)
             }
         }
         .sheet(isPresented: $showingRateChange) {
@@ -219,7 +219,7 @@ struct DepositDetailView: View {
                         .font(AppTypography.h3)
                     Text(depositInfo.bankName)
                         .font(AppTypography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -230,7 +230,7 @@ struct DepositDetailView: View {
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 Text(String(localized: "deposit.balance"))
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 let balance = balanceCoordinator.balances[account.id] ?? 0
                 FormattedAmountText(
                     amount: balance,
@@ -243,7 +243,7 @@ struct DepositDetailView: View {
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 Text(String(localized: "deposit.interestToday"))
                     .font(AppTypography.bodySmall)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 FormattedAmountText(
                     amount: NSDecimalNumber(decimal: interestToToday).doubleValue,
                     currency: account.currency,
@@ -315,27 +315,27 @@ struct DepositDetailView: View {
 #Preview("Deposit Detail View") {
     let coordinator = AppCoordinator()
 
-    NavigationView {
+    NavigationStack {
         DepositDetailView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
             accountId: coordinator.depositsViewModel.deposits.first?.id ?? "test"
         )
-        .environmentObject(TimeFilterManager())
+        .environment(TimeFilterManager())
     }
 }
 
 #Preview("Deposit Detail View - Not Found") {
     let coordinator = AppCoordinator()
 
-    NavigationView {
+    NavigationStack {
         DepositDetailView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
             accountId: "non-existent"
         )
-        .environmentObject(TimeFilterManager())
+        .environment(TimeFilterManager())
     }
 }

@@ -22,13 +22,13 @@ struct BankLogoRow: View {
                     .frame(width: AppIconSize.xl, height: AppIconSize.xl)
                 
                 Text(bank.displayName)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                 
                 Spacer()
                 
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                 }
             }
         }

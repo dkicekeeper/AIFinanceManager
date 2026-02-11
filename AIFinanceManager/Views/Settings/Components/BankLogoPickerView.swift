@@ -21,7 +21,7 @@ struct BankLogoPickerView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section(header: Text(String(localized: "account.popularBanks"))) {
                     ForEach(popularBanks) { bank in

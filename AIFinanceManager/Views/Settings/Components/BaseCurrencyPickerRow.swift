@@ -23,11 +23,11 @@ struct BaseCurrencyPickerRow: View {
         HStack(spacing: AppSpacing.md) {
             Image(systemName: "dollarsign.circle")
                 .font(.system(size: AppIconSize.md))
-                .foregroundColor(AppColors.accent)
+                .foregroundStyle(AppColors.accent)
 
             Text(String(localized: "settings.baseCurrency"))
                 .font(AppTypography.body)
-                .foregroundColor(AppColors.textPrimary)
+                .foregroundStyle(AppColors.textPrimary)
 
             Spacer()
 

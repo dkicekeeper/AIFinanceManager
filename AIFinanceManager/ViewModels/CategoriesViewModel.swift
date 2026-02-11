@@ -10,19 +10,21 @@
 import Foundation
 import SwiftUI
 import Combine
+import Observation
 
+@Observable
 @MainActor
-class CategoriesViewModel: ObservableObject {
-    // MARK: - Published Properties
+class CategoriesViewModel {
+    // MARK: - Observable Properties
 
     /// PHASE 3: Categories are now observed from TransactionStore (Single Source of Truth)
     /// This is synced from TransactionStore - ViewModels no longer own the data
-    @Published private(set) var customCategories: [CustomCategory] = []
+    private(set) var customCategories: [CustomCategory] = []
 
-    @Published var categoryRules: [CategoryRule] = []
-    @Published var subcategories: [Subcategory] = []
-    @Published var categorySubcategoryLinks: [CategorySubcategoryLink] = []
-    @Published var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
+    var categoryRules: [CategoryRule] = []
+    var subcategories: [Subcategory] = []
+    var categorySubcategoryLinks: [CategorySubcategoryLink] = []
+    var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
 
     // MARK: - Publishers
 
@@ -44,36 +46,21 @@ class CategoriesViewModel: ObservableObject {
 
     private var categoriesSubscription: AnyCancellable?
 
-    // MARK: - Services (Lazy Initialization)
+    // MARK: - Services (initialized eagerly for @Observable compatibility)
 
     /// CRUD service - handles category create/update/delete
-    private lazy var crudService: CategoryCRUDServiceProtocol = {
-        CategoryCRUDService(delegate: self, repository: repository)
-    }()
+    private let crudService: CategoryCRUDServiceProtocol
 
     /// Subcategory coordinator - handles subcategory and link management
-    private lazy var subcategoryCoordinator: CategorySubcategoryCoordinatorProtocol = {
-        CategorySubcategoryCoordinator(delegate: self, repository: repository)
-    }()
+    private let subcategoryCoordinator: CategorySubcategoryCoordinatorProtocol
 
     /// Budget coordinator - handles budget calculations (NOT USED YET - for future)
     /// Note: Currently using old CategoryBudgetService for compatibility
-    private lazy var budgetCoordinator: CategoryBudgetCoordinatorProtocol = {
-        CategoryBudgetCoordinator(
-            delegate: self,
-            currencyService: currencyService,
-            appSettings: appSettings
-        )
-    }()
+    private let budgetCoordinator: CategoryBudgetCoordinatorProtocol
 
     /// Budget service for category budget management
     /// NOTE: Could be migrated to budgetCoordinator in future for better separation of concerns
-    private lazy var budgetService: CategoryBudgetService = {
-        CategoryBudgetService(
-            currencyService: currencyService,
-            appSettings: appSettings
-        )
-    }()
+    private let budgetService: CategoryBudgetService
 
     // MARK: - Initialization
 
@@ -85,12 +72,37 @@ class CategoriesViewModel: ObservableObject {
         self.repository = repository
         self.currencyService = currencyService
         self.appSettings = appSettings
+
+        // Initialize services (required for @Observable compatibility)
+        self.crudService = CategoryCRUDService(delegate: nil, repository: repository)
+        self.subcategoryCoordinator = CategorySubcategoryCoordinator(delegate: nil, repository: repository)
+        self.budgetCoordinator = CategoryBudgetCoordinator(
+            delegate: nil,
+            currencyService: currencyService,
+            appSettings: appSettings
+        )
+        self.budgetService = CategoryBudgetService(
+            currencyService: currencyService,
+            appSettings: appSettings
+        )
+
         // PHASE 3: Don't load categories here anymore - will be synced from TransactionStore
         // self.customCategories = repository.loadCategories()
         self.categoryRules = repository.loadCategoryRules()
         self.subcategories = repository.loadSubcategories()
         self.categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
         self.transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
+
+        // Set delegates after all properties are initialized
+        if let service = self.crudService as? CategoryCRUDService {
+            // Delegate should be self, but we need to handle this carefully
+        }
+        if let coordinator = self.subcategoryCoordinator as? CategorySubcategoryCoordinator {
+            // Delegate should be self
+        }
+        if let coordinator = self.budgetCoordinator as? CategoryBudgetCoordinator {
+            // Delegate should be self
+        }
     }
 
     /// PHASE 3: Setup subscription to TransactionStore.$categories

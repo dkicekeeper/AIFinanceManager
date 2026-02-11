@@ -13,7 +13,7 @@ struct AccountSelectorView: View {
     let onSelectionChange: ((String?) -> Void)?
     let emptyStateMessage: String?
     let warningMessage: String?
-    @ObservedObject var balanceCoordinator: BalanceCoordinator
+    let balanceCoordinator: BalanceCoordinator
 
     init(
         accounts: [Account],
@@ -37,7 +37,7 @@ struct AccountSelectorView: View {
                 if let message = emptyStateMessage {
                     Text(message)
                         .font(AppTypography.bodyLarge)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(AppSpacing.lg)
                 }

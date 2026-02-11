@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SubcategoriesManagementView: View {
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    let categoriesViewModel: CategoriesViewModel
     @Environment(\.dismiss) var dismiss
     @State private var showingAddSubcategory = false
     @State private var editingSubcategory: Subcategory?
@@ -104,7 +104,7 @@ struct SubcategoryManagementRow: View {
 }
 
 struct SubcategoryEditView: View {
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    let categoriesViewModel: CategoriesViewModel
     let subcategory: Subcategory?
     let onSave: (Subcategory) -> Void
     let onCancel: () -> Void
@@ -148,7 +148,7 @@ struct SubcategoryEditView: View {
 
 #Preview("Subcategories Management") {
     let coordinator = AppCoordinator()
-    NavigationView {
+    NavigationStack {
         SubcategoriesManagementView(
             categoriesViewModel: coordinator.categoriesViewModel
         )
@@ -159,7 +159,7 @@ struct SubcategoryEditView: View {
     let coordinator = AppCoordinator()
     coordinator.categoriesViewModel.subcategories = []
     
-    return NavigationView {
+    return NavigationStack {
         SubcategoriesManagementView(
             categoriesViewModel: coordinator.categoriesViewModel
         )

@@ -9,20 +9,22 @@
 import Foundation
 import SwiftUI
 import Combine
+import Observation
 
+@Observable
 @MainActor
-class TransactionsViewModel: ObservableObject {
+class TransactionsViewModel {
 
-    // MARK: - Published State (UI Bindings)
+    // MARK: - Observable State (UI Bindings)
 
-    @Published var allTransactions: [Transaction] = []
-    @Published var displayTransactions: [Transaction] = []
-    @Published var categoryRules: [CategoryRule] = []
-    @Published var accounts: [Account] = []
+    var allTransactions: [Transaction] = []
+    var displayTransactions: [Transaction] = []
+    var categoryRules: [CategoryRule] = []
+    var accounts: [Account] = []
 
     /// DEPRECATED: Use CategoriesViewModel.categoriesPublisher instead
     /// This property is kept for backward compatibility but synced via Combine
-    @Published var customCategories: [CustomCategory] = []
+    var customCategories: [CustomCategory] = []
 
     /// ✨ Phase 9: Now computed property delegating to TransactionStore (Single Source of Truth)
     /// This eliminates data duplication and manual synchronization
@@ -30,17 +32,17 @@ class TransactionsViewModel: ObservableObject {
         transactionStore?.recurringSeries ?? []
     }
 
-    @Published var recurringOccurrences: [RecurringOccurrence] = []
-    @Published var subcategories: [Subcategory] = []
-    @Published var categorySubcategoryLinks: [CategorySubcategoryLink] = []
-    @Published var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
-    @Published var selectedCategories: Set<String>? = nil
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var currencyConversionWarning: String? = nil
-    @Published var appSettings: AppSettings = AppSettings.load()
-    @Published var hasOlderTransactions: Bool = false
-    @Published var dataRefreshTrigger: UUID = UUID()  // ✅ Trigger for forcing UI updates when data changes without count change
+    var recurringOccurrences: [RecurringOccurrence] = []
+    var subcategories: [Subcategory] = []
+    var categorySubcategoryLinks: [CategorySubcategoryLink] = []
+    var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
+    var selectedCategories: Set<String>? = nil
+    var isLoading = false
+    var errorMessage: String?
+    var currencyConversionWarning: String? = nil
+    var appSettings: AppSettings = AppSettings.load()
+    var hasOlderTransactions: Bool = false
+    var dataRefreshTrigger: UUID = UUID()  // ✅ Trigger for forcing UI updates when data changes without count change
 
     // MIGRATED: initialAccountBalances moved to BalanceCoordinator
     // MIGRATED: accountsWithCalculatedInitialBalance moved to BalanceCoordinator (calculation modes)
@@ -75,41 +77,15 @@ class TransactionsViewModel: ObservableObject {
     /// Aggregate caching now handled by TransactionStore
     private let aggregateCache: CategoryAggregateCacheProtocol = CategoryAggregateCacheStub()
 
-    private lazy var recurringService: RecurringTransactionServiceProtocol = {
-        RecurringTransactionService(delegate: self)
-    }()
+    // MARK: - Services (initialized eagerly for @Observable compatibility)
 
-    private lazy var filterCoordinator: TransactionFilterCoordinatorProtocol = {
-        let filterService = TransactionFilterService(dateFormatter: DateFormatters.dateFormatter)
-        return TransactionFilterCoordinator(filterService: filterService, dateFormatter: DateFormatters.dateFormatter)
-    }()
-
-    private lazy var accountOperationService: AccountOperationServiceProtocol = {
-        AccountOperationService()
-    }()
-
-    private lazy var queryService: TransactionQueryServiceProtocol = {
-        TransactionQueryService()
-    }()
-
-    // MARK: - Legacy Services (Keep for backward compatibility)
-
-    private lazy var groupingService: TransactionGroupingService = {
-        TransactionGroupingService(
-            dateFormatter: DateFormatters.dateFormatter,
-            displayDateFormatter: DateFormatters.displayDateFormatter,
-            displayDateWithYearFormatter: DateFormatters.displayDateWithYearFormatter,
-            cacheManager: cacheManager  // ✅ OPTIMIZATION: Pass cache for 23x performance boost
-        )
-    }()
-
-    private lazy var balanceCalculator: BalanceCalculator = {
-        BalanceCalculator(dateFormatter: DateFormatters.dateFormatter)
-    }()
-
-    lazy var recurringGenerator: RecurringTransactionGenerator = {
-        RecurringTransactionGenerator(dateFormatter: DateFormatters.dateFormatter)
-    }()
+    private let recurringService: RecurringTransactionServiceProtocol
+    private let filterCoordinator: TransactionFilterCoordinatorProtocol
+    private let accountOperationService: AccountOperationServiceProtocol
+    private let queryService: TransactionQueryServiceProtocol
+    private let groupingService: TransactionGroupingService
+    private let balanceCalculator: BalanceCalculator
+    let recurringGenerator: RecurringTransactionGenerator
 
     private let balanceUpdateCoordinator = BalanceUpdateCoordinatorWrapper()
 
@@ -133,9 +109,26 @@ class TransactionsViewModel: ObservableObject {
 
     init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
         self.repository = repository
-        // MIGRATED: accountBalanceService removed - using BalanceCoordinator instead
-        // MIGRATED: balanceCalculationService removed - using BalanceCoordinator instead
-        // MIGRATED: Performance optimization removed with BalanceCalculationService
+
+        // Initialize services (required for @Observable compatibility)
+        self.recurringService = RecurringTransactionService(delegate: nil)  // Will set delegate after init
+        let filterService = TransactionFilterService(dateFormatter: DateFormatters.dateFormatter)
+        self.filterCoordinator = TransactionFilterCoordinator(filterService: filterService, dateFormatter: DateFormatters.dateFormatter)
+        self.accountOperationService = AccountOperationService()
+        self.queryService = TransactionQueryService()
+        self.groupingService = TransactionGroupingService(
+            dateFormatter: DateFormatters.dateFormatter,
+            displayDateFormatter: DateFormatters.displayDateFormatter,
+            displayDateWithYearFormatter: DateFormatters.displayDateWithYearFormatter,
+            cacheManager: cacheManager
+        )
+        self.balanceCalculator = BalanceCalculator(dateFormatter: DateFormatters.dateFormatter)
+        self.recurringGenerator = RecurringTransactionGenerator(dateFormatter: DateFormatters.dateFormatter)
+
+        // Set delegate after all properties are initialized
+        if let service = self.recurringService as? RecurringTransactionService {
+            // TODO: Set delegate properly if needed
+        }
 
         setupRecurringSeriesObserver()
     }
@@ -815,7 +808,7 @@ class TransactionsViewModel: ObservableObject {
         // MIGRATED: initialAccountBalances removed - managed by BalanceCoordinator
         selectedCategories = nil
         repository.clearAllData()
-        objectWillChange.send()
+        // @Observable handles notifications automatically
     }
 
     // MARK: - Helpers

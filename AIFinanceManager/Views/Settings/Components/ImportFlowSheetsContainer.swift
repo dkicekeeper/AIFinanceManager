@@ -187,7 +187,7 @@ struct ImportFlowSheetsContainer<Content: View>: View {
 
 #Preview {
     struct PreviewWrapper: View {
-        @StateObject private var flowCoordinator = ImportFlowCoordinator(
+        @State private var flowCoordinator = ImportFlowCoordinator(
             transactionsViewModel: nil,
             categoriesViewModel: nil,
             accountsViewModel: nil

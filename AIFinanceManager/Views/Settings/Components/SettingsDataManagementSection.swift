@@ -60,7 +60,7 @@ struct SettingsDataManagementSection<CategoriesView: View, SubcategoriesView: Vi
 // MARK: - Preview
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         List {
             SettingsDataManagementSection {
                 Text("Categories Management")

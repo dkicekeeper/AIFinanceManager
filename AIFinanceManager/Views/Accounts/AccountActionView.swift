@@ -8,12 +8,12 @@
 import SwiftUI
 
 struct AccountActionView: View {
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.4: TransactionStore integration
+    let transactionsViewModel: TransactionsViewModel
+    let accountsViewModel: AccountsViewModel
+    @Environment(TransactionStore.self) private var transactionStore // Phase 7.4: TransactionStore integration
     let account: Account
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    @Environment(TimeFilterManager.self) private var timeFilterManager
     @State private var selectedAction: ActionType = .transfer
     @State private var amountText: String = ""
     @State private var selectedCurrency: String
@@ -49,7 +49,7 @@ struct AccountActionView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     // 1. Picker типа действия (если есть)
@@ -130,14 +130,14 @@ struct AccountActionView: View {
                 saveTransaction(date: date)
             })
             .sheet(isPresented: $showingAccountHistory) {
-                NavigationView {
+                NavigationStack {
                     HistoryView(
                         transactionsViewModel: transactionsViewModel,
                         accountsViewModel: accountsViewModel,
                         categoriesViewModel: CategoriesViewModel(repository: transactionsViewModel.repository),
                         initialAccountId: account.id
                     )
-                        .environmentObject(timeFilterManager)
+                        .environment(timeFilterManager)
                 }
             }
             .onAppear {

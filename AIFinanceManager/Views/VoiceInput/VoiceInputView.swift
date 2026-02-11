@@ -21,7 +21,7 @@ struct VoiceInputView: View {
     @State private var errorAlertMessage = ""
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 Spacer()
                 
@@ -33,7 +33,7 @@ struct VoiceInputView: View {
                         if voiceService.transcribedText.isEmpty {
                             Text(String(localized: "voice.speak"))
                                 .font(AppTypography.h4)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, AppSpacing.lg)
                         } else {
@@ -61,7 +61,7 @@ struct VoiceInputView: View {
 
                         Text(String(localized: "voice.vadDescription"))
                             .font(AppTypography.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, AppSpacing.lg)
                     }
@@ -115,7 +115,7 @@ struct VoiceInputView: View {
 
                                 Image(systemName: "stop.fill")
                                     .font(.system(size: AppIconSize.xl))
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                             }
                         }
                         
@@ -231,7 +231,7 @@ struct RecordingIndicatorView: View {
             
             Text(String(localized: "voice.recording"))
                 .font(.headline)
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
         }
         .onAppear {
             isAnimating = true

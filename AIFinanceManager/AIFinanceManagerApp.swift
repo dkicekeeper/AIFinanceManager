@@ -9,15 +9,14 @@ import SwiftUI
 
 @main
 struct AIFinanceManagerApp: App {
-    @StateObject private var timeFilterManager = TimeFilterManager()
-    @StateObject private var coordinator = AppCoordinator()
-    
+    @State private var timeFilterManager = TimeFilterManager()
+    @State private var coordinator = AppCoordinator()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(timeFilterManager)
-                .environmentObject(coordinator)
-                .environmentObject(coordinator.transactionStore)  // NEW 2026-02-05: Transaction Store
+                .environment(timeFilterManager)
+                .environment(coordinator)
         }
     }
 }

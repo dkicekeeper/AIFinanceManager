@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct CategoryEditView: View {
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
+    let transactionsViewModel: TransactionsViewModel
     let category: CustomCategory?
     let type: TransactionType
     let onSave: (CustomCategory) -> Void
@@ -79,14 +79,14 @@ struct CategoryEditView: View {
                     }) {
                         Image(systemName: iconName)
                             .font(.system(size: AppIconSize.xxl))
-                            .foregroundColor(colorFromHex(selectedColor))
+                            .foregroundStyle(colorFromHex(selectedColor))
                             .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                             .background(Color(.systemGray6))
-                            .cornerRadius(AppRadius.lg)
+                            .clipShape(.rect(cornerRadius: AppRadius.lg))
                     }
 
                     Text(String(localized: "category.tapToSelect"))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -160,7 +160,7 @@ struct CategoryEditView: View {
                                 categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: categoryId)
                             }) {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.red)
+                                    .foregroundStyle(.red)
                             }
                         }
                     }
@@ -173,7 +173,7 @@ struct CategoryEditView: View {
                             Image(systemName: "plus.circle.fill")
                             Text(String(localized: "category.addSubcategory"))
                         }
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                     }
                 }
             }

@@ -9,8 +9,8 @@ import SwiftUI
 
 struct SubscriptionsCardView: View {
     // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
-    @ObservedObject var transactionStore: TransactionStore
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    let transactionStore: TransactionStore
+    let transactionsViewModel: TransactionsViewModel
     @State private var totalAmount: Decimal = 0
     @State private var isLoadingTotal: Bool = false
 

@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct DepositEditView: View {
-    @ObservedObject var depositsViewModel: DepositsViewModel
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    let depositsViewModel: DepositsViewModel
+    let transactionsViewModel: TransactionsViewModel
     let account: Account?
     let onSave: (Account) -> Void
     let onCancel: () -> Void
@@ -77,7 +77,7 @@ struct DepositEditView: View {
                         Spacer()
                         selectedBankLogo.image(size: AppIconSize.lg)
                         Image(systemName: "chevron.right")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .font(AppTypography.caption)
                     }
                 }
@@ -101,7 +101,7 @@ struct DepositEditView: View {
                     TextField("0.0", text: $interestRateText)
                         .keyboardType(.decimalPad)
                     Text(String(localized: "deposit.rateAnnual"))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -113,14 +113,14 @@ struct DepositEditView: View {
                 }
                 Text(String(localized: "deposit.postingDayHint"))
                     .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Section(header: Text(String(localized: "deposit.capitalizationTitle"))) {
                 Toggle(String(localized: "deposit.enableCapitalization"), isOn: $capitalizationEnabled)
                 Text(String(localized: "deposit.capitalizationHint"))
                     .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .onAppear {
@@ -158,7 +158,7 @@ struct DepositEditView: View {
 
 #Preview("Deposit Edit View - New") {
     let coordinator = AppCoordinator()
-    NavigationView {
+    NavigationStack {
         DepositEditView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
@@ -186,7 +186,7 @@ struct DepositEditView: View {
         initialBalance: 1000000
     )
 
-    NavigationView {
+    NavigationStack {
         DepositEditView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,

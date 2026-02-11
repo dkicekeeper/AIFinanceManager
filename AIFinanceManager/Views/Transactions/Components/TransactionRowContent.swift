@@ -60,7 +60,7 @@ struct TransactionRowContent: View {
             if showIcon {
                 if isPlanned {
                     Image(systemName: "clock")
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                         .font(AppTypography.caption)
                 } else {
                     TransactionIconView(transaction: transaction, styleData: styleData)
@@ -82,7 +82,7 @@ struct TransactionRowContent: View {
                     }
                     Text(formatDate(transaction.date))
                         .font(AppTypography.bodySmall)
-                        .foregroundColor(isPlanned ? .blue : .secondary)
+                        .foregroundStyle(isPlanned ? .blue : .secondary)
                 }
             }
 
@@ -108,7 +108,7 @@ struct TransactionRowContent: View {
                             Text("(")
                                 .font(AppTypography.body)
                                 .fontWeight(.semibold)
-                                .foregroundColor(amountColor.opacity(0.7))
+                                .foregroundStyle(amountColor.opacity(0.7))
                             FormattedAmountView(
                                 amount: targetAmount,
                                 currency: targetCurrency,
@@ -118,7 +118,7 @@ struct TransactionRowContent: View {
                             Text(")")
                                 .font(AppTypography.body)
                                 .fontWeight(.semibold)
-                                .foregroundColor(amountColor.opacity(0.7))
+                                .foregroundStyle(amountColor.opacity(0.7))
                         }
                     }
                 }

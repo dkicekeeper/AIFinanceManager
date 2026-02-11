@@ -8,16 +8,16 @@
 import SwiftUI
 
 struct TransactionPreviewView: View {
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var accountsViewModel: AccountsViewModel
-    @EnvironmentObject var transactionStore: TransactionStore // Phase 7.5: TransactionStore integration
+    let transactionsViewModel: TransactionsViewModel
+    let accountsViewModel: AccountsViewModel
+    @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
     let transactions: [Transaction]
     @Environment(\.dismiss) var dismiss
     @State private var selectedTransactions: Set<String> = Set()
     @State private var accountMapping: [String: String] = [:] // transactionId -> accountId
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Заголовок с информацией
                 VStack(spacing: AppSpacing.sm) {
@@ -25,7 +25,7 @@ struct TransactionPreviewView: View {
                         .font(AppTypography.h4)
                     Text("Выберите транзакции для добавления")
                         .font(AppTypography.bodySecondary)
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
                 }
                 .cardContentPadding()
                 .frame(maxWidth: .infinity)
@@ -75,8 +75,8 @@ struct TransactionPreviewView: View {
                             .frame(maxWidth: .infinity)
                             .padding(AppSpacing.md)
                             .background(AppColors.accent.opacity(0.1))
-                            .foregroundColor(AppColors.accent)
-                            .cornerRadius(AppRadius.button)
+                            .foregroundStyle(AppColors.accent)
+                            .clipShape(.rect(cornerRadius: AppRadius.button))
                     }
 
                     Button(action: {
@@ -87,8 +87,8 @@ struct TransactionPreviewView: View {
                             .frame(maxWidth: .infinity)
                             .padding(AppSpacing.md)
                             .background(AppColors.secondaryBackground)
-                            .foregroundColor(AppColors.textSecondary)
-                            .cornerRadius(AppRadius.button)
+                            .foregroundStyle(AppColors.textSecondary)
+                            .clipShape(.rect(cornerRadius: AppRadius.button))
                     }
                 }
                 .cardContentPadding()
@@ -101,8 +101,8 @@ struct TransactionPreviewView: View {
                         .frame(maxWidth: .infinity)
                         .padding(AppSpacing.md)
                         .background(selectedTransactions.isEmpty ? AppColors.secondaryBackground : AppColors.accent)
-                        .foregroundColor(.white)
-                        .cornerRadius(AppRadius.button)
+                        .foregroundStyle(.white)
+                        .clipShape(.rect(cornerRadius: AppRadius.button))
                 }
                 .disabled(selectedTransactions.isEmpty)
                 .screenPadding()
@@ -183,7 +183,7 @@ struct TransactionPreviewRow: View {
             HStack {
                 Button(action: onToggle) {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(isSelected ? AppColors.accent : AppColors.textSecondary)
+                        .foregroundStyle(isSelected ? AppColors.accent : AppColors.textSecondary)
                         .font(AppTypography.h4)
                 }
 
@@ -194,15 +194,15 @@ struct TransactionPreviewRow: View {
 
                     Text(transaction.date)
                         .font(AppTypography.caption)
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
 
                     Text(transaction.category)
                         .font(AppTypography.caption)
-                        .foregroundColor(AppColors.accent)
+                        .foregroundStyle(AppColors.accent)
                         .padding(.horizontal, AppSpacing.sm)
                         .padding(.vertical, AppSpacing.xxs)
                         .background(AppColors.accent.opacity(0.1))
-                        .cornerRadius(AppRadius.xs)
+                        .clipShape(.rect(cornerRadius: AppRadius.xs))
                 }
 
                 Spacer()
@@ -217,7 +217,7 @@ struct TransactionPreviewRow: View {
 
                     Text(transaction.type == .income ? "Доход" : transaction.type == .expense ? "Расход" : "Перевод")
                         .font(AppTypography.caption)
-                        .foregroundColor(AppColors.textSecondary)
+                        .foregroundStyle(AppColors.textSecondary)
                 }
             }
             

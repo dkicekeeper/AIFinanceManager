@@ -13,8 +13,8 @@ import PDFKit
 /// Single responsibility: PDF import orchestration
 struct PDFImportCoordinator: View {
     // MARK: - Dependencies
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
-    @ObservedObject var categoriesViewModel: CategoriesViewModel
+    let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
 
     // MARK: - State
     @State private var showingFilePicker = false
@@ -94,13 +94,13 @@ struct PDFImportCoordinator: View {
             )
         } else {
             // Fallback - empty screen if text not loaded
-            NavigationView {
+            NavigationStack {
                 VStack(spacing: AppSpacing.md) {
                     Text(String(localized: "error.loadTextFailed"))
                         .font(AppTypography.h4)
                     Text(String(localized: "error.tryAgain"))
                         .font(AppTypography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -132,11 +132,11 @@ struct PDFImportCoordinator: View {
                 ProgressView(value: Double(progress.current), total: Double(progress.total)) {
                     Text(String(localized: "progress.recognizingText", defaultValue: "Recognizing text..."))
                         .font(AppTypography.bodySmall)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Text(String(format: String(localized: "progress.page", defaultValue: "Page %d of %d"), progress.current, progress.total))
                     .font(AppTypography.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             } else {
                 ProgressView(String(localized: "progress.processingPDF", defaultValue: "Processing PDF..."))
             }

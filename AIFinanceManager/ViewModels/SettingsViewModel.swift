@@ -8,32 +8,34 @@
 
 import SwiftUI
 import Combine
+import Observation
 
 /// ViewModel for Settings screen
 /// Coordinates all settings operations through specialized services
 /// Follows Single Responsibility Principle with Protocol-Oriented Design
+@Observable
 @MainActor
-final class SettingsViewModel: ObservableObject {
-    // MARK: - Published State
+final class SettingsViewModel {
+    // MARK: - Observable State
 
-    @Published var settings: AppSettings
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
-    @Published var successMessage: String?
+    var settings: AppSettings
+    var isLoading: Bool = false
+    var errorMessage: String?
+    var successMessage: String?
 
     // MARK: - Wallpaper State
 
-    @Published var currentWallpaper: UIImage?
-    @Published var wallpaperHistory: [WallpaperHistoryItem] = []
+    var currentWallpaper: UIImage?
+    var wallpaperHistory: [WallpaperHistoryItem] = []
 
     // MARK: - Export/Import Progress
 
-    @Published var exportProgress: Double = 0
-    @Published var isExporting: Bool = false
+    var exportProgress: Double = 0
+    var isExporting: Bool = false
 
     // MARK: - Import Flow State
 
-    @Published var importFlowCoordinator: ImportFlowCoordinator?
+    var importFlowCoordinator: ImportFlowCoordinator?
 
     // MARK: - Dependencies (Protocol-oriented for testability)
 

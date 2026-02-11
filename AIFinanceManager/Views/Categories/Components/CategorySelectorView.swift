@@ -50,7 +50,7 @@ struct CategorySelectorView: View {
                 if let message = emptyStateMessage {
                     Text(message)
                         .font(AppTypography.bodyLarge)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(AppSpacing.lg)
                 }
             } else {

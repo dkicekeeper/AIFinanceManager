@@ -14,9 +14,9 @@ import Combine
 /// Main home screen displaying accounts, analytics, subscriptions, and quick actions
 /// Single responsibility: Home screen UI orchestration
 struct ContentView: View {
-    // MARK: - Environment
-    @EnvironmentObject var coordinator: AppCoordinator
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    // MARK: - Environment (Modern @Observable with @Environment)
+    @Environment(AppCoordinator.self) private var coordinator
+    @Environment(TimeFilterManager.self) private var timeFilterManager
 
     // MARK: - State
     @State private var isInitializing = true
@@ -44,7 +44,7 @@ struct ContentView: View {
 
     // MARK: - Body
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 mainContent
                 loadingOverlay
@@ -171,7 +171,7 @@ struct ContentView: View {
             categoriesViewModel: categoriesViewModel,
             initialCategory: nil
         )
-        .environmentObject(timeFilterManager)
+        .environment(timeFilterManager)
     }
 
     private var subscriptionsDestination: some View {
@@ -179,7 +179,7 @@ struct ContentView: View {
             transactionStore: transactionStore,
             transactionsViewModel: viewModel
         )
-        .environmentObject(timeFilterManager)
+        .environment(timeFilterManager)
     }
 
     private var settingsDestination: some View {
@@ -203,7 +203,7 @@ struct ContentView: View {
                     .scaleEffect(1.5)
                 Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
                     .font(AppTypography.body)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .transition(.opacity)
         }
@@ -243,7 +243,7 @@ struct ContentView: View {
                     .font(AppTypography.bodySmall)
                     .fontWeight(.medium)
             }
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
         }
         .accessibilityLabel(String(localized: "accessibility.calendar"))
         .accessibilityHint(String(localized: "accessibility.calendarHint"))
@@ -269,14 +269,14 @@ struct ContentView: View {
     }
 
     private func depositDetailSheet(for account: Account) -> some View {
-        NavigationView {
+        NavigationStack {
             DepositDetailView(
                 depositsViewModel: coordinator.depositsViewModel,
                 transactionsViewModel: viewModel,
                 balanceCoordinator: accountsViewModel.balanceCoordinator!,
                 accountId: account.id
             )
-            .environmentObject(timeFilterManager)
+            .environment(timeFilterManager)
         }
     }
 
@@ -286,7 +286,7 @@ struct ContentView: View {
             accountsViewModel: accountsViewModel,
             account: account
         )
-        .environmentObject(timeFilterManager)
+        .environment(timeFilterManager)
     }
 
     private var timeFilterSheet: some View {
@@ -397,6 +397,6 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(TimeFilterManager())
-        .environmentObject(AppCoordinator())
+        .environment(TimeFilterManager())
+        .environment(AppCoordinator())
 }

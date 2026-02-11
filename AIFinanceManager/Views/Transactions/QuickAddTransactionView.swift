@@ -23,11 +23,11 @@ struct QuickAddTransactionView: View {
 
     // MARK: - Coordinator
 
-    @StateObject private var coordinator: QuickAddCoordinator
+    @State private var coordinator: QuickAddCoordinator
 
     // MARK: - Environment
 
-    @EnvironmentObject var timeFilterManager: TimeFilterManager
+    @Environment(TimeFilterManager.self) private var timeFilterManager
 
     // MARK: - Initialization
 
@@ -37,7 +37,7 @@ struct QuickAddTransactionView: View {
         accountsViewModel: AccountsViewModel,
         transactionStore: TransactionStore
     ) {
-        _coordinator = StateObject(wrappedValue: QuickAddCoordinator(
+        _coordinator = State(initialValue: QuickAddCoordinator(
             transactionsViewModel: transactionsViewModel,
             categoriesViewModel: categoriesViewModel,
             accountsViewModel: accountsViewModel,
@@ -111,7 +111,7 @@ struct QuickAddTransactionView: View {
             transactionStore: coordinator.transactionStore,
             onDismiss: coordinator.dismissModal
         )
-        .environmentObject(timeFilterManager)
+        .environment(timeFilterManager)
     }
 
     private var categoryEditSheet: some View {
@@ -136,5 +136,5 @@ struct QuickAddTransactionView: View {
         accountsViewModel: coordinator.accountsViewModel,
         transactionStore: coordinator.transactionStore
     )
-    .environmentObject(TimeFilterManager())
+    .environment(TimeFilterManager())
 }

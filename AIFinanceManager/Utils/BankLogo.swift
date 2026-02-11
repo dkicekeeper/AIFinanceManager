@@ -116,7 +116,7 @@ enum BankLogo: String, Codable, CaseIterable, Identifiable {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size, height: size)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         } else {
             // Пытаемся загрузить изображение из Assets
@@ -132,7 +132,7 @@ enum BankLogo: String, Codable, CaseIterable, Identifiable {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: size, height: size)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             }
         }

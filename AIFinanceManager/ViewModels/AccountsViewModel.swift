@@ -10,14 +10,16 @@ import Foundation
 import SwiftUI
 import CoreData
 import Combine
+import Observation
 
+@Observable
 @MainActor
-class AccountsViewModel: ObservableObject {
-    // MARK: - Published Properties
+class AccountsViewModel {
+    // MARK: - Observable Properties
 
     /// PHASE 3: Accounts are now observed from TransactionStore (Single Source of Truth)
     /// This is a computed property - ViewModels no longer own the data
-    @Published var accounts: [Account] = []
+    var accounts: [Account] = []
 
     // MARK: - Dependencies
 

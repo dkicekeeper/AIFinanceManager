@@ -17,11 +17,11 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.bodyLarge)
-            .foregroundColor(.white)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSpacing.md)
             .background(isDisabled ? Color.gray : Color.blue)
-            .cornerRadius(AppRadius.md)
+            .clipShape(.rect(cornerRadius: AppRadius.md))
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
     }
@@ -33,11 +33,11 @@ struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.body)
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSpacing.md)
             .background(AppColors.secondaryBackground)
-            .cornerRadius(AppRadius.md)
+            .clipShape(.rect(cornerRadius: AppRadius.md))
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
     }
@@ -49,7 +49,7 @@ struct TertiaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.body)
-            .foregroundColor(.blue)
+            .foregroundStyle(.blue)
             .opacity(configuration.isPressed ? 0.6 : 1.0)
             .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
     }
@@ -61,11 +61,11 @@ struct DestructiveButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.bodyLarge)
-            .foregroundColor(.white)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSpacing.md)
             .background(Color.red)
-            .cornerRadius(AppRadius.md)
+            .clipShape(.rect(cornerRadius: AppRadius.md))
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
     }
@@ -79,7 +79,7 @@ struct DateButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(AppTypography.body)
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSpacing.md)
             .background(AppColors.secondaryBackground)

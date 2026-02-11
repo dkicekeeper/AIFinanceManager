@@ -9,8 +9,8 @@ import SwiftUI
 
 struct SubscriptionEditView: View {
     // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
-    @ObservedObject var transactionStore: TransactionStore
-    @ObservedObject var transactionsViewModel: TransactionsViewModel
+    let transactionStore: TransactionStore
+    let transactionsViewModel: TransactionsViewModel
     let subscription: RecurringSeries?
     let onSave: (RecurringSeries) -> Void
     let onCancel: () -> Void
@@ -50,7 +50,7 @@ struct SubscriptionEditView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     // 1. Amount Input
@@ -87,7 +87,7 @@ struct SubscriptionEditView: View {
                         HStack {
                             Text("Основная информация")
                                 .font(AppTypography.caption)
-                                .foregroundColor(AppColors.textSecondary)
+                                .foregroundStyle(AppColors.textSecondary)
                                 .textCase(.uppercase)
                             Spacer()
                         }
@@ -102,7 +102,7 @@ struct SubscriptionEditView: View {
                                     .padding(AppSpacing.md)
                             }
                             .background(AppColors.cardBackground)
-                            .cornerRadius(AppRadius.md)
+                            .clipShape(.rect(cornerRadius: AppRadius.md))
 
                             Divider()
                                 .padding(.leading, AppSpacing.md)
@@ -111,7 +111,7 @@ struct SubscriptionEditView: View {
                             Button(action: { showingLogoSearch = true }) {
                                 HStack {
                                     Text("Найти логотип")
-                                        .foregroundColor(AppColors.textPrimary)
+                                        .foregroundStyle(AppColors.textPrimary)
                                     Spacer()
                                     if let brandName = selectedBrandName {
                                         if let url = LogoDevConfig.logoURL(for: brandName) {
@@ -128,31 +128,31 @@ struct SubscriptionEditView: View {
                                                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.xs))
                                                 case .failure(_):
                                                     Image(systemName: "photo")
-                                                        .foregroundColor(AppColors.textSecondary)
+                                                        .foregroundStyle(AppColors.textSecondary)
                                                 @unknown default:
                                                     Image(systemName: "photo")
-                                                        .foregroundColor(AppColors.textSecondary)
+                                                        .foregroundStyle(AppColors.textSecondary)
                                                 }
                                             }
                                         } else {
                                             Image(systemName: "photo")
-                                                .foregroundColor(AppColors.textSecondary)
+                                                .foregroundStyle(AppColors.textSecondary)
                                         }
                                         Text(brandName)
                                             .font(AppTypography.caption)
-                                            .foregroundColor(AppColors.textSecondary)
+                                            .foregroundStyle(AppColors.textSecondary)
                                     } else if let logo = selectedBrandLogo {
                                         logo.image(size: AppIconSize.lg)
                                     } else if let iconName = selectedIconName {
                                         Image(systemName: iconName)
-                                            .foregroundColor(AppColors.textSecondary)
+                                            .foregroundStyle(AppColors.textSecondary)
                                             .font(.system(size: AppIconSize.lg))
                                     } else {
                                         Image(systemName: "photo")
-                                            .foregroundColor(AppColors.textSecondary)
+                                            .foregroundStyle(AppColors.textSecondary)
                                     }
                                     Image(systemName: "chevron.right")
-                                        .foregroundColor(AppColors.textSecondary)
+                                        .foregroundStyle(AppColors.textSecondary)
                                         .font(AppTypography.caption)
                                 }
                                 .padding(AppSpacing.md)
@@ -166,18 +166,18 @@ struct SubscriptionEditView: View {
                             Button(action: { showingIconPicker = true }) {
                                 HStack {
                                     Text("Выбрать иконку")
-                                        .foregroundColor(AppColors.textPrimary)
+                                        .foregroundStyle(AppColors.textPrimary)
                                     Spacer()
                                     if let iconName = selectedIconName {
                                         Image(systemName: iconName)
-                                            .foregroundColor(AppColors.textSecondary)
+                                            .foregroundStyle(AppColors.textSecondary)
                                             .font(.system(size: AppIconSize.lg))
                                     } else {
                                         Image(systemName: "photo")
-                                            .foregroundColor(AppColors.textSecondary)
+                                            .foregroundStyle(AppColors.textSecondary)
                                     }
                                     Image(systemName: "chevron.right")
-                                        .foregroundColor(AppColors.textSecondary)
+                                        .foregroundStyle(AppColors.textSecondary)
                                         .font(AppTypography.caption)
                                 }
                                 .padding(AppSpacing.md)
@@ -191,7 +191,7 @@ struct SubscriptionEditView: View {
                             VStack(spacing: AppSpacing.sm) {
                                 HStack {
                                     Text("Частота")
-                                        .foregroundColor(AppColors.textPrimary)
+                                        .foregroundStyle(AppColors.textPrimary)
                                     Spacer()
                                 }
                                 SegmentedPickerView(
@@ -214,7 +214,7 @@ struct SubscriptionEditView: View {
                                 .background(AppColors.cardBackground)
                         }
                         .background(AppColors.cardBackground)
-                        .cornerRadius(AppRadius.md)
+                        .clipShape(.rect(cornerRadius: AppRadius.md))
                     }
 
                     // 5. Напоминания
@@ -222,7 +222,7 @@ struct SubscriptionEditView: View {
                         HStack {
                             Text("Напоминания")
                                 .font(AppTypography.caption)
-                                .foregroundColor(AppColors.textSecondary)
+                                .foregroundStyle(AppColors.textSecondary)
                                 .textCase(.uppercase)
                             Spacer()
                         }
@@ -252,7 +252,7 @@ struct SubscriptionEditView: View {
                             }
                         }
                         .background(AppColors.cardBackground)
-                        .cornerRadius(AppRadius.md)
+                        .clipShape(.rect(cornerRadius: AppRadius.md))
                     }
                 }
                 .padding(.horizontal, AppSpacing.lg)

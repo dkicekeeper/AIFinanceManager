@@ -31,7 +31,7 @@ struct DescriptionTextField: View {
             .lineLimit(minLines...maxLines)
             .padding(AppSpacing.lg)
             .background(.primary .opacity(0.03))
-            .cornerRadius(AppSpacing.md)
+            .clipShape(.rect(cornerRadius: AppSpacing.md))
             .padding(AppSpacing.lg)
     }
 }
