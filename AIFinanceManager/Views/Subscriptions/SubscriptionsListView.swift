@@ -19,8 +19,11 @@ struct SubscriptionsListView: View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 if !transactionStore.subscriptions.isEmpty {
-                    SubscriptionCalendarView(subscriptions: transactionStore.subscriptions)
-                        .screenPadding()
+                    SubscriptionCalendarView(
+                        subscriptions: transactionStore.subscriptions,
+                        baseCurrency: transactionsViewModel.appSettings.baseCurrency
+                    )
+                    .screenPadding()
                 }
 
                 if transactionStore.subscriptions.isEmpty {

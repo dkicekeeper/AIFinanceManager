@@ -392,6 +392,7 @@
 "calendar.halfYear" = "6 Months";
 "calendar.year" = "Year";
 "calendar.noUpcomingPayments" = "No upcoming payments";
+"calendar.currentMonth" = "Current Month";
 
 // MARK: - Transaction Forms
 "transactionForm.amount" = "Amount";

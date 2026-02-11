@@ -392,6 +392,7 @@
 "calendar.halfYear" = "Полгода";
 "calendar.year" = "Год";
 "calendar.noUpcomingPayments" = "Нет ближайших платежей";
+"calendar.currentMonth" = "Текущий месяц";
 
 // MARK: - Transaction Forms
 "transactionForm.amount" = "Сумма";

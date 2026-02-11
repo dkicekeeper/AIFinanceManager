@@ -7,156 +7,158 @@
 
 import SwiftUI
 
-enum CalendarViewType: String, CaseIterable, Identifiable {
-    case month = "month"
-    case halfYear = "halfYear"
-    case year = "year"
-    
-    var id: String { self.rawValue }
-    
-    var displayName: String {
-        switch self {
-        case .month: return String(localized: "calendar.month")
-        case .halfYear: return String(localized: "calendar.halfYear")
-        case .year: return String(localized: "calendar.year")
-        }
-    }
-    
-    var daysCount: Int {
-        switch self {
-        case .month: return 30
-        case .halfYear: return 182
-        case .year: return 365
-        }
-    }
-}
-
 struct SubscriptionCalendarView: View {
     let subscriptions: [RecurringSeries]
-    @State private var viewType: CalendarViewType = .month
+    let baseCurrency: String
+    @State private var currentMonthIndex: Int = 0
+    @State private var monthlyTotals: [Int: Decimal] = [:] // monthIndex -> total in base currency
     private let calendar = Calendar.current
-    
+
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
             header
-            
-            ScrollView {
-                VStack(spacing: AppSpacing.xl) {
-                    ForEach(monthsInPeriod, id: \.self) { monthStart in
-                        monthGrid(for: monthStart)
+
+            // Static weekday headers
+            LazyVGrid(columns: columns, spacing: 0) {
+                ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { index, symbol in
+                    Text(symbol)
+                        .font(AppTypography.bodySmall)
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppColors.textSecondary)
+                        .frame(height: 20)
+                }
+            }
+
+            GeometryReader { geometry in
+                TabView(selection: $currentMonthIndex) {
+                    ForEach(Array(allMonths.enumerated()), id: \.offset) { index, monthStart in
+                        monthGrid(for: monthStart, availableHeight: geometry.size.height)
+                            .tag(index)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            ))
                     }
                 }
-                .padding(.vertical, AppSpacing.sm)
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.easeInOut(duration: AppAnimation.slow), value: currentMonthIndex)
             }
-            .frame(maxHeight: viewType == .month ? 350 : 500)
+            .frame(height: calculateCalendarHeight())
+//            .animation(.spring(response: 0.5, dampingFraction: 0.65), value: calculateCalendarHeight())
         }
         .glassCardStyle()
+        .task {
+            await calculateAllMonthTotals()
+        }
+        .onChange(of: subscriptions.count) { _, _ in
+            Task {
+                await calculateAllMonthTotals()
+            }
+        }
+        .onChange(of: baseCurrency) { _, _ in
+            Task {
+                await calculateAllMonthTotals()
+            }
+        }
     }
-    
+
     private var header: some View {
         HStack {
-            Text(String(localized: "calendar.upcomingPayments"))
-                .font(AppTypography.h4)
+            Button(action: {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    currentMonthIndex = 0
+                }
+            }) {
+                Text(formatMonthYear(allMonths[currentMonthIndex]))
+                    .font(AppTypography.h4)
+                    .foregroundColor(AppColors.textPrimary)
+            }
+            .buttonStyle(.plain)
 
             Spacer()
 
-            SegmentedPickerView(
-                title: "",
-                selection: $viewType,
-                options: CalendarViewType.allCases.map { type in
-                    (label: type.displayName, value: type)
-                }
-            )
-            .frame(width: AppSize.calendarPickerWidth)
+            if let total = monthlyTotals[currentMonthIndex], total > 0 {
+                Text(Formatting.formatCurrency(
+                    NSDecimalNumber(decimal: total).doubleValue,
+                    currency: baseCurrency
+                ))
+                .font(AppTypography.bodyLarge)
+                .foregroundColor(AppColors.textPrimary)
+            }
         }
+        .animation(.easeInOut(duration: AppAnimation.standard), value: currentMonthIndex)
+        .padding(.vertical, AppSpacing.sm)
     }
-    
-    private var monthsInPeriod: [Date] {
+
+    private var allMonths: [Date] {
         let today = calendar.startOfDay(for: Date())
         guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) else {
             return [today]
         }
-        
-        let count: Int
-        switch viewType {
-        case .month: count = 1
-        case .halfYear: count = 6
-        case .year: count = 12
-        }
-        
-        return (0..<count).compactMap { i in
+
+        return (0..<12).compactMap { i in
             calendar.date(byAdding: .month, value: i, to: startOfMonth)
         }
     }
-    
-    private func monthGrid(for monthStart: Date) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text(formatMonthName(monthStart))
-                .font(AppTypography.bodyLarge)
-                .padding(.leading, AppSpacing.xs)
-            
-            // Weekday headers
-            LazyVGrid(columns: columns, spacing: 0) {
-                ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { index, symbol in
-                    Text(symbol)
-                        .font(AppTypography.caption2)
-                        .foregroundColor(AppColors.textSecondary)
-                        .frame(height: AppSize.skeletonHeight)
-                }
-            }
-            
-            // Days grid
-            LazyVGrid(columns: columns, spacing: 0) {
-                let days = daysInMonth(for: monthStart)
-                ForEach(0..<days.count, id: \.self) { index in
-                    if let date = days[index] {
-                        dateCell(for: date)
-                    } else {
-                        Color.clear
-                            .frame(height: 45)
-                    }
+
+    private func monthGrid(for monthStart: Date, availableHeight: CGFloat) -> some View {
+        // Days grid only (weekday headers are now static)
+        LazyVGrid(columns: columns, spacing: AppSpacing.xs) {
+            let days = daysInMonth(for: monthStart)
+            ForEach(0..<days.count, id: \.self) { index in
+                if let date = days[index] {
+                    dateCell(for: date)
+                } else {
+                    Color.clear
+                        .frame(height: 60)
                 }
             }
         }
+        .padding(.top, AppSpacing.md)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
-    
+
     private func dateCell(for date: Date) -> some View {
         let isToday = calendar.isDateInToday(date)
         let occurrences = subscriptionsOnDate(date)
 
-        return VStack(spacing: AppSpacing.xxs) {
+        return VStack(spacing: AppSpacing.xs) {
             Text("\(calendar.component(.day, from: date))")
-                .font(isToday ? AppTypography.captionEmphasis : AppTypography.caption)
+                .font(isToday ? AppTypography.bodySmall.weight(.semibold) : AppTypography.bodySmall)
                 .foregroundColor(isToday ? AppColors.accent : AppColors.textPrimary)
-                .frame(width: AppIconSize.lg, height: AppIconSize.lg)
+                .frame(width: 32, height: 32)
                 .background(isToday ? AppColors.accent.opacity(0.1) : Color.clear)
                 .clipShape(Circle())
+                .animation(.easeInOut(duration: AppAnimation.fast), value: isToday)
 
             // Logos
             if !occurrences.isEmpty {
                 HStack(spacing: -AppSpacing.xs) {
                     ForEach(occurrences.prefix(3), id: \.id) { sub in
-                        logoView(for: sub, size: AppIconSize.indicator)
+                        logoView(for: sub, size: AppIconSize.md)
                             .background(Circle().fill(AppColors.backgroundPrimary))
                             .clipShape(Circle())
+                            .transition(.scale.combined(with: .opacity))
                     }
                     if occurrences.count > 3 {
                         Text("+\(occurrences.count - 3)")
-                            .font(.system(size: AppIconSize.xs, weight: .bold))
+                            .font(.system(size: AppIconSize.sm, weight: .bold))
                             .foregroundColor(AppColors.textSecondary)
-                            .frame(width: AppIconSize.indicator, height: AppIconSize.indicator)
+                            .frame(width: AppIconSize.md, height: AppIconSize.md)
                             .background(Circle().fill(AppColors.surface))
+                            .transition(.scale.combined(with: .opacity))
                     }
                 }
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: occurrences.count)
             } else {
-                Spacer().frame(height: AppIconSize.indicator)
+                Spacer().frame(height: AppIconSize.md)
             }
         }
-        .frame(height: AppSize.buttonSmall + 5)
+        .frame(height: 60)
     }
-    
+
     private func logoView(for sub: RecurringSeries, size: CGFloat) -> some View {
         // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
         BrandLogoDisplayView(
@@ -166,49 +168,152 @@ struct SubscriptionCalendarView: View {
             size: size
         )
     }
-    
+
     // MARK: - Helpers
-    
+
+    private func calculateCalendarHeight() -> CGFloat {
+        // Calculate number of weeks needed for the current month
+        let currentMonth = allMonths[currentMonthIndex]
+        let days = daysInMonth(for: currentMonth)
+        let weeksCount = ceil(Double(days.count) / 7.0)
+
+        // Cell height (60) * weeks + spacing between rows
+        let cellHeight: CGFloat = 60
+        let rowSpacing: CGFloat = AppSpacing.xs * (weeksCount - 1)
+        let gridHeight = (cellHeight * weeksCount) + rowSpacing
+
+        // Top padding only (weekday headers are now outside TabView)
+        let topPadding: CGFloat = AppSpacing.md
+
+        return gridHeight + topPadding
+    }
+
+    private func calculateAllMonthTotals() async {
+        var totals: [Int: Decimal] = [:]
+
+        for (index, monthDate) in allMonths.enumerated() {
+            let monthStart = calendar.startOfDay(for: monthDate)
+            guard let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) else {
+                continue
+            }
+
+            let monthInterval = DateInterval(start: monthStart, end: monthEnd)
+            var monthTotal: Decimal = 0
+
+            for subscription in subscriptions {
+                let occurrences = subscription.occurrences(in: monthInterval)
+                if !occurrences.isEmpty {
+                    // Convert to base currency
+                    let amount = NSDecimalNumber(decimal: subscription.amount).doubleValue
+                    let convertedAmount = await CurrencyConverter.convert(
+                        amount: amount,
+                        from: subscription.currency,
+                        to: baseCurrency
+                    ) ?? amount
+
+                    monthTotal += Decimal(convertedAmount) * Decimal(occurrences.count)
+                }
+            }
+
+            totals[index] = monthTotal
+        }
+
+        monthlyTotals = totals
+    }
+
     private var weekdaySymbols: [String] {
         let symbols = calendar.veryShortStandaloneWeekdaySymbols
         let firstDay = calendar.firstWeekday // 1 = Sunday, 2 = Monday
-        
+
         var rotated = Array(symbols[firstDay-1..<symbols.count])
         rotated.append(contentsOf: symbols[0..<firstDay-1])
         return rotated
     }
-    
+
     private func daysInMonth(for monthStart: Date) -> [Date?] {
         guard let range = calendar.range(of: .day, in: .month, for: monthStart),
               let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthStart)) else {
             return []
         }
-        
+
         let weekdayOfFirst = calendar.component(.weekday, from: firstDayOfMonth)
         let firstDayIndex = (weekdayOfFirst - calendar.firstWeekday + 7) % 7
-        
+
         var days: [Date?] = Array(repeating: nil, count: firstDayIndex)
-        
+
         for day in 1...range.count {
             if let date = calendar.date(byAdding: .day, value: day - 1, to: firstDayOfMonth) {
                 days.append(date)
             }
         }
-        
+
         return days
     }
-    
-    private func formatMonthName(_ date: Date) -> String {
+
+    private func formatMonthYear(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "LLLL yyyy"
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = Locale.current
         return formatter.string(from: date).capitalized
     }
-    
+
     private func subscriptionsOnDate(_ date: Date) -> [RecurringSeries] {
         let dayInterval = DateInterval(start: date, end: calendar.date(byAdding: .day, value: 1, to: date)!.addingTimeInterval(-1))
         return subscriptions.filter { sub in
             !sub.occurrences(in: dayInterval).isEmpty
         }
     }
+}
+
+#Preview("With Subscriptions") {
+    let calendar = Calendar.current
+    let today = Date()
+    let formatter = ISO8601DateFormatter()
+
+    // Create mock subscriptions with various dates throughout the month
+    let mockSubscriptions = [
+        RecurringSeries(
+            amount: 9.99,
+            currency: "USD",
+            category: "Развлечения",
+            description: "Netflix",
+            frequency: .monthly,
+            startDate: formatter.string(from: calendar.date(byAdding: .day, value: 5, to: calendar.startOfDay(for: today))!),
+            brandId: "netflix"
+        ),
+        RecurringSeries(
+            amount: 14.99,
+            currency: "USD",
+            category: "Развлечения",
+            description: "Spotify",
+            frequency: .monthly,
+            startDate: formatter.string(from: calendar.date(byAdding: .day, value: 12, to: calendar.startOfDay(for: today))!),
+            brandId: "spotify"
+        ),
+        RecurringSeries(
+            amount: 299,
+            currency: "RUB",
+            category: "Коммуналка",
+            description: "Интернет",
+            frequency: .monthly,
+            startDate: formatter.string(from: calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: today))!)
+        ),
+        RecurringSeries(
+            amount: 4.99,
+            currency: "USD",
+            category: "Облако",
+            description: "iCloud Storage",
+            frequency: .monthly,
+            startDate: formatter.string(from: today),
+            brandId: "icloud"
+        )
+    ]
+
+    SubscriptionCalendarView(subscriptions: mockSubscriptions, baseCurrency: "USD")
+        .padding()
+}
+
+#Preview("Empty Calendar") {
+    SubscriptionCalendarView(subscriptions: [], baseCurrency: "USD")
+        .padding()
 }
