@@ -16,6 +16,7 @@ struct CategoriesManagementView: View {
     @State private var editingCategory: CustomCategory?
     @State private var categoryToDelete: CustomCategory?
     @State private var showingDeleteDialog = false
+    @State private var isReordering = false
     
     // Кешируем отфильтрованные категории для оптимизации
     private var filteredCategories: [CustomCategory] {
@@ -85,29 +86,44 @@ struct CategoriesManagementView: View {
                             }
                         )
                     }
-                    .onMove(perform: moveCategory)
+                    .onMove(perform: isReordering ? moveCategory : nil)
                 }
-                .environment(\.editMode, .constant(.active))
+                .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
             }
         }
         .navigationTitle(String(localized: "navigation.categories"))
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    HapticManager.light()
-                    showingAddCategory = true
-                } label: {
-                    Image(systemName: "plus")
+                HStack(spacing: AppSpacing.md) {
+                    Button {
+                        HapticManager.light()
+                        withAnimation {
+                            isReordering.toggle()
+                        }
+                    } label: {
+                        Image(systemName: isReordering ? "checkmark" : "arrow.up.arrow.down")
+                            .foregroundColor(isReordering ? .blue : .primary)
+                    }
+
+                    Button {
+                        HapticManager.light()
+                        showingAddCategory = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
         .safeAreaInset(edge: .top) {
-            Picker("", selection: $selectedType) {
-                Text(String(localized: "transactionType.expense")).tag(TransactionType.expense)
-                Text(String(localized: "transactionType.income")).tag(TransactionType.income)
-            }
-            .pickerStyle(.segmented)
+            SegmentedPickerView(
+                title: "",
+                selection: $selectedType,
+                options: [
+                    (label: String(localized: "transactionType.expense"), value: TransactionType.expense),
+                    (label: String(localized: "transactionType.income"), value: TransactionType.income)
+                ]
+            )
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.md)
             .background(Color(.clear))

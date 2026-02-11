@@ -29,14 +29,15 @@ struct RecurringToggleView: View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Toggle(toggleTitle, isOn: $isRecurring)
                 .font(AppTypography.body)
-            
+
             if isRecurring {
-                Picker(frequencyTitle, selection: $selectedFrequency) {
-                    ForEach(RecurringFrequency.allCases, id: \.self) { frequency in
-                        Text(frequency.displayName).tag(frequency)
+                SegmentedPickerView(
+                    title: "",
+                    selection: $selectedFrequency,
+                    options: RecurringFrequency.allCases.map { frequency in
+                        (label: frequency.displayName, value: frequency)
                     }
-                }
-                .pickerStyle(SegmentedPickerStyle())
+                )
                 .font(AppTypography.body)
                 .padding(.top, AppSpacing.sm)
             }

@@ -62,6 +62,7 @@ struct AccountActionView: View {
                                 (label: String(localized: "transactionForm.topUp"), value: ActionType.income)
                             ]
                         )
+                        .padding(AppSpacing.lg)
                     }
                     
                     // 2. Сумма с выбором валюты

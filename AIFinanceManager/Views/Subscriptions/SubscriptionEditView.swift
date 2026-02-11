@@ -50,115 +50,20 @@ struct SubscriptionEditView: View {
     }
     
     var body: some View {
-        EditSheetContainer(
-            title: subscription == nil ? "Новая подписка" : "Редактировать подписку",
-            isSaveDisabled: description.isEmpty || amountText.isEmpty,
-            onSave: {
-                saveSubscription()
-            },
-            onCancel: onCancel
-        ) {
-                // ✨ Amount Input - Reusable Component
-                AmountInputView(
-                    amount: $amountText,
-                    selectedCurrency: $currency,
-                    errorMessage: validationError,
-                    onAmountChange: { _ in
-                        validationError = nil
-                    }
-                )
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-
-                Section(header: Text("Название")) {
-                    TextField("Название подписки", text: $description)
-                        .focused($isDescriptionFocused)
-                }
-
-                Section(header: Text("Логотип/Иконка")) {
-                    Button(action: { showingLogoSearch = true }) {
-                        HStack {
-                            Text("Найти логотип")
-                            Spacer()
-                            if let brandName = selectedBrandName {
-                                // Показываем предпросмотр логотипа
-                                if let url = LogoDevConfig.logoURL(for: brandName) {
-                                    AsyncImage(url: url) { phase in
-                                        switch phase {
-                                        case .empty:
-                                            ProgressView()
-                                                .frame(width: AppIconSize.lg, height: AppIconSize.lg)
-                                        case .success(let image):
-                                            image
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fit)
-                                                .frame(width: AppIconSize.lg, height: AppIconSize.lg)
-                                                .clipShape(RoundedRectangle(cornerRadius: AppRadius.xs))
-                                        case .failure(_):
-                                            Image(systemName: "photo")
-                                                .foregroundColor(AppColors.textSecondary)
-                                        @unknown default:
-                                            Image(systemName: "photo")
-                                                .foregroundColor(AppColors.textSecondary)
-                                        }
-                                    }
-                                } else {
-                                    Image(systemName: "photo")
-                                        .foregroundColor(AppColors.textSecondary)
-                                }
-                                Text(brandName)
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(AppColors.textSecondary)
-                            } else if let logo = selectedBrandLogo {
-                                logo.image(size: AppIconSize.lg)
-                            } else if let iconName = selectedIconName {
-                                Image(systemName: iconName)
-                                    .foregroundColor(AppColors.textSecondary)
-                                    .font(.system(size: AppIconSize.lg))
-                            } else {
-                                Image(systemName: "photo")
-                                    .foregroundColor(AppColors.textSecondary)
-                            }
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(AppColors.textSecondary)
-                                .font(AppTypography.caption)
+        NavigationView {
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // 1. Amount Input
+                    AmountInputView(
+                        amount: $amountText,
+                        selectedCurrency: $currency,
+                        errorMessage: validationError,
+                        onAmountChange: { _ in
+                            validationError = nil
                         }
-                    }
-
-                    Button(action: { showingIconPicker = true }) {
-                        HStack {
-                            Text("Выбрать иконку")
-                            Spacer()
-                            if let iconName = selectedIconName {
-                                Image(systemName: iconName)
-                                    .foregroundColor(AppColors.textSecondary)
-                                    .font(.system(size: AppIconSize.lg))
-                            } else {
-                                Image(systemName: "photo")
-                                    .foregroundColor(AppColors.textSecondary)
-                            }
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(AppColors.textSecondary)
-                                .font(AppTypography.caption)
-                        }
-                    }
-                }
-
-                // ✨ Category Selector - Reusable Component
-                Section(header: Text("Категория")) {
-                    CategorySelectorView(
-                        categories: availableCategories,
-                        type: .expense,
-                        customCategories: transactionsViewModel.customCategories,
-                        selectedCategory: $selectedCategory,
-                        warningMessage: selectedCategory == nil ? "Выберите категорию" : nil
                     )
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
 
-                // ✨ Account Selector - Reusable Component
-                Section(header: Text("Счёт оплаты")) {
+                    // 2. Account Selector
                     AccountSelectorView(
                         accounts: transactionsViewModel.accounts,
                         selectedAccountId: $selectedAccountId,
@@ -166,37 +71,209 @@ struct SubscriptionEditView: View {
                         warningMessage: selectedAccountId == nil ? "Выберите счёт" : nil,
                         balanceCoordinator: transactionsViewModel.balanceCoordinator!
                     )
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                
-                Section(header: Text("Частота")) {
-                    Picker("Частота", selection: $selectedFrequency) {
-                        ForEach(RecurringFrequency.allCases, id: \.self) { frequency in
-                            Text(frequency.displayName).tag(frequency)
+
+                    // 3. Category Selector
+                    CategorySelectorView(
+                        categories: availableCategories,
+                        type: .expense,
+                        customCategories: transactionsViewModel.customCategories,
+                        selectedCategory: $selectedCategory,
+                        warningMessage: selectedCategory == nil ? "Выберите категорию" : nil
+                    )
+
+                    // 4. Основная информация
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Основная информация")
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppColors.textSecondary)
+                                .textCase(.uppercase)
+                            Spacer()
                         }
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.bottom, AppSpacing.xs)
+
+                        VStack(spacing: 0) {
+                            // Название
+                            VStack(spacing: 0) {
+                                TextField("Название подписки", text: $description)
+                                    .focused($isDescriptionFocused)
+                                    .padding(AppSpacing.md)
+                            }
+                            .background(AppColors.cardBackground)
+                            .cornerRadius(AppRadius.md)
+
+                            Divider()
+                                .padding(.leading, AppSpacing.md)
+
+                            // Логотип
+                            Button(action: { showingLogoSearch = true }) {
+                                HStack {
+                                    Text("Найти логотип")
+                                        .foregroundColor(AppColors.textPrimary)
+                                    Spacer()
+                                    if let brandName = selectedBrandName {
+                                        if let url = LogoDevConfig.logoURL(for: brandName) {
+                                            AsyncImage(url: url) { phase in
+                                                switch phase {
+                                                case .empty:
+                                                    ProgressView()
+                                                        .frame(width: AppIconSize.lg, height: AppIconSize.lg)
+                                                case .success(let image):
+                                                    image
+                                                        .resizable()
+                                                        .aspectRatio(contentMode: .fit)
+                                                        .frame(width: AppIconSize.lg, height: AppIconSize.lg)
+                                                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.xs))
+                                                case .failure(_):
+                                                    Image(systemName: "photo")
+                                                        .foregroundColor(AppColors.textSecondary)
+                                                @unknown default:
+                                                    Image(systemName: "photo")
+                                                        .foregroundColor(AppColors.textSecondary)
+                                                }
+                                            }
+                                        } else {
+                                            Image(systemName: "photo")
+                                                .foregroundColor(AppColors.textSecondary)
+                                        }
+                                        Text(brandName)
+                                            .font(AppTypography.caption)
+                                            .foregroundColor(AppColors.textSecondary)
+                                    } else if let logo = selectedBrandLogo {
+                                        logo.image(size: AppIconSize.lg)
+                                    } else if let iconName = selectedIconName {
+                                        Image(systemName: iconName)
+                                            .foregroundColor(AppColors.textSecondary)
+                                            .font(.system(size: AppIconSize.lg))
+                                    } else {
+                                        Image(systemName: "photo")
+                                            .foregroundColor(AppColors.textSecondary)
+                                    }
+                                    Image(systemName: "chevron.right")
+                                        .foregroundColor(AppColors.textSecondary)
+                                        .font(AppTypography.caption)
+                                }
+                                .padding(AppSpacing.md)
+                            }
+                            .background(AppColors.cardBackground)
+
+                            Divider()
+                                .padding(.leading, AppSpacing.md)
+
+                            // Иконка
+                            Button(action: { showingIconPicker = true }) {
+                                HStack {
+                                    Text("Выбрать иконку")
+                                        .foregroundColor(AppColors.textPrimary)
+                                    Spacer()
+                                    if let iconName = selectedIconName {
+                                        Image(systemName: iconName)
+                                            .foregroundColor(AppColors.textSecondary)
+                                            .font(.system(size: AppIconSize.lg))
+                                    } else {
+                                        Image(systemName: "photo")
+                                            .foregroundColor(AppColors.textSecondary)
+                                    }
+                                    Image(systemName: "chevron.right")
+                                        .foregroundColor(AppColors.textSecondary)
+                                        .font(AppTypography.caption)
+                                }
+                                .padding(AppSpacing.md)
+                            }
+                            .background(AppColors.cardBackground)
+
+                            Divider()
+                                .padding(.leading, AppSpacing.md)
+
+                            // Частота
+                            VStack(spacing: AppSpacing.sm) {
+                                HStack {
+                                    Text("Частота")
+                                        .foregroundColor(AppColors.textPrimary)
+                                    Spacer()
+                                }
+                                SegmentedPickerView(
+                                    title: "",
+                                    selection: $selectedFrequency,
+                                    options: RecurringFrequency.allCases.map { frequency in
+                                        (label: frequency.displayName, value: frequency)
+                                    }
+                                )
+                            }
+                            .padding(AppSpacing.md)
+                            .background(AppColors.cardBackground)
+
+                            Divider()
+                                .padding(.leading, AppSpacing.md)
+
+                            // Дата начала
+                            DatePicker("Дата начала", selection: $startDate, displayedComponents: .date)
+                                .padding(AppSpacing.md)
+                                .background(AppColors.cardBackground)
+                        }
+                        .background(AppColors.cardBackground)
+                        .cornerRadius(AppRadius.md)
                     }
-                    .pickerStyle(SegmentedPickerStyle())
-                }
-                
-                Section(header: Text("Дата начала")) {
-                    DatePicker("Дата начала", selection: $startDate, displayedComponents: .date)
-                }
-                
-                Section(header: Text("Напоминания")) {
-                    ForEach(reminderOptions, id: \.self) { offset in
-                        Toggle(reminderText(offset), isOn: Binding(
-                            get: { selectedReminderOffsets.contains(offset) },
-                            set: { isOn in
-                                if isOn {
-                                    selectedReminderOffsets.insert(offset)
-                                } else {
-                                    selectedReminderOffsets.remove(offset)
+
+                    // 5. Напоминания
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Напоминания")
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppColors.textSecondary)
+                                .textCase(.uppercase)
+                            Spacer()
+                        }
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.bottom, AppSpacing.xs)
+
+                        VStack(spacing: 0) {
+                            ForEach(reminderOptions, id: \.self) { offset in
+                                VStack(spacing: 0) {
+                                    Toggle(reminderText(offset), isOn: Binding(
+                                        get: { selectedReminderOffsets.contains(offset) },
+                                        set: { isOn in
+                                            if isOn {
+                                                selectedReminderOffsets.insert(offset)
+                                            } else {
+                                                selectedReminderOffsets.remove(offset)
+                                            }
+                                        }
+                                    ))
+                                    .padding(AppSpacing.md)
+
+                                    if offset != reminderOptions.last {
+                                        Divider()
+                                            .padding(.leading, AppSpacing.md)
+                                    }
                                 }
                             }
-                        ))
+                        }
+                        .background(AppColors.cardBackground)
+                        .cornerRadius(AppRadius.md)
                     }
                 }
+                .padding(.horizontal, AppSpacing.lg)
+            }
+            .navigationTitle(subscription == nil ? "Новая подписка" : "Редактировать подписку")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        HapticManager.light()
+                        saveSubscription()
+                    } label: {
+                        Image(systemName: "checkmark")
+                    }
+                    .disabled(description.isEmpty || amountText.isEmpty)
+                }
+            }
         }
         .onAppear {
             if let subscription = subscription {

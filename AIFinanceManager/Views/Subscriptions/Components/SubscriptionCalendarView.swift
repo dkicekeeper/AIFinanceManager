@@ -62,12 +62,13 @@ struct SubscriptionCalendarView: View {
 
             Spacer()
 
-            Picker("View Type", selection: $viewType) {
-                ForEach(CalendarViewType.allCases) { type in
-                    Text(type.displayName).tag(type)
+            SegmentedPickerView(
+                title: "",
+                selection: $viewType,
+                options: CalendarViewType.allCases.map { type in
+                    (label: type.displayName, value: type)
                 }
-            }
-            .pickerStyle(SegmentedPickerStyle())
+            )
             .frame(width: AppSize.calendarPickerWidth)
         }
     }
