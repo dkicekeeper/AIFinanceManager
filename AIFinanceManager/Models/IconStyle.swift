@@ -219,8 +219,7 @@ struct IconStyle: Equatable, Hashable {
             size: size,
             cornerRadius: size * 0.2,
             tint: .secondaryMonochrome,
-            backgroundColor: AppColors.surface,
-            padding: AppSpacing.sm
+            backgroundColor: AppColors.surface
         )
     }
 

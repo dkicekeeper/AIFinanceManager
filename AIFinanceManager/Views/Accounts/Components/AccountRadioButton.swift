@@ -20,7 +20,7 @@ struct AccountRadioButton: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.md) {
-                IconView(source: account.iconSource, size: AppIconSize.xxl)
+                IconView(source: account.iconSource, size: AppIconSize.xl)
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
@@ -42,7 +42,7 @@ struct AccountRadioButton: View {
                     .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bounce)
     }
 }
 

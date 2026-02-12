@@ -2,7 +2,7 @@
 //  CategorySelectorView.swift
 //  AIFinanceManager
 //
-//  Reusable category selector component with grid layout
+//  Reusable category selector component with horizontal scroll
 //
 
 import SwiftUI
@@ -17,10 +17,6 @@ struct CategorySelectorView: View {
     let warningMessage: String?
     let budgetProgressMap: [String: BudgetProgress]?
     let budgetAmountMap: [String: Double]?
-    
-    private var gridColumns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: AppSpacing.md), count: 4)
-    }
     
     init(
         categories: [String],
@@ -51,33 +47,52 @@ struct CategorySelectorView: View {
                     Text(message)
                         .font(AppTypography.bodyLarge)
                         .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
                         .padding(AppSpacing.lg)
                 }
             } else {
-                LazyVGrid(columns: gridColumns, spacing: AppSpacing.md) {
-                    ForEach(categories, id: \.self) { category in
-                        CategoryChip(
-                            category: category,
-                            type: type,
-                            customCategories: customCategories,
-                            isSelected: selectedCategory == category,
-                            onTap: {
-                                selectedCategory = category
-                                onSelectionChange?(category)
-                            },
-                            budgetProgress: budgetProgressMap?[category],
-                            budgetAmount: budgetAmountMap?[category]
-                        )
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: AppSpacing.md) {
+                            ForEach(categories, id: \.self) { category in
+                                CategoryChip(
+                                    category: category,
+                                    type: type,
+                                    customCategories: customCategories,
+                                    isSelected: selectedCategory == category,
+                                    onTap: {
+                                        selectedCategory = category
+                                        onSelectionChange?(category)
+                                    },
+                                    budgetProgress: budgetProgressMap?[category],
+                                    budgetAmount: budgetAmountMap?[category]
+                                )
+                                .frame(width: 80)
+                                .id(category)
+                            }
+                        }
+                    }
+                    .padding(AppSpacing.lg)
+                    .scrollClipDisabled()
+                    .onChange(of: selectedCategory) { oldValue, newValue in
+                        if let category = newValue {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo(category, anchor: .center)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        if let category = selectedCategory {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    proxy.scrollTo(category, anchor: .center)
+                                }
+                            }
+                        }
                     }
                 }
-                .padding(AppSpacing.lg)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.sm)
-                        .stroke(warningMessage != nil ? Color.orange : Color.clear, lineWidth: 1)
-                        .padding(.horizontal, AppSpacing.lg)
-                )
             }
-            
+
             if let warning = warningMessage {
                 WarningMessageView(message: warning)
             }

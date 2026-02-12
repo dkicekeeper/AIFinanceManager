@@ -114,7 +114,7 @@ final class TransactionStore {
     internal let recurringCache: LRUCache<String, [Transaction]>
 
     // Settings
-    private var baseCurrency: String = "KZT"
+    internal var baseCurrency: String = "KZT"
 
     // Import mode flag - when true, persistence is deferred until finishImport()
     private var isImporting: Bool = false
@@ -937,6 +937,7 @@ final class TransactionStore {
             existingOccurrences: recurringOccurrences,
             existingTransactionIds: existingTransactionIds,
             accounts: accounts,
+            baseCurrency: baseCurrency,
             horizonMonths: horizonMonths
         )
 

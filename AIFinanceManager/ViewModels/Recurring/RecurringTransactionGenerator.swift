@@ -32,6 +32,7 @@ class RecurringTransactionGenerator {
     ///   - existingOccurrences: Array of existing occurrences to avoid duplicates
     ///   - existingTransactionIds: Set of existing transaction IDs
     ///   - accounts: Array of accounts for resolving account names
+    ///   - baseCurrency: Base currency for conversion
     ///   - horizonMonths: Number of months to generate ahead (default: 3)
     /// - Returns: Tuple of (new transactions, new occurrences)
     func generateTransactions(
@@ -39,6 +40,7 @@ class RecurringTransactionGenerator {
         existingOccurrences: [RecurringOccurrence],
         existingTransactionIds: Set<String>,
         accounts: [Account],
+        baseCurrency: String,
         horizonMonths: Int = 3
     ) -> (transactions: [Transaction], occurrences: [RecurringOccurrence]) {
         let today = calendar.startOfDay(for: Date())
@@ -62,7 +64,8 @@ class RecurringTransactionGenerator {
                 horizonDate: horizonDate,
                 existingOccurrenceKeys: &existingOccurrenceKeys,
                 existingTransactionIds: existingTransactionIds,
-                accounts: accounts
+                accounts: accounts,
+                baseCurrency: baseCurrency
             )
 
             newTransactions.append(contentsOf: transactions)
@@ -79,13 +82,15 @@ class RecurringTransactionGenerator {
     ///   - existingOccurrenceKeys: Set of existing occurrence keys (modified in place)
     ///   - existingTransactionIds: Set of existing transaction IDs
     ///   - accounts: Array of accounts for resolving account names
+    ///   - baseCurrency: Base currency for conversion
     /// - Returns: Tuple of (transactions, occurrences) for this series
     private func generateTransactionsForSeries(
         series: RecurringSeries,
         horizonDate: Date,
         existingOccurrenceKeys: inout Set<String>,
         existingTransactionIds: Set<String>,
-        accounts: [Account]
+        accounts: [Account],
+        baseCurrency: String
     ) -> (transactions: [Transaction], occurrences: [RecurringOccurrence]) {
         guard let startDate = dateFormatter.date(from: series.startDate) else {
             return ([], [])
@@ -136,6 +141,23 @@ class RecurringTransactionGenerator {
                         accounts.first(where: { $0.id == targetAccountId })?.name
                     }
 
+                    // Calculate target currency and amount for display
+                    var targetCurrency: String? = nil
+                    var targetAmount: Double? = nil
+
+                    // If subscription currency differs from base currency, show equivalent
+                    if series.currency != baseCurrency {
+                        // Use sync conversion (from cache)
+                        if let convertedValue = CurrencyConverter.convertSync(
+                            amount: amountDouble,
+                            from: series.currency,
+                            to: baseCurrency
+                        ) {
+                            targetCurrency = baseCurrency
+                            targetAmount = convertedValue
+                        }
+                    }
+
                     let transaction = Transaction(
                         id: transactionId,
                         date: dateString,
@@ -150,6 +172,8 @@ class RecurringTransactionGenerator {
                         targetAccountId: series.targetAccountId,
                         accountName: accountName,
                         targetAccountName: targetAccountName,
+                        targetCurrency: targetCurrency,
+                        targetAmount: targetAmount,
                         recurringSeriesId: series.id,
                         recurringOccurrenceId: occurrenceId,
                         createdAt: createdAt

@@ -66,6 +66,7 @@ protocol RecurringTransactionServiceDelegate: AnyObject {
     var recurringSeries: [RecurringSeries] { get }
     var recurringOccurrences: [RecurringOccurrence] { get set }
     var accounts: [Account] { get }
+    var appSettings: AppSettings { get }
 
     // Dependencies
     var repository: DataRepositoryProtocol { get }

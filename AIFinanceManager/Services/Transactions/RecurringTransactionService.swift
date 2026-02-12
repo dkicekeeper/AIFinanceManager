@@ -360,6 +360,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             existingOccurrences: delegate.recurringOccurrences,
             existingTransactionIds: existingTransactionIds,
             accounts: delegate.accounts,
+            baseCurrency: delegate.appSettings.baseCurrency,
             horizonMonths: 3
         )
 

@@ -225,6 +225,7 @@ extension TransactionStore {
             existingOccurrences: recurringOccurrences,
             existingTransactionIds: existingTransactionIds,
             accounts: accounts,
+            baseCurrency: baseCurrency,
             horizonMonths: horizon
         )
 
@@ -264,6 +265,7 @@ extension TransactionStore {
             existingOccurrences: recurringOccurrences,
             existingTransactionIds: existingTransactionIds,
             accounts: accounts,
+            baseCurrency: baseCurrency,
             horizonMonths: horizon
         )
 
