@@ -162,9 +162,7 @@ struct SubscriptionCalendarView: View {
     private func logoView(for sub: RecurringSeries, size: CGFloat) -> some View {
         // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
         BrandLogoDisplayView(
-            brandLogo: sub.brandLogo,
-            brandId: sub.brandId,
-            brandName: sub.description,
+            iconSource: sub.iconSource,
             size: size
         )
     }
@@ -279,7 +277,7 @@ struct SubscriptionCalendarView: View {
             description: "Netflix",
             frequency: .monthly,
             startDate: formatter.string(from: calendar.date(byAdding: .day, value: 5, to: calendar.startOfDay(for: today))!),
-            brandId: "netflix"
+            iconSource: .brandService("netflix")
         ),
         RecurringSeries(
             amount: 14.99,
@@ -288,7 +286,7 @@ struct SubscriptionCalendarView: View {
             description: "Spotify",
             frequency: .monthly,
             startDate: formatter.string(from: calendar.date(byAdding: .day, value: 12, to: calendar.startOfDay(for: today))!),
-            brandId: "spotify"
+            iconSource: .brandService("spotify")
         ),
         RecurringSeries(
             amount: 299,
@@ -305,7 +303,7 @@ struct SubscriptionCalendarView: View {
             description: "iCloud Storage",
             frequency: .monthly,
             startDate: formatter.string(from: today),
-            brandId: "icloud"
+            iconSource: .brandService("icloud")
         )
     ]
 

@@ -22,11 +22,8 @@ struct SubscriptionEditView: View {
     @State private var selectedAccountId: String? = nil
     @State private var selectedFrequency: RecurringFrequency = .monthly
     @State private var startDate: Date = Date()
-    @State private var selectedBrandLogo: BankLogo? = nil
-    @State private var selectedBrandName: String? = nil // Название бренда для logo.dev
-    @State private var selectedIconName: String? = nil // SF Symbol иконка
+    @State private var selectedIconSource: IconSource? = nil
     @State private var selectedReminderOffsets: Set<Int> = []
-    @State private var showingLogoSearch = false
     @State private var showingIconPicker = false
     @State private var validationError: String? = nil
     @FocusState private var isDescriptionFocused: Bool
@@ -107,78 +104,22 @@ struct SubscriptionEditView: View {
                             Divider()
                                 .padding(.leading, AppSpacing.md)
 
-                            // Логотип
-                            Button(action: { showingLogoSearch = true }) {
-                                HStack {
-                                    Text("Найти логотип")
+                            // Иконка/Логотип
+                            Button {
+                                HapticManager.light()
+                                showingIconPicker = true
+                            } label: {
+                                HStack(spacing: AppSpacing.md) {
+                                    Text(String(localized: "iconPicker.title"))
                                         .foregroundStyle(AppColors.textPrimary)
                                     Spacer()
-                                    if let brandName = selectedBrandName {
-                                        if let url = LogoDevConfig.logoURL(for: brandName) {
-                                            AsyncImage(url: url) { phase in
-                                                switch phase {
-                                                case .empty:
-                                                    ProgressView()
-                                                        .frame(width: AppIconSize.lg, height: AppIconSize.lg)
-                                                case .success(let image):
-                                                    image
-                                                        .resizable()
-                                                        .aspectRatio(contentMode: .fit)
-                                                        .frame(width: AppIconSize.lg, height: AppIconSize.lg)
-                                                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.xs))
-                                                case .failure(_):
-                                                    Image(systemName: "photo")
-                                                        .foregroundStyle(AppColors.textSecondary)
-                                                @unknown default:
-                                                    Image(systemName: "photo")
-                                                        .foregroundStyle(AppColors.textSecondary)
-                                                }
-                                            }
-                                        } else {
-                                            Image(systemName: "photo")
-                                                .foregroundStyle(AppColors.textSecondary)
-                                        }
-                                        Text(brandName)
-                                            .font(AppTypography.caption)
-                                            .foregroundStyle(AppColors.textSecondary)
-                                    } else if let logo = selectedBrandLogo {
-                                        logo.image(size: AppIconSize.lg)
-                                    } else if let iconName = selectedIconName {
-                                        Image(systemName: iconName)
-                                            .foregroundStyle(AppColors.textSecondary)
-                                            .font(.system(size: AppIconSize.lg))
-                                    } else {
-                                        Image(systemName: "photo")
-                                            .foregroundStyle(AppColors.textSecondary)
-                                    }
+                                    BrandLogoDisplayView(
+                                        iconSource: selectedIconSource,
+                                        size: AppIconSize.xl
+                                    )
                                     Image(systemName: "chevron.right")
+                                        .font(.caption)
                                         .foregroundStyle(AppColors.textSecondary)
-                                        .font(AppTypography.caption)
-                                }
-                                .padding(AppSpacing.md)
-                            }
-                            .background(AppColors.cardBackground)
-
-                            Divider()
-                                .padding(.leading, AppSpacing.md)
-
-                            // Иконка
-                            Button(action: { showingIconPicker = true }) {
-                                HStack {
-                                    Text("Выбрать иконку")
-                                        .foregroundStyle(AppColors.textPrimary)
-                                    Spacer()
-                                    if let iconName = selectedIconName {
-                                        Image(systemName: iconName)
-                                            .foregroundStyle(AppColors.textSecondary)
-                                            .font(.system(size: AppIconSize.lg))
-                                    } else {
-                                        Image(systemName: "photo")
-                                            .foregroundStyle(AppColors.textSecondary)
-                                    }
-                                    Image(systemName: "chevron.right")
-                                        .foregroundStyle(AppColors.textSecondary)
-                                        .font(AppTypography.caption)
                                 }
                                 .padding(AppSpacing.md)
                             }
@@ -287,16 +228,7 @@ struct SubscriptionEditView: View {
                 if let date = DateFormatters.dateFormatter.date(from: subscription.startDate) {
                     startDate = date
                 }
-                selectedBrandLogo = subscription.brandLogo
-                selectedBrandName = subscription.brandId // brandId хранит название бренда для logo.dev
-                // Если brandId начинается с "sf:" или "icon:", это иконка
-                if let brandId = subscription.brandId, brandId.hasPrefix("sf:") {
-                    selectedIconName = String(brandId.dropFirst(3))
-                    selectedBrandName = nil
-                } else if let brandId = subscription.brandId, brandId.hasPrefix("icon:") {
-                    selectedIconName = String(brandId.dropFirst(5))
-                    selectedBrandName = nil
-                }
+                selectedIconSource = subscription.iconSource
                 selectedReminderOffsets = Set(subscription.reminderOffsets ?? [])
             } else {
                 currency = transactionsViewModel.appSettings.baseCurrency
@@ -309,25 +241,8 @@ struct SubscriptionEditView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingLogoSearch) {
-            LogoSearchView(selectedBrandName: $selectedBrandName)
-                .onDisappear {
-                    // При выборе логотипа сбрасываем иконку
-                    if selectedBrandName != nil {
-                        selectedIconName = nil
-                    }
-                }
-        }
         .sheet(isPresented: $showingIconPicker) {
-            IconPickerView(selectedIconName: Binding(
-                get: { selectedIconName ?? "creditcard.fill" },
-                set: { newIcon in
-                    selectedIconName = newIcon
-                    // При выборе иконки сбрасываем логотип
-                    selectedBrandName = nil
-                    selectedBrandLogo = nil
-                }
-            ))
+            IconPickerView(selectedSource: $selectedIconSource)
         }
     }
     
@@ -383,8 +298,7 @@ struct SubscriptionEditView: View {
             startDate: dateString,
             lastGeneratedDate: subscription?.lastGeneratedDate,
             kind: .subscription,
-            brandLogo: selectedBrandLogo,
-            brandId: selectedIconName != nil ? "sf:\(selectedIconName!)" : selectedBrandName, // Сохраняем иконку с префиксом или название бренда
+            iconSource: selectedIconSource,
             reminderOffsets: selectedReminderOffsets.isEmpty ? nil : Array(selectedReminderOffsets).sorted(),
             status: subscription?.status ?? .active
         )

@@ -4,67 +4,52 @@
 //
 //  Created on 2026-02-02
 //  Part of: Subscriptions & Recurring Transactions Full Rebuild
-//  Purpose: Reusable component for displaying brand logos
+//  Purpose: Unified display view for all icon sources (SF Symbols, BankLogo, logo.dev)
 //
 
 import SwiftUI
 
-/// Reusable view for displaying brand logos with various sources
-/// Eliminates duplication across SubscriptionCard, SubscriptionDetailView, SubscriptionEditView, etc.
+/// Reusable view for displaying brand logos/icons from various sources
+/// Eliminates duplication across SubscriptionCard, SubscriptionDetailView, AccountEditView, etc.
 struct BrandLogoDisplayView: View {
 
     // MARK: - Properties
 
-    let brandLogo: BankLogo?
-    let brandId: String?
-    let brandName: String?
+    let iconSource: IconSource?
     let size: CGFloat
-
-    // MARK: - Computed Properties
-
-    private var logoSource: BrandLogoDisplayHelper.LogoSource {
-        BrandLogoDisplayHelper.resolveSource(
-            brandLogo: brandLogo,
-            brandId: brandId,
-            brandName: brandName
-        )
-    }
 
     // MARK: - Body
 
     var body: some View {
-        switch logoSource {
-        case .systemImage(let iconName):
-            systemImageView(iconName)
+        switch iconSource {
+        case .sfSymbol(let name):
+            sfSymbolView(name)
 
-        case .customIcon(let iconName):
-            customIconView(iconName)
+        case .bankLogo(let logo):
+            bankLogoView(logo)
 
         case .brandService(let name):
             brandServiceView(name)
 
-        case .bankLogo(let logo):
-            bankLogoView(logo)
+        case .none:
+            placeholderView()
         }
     }
 
     // MARK: - Subviews
 
     @ViewBuilder
-    private func systemImageView(_ iconName: String) -> some View {
-        Image(systemName: iconName)
+    private func sfSymbolView(_ name: String) -> some View {
+        Image(systemName: name)
             .resizable()
             .aspectRatio(contentMode: .fit)
             .frame(width: size, height: size)
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(AppColors.accent)
     }
 
     @ViewBuilder
-    private func customIconView(_ iconName: String) -> some View {
-        Image(iconName)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: size, height: size)
+    private func bankLogoView(_ logo: BankLogo) -> some View {
+        logo.image(size: size)
     }
 
     @ViewBuilder
@@ -74,45 +59,45 @@ struct BrandLogoDisplayView: View {
     }
 
     @ViewBuilder
-    private func bankLogoView(_ logo: BankLogo) -> some View {
-        logo.image(size: size)
+    private func placeholderView() -> some View {
+        Image(systemName: "photo")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
+            .foregroundStyle(AppColors.textSecondary)
     }
 }
 
 // MARK: - Preview
 
-#Preview("System Image") {
+#Preview("SF Symbol") {
     BrandLogoDisplayView(
-        brandLogo: nil,
-        brandId: "sf:star.fill",
-        brandName: nil,
-        size: 40
+        iconSource: .sfSymbol("star.fill"),
+        size: AppIconSize.xl
     )
-}
-
-#Preview("Custom Icon") {
-    BrandLogoDisplayView(
-        brandLogo: nil,
-        brandId: "icon:netflix",
-        brandName: nil,
-        size: 40
-    )
-}
-
-#Preview("Brand Service") {
-    BrandLogoDisplayView(
-        brandLogo: nil,
-        brandId: nil,
-        brandName: "netflix",
-        size: 40
-    )
+    .padding()
 }
 
 #Preview("Bank Logo") {
     BrandLogoDisplayView(
-        brandLogo: .sber,
-        brandId: nil,
-        brandName: nil,
-        size: 40
+        iconSource: .bankLogo(.kaspi),
+        size: AppIconSize.xl
     )
+    .padding()
+}
+
+#Preview("Brand Service") {
+    BrandLogoDisplayView(
+        iconSource: .brandService("netflix"),
+        size: AppIconSize.xl
+    )
+    .padding()
+}
+
+#Preview("None") {
+    BrandLogoDisplayView(
+        iconSource: nil,
+        size: AppIconSize.xl
+    )
+    .padding()
 }

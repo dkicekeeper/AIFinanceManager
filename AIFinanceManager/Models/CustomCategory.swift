@@ -11,7 +11,7 @@ import SwiftUI
 struct CustomCategory: Identifiable, Codable, Equatable {
     let id: String
     var name: String
-    var iconName: String
+    var iconSource: IconSource // Unified icon source (SF Symbol, BankLogo, logo.dev)
     var colorHex: String
     var type: TransactionType
     var order: Int? // Order for displaying categories
@@ -22,10 +22,11 @@ struct CustomCategory: Identifiable, Codable, Equatable {
     var budgetStartDate: Date?
     var budgetResetDay: Int
 
-    init(id: String = UUID().uuidString, name: String, iconName: String? = nil, colorHex: String, type: TransactionType, budgetAmount: Double? = nil, budgetPeriod: BudgetPeriod = .monthly, budgetResetDay: Int = 1, order: Int? = nil) {
+    init(id: String = UUID().uuidString, name: String, iconSource: IconSource? = nil, colorHex: String, type: TransactionType, budgetAmount: Double? = nil, budgetPeriod: BudgetPeriod = .monthly, budgetResetDay: Int = 1, order: Int? = nil) {
         self.id = id
         self.name = name
-        self.iconName = iconName ?? CategoryIcon.iconName(for: name, type: type)
+        // Default to SF Symbol based on category name if no icon provided
+        self.iconSource = iconSource ?? .sfSymbol(CategoryIcon.iconName(for: name, type: type))
         self.colorHex = colorHex
         self.type = type
         self.budgetAmount = budgetAmount
@@ -42,7 +43,7 @@ struct CustomCategory: Identifiable, Codable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, iconName, colorHex, type, order
+        case id, name, iconName, iconSource, colorHex, type, order
         case budgetAmount, budgetPeriod, budgetStartDate, budgetResetDay
     }
 
@@ -53,10 +54,15 @@ struct CustomCategory: Identifiable, Codable, Equatable {
         colorHex = try container.decode(String.self, forKey: .colorHex)
         type = try container.decode(TransactionType.self, forKey: .type)
 
-        if let newIconName = try? container.decode(String.self, forKey: .iconName) {
-            iconName = newIconName
+        // Migration: try new iconSource field first, fallback to old iconName
+        if let savedIconSource = try container.decodeIfPresent(IconSource.self, forKey: .iconSource) {
+            iconSource = savedIconSource
+        } else if let oldIconName = try container.decodeIfPresent(String.self, forKey: .iconName) {
+            // Migrate old iconName (SF Symbol string) to iconSource
+            iconSource = .sfSymbol(oldIconName)
         } else {
-            iconName = CategoryIcon.iconName(for: name, type: type)
+            // Fallback to default icon based on category name
+            iconSource = .sfSymbol(CategoryIcon.iconName(for: name, type: type))
         }
 
         // Order field (with backward compatibility)
@@ -73,7 +79,7 @@ struct CustomCategory: Identifiable, Codable, Equatable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
-        try container.encode(iconName, forKey: .iconName)
+        try container.encode(iconSource, forKey: .iconSource)
         try container.encode(colorHex, forKey: .colorHex)
         try container.encode(type, forKey: .type)
         try container.encodeIfPresent(order, forKey: .order)

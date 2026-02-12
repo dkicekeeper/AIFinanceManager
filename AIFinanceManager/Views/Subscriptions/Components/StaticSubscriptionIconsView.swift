@@ -36,9 +36,7 @@ private struct SubscriptionIconView: View {
 
     var body: some View {
         BrandLogoDisplayView(
-            brandLogo: subscription.brandLogo,
-            brandId: subscription.brandId,
-            brandName: subscription.description,
+            iconSource: subscription.iconSource,
             size: size
         )
         .clipShape(Circle())

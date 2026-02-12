@@ -274,6 +274,11 @@
 // MARK: - Subcategories Management
 "subcategory.new" = "New Subcategory";
 "subcategory.namePlaceholder" = "Subcategory name";
+
+// MARK: - Icon Picker
+"iconPicker.title" = "Select Image";
+"iconPicker.iconsTab" = "Icons";
+"iconPicker.logosTab" = "Logos";
 "iconPicker.frequentlyUsed" = "Frequently Used";
 "iconPicker.foodAndDrinks" = "Food & Drinks";
 "iconPicker.transport" = "Transport";
@@ -282,6 +287,12 @@
 "iconPicker.health" = "Health";
 "iconPicker.homeAndUtilities" = "Home & Utilities";
 "iconPicker.moneyAndFinance" = "Money & Finance";
+"iconPicker.popularBanks" = "Popular Banks";
+"iconPicker.otherBanks" = "Other Banks";
+"iconPicker.searchOnline" = "Search brand logo...";
+"iconPicker.noLogo" = "No Logo";
+"iconPicker.searching" = "Searching...";
+"iconPicker.searchResults" = "Search Results";
 
 // MARK: - Category Filter
 "categoryFilter.allCategories" = "All Categories";

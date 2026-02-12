@@ -274,6 +274,11 @@
 // MARK: - Subcategories Management
 "subcategory.new" = "Новая подкатегория";
 "subcategory.namePlaceholder" = "Название подкатегории";
+
+// MARK: - Icon Picker
+"iconPicker.title" = "Выбрать изображение";
+"iconPicker.iconsTab" = "Иконки";
+"iconPicker.logosTab" = "Логотипы";
 "iconPicker.frequentlyUsed" = "Часто используемые";
 "iconPicker.foodAndDrinks" = "Еда и напитки";
 "iconPicker.transport" = "Транспорт";
@@ -282,6 +287,12 @@
 "iconPicker.health" = "Здоровье";
 "iconPicker.homeAndUtilities" = "Дом и коммунальные";
 "iconPicker.moneyAndFinance" = "Деньги и финансы";
+"iconPicker.popularBanks" = "Популярные банки";
+"iconPicker.otherBanks" = "Другие банки";
+"iconPicker.searchOnline" = "Поиск логотипа бренда...";
+"iconPicker.noLogo" = "Без логотипа";
+"iconPicker.searching" = "Поиск...";
+"iconPicker.searchResults" = "Результаты поиска";
 
 // MARK: - Category Filter
 "categoryFilter.allCategories" = "Все категории";

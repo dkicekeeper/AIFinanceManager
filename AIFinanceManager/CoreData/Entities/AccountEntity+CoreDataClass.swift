@@ -21,13 +21,14 @@ public class AccountEntity: NSManagedObject {
 extension AccountEntity {
     /// Convert to domain model
     func toAccount() -> Account {
-        let bankLogo: BankLogo
-        if let logoString = logo, let logo = BankLogo(rawValue: logoString) {
-            bankLogo = logo
+        // Migrate from old logo field to iconSource
+        let iconSource: IconSource?
+        if let logoString = logo, let bankLogo = BankLogo(rawValue: logoString), bankLogo != .none {
+            iconSource = .bankLogo(bankLogo)
         } else {
-            bankLogo = .none
+            iconSource = nil
         }
-        
+
         // For now, depositInfo is nil because it's not stored in AccountEntity
         // This can be extended later if needed
         let depositInfo: DepositInfo? = nil
@@ -36,12 +37,12 @@ extension AccountEntity {
             // This is a simplified conversion - full depositInfo would need additional fields
             // For now, we'll return nil and handle deposits separately if needed
         }
-        
+
         return Account(
             id: id ?? "",
             name: name ?? "",
             currency: currency ?? "KZT",
-            bankLogo: bankLogo,
+            iconSource: iconSource,
             depositInfo: depositInfo,
             createdDate: createdAt,
             shouldCalculateFromTransactions: shouldCalculateFromTransactions,  // ✨ Phase 10: Restore calculation mode
@@ -56,7 +57,12 @@ extension AccountEntity {
         entity.name = account.name
         entity.balance = account.initialBalance ?? 0
         entity.currency = account.currency
-        entity.logo = account.bankLogo.rawValue
+        // Save iconSource as logo string (backward compatible)
+        if case .bankLogo(let bankLogo) = account.iconSource {
+            entity.logo = bankLogo.rawValue
+        } else {
+            entity.logo = BankLogo.none.rawValue
+        }
         entity.isDeposit = account.isDeposit
         entity.bankName = account.depositInfo?.bankName
         entity.createdAt = account.createdDate ?? Date()

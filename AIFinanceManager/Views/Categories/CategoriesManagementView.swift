@@ -250,7 +250,7 @@ struct CategoriesManagementView: View {
     let sampleCategory = CustomCategory(
         id: "preview",
         name: "Food",
-        iconName: "fork.knife",
+        iconSource: .sfSymbol("fork.knife"),
         colorHex: "#3b82f6",
         type: .expense,
         budgetAmount: 10000,
@@ -258,7 +258,7 @@ struct CategoriesManagementView: View {
         budgetResetDay: 1
     )
 
-    return List {
+    List {
         CategoryRow(
             category: sampleCategory,
             isDefault: false,

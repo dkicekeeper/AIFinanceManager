@@ -137,7 +137,7 @@ struct DepositTransferView: View {
 
     return DepositTransferView(
         accounts: [],
-        depositAccount: Account(id: "test", name: "Test Deposit", currency: "KZT", bankLogo: .kaspi, initialBalance: 100000),
+        depositAccount: Account(id: "test", name: "Test Deposit", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 100000),
         transferDirection: .toDeposit,
         onTransferSaved: { from, to, amount, date, desc in
         },
@@ -151,7 +151,7 @@ struct DepositTransferView: View {
 
     return DepositTransferView(
         accounts: [],
-        depositAccount: Account(id: "test", name: "Test Deposit", currency: "KZT", bankLogo: .kaspi, initialBalance: 100000),
+        depositAccount: Account(id: "test", name: "Test Deposit", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 100000),
         transferDirection: .fromDeposit,
         onTransferSaved: { from, to, amount, date, desc in
         },

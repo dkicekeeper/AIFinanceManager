@@ -110,9 +110,7 @@ struct SubscriptionDetailView: View {
             HStack(spacing: AppSpacing.md) {
                 // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
                 BrandLogoDisplayView(
-                    brandLogo: subscription.brandLogo,
-                    brandId: subscription.brandId,
-                    brandName: subscription.description,
+                    iconSource: subscription.iconSource,
                     size: AppIconSize.xxxl
                 )
                 

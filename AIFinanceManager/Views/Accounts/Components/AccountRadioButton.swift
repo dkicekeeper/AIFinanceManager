@@ -20,7 +20,7 @@ struct AccountRadioButton: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.md) {
-                account.bankLogo.image(size: AppIconSize.lg)
+                BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.lg)
                 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
@@ -48,16 +48,16 @@ struct AccountRadioButton: View {
 
 #Preview {
     let coordinator = AppCoordinator()
-    
+
     return HStack {
         AccountRadioButton(
-            account: Account(name: "Main Account", currency: "USD", bankLogo: .none, initialBalance: 1000),
+            account: Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000),
             isSelected: false,
             onTap: {},
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
         AccountRadioButton(
-            account: Account(name: "Savings", currency: "USD", bankLogo: .none, initialBalance: 5000),
+            account: Account(name: "Savings", currency: "USD", iconSource: nil, initialBalance: 5000),
             isSelected: true,
             onTap: {},
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!

@@ -72,7 +72,7 @@ class EntityMappingService: EntityMappingServiceProtocol {
         let newAccount = Account(
             name: name,
             currency: currency,
-            bankLogo: .none,
+            iconSource: nil,
             shouldCalculateFromTransactions: true,  // CSV imports always calculate from transactions
             initialBalance: 0.0
         )
@@ -142,7 +142,7 @@ class EntityMappingService: EntityMappingServiceProtocol {
 
         let newCategory = CustomCategory(
             name: name,
-            iconName: iconName,
+            iconSource: .sfSymbol(iconName),
             colorHex: hexString,
             type: type
         )

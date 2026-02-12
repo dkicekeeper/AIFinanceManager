@@ -16,7 +16,9 @@ enum CategoryIcon {
         
         // Сначала проверяем пользовательские категории
         if let custom = customCategories.first(where: { $0.name.lowercased() == category.lowercased() && $0.type == type }) {
-            return custom.iconName
+            if case .sfSymbol(let symbolName) = custom.iconSource {
+                return symbolName
+            }
         }
         
         // Затем дефолтные (поддержка английских и русских названий)

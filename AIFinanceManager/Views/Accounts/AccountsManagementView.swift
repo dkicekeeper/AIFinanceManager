@@ -106,7 +106,7 @@ struct AccountsManagementView: View {
                 onSave: { account in
                     HapticManager.success()
                     Task {
-                        await accountsViewModel.addAccount(name: account.name, initialBalance: account.initialBalance ?? 0, currency: account.currency, bankLogo: account.bankLogo)
+                        await accountsViewModel.addAccount(name: account.name, initialBalance: account.initialBalance ?? 0, currency: account.currency, iconSource: account.iconSource)
                         transactionsViewModel.syncAccountsFrom(accountsViewModel)
                         showingAddAccount = false
                     }
@@ -126,7 +126,7 @@ struct AccountsManagementView: View {
                             name: account.name,
                             currency: account.currency,
                             bankName: depositInfo.bankName,
-                            bankLogo: account.bankLogo,
+                            iconSource: account.iconSource,
                             principalBalance: depositInfo.principalBalance,
                             interestRateAnnual: depositInfo.interestRateAnnual,
                             interestPostingDay: depositInfo.interestPostingDay,
@@ -262,21 +262,21 @@ struct AccountsManagementView: View {
             id: "preview-1",
             name: "Kaspi Gold",
             currency: "KZT",
-            bankLogo: .kaspi,
+            iconSource: .bankLogo(.kaspi),
             initialBalance: 500000
         ),
         Account(
             id: "preview-2",
             name: "Main Savings",
             currency: "USD",
-            bankLogo: .halykBank,
+            iconSource: .bankLogo(.halykBank),
             initialBalance: 15000
         ),
         Account(
             id: "preview-3",
             name: "Halyk Deposit",
             currency: "KZT",
-            bankLogo: .halykBank,
+            iconSource: .bankLogo(.halykBank),
             depositInfo: DepositInfo(
                 bankName: "Halyk Bank",
                 principalBalance: Decimal(1000000),
@@ -290,14 +290,14 @@ struct AccountsManagementView: View {
             id: "preview-4",
             name: "EUR Account",
             currency: "EUR",
-            bankLogo: .alatauCityBank,
+            iconSource: .bankLogo(.alatauCityBank),
             initialBalance: 2500
         ),
         Account(
             id: "preview-5",
             name: "Jusan Deposit",
             currency: "KZT",
-            bankLogo: .jusan,
+            iconSource: .bankLogo(.jusan),
             depositInfo: DepositInfo(
                 bankName: "Jusan Bank",
                 principalBalance: Decimal(2000000),

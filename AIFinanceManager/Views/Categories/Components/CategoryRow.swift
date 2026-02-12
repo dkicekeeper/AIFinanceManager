@@ -36,9 +36,13 @@ struct CategoryRow: View {
                         .fill(category.color.opacity(0.2))
                         .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
                         .overlay(
-                            Image(systemName: category.iconName)
-                                .font(.system(size: AppIconSize.md))
-                                .foregroundStyle(category.color)
+                            Group {
+                                if case .sfSymbol(let symbolName) = category.iconSource {
+                                    Image(systemName: symbolName)
+                                        .font(.system(size: AppIconSize.md))
+                                        .foregroundStyle(category.color)
+                                }
+                            }
                         )
                         .overlay(
                             Circle()
@@ -105,12 +109,12 @@ struct CategoryRow: View {
     let sampleCategory = CustomCategory(
         id: "test",
         name: "Food",
-        iconName: "fork.knife",
+        iconSource: .sfSymbol("fork.knife"),
         colorHex: "#3b82f6",
         type: .expense
     )
-    
-    return List {
+
+    List {
         CategoryRow(
             category: sampleCategory,
             isDefault: false,

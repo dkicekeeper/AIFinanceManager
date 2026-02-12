@@ -129,7 +129,7 @@ struct SetBudgetSheet: View {
     SetBudgetSheet(
         category: CustomCategory(
             name: "Food",
-            iconName: "fork.knife",
+            iconSource: .sfSymbol("fork.knife"),
             colorHex: "#FF6B6B",
             type: .expense
         ),

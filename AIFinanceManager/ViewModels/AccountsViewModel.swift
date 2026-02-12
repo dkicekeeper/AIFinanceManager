@@ -107,7 +107,7 @@ class AccountsViewModel {
     
     // MARK: - Account CRUD Operations
     
-    func addAccount(name: String, initialBalance: Double, currency: String, bankLogo: BankLogo = .none, shouldCalculateFromTransactions: Bool = false) async {
+    func addAccount(name: String, initialBalance: Double, currency: String, iconSource: IconSource? = nil, shouldCalculateFromTransactions: Bool = false) async {
         #if DEBUG
         print("🔍 [AccountsVM] addAccount called:")
         print("   📝 Name: \(name)")
@@ -118,7 +118,7 @@ class AccountsViewModel {
         let account = Account(
             name: name,
             currency: currency,
-            bankLogo: bankLogo,
+            iconSource: iconSource,
             shouldCalculateFromTransactions: shouldCalculateFromTransactions,
             initialBalance: shouldCalculateFromTransactions ? 0.0 : initialBalance
         )
@@ -231,7 +231,7 @@ class AccountsViewModel {
         name: String,
         balance: Double,
         currency: String,
-        bankLogo: BankLogo = .none,
+        iconSource: IconSource? = nil,
         principalBalance: Decimal,
         capitalizationEnabled: Bool,
         interestRateAnnual: Decimal,
@@ -249,7 +249,7 @@ class AccountsViewModel {
         let account = Account(
             name: name,
             currency: currency,
-            bankLogo: bankLogo,
+            iconSource: iconSource,
             depositInfo: depositInfo,
             shouldCalculateFromTransactions: false,  // Депозиты всегда manual
             initialBalance: balance

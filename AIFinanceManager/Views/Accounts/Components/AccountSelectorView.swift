@@ -77,8 +77,8 @@ struct AccountSelectorView: View {
     return VStack {
         AccountSelectorView(
             accounts: [
-                Account(name: "Main Account", currency: "USD", bankLogo: .none, initialBalance: 1000),
-                Account(name: "Savings", currency: "USD", bankLogo: .none, initialBalance: 5000)
+                Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000),
+                Account(name: "Savings", currency: "USD", iconSource: nil, initialBalance: 5000)
             ],
             selectedAccountId: $selectedAccountId,
             emptyStateMessage: nil,
@@ -96,7 +96,7 @@ struct AccountSelectorView: View {
 
         AccountSelectorView(
             accounts: [
-                Account(name: "Main Account", currency: "USD", bankLogo: .none, initialBalance: 1000)
+                Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000)
             ],
             selectedAccountId: $selectedAccountId,
             emptyStateMessage: nil,

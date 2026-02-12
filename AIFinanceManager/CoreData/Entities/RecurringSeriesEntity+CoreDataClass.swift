@@ -23,9 +23,18 @@ extension RecurringSeriesEntity {
     func toRecurringSeries() -> RecurringSeries {
         let frequency = RecurringFrequency(rawValue: self.frequency ?? "monthly") ?? .monthly
         let kind = RecurringSeriesKind(rawValue: self.kind ?? "generic") ?? .generic
-        let brandLogo = self.brandLogo.flatMap { BankLogo(rawValue: $0) }
         let status = self.status.flatMap { SubscriptionStatus(rawValue: $0) }
-        
+
+        // Migrate from old brandLogo/brandId fields to iconSource
+        let iconSource: IconSource?
+        if let logoString = brandLogo, let bankLogo = BankLogo(rawValue: logoString), bankLogo != .none {
+            iconSource = .bankLogo(bankLogo)
+        } else if let brandId = brandId, !brandId.isEmpty {
+            iconSource = .brandService(brandId)
+        } else {
+            iconSource = nil
+        }
+
         return RecurringSeries(
             id: id ?? UUID().uuidString,
             isActive: isActive,
@@ -40,13 +49,12 @@ extension RecurringSeriesEntity {
             startDate: startDate.map { DateFormatters.dateFormatter.string(from: $0) } ?? "",
             lastGeneratedDate: lastGeneratedDate.map { DateFormatters.dateFormatter.string(from: $0) },
             kind: kind,
-            brandLogo: brandLogo,
-            brandId: brandId,
+            iconSource: iconSource,
             reminderOffsets: nil, // Not stored in Entity yet
             status: status
         )
     }
-    
+
     /// Create from domain model
     static func from(_ series: RecurringSeries, context: NSManagedObjectContext) -> RecurringSeriesEntity {
         let entity = RecurringSeriesEntity(context: context)
@@ -61,8 +69,23 @@ extension RecurringSeriesEntity {
         entity.startDate = DateFormatters.dateFormatter.date(from: series.startDate)
         entity.lastGeneratedDate = series.lastGeneratedDate.flatMap { DateFormatters.dateFormatter.date(from: $0) }
         entity.kind = series.kind.rawValue
-        entity.brandLogo = series.brandLogo?.rawValue
-        entity.brandId = series.brandId
+        // Save iconSource as brandLogo/brandId strings (backward compatible)
+        if let iconSource = series.iconSource {
+            switch iconSource {
+            case .bankLogo(let bankLogo):
+                entity.brandLogo = bankLogo.rawValue
+                entity.brandId = nil
+            case .brandService(let brandId):
+                entity.brandLogo = nil
+                entity.brandId = brandId
+            case .sfSymbol:
+                entity.brandLogo = nil
+                entity.brandId = nil
+            }
+        } else {
+            entity.brandLogo = nil
+            entity.brandId = nil
+        }
         entity.status = series.status?.rawValue
         // account relationship will be set separately
         return entity

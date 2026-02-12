@@ -15,9 +15,7 @@ struct SubscriptionCard: View {
         HStack(spacing: AppSpacing.md) {
             // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
             BrandLogoDisplayView(
-                brandLogo: subscription.brandLogo,
-                brandId: subscription.brandId,
-                brandName: subscription.description, // fallback to description as brand name
+                iconSource: subscription.iconSource,
                 size: AppIconSize.xxl
             )
             
@@ -88,7 +86,7 @@ struct SubscriptionCard: View {
             frequency: .monthly,
             startDate: DateFormatters.dateFormatter.string(from: Date()),
             kind: .subscription,
-            brandId: "Netflix",
+            iconSource: .brandService("Netflix"),
             status: .active
         ),
         nextChargeDate: Date().addingTimeInterval(7 * 24 * 60 * 60) // 7 days from now

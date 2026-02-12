@@ -235,17 +235,17 @@ struct Account: Identifiable, Codable, Equatable {
     let id: String
     var name: String
     var currency: String
-    var bankLogo: BankLogo
+    var iconSource: IconSource? // Unified icon/logo source (SF Symbol, BankLogo, logo.dev)
     var depositInfo: DepositInfo? // Опциональная информация о депозите (nil для обычных счетов)
     var createdDate: Date?
     var shouldCalculateFromTransactions: Bool // Режим расчета баланса: true = из транзакций, false = manual
     var initialBalance: Double?  // Начальный баланс для manual счетов (nil для shouldCalculateFromTransactions=true)
 
-    init(id: String = UUID().uuidString, name: String, currency: String, bankLogo: BankLogo = .none, depositInfo: DepositInfo? = nil, createdDate: Date? = nil, shouldCalculateFromTransactions: Bool = false, initialBalance: Double? = nil) {
+    init(id: String = UUID().uuidString, name: String, currency: String, iconSource: IconSource? = nil, depositInfo: DepositInfo? = nil, createdDate: Date? = nil, shouldCalculateFromTransactions: Bool = false, initialBalance: Double? = nil) {
         self.id = id
         self.name = name
         self.currency = currency
-        self.bankLogo = bankLogo
+        self.iconSource = iconSource
         self.depositInfo = depositInfo
         self.createdDate = createdDate ?? Date()
         self.shouldCalculateFromTransactions = shouldCalculateFromTransactions
@@ -254,7 +254,7 @@ struct Account: Identifiable, Codable, Equatable {
 
     // Кастомный decoder для обратной совместимости со старыми данными
     enum CodingKeys: String, CodingKey {
-        case id, name, balance, currency, bankLogo, depositInfo, createdDate, shouldCalculateFromTransactions, initialBalance
+        case id, name, balance, currency, bankLogo, iconSource, depositInfo, createdDate, shouldCalculateFromTransactions, initialBalance
     }
 
     init(from decoder: Decoder) throws {
@@ -262,7 +262,17 @@ struct Account: Identifiable, Codable, Equatable {
         id = try container.decode(String.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         currency = try container.decode(String.self, forKey: .currency)
-        bankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) ?? .none
+
+        // Migration: try new iconSource field first, fallback to old bankLogo
+        if let savedIconSource = try container.decodeIfPresent(IconSource.self, forKey: .iconSource) {
+            iconSource = savedIconSource
+        } else if let oldBankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) {
+            // Migrate old bankLogo to iconSource
+            iconSource = oldBankLogo != .none ? .bankLogo(oldBankLogo) : nil
+        } else {
+            iconSource = nil
+        }
+
         depositInfo = try container.decodeIfPresent(DepositInfo.self, forKey: .depositInfo)
         createdDate = try container.decodeIfPresent(Date.self, forKey: .createdDate)
         // Для обратной совместимости: если поля нет, используем false (manual mode)
@@ -284,7 +294,7 @@ struct Account: Identifiable, Codable, Equatable {
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
         try container.encode(currency, forKey: .currency)
-        try container.encode(bankLogo, forKey: .bankLogo)
+        try container.encodeIfPresent(iconSource, forKey: .iconSource)
         try container.encodeIfPresent(depositInfo, forKey: .depositInfo)
         try container.encodeIfPresent(createdDate, forKey: .createdDate)
         try container.encode(shouldCalculateFromTransactions, forKey: .shouldCalculateFromTransactions)

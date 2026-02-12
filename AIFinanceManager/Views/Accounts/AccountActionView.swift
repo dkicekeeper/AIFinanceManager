@@ -507,6 +507,6 @@ struct AccountActionView: View {
     AccountActionView(
         transactionsViewModel: coordinator.transactionsViewModel,
         accountsViewModel: coordinator.accountsViewModel,
-        account: Account(name: "Main", currency: "USD", bankLogo: .none, initialBalance: 1000)
+        account: Account(name: "Main", currency: "USD", iconSource: nil, initialBalance: 1000)
     )
 }

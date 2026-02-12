@@ -151,7 +151,7 @@ struct SubscriptionsListView: View {
             frequency: .monthly,
             startDate: today,
             kind: .subscription,
-            brandId: "Netflix",
+            iconSource: .brandService("Netflix"),
             status: .active
         ),
         RecurringSeries(
@@ -164,7 +164,7 @@ struct SubscriptionsListView: View {
             frequency: .monthly,
             startDate: today,
             kind: .subscription,
-            brandId: "Spotify",
+            iconSource: .brandService("Spotify"),
             status: .active
         ),
         RecurringSeries(
@@ -177,7 +177,7 @@ struct SubscriptionsListView: View {
             frequency: .monthly,
             startDate: today,
             kind: .subscription,
-            brandId: "Adobe",
+            iconSource: .brandService("Adobe"),
             status: .paused
         )
     ]
@@ -209,7 +209,7 @@ struct SubscriptionsListView: View {
         frequency: .monthly,
         startDate: today,
         kind: .subscription,
-        brandId: "Netflix",
+        iconSource: .brandService("Netflix"),
         status: .active
     )
 

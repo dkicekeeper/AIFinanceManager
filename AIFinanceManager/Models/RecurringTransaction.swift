@@ -34,8 +34,7 @@ struct RecurringSeries: Identifiable, Codable, Equatable {
     
     // Subscription-specific fields
     var kind: RecurringSeriesKind
-    var brandLogo: BankLogo?
-    var brandId: String? // Optional brand identifier
+    var iconSource: IconSource? // Unified icon/logo source (SF Symbol, BankLogo, logo.dev)
     var reminderOffsets: [Int]? // Days before charge (e.g., [1, 3, 7, 30])
     var status: SubscriptionStatus? // For subscriptions: active/paused/archived
     
@@ -53,8 +52,7 @@ struct RecurringSeries: Identifiable, Codable, Equatable {
         startDate: String,
         lastGeneratedDate: String? = nil,
         kind: RecurringSeriesKind = .generic,
-        brandLogo: BankLogo? = nil,
-        brandId: String? = nil,
+        iconSource: IconSource? = nil,
         reminderOffsets: [Int]? = nil,
         status: SubscriptionStatus? = nil
     ) {
@@ -71,8 +69,7 @@ struct RecurringSeries: Identifiable, Codable, Equatable {
         self.startDate = startDate
         self.lastGeneratedDate = lastGeneratedDate
         self.kind = kind
-        self.brandLogo = brandLogo
-        self.brandId = brandId
+        self.iconSource = iconSource
         self.reminderOffsets = reminderOffsets
         self.status = status
     }
@@ -94,9 +91,9 @@ struct RecurringSeries: Identifiable, Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case id, isActive, amount, currency, category, subcategory, description
         case accountId, targetAccountId, frequency, startDate, lastGeneratedDate
-        case kind, brandLogo, brandId, reminderOffsets, status
+        case kind, brandLogo, brandId, iconSource, reminderOffsets, status
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -111,15 +108,23 @@ struct RecurringSeries: Identifiable, Codable, Equatable {
         frequency = try container.decode(RecurringFrequency.self, forKey: .frequency)
         startDate = try container.decode(String.self, forKey: .startDate)
         lastGeneratedDate = try container.decodeIfPresent(String.self, forKey: .lastGeneratedDate)
-        
+
         // New fields with defaults for backward compatibility
         kind = try container.decodeIfPresent(RecurringSeriesKind.self, forKey: .kind) ?? .generic
-        brandLogo = try container.decodeIfPresent(BankLogo.self, forKey: .brandLogo)
-        brandId = try container.decodeIfPresent(String.self, forKey: .brandId)
+
+        // Migration: try new iconSource field first, fallback to old brandLogo/brandId
+        if let savedIconSource = try container.decodeIfPresent(IconSource.self, forKey: .iconSource) {
+            iconSource = savedIconSource
+        } else {
+            let oldBrandLogo = try container.decodeIfPresent(BankLogo.self, forKey: .brandLogo)
+            let oldBrandId = try container.decodeIfPresent(String.self, forKey: .brandId)
+            iconSource = IconSource.migrate(bankLogo: oldBrandLogo, brandId: oldBrandId, brandName: nil)
+        }
+
         reminderOffsets = try container.decodeIfPresent([Int].self, forKey: .reminderOffsets)
         status = try container.decodeIfPresent(SubscriptionStatus.self, forKey: .status)
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -135,8 +140,7 @@ struct RecurringSeries: Identifiable, Codable, Equatable {
         try container.encode(startDate, forKey: .startDate)
         try container.encodeIfPresent(lastGeneratedDate, forKey: .lastGeneratedDate)
         try container.encode(kind, forKey: .kind)
-        try container.encodeIfPresent(brandLogo, forKey: .brandLogo)
-        try container.encodeIfPresent(brandId, forKey: .brandId)
+        try container.encodeIfPresent(iconSource, forKey: .iconSource)
         try container.encodeIfPresent(reminderOffsets, forKey: .reminderOffsets)
         try container.encodeIfPresent(status, forKey: .status)
     }

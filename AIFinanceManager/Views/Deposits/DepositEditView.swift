@@ -18,11 +18,11 @@ struct DepositEditView: View {
     @State private var bankName: String = ""
     @State private var principalBalanceText: String = ""
     @State private var currency: String = "KZT"
-    @State private var selectedBankLogo: BankLogo = .none
+    @State private var selectedIconSource: IconSource? = nil
     @State private var interestRateText: String = ""
     @State private var interestPostingDay: Int = 1
     @State private var capitalizationEnabled: Bool = true
-    @State private var showingBankLogoPicker = false
+    @State private var showingIconPicker = false
     @FocusState private var isNameFocused: Bool
     
     private let depositCurrencies = ["KZT", "USD", "EUR"]
@@ -50,7 +50,7 @@ struct DepositEditView: View {
                     id: account?.id ?? UUID().uuidString,
                     name: name,
                     currency: currency,
-                    bankLogo: selectedBankLogo,
+                    iconSource: selectedIconSource,
                     depositInfo: depositInfo,
                     shouldCalculateFromTransactions: false,
                     initialBalance: balance
@@ -68,14 +68,17 @@ struct DepositEditView: View {
             Section(header: Text(String(localized: "deposit.bank"))) {
                 TextField(String(localized: "deposit.bankNamePlaceholder"), text: $bankName)
 
-                Button(action: {
-                    HapticManager.selection()
-                    showingBankLogoPicker = true
-                }) {
-                    HStack {
-                        Text(String(localized: "deposit.selectLogo"))
+                Button {
+                    HapticManager.light()
+                    showingIconPicker = true
+                } label: {
+                    HStack(spacing: AppSpacing.md) {
+                        Text(String(localized: "iconPicker.title"))
                         Spacer()
-                        selectedBankLogo.image(size: AppIconSize.lg)
+                        BrandLogoDisplayView(
+                            iconSource: selectedIconSource,
+                            size: AppIconSize.lg
+                        )
                         Image(systemName: "chevron.right")
                             .foregroundStyle(.secondary)
                             .font(AppTypography.caption)
@@ -129,14 +132,14 @@ struct DepositEditView: View {
                 bankName = depositInfo.bankName
                 principalBalanceText = String(format: "%.2f", NSDecimalNumber(decimal: depositInfo.principalBalance).doubleValue)
                 currency = account.currency
-                selectedBankLogo = account.bankLogo
+                selectedIconSource = account.iconSource
                 interestRateText = String(format: "%.2f", NSDecimalNumber(decimal: depositInfo.interestRateAnnual).doubleValue)
                 interestPostingDay = depositInfo.interestPostingDay
                 capitalizationEnabled = depositInfo.capitalizationEnabled
                 isNameFocused = false
             } else {
                 currency = "KZT"
-                selectedBankLogo = .none
+                selectedIconSource = nil
                 principalBalanceText = ""
                 interestRateText = ""
                 interestPostingDay = 1
@@ -148,8 +151,8 @@ struct DepositEditView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingBankLogoPicker) {
-            BankLogoPickerView(selectedLogo: $selectedBankLogo)
+        .sheet(isPresented: $showingIconPicker) {
+            IconPickerView(selectedSource: $selectedIconSource)
         }
     }
 }
@@ -175,7 +178,7 @@ struct DepositEditView: View {
         id: "test",
         name: "Halyk Deposit",
         currency: "KZT",
-        bankLogo: .halykBank,
+        iconSource: .bankLogo(.halykBank),
         depositInfo: DepositInfo(
             bankName: "Halyk Bank",
             principalBalance: Decimal(1000000),

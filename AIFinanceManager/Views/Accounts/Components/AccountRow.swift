@@ -25,7 +25,7 @@ struct AccountRow: View {
     var body: some View {
             HStack(spacing: AppSpacing.md) {
                 // Логотип банка
-                account.bankLogo.image(size: AppIconSize.xl)
+                BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.xl)
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
@@ -86,7 +86,7 @@ struct AccountRow: View {
         id: "test",
         name: "Test Account",
         currency: "USD",
-        bankLogo: .none,
+        iconSource: nil,
         initialBalance: 10000
     )
     let coordinator = AppCoordinator()

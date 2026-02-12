@@ -19,7 +19,7 @@ struct AccountCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.sm) {
-                account.bankLogo.image(size: AppIconSize.xl)
+                BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.xl)
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
@@ -47,7 +47,7 @@ struct AccountCard: View {
     let coordinator = AppCoordinator()
 
     return AccountCard(
-        account: Account(name: "Main Account", currency: "USD", bankLogo: .none, initialBalance: 1000),
+        account: Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000),
         onTap: {},
         balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
     )

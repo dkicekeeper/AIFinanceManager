@@ -16,7 +16,7 @@ struct CategoryEditView: View {
     let onCancel: () -> Void
 
     @State private var name: String = ""
-    @State private var iconName: String = "banknote.fill"
+    @State private var selectedIconSource: IconSource = .sfSymbol("banknote.fill")
     @State private var selectedColor: String = "#3b82f6"
     @State private var showingIconPicker = false
     @State private var showingColorPicker = false
@@ -50,12 +50,12 @@ struct CategoryEditView: View {
     var body: some View {
         EditSheetContainer(
             title: category == nil ? String(localized: "modal.newCategory") : String(localized: "modal.editCategory"),
-            isSaveDisabled: name.isEmpty || iconName.isEmpty,
+            isSaveDisabled: name.isEmpty,
             onSave: {
                 let newCategory = CustomCategory(
                     id: category?.id ?? UUID().uuidString,
                     name: name,
-                    iconName: iconName,
+                    iconSource: selectedIconSource,
                     colorHex: selectedColor,
                     type: type,
                     budgetAmount: parsedBudget,
@@ -72,21 +72,33 @@ struct CategoryEditView: View {
             }
 
             Section(header: Text(String(localized: "common.icon"))) {
-                HStack {
-                    Button(action: {
-                        HapticManager.light()
-                        showingIconPicker.toggle()
-                    }) {
-                        Image(systemName: iconName)
-                            .font(.system(size: AppIconSize.xxl))
-                            .foregroundStyle(colorFromHex(selectedColor))
-                            .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                            .background(Color(.systemGray6))
-                            .clipShape(.rect(cornerRadius: AppRadius.lg))
-                    }
+                Button {
+                    HapticManager.light()
+                    showingIconPicker = true
+                } label: {
+                    HStack(spacing: AppSpacing.md) {
+                        // Display icon with category color
+                        Group {
+                            switch selectedIconSource {
+                            case .sfSymbol(let name):
+                                Image(systemName: name)
+                                    .font(.system(size: AppIconSize.xxl))
+                                    .foregroundStyle(colorFromHex(selectedColor))
+                            case .bankLogo(let logo):
+                                logo.image(size: AppIconSize.xxl)
+                            case .brandService(let name):
+                                BrandLogoView(brandName: name, size: AppIconSize.xxl)
+                            }
+                        }
+                        .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                        .background(AppColors.surface)
+                        .clipShape(.rect(cornerRadius: AppRadius.lg))
 
-                    Text(String(localized: "category.tapToSelect"))
-                        .foregroundStyle(.secondary)
+                        Text(String(localized: "category.tapToSelect"))
+                            .foregroundStyle(AppColors.textSecondary)
+
+                        Spacer()
+                    }
                 }
             }
 
@@ -194,12 +206,19 @@ struct CategoryEditView: View {
             )
         }
         .sheet(isPresented: $showingIconPicker) {
-            IconPickerView(selectedIconName: $iconName)
+            IconPickerView(selectedSource: Binding(
+                get: { selectedIconSource },
+                set: { newSource in
+                    if let source = newSource {
+                        selectedIconSource = source
+                    }
+                }
+            ))
         }
         .onAppear {
             if let category = category {
                 name = category.name
-                iconName = category.iconName
+                selectedIconSource = category.iconSource
                 selectedColor = category.colorHex
                 isNameFocused = false
 
@@ -255,7 +274,7 @@ struct CategoryEditView: View {
     let sampleCategory = CustomCategory(
         id: "preview",
         name: "Food",
-        iconName: "fork.knife",
+        iconSource: .sfSymbol("fork.knife"),
         colorHex: "#3b82f6",
         type: .expense,
         budgetAmount: 10000,

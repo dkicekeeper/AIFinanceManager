@@ -379,7 +379,7 @@ struct ContentView: View {
                 name: account.name,
                 initialBalance: account.initialBalance ?? 0,
                 currency: account.currency,
-                bankLogo: account.bankLogo
+                iconSource: account.iconSource
             )
             viewModel.syncAccountsFrom(accountsViewModel)
             showingAddAccount = false

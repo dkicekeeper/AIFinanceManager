@@ -205,7 +205,7 @@ struct CSVEntityMappingView: View {
     }
     
     private func createAccount(name: String) async {
-        await accountsViewModel.addAccount(name: name, initialBalance: 0, currency: "KZT", bankLogo: .none, shouldCalculateFromTransactions: true)
+        await accountsViewModel.addAccount(name: name, initialBalance: 0, currency: "KZT", iconSource: nil, shouldCalculateFromTransactions: true)
         if let account = accountsViewModel.accounts.first(where: { $0.name == name }) {
             accountMappings[name] = account.id
         }
@@ -215,10 +215,10 @@ struct CSVEntityMappingView: View {
         let iconName = CategoryIcon.iconName(for: name, type: type, customCategories: categoriesViewModel.customCategories)
         let colorHex = CategoryColors.hexColor(for: name, customCategories: categoriesViewModel.customCategories)
         let hexString = colorToHex(colorHex)
-        
+
         let newCategory = CustomCategory(
             name: name,
-            iconName: iconName,
+            iconSource: .sfSymbol(iconName),
             colorHex: hexString,
             type: type
         )
@@ -258,7 +258,7 @@ struct AccountMappingDetailView: View {
                         selectedAccountId = account.id
                     }) {
                         HStack {
-                            account.bankLogo.image(size: 24)
+                            BrandLogoDisplayView(iconSource: account.iconSource, size: 24)
                             Text(account.name)
                             Spacer()
                             if selectedAccountId == account.id {
@@ -302,8 +302,12 @@ struct CategoryMappingDetailView: View {
                         selectedCategoryName = category.name
                     }) {
                         HStack {
-                            Image(systemName: category.iconName)
-                                .foregroundStyle(category.color)
+                            Group {
+                                if case .sfSymbol(let symbolName) = category.iconSource {
+                                    Image(systemName: symbolName)
+                                        .foregroundStyle(category.color)
+                                }
+                            }
                             Text(category.name)
                             Spacer()
                             if selectedCategoryName == category.name {

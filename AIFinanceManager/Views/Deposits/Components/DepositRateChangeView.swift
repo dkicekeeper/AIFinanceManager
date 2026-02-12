@@ -85,7 +85,7 @@ struct DepositRateChangeView: View {
         id: "test",
         name: "Test Deposit",
         currency: "KZT",
-        bankLogo: .halykBank,
+        iconSource: .bankLogo(.halykBank),
         depositInfo: DepositInfo(
             bankName: "Halyk Bank",
             principalBalance: Decimal(1000000),

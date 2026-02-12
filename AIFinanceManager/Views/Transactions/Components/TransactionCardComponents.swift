@@ -88,7 +88,7 @@ struct TransferAccountInfo: View {
                let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
                 // Account exists - show with logo
                 HStack(spacing: AppSpacing.xs) {
-                    sourceAccount.bankLogo.image(size: AppIconSize.sm)
+                    BrandLogoDisplayView(iconSource: sourceAccount.iconSource, size: AppIconSize.sm)
                     Text(sourceAccount.name)
                         .font(AppTypography.bodySmall)
                         .foregroundStyle(.secondary)
@@ -110,7 +110,7 @@ struct TransferAccountInfo: View {
                let targetAccount = accounts.first(where: { $0.id == targetId }) {
                 // Account exists - show with logo
                 HStack(spacing: AppSpacing.xs) {
-                    targetAccount.bankLogo.image(size: AppIconSize.sm)
+                    BrandLogoDisplayView(iconSource: targetAccount.iconSource, size: AppIconSize.sm)
                     Text(targetAccount.name)
                         .font(AppTypography.bodySmall)
                         .foregroundStyle(.secondary)
@@ -137,7 +137,7 @@ struct RegularAccountInfo: View {
            let account = accounts.first(where: { $0.id == accountId }) {
             // Account exists - show with logo
             HStack(spacing: AppSpacing.xs) {
-                account.bankLogo.image(size: AppIconSize.sm)
+                BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.sm)
                 Text(account.name)
                     .font(AppTypography.bodySmall)
                     .foregroundStyle(.secondary)

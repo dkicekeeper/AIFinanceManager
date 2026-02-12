@@ -17,8 +17,8 @@ struct AccountEditView: View {
     @State private var name: String = ""
     @State private var balanceText: String = ""
     @State private var currency: String = "USD"
-    @State private var selectedBankLogo: BankLogo = .none
-    @State private var showingBankLogoPicker = false
+    @State private var selectedIconSource: IconSource? = nil
+    @State private var showingIconPicker = false
     @FocusState private var isNameFocused: Bool
 
     private let currencies = ["USD", "EUR", "KZT", "RUB", "GBP"]
@@ -37,7 +37,7 @@ struct AccountEditView: View {
                     id: account?.id ?? UUID().uuidString,
                     name: name,
                     currency: currency,
-                    bankLogo: selectedBankLogo,
+                    iconSource: selectedIconSource,
                     shouldCalculateFromTransactions: false,
                     initialBalance: parsedBalance
                 )
@@ -51,11 +51,17 @@ struct AccountEditView: View {
             }
 
             Section(header: Text(String(localized: "common.logo"))) {
-                Button(action: { showingBankLogoPicker = true }) {
-                    HStack {
-                        Text(String(localized: "account.selectLogo"))
+                Button {
+                    HapticManager.light()
+                    showingIconPicker = true
+                } label: {
+                    HStack(spacing: AppSpacing.md) {
+                        Text(String(localized: "iconPicker.title"))
                         Spacer()
-                        selectedBankLogo.image(size: 24)
+                        BrandLogoDisplayView(
+                            iconSource: selectedIconSource,
+                            size: AppIconSize.lg
+                        )
                         Image(systemName: "chevron.right")
                             .foregroundStyle(.secondary)
                             .font(.caption)
@@ -84,11 +90,11 @@ struct AccountEditView: View {
                 let balanceValue = account.initialBalance ?? 0
                 balanceText = String(format: "%.2f", balanceValue)
                 currency = account.currency
-                selectedBankLogo = account.bankLogo
+                selectedIconSource = account.iconSource
                 isNameFocused = false
             } else {
                 currency = transactionsViewModel.appSettings.baseCurrency
-                selectedBankLogo = .none
+                selectedIconSource = nil
                 balanceText = ""
                 // Активируем поле названия при создании нового счета
                 Task {
@@ -97,8 +103,8 @@ struct AccountEditView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingBankLogoPicker) {
-            BankLogoPickerView(selectedLogo: $selectedBankLogo)
+        .sheet(isPresented: $showingIconPicker) {
+            IconPickerView(selectedSource: $selectedIconSource)
         }
     }
 }
@@ -121,7 +127,7 @@ struct AccountEditView: View {
         id: "preview",
         name: "Test Account",
         currency: "USD",
-        bankLogo: .kaspi,
+        iconSource: .bankLogo(.kaspi),
         initialBalance: 10000
     )
 

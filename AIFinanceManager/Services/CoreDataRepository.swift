@@ -214,7 +214,12 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             // Only update balance when creating new accounts
                             // existing.balance = account.initialBalance ?? 0  // ❌ This was causing balance reset on account deletion
                             existing.currency = account.currency
-                            existing.logo = account.bankLogo.rawValue
+                            // Save iconSource as logo string (backward compatible)
+                            if case .bankLogo(let bankLogo) = account.iconSource {
+                                existing.logo = bankLogo.rawValue
+                            } else {
+                                existing.logo = BankLogo.none.rawValue
+                            }
                             existing.isDeposit = account.isDeposit
                             existing.bankName = account.depositInfo?.bankName
                         } else {
@@ -380,7 +385,12 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 // Only update balance when creating new accounts
                 // existing.balance = account.initialBalance ?? 0  // ❌ This was causing balance reset on account deletion
                 existing.currency = account.currency
-                existing.logo = account.bankLogo.rawValue
+                // Save iconSource as logo string (backward compatible)
+                if case .bankLogo(let bankLogo) = account.iconSource {
+                    existing.logo = bankLogo.rawValue
+                } else {
+                    existing.logo = BankLogo.none.rawValue
+                }
                 existing.isDeposit = account.isDeposit
                 existing.bankName = account.depositInfo?.bankName
                 existing.shouldCalculateFromTransactions = account.shouldCalculateFromTransactions  // ✨ Phase 10: Update calculation mode
@@ -664,7 +674,12 @@ final class CoreDataRepository: DataRepositoryProtocol {
                 // Update existing
                 existing.name = category.name
                 existing.type = category.type.rawValue
-                existing.iconName = category.iconName
+                // Save iconSource as iconName string (backward compatible)
+                if case .sfSymbol(let symbolName) = category.iconSource {
+                    existing.iconName = symbolName
+                } else {
+                    existing.iconName = "questionmark.circle"
+                }
                 existing.colorHex = category.colorHex
 
                 // Update budget fields
@@ -944,8 +959,23 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             existing.startDate = DateFormatters.dateFormatter.date(from: item.startDate)
                             existing.lastGeneratedDate = item.lastGeneratedDate.flatMap { DateFormatters.dateFormatter.date(from: $0) }
                             existing.kind = item.kind.rawValue
-                            existing.brandLogo = item.brandLogo?.rawValue
-                            existing.brandId = item.brandId
+                            // Save iconSource as brandLogo/brandId strings (backward compatible)
+                            if let iconSource = item.iconSource {
+                                switch iconSource {
+                                case .bankLogo(let bankLogo):
+                                    existing.brandLogo = bankLogo.rawValue
+                                    existing.brandId = nil
+                                case .brandService(let brandId):
+                                    existing.brandLogo = nil
+                                    existing.brandId = brandId
+                                case .sfSymbol:
+                                    existing.brandLogo = nil
+                                    existing.brandId = nil
+                                }
+                            } else {
+                                existing.brandLogo = nil
+                                existing.brandId = nil
+                            }
                             existing.status = item.status?.rawValue
                             
                             // Update account relationship if needed
@@ -1038,7 +1068,12 @@ final class CoreDataRepository: DataRepositoryProtocol {
                             // Update existing
                             existing.name = category.name
                             existing.type = category.type.rawValue
-                            existing.iconName = category.iconName
+                            // Save iconSource as iconName string (backward compatible)
+                            if case .sfSymbol(let symbolName) = category.iconSource {
+                                existing.iconName = symbolName
+                            } else {
+                                existing.iconName = "questionmark.circle"
+                            }
                             existing.colorHex = category.colorHex
 
                             // Update budget fields
