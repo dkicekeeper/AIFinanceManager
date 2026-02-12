@@ -106,35 +106,4 @@ enum BankLogo: String, Codable, CaseIterable, Identifiable {
         case .nbrk: return "NBRK"
         }
     }
-    
-    @ViewBuilder
-    func image(size: CGFloat = 24) -> some View {
-        let cornerRadius = size * 0.2 // 20% от размера для corner radius
-        
-        if self == .none {
-            Image(systemName: "building.2")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: size, height: size)
-                .foregroundStyle(.secondary)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        } else {
-            // Пытаемся загрузить изображение из Assets
-            if let uiImage = UIImage(named: rawValue) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: size, height: size)
-                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-            } else {
-                // Fallback на системную иконку, если изображение не найдено
-                Image(systemName: "building.2")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: size, height: size)
-                    .foregroundStyle(.secondary)
-                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-            }
-        }
-    }
 }

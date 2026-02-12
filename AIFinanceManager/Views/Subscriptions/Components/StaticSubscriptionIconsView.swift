@@ -35,8 +35,8 @@ private struct SubscriptionIconView: View {
     let size: CGFloat
 
     var body: some View {
-        BrandLogoDisplayView(
-            iconSource: subscription.iconSource,
+        IconView(
+            source: subscription.iconSource,
             size: size
         )
         .clipShape(Circle())

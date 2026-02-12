@@ -108,12 +108,12 @@ struct SubscriptionDetailView: View {
     private var subscriptionInfoCard: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             HStack(spacing: AppSpacing.md) {
-                // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
-                BrandLogoDisplayView(
-                    iconSource: subscription.iconSource,
+                // REFACTORED 2026-02-02: Use IconView to eliminate duplication
+                IconView(
+                    source: subscription.iconSource,
                     size: AppIconSize.xxxl
                 )
-                
+
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(subscription.description)
                         .font(AppTypography.h3)

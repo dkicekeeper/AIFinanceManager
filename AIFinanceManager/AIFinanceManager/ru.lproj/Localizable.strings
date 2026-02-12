@@ -593,3 +593,16 @@
 
 // MARK: - Currency Conversion
 "currency.conversion.approximate" = "≈";
+
+// MARK: - Icon Styles
+"iconStyle.shape.circle" = "Круг";
+"iconStyle.shape.roundedSquare" = "Скругленный квадрат";
+"iconStyle.shape.square" = "Квадрат";
+"iconStyle.tint.monochrome" = "Монохром";
+"iconStyle.tint.hierarchical" = "Иерархический";
+"iconStyle.tint.palette" = "Палитра";
+"iconStyle.tint.original" = "Оригинальные цвета";
+"iconStyle.preset.categoryIcon" = "Иконка категории";
+"iconStyle.preset.bankLogo" = "Логотип банка";
+"iconStyle.preset.serviceLogo" = "Логотип сервиса";
+"iconStyle.preset.placeholder" = "Заглушка";

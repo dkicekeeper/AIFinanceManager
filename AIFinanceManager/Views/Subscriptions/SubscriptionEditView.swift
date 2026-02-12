@@ -113,8 +113,8 @@ struct SubscriptionEditView: View {
                                     Text(String(localized: "iconPicker.title"))
                                         .foregroundStyle(AppColors.textPrimary)
                                     Spacer()
-                                    BrandLogoDisplayView(
-                                        iconSource: selectedIconSource,
+                                    IconView(
+                                        source: selectedIconSource,
                                         size: AppIconSize.xl
                                     )
                                     Image(systemName: "chevron.right")

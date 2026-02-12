@@ -258,7 +258,7 @@ struct AccountMappingDetailView: View {
                         selectedAccountId = account.id
                     }) {
                         HStack {
-                            BrandLogoDisplayView(iconSource: account.iconSource, size: 24)
+                            IconView(source: account.iconSource, size: 24)
                             Text(account.name)
                             Spacer()
                             if selectedAccountId == account.id {

@@ -77,22 +77,15 @@ struct CategoryEditView: View {
                     showingIconPicker = true
                 } label: {
                     HStack(spacing: AppSpacing.md) {
-                        // Display icon with category color
-                        Group {
-                            switch selectedIconSource {
-                            case .sfSymbol(let name):
-                                Image(systemName: name)
-                                    .font(.system(size: AppIconSize.xxl))
-                                    .foregroundStyle(colorFromHex(selectedColor))
-                            case .bankLogo(let logo):
-                                logo.image(size: AppIconSize.xxl)
-                            case .brandService(let name):
-                                BrandLogoView(brandName: name, size: AppIconSize.xxl)
-                            }
-                        }
-                        .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                        .background(AppColors.surface)
-                        .clipShape(.rect(cornerRadius: AppRadius.lg))
+                        // Display icon with category color using IconView
+                        IconView(
+                            source: selectedIconSource,
+                            style: .circle(
+                                size: AppIconSize.coin,
+                                tint: .monochrome(colorFromHex(selectedColor)),
+                                backgroundColor: AppColors.surface
+                            )
+                        )
 
                         Text(String(localized: "category.tapToSelect"))
                             .foregroundStyle(AppColors.textSecondary)

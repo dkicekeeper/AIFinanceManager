@@ -19,7 +19,7 @@ struct AccountCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.sm) {
-                BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.xl)
+                IconView(source: account.iconSource, size: AppIconSize.xl)
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)

@@ -25,7 +25,7 @@ struct AccountRow: View {
     var body: some View {
             HStack(spacing: AppSpacing.md) {
                 // Логотип банка
-                BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.xl)
+                IconView(source: account.iconSource, size: AppIconSize.xl)
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)

@@ -75,8 +75,8 @@ struct DepositEditView: View {
                     HStack(spacing: AppSpacing.md) {
                         Text(String(localized: "iconPicker.title"))
                         Spacer()
-                        BrandLogoDisplayView(
-                            iconSource: selectedIconSource,
+                        IconView(
+                            source: selectedIconSource,
                             size: AppIconSize.lg
                         )
                         Image(systemName: "chevron.right")

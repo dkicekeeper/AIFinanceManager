@@ -213,7 +213,7 @@ struct DepositDetailView: View {
         return VStack(alignment: .leading, spacing: AppSpacing.md) {
             // Header
             HStack {
-                BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.xxl)
+                IconView(source: account.iconSource, size: AppIconSize.xxl)
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
                         .font(AppTypography.h3)

@@ -131,8 +131,8 @@ enum AppIconSize {
     /// 48pt - Hero icons (empty states)
     static let xxxl: CGFloat = 48
 
-    /// 50pt - Category row icons
-    static let categoryIcon: CGFloat = 50
+    /// 52pt - Category row icons
+    static let categoryIcon: CGFloat = 52
 
     /// 56pt - Floating action buttons
     static let fab: CGFloat = 56

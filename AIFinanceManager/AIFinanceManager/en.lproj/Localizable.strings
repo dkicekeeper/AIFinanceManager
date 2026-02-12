@@ -593,3 +593,16 @@
 
 // MARK: - Currency Conversion
 "currency.conversion.approximate" = "≈";
+
+// MARK: - Icon Styles
+"iconStyle.shape.circle" = "Circle";
+"iconStyle.shape.roundedSquare" = "Rounded Square";
+"iconStyle.shape.square" = "Square";
+"iconStyle.tint.monochrome" = "Monochrome";
+"iconStyle.tint.hierarchical" = "Hierarchical";
+"iconStyle.tint.palette" = "Palette";
+"iconStyle.tint.original" = "Original Colors";
+"iconStyle.preset.categoryIcon" = "Category Icon";
+"iconStyle.preset.bankLogo" = "Bank Logo";
+"iconStyle.preset.serviceLogo" = "Service Logo";
+"iconStyle.preset.placeholder" = "Placeholder";

@@ -27,7 +27,7 @@ struct AccountFilterMenu: View {
             ForEach(accounts) { account in
                 Button(action: { selectedAccountId = account.id }) {
                     HStack(spacing: AppSpacing.sm) {
-                        BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.md)
+                        IconView(source: account.iconSource, size: AppIconSize.md)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(account.name)
                                 .font(AppTypography.bodySmall)
@@ -47,7 +47,7 @@ struct AccountFilterMenu: View {
             let selectedAccount = accounts.first(where: { $0.id == selectedAccountId })
             HStack(spacing: AppSpacing.sm) {
                 if let account = selectedAccount {
-                    BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.sm)
+                    IconView(source: account.iconSource, size: AppIconSize.sm)
                 }
                 Text(selectedAccountId == nil ? "Все счета" : (selectedAccount?.name ?? "Все счета"))
                 Image(systemName: "chevron.down")

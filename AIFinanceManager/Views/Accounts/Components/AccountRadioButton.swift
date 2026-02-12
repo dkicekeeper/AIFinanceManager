@@ -20,17 +20,17 @@ struct AccountRadioButton: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.md) {
-                BrandLogoDisplayView(iconSource: account.iconSource, size: AppIconSize.lg)
-                
+                IconView(source: account.iconSource, size: AppIconSize.xxl)
+
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(account.name)
-                        .font(AppTypography.caption)
+                        .font(AppTypography.body)
                         .foregroundStyle(.secondary)
                     
                     FormattedAmountText(
                         amount: balance,
                         currency: account.currency,
-                        fontSize: AppTypography.bodySmall,
+                        fontSize: AppTypography.body,
                         fontWeight: .semibold,
                         color: .primary
                     )

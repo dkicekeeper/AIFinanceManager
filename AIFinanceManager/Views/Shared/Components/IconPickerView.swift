@@ -269,8 +269,8 @@ private struct LogoItemButton: View {
 
     var body: some View {
         Button(action: onTap) {
-            BrandLogoDisplayView(
-                iconSource: item.iconSource,
+            IconView(
+                source: item.iconSource,
                 size: AppIconSize.xxxl
             )
             .frame(width: AppIconSize.coin, height: AppIconSize.coin)
@@ -332,8 +332,8 @@ private struct OnlineLogoRow: View {
         Button(action: onSelect) {
             HStack(spacing: AppSpacing.md) {
                 // Logo preview
-                BrandLogoDisplayView(
-                    iconSource: .brandService(brandName),
+                IconView(
+                    source: .brandService(brandName),
                     size: AppIconSize.xxl
                 )
 

@@ -160,9 +160,9 @@ struct SubscriptionCalendarView: View {
     }
 
     private func logoView(for sub: RecurringSeries, size: CGFloat) -> some View {
-        // REFACTORED 2026-02-02: Use BrandLogoDisplayView to eliminate duplication
-        BrandLogoDisplayView(
-            iconSource: sub.iconSource,
+        // REFACTORED 2026-02-02: Use IconView to eliminate duplication
+        IconView(
+            source: sub.iconSource,
             size: size
         )
     }

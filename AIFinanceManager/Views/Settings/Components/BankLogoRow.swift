@@ -18,14 +18,16 @@ struct BankLogoRow: View {
             onSelect()
         }) {
             HStack(spacing: AppSpacing.md) {
-                bank.image(size: AppIconSize.xl)
-                    .frame(width: AppIconSize.xl, height: AppIconSize.xl)
-                
+                IconView(
+                    source: .bankLogo(bank),
+                    style: .bankLogo()
+                )
+
                 Text(bank.displayName)
                     .foregroundStyle(.primary)
-                
+
                 Spacer()
-                
+
                 if isSelected {
                     Image(systemName: "checkmark")
                         .foregroundStyle(.blue)
