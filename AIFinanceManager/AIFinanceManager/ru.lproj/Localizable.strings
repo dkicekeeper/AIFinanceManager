@@ -288,6 +288,13 @@
 "iconPicker.homeAndUtilities" = "Дом и коммунальные";
 "iconPicker.moneyAndFinance" = "Деньги и финансы";
 "iconPicker.banks" = "Банки";
+"iconPicker.streaming" = "Стриминг и развлечения";
+"iconPicker.productivity" = "Продуктивность и облако";
+"iconPicker.social" = "Социальные и общение";
+"iconPicker.fitness" = "Фитнес и здоровье";
+"iconPicker.gaming" = "Игры";
+"iconPicker.devTools" = "Dev Tools и AI";
+"iconPicker.services" = "Сервисы";
 "iconPicker.popularBanks" = "Популярные банки";
 "iconPicker.otherBanks" = "Другие банки";
 "iconPicker.searchOnline" = "Поиск логотипа бренда...";

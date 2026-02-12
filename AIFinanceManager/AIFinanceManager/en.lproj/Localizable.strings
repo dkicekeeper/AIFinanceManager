@@ -288,6 +288,13 @@
 "iconPicker.homeAndUtilities" = "Home & Utilities";
 "iconPicker.moneyAndFinance" = "Money & Finance";
 "iconPicker.banks" = "Banks";
+"iconPicker.streaming" = "Streaming & Entertainment";
+"iconPicker.productivity" = "Productivity & Cloud";
+"iconPicker.social" = "Social & Communication";
+"iconPicker.fitness" = "Fitness & Health";
+"iconPicker.gaming" = "Gaming";
+"iconPicker.devTools" = "Developer Tools & AI";
+"iconPicker.services" = "Services";
 "iconPicker.popularBanks" = "Popular Banks";
 "iconPicker.otherBanks" = "Other Banks";
 "iconPicker.searchOnline" = "Search brand logo...";

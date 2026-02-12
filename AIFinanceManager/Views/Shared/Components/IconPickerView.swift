@@ -144,20 +144,14 @@ private struct LogosTabView: View {
 
     @State private var searchText = ""
 
-    // Категории логотипов для будущего расширения
-    private let logoCategories: [(String, [BankLogo])] = [
-        (String(localized: "iconPicker.banks"), [
-            .alatauCityBank, .halykBank, .kaspi, .homeCredit,
-            .eurasian, .forte, .jusan, .otbasy, .centerCredit,
-            .bereke, .alfaBank, .freedom, .sber, .vtb,
-            .tbank, .rbk, .nurBank, .asiaCredit,
-            .tengri, .brk, .citi, .ebr, .bankOfChina,
-            .moscowBank, .icbc, .shinhan, .kbo, .atf
-        ])
-        // TODO: Добавить категории:
-        // - Развлечения (YouTube, Netflix, HBO, Disney+)
-        // - Музыка (Spotify, Apple Music, Yandex Music)
-        // - Сервисы (iCloud, Google Drive, Dropbox)
+    // Банки
+    private let banks: [BankLogo] = [
+        .alatauCityBank, .halykBank, .kaspi, .homeCredit,
+        .eurasian, .forte, .jusan, .otbasy, .centerCredit,
+        .bereke, .alfaBank, .freedom, .sber, .vtb,
+        .tbank, .rbk, .nurBank, .asiaCredit,
+        .tengri, .brk, .citi, .ebr, .bankOfChina,
+        .moscowBank, .icbc, .shinhan, .kbo, .atf
     ]
 
     private var isSearching: Bool {
@@ -176,32 +170,20 @@ private struct LogosTabView: View {
                 // Grid логотипов
                 ScrollView {
                     VStack(alignment: .leading, spacing: AppSpacing.xxl) {
-                        ForEach(logoCategories, id: \.0) { category in
-                            VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                                Text(category.0)
-                                    .font(AppTypography.caption)
-                                    .foregroundStyle(AppColors.textSecondary)
-                                    .textCase(.uppercase)
-                                    .padding(.horizontal, AppSpacing.lg)
+                        // Банки
+                        LogoCategorySection(
+                            title: String(localized: "iconPicker.banks"),
+                            items: banks.map { .bank($0) },
+                            selectedSource: $selectedSource
+                        )
 
-                                LazyVGrid(
-                                    columns: Array(repeating: GridItem(.flexible(), spacing: AppSpacing.lg), count: 4),
-                                    spacing: AppSpacing.lg
-                                ) {
-                                    ForEach(category.1) { bank in
-                                        LogoButton(
-                                            bank: bank,
-                                            isSelected: selectedSource == .bankLogo(bank),
-                                            onTap: {
-                                                HapticManager.selection()
-                                                selectedSource = .bankLogo(bank)
-                                                dismiss()
-                                            }
-                                        )
-                                    }
-                                }
-                                .padding(.horizontal, AppSpacing.lg)
-                            }
+                        // Сервисы по категориям
+                        ForEach(ServiceCategory.allCases, id: \.rawValue) { category in
+                            LogoCategorySection(
+                                title: category.localizedTitle,
+                                items: category.services().map { .service($0) },
+                                selectedSource: $selectedSource
+                            )
                         }
                     }
                     .padding(.vertical, AppSpacing.lg)
@@ -216,17 +198,79 @@ private struct LogosTabView: View {
     }
 }
 
-// MARK: - Logo Button
+// MARK: - Logo Category Section
 
-private struct LogoButton: View {
-    let bank: BankLogo
+private struct LogoCategorySection: View {
+    let title: String
+    let items: [LogoItem]
+    @Binding var selectedSource: IconSource?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
+            Text(title)
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textSecondary)
+                .textCase(.uppercase)
+                .padding(.horizontal, AppSpacing.lg)
+
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: AppSpacing.lg), count: 4),
+                spacing: AppSpacing.lg
+            ) {
+                ForEach(items) { item in
+                    LogoItemButton(
+                        item: item,
+                        isSelected: item.iconSource == selectedSource,
+                        onTap: {
+                            HapticManager.selection()
+                            selectedSource = item.iconSource
+                            dismiss()
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal, AppSpacing.lg)
+        }
+    }
+}
+
+// MARK: - Logo Item
+
+private enum LogoItem: Identifiable {
+    case bank(BankLogo)
+    case service(ServiceLogo)
+
+    var id: String {
+        switch self {
+        case .bank(let logo):
+            return "bank_\(logo.rawValue)"
+        case .service(let logo):
+            return "service_\(logo.rawValue)"
+        }
+    }
+
+    var iconSource: IconSource {
+        switch self {
+        case .bank(let logo):
+            return .bankLogo(logo)
+        case .service(let logo):
+            return .brandService(logo.rawValue)
+        }
+    }
+}
+
+// MARK: - Logo Item Button
+
+private struct LogoItemButton: View {
+    let item: LogoItem
     let isSelected: Bool
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             BrandLogoDisplayView(
-                iconSource: .bankLogo(bank),
+                iconSource: item.iconSource,
                 size: AppIconSize.xxxl
             )
             .frame(width: AppIconSize.coin, height: AppIconSize.coin)
