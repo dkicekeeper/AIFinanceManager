@@ -27,16 +27,7 @@ struct IconPickerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Segmented Picker
-                Picker("", selection: $pickerMode) {
-                    ForEach(PickerMode.allCases, id: \.self) { mode in
-                        Text(mode.localizedTitle).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(AppSpacing.lg)
-
+            Group {
                 // Content
                 switch pickerMode {
                 case .icons:
@@ -45,13 +36,26 @@ struct IconPickerView: View {
                     LogosTabView(selectedSource: $selectedSource)
                 }
             }
+            .safeAreaInset(edge: .top) {
+                SegmentedPickerView(
+                    title: "",
+                    selection: $pickerMode,
+                    options: PickerMode.allCases.map { (label: $0.localizedTitle, value: $0) }
+                )
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.md)
+                .background(AppColors.backgroundPrimary)
+            }
             .navigationTitle(String(localized: "iconPicker.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "button.done")) {
+                    Button {
                         HapticManager.light()
                         dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: AppIconSize.md, weight: .semibold))
                     }
                 }
             }
@@ -178,6 +182,7 @@ private struct LogosTabView: View {
                         }
                     } header: {
                         Text(String(localized: "iconPicker.popularBanks"))
+                            .foregroundStyle(AppColors.textPrimary)
                     }
 
                     // Другие банки
@@ -195,6 +200,7 @@ private struct LogosTabView: View {
                         }
                     } header: {
                         Text(String(localized: "iconPicker.otherBanks"))
+                            .foregroundStyle(AppColors.textPrimary)
                     }
 
                     // Без логотипа
@@ -246,6 +252,7 @@ private struct OnlineSearchResultsView: View {
                 )
             } header: {
                 Text(String(localized: "iconPicker.searchResults"))
+                    .foregroundStyle(AppColors.textPrimary)
             } footer: {
                 Text("Введите домен бренда (например: netflix.com)")
                     .font(AppTypography.caption)
