@@ -144,13 +144,21 @@ private struct LogosTabView: View {
 
     @State private var searchText = ""
 
-    private var popularBanks: [BankLogo] {
-        [.alatauCityBank, .halykBank, .kaspi, .homeCredit, .eurasian, .forte, .jusan]
-    }
-
-    private var otherBanks: [BankLogo] {
-        BankLogo.allCases.filter { $0 != .none && !popularBanks.contains($0) }
-    }
+    // Категории логотипов для будущего расширения
+    private let logoCategories: [(String, [BankLogo])] = [
+        (String(localized: "iconPicker.banks"), [
+            .alatauCityBank, .halykBank, .kaspi, .homeCredit,
+            .eurasian, .forte, .jusan, .otbasy, .centerCredit,
+            .bereke, .alfaBank, .freedom, .sber, .vtb,
+            .tbank, .rbk, .nurBank, .asiaCredit,
+            .tengri, .brk, .citi, .ebr, .bankOfChina,
+            .moscowBank, .icbc, .shinhan, .kbo, .atf
+        ])
+        // TODO: Добавить категории:
+        // - Развлечения (YouTube, Netflix, HBO, Disney+)
+        // - Музыка (Spotify, Apple Music, Yandex Music)
+        // - Сервисы (iCloud, Google Drive, Dropbox)
+    ]
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -159,62 +167,44 @@ private struct LogosTabView: View {
     var body: some View {
         Group {
             if isSearching {
-                // Результаты поиска logo.dev - просто показываем введенный текст
+                // Результаты поиска logo.dev
                 OnlineSearchResultsView(
                     searchText: searchText,
                     selectedSource: $selectedSource
                 )
             } else {
-                // Локальные банки
-                List {
-                    // Популярные банки
-                    Section {
-                        ForEach(popularBanks) { bank in
-                            BankLogoRow(
-                                bank: bank,
-                                isSelected: selectedSource == .bankLogo(bank),
-                                onSelect: {
-                                    HapticManager.selection()
-                                    selectedSource = .bankLogo(bank)
-                                    dismiss()
-                                }
-                            )
-                        }
-                    } header: {
-                        Text(String(localized: "iconPicker.popularBanks"))
-                            .foregroundStyle(AppColors.textPrimary)
-                    }
+                // Grid логотипов
+                ScrollView {
+                    VStack(alignment: .leading, spacing: AppSpacing.xxl) {
+                        ForEach(logoCategories, id: \.0) { category in
+                            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                                Text(category.0)
+                                    .font(AppTypography.caption)
+                                    .foregroundStyle(AppColors.textSecondary)
+                                    .textCase(.uppercase)
+                                    .padding(.horizontal, AppSpacing.lg)
 
-                    // Другие банки
-                    Section {
-                        ForEach(otherBanks) { bank in
-                            BankLogoRow(
-                                bank: bank,
-                                isSelected: selectedSource == .bankLogo(bank),
-                                onSelect: {
-                                    HapticManager.selection()
-                                    selectedSource = .bankLogo(bank)
-                                    dismiss()
+                                LazyVGrid(
+                                    columns: Array(repeating: GridItem(.flexible(), spacing: AppSpacing.lg), count: 4),
+                                    spacing: AppSpacing.lg
+                                ) {
+                                    ForEach(category.1) { bank in
+                                        LogoButton(
+                                            bank: bank,
+                                            isSelected: selectedSource == .bankLogo(bank),
+                                            onTap: {
+                                                HapticManager.selection()
+                                                selectedSource = .bankLogo(bank)
+                                                dismiss()
+                                            }
+                                        )
+                                    }
                                 }
-                            )
-                        }
-                    } header: {
-                        Text(String(localized: "iconPicker.otherBanks"))
-                            .foregroundStyle(AppColors.textPrimary)
-                    }
-
-                    // Без логотипа
-                    Section {
-                        BankLogoRow(
-                            bank: .none,
-                            isSelected: selectedSource == .bankLogo(.none) || selectedSource == nil,
-                            onSelect: {
-                                HapticManager.selection()
-                                selectedSource = nil
-                                dismiss()
+                                .padding(.horizontal, AppSpacing.lg)
                             }
-                        )
+                        }
                     }
+                    .padding(.vertical, AppSpacing.lg)
                 }
             }
         }
@@ -223,6 +213,31 @@ private struct LogosTabView: View {
             placement: .toolbar,
             prompt: String(localized: "iconPicker.searchOnline")
         )
+    }
+}
+
+// MARK: - Logo Button
+
+private struct LogoButton: View {
+    let bank: BankLogo
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            BrandLogoDisplayView(
+                iconSource: .bankLogo(bank),
+                size: AppIconSize.xxxl
+            )
+            .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+            .background(isSelected ? AppColors.accent.opacity(0.1) : AppColors.surface)
+            .clipShape(.rect(cornerRadius: AppRadius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.lg)
+                    .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
