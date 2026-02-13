@@ -255,7 +255,7 @@ struct TransactionRowContent: View {
     }
 }
 
-#Preview("Transaction Row Content - Regular") {
+#Preview("Transaction Row - Regular") {
     let coordinator = AppCoordinator()
     let sampleTransaction = Transaction(
         id: "test-1",
@@ -268,16 +268,34 @@ struct TransactionRowContent: View {
         accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
     )
 
-    TransactionRowContent(
-        transaction: sampleTransaction,
-        currency: "KZT",
-        customCategories: coordinator.categoriesViewModel.customCategories,
-        accounts: coordinator.accountsViewModel.accounts
-    )
+    VStack(spacing: AppSpacing.md) {
+        Text("Without Style")
+            .font(AppTypography.bodySmall)
+            .foregroundStyle(.secondary)
+
+        TransactionRowContent(
+            transaction: sampleTransaction,
+            currency: "KZT",
+            customCategories: coordinator.categoriesViewModel.customCategories,
+            accounts: coordinator.accountsViewModel.accounts
+        )
+
+        Text("With Standard Style")
+            .font(AppTypography.bodySmall)
+            .foregroundStyle(.secondary)
+
+        TransactionRowContent(
+            transaction: sampleTransaction,
+            currency: "KZT",
+            customCategories: coordinator.categoriesViewModel.customCategories,
+            accounts: coordinator.accountsViewModel.accounts
+        )
+        .transactionRowStyle()
+    }
     .padding()
 }
 
-#Preview("Transaction Row Content - Planned") {
+#Preview("Transaction Row - Planned") {
     let sampleTransaction = Transaction(
         id: "test-2",
         date: DateFormatters.dateFormatter.string(from: Date().addingTimeInterval(7 * 24 * 60 * 60)),
@@ -289,10 +307,145 @@ struct TransactionRowContent: View {
         accountId: "deposit-1"
     )
 
-    TransactionRowContent(
-        transaction: sampleTransaction,
+    VStack(spacing: AppSpacing.md) {
+        Text("Planned Transaction")
+            .font(AppTypography.bodySmall)
+            .foregroundStyle(.secondary)
+
+        TransactionRowContent(
+            transaction: sampleTransaction,
+            currency: "KZT",
+            isPlanned: true
+        )
+        .transactionRowStyle(isPlanned: true)
+    }
+    .padding()
+}
+
+#Preview("Transaction Row - Deposit Style") {
+    let coordinator = AppCoordinator()
+    let depositId = "deposit-1"
+
+    VStack(spacing: AppSpacing.lg) {
+        Text("Deposit Transactions")
+            .font(AppTypography.h4)
+
+        // Interest accrual
+        TransactionRowContent(
+            transaction: Transaction(
+                id: "test-3",
+                date: DateFormatters.dateFormatter.string(from: Date()),
+                description: "Interest accrual",
+                amount: 1250.50,
+                currency: "KZT",
+                type: .depositInterestAccrual,
+                category: "Interest",
+                accountId: depositId
+            ),
+            currency: "KZT",
+            accounts: coordinator.accountsViewModel.accounts,
+            showDescription: false,
+            depositAccountId: depositId
+        )
+        .transactionRowStyle()
+
+        // Transfer in
+        TransactionRowContent(
+            transaction: Transaction(
+                id: "test-4",
+                date: DateFormatters.dateFormatter.string(from: Date()),
+                description: "Deposit top-up",
+                amount: 50000,
+                currency: "KZT",
+                type: .internalTransfer,
+                category: "Transfer",
+                accountId: "account-1",
+                targetAccountId: depositId
+            ),
+            currency: "KZT",
+            accounts: coordinator.accountsViewModel.accounts,
+            showDescription: false,
+            depositAccountId: depositId
+        )
+        .transactionRowStyle()
+
+        // Planned transaction
+        TransactionRowContent(
+            transaction: Transaction(
+                id: "planned-1",
+                date: DateFormatters.dateFormatter.string(from: Date().addingTimeInterval(7 * 24 * 60 * 60)),
+                description: "Future interest",
+                amount: 1250,
+                currency: "KZT",
+                type: .depositInterestAccrual,
+                category: "Interest",
+                accountId: depositId
+            ),
+            currency: "KZT",
+            accounts: coordinator.accountsViewModel.accounts,
+            showDescription: false,
+            depositAccountId: depositId,
+            isPlanned: true
+        )
+        .transactionRowStyle(isPlanned: true)
+    }
+    .padding()
+}
+
+#Preview("Transaction Row - Variants") {
+    let coordinator = AppCoordinator()
+    let sampleTransaction = Transaction(
+        id: "test-5",
+        date: DateFormatters.dateFormatter.string(from: Date()),
+        description: "Test transaction",
+        amount: 1000,
         currency: "KZT",
-        isPlanned: true
+        type: .expense,
+        category: "Food"
     )
+
+    VStack(spacing: AppSpacing.lg) {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            Text("Standard Variant")
+                .font(AppTypography.bodySmall)
+                .foregroundStyle(.secondary)
+
+            TransactionRowContent(
+                transaction: sampleTransaction,
+                currency: "KZT",
+                customCategories: coordinator.categoriesViewModel.customCategories,
+                accounts: coordinator.accountsViewModel.accounts
+            )
+            .transactionRowStyle(variant: .standard)
+        }
+
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            Text("Transparent Variant")
+                .font(AppTypography.bodySmall)
+                .foregroundStyle(.secondary)
+
+            TransactionRowContent(
+                transaction: sampleTransaction,
+                currency: "KZT",
+                customCategories: coordinator.categoriesViewModel.customCategories,
+                accounts: coordinator.accountsViewModel.accounts
+            )
+            .transactionRowStyle(variant: .transparent)
+        }
+
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            Text("Card Variant")
+                .font(AppTypography.bodySmall)
+                .foregroundStyle(.secondary)
+
+            TransactionRowContent(
+                transaction: sampleTransaction,
+                currency: "KZT",
+                customCategories: coordinator.categoriesViewModel.customCategories,
+                accounts: coordinator.accountsViewModel.accounts
+            )
+            .transactionRowStyle(variant: .card)
+        }
+    }
     .padding()
 }

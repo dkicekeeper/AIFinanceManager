@@ -8,26 +8,40 @@
 import SwiftUI
 
 struct InfoRow: View {
+    let icon: String?
     let label: String
     let value: String
-    
+
+    init(icon: String? = nil, label: String, value: String) {
+        self.icon = icon
+        self.label = label
+        self.value = value
+    }
+
     var body: some View {
         HStack {
+            if let icon = icon {
+                Image(systemName: icon)
+                    .foregroundStyle(.secondary)
+                    .frame(width: AppIconSize.md)
+            }
             Text(label)
-                .font(AppTypography.body)
+                .font(AppTypography.bodyLarge)
                 .foregroundStyle(.secondary)
             Spacer()
             Text(value)
-                .font(AppTypography.body)
+                .font(AppTypography.bodyLarge)
         }
+        .padding(.vertical, AppSpacing.compact)
     }
 }
 
 #Preview {
-    VStack(spacing: AppSpacing.md) {
-        InfoRow(label: "Категория", value: "Food")
-        InfoRow(label: "Частота", value: "Ежемесячно")
-        InfoRow(label: "Следующее списание", value: "15 января 2026")
+    VStack() {
+        InfoRow(icon: "tag.fill", label: "Категория", value: "Food")
+        InfoRow(icon: "calendar", label: "Частота", value: "Ежемесячно")
+        InfoRow(icon: "clock.fill", label: "Следующее списание", value: "15 января 2026")
+        InfoRow(label: "Без иконки", value: "Значение")
     }
     .padding()
 }

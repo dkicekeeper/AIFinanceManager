@@ -228,19 +228,46 @@ struct IconView: View {
             }
         }
 
-        // Применяем форму
-        switch style.shape {
-        case .circle:
-            viewWithPadding
-                .clipShape(Circle())
+        // Применяем форму с обрезкой контента
+        let viewWithShape = Group {
+            switch style.shape {
+            case .circle:
+                viewWithPadding
+                    .clipShape(Circle())
+                    .contentShape(Circle())
 
-        case .roundedSquare(let radius):
-            viewWithPadding
-                .clipShape(RoundedRectangle(cornerRadius: radius))
+            case .roundedSquare(let radius):
+                viewWithPadding
+                    .clipShape(RoundedRectangle(cornerRadius: radius))
+                    .contentShape(RoundedRectangle(cornerRadius: radius))
 
-        case .square:
-            viewWithPadding
-                .clipShape(Rectangle())
+            case .square:
+                viewWithPadding
+                    .clipShape(Rectangle())
+                    .contentShape(Rectangle())
+            }
+        }
+
+        // Применяем glass effect если требуется
+        if style.hasGlassEffect {
+            if #available(iOS 18.0, *) {
+                switch style.shape {
+                case .circle:
+                    viewWithShape
+                        .glassEffect(in: Circle())
+                case .roundedSquare(let radius):
+                    viewWithShape
+                        .glassEffect(in: RoundedRectangle(cornerRadius: radius))
+                case .square:
+                    viewWithShape
+                        .glassEffect(in: Rectangle())
+                }
+            } else {
+                // Fallback для более старых версий iOS
+                viewWithShape
+            }
+        } else {
+            viewWithShape
         }
     }
 }
@@ -367,6 +394,56 @@ struct IconView: View {
         }
     }
     .padding(AppSpacing.lg)
+}
+
+#Preview("Glass Effect") {
+    if #available(iOS 18.0, *) {
+        VStack(spacing: AppSpacing.xxl) {
+            VStack(spacing: AppSpacing.md) {
+                Text("Glass Hero (Circle)")
+                    .font(AppTypography.h4)
+
+                HStack(spacing: AppSpacing.lg) {
+                    IconView(source: .sfSymbol("tv.fill"), style: .glassHero())
+                    IconView(source: .sfSymbol("music.note"), style: .glassHero())
+                    IconView(source: .sfSymbol("cloud.fill"), style: .glassHero())
+                }
+            }
+
+            VStack(spacing: AppSpacing.md) {
+                Text("Glass Service (Rounded Square)")
+                    .font(AppTypography.h4)
+
+                HStack(spacing: AppSpacing.lg) {
+                    IconView(source: .brandService("netflix"), style: .glassService())
+                    IconView(source: .brandService("spotify"), style: .glassService())
+                    IconView(source: .brandService("notion"), style: .glassService())
+                }
+            }
+
+            VStack(spacing: AppSpacing.md) {
+                Text("Custom Glass Effect")
+                    .font(AppTypography.h4)
+
+                HStack(spacing: AppSpacing.lg) {
+                    IconView(
+                        source: .sfSymbol("star.fill"),
+                        style: .circle(size: AppIconSize.xl, tint: .accentMonochrome, hasGlassEffect: true)
+                    )
+                    IconView(
+                        source: .sfSymbol("heart.fill"),
+                        style: .roundedSquare(size: AppIconSize.xl, tint: .destructiveMonochrome, hasGlassEffect: true)
+                    )
+                }
+            }
+        }
+        .padding(AppSpacing.lg)
+    } else {
+        Text("Glass Effect requires iOS 18.0+")
+            .font(AppTypography.body)
+            .foregroundStyle(AppColors.textSecondary)
+            .padding(AppSpacing.lg)
+    }
 }
 
 // MARK: - Preview Helpers

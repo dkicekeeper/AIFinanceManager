@@ -375,12 +375,13 @@
 "subscriptions.delete" = "Удалить";
 "subscriptions.deleteOnlySubscription" = "Удалить только подписку";
 "subscriptions.deleteSubscriptionAndTransactions" = "Удалить подписку и транзакции";
+"subscriptions.edit" = "Редактировать";
 "subscriptions.pause" = "Приостановить";
 "subscriptions.resume" = "Возобновить";
 "subscriptions.transactionHistory" = "История транзакций";
 "subscriptions.category" = "Категория";
 "subscriptions.frequency" = "Частота";
-"subscriptions.nextCharge" = "Следующее списание: %@";
+"subscriptions.nextCharge" = "Следующее списание";
 "subscriptions.account" = "Счёт";
 "subscriptions.status" = "Статус";
 "subscriptions.status.active" = "Активна";

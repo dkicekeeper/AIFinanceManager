@@ -375,12 +375,13 @@
 "subscriptions.delete" = "Delete";
 "subscriptions.deleteOnlySubscription" = "Delete Only Subscription";
 "subscriptions.deleteSubscriptionAndTransactions" = "Delete Subscription and Transactions";
+"subscriptions.edit" = "Edit";
 "subscriptions.pause" = "Pause";
 "subscriptions.resume" = "Resume";
 "subscriptions.transactionHistory" = "Transaction History";
 "subscriptions.category" = "Category";
 "subscriptions.frequency" = "Frequency";
-"subscriptions.nextCharge" = "Next Charge: %@";
+"subscriptions.nextCharge" = "Next Charge";
 "subscriptions.account" = "Account";
 "subscriptions.status" = "Status";
 "subscriptions.status.active" = "Active";

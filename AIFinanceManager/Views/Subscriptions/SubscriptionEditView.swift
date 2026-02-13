@@ -80,7 +80,7 @@ struct SubscriptionEditView: View {
                     )
 
                     // 4. Основная информация
-                    VStack(spacing: 0) {
+                    VStack() {
                         HStack {
                             Text("Основная информация")
                                 .font(AppTypography.caption)
@@ -91,15 +91,15 @@ struct SubscriptionEditView: View {
                         .padding(.horizontal, AppSpacing.lg)
                         .padding(.bottom, AppSpacing.xs)
 
-                        VStack(spacing: 0) {
+                        VStack() {
                             // Название
-                            VStack(spacing: 0) {
+                            VStack() {
                                 TextField("Название подписки", text: $description)
                                     .focused($isDescriptionFocused)
-                                    .padding(AppSpacing.md)
+                                    .padding(AppSpacing.lg)
                             }
-                            .background(AppColors.cardBackground)
-                            .clipShape(.rect(cornerRadius: AppRadius.md))
+//                            .background(AppColors.cardBackground)
+//                            .clipShape(.rect(cornerRadius: AppRadius.md))
 
                             Divider()
                                 .padding(.leading, AppSpacing.md)

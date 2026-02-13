@@ -243,7 +243,7 @@ enum AppColors {
     static let backgroundPrimary = Color(.systemBackground)
 
     /// Фон surface (карточки, elevated elements)
-    static let surface = Color(.systemGray6)
+    static let surface = Color(.secondarySystemBackground)
 
     /// Фон основных карточек (alias для surface)
     static let cardBackground = surface
@@ -306,7 +306,7 @@ extension View {
     /// - Parameters:
     ///   - radius: Corner radius (по умолчанию .md)
     ///   - padding: Внутренний padding (по умолчанию .md)
-    func cardStyle(radius: CGFloat = AppRadius.md, padding: CGFloat = AppSpacing.md) -> some View {
+    func cardStyle(radius: CGFloat = AppRadius.pill, padding: CGFloat = AppSpacing.md) -> some View {
         self
             .padding(padding)
             .background(AppColors.cardBackground)
@@ -432,6 +432,51 @@ extension View {
     func listRowPadding() -> some View {
         self.padding(.horizontal, AppSpacing.pageHorizontal)
             .padding(.vertical, AppSpacing.listRowSpacing)
+    }
+}
+
+// MARK: - Transaction Row Styles
+
+/// Варианты стилизации строк транзакций
+enum TransactionRowVariant {
+    /// Стандартный стиль с фоном
+    case standard
+    /// Прозрачный фон
+    case transparent
+    /// Карточный стиль с тенью
+    case card
+}
+
+extension View {
+    /// Стилизует view как строку транзакции
+    /// - Parameters:
+    ///   - isPlanned: Является ли транзакция плановой (будет синий фон)
+    ///   - variant: Вариант стилизации
+    func transactionRowStyle(
+        isPlanned: Bool = false,
+        variant: TransactionRowVariant = .standard
+    ) -> some View {
+        self
+            .padding(AppSpacing.sm)
+            .background(backgroundForVariant(isPlanned: isPlanned, variant: variant))
+            .clipShape(.rect(cornerRadius: AppRadius.sm))
+    }
+
+    /// Вычисляет фон для заданного варианта стилизации
+    private func backgroundForVariant(isPlanned: Bool, variant: TransactionRowVariant) -> Color {
+        if isPlanned {
+            // Для плановых транзакций всегда синий оттенок
+            return Color.blue.opacity(0.1)
+        }
+
+        switch variant {
+        case .standard:
+            return AppColors.secondaryBackground
+        case .transparent:
+            return .clear
+        case .card:
+            return AppColors.surface
+        }
     }
 }
 

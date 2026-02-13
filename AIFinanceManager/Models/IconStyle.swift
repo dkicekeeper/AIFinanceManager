@@ -98,6 +98,7 @@ struct IconStyle: Equatable, Hashable {
     var contentMode: ContentMode
     var backgroundColor: Color?
     var padding: CGFloat?  // Внутренний padding (опционально)
+    var hasGlassEffect: Bool  // Применять ли glass effect
 
     // MARK: - Basic Initializers
 
@@ -106,7 +107,8 @@ struct IconStyle: Equatable, Hashable {
         size: CGFloat,
         tint: IconTint = .original,
         backgroundColor: Color? = nil,
-        padding: CGFloat? = nil
+        padding: CGFloat? = nil,
+        hasGlassEffect: Bool = false
     ) -> IconStyle {
         IconStyle(
             size: size,
@@ -114,7 +116,8 @@ struct IconStyle: Equatable, Hashable {
             tint: tint,
             contentMode: .fit,
             backgroundColor: backgroundColor,
-            padding: padding
+            padding: padding,
+            hasGlassEffect: hasGlassEffect
         )
     }
 
@@ -124,7 +127,8 @@ struct IconStyle: Equatable, Hashable {
         cornerRadius: CGFloat? = nil,
         tint: IconTint = .original,
         backgroundColor: Color? = nil,
-        padding: CGFloat? = nil
+        padding: CGFloat? = nil,
+        hasGlassEffect: Bool = false
     ) -> IconStyle {
         let radius = cornerRadius ?? (size * 0.2)
         return IconStyle(
@@ -133,7 +137,8 @@ struct IconStyle: Equatable, Hashable {
             tint: tint,
             contentMode: .fit,
             backgroundColor: backgroundColor,
-            padding: padding
+            padding: padding,
+            hasGlassEffect: hasGlassEffect
         )
     }
 
@@ -142,7 +147,8 @@ struct IconStyle: Equatable, Hashable {
         size: CGFloat,
         tint: IconTint = .original,
         backgroundColor: Color? = nil,
-        padding: CGFloat? = nil
+        padding: CGFloat? = nil,
+        hasGlassEffect: Bool = false
     ) -> IconStyle {
         IconStyle(
             size: size,
@@ -150,7 +156,8 @@ struct IconStyle: Equatable, Hashable {
             tint: tint,
             contentMode: .fit,
             backgroundColor: backgroundColor,
-            padding: padding
+            padding: padding,
+            hasGlassEffect: hasGlassEffect
         )
     }
 
@@ -246,6 +253,26 @@ struct IconStyle: Equatable, Hashable {
         .circle(
             size: AppIconSize.xxxl,
             tint: .secondaryMonochrome
+        )
+    }
+
+    /// Стеклянная иконка для hero секций (подписки, счета)
+    /// Используется в: SubscriptionDetailView, AccountDetailView
+    static func glassHero(size: CGFloat = AppIconSize.largeButton) -> IconStyle {
+        .circle(
+            size: size,
+            tint: .original,
+            hasGlassEffect: true
+        )
+    }
+
+    /// Стеклянная иконка сервиса с rounded square
+    static func glassService(size: CGFloat = AppIconSize.avatar) -> IconStyle {
+        .roundedSquare(
+            size: size,
+            cornerRadius: AppRadius.lg,
+            tint: .original,
+            hasGlassEffect: true
         )
     }
 

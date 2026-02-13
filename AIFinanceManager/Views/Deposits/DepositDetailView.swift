@@ -256,20 +256,24 @@ struct DepositDetailView: View {
             
             // Details
             InfoRow(
+                icon: "percent",
                 label: String(localized: "deposit.rate"),
                 value: String(format: String(localized: "deposit.rateAnnual"), formatRate(depositInfo.interestRateAnnual))
             )
             InfoRow(
+                icon: "arrow.triangle.2.circlepath",
                 label: String(localized: "deposit.capitalization"),
                 value: depositInfo.capitalizationEnabled ? String(localized: "deposit.capitalizationEnabled") : String(localized: "deposit.capitalizationDisabled")
             )
             InfoRow(
+                icon: "calendar.day.timeline.left",
                 label: String(localized: "deposit.postingDay"),
                 value: "\(depositInfo.interestPostingDay)"
             )
-            
+
             if let nextPosting = nextPosting {
                 InfoRow(
+                    icon: "calendar.badge.clock",
                     label: String(localized: "deposit.nextPosting"),
                     value: formatDate(nextPosting)
                 )

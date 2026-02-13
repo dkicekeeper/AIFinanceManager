@@ -16,24 +16,24 @@ struct SubscriptionDetailView: View {
     @State private var showingEditView = false
     @State private var showingDeleteConfirmation = false
     @Environment(\.dismiss) var dismiss
-
+    
     // ✨ Phase 9: Use TransactionStore.getPlannedTransactions()
     private var subscriptionTransactions: [Transaction] {
         // Get all existing transactions for this subscription from store
         let existingTransactions = transactionStore.transactions.filter {
             $0.recurringSeriesId == subscription.id
         }
-
+        
         // Get future planned transactions (next 6 months)
         let plannedTransactions = transactionStore.getPlannedTransactions(for: subscription.id, horizon: 6)
-
+        
         // Combine and sort by date (ascending - nearest first, furthest last)
         let allTransactions = (existingTransactions + plannedTransactions)
             .sorted { $0.date < $1.date } // Nearest first (ascending order)
-
+        
         return allTransactions
     }
-
+    
     private var nextChargeDate: Date? {
         transactionStore.nextChargeDate(for: subscription.id)
     }
@@ -45,10 +45,6 @@ struct SubscriptionDetailView: View {
                 subscriptionInfoCard
                     .screenPadding()
                 
-                // Actions
-                actionsSection
-                    .screenPadding()
-                
                 // Transactions history
                 if !subscriptionTransactions.isEmpty {
                     transactionsSection
@@ -57,14 +53,44 @@ struct SubscriptionDetailView: View {
             }
             .padding(.vertical, AppSpacing.md)
         }
-        .navigationTitle(subscription.description)
-        .navigationBarTitleDisplayMode(.large)
+//        .navigationTitle(subscription.description)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showingEditView = true
+                Menu {
+                    Button {
+                        showingEditView = true
+                    } label: {
+                        Label(String(localized: "subscriptions.edit"), systemImage: "pencil")
+                    }
+                    
+                    if subscription.subscriptionStatus == .active {
+                        Button {
+                            Task {
+                                try await transactionStore.pauseSubscription(id: subscription.id)
+                            }
+                        } label: {
+                            Label(String(localized: "subscriptions.pause"), systemImage: "pause.circle")
+                        }
+                    } else if subscription.subscriptionStatus == .paused {
+                        Button {
+                            Task {
+                                try await transactionStore.resumeSubscription(id: subscription.id)
+                            }
+                        } label: {
+                            Label(String(localized: "subscriptions.resume"), systemImage: "play.circle")
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label(String(localized: "subscriptions.delete"), systemImage: "trash")
+                    }
                 } label: {
-                    Image(systemName: "pencil")
+                    Image(systemName: "ellipsis")
                 }
             }
         }
@@ -86,14 +112,14 @@ struct SubscriptionDetailView: View {
         }
         .alert(String(localized: "subscriptions.deleteConfirmTitle"), isPresented: $showingDeleteConfirmation) {
             Button(String(localized: "quickAdd.cancel"), role: .cancel) {}
-
+            
             Button(String(localized: "subscriptions.deleteOnlySubscription"), role: .destructive) {
                 Task {
                     try await transactionStore.deleteSeries(id: subscription.id, deleteTransactions: false)
                     dismiss()
                 }
             }
-
+            
             Button(String(localized: "subscriptions.deleteSubscriptionAndTransactions"), role: .destructive) {
                 Task {
                     try await transactionStore.deleteSeries(id: subscription.id, deleteTransactions: true)
@@ -106,18 +132,18 @@ struct SubscriptionDetailView: View {
     }
     
     private var subscriptionInfoCard: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
-            HStack(spacing: AppSpacing.md) {
-                // REFACTORED 2026-02-02: Use IconView to eliminate duplication
+        VStack(alignment: .center, spacing: AppSpacing.md) {
+            VStack(spacing: AppSpacing.md) {
+                // REFACTORED 2026-02-02: Use IconView with glass effect
                 IconView(
                     source: subscription.iconSource,
-                    size: AppIconSize.xxxl
+                    style: .glassHero()
                 )
-
-                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                
+                VStack(alignment: .center, spacing: AppSpacing.xs) {
                     Text(subscription.description)
-                        .font(AppTypography.h3)
-
+                        .font(AppTypography.h1)
+                    
                     FormattedAmountText(
                         amount: NSDecimalNumber(decimal: subscription.amount).doubleValue,
                         currency: subscription.currency,
@@ -125,29 +151,25 @@ struct SubscriptionDetailView: View {
                         color: .secondary
                     )
                 }
-                
                 Spacer()
             }
-            
-            Divider()
-            
             VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                InfoRow(label: String(localized: "subscriptions.category"), value: subscription.category)
-                InfoRow(label: String(localized: "subscriptions.frequency"), value: subscription.frequency.displayName)
+                InfoRow(icon: "tag.fill", label: String(localized: "subscriptions.category"), value: subscription.category)
+                InfoRow(icon: "repeat", label: String(localized: "subscriptions.frequency"), value: subscription.frequency.displayName)
 
                 if let nextDate = nextChargeDate {
-                    InfoRow(label: String(localized: "subscriptions.nextCharge"), value: formatDate(nextDate))
+                    InfoRow(icon: "calendar.badge.clock", label: String(localized: "subscriptions.nextCharge"), value: formatDate(nextDate))
                 }
 
                 if let accountId = subscription.accountId,
                    let account = transactionsViewModel.accounts.first(where: { $0.id == accountId }) {
-                    InfoRow(label: String(localized: "subscriptions.account"), value: account.name)
+                    InfoRow(icon: "creditcard.fill", label: String(localized: "subscriptions.account"), value: account.name)
                 }
 
-                InfoRow(label: String(localized: "subscriptions.status"), value: statusText)
+                InfoRow(icon: "checkmark.circle.fill", label: String(localized: "subscriptions.status"), value: statusText)
             }
+            .cardStyle()
         }
-        .cardStyle()
     }
     
     private var statusText: String {
@@ -163,48 +185,22 @@ struct SubscriptionDetailView: View {
         }
     }
     
-    private var actionsSection: some View {
-        VStack(spacing: AppSpacing.sm) {
-            if subscription.subscriptionStatus == .active {
-                Button {
-                    Task {
-                        try await transactionStore.pauseSubscription(id: subscription.id)
-                    }
-                } label: {
-                    Label(String(localized: "subscriptions.pause"), systemImage: "pause.circle")
-                        .frame(maxWidth: .infinity)
-                }
-                .secondaryButton()
-            } else if subscription.subscriptionStatus == .paused {
-                Button {
-                    Task {
-                        try await transactionStore.resumeSubscription(id: subscription.id)
-                    }
-                } label: {
-                    Label(String(localized: "subscriptions.resume"), systemImage: "play.circle")
-                        .frame(maxWidth: .infinity)
-                }
-                .primaryButton()
-            }
-
-            Button(role: .destructive) {
-                showingDeleteConfirmation = true
-            } label: {
-                Label(String(localized: "subscriptions.delete"), systemImage: "trash")
-                    .frame(maxWidth: .infinity)
-            }
-            .destructiveButton()
-        }
-    }
-    
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             Text(String(localized: "subscriptions.transactionHistory"))
                 .font(AppTypography.h4)
-            
+
             VStack(spacing: AppSpacing.sm) {
                 ForEach(subscriptionTransactions) { transaction in
-                    DepositTransactionRow(transaction: transaction, currency: transaction.currency, isPlanned: transaction.id.hasPrefix("planned-"))
+                    let isPlanned = transaction.id.hasPrefix("planned-")
+
+                    TransactionRowContent(
+                        transaction: transaction,
+                        currency: transaction.currency,
+                        showDescription: false,
+                        isPlanned: isPlanned
+                    )
+                    .transactionRowStyle(isPlanned: isPlanned)
                 }
             }
         }
@@ -217,8 +213,10 @@ struct SubscriptionDetailView: View {
 
 
 
-#Preview {
+#Preview("Active Subscription") {
     let coordinator = AppCoordinator()
+    let timeFilterManager = TimeFilterManager()
+    
     NavigationStack {
         SubscriptionDetailView(
             transactionStore: coordinator.transactionStore,
@@ -230,8 +228,60 @@ struct SubscriptionDetailView: View {
                 description: "Netflix",
                 frequency: .monthly,
                 startDate: "2024-01-01",
-                kind: .subscription
+                kind: .subscription,
+                iconSource: .sfSymbol("tv.fill"),
+                status: .active
             )
         )
+        .environment(timeFilterManager)
     }
 }
+
+#Preview("Paused Subscription") {
+    let coordinator = AppCoordinator()
+    let timeFilterManager = TimeFilterManager()
+    
+    NavigationStack {
+        SubscriptionDetailView(
+            transactionStore: coordinator.transactionStore,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            subscription: RecurringSeries(
+                amount: 14.99,
+                currency: "USD",
+                category: "Music",
+                description: "Spotify",
+                frequency: .monthly,
+                startDate: "2024-01-01",
+                kind: .subscription,
+                iconSource: .sfSymbol("music.note"),
+                status: .paused
+            )
+        )
+        .environment(timeFilterManager)
+    }
+}
+
+#Preview("Archived Subscription") {
+    let coordinator = AppCoordinator()
+    let timeFilterManager = TimeFilterManager()
+    
+    NavigationStack {
+        SubscriptionDetailView(
+            transactionStore: coordinator.transactionStore,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            subscription: RecurringSeries(
+                amount: 4.99,
+                currency: "USD",
+                category: "Storage",
+                description: "iCloud",
+                frequency: .monthly,
+                startDate: "2023-01-01",
+                kind: .subscription,
+                iconSource: .sfSymbol("cloud.fill"),
+                status: .archived
+            )
+        )
+        .environment(timeFilterManager)
+    }
+}
+
