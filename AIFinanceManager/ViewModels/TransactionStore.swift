@@ -137,6 +137,26 @@ final class TransactionStore {
         self.recurringGenerator = RecurringTransactionGenerator(dateFormatter: DateFormatters.dateFormatter)
         self.recurringValidator = RecurringValidationService()
         self.recurringCache = LRUCache<String, [Transaction]>(capacity: 100)
+
+        // Setup notification observer for app lifecycle
+        setupNotificationObservers()
+    }
+
+    private func setupNotificationObservers() {
+        NotificationCenter.default.addObserver(
+            forName: .applicationDidBecomeActive,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.rescheduleSubscriptionNotifications()
+            }
+        }
+    }
+
+    private func rescheduleSubscriptionNotifications() async {
+        let activeSubscriptions = subscriptions.filter { $0.subscriptionStatus == .active && $0.isActive }
+        await SubscriptionNotificationScheduler.shared.rescheduleAllActiveSubscriptions(subscriptions: activeSubscriptions)
     }
 
     // MARK: - Data Loading

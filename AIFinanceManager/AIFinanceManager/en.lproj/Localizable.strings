@@ -168,11 +168,17 @@
 "common.none" = "None";
 "common.uncategorized" = "Uncategorized";
 "common.unknown" = "Unknown";
+"common.cancel" = "Cancel";
+"common.select" = "Select";
+"common.frequency" = "Frequency";
+"common.startDate" = "Start Date";
 
 // MARK: - Date Labels
 "date.today" = "Today";
 "date.yesterday" = "Yesterday";
 "date.tomorrow" = "Tomorrow";
+"date.selectDate" = "Date";
+"date.choose" = "Choose Date";
 
 // MARK: - Transaction Types
 "transactionType.income" = "Income";
@@ -388,6 +394,32 @@
 "subscriptions.status.paused" = "Paused";
 "subscriptions.status.archived" = "Archived";
 "subscriptions.status.unknown" = "Unknown";
+
+// Subscription Form
+"subscription.basicInfo" = "Basic Information";
+"subscription.namePlaceholder" = "Subscription Name";
+"subscription.reminders" = "Reminders";
+"subscription.newTitle" = "New Subscription";
+"subscription.editTitle" = "Edit Subscription";
+
+// Reminders
+"reminder.dayBefore.one" = "1 day before";
+"reminder.daysBefore.3" = "3 days before";
+"reminder.daysBefore.7" = "7 days before";
+"reminder.daysBefore.30" = "30 days before";
+
+// Account messages
+"account.noAccountsAvailable" = "No accounts available";
+"account.selectAccount" = "Select account";
+
+// Category messages
+"category.selectCategory" = "Select category";
+
+// Error messages
+"error.subscriptionNameRequired" = "Enter subscription name";
+"error.invalidAmount" = "Enter valid amount";
+"error.categoryRequired" = "Select category";
+"error.accountRequired" = "Select payment account";
 
 // MARK: - Budget Management
 "budget.amount" = "Budget Amount";

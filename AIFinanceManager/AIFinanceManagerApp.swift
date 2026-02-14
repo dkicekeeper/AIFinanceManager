@@ -9,6 +9,7 @@ import SwiftUI
 
 @main
 struct AIFinanceManagerApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var timeFilterManager = TimeFilterManager()
     @State private var coordinator = AppCoordinator()
 

@@ -53,4 +53,16 @@ extension Notification.Name {
     /// - "operation": String - Name of the operation
     /// - "duration": TimeInterval - Duration in seconds
     static let dataOperationCompleted = Notification.Name("dataOperationCompleted")
+
+    // MARK: - Subscription Notification Events
+
+    /// Posted when user taps on a subscription notification
+    /// UserInfo keys:
+    /// - "seriesId": String - ID of the subscription
+    static let subscriptionNotificationTapped = Notification.Name("subscriptionNotificationTapped")
+
+    // MARK: - Application Lifecycle Events
+
+    /// Posted when application becomes active (for notification rescheduling)
+    static let applicationDidBecomeActive = Notification.Name("applicationDidBecomeActive")
 }

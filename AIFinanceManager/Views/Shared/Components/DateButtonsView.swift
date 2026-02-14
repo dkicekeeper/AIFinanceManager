@@ -42,37 +42,37 @@ private struct DateButtonsContent: View {
     
     var body: some View {
         HStack(spacing: AppSpacing.md) {
-            // Вчера - слева
+            // Yesterday - left
             Button(action: {
                 if let yesterday = yesterday {
                     selectedDate = yesterday
                     onSave(yesterday)
                 }
             }) {
-                Text("Вчера")
+                Text(String(localized: "date.yesterday"))
                     .padding(AppSpacing.sm)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
             .disabled(isDisabled)
 
-            // Сегодня - в центре
+            // Today - center
             Button(action: {
                 selectedDate = today
                 onSave(today)
             }) {
-                Text("Сегодня")
+                Text(String(localized: "date.today"))
                     .padding(AppSpacing.sm)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
             .disabled(isDisabled)
 
-            // Календарь - справа
+            // Calendar - right
             Button(action: {
                 showingDatePicker = true
             }) {
-                Text("Дата")
+                Text(String(localized: "date.selectDate"))
                     .padding(AppSpacing.sm)
                     .frame(maxWidth: .infinity)
             }
@@ -101,22 +101,26 @@ private struct DateButtonsDatePickerSheet: View {
     var body: some View {
         NavigationStack {
             VStack {
-                DatePicker("Выберите дату", selection: $selectedDate, displayedComponents: .date)
-                    .datePickerStyle(.graphical)
-                    .padding()
-                
+                DatePicker(
+                    String(localized: "date.choose"),
+                    selection: $selectedDate,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.graphical)
+                .padding()
+
                 Spacer()
             }
-            .navigationTitle("Выберите дату")
+            .navigationTitle(String(localized: "date.choose"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
+                    Button(String(localized: "common.cancel")) {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .bottomBar) {
-                    Button("Выбрать") {
+                    Button(String(localized: "common.select")) {
                         onDateSelected(selectedDate)
                         dismiss()
                     }

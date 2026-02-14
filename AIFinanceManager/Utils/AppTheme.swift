@@ -192,8 +192,8 @@ enum AppTypography {
     /// Screen titles (alias для h1)
     static let screenTitle = h1
 
-    /// Section headers (alias для h3)
-    static let sectionTitle = h3
+    /// Section headers (uppercase, secondary color)
+    static let sectionHeader = caption.weight(.medium)
 
     /// Primary body text (alias для body)
     static let bodyPrimary = body

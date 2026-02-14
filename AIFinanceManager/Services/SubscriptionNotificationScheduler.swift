@@ -39,7 +39,16 @@ class SubscriptionNotificationScheduler {
               !reminderOffsets.isEmpty else {
             return
         }
-        
+
+        // Check notification permissions
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+            #if DEBUG
+            print("⚠️ [Scheduler] Cannot schedule notifications: permission not granted")
+            #endif
+            return
+        }
+
         // First, cancel existing notifications for this subscription
         await cancelNotifications(for: series.id)
         
@@ -82,12 +91,30 @@ class SubscriptionNotificationScheduler {
         }
         
         // Add all notifications
+        var successCount = 0
+        var failureCount = 0
+
         for request in requests {
             do {
                 try await center.add(request)
+                successCount += 1
+                #if DEBUG
+                print("✅ [Scheduler] Scheduled notification: \(request.identifier)")
+                #endif
             } catch {
+                failureCount += 1
+                #if DEBUG
+                print("❌ [Scheduler] Failed to schedule notification: \(request.identifier), error: \(error)")
+                #endif
             }
         }
+
+        #if DEBUG
+        print("📊 [Scheduler] Scheduled \(successCount)/\(requests.count) notifications for \(series.description)")
+        if failureCount > 0 {
+            print("⚠️ [Scheduler] Failed to schedule \(failureCount) notification(s)")
+        }
+        #endif
     }
     
     /// Cancel all notifications for a subscription
@@ -120,6 +147,35 @@ class SubscriptionNotificationScheduler {
     }
     
     /// Helper: get Russian word for days
+    /// Reschedule notifications for all active subscriptions
+    /// This should be called when app becomes active or after a notification is delivered
+    func rescheduleAllActiveSubscriptions(subscriptions: [RecurringSeries]) async {
+        #if DEBUG
+        print("🔄 [Scheduler] Rescheduling all active subscriptions...")
+        #endif
+
+        var rescheduledCount = 0
+
+        for subscription in subscriptions {
+            guard subscription.isSubscription,
+                  subscription.subscriptionStatus == .active,
+                  let reminderOffsets = subscription.reminderOffsets,
+                  !reminderOffsets.isEmpty else {
+                continue
+            }
+
+            if let nextChargeDate = calculateNextChargeDate(for: subscription) {
+                await scheduleNotifications(for: subscription, nextChargeDate: nextChargeDate)
+                rescheduledCount += 1
+            }
+        }
+
+        #if DEBUG
+        print("✅ [Scheduler] Rescheduled \(rescheduledCount) subscription(s)")
+        #endif
+    }
+
+    /// Helper: get Russian word for days
     private func dayWord(_ days: Int) -> String {
         let lastDigit = days % 10
         let lastTwoDigits = days % 100
@@ -139,38 +195,72 @@ class SubscriptionNotificationScheduler {
     }
     
     /// Calculate next charge date for a subscription
+    /// This method properly calculates the next occurrence based on startDate and frequency
     func calculateNextChargeDate(for series: RecurringSeries) -> Date? {
         guard series.isSubscription,
               series.subscriptionStatus == .active else {
             return nil
         }
-        
+
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         let dateFormatter = DateFormatters.dateFormatter
-        
+
         guard let startDate = dateFormatter.date(from: series.startDate) else {
             return nil
         }
-        
+
+        let normalizedStartDate = calendar.startOfDay(for: startDate)
+
         // If startDate is in the future, return it
-        if startDate > today {
-            return startDate
+        if normalizedStartDate > today {
+            return normalizedStartDate
         }
-        
-        // Calculate next occurrence based on frequency
-        let nextDate: Date?
+
+        // Calculate how many periods have passed since startDate
+        var nextDate = normalizedStartDate
+
         switch series.frequency {
         case .daily:
-            nextDate = calendar.date(byAdding: .day, value: 1, to: today)
+            // Calculate days between start and today
+            let daysPassed = calendar.dateComponents([.day], from: normalizedStartDate, to: today).day ?? 0
+            // Next charge is (daysPassed + 1) days from start
+            if let date = calendar.date(byAdding: .day, value: daysPassed + 1, to: normalizedStartDate) {
+                nextDate = date
+            }
+
         case .weekly:
-            nextDate = calendar.date(byAdding: .day, value: 7, to: today)
+            // Calculate weeks between start and today
+            let weeksPassed = calendar.dateComponents([.weekOfYear], from: normalizedStartDate, to: today).weekOfYear ?? 0
+            // Next charge is (weeksPassed + 1) weeks from start
+            if let date = calendar.date(byAdding: .weekOfYear, value: weeksPassed + 1, to: normalizedStartDate) {
+                nextDate = date
+            }
+
         case .monthly:
-            nextDate = calendar.date(byAdding: .month, value: 1, to: today)
+            // Calculate months between start and today
+            let monthsPassed = calendar.dateComponents([.month], from: normalizedStartDate, to: today).month ?? 0
+            // Next charge is (monthsPassed + 1) months from start
+            if let date = calendar.date(byAdding: .month, value: monthsPassed + 1, to: normalizedStartDate) {
+                nextDate = date
+            }
+
         case .yearly:
-            nextDate = calendar.date(byAdding: .year, value: 1, to: today)
+            // Calculate years between start and today
+            let yearsPassed = calendar.dateComponents([.year], from: normalizedStartDate, to: today).year ?? 0
+            // Next charge is (yearsPassed + 1) years from start
+            if let date = calendar.date(byAdding: .year, value: yearsPassed + 1, to: normalizedStartDate) {
+                nextDate = date
+            }
         }
-        
+
+        #if DEBUG
+        print("📅 [Scheduler] Next charge date for \(series.description):")
+        print("   Start: \(series.startDate)")
+        print("   Today: \(dateFormatter.string(from: today))")
+        print("   Next: \(dateFormatter.string(from: nextDate))")
+        #endif
+
         return nextDate
     }
 }

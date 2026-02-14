@@ -168,11 +168,17 @@
 "common.none" = "Нет";
 "common.uncategorized" = "Без категории";
 "common.unknown" = "Неизвестно";
+"common.cancel" = "Отмена";
+"common.select" = "Выбрать";
+"common.frequency" = "Частота";
+"common.startDate" = "Дата начала";
 
 // MARK: - Date Labels
 "date.today" = "Сегодня";
 "date.yesterday" = "Вчера";
 "date.tomorrow" = "Завтра";
+"date.selectDate" = "Дата";
+"date.choose" = "Выберите дату";
 
 // MARK: - Transaction Types
 "transactionType.income" = "Доход";
@@ -388,6 +394,32 @@
 "subscriptions.status.paused" = "Приостановлена";
 "subscriptions.status.archived" = "В архиве";
 "subscriptions.status.unknown" = "Неизвестно";
+
+// Subscription Form
+"subscription.basicInfo" = "Основная информация";
+"subscription.namePlaceholder" = "Название подписки";
+"subscription.reminders" = "Напоминания";
+"subscription.newTitle" = "Новая подписка";
+"subscription.editTitle" = "Редактировать подписку";
+
+// Reminders
+"reminder.dayBefore.one" = "За 1 день";
+"reminder.daysBefore.3" = "За 3 дня";
+"reminder.daysBefore.7" = "За 7 дней";
+"reminder.daysBefore.30" = "За 30 дней";
+
+// Account messages
+"account.noAccountsAvailable" = "Нет доступных счетов";
+"account.selectAccount" = "Выберите счёт";
+
+// Category messages
+"category.selectCategory" = "Выберите категорию";
+
+// Error messages
+"error.subscriptionNameRequired" = "Введите название подписки";
+"error.invalidAmount" = "Введите корректную сумму";
+"error.categoryRequired" = "Выберите категорию";
+"error.accountRequired" = "Выберите счёт оплаты";
 
 // MARK: - Budget Management
 "budget.amount" = "Сумма бюджета";

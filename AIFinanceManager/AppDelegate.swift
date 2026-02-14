@@ -1,0 +1,88 @@
+//
+//  AppDelegate.swift
+//  AIFinanceManager
+//
+//  Created on 2026-02-14
+//  Purpose: Handle notification delegation and automatic rescheduling
+//
+
+import UIKit
+import UserNotifications
+
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        // Set notification delegate
+        UNUserNotificationCenter.current().delegate = self
+
+        #if DEBUG
+        print("✅ [AppDelegate] Notification center delegate set")
+        #endif
+
+        // Post notification to reschedule all subscriptions
+        // This will be handled by TransactionStore
+        NotificationCenter.default.post(name: .applicationDidBecomeActive, object: nil)
+
+        return true
+    }
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        #if DEBUG
+        print("📱 [AppDelegate] Application did become active - triggering notification reschedule")
+        #endif
+
+        // Post notification to reschedule all subscriptions
+        NotificationCenter.default.post(name: .applicationDidBecomeActive, object: nil)
+    }
+
+    // MARK: - UNUserNotificationCenterDelegate
+
+    /// Called when a notification is delivered while the app is in the foreground
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        #if DEBUG
+        print("📱 [AppDelegate] Notification will present: \(notification.request.identifier)")
+        #endif
+
+        // Show notification even when app is in foreground
+        completionHandler([.banner, .sound, .badge])
+    }
+
+    /// Called when user taps on a notification
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let identifier = response.notification.request.identifier
+
+        #if DEBUG
+        print("👆 [AppDelegate] User tapped notification: \(identifier)")
+        #endif
+
+        // Parse notification ID: "subscription_{seriesId}_{offsetDays}"
+        if identifier.hasPrefix("subscription_") {
+            let components = identifier.components(separatedBy: "_")
+            if components.count >= 3 {
+                let seriesId = components[1]
+
+                #if DEBUG
+                print("📊 [AppDelegate] Subscription notification tapped: \(seriesId)")
+                #endif
+
+                // TODO: Navigate to subscription detail view
+                // This could be implemented using deep linking or NotificationCenter
+                NotificationCenter.default.post(
+                    name: .subscriptionNotificationTapped,
+                    object: nil,
+                    userInfo: ["seriesId": seriesId]
+                )
+            }
+        }
+
+        completionHandler()
+    }
+}

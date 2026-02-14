@@ -150,9 +150,9 @@ struct HistoryTransactionsList: View {
             viewModel: transactionsViewModel
         )
 
-        return DateSectionHeader(
+        return DateSectionHeaderView(
             dateKey: dateKey,
-            dayExpenses: dayExpenses,
+            amount: dayExpenses > 0 ? dayExpenses : nil,
             currency: baseCurrency
         )
     }

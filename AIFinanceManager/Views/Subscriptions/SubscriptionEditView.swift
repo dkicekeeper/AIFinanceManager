@@ -2,7 +2,9 @@
 //  SubscriptionEditView.swift
 //  AIFinanceManager
 //
-//  Created on 2024
+//  Migrated to new component library (Phase 3)
+//  Uses: FormSection, FormTextField, IconPickerRow, FrequencyPickerView,
+//        DatePickerRow, ReminderPickerView
 //
 
 import SwiftUI
@@ -24,12 +26,10 @@ struct SubscriptionEditView: View {
     @State private var startDate: Date = Date()
     @State private var selectedIconSource: IconSource? = nil
     @State private var selectedReminderOffsets: Set<Int> = []
-    @State private var showingIconPicker = false
+    @State private var showingNotificationPermission = false
     @State private var validationError: String? = nil
     @FocusState private var isDescriptionFocused: Bool
 
-    private let reminderOptions: [Int] = [1, 3, 7, 30]
-    
     private var availableCategories: [String] {
         var categories: Set<String> = []
         for customCategory in transactionsViewModel.customCategories where customCategory.type == .expense {
@@ -45,11 +45,11 @@ struct SubscriptionEditView: View {
         }
         return Array(categories).sortedByCustomOrder(customCategories: transactionsViewModel.customCategories, type: .expense)
     }
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: AppSpacing.lg) {
+                VStack(spacing: AppSpacing.xxl) {
                     // 1. Amount Input
                     AmountInputView(
                         amount: $amountText,
@@ -65,8 +65,10 @@ struct SubscriptionEditView: View {
                     AccountSelectorView(
                         accounts: transactionsViewModel.accounts,
                         selectedAccountId: $selectedAccountId,
-                        emptyStateMessage: transactionsViewModel.accounts.isEmpty ? "Нет доступных счетов" : nil,
-                        warningMessage: selectedAccountId == nil ? "Выберите счёт" : nil,
+                        emptyStateMessage: transactionsViewModel.accounts.isEmpty ?
+                            String(localized: "account.noAccountsAvailable") : nil,
+                        warningMessage: selectedAccountId == nil ?
+                            String(localized: "account.selectAccount") : nil,
                         balanceCoordinator: transactionsViewModel.balanceCoordinator!
                     )
 
@@ -76,129 +78,68 @@ struct SubscriptionEditView: View {
                         type: .expense,
                         customCategories: transactionsViewModel.customCategories,
                         selectedCategory: $selectedCategory,
-                        warningMessage: selectedCategory == nil ? "Выберите категорию" : nil
+                        warningMessage: selectedCategory == nil ?
+                            String(localized: "category.selectCategory") : nil
                     )
 
-                    // 4. Основная информация
-                    VStack() {
-                        HStack {
-                            Text("Основная информация")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.textSecondary)
-                                .textCase(.uppercase)
-                            Spacer()
+                    // 4. Basic Information Section
+                    FormSection(
+                        header: String(localized: "subscription.basicInfo"),
+                        style: .card
+                    ) {
+                        // Name
+                        TextField(
+                            String(localized: "subscription.namePlaceholder"),
+                            text: $description
+                        )
+                        .focused($isDescriptionFocused)
+                        .padding(AppSpacing.md)
+                        .formDivider()
+
+                        // Icon/Logo Picker
+                        IconPickerRow(
+                            selectedSource: $selectedIconSource,
+                            title: String(localized: "iconPicker.title")
+                        )
+                        .formDivider()
+
+                        // Frequency
+                        VStack(spacing: AppSpacing.sm) {
+                            HStack {
+                                Text(String(localized: "common.frequency"))
+                                    .foregroundStyle(AppColors.textPrimary)
+                                Spacer()
+                            }
+
+                            FrequencyPickerView(
+                                selection: $selectedFrequency,
+                                title: "",
+                                style: .segmented
+                            )
                         }
-                        .padding(.horizontal, AppSpacing.lg)
-                        .padding(.bottom, AppSpacing.xs)
+                        .padding(AppSpacing.md)
+                        .formDivider()
 
-                        VStack() {
-                            // Название
-                            VStack() {
-                                TextField("Название подписки", text: $description)
-                                    .focused($isDescriptionFocused)
-                                    .padding(AppSpacing.lg)
-                            }
-//                            .background(AppColors.cardBackground)
-//                            .clipShape(.rect(cornerRadius: AppRadius.md))
-
-                            Divider()
-                                .padding(.leading, AppSpacing.md)
-
-                            // Иконка/Логотип
-                            Button {
-                                HapticManager.light()
-                                showingIconPicker = true
-                            } label: {
-                                HStack(spacing: AppSpacing.md) {
-                                    Text(String(localized: "iconPicker.title"))
-                                        .foregroundStyle(AppColors.textPrimary)
-                                    Spacer()
-                                    IconView(
-                                        source: selectedIconSource,
-                                        size: AppIconSize.xl
-                                    )
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundStyle(AppColors.textSecondary)
-                                }
-                                .padding(AppSpacing.md)
-                            }
-                            .background(AppColors.cardBackground)
-
-                            Divider()
-                                .padding(.leading, AppSpacing.md)
-
-                            // Частота
-                            VStack(spacing: AppSpacing.sm) {
-                                HStack {
-                                    Text("Частота")
-                                        .foregroundStyle(AppColors.textPrimary)
-                                    Spacer()
-                                }
-                                SegmentedPickerView(
-                                    title: "",
-                                    selection: $selectedFrequency,
-                                    options: RecurringFrequency.allCases.map { frequency in
-                                        (label: frequency.displayName, value: frequency)
-                                    }
-                                )
-                            }
-                            .padding(AppSpacing.md)
-                            .background(AppColors.cardBackground)
-
-                            Divider()
-                                .padding(.leading, AppSpacing.md)
-
-                            // Дата начала
-                            DatePicker("Дата начала", selection: $startDate, displayedComponents: .date)
-                                .padding(AppSpacing.md)
-                                .background(AppColors.cardBackground)
-                        }
-                        .background(AppColors.cardBackground)
-                        .clipShape(.rect(cornerRadius: AppRadius.md))
+                        // Start Date
+                        DatePickerRow(
+                            title: String(localized: "common.startDate"),
+                            selection: $startDate,
+                            style: .inline
+                        )
                     }
 
-                    // 5. Напоминания
-                    VStack(spacing: 0) {
-                        HStack {
-                            Text("Напоминания")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.textSecondary)
-                                .textCase(.uppercase)
-                            Spacer()
-                        }
-                        .padding(.horizontal, AppSpacing.lg)
-                        .padding(.bottom, AppSpacing.xs)
-
-                        VStack(spacing: 0) {
-                            ForEach(reminderOptions, id: \.self) { offset in
-                                VStack(spacing: 0) {
-                                    Toggle(reminderText(offset), isOn: Binding(
-                                        get: { selectedReminderOffsets.contains(offset) },
-                                        set: { isOn in
-                                            if isOn {
-                                                selectedReminderOffsets.insert(offset)
-                                            } else {
-                                                selectedReminderOffsets.remove(offset)
-                                            }
-                                        }
-                                    ))
-                                    .padding(AppSpacing.md)
-
-                                    if offset != reminderOptions.last {
-                                        Divider()
-                                            .padding(.leading, AppSpacing.md)
-                                    }
-                                }
-                            }
-                        }
-                        .background(AppColors.cardBackground)
-                        .clipShape(.rect(cornerRadius: AppRadius.md))
-                    }
+                    // 5. Reminders Section
+                    ReminderPickerView(
+                        selectedOffsets: $selectedReminderOffsets,
+                        title: String(localized: "subscription.reminders")
+                    )
                 }
                 .padding(.horizontal, AppSpacing.lg)
             }
-            .navigationTitle(subscription == nil ? "Новая подписка" : "Редактировать подписку")
+            .navigationTitle(subscription == nil ?
+                String(localized: "subscription.newTitle") :
+                String(localized: "subscription.editTitle")
+            )
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -241,45 +182,54 @@ struct SubscriptionEditView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingIconPicker) {
-            IconPickerView(selectedSource: $selectedIconSource)
+        .sheet(isPresented: $showingNotificationPermission) {
+            NotificationPermissionView(
+                onAllow: {
+                    await NotificationPermissionManager.shared.requestAuthorization()
+                },
+                onSkip: { }
+            )
         }
     }
-    
-    private func reminderText(_ days: Int) -> String {
-        switch days {
-        case 1: return "За 1 день"
-        case 3: return "За 3 дня"
-        case 7: return "За неделю"
-        case 30: return "За месяц"
-        default: return "За \(days) дней"
-        }
-    }
-    
+
     private func saveSubscription() {
         // Validate required fields: description, amount, category, and account
         guard !description.isEmpty else {
-            validationError = "Введите название подписки"
+            validationError = String(localized: "error.subscriptionNameRequired")
             return
         }
 
         guard let amount = Decimal(string: amountText.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: " ", with: "")),
               amount > 0 else {
-            validationError = "Введите корректную сумму"
+            validationError = String(localized: "error.invalidAmount")
             return
         }
 
         guard let category = selectedCategory, !category.isEmpty else {
-            validationError = "Выберите категорию"
+            validationError = String(localized: "error.categoryRequired")
             return
         }
 
         guard let accountId = selectedAccountId, !accountId.isEmpty else {
-            validationError = "Выберите счёт оплаты"
+            validationError = String(localized: "error.accountRequired")
             return
         }
 
         validationError = nil
+
+        // Check if we should request notification permissions
+        // Only ask when creating a new subscription with reminders
+        if subscription == nil && !selectedReminderOffsets.isEmpty {
+            Task {
+                let manager = NotificationPermissionManager.shared
+                await manager.checkAuthorizationStatus()
+
+                if manager.shouldRequestPermission {
+                    // Show permission request sheet
+                    showingNotificationPermission = true
+                }
+            }
+        }
 
         let dateFormatter = DateFormatters.dateFormatter
         let dateString = dateFormatter.string(from: startDate)

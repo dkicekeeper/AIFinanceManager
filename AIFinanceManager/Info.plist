@@ -4,11 +4,6 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>en</string>
-		<string>ru</string>
-	</array>
 	<key>CFBundleDisplayName</key>
 	<string>AI Finance Manager</string>
 	<key>CFBundleExecutable</key>
@@ -17,6 +12,11 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -25,8 +25,18 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>LOGO_DEV_PUBLIC_KEY</key>
+	<string>pk_Riva83iaQH6NOq-Q9GcAfQ</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSDocumentPickerUsageDescription</key>
+	<string>This app needs access to your documents to analyze bank statements.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone to record voice for adding transactions.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>This app needs access to speech recognition to add transactions by voice.</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>Разрешите уведомления, чтобы получать напоминания о предстоящих списаниях по подпискам и не пропускать важные платежи.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -49,13 +59,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSDocumentPickerUsageDescription</key>
-	<string>This app needs access to your documents to analyze bank statements.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>This app needs access to speech recognition to add transactions by voice.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs access to microphone to record voice for adding transactions.</string>
-	<key>LOGO_DEV_PUBLIC_KEY</key>
-	<string>pk_Riva83iaQH6NOq-Q9GcAfQ</string>
 </dict>
 </plist>
