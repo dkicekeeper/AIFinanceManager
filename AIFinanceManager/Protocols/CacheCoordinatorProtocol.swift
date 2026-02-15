@@ -29,7 +29,7 @@ protocol CacheCoordinatorProtocol {
     func rebuildAggregates(
         transactions: [Transaction],
         baseCurrency: String,
-        repository: CoreDataRepository
+        repository: DataRepositoryProtocol
     ) async
 
     /// Rebuild aggregate cache in background (non-blocking, fire-and-forget)
@@ -37,7 +37,7 @@ protocol CacheCoordinatorProtocol {
     func rebuildAggregatesAsync(
         transactions: [Transaction],
         baseCurrency: String,
-        repository: CoreDataRepository,
+        repository: DataRepositoryProtocol,
         onComplete: @escaping () -> Void
     )
 
