@@ -23,7 +23,7 @@ class AppSettings: Codable {
 
     // MARK: - Constants
 
-    static let defaultCurrency = "KZT"
+    nonisolated(unsafe) static let defaultCurrency = "KZT"
     static let availableCurrencies = ["KZT", "USD", "EUR", "RUB", "GBP", "CNY", "JPY"]
 
     // MARK: - Computed Properties

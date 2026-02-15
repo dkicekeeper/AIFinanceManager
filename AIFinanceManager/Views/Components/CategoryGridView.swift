@@ -88,20 +88,9 @@ struct CategoryGridView: View {
             )
         }
 
-        // Adaptive based on screen width
-        let screenWidth = UIScreen.main.bounds.width
-        let minColumnWidth: CGFloat = 140
-        let spacing: CGFloat = AppSpacing.md
-        let horizontalPadding: CGFloat = AppSpacing.lg
-
-        let availableWidth = screenWidth - horizontalPadding
-        let columns = Int((availableWidth + spacing) / (minColumnWidth + spacing))
-        let clampedColumns = min(max(columns, 3), 6) // 3-6 columns
-
-        return Array(
-            repeating: GridItem(.flexible(), spacing: spacing),
-            count: clampedColumns
-        )
+        // Use adaptive column without relying on UIScreen.main (deprecated in iOS 26)
+        // SwiftUI's adaptive GridItem automatically adjusts based on available space
+        return [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: AppSpacing.md)]
     }
 }
 

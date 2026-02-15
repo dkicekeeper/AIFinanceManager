@@ -319,7 +319,7 @@ class VoiceInputParser {
         
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            if let amount = operation.amount {
+            if operation.amount != nil {
             } else {
             }
         }
@@ -330,7 +330,7 @@ class VoiceInputParser {
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            if let currency = operation.currencyCode {
+            if operation.currencyCode != nil {
             }
         }
         #endif
@@ -934,7 +934,7 @@ class VoiceInputParser {
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            if let account = smartDefault {
+            if smartDefault != nil {
             }
         }
         #endif

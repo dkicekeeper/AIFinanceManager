@@ -257,8 +257,6 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         try backgroundContext.performAndWait {
             try saveCategorySubcategoryLinksInternal(links, context: backgroundContext)
 
-            var createdCount = 0
-            var updatedCount = 0
             // Counts already calculated in internal method
 
             print("💾 [CategoryRepository] Link sync operation completed")
@@ -414,18 +412,20 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
             if let existing = existingDict[category.id] {
                 // Update existing
-                existing.name = category.name
-                existing.type = category.type.rawValue
-                if case .sfSymbol(let symbolName) = category.iconSource {
-                    existing.iconName = symbolName
-                } else {
-                    existing.iconName = "questionmark.circle"
+                context.perform {
+                    existing.name = category.name
+                    existing.type = category.type.rawValue
+                    if case .sfSymbol(let symbolName) = category.iconSource {
+                        existing.iconName = symbolName
+                    } else {
+                        existing.iconName = "questionmark.circle"
+                    }
+                    existing.colorHex = category.colorHex
+                    existing.budgetAmount = category.budgetAmount ?? 0.0
+                    existing.budgetPeriod = category.budgetPeriod.rawValue
+                    existing.budgetStartDate = category.budgetStartDate
+                    existing.budgetResetDay = Int64(category.budgetResetDay)
                 }
-                existing.colorHex = category.colorHex
-                existing.budgetAmount = category.budgetAmount ?? 0.0
-                existing.budgetPeriod = category.budgetPeriod.rawValue
-                existing.budgetStartDate = category.budgetStartDate
-                existing.budgetResetDay = Int64(category.budgetResetDay)
             } else {
                 // Create new
                 _ = CustomCategoryEntity.from(category, context: context)
@@ -464,7 +464,9 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
             if let existing = existingDict[subcategory.id] {
                 // Update existing
-                existing.name = subcategory.name
+                context.perform {
+                    existing.name = subcategory.name
+                }
             } else {
                 // Create new
                 _ = SubcategoryEntity.from(subcategory, context: context)
@@ -503,8 +505,10 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
             if let existing = existingDict[link.id] {
                 // Update existing
-                existing.categoryId = link.categoryId
-                existing.subcategoryId = link.subcategoryId
+                context.perform {
+                    existing.categoryId = link.categoryId
+                    existing.subcategoryId = link.subcategoryId
+                }
             } else {
                 // Create new
                 _ = CategorySubcategoryLinkEntity.from(link, context: context)
@@ -543,8 +547,10 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
             if let existing = existingDict[link.id] {
                 // Update existing
-                existing.transactionId = link.transactionId
-                existing.subcategoryId = link.subcategoryId
+                context.perform {
+                    existing.transactionId = link.transactionId
+                    existing.subcategoryId = link.subcategoryId
+                }
             } else {
                 // Create new
                 _ = TransactionSubcategoryLinkEntity.from(link, context: context)
@@ -579,15 +585,17 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
             if let existing = existingDict[aggregate.id] {
                 // Обновить существующий
-                existing.categoryName = aggregate.categoryName
-                existing.subcategoryName = aggregate.subcategoryName
-                existing.year = aggregate.year
-                existing.month = aggregate.month
-                existing.totalAmount = aggregate.totalAmount
-                existing.transactionCount = aggregate.transactionCount
-                existing.currency = aggregate.currency
-                existing.lastUpdated = Date()
-                existing.lastTransactionDate = aggregate.lastTransactionDate
+                context.perform {
+                    existing.categoryName = aggregate.categoryName
+                    existing.subcategoryName = aggregate.subcategoryName
+                    existing.year = aggregate.year
+                    existing.month = aggregate.month
+                    existing.totalAmount = aggregate.totalAmount
+                    existing.transactionCount = aggregate.transactionCount
+                    existing.currency = aggregate.currency
+                    existing.lastUpdated = Date()
+                    existing.lastTransactionDate = aggregate.lastTransactionDate
+                }
             } else {
                 // Создать новый
                 _ = CategoryAggregateEntity.from(aggregate, context: context)

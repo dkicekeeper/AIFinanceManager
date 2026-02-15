@@ -96,24 +96,17 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
             throw DataResetError.viewModelNotAvailable("AccountsViewModel")
         }
 
-        do {
-            // Recalculate all balances from transactions
-            transactionsViewModel.resetAndRecalculateAllBalances()
+        // Recalculate all balances from transactions
+        transactionsViewModel.resetAndRecalculateAllBalances()
 
-            // Reload accounts to get updated balances
-            accountsViewModel.reloadFromStorage()
+        // Reload accounts to get updated balances
+        accountsViewModel.reloadFromStorage()
 
-            // @Observable handles UI updates automatically
+        // @Observable handles UI updates automatically
 
-            #if DEBUG
-            print("✅ [DataResetCoordinator] Balance recalculation completed")
-            #endif
-        } catch {
-            #if DEBUG
-            print("❌ [DataResetCoordinator] Recalculation failed: \(error)")
-            #endif
-            throw DataResetError.recalculationFailed(underlying: error)
-        }
+        #if DEBUG
+        print("✅ [DataResetCoordinator] Balance recalculation completed")
+        #endif
     }
 
     // MARK: - Dependency Injection

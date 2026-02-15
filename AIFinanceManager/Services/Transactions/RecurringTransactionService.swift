@@ -478,7 +478,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
         guard let transaction = delegate.allTransactions.first(where: { $0.id == transactionId }),
               let seriesId = transaction.recurringSeriesId,
-              let seriesIndex = delegate.recurringSeries.firstIndex(where: { $0.id == seriesId }) else {
+              delegate.recurringSeries.firstIndex(where: { $0.id == seriesId }) != nil else {
             return
         }
 

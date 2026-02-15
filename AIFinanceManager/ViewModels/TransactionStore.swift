@@ -845,7 +845,7 @@ final class TransactionStore {
 
         // 4. Persist to repository (unless in import mode)
         if !isImporting {
-            try await persist()
+            await persist()
         }
 
         // 5. Notify observers automatically via @Observable
@@ -1080,24 +1080,20 @@ final class TransactionStore {
     /// Persist current state to repository
     /// Phase 1: Persistence for transactions only (accounts handled separately)
     /// Phase 9: Added recurring series and occurrences persistence
-    private func persist() async throws {
-        do {
-            // Save transactions
-            repository.saveTransactions(transactions)
+    private func persist() async {
+        // Save transactions
+        repository.saveTransactions(transactions)
 
-            // ✨ Phase 9: Save recurring data
-            repository.saveRecurringSeries(recurringSeries)
-            repository.saveRecurringOccurrences(recurringOccurrences)
+        // ✨ Phase 9: Save recurring data
+        repository.saveRecurringSeries(recurringSeries)
+        repository.saveRecurringOccurrences(recurringOccurrences)
 
-            // Note: Accounts are not saved here - balance is managed by BalanceCoordinator
-            // and will trigger its own save when balances are recalculated
+        // Note: Accounts are not saved here - balance is managed by BalanceCoordinator
+        // and will trigger its own save when balances are recalculated
 
-            #if DEBUG
-            print("💾 [TransactionStore] Persisted transactions + recurring data to repository")
-            #endif
-        } catch {
-            throw TransactionStoreError.persistenceFailed(error)
-        }
+        #if DEBUG
+        print("💾 [TransactionStore] Persisted transactions + recurring data to repository")
+        #endif
     }
 
     /// Persist accounts to repository
@@ -1180,16 +1176,10 @@ final class TransactionStore {
         // This ensures all categories are saved synchronously at once
         if !isImporting {
             // Only persist if not in import mode (e.g., manual sync)
-            do {
-                try await repository.saveCategories(newCategories)
-                #if DEBUG
-                print("✅ [TransactionStore] Categories synced and persisted")
-                #endif
-            } catch {
-                #if DEBUG
-                print("❌ [TransactionStore] Failed to persist categories: \(error)")
-                #endif
-            }
+            repository.saveCategories(newCategories)
+            #if DEBUG
+            print("✅ [TransactionStore] Categories synced and persisted")
+            #endif
         } else {
             #if DEBUG
             print("✅ [TransactionStore] Categories synced (persistence deferred to finishImport)")

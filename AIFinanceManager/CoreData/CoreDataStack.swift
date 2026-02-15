@@ -13,13 +13,13 @@ import UIKit
 import os
 
 /// Core Data Stack - Singleton for managing Core Data
-class CoreDataStack {
+final class CoreDataStack: @unchecked Sendable {
 
     private static let logger = Logger(subsystem: "AIFinanceManager", category: "CoreDataStack")
 
     // MARK: - Singleton
 
-    static let shared = CoreDataStack()
+    nonisolated(unsafe) static let shared = CoreDataStack()
 
     /// Флаг доступности CoreData. При ошибке инициализации = false → приложение работает через UserDefaults fallback.
     private(set) var isCoreDataAvailable: Bool = true

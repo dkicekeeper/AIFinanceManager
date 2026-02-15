@@ -126,7 +126,7 @@ class TransactionsViewModel {
         self.recurringGenerator = RecurringTransactionGenerator(dateFormatter: DateFormatters.dateFormatter)
 
         // Set delegate after all properties are initialized
-        if let service = self.recurringService as? RecurringTransactionService {
+        if self.recurringService is RecurringTransactionService {
             // TODO: Set delegate properly if needed
         }
 
@@ -401,10 +401,6 @@ class TransactionsViewModel {
 
         Task { @MainActor in
             do {
-                // Convert date string to Date
-                let dateFormatter = DateFormatters.dateFormatter
-                let dateObj = dateFormatter.date(from: date) ?? Date()
-
                 try await transactionStore.transfer(
                     from: sourceId,
                     to: targetId,
@@ -521,7 +517,7 @@ class TransactionsViewModel {
         accountId: String?,
         searchText: String
     ) -> [Transaction] {
-        var transactions = transactionsFilteredByTimeAndCategory(timeFilterManager)
+        let transactions = transactionsFilteredByTimeAndCategory(timeFilterManager)
 
         return filterCoordinator.filterForHistory(
             transactions: transactions,

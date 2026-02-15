@@ -78,13 +78,7 @@ struct BrandLogoView: View {
             return
         }
         
-        let url = LogoDevConfig.logoURL(for: brandName)
-        #if DEBUG
-        if let url = url {
-        } else {
-        }
-        #endif
-        logoURL = url
+        logoURL = LogoDevConfig.logoURL(for: brandName)
     }
 
     private func loadLogoIfNeeded() {

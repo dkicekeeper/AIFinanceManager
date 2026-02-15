@@ -12,13 +12,13 @@ import Foundation
 // MARK: - Balance Update Request
 
 /// Represents a pending balance update request
-struct BalanceUpdateRequest {
+struct BalanceUpdateRequest: Sendable {
     let id: UUID = UUID()
     let source: BalanceUpdateSource
     let timestamp: Date = Date()
-    let completion: (() -> Void)?
+    let completion: (@Sendable () -> Void)?
 
-    enum BalanceUpdateSource {
+    enum BalanceUpdateSource: Sendable {
         case transaction(id: String)
         case csvImport
         case subscription(seriesId: String)
@@ -39,7 +39,7 @@ protocol BalanceUpdateCoordinatorProtocol: AnyObject {
     func scheduleUpdate(
         source: BalanceUpdateRequest.BalanceUpdateSource,
         action: @escaping () async -> Void,
-        completion: (() -> Void)?
+        completion: (@Sendable () -> Void)?
     ) async
 
     /// Check if updates are currently being processed
@@ -72,7 +72,7 @@ actor BalanceUpdateCoordinator: BalanceUpdateCoordinatorProtocol {
     func scheduleUpdate(
         source: BalanceUpdateRequest.BalanceUpdateSource,
         action: @escaping () async -> Void,
-        completion: (() -> Void)?
+        completion: (@Sendable () -> Void)?
     ) async {
         let request = BalanceUpdateRequest(source: source, completion: completion)
 

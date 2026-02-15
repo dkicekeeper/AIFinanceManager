@@ -187,10 +187,6 @@ struct CategoriesManagementView: View {
                 HapticManager.warning()
 
                 // Delete transactions with this category
-                let txnsToDelete = transactionsViewModel.allTransactions.filter {
-                    $0.category == category.name && $0.type == category.type
-                }
-
                 transactionsViewModel.allTransactions.removeAll {
                     $0.category == category.name && $0.type == category.type
                 }

@@ -6,9 +6,7 @@
 //
 //
 
-public import Foundation
 public import CoreData
-public import Combine
 
 public class CategoryAggregateEntity: NSManagedObject {
 

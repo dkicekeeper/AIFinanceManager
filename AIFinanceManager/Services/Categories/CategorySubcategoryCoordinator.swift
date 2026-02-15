@@ -40,7 +40,7 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
     // MARK: - Subcategory CRUD
 
     func addSubcategory(name: String) -> Subcategory {
-        guard var delegate = delegate else {
+        guard let delegate = delegate else {
             #if DEBUG
             print("⚠️ [CategorySubcategoryCoordinator] No delegate set - creating orphan subcategory")
             #endif

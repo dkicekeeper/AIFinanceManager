@@ -98,7 +98,6 @@ final class TransactionFormService: TransactionFormServiceProtocol {
         account: Account,
         baseCurrency: String
     ) async -> TargetAmounts {
-        let amountDouble = NSDecimalNumber(decimal: amount).doubleValue
         let accountCurrency = account.currency
 
         // Case 1: Transaction currency differs from account currency

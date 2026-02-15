@@ -206,10 +206,6 @@ struct AccountsManagementView: View {
                 accountsViewModel.deleteAccount(account, deleteTransactions: true)
 
                 // Удаляем все связанные транзакции
-                let txnsToDelete = transactionsViewModel.allTransactions.filter {
-                    $0.accountId == account.id || $0.targetAccountId == account.id
-                }
-
                 transactionsViewModel.allTransactions.removeAll {
                     $0.accountId == account.id || $0.targetAccountId == account.id
                 }

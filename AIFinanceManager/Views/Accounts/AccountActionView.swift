@@ -351,13 +351,11 @@ struct AccountActionView: View {
             
             // Предвычисляем targetAmount для переводов (в async контексте)
             var precomputedTargetAmount: Double? = nil
-            var precomputedTargetCurrency: String? = nil
             if selectedAction != .income, let targetAccountId = selectedTargetAccountId {
                 let targetAcc = await MainActor.run {
                     accountsViewModel.accounts.first(where: { $0.id == targetAccountId })
                 }
                 let resolvedTargetCurrency = targetAcc?.currency ?? selectedCurrency
-                precomputedTargetCurrency = resolvedTargetCurrency
                 if selectedCurrency != resolvedTargetCurrency {
                     precomputedTargetAmount = await CurrencyConverter.convert(
                         amount: amount,

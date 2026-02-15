@@ -132,11 +132,13 @@ final class AccountRepository: AccountRepositoryProtocol {
                     fetchRequest.fetchLimit = 1
 
                     if let account = try context.fetch(fetchRequest).first {
-                        account.balance = balance
+                        context.perform {
+                            account.balance = balance
 
-                        #if DEBUG
-                        print("💾 [AccountRepository] Updated balance for \(accountId): \(balance)")
-                        #endif
+                            #if DEBUG
+                            print("💾 [AccountRepository] Updated balance for \(accountId): \(balance)")
+                            #endif
+                        }
                     }
                 }
             } catch {
@@ -161,9 +163,11 @@ final class AccountRepository: AccountRepositoryProtocol {
 
                     let accounts = try context.fetch(fetchRequest)
 
-                    for account in accounts {
-                        if let accountId = account.id, let newBalance = balances[accountId] {
-                            account.balance = newBalance
+                    context.perform {
+                        for account in accounts {
+                            if let accountId = account.id, let newBalance = balances[accountId] {
+                                account.balance = newBalance
+                            }
                         }
                     }
 
@@ -206,19 +210,21 @@ final class AccountRepository: AccountRepositoryProtocol {
 
             if let existing = existingDict[account.id] {
                 // Update existing
-                existing.name = account.name
-                // ⚠️ CRITICAL FIX: Don't overwrite balance here - it's managed by BalanceCoordinator
-                // Only update balance when creating new accounts
-                existing.currency = account.currency
-                // Save iconSource as logo string (backward compatible)
-                if case .bankLogo(let bankLogo) = account.iconSource {
-                    existing.logo = bankLogo.rawValue
-                } else {
-                    existing.logo = BankLogo.none.rawValue
+                context.perform {
+                    existing.name = account.name
+                    // ⚠️ CRITICAL FIX: Don't overwrite balance here - it's managed by BalanceCoordinator
+                    // Only update balance when creating new accounts
+                    existing.currency = account.currency
+                    // Save iconSource as logo string (backward compatible)
+                    if case .bankLogo(let bankLogo) = account.iconSource {
+                        existing.logo = bankLogo.rawValue
+                    } else {
+                        existing.logo = BankLogo.none.rawValue
+                    }
+                    existing.isDeposit = account.isDeposit
+                    existing.bankName = account.depositInfo?.bankName
+                    existing.shouldCalculateFromTransactions = account.shouldCalculateFromTransactions
                 }
-                existing.isDeposit = account.isDeposit
-                existing.bankName = account.depositInfo?.bankName
-                existing.shouldCalculateFromTransactions = account.shouldCalculateFromTransactions
             } else {
                 // Create new
                 _ = AccountEntity.from(account, context: context)

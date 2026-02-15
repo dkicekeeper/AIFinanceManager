@@ -22,7 +22,7 @@ extension TransactionsViewModel {
         hasCategoryFilter: Bool
     ) {
         #if DEBUG
-        let metadata: [String: Any] = [
+        _ = [
             "inputCount": inputCount,
             "outputCount": outputCount,
             "reductionPercent": inputCount > 0 ? Int((1.0 - Double(outputCount) / Double(inputCount)) * 100) : 0,

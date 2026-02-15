@@ -272,7 +272,7 @@ class AccountsViewModel {
     
     func updateDeposit(_ account: Account) {
         guard account.isDeposit else { return }
-        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+        if accounts.firstIndex(where: { $0.id == account.id }) != nil {
             // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
             transactionStore?.updateAccount(account)
 
