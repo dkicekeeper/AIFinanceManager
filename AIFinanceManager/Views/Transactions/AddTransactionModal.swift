@@ -139,10 +139,9 @@ struct AddTransactionModal: View {
                     )
                 }
 
-                RecurringToggleView(
-                    isRecurring: $bindableCoordinator.formData.isRecurring,
-                    selectedFrequency: $bindableCoordinator.formData.frequency,
-                    title: String(localized: "quickAdd.makeRecurring")
+                MenuPickerRow(
+                    title: String(localized: "quickAdd.makeRecurring"),
+                    selection: $bindableCoordinator.formData.recurring
                 )
 
                 DescriptionTextField(

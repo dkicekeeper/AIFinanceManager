@@ -3,8 +3,7 @@
 //  AIFinanceManager
 //
 //  Migrated to new component library (Phase 3)
-//  Uses: FormSection, FormTextField, IconPickerRow, FrequencyPickerView,
-//        DatePickerRow, ReminderPickerView
+//  Uses: FormSection, FormTextField, IconPickerRow, MenuPickerRow, DatePickerRow
 //
 
 import SwiftUI
@@ -25,7 +24,7 @@ struct SubscriptionEditView: View {
     @State private var selectedFrequency: RecurringFrequency = .monthly
     @State private var startDate: Date = Date()
     @State private var selectedIconSource: IconSource? = nil
-    @State private var selectedReminderOffsets: Set<Int> = []
+    @State private var reminder: ReminderOption = .none
     @State private var showingNotificationPermission = false
     @State private var validationError: String? = nil
     @FocusState private var isDescriptionFocused: Bool
@@ -119,9 +118,9 @@ struct SubscriptionEditView: View {
                         .formDivider()
 
                         // Reminder
-                        ReminderPickerView(
-                            selectedOffsets: $selectedReminderOffsets,
-                            title: String(localized: "subscription.reminders")
+                        MenuPickerRow(
+                            title: String(localized: "subscription.reminders"),
+                            selection: $reminder
                         )
                     }
                 }
@@ -161,7 +160,7 @@ struct SubscriptionEditView: View {
                     startDate = date
                 }
                 selectedIconSource = subscription.iconSource
-                selectedReminderOffsets = Set(subscription.reminderOffsets ?? [])
+                reminder = ReminderOption.from(offsets: subscription.reminderOffsets ?? [])
             } else {
                 currency = transactionsViewModel.appSettings.baseCurrency
                 if !availableCategories.isEmpty {
@@ -210,7 +209,7 @@ struct SubscriptionEditView: View {
 
         // Check if we should request notification permissions
         // Only ask when creating a new subscription with reminders
-        if subscription == nil && !selectedReminderOffsets.isEmpty {
+        if subscription == nil && reminder != .none {
             Task {
                 let manager = NotificationPermissionManager.shared
                 await manager.checkAuthorizationStatus()
@@ -240,7 +239,7 @@ struct SubscriptionEditView: View {
             lastGeneratedDate: subscription?.lastGeneratedDate,
             kind: .subscription,
             iconSource: selectedIconSource,
-            reminderOffsets: selectedReminderOffsets.isEmpty ? nil : Array(selectedReminderOffsets).sorted(),
+            reminderOffsets: reminder == .none ? nil : Array(reminder.asOffsets).sorted(),
             status: subscription?.status ?? .active
         )
 

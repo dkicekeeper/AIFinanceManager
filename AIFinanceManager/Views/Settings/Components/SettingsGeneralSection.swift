@@ -26,11 +26,44 @@ struct SettingsGeneralSection: View {
 
     var body: some View {
         Section(header: SettingsSectionHeaderView(title: String(localized: "settings.general"))) {
-            BaseCurrencyPickerRow(
-                selectedCurrency: selectedCurrency,
-                availableCurrencies: availableCurrencies,
-                onChange: onCurrencyChange
-            )
+            // Base Currency Picker
+            HStack(spacing: AppSpacing.md) {
+                Image(systemName: "dollarsign.circle")
+                    .font(.system(size: AppIconSize.md))
+                    .foregroundStyle(AppColors.accent)
+
+                Text(String(localized: "settings.baseCurrency"))
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                Spacer()
+
+                Menu {
+                    ForEach(availableCurrencies, id: \.self) { currency in
+                        Button {
+                            onCurrencyChange(currency)
+                        } label: {
+                            HStack {
+                                Text(Formatting.currencySymbol(for: currency))
+                                if selectedCurrency == currency {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: AppSpacing.xs) {
+                        Text(Formatting.currencySymbol(for: selectedCurrency))
+                            .font(AppTypography.body)
+                            .foregroundStyle(AppColors.textPrimary)
+                    }
+                    .padding(.horizontal, AppSpacing.lg)
+                    .padding(.vertical, AppSpacing.sm)
+                    .background(AppColors.secondaryBackground)
+                    .clipShape(Capsule())
+                }
+            }
+            .padding(.vertical, AppSpacing.xs)
 
             WallpaperPickerRow(
                 hasWallpaper: hasWallpaper,

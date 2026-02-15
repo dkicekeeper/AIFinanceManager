@@ -17,8 +17,7 @@ struct TransactionFormData {
     var category: String
     var type: TransactionType
     var selectedDate: Date = Date()
-    var isRecurring: Bool = false
-    var frequency: RecurringFrequency = .monthly
+    var recurring: RecurringOption = .never
     var subcategoryIds: Set<String> = []
 
     // MARK: - Computed Properties
@@ -63,6 +62,6 @@ struct TransactionFormData {
         }
 
         // Recurring info
-        self.isRecurring = transaction.recurringSeriesId != nil
+        self.recurring = transaction.recurringSeriesId != nil ? .frequency(.monthly) : .never
     }
 }

@@ -123,6 +123,27 @@ extension MenuPickerRow where T == RecurringOption {
     }
 }
 
+extension MenuPickerRow where T == ReminderOption {
+    /// Convenience initializer for ReminderOption (subscription reminders)
+    init(
+        icon: String? = "bell",
+        title: String = String(localized: "subscription.reminders"),
+        selection: Binding<ReminderOption>
+    ) {
+        self.icon = icon
+        self.title = title
+        self._selection = selection
+        // "Никогда" + стандартные напоминания
+        self.options = [
+            (label: String(localized: "reminder.none"), value: .none),
+            (label: String(localized: "reminder.dayBefore.one"), value: .daysBefore(1)),
+            (label: String(localized: "reminder.daysBefore.3"), value: .daysBefore(3)),
+            (label: String(localized: "reminder.daysBefore.7"), value: .daysBefore(7)),
+            (label: String(localized: "reminder.daysBefore.30"), value: .daysBefore(30))
+        ]
+    }
+}
+
 // MARK: - RecurringOption Enum
 
 /// Option for recurring transactions: never or specific frequency

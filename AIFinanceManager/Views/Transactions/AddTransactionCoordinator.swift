@@ -122,7 +122,7 @@ final class AddTransactionCoordinator {
         }
 
         // Step 2: Handle recurring series if enabled
-        if formData.isRecurring {
+        if case .frequency = formData.recurring {
             createRecurringSeries()
 
             // If future date, only create series (not individual transaction)
@@ -172,6 +172,8 @@ final class AddTransactionCoordinator {
     // MARK: - Private Methods
 
     private func createRecurringSeries() {
+        guard case .frequency(let freq) = formData.recurring else { return }
+
         _ = transactionsViewModel.createRecurringSeries(
             amount: formData.parsedAmount!,
             currency: formData.currency,
@@ -180,7 +182,7 @@ final class AddTransactionCoordinator {
             description: formData.description,
             accountId: formData.accountId!,
             targetAccountId: nil,
-            frequency: formData.frequency,
+            frequency: freq,
             startDate: DateFormatters.dateFormatter.string(from: formData.selectedDate)
         )
     }

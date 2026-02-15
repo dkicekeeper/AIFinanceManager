@@ -27,8 +27,7 @@ struct EditTransactionView: View {
     @State private var selectedTargetAccountId: String? = nil
     @State private var selectedDate: Date = Date()
     @State private var selectedCurrency: String = ""
-    @State private var isRecurring: Bool = false
-    @State private var selectedFrequency: RecurringFrequency = .monthly
+    @State private var recurring: RecurringOption = .never
     @State private var showingSubcategorySearch = false
     @State private var subcategorySearchText = ""
     @State private var showingRecurringDisableDialog = false
@@ -143,9 +142,9 @@ struct EditTransactionView: View {
                     }
                     
                     // 6. Повтор операции
-                    RecurringToggleView(
-                        isRecurring: $isRecurring,
-                        selectedFrequency: $selectedFrequency
+                    MenuPickerRow(
+                        title: String(localized: "quickAdd.makeRecurring"),
+                        selection: $recurring
                     )
                     
                     // 7. Описание
@@ -209,10 +208,11 @@ struct EditTransactionView: View {
                 
                 // Проверяем recurring
                 // Note: recurringSeries should be accessed through SubscriptionsViewModel
-                isRecurring = transaction.recurringSeriesId != nil
                 if let seriesId = transaction.recurringSeriesId,
                    let series = transactionsViewModel.recurringSeries.first(where: { $0.id == seriesId }) {
-                    selectedFrequency = series.frequency
+                    recurring = .frequency(series.frequency)
+                } else {
+                    recurring = .never
                 }
                 
                 let dateFormatter = DateFormatters.dateFormatter
@@ -220,8 +220,8 @@ struct EditTransactionView: View {
                     selectedDate = date
                 }
             }
-            .onChange(of: isRecurring) { oldValue, newValue in
-                if !newValue && transaction.recurringSeriesId != nil {
+            .onChange(of: recurring) { oldValue, newValue in
+                if newValue == .never && transaction.recurringSeriesId != nil {
                     // Если выключаем recurring, отключаем все будущие без подтверждения
                     // Note: stopRecurringSeries should be in SubscriptionsViewModel
                     if let seriesId = transaction.recurringSeriesId {
@@ -286,8 +286,8 @@ struct EditTransactionView: View {
         // Обработка recurring
         var finalRecurringSeriesId: String? = transaction.recurringSeriesId
         var finalRecurringOccurrenceId: String? = transaction.recurringOccurrenceId
-        
-        if isRecurring {
+
+        if case .frequency(let freq) = recurring {
             if transaction.recurringSeriesId == nil {
                 // Создаем новую recurring серию
                 // Note: createRecurringSeries should be in SubscriptionsViewModel
@@ -300,7 +300,7 @@ struct EditTransactionView: View {
                     description: descriptionText.isEmpty ? selectedCategory : descriptionText,
                     accountId: selectedAccountId,
                     targetAccountId: selectedTargetAccountId,
-                    frequency: selectedFrequency,
+                    frequency: freq,
                     startDate: dateString
                 )
                 finalRecurringSeriesId = series.id
@@ -315,7 +315,7 @@ struct EditTransactionView: View {
                     series.description = descriptionText.isEmpty ? selectedCategory : descriptionText
                     series.accountId = selectedAccountId
                     series.targetAccountId = selectedTargetAccountId
-                    series.frequency = selectedFrequency
+                    series.frequency = freq
                     series.isActive = true // Активируем если была отключена
                     transactionsViewModel.updateRecurringSeries(series)
                 }
