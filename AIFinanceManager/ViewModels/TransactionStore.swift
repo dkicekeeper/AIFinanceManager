@@ -464,7 +464,7 @@ final class TransactionStore {
         )
 
         // Use add operation
-        try await add(transaction)
+        _ = try await add(transaction)
 
         #if DEBUG
         print("✅ [TransactionStore] Transfer: \(amount) \(currency) from \(sourceId) to \(targetId)")

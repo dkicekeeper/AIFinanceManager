@@ -65,6 +65,7 @@ class AccountUsageTracker {
 
             #if DEBUG
             if VoiceInputConstants.enableParsingDebugLogs {
+                _ = accountId  // Debug log placeholder
             }
             #endif
         }
@@ -78,7 +79,8 @@ class AccountUsageTracker {
         let smartDefault = accounts.first { $0.id == topAccountId }
 
         #if DEBUG
-        if VoiceInputConstants.enableParsingDebugLogs, let account = smartDefault {
+        if VoiceInputConstants.enableParsingDebugLogs, let _ = smartDefault {
+            // Debug log placeholder
         }
         #endif
 

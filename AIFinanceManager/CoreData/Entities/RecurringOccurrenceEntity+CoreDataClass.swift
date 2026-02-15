@@ -22,7 +22,7 @@ public class RecurringOccurrenceEntity: NSManagedObject {
     }
 
     /// Create entity from domain model
-    static func from(_ occurrence: RecurringOccurrence, context: NSManagedObjectContext) -> RecurringOccurrenceEntity {
+    nonisolated static func from(_ occurrence: RecurringOccurrence, context: NSManagedObjectContext) -> RecurringOccurrenceEntity {
         let entity = RecurringOccurrenceEntity(context: context)
         entity.id = occurrence.id
         entity.seriesId = occurrence.seriesId

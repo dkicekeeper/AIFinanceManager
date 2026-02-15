@@ -394,7 +394,7 @@ struct AccountActionView: View {
                     // Phase 7.4: Use TransactionStore for add operation
                     Task {
                         do {
-                            try await transactionStore.add(transaction)
+                            _ = try await transactionStore.add(transaction)
                             await MainActor.run {
                                 HapticManager.success()
                                 dismiss()

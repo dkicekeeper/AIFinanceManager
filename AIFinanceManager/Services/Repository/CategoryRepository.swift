@@ -396,10 +396,13 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         // Build dictionary safely, handling duplicates
         var existingDict: [String: CustomCategoryEntity] = [:]
         for entity in existingEntities {
-            let id = entity.id ?? ""
-            if !id.isEmpty && existingDict[id] == nil {
-                existingDict[id] = entity
-            } else if !id.isEmpty {
+            var entityId: String = ""
+            context.performAndWait {
+                entityId = entity.id ?? ""
+            }
+            if !entityId.isEmpty && existingDict[entityId] == nil {
+                existingDict[entityId] = entity
+            } else if !entityId.isEmpty {
                 context.delete(entity)
             }
         }
@@ -434,7 +437,11 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
         // Delete categories that no longer exist
         for entity in existingEntities {
-            if let id = entity.id, !keptIds.contains(id) {
+            var entityId: String?
+            context.performAndWait {
+                entityId = entity.id
+            }
+            if let id = entityId, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }
@@ -448,10 +455,13 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         // Build dictionary safely
         var existingDict: [String: SubcategoryEntity] = [:]
         for entity in existingEntities {
-            let id = entity.id ?? ""
-            if !id.isEmpty && existingDict[id] == nil {
-                existingDict[id] = entity
-            } else if !id.isEmpty {
+            var entityId: String = ""
+            context.performAndWait {
+                entityId = entity.id ?? ""
+            }
+            if !entityId.isEmpty && existingDict[entityId] == nil {
+                existingDict[entityId] = entity
+            } else if !entityId.isEmpty {
                 context.delete(entity)
             }
         }
@@ -475,7 +485,11 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
         // Delete subcategories that no longer exist
         for entity in existingEntities {
-            if let id = entity.id, !keptIds.contains(id) {
+            var entityId: String?
+            context.performAndWait {
+                entityId = entity.id
+            }
+            if let id = entityId, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }
@@ -489,10 +503,13 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         // Build dictionary safely
         var existingDict: [String: CategorySubcategoryLinkEntity] = [:]
         for entity in existingEntities {
-            let id = entity.id ?? ""
-            if !id.isEmpty && existingDict[id] == nil {
-                existingDict[id] = entity
-            } else if !id.isEmpty {
+            var entityId: String = ""
+            context.performAndWait {
+                entityId = entity.id ?? ""
+            }
+            if !entityId.isEmpty && existingDict[entityId] == nil {
+                existingDict[entityId] = entity
+            } else if !entityId.isEmpty {
                 context.delete(entity)
             }
         }
@@ -517,7 +534,11 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
         // Delete links that no longer exist
         for entity in existingEntities {
-            if let id = entity.id, !keptIds.contains(id) {
+            var entityId: String?
+            context.performAndWait {
+                entityId = entity.id
+            }
+            if let id = entityId, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }
@@ -531,10 +552,13 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         // Build dictionary safely
         var existingDict: [String: TransactionSubcategoryLinkEntity] = [:]
         for entity in existingEntities {
-            let id = entity.id ?? ""
-            if !id.isEmpty && existingDict[id] == nil {
-                existingDict[id] = entity
-            } else if !id.isEmpty {
+            var entityId: String = ""
+            context.performAndWait {
+                entityId = entity.id ?? ""
+            }
+            if !entityId.isEmpty && existingDict[entityId] == nil {
+                existingDict[entityId] = entity
+            } else if !entityId.isEmpty {
                 context.delete(entity)
             }
         }
@@ -559,7 +583,11 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
         // Delete links that no longer exist
         for entity in existingEntities {
-            if let id = entity.id, !keptIds.contains(id) {
+            var entityId: String?
+            context.performAndWait {
+                entityId = entity.id
+            }
+            if let id = entityId, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }
@@ -567,12 +595,16 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
     private nonisolated func saveAggregatesInternal(_ aggregates: [CategoryAggregate], context: NSManagedObjectContext) throws {
         // Fetch существующие агрегаты
-        let fetchRequest = CategoryAggregateEntity.fetchRequest()
+        let fetchRequest = NSFetchRequest<CategoryAggregateEntity>(entityName: "CategoryAggregateEntity")
         let existingEntities = try context.fetch(fetchRequest)
 
         var existingDict: [String: CategoryAggregateEntity] = [:]
         for entity in existingEntities {
-            if let id = entity.id {
+            var entityId: String?
+            context.performAndWait {
+                entityId = entity.id
+            }
+            if let id = entityId {
                 existingDict[id] = entity
             }
         }
@@ -604,7 +636,11 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
         // Удалить агрегаты, которых больше нет
         for entity in existingEntities {
-            if let id = entity.id, !keptIds.contains(id) {
+            var entityId: String?
+            context.performAndWait {
+                entityId = entity.id
+            }
+            if let id = entityId, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }

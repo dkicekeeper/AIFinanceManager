@@ -195,7 +195,7 @@ struct DepositDetailView: View {
                 onTransactionCreated: { transaction in
                     Task {
                         do {
-                            try await transactionStore.add(transaction)
+                            _ = try await transactionStore.add(transaction)
                         } catch {
                             print("❌ Failed to create interest transaction: \(error.localizedDescription)")
                         }

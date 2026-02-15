@@ -55,7 +55,7 @@ extension RecurringSeriesEntity {
     }
 
     /// Create from domain model
-    static func from(_ series: RecurringSeries, context: NSManagedObjectContext) -> RecurringSeriesEntity {
+    nonisolated static func from(_ series: RecurringSeries, context: NSManagedObjectContext) -> RecurringSeriesEntity {
         let entity = RecurringSeriesEntity(context: context)
         entity.id = series.id
         entity.isActive = series.isActive

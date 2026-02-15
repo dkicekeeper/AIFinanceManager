@@ -27,7 +27,7 @@ extension SubcategoryEntity {
     }
     
     /// Create from domain model
-    static func from(_ subcategory: Subcategory, context: NSManagedObjectContext) -> SubcategoryEntity {
+    nonisolated static func from(_ subcategory: Subcategory, context: NSManagedObjectContext) -> SubcategoryEntity {
         let entity = SubcategoryEntity(context: context)
         entity.id = subcategory.id
         entity.name = subcategory.name

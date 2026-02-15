@@ -43,7 +43,7 @@ extension TransactionEntity {
     }
     
     /// Create from domain model
-    static func from(_ transaction: Transaction, context: NSManagedObjectContext) -> TransactionEntity {
+    nonisolated static func from(_ transaction: Transaction, context: NSManagedObjectContext) -> TransactionEntity {
         let entity = TransactionEntity(context: context)
         entity.id = transaction.id
         entity.date = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()

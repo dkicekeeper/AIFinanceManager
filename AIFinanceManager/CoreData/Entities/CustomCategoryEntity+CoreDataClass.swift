@@ -49,7 +49,7 @@ extension CustomCategoryEntity {
     }
 
     /// Create from domain model
-    static func from(_ category: CustomCategory, context: NSManagedObjectContext) -> CustomCategoryEntity {
+    nonisolated static func from(_ category: CustomCategory, context: NSManagedObjectContext) -> CustomCategoryEntity {
         let entity = CustomCategoryEntity(context: context)
         entity.id = category.id
         entity.name = category.name

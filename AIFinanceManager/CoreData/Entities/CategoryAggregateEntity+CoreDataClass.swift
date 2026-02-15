@@ -31,7 +31,7 @@ extension CategoryAggregateEntity {
     }
 
     /// Create from domain model
-    static func from(_ aggregate: CategoryAggregate, context: NSManagedObjectContext) -> CategoryAggregateEntity {
+    nonisolated static func from(_ aggregate: CategoryAggregate, context: NSManagedObjectContext) -> CategoryAggregateEntity {
         let entity = CategoryAggregateEntity(context: context)
         entity.id = aggregate.id
         entity.categoryName = aggregate.categoryName

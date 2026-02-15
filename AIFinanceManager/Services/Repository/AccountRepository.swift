@@ -127,18 +127,16 @@ final class AccountRepository: AccountRepositoryProtocol {
 
             do {
                 try await self.saveCoordinator.performSave(operation: "updateAccountBalance") { context in
-                    let fetchRequest = AccountEntity.fetchRequest()
+                    let fetchRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
                     fetchRequest.predicate = NSPredicate(format: "id == %@", accountId)
                     fetchRequest.fetchLimit = 1
 
                     if let account = try context.fetch(fetchRequest).first {
-                        context.perform {
-                            account.balance = balance
+                        account.balance = balance
 
-                            #if DEBUG
-                            print("💾 [AccountRepository] Updated balance for \(accountId): \(balance)")
-                            #endif
-                        }
+                        #if DEBUG
+                        print("💾 [AccountRepository] Updated balance for \(accountId): \(balance)")
+                        #endif
                     }
                 }
             } catch {
@@ -158,16 +156,14 @@ final class AccountRepository: AccountRepositoryProtocol {
             do {
                 try await self.saveCoordinator.performSave(operation: "updateAccountBalances") { context in
                     let accountIds = Array(balances.keys)
-                    let fetchRequest = AccountEntity.fetchRequest()
+                    let fetchRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
                     fetchRequest.predicate = NSPredicate(format: "id IN %@", accountIds)
 
                     let accounts = try context.fetch(fetchRequest)
 
-                    context.perform {
-                        for account in accounts {
-                            if let accountId = account.id, let newBalance = balances[accountId] {
-                                account.balance = newBalance
-                            }
+                    for account in accounts {
+                        if let accountId = account.id, let newBalance = balances[accountId] {
+                            account.balance = newBalance
                         }
                     }
 
@@ -187,16 +183,20 @@ final class AccountRepository: AccountRepositoryProtocol {
 
     private nonisolated func saveAccountsInternal(_ accounts: [Account], context: NSManagedObjectContext) throws {
         // Fetch all existing accounts
-        let fetchRequest = AccountEntity.fetchRequest()
+        let fetchRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
         let existingEntities = try context.fetch(fetchRequest)
 
         // Build dictionary safely, handling duplicates by keeping the first occurrence
         var existingDict: [String: AccountEntity] = [:]
         for entity in existingEntities {
-            let id = entity.id ?? ""
-            if !id.isEmpty && existingDict[id] == nil {
-                existingDict[id] = entity
-            } else if !id.isEmpty {
+            // Extract id safely outside perform block
+            var entityId: String = ""
+            context.performAndWait {
+                entityId = entity.id ?? ""
+            }
+            if !entityId.isEmpty && existingDict[entityId] == nil {
+                existingDict[entityId] = entity
+            } else if !entityId.isEmpty {
                 // Found duplicate - delete the extra entity
                 context.delete(entity)
             }
@@ -233,7 +233,11 @@ final class AccountRepository: AccountRepositoryProtocol {
 
         // Delete accounts that no longer exist
         for entity in existingEntities {
-            if let id = entity.id, !keptIds.contains(id) {
+            var entityId: String?
+            context.performAndWait {
+                entityId = entity.id
+            }
+            if let id = entityId, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }

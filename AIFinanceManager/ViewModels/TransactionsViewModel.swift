@@ -145,39 +145,41 @@ class TransactionsViewModel {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let self = self, let seriesId = notification.userInfo?["seriesId"] as? String else { return }
+            Task { @MainActor [weak self] in
+                guard let self = self, let seriesId = notification.userInfo?["seriesId"] as? String else { return }
 
-            #if DEBUG
-            print("📨 [TransactionsViewModel] Received .recurringSeriesCreated notification for series: \(seriesId)")
-            print("   isProcessingRecurringNotification: \(self.isProcessingRecurringNotification)")
-            #endif
-
-            guard !self.isProcessingRecurringNotification else {
                 #if DEBUG
-                print("⚠️ [TransactionsViewModel] Already processing recurring notification, skipping")
+                print("📨 [TransactionsViewModel] Received .recurringSeriesCreated notification for series: \(seriesId)")
+                print("   isProcessingRecurringNotification: \(self.isProcessingRecurringNotification)")
                 #endif
-                return
+
+                guard !self.isProcessingRecurringNotification else {
+                    #if DEBUG
+                    print("⚠️ [TransactionsViewModel] Already processing recurring notification, skipping")
+                    #endif
+                    return
+                }
+
+                self.isProcessingRecurringNotification = true
+                defer { self.isProcessingRecurringNotification = false }
+
+                #if DEBUG
+                print("🔄 [TransactionsViewModel] Processing .recurringSeriesCreated notification")
+                #endif
+
+                // 🔧 FIX: Only call generateRecurringTransactions() - it handles everything internally
+                // RecurringTransactionService already calls scheduleBalanceRecalculation() and scheduleSave() inside
+                // Calling them again here causes duplicate balance recalculations
+                self.generateRecurringTransactions()
+                // Phase 8: Cache invalidation handled by TransactionStore
+                self.rebuildIndexes()
+                // 🔧 REMOVED: scheduleBalanceRecalculation() - already called in RecurringTransactionService
+                // 🔧 REMOVED: scheduleSave() - already called in RecurringTransactionService
+
+                #if DEBUG
+                print("✅ [TransactionsViewModel] Finished processing .recurringSeriesCreated notification")
+                #endif
             }
-
-            self.isProcessingRecurringNotification = true
-            defer { self.isProcessingRecurringNotification = false }
-
-            #if DEBUG
-            print("🔄 [TransactionsViewModel] Processing .recurringSeriesCreated notification")
-            #endif
-
-            // 🔧 FIX: Only call generateRecurringTransactions() - it handles everything internally
-            // RecurringTransactionService already calls scheduleBalanceRecalculation() and scheduleSave() inside
-            // Calling them again here causes duplicate balance recalculations
-            self.generateRecurringTransactions()
-            // Phase 8: Cache invalidation handled by TransactionStore
-            self.rebuildIndexes()
-            // 🔧 REMOVED: scheduleBalanceRecalculation() - already called in RecurringTransactionService
-            // 🔧 REMOVED: scheduleSave() - already called in RecurringTransactionService
-
-            #if DEBUG
-            print("✅ [TransactionsViewModel] Finished processing .recurringSeriesCreated notification")
-            #endif
         }
 
         // Listen for UPDATED recurring series
@@ -186,13 +188,15 @@ class TransactionsViewModel {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let self = self, let _ = notification.userInfo?["seriesId"] as? String else { return }
-            guard !self.isProcessingRecurringNotification else { return }
+            Task { @MainActor [weak self] in
+                guard let self = self, let _ = notification.userInfo?["seriesId"] as? String else { return }
+                guard !self.isProcessingRecurringNotification else { return }
 
-            self.isProcessingRecurringNotification = true
-            defer { self.isProcessingRecurringNotification = false }
+                self.isProcessingRecurringNotification = true
+                defer { self.isProcessingRecurringNotification = false }
 
-            self.recurringService.generateRecurringTransactions()
+                self.recurringService.generateRecurringTransactions()
+            }
         }
     }
 
@@ -207,11 +211,8 @@ class TransactionsViewModel {
 
         // PERFORMANCE OPTIMIZATION: Concurrent loading (Phase 2)
         // Phase 8: Storage loading handled by TransactionStore
-        async let recurringTask = generateRecurringAsync()
-        async let aggregatesTask = loadAggregateCacheAsync()
-
-        // Wait for all tasks to complete
-        await (recurringTask, aggregatesTask)
+        await generateRecurringAsync()
+        await loadAggregateCacheAsync()
 
         await MainActor.run { isLoading = false }
         PerformanceProfiler.end("TransactionsViewModel.loadDataAsync")
@@ -245,7 +246,7 @@ class TransactionsViewModel {
 
         Task { @MainActor in
             do {
-                try await transactionStore.add(transaction)
+                _ = try await transactionStore.add(transaction)
             } catch {
                 print("❌ Failed to add transaction: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
@@ -263,7 +264,7 @@ class TransactionsViewModel {
         Task { @MainActor in
             do {
                 for transaction in newTransactions {
-                    try await transactionStore.add(transaction)
+                    _ = try await transactionStore.add(transaction)
                 }
                 // Cache and balance updates handled automatically by TransactionStore
                 rebuildIndexes()
@@ -284,7 +285,7 @@ class TransactionsViewModel {
         Task { @MainActor in
             do {
                 for transaction in newTransactions {
-                    try await transactionStore.add(transaction)
+                    _ = try await transactionStore.add(transaction)
                 }
                 // Cache and balance updates handled automatically by TransactionStore
                 if isBatchMode {

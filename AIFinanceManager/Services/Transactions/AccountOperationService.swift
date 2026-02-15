@@ -24,7 +24,7 @@ class AccountOperationService: AccountOperationServiceProtocol {
         description: String,
         accounts: inout [Account],
         allTransactions: inout [Transaction],
-        balanceCoordinator: BalanceCoordinatorProtocol?,
+        balanceCoordinator: (any BalanceCoordinatorProtocol)?,
         saveCallback: () -> Void
     ) {
         guard

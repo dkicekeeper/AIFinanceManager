@@ -33,8 +33,6 @@ class TransactionCurrencyService {
         PerformanceProfiler.start("TransactionCurrencyService.precompute")
 
         Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self = self else { return }
-
             var newCache: [String: Double] = [:]
             newCache.reserveCapacity(transactions.count)
 
@@ -48,6 +46,7 @@ class TransactionCurrencyService {
             }
 
             await MainActor.run {
+                guard let self = self else { return }
                 self.cache = newCache
                 self.isInvalidated = false
                 PerformanceProfiler.end("TransactionCurrencyService.precompute")

@@ -342,8 +342,8 @@ class VoiceInputParser {
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
             if let accountId = accountResult.accountId,
-               let account = liveAccounts.first(where: { $0.id == accountId }) {
-            } else {
+               let _ = liveAccounts.first(where: { $0.id == accountId }) {
+                _ = accountId  // Debug log placeholder
             }
         }
         #endif
@@ -355,10 +355,7 @@ class VoiceInputParser {
 
         #if DEBUG
         if VoiceInputConstants.enableParsingDebugLogs {
-            if let categoryName = category {
-                if !subcats.isEmpty {
-                }
-            }
+            _ = category ?? ""  // Debug log placeholder
         }
         #endif
         

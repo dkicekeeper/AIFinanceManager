@@ -178,7 +178,7 @@ final class BalanceUpdateCoordinatorWrapper {
     func scheduleUpdate(
         source: BalanceUpdateRequest.BalanceUpdateSource,
         action: @escaping @MainActor () -> Void,
-        completion: (() -> Void)? = nil
+        completion: (@Sendable () -> Void)? = nil
     ) {
         Task {
             await coordinator.scheduleUpdate(

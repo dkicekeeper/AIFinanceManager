@@ -60,13 +60,15 @@ final class RecurringRepository: RecurringRepositoryProtocol {
 
     func saveRecurringSeries(_ series: [RecurringSeries]) {
 
-        Task.detached(priority: .utility) { [weak self] in
+        Task.detached(priority: .utility) { @MainActor [weak self] in
             guard let self = self else { return }
 
             PerformanceProfiler.start("RecurringRepository.saveRecurringSeries")
 
-            do {
-                try await self.saveCoordinator.performSave(operation: "saveRecurringSeries") { context in
+            let context = self.stack.newBackgroundContext()
+
+            await context.perform {
+                do {
                     // Fetch all existing recurring series
                     let fetchRequest = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
                     let existingEntities = try context.fetch(fetchRequest)
@@ -109,12 +111,16 @@ final class RecurringRepository: RecurringRepositoryProtocol {
                             context.delete(entity)
                         }
                     }
+
+                    // Save if there are changes
+                    if context.hasChanges {
+                        try context.save()
+                    }
+
+                    PerformanceProfiler.end("RecurringRepository.saveRecurringSeries")
+                } catch {
+                    PerformanceProfiler.end("RecurringRepository.saveRecurringSeries")
                 }
-
-                PerformanceProfiler.end("RecurringRepository.saveRecurringSeries")
-
-            } catch {
-                PerformanceProfiler.end("RecurringRepository.saveRecurringSeries")
             }
         }
     }
@@ -184,9 +190,7 @@ final class RecurringRepository: RecurringRepositoryProtocol {
                             let entity = RecurringOccurrenceEntity.from(occurrence, context: context)
 
                             // Set series relationship
-                            context.perform {
-                                entity.series = self.fetchRecurringSeriesSync(id: occurrence.seriesId, context: context)
-                            }
+                            entity.series = self.fetchRecurringSeriesSync(id: occurrence.seriesId, context: context)
                         }
                     }
 

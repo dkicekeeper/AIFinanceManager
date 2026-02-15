@@ -50,7 +50,7 @@ extension AccountEntity {
     }
 
     /// Create from domain model
-    static func from(_ account: Account, context: NSManagedObjectContext) -> AccountEntity {
+    nonisolated static func from(_ account: Account, context: NSManagedObjectContext) -> AccountEntity {
         let entity = AccountEntity(context: context)
         entity.id = account.id
         entity.name = account.name

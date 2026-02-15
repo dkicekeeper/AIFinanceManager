@@ -85,7 +85,7 @@ final class ExportCoordinator: ExportCoordinatorProtocol {
                     await self.updateProgress(0.1)
 
                     // Generate CSV string
-                    let csvString = CSVExporter.exportTransactions(
+                    let csvString = await CSVExporter.exportTransactions(
                         transactions,
                         accounts: accounts
                     )

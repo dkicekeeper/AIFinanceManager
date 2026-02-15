@@ -28,7 +28,7 @@ extension TransactionSubcategoryLinkEntity {
     }
     
     /// Create from domain model
-    static func from(_ link: TransactionSubcategoryLink, context: NSManagedObjectContext) -> TransactionSubcategoryLinkEntity {
+    nonisolated static func from(_ link: TransactionSubcategoryLink, context: NSManagedObjectContext) -> TransactionSubcategoryLinkEntity {
         let entity = TransactionSubcategoryLinkEntity(context: context)
         entity.id = link.id
         entity.transactionId = link.transactionId

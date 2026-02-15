@@ -144,10 +144,10 @@ actor BalanceUpdateQueue {
 
         // Sort by priority (immediate first, then high, normal, low)
         let sortedUpdates = pendingUpdates.sorted { lhs, rhs in
-            if lhs.priority == rhs.priority {
+            if lhs.priority.rawValue == rhs.priority.rawValue {
                 return lhs.timestamp < rhs.timestamp
             }
-            return lhs.priority < rhs.priority
+            return lhs.priority.rawValue < rhs.priority.rawValue
         }
 
         // Process updates

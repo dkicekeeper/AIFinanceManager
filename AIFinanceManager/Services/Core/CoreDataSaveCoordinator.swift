@@ -13,10 +13,14 @@ import CoreData
 /// Actor that coordinates all Core Data save operations
 /// Ensures that saves are serialized and don't conflict with each other
 actor CoreDataSaveCoordinator {
-    
+
     // MARK: - Properties
-    
-    private let stack = CoreDataStack.shared
+
+    private let stack: CoreDataStack
+
+    init(stack: CoreDataStack = CoreDataStack.shared) {
+        self.stack = stack
+    }
     
     /// Track active save operations to prevent duplicates
     private var activeSaves: Set<String> = []
@@ -50,15 +54,15 @@ actor CoreDataSaveCoordinator {
         }
         
         let startTime = Date()
-        
+
         // Create background context for this operation
-        let context = stack.newBackgroundContext()
-        
+        let context = await MainActor.run { stack.newBackgroundContext() }
+
         do {
             let result = try await context.perform {
                 // Perform the work
                 let workResult = try work(context)
-                
+
                 // Save if there are changes
                 if context.hasChanges {
                     do {
@@ -73,7 +77,7 @@ actor CoreDataSaveCoordinator {
                     }
                 } else {
                 }
-                
+
                 return workResult
             }
 
@@ -92,9 +96,9 @@ actor CoreDataSaveCoordinator {
     func performBatchSave(
         operations: [(name: String, work: (NSManagedObjectContext) throws -> Void)]
     ) async throws {
-        
-        let context = stack.newBackgroundContext()
-        
+
+        let context = await MainActor.run { stack.newBackgroundContext() }
+
         try await context.perform {
             for (_, work) in operations {
                 try work(context)
@@ -107,14 +111,14 @@ actor CoreDataSaveCoordinator {
     }
     
     // MARK: - Conflict Resolution
-    
-    private func handleMergeConflict(context: NSManagedObjectContext) throws {
+
+    private nonisolated func handleMergeConflict(context: NSManagedObjectContext) throws {
         // Reset the context to clear conflicts
         context.reset()
-        
+
         // Merge changes from parent context
         context.refreshAllObjects()
-        
+
         // Retry save
         if context.hasChanges {
             try context.save()

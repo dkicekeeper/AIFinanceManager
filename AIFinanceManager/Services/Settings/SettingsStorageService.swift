@@ -19,10 +19,14 @@ final class SettingsStorageService: SettingsStorageServiceProtocol {
 
     init(
         userDefaults: UserDefaults = .standard,
-        validator: SettingsValidationServiceProtocol = SettingsValidationService()
+        validator: SettingsValidationServiceProtocol
     ) {
         self.userDefaults = userDefaults
         self.validator = validator
+    }
+
+    convenience init(userDefaults: UserDefaults = .standard) {
+        self.init(userDefaults: userDefaults, validator: SettingsValidationService())
     }
 
     // MARK: - SettingsStorageServiceProtocol

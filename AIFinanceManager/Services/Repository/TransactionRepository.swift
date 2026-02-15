@@ -36,7 +36,6 @@ final class TransactionRepository: TransactionRepositoryProtocol {
     // MARK: - Load Operations
 
     func loadTransactions(dateRange: DateInterval? = nil) -> [Transaction] {
-        _ = dateRange
         PerformanceProfiler.start("TransactionRepository.loadTransactions")
 
         let context = stack.viewContext
@@ -77,15 +76,17 @@ final class TransactionRepository: TransactionRepositoryProtocol {
 
     func saveTransactions(_ transactions: [Transaction]) {
 
-        Task.detached(priority: .utility) { [weak self] in
+        Task.detached(priority: .utility) { @MainActor [weak self] in
             guard let self = self else { return }
 
             PerformanceProfiler.start("TransactionRepository.saveTransactions")
 
-            do {
-                try await self.saveCoordinator.performSave(operation: "saveTransactions") { context in
+            let context = self.stack.newBackgroundContext()
+
+            await context.perform {
+                do {
                     // First, fetch all existing transactions to update or delete
-                    let fetchRequest = TransactionEntity.fetchRequest()
+                    let fetchRequest = NSFetchRequest<TransactionEntity>(entityName: "TransactionEntity")
                     let existingEntities = try context.fetch(fetchRequest)
 
                     var existingDict: [String: TransactionEntity] = [:]
@@ -118,12 +119,16 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                             context.delete(entity)
                         }
                     }
+
+                    // Save if there are changes
+                    if context.hasChanges {
+                        try context.save()
+                    }
+
+                    PerformanceProfiler.end("TransactionRepository.saveTransactions")
+                } catch {
+                    PerformanceProfiler.end("TransactionRepository.saveTransactions")
                 }
-
-                PerformanceProfiler.end("TransactionRepository.saveTransactions")
-
-            } catch {
-                PerformanceProfiler.end("TransactionRepository.saveTransactions")
             }
         }
     }
@@ -138,7 +143,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         // Выполняем все операции в background context синхронно
         try backgroundContext.performAndWait {
             // PERFORMANCE: Batch size для fetch
-            let fetchRequest = TransactionEntity.fetchRequest()
+            let fetchRequest = NSFetchRequest<TransactionEntity>(entityName: "TransactionEntity")
             fetchRequest.fetchBatchSize = 500
 
             let existingEntities = try backgroundContext.fetch(fetchRequest)
@@ -155,7 +160,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             }
 
             // Fetch all existing accounts to establish relationships
-            let accountFetchRequest = AccountEntity.fetchRequest()
+            let accountFetchRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
             let accountEntities = try backgroundContext.fetch(accountFetchRequest)
             var accountDict: [String: AccountEntity] = [:]
             for accountEntity in accountEntities {

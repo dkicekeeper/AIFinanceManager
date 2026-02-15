@@ -418,7 +418,7 @@ struct VoiceInputConfirmationView: View {
             
             // Phase 7.5: Use TransactionStore for add operation
             do {
-                try await transactionStore.add(transaction)
+                _ = try await transactionStore.add(transaction)
 
                 await MainActor.run {
                     // Получаем ID транзакции после добавления из TransactionStore
