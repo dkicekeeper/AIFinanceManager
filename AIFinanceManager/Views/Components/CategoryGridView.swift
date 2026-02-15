@@ -90,7 +90,8 @@ struct CategoryGridView: View {
 
         // Use adaptive column without relying on UIScreen.main (deprecated in iOS 26)
         // SwiftUI's adaptive GridItem automatically adjusts based on available space
-        return [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: AppSpacing.md)]
+        // Minimum 100 allows 3 columns on standard iPhone screens
+        return [GridItem(.adaptive(minimum: 100, maximum: 180), spacing: AppSpacing.md)]
     }
 }
 
