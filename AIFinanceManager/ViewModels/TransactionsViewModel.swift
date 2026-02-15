@@ -126,9 +126,8 @@ class TransactionsViewModel {
         self.recurringGenerator = RecurringTransactionGenerator(dateFormatter: DateFormatters.dateFormatter)
 
         // Set delegate after all properties are initialized
-        if self.recurringService is RecurringTransactionService {
-            // TODO: Set delegate properly if needed
-        }
+        // NOTE: RecurringService delegate setup handled by AppCoordinator
+        // Delegation pattern is managed at coordinator level for better separation of concerns
 
         setupRecurringSeriesObserver()
     }

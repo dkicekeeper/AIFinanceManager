@@ -793,7 +793,7 @@ final class TransactionStore {
             currency: baseCurrency,
             startDate: startDate,
             endDate: endDate,
-            plannedAmount: 0  // TODO: Calculate planned if needed
+            plannedAmount: 0  // NOTE: Planned amount calculation not implemented (future feature)
         )
     }
 
