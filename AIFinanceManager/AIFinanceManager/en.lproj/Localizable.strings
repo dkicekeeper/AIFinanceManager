@@ -329,7 +329,7 @@
 "quickAdd.description" = "Description";
 "quickAdd.descriptionPlaceholder" = "Description (optional)";
 "quickAdd.recurring" = "Recurring Transaction";
-"quickAdd.makeRecurring" = "Make recurring";
+"quickAdd.makeRecurring" = "Recurring";
 "quickAdd.frequency" = "Frequency";
 "quickAdd.subcategories" = "Subcategories";
 "quickAdd.searchSubcategories" = "Search Subcategories";
@@ -639,3 +639,5 @@
 "iconStyle.preset.bankLogo" = "Bank Logo";
 "iconStyle.preset.serviceLogo" = "Service Logo";
 "iconStyle.preset.placeholder" = "Placeholder";
+"recurring.never" = "Never";
+"reminder.none" = "Never";

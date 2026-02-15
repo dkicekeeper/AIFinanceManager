@@ -44,10 +44,10 @@ struct FormSection<Content: View>: View {
             // Header
             if let header = header {
                 HStack {
-                    SectionHeaderView(header, style: .compact)
+                    SectionHeaderView(header, style: .default)
                     Spacer()
                 }
-                .padding(.horizontal, AppSpacing.lg)
+//                .padding(.horizontal, AppSpacing.lg)
                 .padding(.bottom, AppSpacing.xs)
             }
 
@@ -58,8 +58,7 @@ struct FormSection<Content: View>: View {
                     VStack(spacing: 0) {
                         content
                     }
-                    .background(AppColors.cardBackground)
-                    .clipShape(.rect(cornerRadius: AppRadius.md))
+                    .cardStyle()
 
                 case .list:
                     VStack(spacing: 0) {

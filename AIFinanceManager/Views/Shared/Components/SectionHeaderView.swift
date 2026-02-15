@@ -47,16 +47,16 @@ struct SectionHeaderView: View {
 
     private var defaultStyle: some View {
         Text(title)
-            .font(AppTypography.sectionHeader)
-            .foregroundStyle(AppColors.textSecondary)
-            .textCase(.uppercase)
+            .font(AppTypography.bodyLarge)
+            .foregroundStyle(AppColors.textPrimary)
     }
 
     private var emphasizedStyle: some View {
         Text(title)
             .font(AppTypography.bodySmall)
             .fontWeight(.semibold)
-            .foregroundStyle(.primary)
+            .foregroundStyle(AppColors.textPrimary)
+            .textCase(.uppercase)
     }
 
     private var compactStyle: some View {

@@ -329,7 +329,7 @@
 "quickAdd.description" = "Описание";
 "quickAdd.descriptionPlaceholder" = "Описание (необязательно)";
 "quickAdd.recurring" = "Повторяющаяся операция";
-"quickAdd.makeRecurring" = "Сделать повторяющейся";
+"quickAdd.makeRecurring" = "Повторение";
 "quickAdd.frequency" = "Частота";
 "quickAdd.subcategories" = "Подкатегории";
 "quickAdd.searchSubcategories" = "Поиск подкатегорий";
@@ -639,3 +639,5 @@
 "iconStyle.preset.bankLogo" = "Логотип банка";
 "iconStyle.preset.serviceLogo" = "Логотип сервиса";
 "iconStyle.preset.placeholder" = "Заглушка";
+"recurring.never" = "Никогда";
+"reminder.none" = "Никогда";

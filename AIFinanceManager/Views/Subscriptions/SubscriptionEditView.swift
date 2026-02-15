@@ -49,7 +49,7 @@ struct SubscriptionEditView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: AppSpacing.xxl) {
+                VStack(spacing: AppSpacing.md) {
                     // 1. Amount Input
                     AmountInputView(
                         amount: $amountText,
@@ -104,35 +104,26 @@ struct SubscriptionEditView: View {
                         .formDivider()
 
                         // Frequency
-                        VStack(spacing: AppSpacing.sm) {
-                            HStack {
-                                Text(String(localized: "common.frequency"))
-                                    .foregroundStyle(AppColors.textPrimary)
-                                Spacer()
-                            }
-
-                            FrequencyPickerView(
-                                selection: $selectedFrequency,
-                                title: "",
-                                style: .segmented
-                            )
-                        }
-                        .padding(AppSpacing.md)
+                        MenuPickerRow(
+                            icon: "arrow.triangle.2.circlepath",
+                            title: String(localized: "common.frequency"),
+                            selection: $selectedFrequency
+                        )
                         .formDivider()
 
                         // Start Date
                         DatePickerRow(
                             title: String(localized: "common.startDate"),
-                            selection: $startDate,
-                            style: .inline
+                            selection: $startDate
+                        )
+                        .formDivider()
+
+                        // Reminder
+                        ReminderPickerView(
+                            selectedOffsets: $selectedReminderOffsets,
+                            title: String(localized: "subscription.reminders")
                         )
                     }
-
-                    // 5. Reminders Section
-                    ReminderPickerView(
-                        selectedOffsets: $selectedReminderOffsets,
-                        title: String(localized: "subscription.reminders")
-                    )
                 }
                 .padding(.horizontal, AppSpacing.lg)
             }

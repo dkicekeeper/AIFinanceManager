@@ -142,8 +142,7 @@ struct AddTransactionModal: View {
                 RecurringToggleView(
                     isRecurring: $bindableCoordinator.formData.isRecurring,
                     selectedFrequency: $bindableCoordinator.formData.frequency,
-                    toggleTitle: String(localized: "quickAdd.makeRecurring"),
-                    frequencyTitle: String(localized: "quickAdd.frequency")
+                    title: String(localized: "quickAdd.makeRecurring")
                 )
 
                 DescriptionTextField(

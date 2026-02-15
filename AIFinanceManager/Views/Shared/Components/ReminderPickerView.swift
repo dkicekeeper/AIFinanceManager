@@ -2,131 +2,181 @@
 //  ReminderPickerView.swift
 //  AIFinanceManager
 //
-//  Reusable multi-select reminder picker component
-//  Extracted from SubscriptionEditView for reusability
+//  Reusable reminder picker using MenuPickerRow
+//  Updated to use single-select menu with "No reminder" option
 //
 
 import SwiftUI
 
-/// Multi-select reminder picker with preset offset options
-/// Shows toggle list for reminder days before due date (1, 3, 7, 30 days)
+/// Wrapper around MenuPickerRow for reminder selection
+/// Converts between Set<Int> (old API) and ReminderOption (new menu API)
 struct ReminderPickerView: View {
     @Binding var selectedOffsets: Set<Int>
     let availableOffsets: [Int]
     let title: String
+    let icon: String
+
+    // Internal state for menu picker
+    @State private var reminderOption: ReminderOption
 
     init(
         selectedOffsets: Binding<Set<Int>>,
         availableOffsets: [Int] = [1, 3, 7, 30],
-        title: String = String(localized: "subscription.reminders")
+        title: String = String(localized: "subscription.reminders"),
+        icon: String = "bell"
     ) {
         self._selectedOffsets = selectedOffsets
         self.availableOffsets = availableOffsets
         self.title = title
+        self.icon = icon
+
+        // Initialize internal state based on selectedOffsets
+        let initialOption: ReminderOption
+        if selectedOffsets.wrappedValue.isEmpty {
+            initialOption = .none
+        } else if let firstOffset = selectedOffsets.wrappedValue.first {
+            initialOption = .daysBefore(firstOffset)
+        } else {
+            initialOption = .none
+        }
+        self._reminderOption = State(initialValue: initialOption)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                SectionHeaderView(title, style: .compact)
-                Spacer()
-            }
-            .padding(.horizontal, AppSpacing.lg)
-            .padding(.bottom, AppSpacing.xs)
-
-            // Reminder toggles
-            VStack(spacing: 0) {
-                ForEach(availableOffsets, id: \.self) { offset in
-                    VStack(spacing: 0) {
-                        Toggle(
-                            reminderText(for: offset),
-                            isOn: Binding(
-                                get: { selectedOffsets.contains(offset) },
-                                set: { isOn in
-                                    if isOn {
-                                        selectedOffsets.insert(offset)
-                                    } else {
-                                        selectedOffsets.remove(offset)
-                                    }
-                                }
-                            )
-                        )
-                        .padding(AppSpacing.md)
-
-                        // Divider (except for last item)
-                        if offset != availableOffsets.last {
-                            Divider()
-                                .padding(.leading, AppSpacing.md)
-                        }
+        MenuPickerRow(
+//            icon: icon,
+            title: title,
+            selection: Binding(
+                get: { reminderOption },
+                set: { newValue in
+                    reminderOption = newValue
+                    switch newValue {
+                    case .none:
+                        selectedOffsets.removeAll()
+                    case .daysBefore(let offset):
+                        selectedOffsets = [offset]
                     }
                 }
+            ),
+            options: [
+                (label: String(localized: "reminder.none"), value: .none)
+            ] + availableOffsets.map { offset in
+                (label: reminderText(for: offset), value: .daysBefore(offset))
             }
-            .background(AppColors.cardBackground)
-            .clipShape(.rect(cornerRadius: AppRadius.md))
+        )
+        .onChange(of: selectedOffsets) { oldValue, newValue in
+            // Sync external selectedOffsets changes back to reminderOption
+            if newValue.isEmpty && reminderOption != .none {
+                reminderOption = .none
+            } else if let firstOffset = newValue.first, case .daysBefore(let current) = reminderOption, current != firstOffset {
+                reminderOption = .daysBefore(firstOffset)
+            }
         }
     }
 
     // MARK: - Helper Methods
 
     /// Generates localized reminder text for given offset
-    /// Returns: "1 day before", "3 days before", etc.
     private func reminderText(for offset: Int) -> String {
-        if offset == 1 {
+        switch offset {
+        case 1:
             return String(localized: "reminder.dayBefore.one")
-        } else {
-            return String(localized: "reminder.daysBefore.\(offset)")
+        case 3:
+            return String(localized: "reminder.daysBefore.3")
+        case 7:
+            return String(localized: "reminder.daysBefore.7")
+        case 30:
+            return String(localized: "reminder.daysBefore.30")
+        default:
+            // Fallback for custom offsets
+            return "За \(offset) дней"
+        }
+    }
+}
+
+// MARK: - ReminderOption Enum
+
+/// Option for reminder selection: none or specific days before
+enum ReminderOption: Hashable {
+    case none
+    case daysBefore(Int)
+
+    var displayName: String {
+        switch self {
+        case .none:
+            return String(localized: "reminder.none")
+        case .daysBefore(let offset):
+            switch offset {
+            case 1:
+                return String(localized: "reminder.dayBefore.one")
+            case 3:
+                return String(localized: "reminder.daysBefore.3")
+            case 7:
+                return String(localized: "reminder.daysBefore.7")
+            case 30:
+                return String(localized: "reminder.daysBefore.30")
+            default:
+                return "За \(offset) дней"
+            }
         }
     }
 }
 
 // MARK: - Previews
 
-#Preview("No Selection") {
+#Preview("Никогда") {
     @Previewable @State var selectedOffsets: Set<Int> = []
 
-    return ReminderPickerView(selectedOffsets: $selectedOffsets)
-        .padding()
-}
-
-#Preview("With Selection") {
-    @Previewable @State var selectedOffsets: Set<Int> = [1, 7]
-
-    return ReminderPickerView(selectedOffsets: $selectedOffsets)
-        .padding()
-}
-
-#Preview("Custom Offsets") {
-    @Previewable @State var selectedOffsets: Set<Int> = [1]
-
-    return ReminderPickerView(
-        selectedOffsets: $selectedOffsets,
-        availableOffsets: [1, 2, 5, 14],
-        title: "Custom Reminders"
-    )
+    FormSection(style: .card) {
+        ReminderPickerView(selectedOffsets: $selectedOffsets)
+    }
     .padding()
 }
 
-#Preview("In Form Context") {
-    @Previewable @State var offsets: Set<Int> = [3, 7]
+#Preview("За 1 день") {
+    @Previewable @State var selectedOffsets: Set<Int> = [1]
 
-    return ScrollView {
+    FormSection(style: .card) {
+        ReminderPickerView(selectedOffsets: $selectedOffsets)
+    }
+    .padding()
+}
+
+#Preview("За 7 дней") {
+    @Previewable @State var selectedOffsets: Set<Int> = [7]
+
+    FormSection(style: .card) {
+        ReminderPickerView(selectedOffsets: $selectedOffsets)
+    }
+    .padding()
+}
+
+#Preview("В форме") {
+    @Previewable @State var name = ""
+    @Previewable @State var frequency: RecurringFrequency = .monthly
+    @Previewable @State var offsets: Set<Int> = [3]
+
+    ScrollView {
         VStack(spacing: AppSpacing.xxl) {
-            // Form section above
-            VStack(spacing: 0) {
-                TextField("Subscription Name", text: .constant("Netflix"))
-                    .padding(AppSpacing.md)
+            FormSection(
+                header: String(localized: "subscription.basicInfo"),
+                style: .card
+            ) {
+                FormTextField(
+                    text: $name,
+                    placeholder: "Netflix"
+                )
+                .formDivider()
 
-                Divider()
+                MenuPickerRow(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: String(localized: "common.frequency"),
+                    selection: $frequency
+                )
+                .formDivider()
 
-                TextField("Amount", text: .constant("9.99"))
-                    .padding(AppSpacing.md)
+                ReminderPickerView(selectedOffsets: $offsets)
             }
-            .background(AppColors.cardBackground)
-            .clipShape(.rect(cornerRadius: AppRadius.md))
-
-            // Reminder picker
-            ReminderPickerView(selectedOffsets: $offsets)
         }
         .padding()
     }
