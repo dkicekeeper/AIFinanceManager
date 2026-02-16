@@ -25,20 +25,11 @@ extension AccountEntity {
         if let data = iconSourceData,
            let decoded = try? JSONDecoder().decode(IconSource.self, from: data) {
             iconSource = decoded
-            #if DEBUG
-            print("📖 [AccountEntity] Loaded iconSource from JSON for \(name ?? "unknown"): \(decoded)")
-            #endif
         } else if let logoString = logo, let bankLogo = BankLogo(rawValue: logoString), bankLogo != .none {
             // Fallback: Migrate from old logo field to iconSource (backward compatibility)
             iconSource = .bankLogo(bankLogo)
-            #if DEBUG
-            print("📖 [AccountEntity] Migrated logo to iconSource for \(name ?? "unknown"): \(bankLogo)")
-            #endif
         } else {
             iconSource = nil
-            #if DEBUG
-            print("📖 [AccountEntity] No iconSource for \(name ?? "unknown")")
-            #endif
         }
 
         // For now, depositInfo is nil because it's not stored in AccountEntity
