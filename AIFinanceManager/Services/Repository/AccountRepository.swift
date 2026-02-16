@@ -209,8 +209,8 @@ final class AccountRepository: AccountRepositoryProtocol {
             keptIds.insert(account.id)
 
             if let existing = existingDict[account.id] {
-                // Update existing
-                context.perform {
+                // Update existing - MUST use performAndWait for synchronous execution
+                context.performAndWait {
                     existing.name = account.name
                     // ⚠️ CRITICAL FIX: Don't overwrite balance here - it's managed by BalanceCoordinator
                     // Only update balance when creating new accounts
@@ -220,8 +220,14 @@ final class AccountRepository: AccountRepositoryProtocol {
                     if let iconSource = account.iconSource,
                        let encoded = try? JSONEncoder().encode(iconSource) {
                         existing.iconSourceData = encoded
+                        #if DEBUG
+                        print("💾 [AccountRepository] Saved iconSource for \(account.name): \(iconSource)")
+                        #endif
                     } else {
                         existing.iconSourceData = nil
+                        #if DEBUG
+                        print("💾 [AccountRepository] Cleared iconSource for \(account.name)")
+                        #endif
                     }
 
                     // Keep logo field for backward compatibility
