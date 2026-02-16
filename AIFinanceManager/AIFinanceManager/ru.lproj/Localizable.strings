@@ -63,6 +63,7 @@
 "emptyState.noAccounts" = "Нет счетов";
 "emptyState.noCategories" = "Нет категорий";
 "emptyState.noSubcategories" = "Нет подкатегорий";
+"emptyState.noData" = "Нет данных";
 "emptyState.searchNoResults" = "Ничего не найдено";
 "emptyState.startTracking" = "Начните добавлять операции, чтобы отслеживать ваши финансы";
 "emptyState.tryDifferentSearch" = "Попробуйте изменить поисковый запрос";
@@ -170,6 +171,11 @@
 "common.unknown" = "Неизвестно";
 "common.cancel" = "Отмена";
 "common.select" = "Выбрать";
+"common.selectAccount" = "Выбрать счёт";
+"common.selectCategory" = "Выбрать категорию";
+"common.selectSubcategory" = "Выбрать подкатегорию";
+"common.selectColor" = "Выбрать цвет";
+"common.filterBy" = "Фильтр";
 "common.frequency" = "Частота";
 "common.startDate" = "Дата начала";
 
@@ -312,6 +318,9 @@
 "categoryFilter.allCategories" = "Все категории";
 "categoryFilter.noExpenseCategories" = "Нет категорий расходов";
 "categoryFilter.noIncomeCategories" = "Нет категорий доходов";
+
+// MARK: - CSV
+"csv.emptyCell" = "Пусто";
 
 // MARK: - Accessibility Labels
 "accessibility.voiceInput" = "Голосовой ввод";

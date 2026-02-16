@@ -63,6 +63,7 @@
 "emptyState.noAccounts" = "No accounts";
 "emptyState.noCategories" = "No categories";
 "emptyState.noSubcategories" = "No subcategories";
+"emptyState.noData" = "No data available";
 "emptyState.searchNoResults" = "Nothing found";
 "emptyState.startTracking" = "Start adding transactions to track your finances";
 "emptyState.tryDifferentSearch" = "Try changing your search query";
@@ -170,6 +171,11 @@
 "common.unknown" = "Unknown";
 "common.cancel" = "Cancel";
 "common.select" = "Select";
+"common.selectAccount" = "Select Account";
+"common.selectCategory" = "Select Category";
+"common.selectSubcategory" = "Select Subcategory";
+"common.selectColor" = "Select Color";
+"common.filterBy" = "Filter by";
 "common.frequency" = "Frequency";
 "common.startDate" = "Start Date";
 
@@ -312,6 +318,9 @@
 "categoryFilter.allCategories" = "All Categories";
 "categoryFilter.noExpenseCategories" = "No expense categories";
 "categoryFilter.noIncomeCategories" = "No income categories";
+
+// MARK: - CSV
+"csv.emptyCell" = "Empty";
 
 // MARK: - Accessibility Labels
 "accessibility.voiceInput" = "Voice input";

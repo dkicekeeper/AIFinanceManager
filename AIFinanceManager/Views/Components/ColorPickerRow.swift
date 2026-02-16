@@ -39,21 +39,18 @@ struct ColorPickerRow: View {
                     .textCase(.uppercase)
             }
 
-            // Color swatches
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AppSpacing.lg) {
-                    ForEach(palette, id: \.self) { colorHex in
-                        ColorSwatch(
-                            colorHex: colorHex,
-                            isSelected: selectedColorHex == colorHex,
-                            onTap: {
-                                HapticManager.selection()
-                                selectedColorHex = colorHex
-                            }
-                        )
-                    }
+            // Color swatches using UniversalCarousel
+            UniversalCarousel(config: .compact) {
+                ForEach(palette, id: \.self) { colorHex in
+                    ColorSwatch(
+                        colorHex: colorHex,
+                        isSelected: selectedColorHex == colorHex,
+                        onTap: {
+                            HapticManager.selection()
+                            selectedColorHex = colorHex
+                        }
+                    )
                 }
-                .padding(.horizontal, AppSpacing.sm)
             }
         }
     }

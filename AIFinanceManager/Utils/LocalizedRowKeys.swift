@@ -86,6 +86,25 @@ enum LocalizedRowKey: String {
     case daysBefore7 = "reminder.daysBefore.7"
     case daysBefore30 = "reminder.daysBefore.30"
 
+    // MARK: - Carousel Empty States
+
+    case noAccountsAvailable = "emptyState.noAccounts"
+    case noSubcategoriesAvailable = "emptyState.noSubcategories"
+    case noCategoriesAvailable = "emptyState.noCategories"
+    case noDataAvailable = "emptyState.noData"
+
+    // MARK: - Carousel Titles
+
+    case selectAccount = "common.selectAccount"
+    case selectCategory = "common.selectCategory"
+    case selectSubcategory = "common.selectSubcategory"
+    case selectColor = "common.selectColor"
+    case filterBy = "common.filterBy"
+
+    // MARK: - CSV Specific
+
+    case csvEmptyCell = "csv.emptyCell"
+
     // MARK: - Computed Property
 
     /// Returns localized string for the key
@@ -121,6 +140,13 @@ extension LocalizedRowKey {
         .frequency, .startDate, .endDate, .icon, .logo, .color,
         .name, .amount, .description
     ]
+
+    /// Carousel-related keys
+    static let carouselKeys: [LocalizedRowKey] = [
+        .noAccountsAvailable, .noSubcategoriesAvailable, .noCategoriesAvailable,
+        .noDataAvailable, .selectAccount, .selectCategory, .selectSubcategory,
+        .selectColor, .filterBy, .csvEmptyCell
+    ]
 }
 
 // MARK: - Preview Helper
@@ -145,7 +171,12 @@ extension LocalizedRowKey {
             .category, .noBudgetSet, .account, .interestToday, .nextPosting,
             .makeRecurring, .subscription, .basicInfo, .namePlaceholder,
             .reminders, .never, .none, .dayBefore, .daysBefore3,
-            .daysBefore7, .daysBefore30
+            .daysBefore7, .daysBefore30,
+
+            // Carousel
+            .noAccountsAvailable, .noSubcategoriesAvailable, .noCategoriesAvailable,
+            .noDataAvailable, .selectAccount, .selectCategory, .selectSubcategory,
+            .selectColor, .filterBy, .csvEmptyCell
         ]
     }
 }

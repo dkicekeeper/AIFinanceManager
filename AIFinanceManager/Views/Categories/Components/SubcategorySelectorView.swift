@@ -33,35 +33,31 @@ struct SubcategorySelectorView: View {
     
     var body: some View {
         if !availableSubcategories.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AppSpacing.md) {
-                    ForEach(availableSubcategories) { subcategory in
-                        FilterChip(
-                            title: subcategory.name,
-                            isSelected: selectedSubcategoryIds.contains(subcategory.id),
-                            showChevron: false,
-                            onTap: {
-                                if selectedSubcategoryIds.contains(subcategory.id) {
-                                    selectedSubcategoryIds.remove(subcategory.id)
-                                } else {
-                                    selectedSubcategoryIds.insert(subcategory.id)
-                                }
-                                HapticManager.selection()
+            UniversalCarousel(config: .filter) {
+                ForEach(availableSubcategories) { subcategory in
+                    FilterChip(
+                        title: subcategory.name,
+                        isSelected: selectedSubcategoryIds.contains(subcategory.id),
+                        showChevron: false,
+                        onTap: {
+                            if selectedSubcategoryIds.contains(subcategory.id) {
+                                selectedSubcategoryIds.remove(subcategory.id)
+                            } else {
+                                selectedSubcategoryIds.insert(subcategory.id)
                             }
-                        )
-                    }
-                    
-                    // Кнопка поиска справа
-                    Button(action: onSearchTap) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: AppIconSize.sm))
-                    }
-                    .filterChipStyle()
-                    .accessibilityLabel(String(localized: "transactionForm.searchSubcategories"))
+                            HapticManager.selection()
+                        }
+                    )
                 }
-                .padding(.horizontal, AppSpacing.lg)
+
+                // Кнопка поиска справа
+                Button(action: onSearchTap) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: AppIconSize.sm))
+                }
+                .filterChipStyle()
+                .accessibilityLabel(String(localized: "transactionForm.searchSubcategories"))
             }
-            .scrollClipDisabled()
         } else {
             // Если нет подкатегорий, показываем только кнопку поиска на всю ширину
             Button(action: onSearchTap) {

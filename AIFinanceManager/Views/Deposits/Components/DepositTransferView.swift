@@ -41,21 +41,22 @@ struct DepositTransferView: View {
                             .foregroundStyle(.secondary)
                             .font(AppTypography.caption)
                     } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: AppSpacing.md) {
-                                ForEach(availableAccounts) { sourceAccount in
-                                    AccountRadioButton(
-                                        account: sourceAccount,
-                                        isSelected: selectedSourceAccountId == sourceAccount.id,
-                                        onTap: {
-                                            HapticManager.selection()
-                                            selectedSourceAccountId = sourceAccount.id
-                                        },
-                                        balanceCoordinator: balanceCoordinator
-                                    )
-                                }
+                        UniversalCarousel(
+                            config: .standard,
+                            scrollToId: .constant(selectedSourceAccountId)
+                        ) {
+                            ForEach(availableAccounts) { sourceAccount in
+                                AccountRadioButton(
+                                    account: sourceAccount,
+                                    isSelected: selectedSourceAccountId == sourceAccount.id,
+                                    onTap: {
+                                        HapticManager.selection()
+                                        selectedSourceAccountId = sourceAccount.id
+                                    },
+                                    balanceCoordinator: balanceCoordinator
+                                )
+                                .id(sourceAccount.id)
                             }
-                            .padding(.vertical, AppSpacing.xs)
                         }
                     }
                 }

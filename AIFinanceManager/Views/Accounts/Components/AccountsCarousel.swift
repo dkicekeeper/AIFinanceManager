@@ -17,24 +17,20 @@ struct AccountsCarousel: View {
 
     // MARK: - Body
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: AppSpacing.md) {
-                ForEach(accounts) { account in
-                    AccountCard(
-                        account: account,
-                        onTap: {
-                            HapticManager.light()
-                            onAccountTap(account)
-                        },
-                        balanceCoordinator: balanceCoordinator
-                    )
-                    // Use balance from coordinator for proper identity tracking
-                    .id("\(account.id)-\(balanceCoordinator.balances[account.id] ?? 0)")
-                }
+        UniversalCarousel(config: .cards) {
+            ForEach(accounts) { account in
+                AccountCard(
+                    account: account,
+                    onTap: {
+                        HapticManager.light()
+                        onAccountTap(account)
+                    },
+                    balanceCoordinator: balanceCoordinator
+                )
+                // Use balance from coordinator for proper identity tracking
+                .id("\(account.id)-\(balanceCoordinator.balances[account.id] ?? 0)")
             }
-            .padding(.vertical, AppSpacing.xs)
         }
-        .scrollClipDisabled()
         .screenPadding()
     }
 }

@@ -51,44 +51,25 @@ struct CategorySelectorView: View {
                         .padding(AppSpacing.lg)
                 }
             } else {
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: AppSpacing.md) {
-                            ForEach(categories, id: \.self) { category in
-                                CategoryChip(
-                                    category: category,
-                                    type: type,
-                                    customCategories: customCategories,
-                                    isSelected: selectedCategory == category,
-                                    onTap: {
-                                        selectedCategory = category
-                                        onSelectionChange?(category)
-                                    },
-                                    budgetProgress: budgetProgressMap?[category],
-                                    budgetAmount: budgetAmountMap?[category]
-                                )
-                                .frame(width: 80)
-                                .id(category)
-                            }
-                        }
-                    }
-                    .padding(AppSpacing.lg)
-                    .scrollClipDisabled()
-                    .onChange(of: selectedCategory) { oldValue, newValue in
-                        if let category = newValue {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                proxy.scrollTo(category, anchor: .center)
-                            }
-                        }
-                    }
-                    .onAppear {
-                        if let category = selectedCategory {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    proxy.scrollTo(category, anchor: .center)
-                                }
-                            }
-                        }
+                UniversalCarousel(
+                    config: .standard,
+                    scrollToId: .constant(selectedCategory)
+                ) {
+                    ForEach(categories, id: \.self) { category in
+                        CategoryChip(
+                            category: category,
+                            type: type,
+                            customCategories: customCategories,
+                            isSelected: selectedCategory == category,
+                            onTap: {
+                                selectedCategory = category
+                                onSelectionChange?(category)
+                            },
+                            budgetProgress: budgetProgressMap?[category],
+                            budgetAmount: budgetAmountMap?[category]
+                        )
+                        .frame(width: 80)
+                        .id(category)
                     }
                 }
             }

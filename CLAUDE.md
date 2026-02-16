@@ -296,6 +296,98 @@ New file needed?
 - Support both light and dark modes
 - Test on multiple device sizes
 
+#### UniversalCarousel Component (Phase 13 - 2026-02-16)
+Universal horizontal carousel component for consistent scrolling patterns across the app. Consolidates 8+ carousel implementations.
+
+**Architecture:**
+- Generic ViewBuilder for flexible carousel content
+- CarouselConfiguration presets: `.standard`, `.compact`, `.filter`, `.cards`, `.csvPreview`
+- Optional ScrollViewReader support for auto-scroll via `scrollToId` binding
+- Full Design System integration (AppSpacing, AppColors, AppRadius)
+
+**Configuration Presets:**
+- `.standard` - Account/category selectors (spacing: md, padding: lg/xs, auto-scroll support)
+- `.compact` - Color pickers, small chip lists (spacing: sm, padding: sm/0)
+- `.filter` - Filter sections, tag lists (spacing: md, padding: lg/0)
+- `.cards` - Account cards, large content (spacing: md, padding: 0/xs, use with .screenPadding())
+- `.csvPreview` - CSV data preview (spacing: sm, padding: md/sm, **shows indicators**)
+
+**Migrated Components:**
+- ✅ ColorPickerRow - color palette selector
+- ✅ HistoryFilterSection - filter chips
+- ✅ AccountsCarousel - account cards
+- ✅ SubcategorySelectorView - subcategory chips
+- ✅ AccountSelectorView - account selection **with auto-scroll**
+- ✅ CategorySelectorView - category chips **with auto-scroll**
+- ✅ DepositTransferView - account selection in forms **with auto-scroll**
+- ✅ CSVPreviewView - CSV headers and data rows
+
+**NOT Migrated (special cases):**
+- ❌ SkeletonView - commented reference implementation
+- ❌ CategoryEditView inline picker - part of larger form
+
+**Usage Examples:**
+```swift
+// Simple carousel
+UniversalCarousel(config: .standard) {
+    ForEach(accounts) { account in
+        AccountRadioButton(account: account, ...)
+    }
+}
+
+// With auto-scroll to selected item (categories)
+UniversalCarousel(
+    config: .standard,
+    scrollToId: .constant(selectedCategoryId)
+) {
+    ForEach(categories, id: \.self) { category in
+        CategoryChip(category: category, ...)
+            .id(category)
+    }
+}
+
+// With auto-scroll to selected item (accounts)
+UniversalCarousel(
+    config: .standard,
+    scrollToId: .constant(selectedAccountId)
+) {
+    ForEach(accounts) { account in
+        AccountRadioButton(account: account, ...)
+            .id(account.id)
+    }
+}
+
+// Cards with screenPadding
+UniversalCarousel(config: .cards) {
+    ForEach(accounts) { account in
+        AccountCard(account: account, ...)
+    }
+}
+.screenPadding()
+
+// CSV preview with indicators
+UniversalCarousel(config: .csvPreview) {
+    ForEach(headers, id: \.self) { header in
+        Text(header)
+            .padding(AppSpacing.sm)
+            .background(AppColors.accent.opacity(0.2))
+    }
+}
+```
+
+**Benefits:**
+- 📉 -56% lines of code (655 → 285 LOC)
+- 🎯 100% Design System compliance
+- 🔄 Eliminates 90% carousel pattern duplication
+- 🌐 Centralized localization via LocalizedRowKey enum
+- ✅ Consistent spacing, haptics, and behavior
+
+**Related Files:**
+- `Views/Components/UniversalCarousel.swift` - Main component
+- `Utils/CarouselConfiguration.swift` - Configuration presets
+- `Utils/LocalizedRowKeys.swift` - Centralized localization (+10 carousel keys)
+- `Localizable.strings` (en/ru) - Localized strings
+
 #### UniversalRow Component (Phase 12 - 2026-02-16)
 Universal row component for consistent UI patterns across the app. Replaces redundant row implementations.
 

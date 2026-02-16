@@ -81,15 +81,13 @@ struct CSVPreviewView: View {
             Text(String(localized: "csvImport.preview.headersTitle"))
                 .font(AppTypography.h4)
 
-            ScrollView(.horizontal, showsIndicators: true) {
-                HStack(spacing: AppSpacing.sm) {
-                    ForEach(csvFile.headers, id: \.self) { header in
-                        Text(header)
-                            .font(AppTypography.caption)
-                            .padding(AppSpacing.sm)
-                            .background(AppColors.accent.opacity(0.2))
-                            .clipShape(.rect(cornerRadius: AppRadius.compact))
-                    }
+            UniversalCarousel(config: .csvPreview) {
+                ForEach(csvFile.headers, id: \.self) { header in
+                    Text(header)
+                        .font(AppTypography.caption)
+                        .padding(AppSpacing.sm)
+                        .background(AppColors.accent.opacity(0.2))
+                        .clipShape(.rect(cornerRadius: AppRadius.compact))
                 }
             }
         }
@@ -123,25 +121,23 @@ struct CSVPreviewView: View {
                 .foregroundStyle(AppColors.textSecondary)
                 .frame(width: 30, alignment: .leading)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AppSpacing.sm) {
-                    ForEach(Array(row.enumerated()), id: \.offset) { colIndex, value in
-                        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                            Text(csvFile.headers[safe: colIndex] ?? "?")
-                                .font(AppTypography.caption2)
-                                .foregroundStyle(AppColors.textSecondary)
-                            Text(value.isEmpty
-                                ? String(localized: "csvImport.preview.empty")
-                                : value
-                            )
-                            .font(AppTypography.caption)
-                            .lineLimit(2)
-                        }
-                        .padding(AppSpacing.compact)
-                        .frame(width: AppSize.subscriptionCardWidth, alignment: .leading)
-                        .background(AppColors.surface)
-                        .clipShape(.rect(cornerRadius: AppRadius.xs))
+            UniversalCarousel(config: .compact) {
+                ForEach(Array(row.enumerated()), id: \.offset) { colIndex, value in
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                        Text(csvFile.headers[safe: colIndex] ?? "?")
+                            .font(AppTypography.caption2)
+                            .foregroundStyle(AppColors.textSecondary)
+                        Text(value.isEmpty
+                            ? LocalizedRowKey.csvEmptyCell.localized
+                            : value
+                        )
+                        .font(AppTypography.caption)
+                        .lineLimit(2)
                     }
+                    .padding(AppSpacing.compact)
+                    .frame(width: AppSize.subscriptionCardWidth, alignment: .leading)
+                    .background(AppColors.surface)
+                    .clipShape(.rect(cornerRadius: AppRadius.xs))
                 }
             }
         }

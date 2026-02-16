@@ -19,33 +19,29 @@ struct HistoryFilterSection: View {
     let balanceCoordinator: BalanceCoordinator
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: AppSpacing.md) {
-                // Time filter chip
-                FilterChip(
-                    title: timeFilterDisplayName,
-                    icon: "calendar",
-                    onTap: onTimeFilterTap
-                )
+        UniversalCarousel(config: .filter) {
+            // Time filter chip
+            FilterChip(
+                title: timeFilterDisplayName,
+                icon: "calendar",
+                onTap: onTimeFilterTap
+            )
 
-                // Account filter menu
-                AccountFilterMenu(
-                    accounts: accounts,
-                    selectedAccountId: $selectedAccountFilter,
-                    balanceCoordinator: balanceCoordinator
-                )
+            // Account filter menu
+            AccountFilterMenu(
+                accounts: accounts,
+                selectedAccountId: $selectedAccountFilter,
+                balanceCoordinator: balanceCoordinator
+            )
 
-                // Category filter button
-                CategoryFilterButton(
-                    selectedCategories: selectedCategories,
-                    customCategories: customCategories,
-                    incomeCategories: incomeCategories,
-                    onTap: { showingCategoryFilter = true }
-                )
-            }
-            .padding(.horizontal, AppSpacing.lg)
+            // Category filter button
+            CategoryFilterButton(
+                selectedCategories: selectedCategories,
+                customCategories: customCategories,
+                incomeCategories: incomeCategories,
+                onTap: { showingCategoryFilter = true }
+            )
         }
-        .scrollClipDisabled()
     }
 }
 

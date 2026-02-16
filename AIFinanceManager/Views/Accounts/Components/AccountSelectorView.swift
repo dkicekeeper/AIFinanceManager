@@ -42,31 +42,29 @@ struct AccountSelectorView: View {
                         .padding(AppSpacing.lg)
                 }
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: AppSpacing.md) {
-                        ForEach(accounts) { account in
-                            AccountRadioButton(
-                                account: account,
-                                isSelected: selectedAccountId == account.id,
-                                onTap: {
-                                    selectedAccountId = account.id
-                                    onSelectionChange?(account.id)
-                                },
-                                balanceCoordinator: balanceCoordinator
-                            )
-                        }
+                UniversalCarousel(
+                    config: .standard,
+                    scrollToId: .constant(selectedAccountId)
+                ) {
+                    ForEach(accounts) { account in
+                        AccountRadioButton(
+                            account: account,
+                            isSelected: selectedAccountId == account.id,
+                            onTap: {
+                                selectedAccountId = account.id
+                                onSelectionChange?(account.id)
+                            },
+                            balanceCoordinator: balanceCoordinator
+                        )
+                        .id(account.id)
                     }
-
                 }
-                .padding(AppSpacing.lg)
-                .scrollClipDisabled()
             }
-            
+
             if let warning = warningMessage {
                 WarningMessageView(message: warning)
             }
         }
-//        .background(.primary .opacity(0.05))
     }
 }
 
