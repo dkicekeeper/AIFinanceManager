@@ -197,6 +197,8 @@ struct VoiceInputConfirmationView: View {
                         selectedSubcategoryIds: $selectedSubcategoryIds,
                         searchText: .constant("")
                     )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
                 }
             }
             .onAppear {

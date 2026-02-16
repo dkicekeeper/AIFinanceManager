@@ -61,6 +61,8 @@ struct IconPickerRow: View {
         }
         .sheet(isPresented: $showingPicker) {
             IconPickerView(selectedSource: $selectedSource)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 }

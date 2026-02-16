@@ -197,6 +197,8 @@ struct CategoryEditView: View {
                     showingSubcategoryPicker = false
                 }
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingIconPicker) {
             IconPickerView(selectedSource: Binding(

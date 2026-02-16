@@ -63,6 +63,8 @@ struct SubcategoriesManagementView: View {
                 },
                 onCancel: { showingAddSubcategory = false }
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingSubcategory) { subcategory in
             SubcategoryEditView(
@@ -75,6 +77,8 @@ struct SubcategoriesManagementView: View {
                 },
                 onCancel: { editingSubcategory = nil }
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 }

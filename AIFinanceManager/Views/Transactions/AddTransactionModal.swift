@@ -199,6 +199,8 @@ struct AddTransactionModal: View {
         .onAppear {
             subcategorySearchText = ""
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 
     private var categoryHistorySheet: some View {

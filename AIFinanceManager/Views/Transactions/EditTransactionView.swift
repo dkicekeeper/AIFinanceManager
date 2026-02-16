@@ -187,6 +187,8 @@ struct EditTransactionView: View {
                     // Сбрасываем поиск при открытии, чтобы показать все подкатегории
                     subcategorySearchText = ""
                 }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .onAppear {
                 amountText = String(format: "%.2f", transaction.amount)

@@ -179,6 +179,8 @@ struct SubscriptionEditView: View {
                 },
                 onSkip: { }
             )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
     }
 

@@ -145,6 +145,8 @@ struct CategoriesManagementView: View {
                 },
                 onCancel: { showingAddCategory = false }
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingCategory) { category in
             CategoryEditView(
@@ -160,6 +162,8 @@ struct CategoriesManagementView: View {
                 },
                 onCancel: { editingCategory = nil }
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .alert(String(localized: "category.deleteTitle"), isPresented: $showingDeleteDialog, presenting: categoryToDelete) { category in
             Button(String(localized: "button.cancel"), role: .cancel) {

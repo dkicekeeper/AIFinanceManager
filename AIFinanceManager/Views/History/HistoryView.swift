@@ -146,9 +146,13 @@ struct HistoryView: View {
                     transactionsViewModel.selectedCategories = newFilter
                 }
             )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingTimeFilter) {
             TimeFilterView(filterManager: timeFilterManager)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 

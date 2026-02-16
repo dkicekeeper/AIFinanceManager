@@ -298,6 +298,8 @@ struct ContentView: View {
 
     private var timeFilterSheet: some View {
         TimeFilterView(filterManager: timeFilterManager)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
     }
 
     private var addAccountSheet: some View {
