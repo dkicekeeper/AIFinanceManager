@@ -2,7 +2,8 @@
 //  CategoryEditView.swift
 //  AIFinanceManager
 //
-//  Created on 2024
+//  Migrated to hero-style UI (Phase 16 - 2026-02-16)
+//  Uses EditableHeroSection with color picker and beautiful animations
 //
 
 import SwiftUI
@@ -16,29 +17,15 @@ struct CategoryEditView: View {
     let onCancel: () -> Void
 
     @State private var name: String = ""
-    @State private var selectedIconSource: IconSource = .sfSymbol("banknote.fill")
+    @State private var selectedIconSource: IconSource? = .sfSymbol("banknote.fill")
     @State private var selectedColor: String = "#3b82f6"
-    @State private var showingIconPicker = false
-    @State private var showingColorPicker = false
     @State private var showingSubcategoryPicker = false
-    @FocusState private var isNameFocused: Bool
+    @State private var validationError: String? = nil
 
     // Budget fields (only for expense categories)
     @State private var budgetAmount: String = ""
     @State private var selectedPeriod: CustomCategory.BudgetPeriod = .monthly
     @State private var resetDay: Int = 1
-
-    private let defaultColors: [String] = [
-        "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
-        "#22c55e", "#14b8a6", "#06b6d4", "#6366f1", "#d946ef",
-        "#f43f5e", "#a855f7", "#10b981", "#f59e0b"
-    ]
-
-    private let commonIcons: [String] = [
-        "banknote.fill", "fork.knife", "car.fill", "bag.fill", "sparkles", "lightbulb.fill", "cross.case.fill", "graduationcap.fill",
-        "dollarsign.circle.fill", "briefcase.fill", "box.fill", "gift.fill", "airplane", "cart.fill", "cup.and.saucer.fill", "tv.fill",
-        "house.fill", "car.fill", "fork.knife", "film.fill", "iphone", "laptopcomputer", "gamecontroller.fill", "dumbbell.fill"
-    ]
 
     private var parsedBudget: Double? {
         guard type == .expense, !budgetAmount.isEmpty, let amount = Double(budgetAmount), amount > 0 else {
@@ -51,134 +38,109 @@ struct CategoryEditView: View {
         EditSheetContainer(
             title: category == nil ? String(localized: "modal.newCategory") : String(localized: "modal.editCategory"),
             isSaveDisabled: name.isEmpty,
-            onSave: {
-                let newCategory = CustomCategory(
-                    id: category?.id ?? UUID().uuidString,
-                    name: name,
-                    iconSource: selectedIconSource,
-                    colorHex: selectedColor,
-                    type: type,
-                    budgetAmount: parsedBudget,
-                    budgetPeriod: selectedPeriod,
-                    budgetResetDay: resetDay
-                )
-                onSave(newCategory)
-            },
+            onSave: saveCategory,
             onCancel: onCancel
         ) {
-            Section(header: Text(String(localized: "common.name"))) {
-                TextField(String(localized: "category.namePlaceholder"), text: $name)
-                    .focused($isNameFocused)
-            }
+            VStack(spacing: 0) {
+                // Hero Section with Icon, Name, and Color Picker
+                EditableHeroSection(
+                    iconSource: $selectedIconSource,
+                    title: $name,
+                    selectedColor: $selectedColor,
+                    titlePlaceholder: String(localized: "category.namePlaceholder"),
+                    config: .categoryHero
+                )
+                .padding(.horizontal, AppSpacing.lg)
 
-            Section(header: Text(String(localized: "common.icon"))) {
-                Button {
-                    HapticManager.light()
-                    showingIconPicker = true
-                } label: {
-                    HStack(spacing: AppSpacing.md) {
-                        // Display icon with category color using IconView
-                        IconView(
-                            source: selectedIconSource,
-                            style: .circle(
-                                size: AppIconSize.coin,
-                                tint: .monochrome(colorFromHex(selectedColor)),
-                                backgroundColor: AppColors.surface
-                            )
-                        )
-
-                        Text(String(localized: "category.tapToSelect"))
-                            .foregroundStyle(AppColors.textSecondary)
-
-                        Spacer()
-                    }
+                // Validation Error
+                if let error = validationError {
+                    MessageBanner.error(error)
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.top, AppSpacing.md)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
-            }
 
-            Section(header: Text(String(localized: "common.color"))) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: AppSpacing.lg) {
-                        ForEach(defaultColors, id: \.self) { colorHex in
-                            Button(action: {
-                                HapticManager.selection()
-                                selectedColor = colorHex
-                            }) {
-                                Circle()
-                                    .fill(colorFromHex(colorHex))
-                                    .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.primary, lineWidth: selectedColor == colorHex ? 3 : 0)
-                                    )
+                // Budget Settings Section (expense categories only)
+                if type == .expense {
+                    Section {
+                        VStack(spacing: 0) {
+                            // Budget Amount
+                            HStack {
+                                Text(String(localized: "budget.amount"))
+                                    .foregroundStyle(AppColors.textPrimary)
+                                Spacer()
+                                TextField("0", text: $budgetAmount)
+                                    .keyboardType(.decimalPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .accessibilityLabel(String(localized: "budget.amount"))
+                            }
+                            .padding(AppSpacing.md)
+
+                            Divider()
+
+                            // Budget Period
+                            Picker(String(localized: "budget.period"), selection: $selectedPeriod) {
+                                Text(String(localized: "budget.weekly")).tag(CustomCategory.BudgetPeriod.weekly)
+                                Text(String(localized: "budget.monthly")).tag(CustomCategory.BudgetPeriod.monthly)
+                                Text(String(localized: "yearly")).tag(CustomCategory.BudgetPeriod.yearly)
+                            }
+                            .padding(AppSpacing.md)
+                            .accessibilityLabel(String(localized: "budget.period"))
+
+                            if selectedPeriod == .monthly {
+                                Divider()
+
+                                // Reset Day
+                                Stepper(
+                                    String(localized: "budget_reset_day") + " \(resetDay)",
+                                    value: $resetDay,
+                                    in: 1...31
+                                )
+                                .padding(AppSpacing.md)
+                                .accessibilityLabel(String(localized: "budget_reset_day"))
+                                .accessibilityValue("\(resetDay)")
                             }
                         }
-                    }
-                    .padding(.vertical, AppSpacing.sm)
-                }
-            }
-
-            // Budget section (only for expense categories)
-            if type == .expense {
-                Section {
-                    TextField(String(localized: "budget.amount"), text: $budgetAmount)
-                        .keyboardType(.decimalPad)
-                        .accessibilityLabel(String(localized: "budget.amount"))
-
-                    Picker(String(localized: "budget.period"), selection: $selectedPeriod) {
-                        Text(String(localized: "budget.weekly")).tag(CustomCategory.BudgetPeriod.weekly)
-                        Text(String(localized: "budget.monthly")).tag(CustomCategory.BudgetPeriod.monthly)
-                        Text(String(localized: "yearly")).tag(CustomCategory.BudgetPeriod.yearly)
-                    }
-                    .accessibilityLabel(String(localized: "budget.period"))
-
-                    if selectedPeriod == .monthly {
-                        Stepper(
-                            String(localized: "budget_reset_day") + " \(resetDay)",
-                            value: $resetDay,
-                            in: 1...31
-                        )
-                        .accessibilityLabel(String(localized: "budget_reset_day"))
-                        .accessibilityValue("\(resetDay)")
-                    }
-                } header: {
-                    Text(String(localized: "budget_settings"))
-                } footer: {
-                    if selectedPeriod == .monthly {
-                        Text(String(localized: "budget_reset_day_description"))
-                            .font(.caption)
+                    } header: {
+                        Text(String(localized: "budget_settings"))
+                    } footer: {
+                        if selectedPeriod == .monthly {
+                            Text(String(localized: "budget_reset_day_description"))
+                                .font(.caption)
+                        }
                     }
                 }
-            }
 
-            // Подкатегории
-            if let category = category {
-                Section(header: Text(String(localized: "category.subcategories"))) {
-                    let categoryId = category.id
-                    let linkedSubcategories = categoriesViewModel.getSubcategoriesForCategory(categoryId)
+                // Subcategories Section (edit mode only)
+                if let category = category {
+                    Section(header: Text(String(localized: "category.subcategories"))) {
+                        let categoryId = category.id
+                        let linkedSubcategories = categoriesViewModel.getSubcategoriesForCategory(categoryId)
 
-                    ForEach(linkedSubcategories) { subcategory in
-                        HStack {
-                            Text(subcategory.name)
-                            Spacer()
-                            Button(action: {
-                                HapticManager.light()
-                                categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: categoryId)
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.red)
+                        ForEach(linkedSubcategories) { subcategory in
+                            HStack {
+                                Text(subcategory.name)
+                                Spacer()
+                                Button(action: {
+                                    HapticManager.light()
+                                    categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: categoryId)
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.red)
+                                }
                             }
                         }
-                    }
 
-                    Button(action: {
-                        HapticManager.light()
-                        showingSubcategoryPicker = true
-                    }) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text(String(localized: "category.addSubcategory"))
+                        Button(action: {
+                            HapticManager.light()
+                            showingSubcategoryPicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text(String(localized: "category.addSubcategory"))
+                            }
+                            .foregroundStyle(.blue)
                         }
-                        .foregroundStyle(.blue)
                     }
                 }
             }
@@ -200,22 +162,11 @@ struct CategoryEditView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showingIconPicker) {
-            IconPickerView(selectedSource: Binding(
-                get: { selectedIconSource },
-                set: { newSource in
-                    if let source = newSource {
-                        selectedIconSource = source
-                    }
-                }
-            ))
-        }
         .onAppear {
             if let category = category {
                 name = category.name
                 selectedIconSource = category.iconSource
                 selectedColor = category.colorHex
-                isNameFocused = false
 
                 // Load budget fields if exists
                 if let amount = category.budgetAmount {
@@ -225,29 +176,38 @@ struct CategoryEditView: View {
                 }
                 selectedPeriod = category.budgetPeriod
                 resetDay = category.budgetResetDay
-            } else {
-                // Активируем поле названия при создании новой категории
-                Task {
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
-                    isNameFocused = true
-                }
             }
         }
     }
 
-    // Используем метод из CustomCategory для конвертации hex в Color
-    private func colorFromHex(_ hex: String) -> Color {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+    // MARK: - Save Category
 
-        var rgb: UInt64 = 0
-        Scanner(string: hexSanitized).scanHexInt64(&rgb)
+    private func saveCategory() {
+        // Validate name
+        guard !name.isEmpty else {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                validationError = String(localized: "error.categoryNameRequired")
+            }
+            HapticManager.error()
+            return
+        }
 
-        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
-        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
-        let b = Double(rgb & 0x0000FF) / 255.0
+        // Clear validation error
+        validationError = nil
 
-        return Color(red: r, green: g, blue: b)
+        let newCategory = CustomCategory(
+            id: category?.id ?? UUID().uuidString,
+            name: name,
+            iconSource: selectedIconSource ?? .sfSymbol("star.fill"),
+            colorHex: selectedColor,
+            type: type,
+            budgetAmount: parsedBudget,
+            budgetPeriod: selectedPeriod,
+            budgetResetDay: resetDay
+        )
+
+        HapticManager.success()
+        onSave(newCategory)
     }
 }
 
@@ -270,7 +230,7 @@ struct CategoryEditView: View {
         id: "preview",
         name: "Food",
         iconSource: .sfSymbol("fork.knife"),
-        colorHex: "#3b82f6",
+        colorHex: "#ec4899",
         type: .expense,
         budgetAmount: 10000,
         budgetPeriod: .monthly,

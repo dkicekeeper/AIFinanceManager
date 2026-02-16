@@ -429,6 +429,8 @@
 "error.invalidAmount" = "Enter valid amount";
 "error.categoryRequired" = "Select category";
 "error.accountRequired" = "Select payment account";
+"error.accountNameRequired" = "Enter account name";
+"error.categoryNameRequired" = "Enter category name";
 
 // MARK: - Budget Management
 "budget.amount" = "Budget Amount";

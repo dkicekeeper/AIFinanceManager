@@ -29,6 +29,10 @@ enum LocalizedRowKey: String {
     case add = "button.add"
     case remove = "button.remove"
 
+    // MARK: - Hero Section (Phase 16)
+
+    case tapIconToChange = "hero.tapIconToChange"
+
     // MARK: - Settings
 
     case settings = "settings.title"

@@ -429,6 +429,8 @@
 "error.invalidAmount" = "Введите корректную сумму";
 "error.categoryRequired" = "Выберите категорию";
 "error.accountRequired" = "Выберите счёт оплаты";
+"error.accountNameRequired" = "Введите название счёта";
+"error.categoryNameRequired" = "Введите название категории";
 
 // MARK: - Budget Management
 "budget.amount" = "Сумма бюджета";

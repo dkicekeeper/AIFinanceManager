@@ -2,7 +2,8 @@
 //  AccountEditView.swift
 //  AIFinanceManager
 //
-//  Created on 2024
+//  Migrated to hero-style UI (Phase 16 - 2026-02-16)
+//  Uses EditableHeroSection with inline balance and currency editing
 //
 
 import SwiftUI
@@ -18,8 +19,7 @@ struct AccountEditView: View {
     @State private var balanceText: String = ""
     @State private var currency: String = "USD"
     @State private var selectedIconSource: IconSource? = nil
-    @State private var showingIconPicker = false
-    @FocusState private var isNameFocused: Bool
+    @State private var validationError: String? = nil
 
     private let currencies = ["USD", "EUR", "KZT", "RUB", "GBP"]
 
@@ -32,81 +32,75 @@ struct AccountEditView: View {
         EditSheetContainer(
             title: account == nil ? String(localized: "modal.newAccount") : String(localized: "modal.editAccount"),
             isSaveDisabled: name.isEmpty,
-            onSave: {
-                let newAccount = Account(
-                    id: account?.id ?? UUID().uuidString,
-                    name: name,
-                    currency: currency,
-                    iconSource: selectedIconSource,
-                    shouldCalculateFromTransactions: false,
-                    initialBalance: parsedBalance,
-                    order: account?.order  // Preserve existing order when editing
-                )
-                onSave(newAccount)
-            },
+            onSave: saveAccount,
             onCancel: onCancel
         ) {
-            Section(header: Text(String(localized: "common.name"))) {
-                TextField(String(localized: "account.namePlaceholder"), text: $name)
-                    .focused($isNameFocused)
-            }
+            VStack(spacing: 0) {
+                // Hero Section with Icon, Name, Balance, and Currency
+                EditableHeroSection(
+                    iconSource: $selectedIconSource,
+                    title: $name,
+                    balance: $balanceText,
+                    currency: $currency,
+                    titlePlaceholder: String(localized: "account.namePlaceholder"),
+                    config: .accountHero,
+                    currencies: currencies
+                )
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.xl)
 
-            Section(header: Text(String(localized: "common.logo"))) {
-                Button {
-                    HapticManager.light()
-                    showingIconPicker = true
-                } label: {
-                    HStack(spacing: AppSpacing.md) {
-                        Text(String(localized: "iconPicker.title"))
-                        Spacer()
-                        IconView(
-                            source: selectedIconSource,
-                            size: AppIconSize.lg
-                        )
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                    }
-                }
-            }
-
-            Section(header: Text(String(localized: "common.balance"))) {
-                HStack {
-                    TextField(String(localized: "common.balancePlaceholder"), text: $balanceText)
-                        .keyboardType(.decimalPad)
-
-                    Picker(String(localized: "common.currency"), selection: $currency) {
-                        ForEach(currencies, id: \.self) { curr in
-                            Text(Formatting.currencySymbol(for: curr)).tag(curr)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
+                // Validation Error
+                if let error = validationError {
+                    MessageBanner.error(error)
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.bottom, AppSpacing.md)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
         }
         .onAppear {
             if let account = account {
                 name = account.name
-                // Используем initialBalance для редактирования (для manual счетов)
+                // Use initialBalance for editing (for manual accounts)
                 let balanceValue = account.initialBalance ?? 0
                 balanceText = String(format: "%.2f", balanceValue)
                 currency = account.currency
                 selectedIconSource = account.iconSource
-                isNameFocused = false
             } else {
                 currency = transactionsViewModel.appSettings.baseCurrency
                 selectedIconSource = nil
                 balanceText = ""
-                // Активируем поле названия при создании нового счета
-                Task {
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
-                    isNameFocused = true
-                }
             }
         }
-        .sheet(isPresented: $showingIconPicker) {
-            IconPickerView(selectedSource: $selectedIconSource)
+    }
+
+    // MARK: - Save Account
+
+    private func saveAccount() {
+        // Validate name
+        guard !name.isEmpty else {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                validationError = String(localized: "error.accountNameRequired")
+            }
+            HapticManager.error()
+            return
         }
+
+        // Clear validation error
+        validationError = nil
+
+        let newAccount = Account(
+            id: account?.id ?? UUID().uuidString,
+            name: name,
+            currency: currency,
+            iconSource: selectedIconSource,
+            shouldCalculateFromTransactions: false,
+            initialBalance: parsedBalance,
+            order: account?.order  // Preserve existing order when editing
+        )
+
+        HapticManager.success()
+        onSave(newAccount)
     }
 }
 

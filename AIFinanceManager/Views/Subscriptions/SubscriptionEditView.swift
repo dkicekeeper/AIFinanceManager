@@ -2,8 +2,8 @@
 //  SubscriptionEditView.swift
 //  AIFinanceManager
 //
-//  Migrated to new component library (Phase 3)
-//  Uses: FormSection, FormTextField, IconPickerRow, MenuPickerRow, DatePickerRow
+//  Migrated to hero-style UI (Phase 16 - 2026-02-16)
+//  Uses EditableHeroSection with EditSheetContainer and beautiful animations
 //
 
 import SwiftUI
@@ -27,7 +27,6 @@ struct SubscriptionEditView: View {
     @State private var reminder: ReminderOption = .none
     @State private var showingNotificationPermission = false
     @State private var validationError: String? = nil
-    @FocusState private var isDescriptionFocused: Bool
 
     private var availableCategories: [String] {
         var categories: Set<String> = []
@@ -46,62 +45,59 @@ struct SubscriptionEditView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: AppSpacing.md) {
-                    // 1. Amount Input
-                    AmountInputView(
-                        amount: $amountText,
-                        selectedCurrency: $currency,
-                        errorMessage: validationError,
-                        baseCurrency: transactionsViewModel.appSettings.baseCurrency,
-                        onAmountChange: { _ in
-                            validationError = nil
-                        }
-                    )
+        EditSheetContainer(
+            title: subscription == nil ?
+                String(localized: "subscription.newTitle") :
+                String(localized: "subscription.editTitle"),
+            isSaveDisabled: description.isEmpty || amountText.isEmpty,
+            onSave: saveSubscription,
+            onCancel: onCancel
+        ) {
+            VStack(spacing: 0) {
+                // Hero Section with Icon, Name, Amount, and Currency
+                EditableHeroSection(
+                    iconSource: $selectedIconSource,
+                    title: $description,
+                    balance: $amountText,
+                    currency: $currency,
+                    titlePlaceholder: String(localized: "subscription.namePlaceholder"),
+                    config: .subscriptionHero
+                )
+                .padding(.horizontal, AppSpacing.lg)
 
-                    // 2. Account Selector
-                    AccountSelectorView(
-                        accounts: transactionsViewModel.accounts,
-                        selectedAccountId: $selectedAccountId,
-                        emptyStateMessage: transactionsViewModel.accounts.isEmpty ?
-                            String(localized: "account.noAccountsAvailable") : nil,
-                        warningMessage: selectedAccountId == nil ?
-                            String(localized: "account.selectAccount") : nil,
-                        balanceCoordinator: transactionsViewModel.balanceCoordinator!
-                    )
+                // Validation Error
+                if let error = validationError {
+                    MessageBanner.error(error)
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.top, AppSpacing.md)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
 
-                    // 3. Category Selector
-                    CategorySelectorView(
-                        categories: availableCategories,
-                        type: .expense,
-                        customCategories: transactionsViewModel.customCategories,
-                        selectedCategory: $selectedCategory,
-                        warningMessage: selectedCategory == nil ?
-                            String(localized: "category.selectCategory") : nil
-                    )
+                // Account Selector
+                AccountSelectorView(
+                    accounts: transactionsViewModel.accounts,
+                    selectedAccountId: $selectedAccountId,
+                    emptyStateMessage: transactionsViewModel.accounts.isEmpty ?
+                        String(localized: "account.noAccountsAvailable") : nil,
+                    warningMessage: selectedAccountId == nil ?
+                        String(localized: "account.selectAccount") : nil,
+                    balanceCoordinator: transactionsViewModel.balanceCoordinator!
+                )
+                .padding(.top, AppSpacing.md)
 
-                    // 4. Basic Information Section
-                    FormSection(
-                        header: String(localized: "subscription.basicInfo"),
-                        style: .card
-                    ) {
-                        // Name
-                        TextField(
-                            String(localized: "subscription.namePlaceholder"),
-                            text: $description
-                        )
-                        .focused($isDescriptionFocused)
-                        .padding(AppSpacing.md)
-                        .formDivider()
+                // Category Selector
+                CategorySelectorView(
+                    categories: availableCategories,
+                    type: .expense,
+                    customCategories: transactionsViewModel.customCategories,
+                    selectedCategory: $selectedCategory,
+                    warningMessage: selectedCategory == nil ?
+                        String(localized: "category.selectCategory") : nil
+                )
 
-                        // Icon/Logo Picker
-                        IconPickerRow(
-                            selectedSource: $selectedIconSource,
-                            title: String(localized: "iconPicker.title")
-                        )
-                        .formDivider()
-
+                // Additional Settings Section
+                Section {
+                    VStack(spacing: 0) {
                         // Frequency
                         MenuPickerRow(
                             icon: "arrow.triangle.2.circlepath",
@@ -123,28 +119,8 @@ struct SubscriptionEditView: View {
                             selection: $reminder
                         )
                     }
-                }
-                .padding(.horizontal, AppSpacing.lg)
-            }
-            .navigationTitle(subscription == nil ?
-                String(localized: "subscription.newTitle") :
-                String(localized: "subscription.editTitle")
-            )
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        HapticManager.light()
-                        saveSubscription()
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(description.isEmpty || amountText.isEmpty)
+                } header: {
+                    Text(String(localized: "subscription.basicInfo"))
                 }
             }
         }
@@ -187,23 +163,35 @@ struct SubscriptionEditView: View {
     private func saveSubscription() {
         // Validate required fields: description, amount, category, and account
         guard !description.isEmpty else {
-            validationError = String(localized: "error.subscriptionNameRequired")
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                validationError = String(localized: "error.subscriptionNameRequired")
+            }
+            HapticManager.error()
             return
         }
 
         guard let amount = Decimal(string: amountText.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: " ", with: "")),
               amount > 0 else {
-            validationError = String(localized: "error.invalidAmount")
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                validationError = String(localized: "error.invalidAmount")
+            }
+            HapticManager.error()
             return
         }
 
         guard let category = selectedCategory, !category.isEmpty else {
-            validationError = String(localized: "error.categoryRequired")
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                validationError = String(localized: "error.categoryRequired")
+            }
+            HapticManager.error()
             return
         }
 
         guard let accountId = selectedAccountId, !accountId.isEmpty else {
-            validationError = String(localized: "error.accountRequired")
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                validationError = String(localized: "error.accountRequired")
+            }
+            HapticManager.error()
             return
         }
 
@@ -245,6 +233,7 @@ struct SubscriptionEditView: View {
             status: subscription?.status ?? .active
         )
 
+        HapticManager.success()
         onSave(series)
     }
 }
