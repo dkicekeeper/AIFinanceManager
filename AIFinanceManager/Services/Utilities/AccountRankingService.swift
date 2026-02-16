@@ -157,9 +157,23 @@ class AccountRankingService {
         let sortStartTime = CFAbsoluteTimeGetCurrent()
         #endif
 
-        // Сортируем по score
+        // Сортируем: сначала по manual order, затем по score
         let result = rankedAccounts
-            .sorted { $0.score > $1.score }
+            .sorted { ranked1, ranked2 in
+                // 1. PRIORITY: Manual order (if both have order, sort by order)
+                if let order1 = ranked1.account.order, let order2 = ranked2.account.order {
+                    return order1 < order2
+                }
+                // If only one has order, it goes first
+                if ranked1.account.order != nil {
+                    return true
+                }
+                if ranked2.account.order != nil {
+                    return false
+                }
+                // 2. Sort by intelligent score (for accounts without manual order)
+                return ranked1.score > ranked2.score
+            }
             .map { $0.account }
 
         #if DEBUG
@@ -370,7 +384,19 @@ class AccountRankingService {
     ) -> [Account] {
 
         return accounts.sorted { account1, account2 in
-            // 1. Обычные счета выше депозитов
+            // 0. PRIORITY: Manual order (if both have order, sort by order)
+            if let order1 = account1.order, let order2 = account2.order {
+                return order1 < order2
+            }
+            // If only one has order, it goes first
+            if account1.order != nil {
+                return true
+            }
+            if account2.order != nil {
+                return false
+            }
+
+            // 1. Обычные счета выше депозитов (for accounts without manual order)
             if account1.isDeposit != account2.isDeposit {
                 return !account1.isDeposit
             }
@@ -391,12 +417,12 @@ class AccountRankingService {
             if balance1 != balance2 {
                 return balance1 > balance2
             }
-            
+
             // 4. По дате создания (новее = выше)
             if let date1 = account1.createdDate, let date2 = account2.createdDate {
                 return date1 > date2
             }
-            
+
             // 5. По алфавиту
             return account1.name < account2.name
         }

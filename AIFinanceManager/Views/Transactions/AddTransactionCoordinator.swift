@@ -65,21 +65,34 @@ final class AddTransactionCoordinator {
         return suggested?.id ?? accountsViewModel.accounts.first?.id
     }
 
-    /// Get accounts sorted by balance (fast, no transaction scanning needed)
+    /// Get accounts sorted by manual order, then by balance (fast, no transaction scanning needed)
     func rankedAccounts() -> [Account] {
-        // Simply sort by balance - instant and no need to scan transactions!
+        // Simply sort by manual order first, then balance - instant and no need to scan transactions!
         guard let balanceCoordinator = accountsViewModel.balanceCoordinator else {
-            return accountsViewModel.accounts
+            return accountsViewModel.accounts.sortedByOrder()
         }
 
         let balances = balanceCoordinator.balances
 
         return accountsViewModel.accounts.sorted { account1, account2 in
-            // Deposits at the end
+            // 1. PRIORITY: Manual order (if both have order, sort by order)
+            if let order1 = account1.order, let order2 = account2.order {
+                return order1 < order2
+            }
+            // If only one has order, it goes first
+            if account1.order != nil {
+                return true
+            }
+            if account2.order != nil {
+                return false
+            }
+
+            // 2. Deposits at the end (for accounts without manual order)
             if account1.isDeposit != account2.isDeposit {
                 return !account1.isDeposit
             }
-            // Higher balance first
+
+            // 3. Higher balance first (for accounts without manual order)
             let balance1 = balances[account1.id] ?? 0
             let balance2 = balances[account2.id] ?? 0
             return balance1 > balance2

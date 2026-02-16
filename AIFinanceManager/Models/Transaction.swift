@@ -240,8 +240,9 @@ struct Account: Identifiable, Codable, Equatable {
     var createdDate: Date?
     var shouldCalculateFromTransactions: Bool // Режим расчета баланса: true = из транзакций, false = manual
     var initialBalance: Double?  // Начальный баланс для manual счетов (nil для shouldCalculateFromTransactions=true)
+    var order: Int? // Order for displaying accounts
 
-    init(id: String = UUID().uuidString, name: String, currency: String, iconSource: IconSource? = nil, depositInfo: DepositInfo? = nil, createdDate: Date? = nil, shouldCalculateFromTransactions: Bool = false, initialBalance: Double? = nil) {
+    init(id: String = UUID().uuidString, name: String, currency: String, iconSource: IconSource? = nil, depositInfo: DepositInfo? = nil, createdDate: Date? = nil, shouldCalculateFromTransactions: Bool = false, initialBalance: Double? = nil, order: Int? = nil) {
         self.id = id
         self.name = name
         self.currency = currency
@@ -250,11 +251,12 @@ struct Account: Identifiable, Codable, Equatable {
         self.createdDate = createdDate ?? Date()
         self.shouldCalculateFromTransactions = shouldCalculateFromTransactions
         self.initialBalance = initialBalance ?? (shouldCalculateFromTransactions ? 0.0 : nil)
+        self.order = order
     }
 
     // Кастомный decoder для обратной совместимости со старыми данными
     enum CodingKeys: String, CodingKey {
-        case id, name, balance, currency, bankLogo, iconSource, depositInfo, createdDate, shouldCalculateFromTransactions, initialBalance
+        case id, name, balance, currency, bankLogo, iconSource, depositInfo, createdDate, shouldCalculateFromTransactions, initialBalance, order
     }
 
     init(from decoder: Decoder) throws {
@@ -287,6 +289,9 @@ struct Account: Identifiable, Codable, Equatable {
         } else {
             initialBalance = shouldCalculateFromTransactions ? 0.0 : nil
         }
+
+        // Order is optional, defaults to nil for backward compatibility
+        order = try container.decodeIfPresent(Int.self, forKey: .order)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -299,6 +304,7 @@ struct Account: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(createdDate, forKey: .createdDate)
         try container.encode(shouldCalculateFromTransactions, forKey: .shouldCalculateFromTransactions)
         try container.encodeIfPresent(initialBalance, forKey: .initialBalance)
+        try container.encodeIfPresent(order, forKey: .order)
     }
     
     // Computed property для проверки, является ли счет депозитом

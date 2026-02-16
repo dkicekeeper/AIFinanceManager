@@ -46,7 +46,7 @@ struct AccountSelectorView: View {
                     config: .standard,
                     scrollToId: .constant(selectedAccountId)
                 ) {
-                    ForEach(accounts) { account in
+                    ForEach(accounts.sortedByOrder()) { account in
                         AccountRadioButton(
                             account: account,
                             isSelected: selectedAccountId == account.id,

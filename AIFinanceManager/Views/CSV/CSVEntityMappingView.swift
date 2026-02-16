@@ -253,7 +253,7 @@ struct AccountMappingDetailView: View {
     var body: some View {
         Form {
             Section(header: Text("Выберите счет для \"\(csvValue)\"")) {
-                ForEach(accounts) { account in
+                ForEach(accounts.sortedByOrder()) { account in
                     Button(action: {
                         selectedAccountId = account.id
                     }) {

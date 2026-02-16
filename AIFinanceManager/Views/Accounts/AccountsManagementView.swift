@@ -18,10 +18,49 @@ struct AccountsManagementView: View {
     @State private var editingAccount: Account?
     @State private var accountToDelete: Account?
     @State private var showingAccountDeleteDialog = false
+    @State private var isReordering = false
 
     // Кешируем baseCurrency для оптимизации
     private var baseCurrency: String {
         transactionsViewModel.appSettings.baseCurrency
+    }
+
+    // Filtered and sorted accounts
+    private var sortedAccounts: [Account] {
+        return accountsViewModel.accounts.sorted { acc1, acc2 in
+            // If both have order, sort by order
+            if let order1 = acc1.order, let order2 = acc2.order {
+                return order1 < order2
+            }
+            // If only one has order, it goes first
+            if acc1.order != nil {
+                return true
+            }
+            if acc2.order != nil {
+                return false
+            }
+            // If neither has order, sort by name
+            return acc1.name < acc2.name
+        }
+    }
+
+    // MARK: - Methods
+
+    private func moveAccount(from source: IndexSet, to destination: Int) {
+        var updatedAccounts = sortedAccounts
+        updatedAccounts.move(fromOffsets: source, toOffset: destination)
+
+        // Update order for all accounts
+        for (index, account) in updatedAccounts.enumerated() {
+            var updatedAccount = account
+            updatedAccount.order = index
+            accountsViewModel.updateAccount(updatedAccount)
+        }
+
+        // Invalidate caches to ensure the new order is reflected everywhere
+        transactionsViewModel.invalidateCaches()
+
+        HapticManager.selection()
     }
     
     var body: some View {
@@ -38,7 +77,7 @@ struct AccountsManagementView: View {
                 )
             } else {
                 List {
-                    ForEach(accountsViewModel.accounts) { account in
+                    ForEach(sortedAccounts) { account in
                         AccountRow(
                             account: account,
                             currency: baseCurrency,
@@ -58,7 +97,9 @@ struct AccountsManagementView: View {
                             }
                         )
                     }
+                    .onMove(perform: isReordering ? moveAccount : nil)
                 }
+                .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
             }
         }
         .navigationTitle(String(localized: "settings.accounts"))
@@ -80,21 +121,33 @@ struct AccountsManagementView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button(action: { 
+                HStack(spacing: AppSpacing.md) {
+                    Button {
                         HapticManager.light()
-                        showingAddAccount = true 
-                    }) {
-                        Label(String(localized: "account.newAccount"), systemImage: "creditcard")
+                        withAnimation {
+                            isReordering.toggle()
+                        }
+                    } label: {
+                        Image(systemName: isReordering ? "checkmark" : "arrow.up.arrow.down")
+                            .foregroundStyle(isReordering ? .blue : .primary)
                     }
-                    Button(action: { 
-                        HapticManager.light()
-                        showingAddDeposit = true 
-                    }) {
-                        Label(String(localized: "account.newDeposit"), systemImage: "banknote")
+
+                    Menu {
+                        Button(action: {
+                            HapticManager.light()
+                            showingAddAccount = true
+                        }) {
+                            Label(String(localized: "account.newAccount"), systemImage: "creditcard")
+                        }
+                        Button(action: {
+                            HapticManager.light()
+                            showingAddDeposit = true
+                        }) {
+                            Label(String(localized: "account.newDeposit"), systemImage: "banknote")
+                        }
+                    } label: {
+                        Image(systemName: "plus")
                     }
-                } label: {
-                    Image(systemName: "plus")
                 }
             }
         }

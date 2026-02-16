@@ -24,7 +24,7 @@ struct AccountFilterMenu: View {
                 }
             }
 
-            ForEach(accounts) { account in
+            ForEach(accounts.sortedByOrder()) { account in
                 Button(action: { selectedAccountId = account.id }) {
                     HStack(spacing: AppSpacing.sm) {
                         IconView(source: account.iconSource, size: AppIconSize.md)

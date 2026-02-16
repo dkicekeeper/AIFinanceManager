@@ -18,7 +18,7 @@ struct AccountsCarousel: View {
     // MARK: - Body
     var body: some View {
         UniversalCarousel(config: .cards) {
-            ForEach(accounts) { account in
+            ForEach(accounts.sortedByOrder()) { account in
                 AccountCard(
                     account: account,
                     onTap: {
