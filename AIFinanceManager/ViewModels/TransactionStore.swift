@@ -166,6 +166,9 @@ final class TransactionStore {
         // Load accounts
         accounts = repository.loadAccounts()
 
+        // ✅ Apply stored order from UserDefaults (UI preference)
+        accounts = AccountOrderManager.shared.applyOrders(to: accounts)
+
         // Load transactions (no date filter - load all)
         transactions = repository.loadTransactions(dateRange: nil)
 
@@ -489,12 +492,18 @@ final class TransactionStore {
         // Don't persist during import mode - will be done in finishImport()
         if !isImporting {
             persistAccounts()
+
+            // ✅ Save order to UserDefaults (UI preference)
+            if let order = account.order {
+                AccountOrderManager.shared.setOrder(order, for: account.id)
+            }
+
             // Sync to ViewModels after persistence
             coordinator?.syncTransactionStoreToViewModels()
         }
 
         #if DEBUG
-        print("✅ [TransactionStore] Added account: \(account.name) (import mode: \(isImporting), total accounts: \(accounts.count))")
+        print("✅ [TransactionStore] Added account: \(account.name) with order: \(account.order ?? -1) (import mode: \(isImporting), total accounts: \(accounts.count))")
         #endif
     }
 
@@ -513,12 +522,18 @@ final class TransactionStore {
         // Don't persist during import mode - will be done in finishImport()
         if !isImporting {
             persistAccounts()
+
+            // ✅ Save order to UserDefaults (UI preference, separate from repository)
+            if let order = account.order {
+                AccountOrderManager.shared.setOrder(order, for: account.id)
+            }
+
             // Sync to ViewModels after persistence
             coordinator?.syncTransactionStoreToViewModels()
         }
 
         #if DEBUG
-        print("✅ [TransactionStore] Updated account: \(account.name) (import mode: \(isImporting))")
+        print("✅ [TransactionStore] Updated account: \(account.name), order: \(account.order?.description ?? "nil") (import mode: \(isImporting))")
         #endif
     }
 
@@ -530,6 +545,10 @@ final class TransactionStore {
         // Don't persist during import mode - will be done in finishImport()
         if !isImporting {
             persistAccounts()
+
+            // ✅ Remove order from UserDefaults
+            AccountOrderManager.shared.removeOrder(for: accountId)
+
             // Sync to ViewModels after persistence
             coordinator?.syncTransactionStoreToViewModels()
         }
