@@ -39,7 +39,8 @@ struct AccountEditView: View {
                     currency: currency,
                     iconSource: selectedIconSource,
                     shouldCalculateFromTransactions: false,
-                    initialBalance: parsedBalance
+                    initialBalance: parsedBalance,
+                    order: account?.order  // Preserve existing order when editing
                 )
                 onSave(newAccount)
             },

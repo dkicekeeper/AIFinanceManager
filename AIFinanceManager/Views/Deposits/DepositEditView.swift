@@ -53,7 +53,8 @@ struct DepositEditView: View {
                     iconSource: selectedIconSource,
                     depositInfo: depositInfo,
                     shouldCalculateFromTransactions: false,
-                    initialBalance: balance
+                    initialBalance: balance,
+                    order: account?.order  // Preserve existing order when editing
                 )
                 HapticManager.success()
                 onSave(newAccount)
