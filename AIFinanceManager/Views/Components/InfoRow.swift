@@ -3,10 +3,13 @@
 //  AIFinanceManager
 //
 //  Reusable info row component (label: value)
+//  Migrated to UniversalRow architecture - 2026-02-16
 //
 
 import SwiftUI
 
+/// Info row component for displaying label + value pairs
+/// Now built on top of UniversalRow for consistency
 struct InfoRow: View {
     let icon: String?
     let label: String
@@ -19,20 +22,21 @@ struct InfoRow: View {
     }
 
     var body: some View {
-        HStack {
-            if let icon = icon {
-                Image(systemName: icon)
+        UniversalRow(
+            config: .info,
+            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.textSecondary, size: AppIconSize.md) }
+        ) {
+            HStack {
+                Text(label)
+                    .font(AppTypography.bodyLarge)
                     .foregroundStyle(.secondary)
-                    .frame(width: AppIconSize.md)
+                Spacer()
+                Text(value)
+                    .font(AppTypography.bodyLarge)
             }
-            Text(label)
-                .font(AppTypography.bodyLarge)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(AppTypography.bodyLarge)
+        } trailing: {
+            EmptyView()
         }
-        .padding(.vertical, AppSpacing.compact)
     }
 }
 

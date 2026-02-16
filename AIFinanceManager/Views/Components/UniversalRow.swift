@@ -1,0 +1,612 @@
+//
+//  UniversalRow.swift
+//  AIFinanceManager
+//
+//  Universal row component with IconView integration and Design System compliance
+//  Created: 2026-02-16
+//
+//  Architecture:
+//  - Generic ViewBuilders for content and trailing elements
+//  - IconView integration for leading icons
+//  - Presets for common use cases (settings, selectable, info)
+//  - Modifiers for interactive behavior (navigation, action, selectable)
+//
+//  Usage Examples:
+//
+//  1. Settings Action Row:
+//  ```swift
+//  UniversalRow(
+//      config: .settings,
+//      leadingIcon: .sfSymbol("trash", color: .red)
+//  ) {
+//      Text("Delete All")
+//  } trailing: {
+//      EmptyView()
+//  }
+//  .actionRow(role: .destructive) { deleteAll() }
+//  ```
+//
+//  2. Navigation Row:
+//  ```swift
+//  UniversalRow(
+//      config: .settings,
+//      leadingIcon: .sfSymbol("tag")
+//  ) {
+//      Text("Categories")
+//  } trailing: {
+//      EmptyView() // NavigationLink adds chevron automatically
+//  }
+//  .navigationRow { CategoriesView() }
+//  ```
+//
+//  3. Selectable Row:
+//  ```swift
+//  UniversalRow(
+//      config: .selectable,
+//      leadingIcon: .bankLogo(.kaspi)
+//  ) {
+//      Text("Kaspi Bank")
+//  } trailing: {
+//      if isSelected {
+//          Image(systemName: "checkmark")
+//      }
+//  }
+//  .selectableRow(isSelected: isSelected) { select() }
+//  ```
+//
+
+import SwiftUI
+
+// MARK: - Universal Row Component
+
+/// Universal row component for consistent UI patterns across the app
+/// Integrates with IconView for leading icons and supports flexible content
+struct UniversalRow<Content: View, Trailing: View>: View {
+
+    // MARK: - Properties
+
+    let config: RowConfiguration
+    let leadingIcon: IconConfig?
+
+    @ViewBuilder let content: () -> Content
+    @ViewBuilder let trailing: () -> Trailing
+
+    // MARK: - Initializer
+
+    init(
+        config: RowConfiguration = .standard,
+        leadingIcon: IconConfig? = nil,
+        @ViewBuilder content: @escaping () -> Content,
+        @ViewBuilder trailing: @escaping () -> Trailing
+    ) {
+        self.config = config
+        self.leadingIcon = leadingIcon
+        self.content = content
+        self.trailing = trailing
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        HStack(spacing: config.spacing) {
+            // Leading icon через IconView
+            if let iconConfig = leadingIcon {
+                IconView(
+                    source: iconConfig.source,
+                    style: iconConfig.style
+                )
+            }
+
+            // Content
+            content()
+
+            Spacer()
+
+            // Trailing element
+            trailing()
+        }
+        .padding(.vertical, config.verticalPadding)
+        .padding(.horizontal, config.horizontalPadding)
+        .background(config.backgroundColor)
+        .clipShape(.rect(cornerRadius: config.cornerRadius))
+    }
+}
+
+// MARK: - Icon Configuration
+
+/// Configuration for leading icon in UniversalRow
+/// Wraps IconSource and IconStyle for convenient usage
+struct IconConfig {
+    let source: IconSource?
+    let style: IconStyle
+
+    // MARK: - Convenience Initializers
+
+    /// SF Symbol with color
+    /// - Parameters:
+    ///   - name: SF Symbol name
+    ///   - color: Tint color (default: textPrimary)
+    ///   - size: Icon size (default: AppIconSize.md)
+    static func sfSymbol(
+        _ name: String,
+        color: Color = AppColors.textPrimary,
+        size: CGFloat = AppIconSize.md
+    ) -> IconConfig {
+        IconConfig(
+            source: .sfSymbol(name),
+            style: .circle(size: size, tint: .monochrome(color))
+        )
+    }
+
+    /// Bank logo
+    /// - Parameters:
+    ///   - logo: BankLogo enum value
+    ///   - size: Icon size (default: AppIconSize.xl)
+    static func bankLogo(
+        _ logo: BankLogo,
+        size: CGFloat = AppIconSize.xl
+    ) -> IconConfig {
+        IconConfig(
+            source: .bankLogo(logo),
+            style: .bankLogo(size: size)
+        )
+    }
+
+    /// Brand service logo
+    /// - Parameters:
+    ///   - brandName: Service name (e.g., "netflix")
+    ///   - size: Icon size (default: AppIconSize.xl)
+    static func brandService(
+        _ brandName: String,
+        size: CGFloat = AppIconSize.xl
+    ) -> IconConfig {
+        IconConfig(
+            source: .brandService(brandName),
+            style: .serviceLogo(size: size)
+        )
+    }
+
+    /// Custom IconSource with IconStyle
+    /// - Parameters:
+    ///   - source: IconSource
+    ///   - style: IconStyle
+    static func custom(source: IconSource?, style: IconStyle) -> IconConfig {
+        IconConfig(source: source, style: style)
+    }
+}
+
+// MARK: - Row Configuration
+
+/// Configuration for UniversalRow layout and styling
+struct RowConfiguration {
+    let spacing: CGFloat
+    let verticalPadding: CGFloat
+    let horizontalPadding: CGFloat
+    let backgroundColor: Color
+    let cornerRadius: CGFloat
+
+    // MARK: - Presets
+
+    /// Standard row (default)
+    /// Used for generic rows with balanced spacing
+    static let standard = RowConfiguration(
+        spacing: AppSpacing.md,
+        verticalPadding: AppSpacing.sm,
+        horizontalPadding: AppSpacing.md,
+        backgroundColor: .clear,
+        cornerRadius: 0
+    )
+
+    /// Settings row style
+    /// Used for ActionSettingsRow, NavigationSettingsRow
+    /// No horizontal padding (managed by List)
+    static let settings = RowConfiguration(
+        spacing: AppSpacing.md,
+        verticalPadding: AppSpacing.xs,
+        horizontalPadding: 0,
+        backgroundColor: .clear,
+        cornerRadius: 0
+    )
+
+    /// Selectable row style
+    /// Used for BankLogoRow, SubcategoryRow
+    static let selectable = RowConfiguration(
+        spacing: AppSpacing.md,
+        verticalPadding: AppSpacing.sm,
+        horizontalPadding: AppSpacing.md,
+        backgroundColor: .clear,
+        cornerRadius: 0
+    )
+
+    /// Info row style
+    /// Used for InfoRow (read-only label + value)
+    static let info = RowConfiguration(
+        spacing: AppSpacing.md,
+        verticalPadding: AppSpacing.compact,
+        horizontalPadding: 0,
+        backgroundColor: .clear,
+        cornerRadius: 0
+    )
+
+    /// Card row style
+    /// Row with background and corner radius
+    static let card = RowConfiguration(
+        spacing: AppSpacing.md,
+        verticalPadding: AppSpacing.md,
+        horizontalPadding: AppSpacing.md,
+        backgroundColor: AppColors.cardBackground,
+        cornerRadius: AppRadius.md
+    )
+}
+
+// MARK: - Row Modifiers
+
+extension View {
+    /// Applies navigation row behavior
+    /// Wraps the row in NavigationLink
+    /// - Parameter destination: Destination view
+    func navigationRow<Destination: View>(
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink(destination: destination()) {
+            self
+        }
+    }
+
+    /// Applies action row behavior
+    /// Wraps the row in Button
+    /// - Parameters:
+    ///   - role: Button role (e.g., .destructive)
+    ///   - action: Action to perform
+    func actionRow(
+        role: ButtonRole? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            self
+        }
+    }
+
+    /// Applies selectable row behavior
+    /// Makes row tappable with contentShape
+    /// - Parameters:
+    ///   - isSelected: Whether the row is selected
+    ///   - action: Action to perform on tap
+    func selectableRow(
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        self
+            .contentShape(Rectangle())
+            .onTapGesture(perform: action)
+    }
+}
+
+// MARK: - Convenience Initializers
+
+extension UniversalRow where Trailing == EmptyView {
+    /// Initializer without trailing element
+    init(
+        config: RowConfiguration = .standard,
+        leadingIcon: IconConfig? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.config = config
+        self.leadingIcon = leadingIcon
+        self.content = content
+        self.trailing = { EmptyView() }
+    }
+}
+
+extension UniversalRow where Content == Text, Trailing == EmptyView {
+    /// Initializer with text content and no trailing
+    /// Useful for simple labeled rows
+    init(
+        config: RowConfiguration = .standard,
+        leadingIcon: IconConfig? = nil,
+        title: String,
+        titleColor: Color = AppColors.textPrimary
+    ) {
+        self.config = config
+        self.leadingIcon = leadingIcon
+        self.content = {
+            Text(title)
+                .font(AppTypography.body)
+                .foregroundStyle(titleColor)
+        }
+        self.trailing = { EmptyView() }
+    }
+}
+
+// Note: Removed overly-specific convenience initializer for navigation rows
+// Use the standard UniversalRow initializer with explicit trailing view instead
+
+// MARK: - Previews
+
+#Preview("Basic Rows") {
+    List {
+        // Standard row with icon
+        UniversalRow(
+            config: .standard,
+            leadingIcon: .sfSymbol("star.fill", color: .yellow)
+        ) {
+            Text("Standard Row")
+        } trailing: {
+            EmptyView()
+        }
+
+        // Row with trailing text
+        UniversalRow(
+            config: .standard,
+            leadingIcon: .sfSymbol("calendar")
+        ) {
+            Text("Date")
+                .foregroundStyle(AppColors.textSecondary)
+        } trailing: {
+            Text("Today")
+        }
+
+        // Row without icon
+        UniversalRow(config: .standard) {
+            Text("No Icon Row")
+        } trailing: {
+            Text("Value")
+        }
+    }
+    .listStyle(.plain)
+}
+
+#Preview("Settings Rows") {
+    NavigationStack {
+        List {
+            Section("Navigation") {
+                // NavigationLink автоматически добавляет chevron, не нужно явно указывать
+                UniversalRow(
+                    config: .settings,
+                    leadingIcon: .sfSymbol("tag", color: AppColors.accent)
+                ) {
+                    Text("Categories")
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.textPrimary)
+                } trailing: {
+                    EmptyView()
+                }
+                .navigationRow {
+                    Text("Categories View")
+                }
+
+                UniversalRow(
+                    config: .settings,
+                    leadingIcon: .sfSymbol("creditcard", color: AppColors.accent)
+                ) {
+                    Text("Accounts")
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.textPrimary)
+                } trailing: {
+                    EmptyView()
+                }
+                .navigationRow {
+                    Text("Accounts View")
+                }
+            }
+
+            Section("Actions") {
+                UniversalRow(
+                    config: .settings,
+                    leadingIcon: .sfSymbol("square.and.arrow.up", color: AppColors.accent)
+                ) {
+                    Text("Export Data")
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.textPrimary)
+                } trailing: {
+                    EmptyView()
+                }
+                .actionRow {
+                    print("Export tapped")
+                }
+
+                UniversalRow(
+                    config: .settings,
+                    leadingIcon: .sfSymbol("trash", color: AppColors.destructive)
+                ) {
+                    Text("Delete All")
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.destructive)
+                } trailing: {
+                    EmptyView()
+                }
+                .actionRow(role: .destructive) {
+                    print("Delete tapped")
+                }
+            }
+        }
+        .navigationTitle("Settings")
+    }
+}
+
+#Preview("Selectable Rows") {
+    @Previewable @State var selectedBank: BankLogo? = .kaspi
+
+    List {
+        ForEach([BankLogo.kaspi, .halykBank, .jusan, .homeCredit], id: \.self) { bank in
+            UniversalRow(
+                config: .selectable,
+                leadingIcon: .bankLogo(bank)
+            ) {
+                Text(bank.displayName)
+                    .foregroundStyle(AppColors.textPrimary)
+            } trailing: {
+                if selectedBank == bank {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(AppColors.accent)
+                }
+            }
+            .selectableRow(isSelected: selectedBank == bank) {
+                HapticManager.selection()
+                selectedBank = bank
+            }
+        }
+    }
+    .listStyle(.plain)
+}
+
+#Preview("Info Rows") {
+    List {
+        UniversalRow(
+            config: .info,
+            leadingIcon: .sfSymbol("tag.fill", color: AppColors.textSecondary, size: AppIconSize.md)
+        ) {
+            HStack {
+                Text("Category")
+                    .font(AppTypography.bodyLarge)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("Food")
+                    .font(AppTypography.bodyLarge)
+            }
+        } trailing: {
+            EmptyView()
+        }
+
+        UniversalRow(
+            config: .info,
+            leadingIcon: .sfSymbol("calendar", color: AppColors.textSecondary, size: AppIconSize.md)
+        ) {
+            HStack {
+                Text("Frequency")
+                    .font(AppTypography.bodyLarge)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("Monthly")
+                    .font(AppTypography.bodyLarge)
+            }
+        } trailing: {
+            EmptyView()
+        }
+
+        UniversalRow(config: .info) {
+            HStack {
+                Text("No Icon")
+                    .font(AppTypography.bodyLarge)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("Value")
+                    .font(AppTypography.bodyLarge)
+            }
+        } trailing: {
+            EmptyView()
+        }
+    }
+    .listStyle(.plain)
+}
+
+#Preview("Card Rows") {
+    VStack(spacing: AppSpacing.lg) {
+        UniversalRow(
+            config: .card,
+            leadingIcon: .sfSymbol("star.fill", color: .yellow, size: AppIconSize.lg)
+        ) {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text("Premium Feature")
+                    .font(AppTypography.h4)
+                Text("Unlock advanced analytics")
+                    .font(AppTypography.bodySmall)
+                    .foregroundStyle(.secondary)
+            }
+        } trailing: {
+            Image(systemName: "chevron.right")
+                .foregroundStyle(AppColors.textSecondary)
+        }
+        .actionRow {
+            print("Card tapped")
+        }
+
+        UniversalRow(
+            config: .card,
+            leadingIcon: .brandService("netflix", size: AppIconSize.avatar)
+        ) {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text("Netflix")
+                    .font(AppTypography.h4)
+                Text("Subscription")
+                    .font(AppTypography.bodySmall)
+                    .foregroundStyle(.secondary)
+            }
+        } trailing: {
+            Text("$9.99")
+                .font(AppTypography.bodyLarge)
+                .fontWeight(.semibold)
+        }
+    }
+    .padding()
+}
+
+#Preview("Convenience Initializers") {
+    List {
+        Section("Simple Text Row") {
+            UniversalRow(
+                leadingIcon: .sfSymbol("bell"),
+                title: "Notifications"
+            )
+
+            UniversalRow(
+                leadingIcon: .sfSymbol("lock"),
+                title: "Privacy"
+            )
+        }
+
+        Section("Navigation Row") {
+            UniversalRow(
+                leadingIcon: .sfSymbol("gear"),
+                title: "Settings"
+            )
+            .navigationRow {
+                Text("Settings View")
+            }
+        }
+    }
+}
+
+#Preview("Icon Variations") {
+    List {
+        UniversalRow(
+            leadingIcon: .sfSymbol("heart.fill", color: .red, size: AppIconSize.lg)
+        ) {
+            Text("SF Symbol")
+        } trailing: {
+            EmptyView()
+        }
+
+        UniversalRow(
+            leadingIcon: .bankLogo(.kaspi, size: AppIconSize.xl)
+        ) {
+            Text("Bank Logo")
+        } trailing: {
+            EmptyView()
+        }
+
+        UniversalRow(
+            leadingIcon: .brandService("spotify", size: AppIconSize.avatar)
+        ) {
+            Text("Brand Service")
+        } trailing: {
+            EmptyView()
+        }
+
+        UniversalRow(
+            leadingIcon: .custom(
+                source: .sfSymbol("star"),
+                style: .circle(
+                    size: AppIconSize.xl,
+                    tint: .hierarchical(.purple),
+                    backgroundColor: .purple.opacity(0.2)
+                )
+            )
+        ) {
+            Text("Custom Style")
+        } trailing: {
+            EmptyView()
+        }
+    }
+    .listStyle(.plain)
+}

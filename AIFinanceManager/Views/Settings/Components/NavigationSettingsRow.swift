@@ -4,12 +4,14 @@
 //
 //  Created on 2026-02-04
 //  Settings Refactoring Phase 3 - UI Components
+//  Migrated to UniversalRow architecture - 2026-02-16
 //
 
 import SwiftUI
 
 /// Props-based navigation row for Settings
 /// Single Responsibility: Display navigation link with icon and title
+/// Now built on top of UniversalRow for consistency
 struct NavigationSettingsRow<Destination: View>: View {
     // MARK: - Props
 
@@ -35,17 +37,18 @@ struct NavigationSettingsRow<Destination: View>: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationLink(destination: destination) {
-            HStack(spacing: AppSpacing.md) {
-                Image(systemName: icon)
-                    .font(.system(size: AppIconSize.md))
-                    .foregroundStyle(iconColor)
-
-                Text(title)
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppColors.textPrimary)
-            }
-            .padding(.vertical, AppSpacing.xs)
+        UniversalRow(
+            config: .settings,
+            leadingIcon: .sfSymbol(icon, color: iconColor, size: AppIconSize.md)
+        ) {
+            Text(title)
+                .font(AppTypography.body)
+                .foregroundStyle(AppColors.textPrimary)
+        } trailing: {
+            EmptyView() // NavigationLink автоматически добавит chevron
+        }
+        .navigationRow {
+            destination
         }
     }
 }

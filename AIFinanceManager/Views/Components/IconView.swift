@@ -210,10 +210,26 @@ struct IconView: View {
         let baseView = content()
             .frame(width: style.size, height: style.size)
 
+        // Определяем, нужно ли обрезать контент (только для изображений, не для SF Symbols)
+        let shouldClipContent = shouldClipContentForSource()
+
         // Применяем фон если задан
         let viewWithBackground = Group {
             if let bgColor = style.backgroundColor {
-                baseView.background(bgColor)
+                // Для SF Symbols обрезаем только фон, не контент
+                if shouldClipContent {
+                    baseView.background(bgColor)
+                } else {
+                    // Для SF Symbols - фон с формой, но контент не обрезается
+                    switch style.shape {
+                    case .circle:
+                        baseView.background(Circle().fill(bgColor))
+                    case .roundedSquare(let radius):
+                        baseView.background(RoundedRectangle(cornerRadius: radius).fill(bgColor))
+                    case .square:
+                        baseView.background(Rectangle().fill(bgColor))
+                    }
+                }
             } else {
                 baseView
             }
@@ -228,23 +244,41 @@ struct IconView: View {
             }
         }
 
-        // Применяем форму с обрезкой контента
+        // Применяем форму с обрезкой контента ТОЛЬКО для изображений (не SF Symbols)
         let viewWithShape = Group {
-            switch style.shape {
-            case .circle:
-                viewWithPadding
-                    .clipShape(Circle())
-                    .contentShape(Circle())
+            if shouldClipContent {
+                // Для изображений (bank logo, brand logo) - обрезаем по форме
+                switch style.shape {
+                case .circle:
+                    viewWithPadding
+                        .clipShape(Circle())
+                        .contentShape(Circle())
 
-            case .roundedSquare(let radius):
-                viewWithPadding
-                    .clipShape(RoundedRectangle(cornerRadius: radius))
-                    .contentShape(RoundedRectangle(cornerRadius: radius))
+                case .roundedSquare(let radius):
+                    viewWithPadding
+                        .clipShape(RoundedRectangle(cornerRadius: radius))
+                        .contentShape(RoundedRectangle(cornerRadius: radius))
 
-            case .square:
-                viewWithPadding
-                    .clipShape(Rectangle())
-                    .contentShape(Rectangle())
+                case .square:
+                    viewWithPadding
+                        .clipShape(Rectangle())
+                        .contentShape(Rectangle())
+                }
+            } else {
+                // Для SF Symbols - только contentShape для tap area
+                switch style.shape {
+                case .circle:
+                    viewWithPadding
+                        .contentShape(Circle())
+
+                case .roundedSquare(let radius):
+                    viewWithPadding
+                        .contentShape(RoundedRectangle(cornerRadius: radius))
+
+                case .square:
+                    viewWithPadding
+                        .contentShape(Rectangle())
+                }
             }
         }
 
@@ -268,6 +302,21 @@ struct IconView: View {
             }
         } else {
             viewWithShape
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    /// Определяет, нужно ли обрезать контент по форме контейнера
+    /// SF Symbols не обрезаются, только изображения (bank logos, brand logos)
+    private func shouldClipContentForSource() -> Bool {
+        switch source {
+        case .sfSymbol:
+            return false // SF Symbols не обрезаются
+        case .bankLogo, .brandService:
+            return true // Изображения обрезаются
+        case .none:
+            return false // Placeholder не обрезается
         }
     }
 }

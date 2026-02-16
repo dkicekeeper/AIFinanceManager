@@ -45,7 +45,7 @@ struct HistoryFilterSection: View {
             }
             .padding(.horizontal, AppSpacing.lg)
         }
-        .padding(.vertical, AppSpacing.md)
+        .scrollClipDisabled()
     }
 }
 

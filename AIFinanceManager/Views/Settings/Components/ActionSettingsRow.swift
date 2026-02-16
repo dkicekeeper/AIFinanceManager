@@ -4,12 +4,14 @@
 //
 //  Created on 2026-02-04
 //  Settings Refactoring Phase 3 - UI Components
+//  Migrated to UniversalRow architecture - 2026-02-16
 //
 
 import SwiftUI
 
 /// Props-based action row for Settings
 /// Single Responsibility: Display action button with icon, title, and optional destructive styling
+/// Now built on top of UniversalRow for consistency
 struct ActionSettingsRow: View {
     // MARK: - Props
 
@@ -38,21 +40,30 @@ struct ActionSettingsRow: View {
         self.action = action
     }
 
+    // MARK: - Computed Properties
+
+    private var resolvedIconColor: Color {
+        iconColor ?? (isDestructive ? AppColors.destructive : AppColors.accent)
+    }
+
+    private var resolvedTitleColor: Color {
+        titleColor ?? (isDestructive ? AppColors.destructive : AppColors.textPrimary)
+    }
+
     // MARK: - Body
 
     var body: some View {
-        Button(role: isDestructive ? .destructive : nil, action: action) {
-            HStack(spacing: AppSpacing.md) {
-                Image(systemName: icon)
-                    .font(.system(size: AppIconSize.md))
-                    .foregroundStyle(iconColor ?? (isDestructive ? AppColors.destructive : AppColors.accent))
-
-                Text(title)
-                    .font(AppTypography.body)
-                    .foregroundStyle(titleColor ?? (isDestructive ? AppColors.destructive : AppColors.textPrimary))
-            }
-            .padding(.vertical, AppSpacing.xs)
+        UniversalRow(
+            config: .settings,
+            leadingIcon: .sfSymbol(icon, color: resolvedIconColor, size: AppIconSize.md)
+        ) {
+            Text(title)
+                .font(AppTypography.body)
+                .foregroundStyle(resolvedTitleColor)
+        } trailing: {
+            EmptyView()
         }
+        .actionRow(role: isDestructive ? .destructive : nil, action: action)
     }
 }
 

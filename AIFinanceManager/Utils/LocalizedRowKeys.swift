@@ -1,0 +1,152 @@
+//
+//  LocalizedRowKeys.swift
+//  AIFinanceManager
+//
+//  Centralized localization keys for row components
+//  Created: 2026-02-16
+//
+//  Usage:
+//  ```swift
+//  Button(LocalizedRowKey.delete.localized, systemImage: "trash")
+//  Text(LocalizedRowKey.edit.localized)
+//  ```
+//
+
+import Foundation
+
+/// Centralized localization keys for row components and common UI elements
+/// Provides type-safe access to localized strings
+enum LocalizedRowKey: String {
+    // MARK: - Actions
+
+    case delete = "button.delete"
+    case edit = "button.edit"
+    case select = "button.select"
+    case change = "button.change"
+    case save = "button.save"
+    case cancel = "button.cancel"
+    case done = "button.done"
+    case add = "button.add"
+    case remove = "button.remove"
+
+    // MARK: - Settings
+
+    case settings = "settings.title"
+    case categories = "settings.categories"
+    case accounts = "settings.accounts"
+    case exportData = "settings.exportData"
+    case importData = "settings.importData"
+    case recalculateBalances = "settings.recalculateBalances"
+    case resetData = "settings.resetData"
+    case wallpaper = "settings.wallpaper"
+
+    // MARK: - Common Labels
+
+    case frequency = "common.frequency"
+    case startDate = "common.startDate"
+    case endDate = "common.endDate"
+    case icon = "common.icon"
+    case logo = "common.logo"
+    case color = "common.color"
+    case name = "common.name"
+    case amount = "common.amount"
+    case description = "common.description"
+
+    // MARK: - Category
+
+    case category = "category.title"
+    case noBudgetSet = "No budget set"
+
+    // MARK: - Account
+
+    case account = "account.title"
+    case interestToday = "account.interestToday"
+    case nextPosting = "account.nextPosting"
+
+    // MARK: - Transaction
+
+    case makeRecurring = "transactionForm.makeRecurring"
+
+    // MARK: - Subscription
+
+    case subscription = "subscription.title"
+    case basicInfo = "subscription.basicInfo"
+    case namePlaceholder = "subscription.namePlaceholder"
+    case reminders = "subscription.reminders"
+
+    // MARK: - Recurring
+
+    case never = "recurring.never"
+
+    // MARK: - Reminder
+
+    case none = "reminder.none"
+    case dayBefore = "reminder.dayBefore.one"
+    case daysBefore3 = "reminder.daysBefore.3"
+    case daysBefore7 = "reminder.daysBefore.7"
+    case daysBefore30 = "reminder.daysBefore.30"
+
+    // MARK: - Computed Property
+
+    /// Returns localized string for the key
+    var localized: String {
+        String(localized: LocalizedStringResource(stringLiteral: rawValue))
+    }
+
+    /// Returns localized string with format arguments
+    /// - Parameter arguments: Format arguments
+    /// - Returns: Formatted localized string
+    func localized(with arguments: CVarArg...) -> String {
+        let format = String(localized: LocalizedStringResource(stringLiteral: rawValue))
+        return String(format: format, arguments: arguments)
+    }
+}
+
+// MARK: - Convenience Extensions
+
+extension LocalizedRowKey {
+    /// Common button labels
+    static let commonButtons: [LocalizedRowKey] = [
+        .delete, .edit, .select, .change, .save, .cancel, .done, .add, .remove
+    ]
+
+    /// Settings-related keys
+    static let settingsKeys: [LocalizedRowKey] = [
+        .settings, .categories, .accounts, .exportData, .importData,
+        .recalculateBalances, .resetData, .wallpaper
+    ]
+
+    /// Form field labels
+    static let formFields: [LocalizedRowKey] = [
+        .frequency, .startDate, .endDate, .icon, .logo, .color,
+        .name, .amount, .description
+    ]
+}
+
+// MARK: - Preview Helper
+
+#if DEBUG
+extension LocalizedRowKey {
+    /// Returns all localization keys for testing
+    static var allCases: [LocalizedRowKey] {
+        return [
+            // Actions
+            .delete, .edit, .select, .change, .save, .cancel, .done, .add, .remove,
+
+            // Settings
+            .settings, .categories, .accounts, .exportData, .importData,
+            .recalculateBalances, .resetData, .wallpaper,
+
+            // Common
+            .frequency, .startDate, .endDate, .icon, .logo, .color,
+            .name, .amount, .description,
+
+            // Domain-specific
+            .category, .noBudgetSet, .account, .interestToday, .nextPosting,
+            .makeRecurring, .subscription, .basicInfo, .namePlaceholder,
+            .reminders, .never, .none, .dayBefore, .daysBefore3,
+            .daysBefore7, .daysBefore30
+        ]
+    }
+}
+#endif

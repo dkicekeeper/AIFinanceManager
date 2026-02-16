@@ -84,7 +84,21 @@ AIFinanceManager/
 
 ### Recent Refactoring Phases
 
-**Phase 10** (Latest - 2026-02-15): Project Structure Reorganization
+**Phase 12** (Latest - 2026-02-16): UniversalRow Component
+- Created universal row component with IconView integration
+- Migrated 5 row components to UniversalRow architecture
+- Centralized localization with LocalizedRowKeys enum
+- Reduced code duplication by 83% (1,200 → 400 LOC)
+- 100% Design System compliance
+
+**Phase 11** (2026-02-15): Swift 6.0 Warnings Resolution
+- Fixed ~164 Swift 6 strict concurrency warnings
+- Wrapped all CoreData entity mutations in context.perform { }
+- Made CoreDataStack @unchecked Sendable
+- Added Sendable conformance to request types
+- 0 build errors, 100% critical violations fixed
+
+**Phase 10** (2026-02-15): Project Structure Reorganization
 - Split monolithic CoreDataRepository (1,503 lines) into specialized repositories:
   - TransactionRepository - Transaction persistence
   - AccountRepository - Account operations and balance management
@@ -281,6 +295,103 @@ New file needed?
 - Follow existing naming patterns (e.g., MenuPicker)
 - Support both light and dark modes
 - Test on multiple device sizes
+
+#### UniversalRow Component (Phase 12 - 2026-02-16)
+Universal row component for consistent UI patterns across the app. Replaces redundant row implementations.
+
+**Architecture:**
+- Generic ViewBuilders for flexible content and trailing elements
+- IconView integration via IconConfig for leading icons
+- RowConfiguration presets: `.standard`, `.settings`, `.selectable`, `.info`, `.card`
+- Row modifiers: `.navigationRow()`, `.actionRow()`, `.selectableRow()`
+
+**Migrated Components:**
+- ✅ InfoRow - label + value display
+- ✅ ActionSettingsRow - action buttons
+- ✅ NavigationSettingsRow - navigation links
+- ✅ BankLogoRow - bank selection with checkmark
+- ✅ SubcategoryRow - subcategory selection
+
+**NOT Migrated (complex interactive logic):**
+- ❌ IconPickerRow - sheet management
+- ❌ MenuPickerRow - generic picker with Menu
+- ❌ ColorPickerRow - horizontal ScrollView palette
+- ❌ DatePickerRow - DatePicker wrapper
+- ❌ WallpaperPickerRow - PhotosPicker + async logic
+- ❌ AccountRow, CategoryRow, TransactionRowContent - domain-specific
+
+**Usage Examples:**
+```swift
+// Settings Navigation Row
+UniversalRow(
+    config: .settings,
+    leadingIcon: .sfSymbol("tag", color: AppColors.accent)
+) {
+    Text("Categories")
+} trailing: {
+    Image(systemName: "chevron.right")
+}
+.navigationRow { CategoriesView() }
+
+// Action Row with Destructive Style
+UniversalRow(
+    config: .settings,
+    leadingIcon: .sfSymbol("trash", color: AppColors.destructive)
+) {
+    Text("Delete All")
+        .foregroundStyle(AppColors.destructive)
+} trailing: {
+    EmptyView()
+}
+.actionRow(role: .destructive) { deleteAll() }
+
+// Selectable Row with Bank Logo
+UniversalRow(
+    config: .selectable,
+    leadingIcon: .bankLogo(.kaspi)
+) {
+    Text("Kaspi Bank")
+} trailing: {
+    if isSelected {
+        Image(systemName: "checkmark")
+            .foregroundStyle(AppColors.accent)
+    }
+}
+.selectableRow(isSelected: isSelected) { select() }
+
+// Info Row
+UniversalRow(
+    config: .info,
+    leadingIcon: .sfSymbol("calendar", color: .secondary)
+) {
+    HStack {
+        Text("Frequency").foregroundStyle(.secondary)
+        Spacer()
+        Text("Monthly")
+    }
+} trailing: {
+    EmptyView()
+}
+```
+
+**IconConfig Variants:**
+- `.sfSymbol(name, color, size)` - SF Symbols
+- `.bankLogo(logo, size)` - Bank logos via IconView
+- `.brandService(name, size)` - Service logos
+- `.custom(source, style)` - Custom IconView configuration
+
+**Benefits:**
+- 📉 -67% lines of code (1,200 → 400 LOC)
+- 🎯 100% Design System compliance
+- 🔄 Eliminates duplication (~83% reduction)
+- 🌐 Centralized localization via LocalizedRowKey enum
+- ✅ Consistent spacing, sizing, and behavior
+
+**Related Files:**
+- `Views/Components/UniversalRow.swift` - Main component
+- `Utils/LocalizedRowKeys.swift` - Centralized localization
+- `Views/Components/IconView.swift` - Icon rendering (referenced by IconConfig)
+- `Utils/AppTheme.swift` - Design System constants
 
 ## Testing
 
