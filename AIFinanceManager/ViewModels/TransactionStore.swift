@@ -178,9 +178,6 @@ final class TransactionStore {
         // ✅ Apply stored order from UserDefaults (UI preference)
         categories = CategoryOrderManager.shared.applyOrders(to: categories)
 
-        #if DEBUG
-        print("📝 [TransactionStore] Loaded \(categories.count) categories with order applied")
-        #endif
 
         // ✨ Phase 10: Load subcategory data
         subcategories = repository.loadSubcategories()
@@ -193,17 +190,6 @@ final class TransactionStore {
 
         // Note: baseCurrency will be set via updateBaseCurrency() from AppCoordinator
 
-        #if DEBUG
-        print("✅ [TransactionStore] Loaded data:")
-        print("   - Transactions: \(transactions.count)")
-        print("   - Accounts: \(accounts.count)")
-        print("   - Categories: \(categories.count)")
-        print("   - Subcategories: \(subcategories.count)")
-        print("   - Category-Subcategory Links: \(categorySubcategoryLinks.count)")
-        print("   - Transaction-Subcategory Links: \(transactionSubcategoryLinks.count)")
-        print("   - Recurring Series: \(recurringSeries.count)")
-        print("   - Recurring Occurrences: \(recurringOccurrences.count)")
-        #endif
     }
 
     /// Update base currency (for currency conversions)
@@ -255,9 +241,6 @@ final class TransactionStore {
         // 4. Apply event (updates state, balances, cache, persistence)
         try await apply(event)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Added: \(event.debugDescription)")
-        #endif
 
         // 5. Return the created transaction with ID
         return tx
@@ -309,17 +292,11 @@ final class TransactionStore {
         // Note: If in import mode, persistence is deferred
         try await apply(event)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Bulk added \(txsWithIds.count) transactions (import mode: \(isImporting))")
-        #endif
     }
 
     /// Begin import mode (defers persistence until finishImport)
     func beginImport() {
         isImporting = true
-        #if DEBUG
-        print("🔄 [TransactionStore] Import mode started")
-        #endif
     }
 
     /// Finish import mode and persist all changes
@@ -359,19 +336,7 @@ final class TransactionStore {
             repository.saveRecurringSeries(recurringSeries)
             repository.saveRecurringOccurrences(recurringOccurrences)
 
-            #if DEBUG
-            print("✅ [TransactionStore] Import finished, all data persisted synchronously")
-            print("   - Transactions: \(transactions.count)")
-            print("   - Accounts: \(accounts.count)")
-            print("   - Categories: \(categories.count)")
-            print("   - Subcategories: \(subcategories.count)")
-            print("   - Category-Subcategory Links: \(categorySubcategoryLinks.count)")
-            print("   - Transaction-Subcategory Links: \(transactionSubcategoryLinks.count)")
-            #endif
         } catch {
-            #if DEBUG
-            print("❌ [TransactionStore] Failed to persist import data: \(error)")
-            #endif
             throw TransactionStoreError.persistenceFailed(error)
         }
     }
@@ -402,9 +367,6 @@ final class TransactionStore {
         // Apply event
         try await apply(event)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Updated: \(event.debugDescription)")
-        #endif
     }
 
     /// Delete a transaction
@@ -425,9 +387,6 @@ final class TransactionStore {
         // Apply event
         try await apply(event)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Deleted: \(event.debugDescription)")
-        #endif
     }
 
     /// Transfer between accounts (convenience method)
@@ -469,9 +428,6 @@ final class TransactionStore {
         // Use add operation
         _ = try await add(transaction)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Transfer: \(amount) \(currency) from \(sourceId) to \(targetId)")
-        #endif
     }
 
     // MARK: - Account CRUD Operations (Phase 3)
@@ -481,9 +437,6 @@ final class TransactionStore {
     func addAccount(_ account: Account) {
         // Check if account already exists
         if accounts.contains(where: { $0.id == account.id }) {
-            #if DEBUG
-            print("⚠️ [TransactionStore] Account already exists: \(account.name) - skipping")
-            #endif
             return
         }
 
@@ -502,18 +455,12 @@ final class TransactionStore {
             coordinator?.syncTransactionStoreToViewModels()
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Added account: \(account.name) with order: \(account.order ?? -1) (import mode: \(isImporting), total accounts: \(accounts.count))")
-        #endif
     }
 
     /// Update an existing account
     /// Phase 3: TransactionStore is now Single Source of Truth for accounts
     func updateAccount(_ account: Account) {
         guard let index = accounts.firstIndex(where: { $0.id == account.id }) else {
-            #if DEBUG
-            print("⚠️ [TransactionStore] Account not found for update: \(account.id)")
-            #endif
             return
         }
 
@@ -532,9 +479,6 @@ final class TransactionStore {
             coordinator?.syncTransactionStoreToViewModels()
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Updated account: \(account.name), order: \(account.order?.description ?? "nil") (import mode: \(isImporting))")
-        #endif
     }
 
     /// Delete an account
@@ -553,9 +497,6 @@ final class TransactionStore {
             coordinator?.syncTransactionStoreToViewModels()
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Deleted account: \(accountId) (import mode: \(isImporting))")
-        #endif
     }
 
     // MARK: - Category CRUD Operations (Phase 3)
@@ -565,9 +506,6 @@ final class TransactionStore {
     func addCategory(_ category: CustomCategory) {
         // Check if category already exists
         if categories.contains(where: { $0.id == category.id }) {
-            #if DEBUG
-            print("⚠️ [TransactionStore] Category already exists: \(category.name) - skipping")
-            #endif
             return
         }
 
@@ -597,18 +535,12 @@ final class TransactionStore {
             coordinator?.syncTransactionStoreToViewModels()
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Added category: \(categoryToAdd.name) with order: \(categoryToAdd.order ?? -1) (import mode: \(isImporting), total categories: \(categories.count))")
-        #endif
     }
 
     /// Update an existing category
     /// Phase 3: TransactionStore is now Single Source of Truth for categories
     func updateCategory(_ category: CustomCategory) {
         guard let index = categories.firstIndex(where: { $0.id == category.id }) else {
-            #if DEBUG
-            print("⚠️ [TransactionStore] Category not found for update: \(category.id)")
-            #endif
             return
         }
 
@@ -623,9 +555,6 @@ final class TransactionStore {
         // Sync to ViewModels after persistence
         coordinator?.syncTransactionStoreToViewModels()
 
-        #if DEBUG
-        print("✅ [TransactionStore] Updated category: \(category.name), order: \(category.order?.description ?? "nil")")
-        #endif
     }
 
     /// Delete a category
@@ -640,9 +569,6 @@ final class TransactionStore {
         // Sync to ViewModels after persistence
         coordinator?.syncTransactionStoreToViewModels()
 
-        #if DEBUG
-        print("✅ [TransactionStore] Deleted category: \(categoryId)")
-        #endif
     }
 
     // MARK: - Subcategory CRUD Operations (Phase 10: CSV Import Fix)
@@ -657,9 +583,6 @@ final class TransactionStore {
             persistSubcategories()
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Added subcategory: \(subcategory.name) (import mode: \(isImporting))")
-        #endif
     }
 
     /// Update subcategories array (for bulk operations)
@@ -672,9 +595,6 @@ final class TransactionStore {
             persistSubcategories()
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Updated subcategories: \(newSubcategories.count) (import mode: \(isImporting))")
-        #endif
     }
 
     /// Update category-subcategory links (for bulk operations)
@@ -687,9 +607,6 @@ final class TransactionStore {
             persistCategorySubcategoryLinks()
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Updated category-subcategory links: \(newLinks.count) (import mode: \(isImporting))")
-        #endif
     }
 
     /// Update transaction-subcategory links (for bulk operations)
@@ -702,9 +619,6 @@ final class TransactionStore {
             persistTransactionSubcategoryLinks()
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Updated transaction-subcategory links: \(newLinks.count) (import mode: \(isImporting))")
-        #endif
     }
 
     // MARK: - Computed Properties with Caching
@@ -849,9 +763,6 @@ final class TransactionStore {
     /// Phase 1-4: Core event processing - validates, updates state, balances, cache, persists
     /// ✨ Phase 9: Made internal for access from TransactionStore+Recurring extension
     internal func apply(_ event: TransactionEvent) async throws {
-        #if DEBUG
-        print("🔄 [TransactionStore] Applying event: \(event.debugDescription)")
-        #endif
 
         // 1. Update state (SSOT)
         updateState(event)
@@ -913,9 +824,6 @@ final class TransactionStore {
         // Transaction generation is handled in TransactionStore+Recurring.createSeries()
         recurringSeries.append(series)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Series created: \(series.description)")
-        #endif
     }
 
     /// Update state when a recurring series is updated
@@ -925,9 +833,6 @@ final class TransactionStore {
             recurringSeries[index] = new
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Series updated: \(new.description)")
-        #endif
 
         // Note: Transaction regeneration is handled in TransactionStore+Recurring.updateSeries()
     }
@@ -941,9 +846,6 @@ final class TransactionStore {
             recurringSeries[index] = updatedSeries
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Series stopped: \(seriesId) from \(fromDate)")
-        #endif
 
         // Note: Transaction cleanup is handled in TransactionStore+Recurring.stopSeries()
         // before calling apply()
@@ -954,9 +856,6 @@ final class TransactionStore {
         // Remove series from array
         recurringSeries.removeAll { $0.id == seriesId }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Series deleted: \(seriesId), deleteTxns=\(deleteTransactions)")
-        #endif
 
         // Note: Transaction cleanup and occurrence removal is handled in
         // TransactionStore+Recurring.deleteSeries() before calling apply()
@@ -991,9 +890,6 @@ final class TransactionStore {
             // Persist occurrences
             repository.saveRecurringOccurrences(recurringOccurrences)
 
-            #if DEBUG
-            print("✅ [TransactionStore] Generated \(result.transactions.count) transactions for series \(series.id)")
-            #endif
         }
     }
 
@@ -1083,11 +979,6 @@ final class TransactionStore {
                 break
             }
 
-            #if DEBUG
-            print("✅ [TransactionStore] Notified BalanceCoordinator")
-            print("   Event: \(event.debugDescription)")
-            print("   Affected accounts: \(affectedAccounts)")
-            #endif
         }
     }
 
@@ -1110,9 +1001,6 @@ final class TransactionStore {
         // Note: Accounts are not saved here - balance is managed by BalanceCoordinator
         // and will trigger its own save when balances are recalculated
 
-        #if DEBUG
-        print("💾 [TransactionStore] Persisted transactions + recurring data to repository")
-        #endif
     }
 
     /// Persist accounts to repository
@@ -1120,9 +1008,6 @@ final class TransactionStore {
     private func persistAccounts() {
         repository.saveAccounts(accounts)
 
-        #if DEBUG
-        print("💾 [TransactionStore] Persisted accounts to repository")
-        #endif
     }
 
     /// Persist categories to repository
@@ -1130,9 +1015,6 @@ final class TransactionStore {
     private func persistCategories() {
         repository.saveCategories(categories)
 
-        #if DEBUG
-        print("💾 [TransactionStore] Persisted categories to repository")
-        #endif
     }
 
     /// Persist subcategories to repository
@@ -1140,9 +1022,6 @@ final class TransactionStore {
     private func persistSubcategories() {
         repository.saveSubcategories(subcategories)
 
-        #if DEBUG
-        print("💾 [TransactionStore] Persisted subcategories to repository")
-        #endif
     }
 
     /// Persist category-subcategory links to repository
@@ -1150,9 +1029,6 @@ final class TransactionStore {
     private func persistCategorySubcategoryLinks() {
         repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
 
-        #if DEBUG
-        print("💾 [TransactionStore] Persisted category-subcategory links to repository")
-        #endif
     }
 
     /// Persist transaction-subcategory links to repository
@@ -1160,9 +1036,6 @@ final class TransactionStore {
     private func persistTransactionSubcategoryLinks() {
         repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
 
-        #if DEBUG
-        print("💾 [TransactionStore] Persisted transaction-subcategory links to repository")
-        #endif
     }
 
     /// Convert amount between currencies
@@ -1185,9 +1058,6 @@ final class TransactionStore {
     /// before transactions are added
     /// ✨ Phase 10: Updated to just update in-memory array, persistence happens in finishImport()
     func syncCategories(_ newCategories: [CustomCategory]) async {
-        #if DEBUG
-        print("🔄 [TransactionStore] Syncing \(newCategories.count) categories (import mode: \(isImporting))")
-        #endif
 
         categories = newCategories
 
@@ -1196,32 +1066,10 @@ final class TransactionStore {
         if !isImporting {
             // Only persist if not in import mode (e.g., manual sync)
             repository.saveCategories(newCategories)
-            #if DEBUG
-            print("✅ [TransactionStore] Categories synced and persisted")
-            #endif
         } else {
-            #if DEBUG
-            print("✅ [TransactionStore] Categories synced (persistence deferred to finishImport)")
-            #endif
         }
     }
 }
 
 // MARK: - Debug Helpers
 
-#if DEBUG
-extension TransactionStore {
-    /// Print current state (for debugging)
-    func printState() {
-        print("""
-        📊 [TransactionStore] State:
-           - Transactions: \(transactions.count)
-           - Accounts: \(accounts.count)
-           - Categories: \(categories.count)
-           - Base Currency: \(baseCurrency)
-        """)
-
-        cache.printStats()
-    }
-}
-#endif

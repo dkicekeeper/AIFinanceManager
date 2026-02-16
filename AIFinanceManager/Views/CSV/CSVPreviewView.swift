@@ -145,9 +145,6 @@ struct CSVPreviewView: View {
 
     private var continueButton: some View {
         Button(action: {
-            #if DEBUG
-            print("🔘 [CSVPreviewView] Continue button pressed")
-            #endif
             onContinue()
         }) {
             Text(String(localized: "button.continue"))

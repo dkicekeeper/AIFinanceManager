@@ -62,9 +62,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
         setupBindings()
 
-        #if DEBUG
-        print("✅ BalanceCoordinator initialized")
-        #endif
     }
 
     // MARK: - Setup
@@ -78,16 +75,10 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
     // MARK: - Account Management
 
     func registerAccounts(_ accounts: [Account]) async {
-        #if DEBUG
-        print("🔄 [BalanceCoordinator] registerAccounts() called with \(accounts.count) accounts")
-        #endif
 
         // ✅ FIX: Load persisted balances from Core Data FIRST
         // This ensures we use the real current balances, not stale account.initialBalance values
         guard let coreDataRepo = repository as? CoreDataRepository else {
-            #if DEBUG
-            print("⚠️ [BalanceCoordinator] Repository is not CoreDataRepository, using Account.initialBalance fallback")
-            #endif
             // Fallback for non-Core Data repositories
             let accountBalances = accounts.map { AccountBalance.from($0) }
             store.registerAccounts(accountBalances)
@@ -97,13 +88,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         // Load persisted balances from Core Data for all accounts
         let persistedBalances = coreDataRepo.loadAllAccountBalances()
 
-        #if DEBUG
-        print("💾 [BalanceCoordinator] Loaded \(persistedBalances.count) persisted balances from Core Data")
-        for (accountId, balance) in persistedBalances.prefix(5) {
-            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
-            print("   - \(accountName): \(balance)")
-        }
-        #endif
 
         // Create AccountBalance objects with CORRECT currentBalance from Core Data
         var accountBalances: [AccountBalance] = []
@@ -121,13 +105,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             )
             accountBalances.append(accountBalance)
 
-            #if DEBUG
-            if let persistedBalance = persistedBalances[account.id] {
-                print("✅ [BalanceCoordinator] \(account.name): loaded balance \(persistedBalance) from Core Data")
-            } else {
-                print("⚠️ [BalanceCoordinator] \(account.name): no persisted balance, using initialBalance \(account.initialBalance ?? 0)")
-            }
-            #endif
         }
 
         // ✅ CRITICAL FIX: Register accounts with correct balances in BalanceStore
@@ -150,23 +127,12 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
         self.balances = updatedBalances
 
-        #if DEBUG
-        print("✅ [BalanceCoordinator] Registered \(accounts.count) accounts with correct balances")
-        print("   Published balances to UI:")
-        for (accountId, balance) in updatedBalances.prefix(5) {
-            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
-            print("      - \(accountName): \(balance)")
-        }
-        #endif
     }
 
     func removeAccount(_ accountId: String) async {
         store.removeAccount(accountId)
         cache.invalidate(accountId: accountId)
 
-        #if DEBUG
-        print("🗑️ Removed account: \(accountId)")
-        #endif
     }
 
     // MARK: - Transaction Updates
@@ -221,9 +187,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             await processUpdateRequest(request)
         }
 
-        #if DEBUG
-        print("📨 Queued transaction update: \(transaction.id), affected accounts: \(affectedAccounts.count)")
-        #endif
     }
 
     func updateForTransactions(
@@ -283,9 +246,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             }
         }
 
-        #if DEBUG
-        print("📨 Queued batch update: \(transactions.count) transactions, \(allAffectedAccounts.count) accounts affected")
-        #endif
     }
 
     // MARK: - Account Updates
@@ -297,9 +257,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         store.setBalance(newBalance, for: account.id, source: .manual)
         cache.setBalance(newBalance, for: account.id)
 
-        #if DEBUG
-        print("💰 Updated account balance: \(account.id) = \(newBalance)")
-        #endif
     }
 
     func updateDepositInfo(
@@ -309,9 +266,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         store.updateDepositInfo(depositInfo, for: account.id)
         cache.invalidate(accountId: account.id)
 
-        #if DEBUG
-        print("🏦 Updated deposit info: \(account.id)")
-        #endif
     }
 
     // MARK: - Recalculation
@@ -320,19 +274,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         accounts: [Account],
         transactions: [Transaction]
     ) async {
-        #if DEBUG
-        print("🔄 [BalanceCoordinator] recalculateAll() called")
-        print("   📊 Input parameters:")
-        print("      - accounts: \(accounts.count)")
-        print("      - transactions: \(transactions.count)")
-        print("   📊 Store state:")
-        print("      - store.accounts: \(store.getAllAccounts().count)")
-        print("   💰 Current balances BEFORE recalculation:")
-        for (accountId, balance) in balances.prefix(5) {
-            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
-            print("      - \(accountName): \(balance)")
-        }
-        #endif
 
         let request = BalanceQueueRequest(
             accountIds: Set(accounts.map { $0.id }),
@@ -343,14 +284,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         await queue.enqueue(request)
         await processRecalculateAll(accounts: accounts, transactions: transactions)
 
-        #if DEBUG
-        print("✅ [BalanceCoordinator] Recalculated all balances: \(accounts.count) accounts")
-        print("   💰 New balances AFTER recalculation:")
-        for (accountId, balance) in balances.prefix(5) {
-            let accountName = accounts.first(where: { $0.id == accountId })?.name ?? "Unknown"
-            print("      - \(accountName): \(balance)")
-        }
-        #endif
     }
 
     func recalculateAccounts(
@@ -367,9 +300,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         await queue.enqueue(request)
         await processRecalculateAccounts(accountIds, accounts: accounts, transactions: transactions)
 
-        #if DEBUG
-        print("🔄 Recalculated \(accountIds.count) accounts")
-        #endif
     }
 
     // MARK: - Optimistic Updates
@@ -399,9 +329,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         )
         optimisticUpdates[operationId] = update
 
-        #if DEBUG
-        print("⚡ Optimistic update: \(accountId) \(delta > 0 ? "+" : "")\(delta) → \(newBalance)")
-        #endif
 
         return operationId
     }
@@ -413,9 +340,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
         store.setBalance(update.previousBalance, for: update.accountId, source: .manual)
 
-        #if DEBUG
-        print("↩️ Reverted optimistic update: \(update.accountId) → \(update.previousBalance)")
-        #endif
     }
 
     // MARK: - Calculation Modes
@@ -423,25 +347,16 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
     func markAsImported(_ accountId: String) async {
         store.markAsImported(accountId)
 
-        #if DEBUG
-        print("📥 Marked as imported: \(accountId)")
-        #endif
     }
 
     func markAsManual(_ accountId: String) async {
         store.markAsManual(accountId)
 
-        #if DEBUG
-        print("✏️ Marked as manual: \(accountId)")
-        #endif
     }
 
     func setInitialBalance(_ balance: Double, for accountId: String) async {
         store.setInitialBalance(balance, for: accountId)
 
-        #if DEBUG
-        print("🏦 Set initial balance: \(accountId) = \(balance)")
-        #endif
     }
 
     func getInitialBalance(for accountId: String) async -> Double? {
@@ -546,9 +461,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             updatedBalances[accountId] = newBalance
             persistBalance(newBalance, for: accountId)  // 💾 Persist to Core Data
 
-            #if DEBUG
-            print("✅ [BalanceCoordinator] Updated balance for source \(accountId): \(newBalance)")
-            #endif
         }
 
         // For internal transfers, also process target account
@@ -567,9 +479,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             updatedBalances[targetAccountId] = newBalance
             persistBalance(newBalance, for: targetAccountId)  // 💾 Persist to Core Data
 
-            #if DEBUG
-            print("✅ [BalanceCoordinator] Updated balance for target \(targetAccountId): \(newBalance) (isSource=false)")
-            #endif
         }
 
         // CRITICAL: Publish entire dictionary to trigger SwiftUI update
@@ -590,9 +499,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             updatedBalances[accountId] = newBalance
             persistBalance(newBalance, for: accountId)  // 💾 Persist to Core Data
 
-            #if DEBUG
-            print("✅ [BalanceCoordinator] Updated balance for source \(accountId): \(newBalance)")
-            #endif
         }
 
         // For internal transfers, also process target account
@@ -611,9 +517,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             updatedBalances[targetAccountId] = newBalance
             persistBalance(newBalance, for: targetAccountId)  // 💾 Persist to Core Data
 
-            #if DEBUG
-            print("✅ [BalanceCoordinator] Updated balance for target \(targetAccountId): \(newBalance) (isSource=false)")
-            #endif
         }
 
         // CRITICAL: Publish entire dictionary to trigger SwiftUI update
@@ -633,9 +536,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
             tempBalances[accountId] = balanceAfterRevert  // Store temporarily, don't update store yet
 
-            #if DEBUG
-            print("🔄 [BalanceCoordinator] Reverted old transaction for \(accountId): \(currentBalance) → \(balanceAfterRevert)")
-            #endif
         }
 
         // Step 2: Revert old transaction from target account (for internal transfers)
@@ -652,9 +552,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
             tempBalances[targetAccountId] = balanceAfterRevert  // Store temporarily
 
-            #if DEBUG
-            print("🔄 [BalanceCoordinator] Reverted old transaction for target \(targetAccountId): \(currentBalance) → \(balanceAfterRevert)")
-            #endif
         }
 
         // Step 3: Apply new transaction to source account
@@ -676,9 +573,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             store.setBalance(balanceAfterApply, for: accountId, source: .transaction(new.id))
             updatedBalances[accountId] = balanceAfterApply
 
-            #if DEBUG
-            print("✅ [BalanceCoordinator] Applied new transaction for \(accountId): \(intermediateBalance) → \(balanceAfterApply)")
-            #endif
         }
 
         // Step 4: Apply new transaction to target account (for internal transfers)
@@ -706,9 +600,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             store.setBalance(balanceAfterApply, for: targetAccountId, source: .transaction(new.id))
             updatedBalances[targetAccountId] = balanceAfterApply
 
-            #if DEBUG
-            print("✅ [BalanceCoordinator] Applied new transaction for target \(targetAccountId): \(intermediateBalance) → \(balanceAfterApply)")
-            #endif
         }
 
         // CRITICAL: Publish entire dictionary ONCE to trigger SwiftUI update
@@ -741,42 +632,24 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         accounts: [Account],
         transactions: [Transaction]
     ) async {
-        #if DEBUG
-        print("🔄 [BalanceCoordinator] processRecalculateAll() started")
-        print("   📊 Processing \(accounts.count) accounts with \(transactions.count) transactions")
-        #endif
 
         var newBalances: [String: Double] = [:]
 
         // Calculate hash of transactions for cache key
         let transactionsHash = transactions.map { $0.id }.hashValue
 
-        #if DEBUG
-        print("   🔑 Transactions hash: \(transactionsHash)")
-        #endif
 
         for account in accounts {
             // Get AccountBalance from store (contains initialBalance)
             // Don't create new AccountBalance from Account model!
             guard let accountBalance = store.getAccount(account.id) else {
-                #if DEBUG
-                print("⚠️ [BalanceCoordinator] Account not found in store: \(account.id) (\(account.name))")
-                #endif
                 continue
             }
 
-            #if DEBUG
-            print("   🔍 Processing account: \(account.name) (id: \(account.id))")
-            print("      - Initial balance: \(accountBalance.initialBalance ?? 0.0)")
-            print("      - Current balance: \(accountBalance.currentBalance)")
-            #endif
 
             // ✅ OPTIMIZATION: Check LRU cache first (10x performance boost)
             if let cachedBalance = getCachedBalance(accountId: account.id, transactionsHash: transactionsHash) {
                 newBalances[account.id] = cachedBalance
-                #if DEBUG
-                print("⚡ [BalanceCoordinator] Cache HIT for \(account.id): \(cachedBalance)")
-                #endif
                 continue
             }
 
@@ -792,9 +665,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             cacheBalance(calculatedBalance, accountId: account.id, transactionsHash: transactionsHash)
             newBalances[account.id] = calculatedBalance
 
-            #if DEBUG
-            print("🧮 [BalanceCoordinator] Cache MISS for \(account.id): calculated \(calculatedBalance)")
-            #endif
         }
 
         store.updateBalances(newBalances, source: .recalculation)
@@ -806,9 +676,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         // CRITICAL: Publish balances to trigger UI updates
         self.balances = newBalances
 
-        #if DEBUG
-        print("✅ [BalanceCoordinator] Published \(newBalances.count) balances to UI")
-        #endif
     }
 
     /// Process recalculation for specific accounts
@@ -827,9 +694,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             // Get AccountBalance from store (contains initialBalance)
             // Don't create new AccountBalance from Account model!
             guard let accountBalance = store.getAccount(account.id) else {
-                #if DEBUG
-                print("⚠️ [BalanceCoordinator] Account not found in store: \(account.id)")
-                #endif
                 continue
             }
 
@@ -855,9 +719,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         }
         self.balances = updatedBalances
 
-        #if DEBUG
-        print("✅ [BalanceCoordinator] Published \(newBalances.count) updated balances to UI")
-        #endif
     }
 
     // MARK: - Persistence
@@ -882,9 +743,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         // Use batch method instead of individual updates
         coreDataRepo.updateAccountBalances(balances)
 
-        #if DEBUG
-        print("💾 [BalanceCoordinator] Queued \(balances.count) balances for Core Data persistence")
-        #endif
     }
 }
 
@@ -901,24 +759,3 @@ private struct OptimisticUpdate {
 
 // MARK: - Debug Extension
 
-#if DEBUG
-extension BalanceCoordinator {
-    /// Print current state for debugging
-    func debugPrintState() async {
-        print("====== BalanceCoordinator State ======")
-        print("Balances: \(balances.count)")
-        print("Optimistic Updates: \(optimisticUpdates.count)")
-        print("Last Update: \(lastUpdateTime?.description ?? "Never")")
-        print("======================================")
-
-        let stats = await getStatistics()
-        print("\nCache Stats:")
-        print("  Entries: \(stats.cacheStatistics.totalEntries)")
-        print("  Hit Rate: \(Int(stats.cacheStatistics.hitRate * 100))%")
-
-        print("\nQueue Stats:")
-        print("  Pending: \(stats.queueStatistics.pendingCount)")
-        print("  Processed: \(stats.queueStatistics.totalProcessed)")
-    }
-}
-#endif

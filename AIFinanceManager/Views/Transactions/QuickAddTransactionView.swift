@@ -95,17 +95,11 @@ struct QuickAddTransactionView: View {
         .onChange(of: refreshTrigger) { old, new in
             // ✅ OPTIMIZATION: Skip if value didn't actually change (deduplication)
             guard old != new else {
-                #if DEBUG
-                print("⏭️ [QuickAddView] Skipping update - trigger value unchanged")
-                #endif
                 return
             }
 
             // ✅ OPTIMIZATION: Skip if same as last processed value
             guard new != lastRefreshTrigger else {
-                #if DEBUG
-                print("⏭️ [QuickAddView] Skipping update - already processed this trigger")
-                #endif
                 return
             }
 
@@ -125,9 +119,6 @@ struct QuickAddTransactionView: View {
                     lastRefreshTrigger = new
                     coordinator.refreshData()
 
-                    #if DEBUG
-                    print("✅ [QuickAddView] Executed debounced refresh (trigger: \(new))")
-                    #endif
                 }
             }
         }

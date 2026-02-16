@@ -148,24 +148,14 @@ class TransactionsViewModel {
             Task { @MainActor [weak self] in
                 guard let self = self, let seriesId = notification.userInfo?["seriesId"] as? String else { return }
 
-                #if DEBUG
-                print("📨 [TransactionsViewModel] Received .recurringSeriesCreated notification for series: \(seriesId)")
-                print("   isProcessingRecurringNotification: \(self.isProcessingRecurringNotification)")
-                #endif
 
                 guard !self.isProcessingRecurringNotification else {
-                    #if DEBUG
-                    print("⚠️ [TransactionsViewModel] Already processing recurring notification, skipping")
-                    #endif
                     return
                 }
 
                 self.isProcessingRecurringNotification = true
                 defer { self.isProcessingRecurringNotification = false }
 
-                #if DEBUG
-                print("🔄 [TransactionsViewModel] Processing .recurringSeriesCreated notification")
-                #endif
 
                 // 🔧 FIX: Only call generateRecurringTransactions() - it handles everything internally
                 // RecurringTransactionService already calls scheduleBalanceRecalculation() and scheduleSave() inside
@@ -176,9 +166,6 @@ class TransactionsViewModel {
                 // 🔧 REMOVED: scheduleBalanceRecalculation() - already called in RecurringTransactionService
                 // 🔧 REMOVED: scheduleSave() - already called in RecurringTransactionService
 
-                #if DEBUG
-                print("✅ [TransactionsViewModel] Finished processing .recurringSeriesCreated notification")
-                #endif
             }
         }
 
@@ -240,7 +227,6 @@ class TransactionsViewModel {
     func addTransaction(_ transaction: Transaction) {
         // Phase 8: Delegate to TransactionStore
         guard let transactionStore = transactionStore else {
-            print("⚠️ TransactionStore not available, cannot add transaction")
             return
         }
 
@@ -248,7 +234,6 @@ class TransactionsViewModel {
             do {
                 _ = try await transactionStore.add(transaction)
             } catch {
-                print("❌ Failed to add transaction: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         }
@@ -257,7 +242,6 @@ class TransactionsViewModel {
     func addTransactions(_ newTransactions: [Transaction]) {
         // Phase 8: Batch add via TransactionStore
         guard let transactionStore = transactionStore else {
-            print("⚠️ TransactionStore not available, cannot add transactions")
             return
         }
 
@@ -269,7 +253,6 @@ class TransactionsViewModel {
                 // Cache and balance updates handled automatically by TransactionStore
                 rebuildIndexes()
             } catch {
-                print("❌ Failed to add transactions: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         }
@@ -278,7 +261,6 @@ class TransactionsViewModel {
     func addTransactionsForImport(_ newTransactions: [Transaction]) {
         // Phase 8: Import via TransactionStore
         guard let transactionStore = transactionStore else {
-            print("⚠️ TransactionStore not available, cannot import transactions")
             return
         }
 
@@ -293,7 +275,6 @@ class TransactionsViewModel {
                     pendingSave = true
                 }
             } catch {
-                print("❌ Failed to import transactions: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         }
@@ -302,24 +283,14 @@ class TransactionsViewModel {
     func updateTransaction(_ transaction: Transaction) {
         // Phase 8: Delegate to TransactionStore
         guard let transactionStore = transactionStore else {
-            print("⚠️ TransactionStore not available, cannot update transaction")
             return
         }
 
-        #if DEBUG
-        if let oldTransaction = allTransactions.first(where: { $0.id == transaction.id }) {
-            print("📝 [TransactionsViewModel] Updating transaction:")
-            print("   Old: \(oldTransaction.amount) \(oldTransaction.currency) - \(oldTransaction.description)")
-            print("   New: \(transaction.amount) \(transaction.currency) - \(transaction.description)")
-            print("   AccountID: \(oldTransaction.accountId ?? "nil") → \(transaction.accountId ?? "nil")")
-        }
-        #endif
 
         Task { @MainActor in
             do {
                 try await transactionStore.update(transaction)
             } catch {
-                print("❌ Failed to update transaction: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         }
@@ -328,7 +299,6 @@ class TransactionsViewModel {
     func deleteTransaction(_ transaction: Transaction) {
         // Phase 8: Delegate to TransactionStore
         guard let transactionStore = transactionStore else {
-            print("⚠️ TransactionStore not available, cannot delete transaction")
             return
         }
 
@@ -341,7 +311,6 @@ class TransactionsViewModel {
             do {
                 try await transactionStore.delete(transaction)
             } catch {
-                print("❌ Failed to delete transaction: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         }
@@ -392,7 +361,6 @@ class TransactionsViewModel {
     func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {
         // Phase 8: Delegate to TransactionStore
         guard let transactionStore = transactionStore else {
-            print("⚠️ TransactionStore not available, cannot transfer")
             return
         }
 
@@ -410,7 +378,6 @@ class TransactionsViewModel {
                     description: description
                 )
             } catch {
-                print("❌ Failed to transfer: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         }
@@ -587,38 +554,17 @@ class TransactionsViewModel {
     func scheduleBalanceRecalculation() {
         // CRITICAL: Recalculate all account balances after transaction changes
         // This is called after recurring transaction generation, CSV import, etc.
-        #if DEBUG
-        print("🔄 [TransactionsViewModel] scheduleBalanceRecalculation() called")
-        print("   📊 State at recalculation:")
-        print("      - accounts.count: \(accounts.count)")
-        print("      - allTransactions.count: \(allTransactions.count)")
-        print("      - balanceCoordinator available: \(balanceCoordinator != nil)")
-        #endif
 
         if let coordinator = balanceCoordinator {
             Task { @MainActor in
-                #if DEBUG
-                print("🔄 [TransactionsViewModel] Calling coordinator.recalculateAll with:")
-                print("      - \(accounts.count) accounts")
-                print("      - \(allTransactions.count) transactions")
-                for account in accounts.prefix(3) {
-                    print("      - Account: \(account.name) (id: \(account.id))")
-                }
-                #endif
 
                 await coordinator.recalculateAll(
                     accounts: accounts,
                     transactions: allTransactions
                 )
 
-                #if DEBUG
-                print("✅ [TransactionsViewModel] coordinator.recalculateAll completed")
-                #endif
             }
         } else {
-            #if DEBUG
-            print("⚠️ [TransactionsViewModel] balanceCoordinator is nil!")
-            #endif
         }
     }
 
@@ -746,9 +692,6 @@ class TransactionsViewModel {
     /// AccountsViewModel observes TransactionStore.$accounts instead
     /// This method is kept for backward compatibility but does nothing
     func syncAccountsFrom(_ accountsViewModel: AccountsViewModel) {
-        #if DEBUG
-        print("⚠️ [TransactionsVM] syncAccountsFrom is deprecated - accounts managed by TransactionStore")
-        #endif
 
         // PHASE 3: TransactionStore is Single Source of Truth
         // Accounts are automatically synced via Combine subscription

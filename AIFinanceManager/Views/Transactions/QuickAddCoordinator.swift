@@ -76,18 +76,11 @@ final class QuickAddCoordinator {
     func updateCategories() {
         // ✅ OPTIMIZATION: Skip updates in batch mode to prevent UI blocking during imports
         guard !isBatchMode else {
-            #if DEBUG
-            print("⏭️ [QuickAddCoordinator] Skipping update - batch mode active")
-            #endif
             return
         }
 
         PerformanceProfiler.start("QuickAddCoordinator.updateCategories")
 
-        #if DEBUG
-        print("🔄 [QuickAddCoordinator] updateCategories() called")
-        print("   📊 Transactions count: \(transactionsViewModel.allTransactions.count)")
-        #endif
 
         // Get category expenses from TransactionsViewModel
         let categoryExpenses = transactionsViewModel.categoryExpenses(
@@ -95,12 +88,6 @@ final class QuickAddCoordinator {
             categoriesViewModel: categoriesViewModel
         )
 
-        #if DEBUG
-        print("   💰 Category expenses: \(categoryExpenses.count) categories")
-        for (category, expense) in categoryExpenses.prefix(3) {
-            print("      - \(category): $\(expense.total)")
-        }
-        #endif
 
         // Map to display data
         let newCategories = categoryMapper.mapCategories(
@@ -110,17 +97,11 @@ final class QuickAddCoordinator {
             baseCurrency: transactionsViewModel.appSettings.baseCurrency
         )
 
-        #if DEBUG
-        print("   📋 Mapped categories: \(newCategories.count)")
-        #endif
 
         // ✅ CRITICAL: Assign to @Published property to trigger SwiftUI update
         // Even though categories is @Published, we need to ensure SwiftUI sees the change
         categories = newCategories
 
-        #if DEBUG
-        print("✅ [QuickAddCoordinator] Categories updated, SwiftUI should refresh")
-        #endif
 
         PerformanceProfiler.end("QuickAddCoordinator.updateCategories")
     }

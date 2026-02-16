@@ -32,9 +32,6 @@ final class SettingsStorageService: SettingsStorageServiceProtocol {
     // MARK: - SettingsStorageServiceProtocol
 
     func loadSettings() async throws -> AppSettings {
-        #if DEBUG
-        print("⚙️ [SettingsStorageService] Loading settings")
-        #endif
 
         // Try to load from UserDefaults
         if let data = userDefaults.data(forKey: Self.userDefaultsKey) {
@@ -44,41 +41,25 @@ final class SettingsStorageService: SettingsStorageServiceProtocol {
                 // Validate loaded settings
                 try validator.validateSettings(settings)
 
-                #if DEBUG
-                print("✅ [SettingsStorageService] Settings loaded and validated")
-                #endif
 
                 return settings
             } catch {
-                #if DEBUG
-                print("⚠️ [SettingsStorageService] Failed to decode or validate settings: \(error)")
-                print("   Creating default settings")
-                #endif
 
                 // Return default on decode/validation failure
                 return AppSettings.makeDefault()
             }
         }
 
-        #if DEBUG
-        print("ℹ️ [SettingsStorageService] No saved settings found, creating default")
-        #endif
 
         return AppSettings.makeDefault()
     }
 
     func saveSettings(_ settings: AppSettings) async throws {
-        #if DEBUG
-        print("⚙️ [SettingsStorageService] Saving settings")
-        #endif
 
         // Validate before save
         do {
             try validator.validateSettings(settings)
         } catch {
-            #if DEBUG
-            print("❌ [SettingsStorageService] Validation failed: \(error)")
-            #endif
             throw error
         }
 
@@ -87,13 +68,7 @@ final class SettingsStorageService: SettingsStorageServiceProtocol {
             let data = try JSONEncoder().encode(settings)
             userDefaults.set(data, forKey: Self.userDefaultsKey)
 
-            #if DEBUG
-            print("✅ [SettingsStorageService] Settings saved successfully")
-            #endif
         } catch {
-            #if DEBUG
-            print("❌ [SettingsStorageService] Failed to encode settings: \(error)")
-            #endif
             throw SettingsStorageError.saveFailed(underlying: error)
         }
     }

@@ -29,9 +29,6 @@ class NotificationPermissionManager {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         authorizationStatus = settings.authorizationStatus
 
-        #if DEBUG
-        print("🔔 [NotificationPermission] Current status: \(statusDescription(authorizationStatus))")
-        #endif
     }
 
     /// Request notification authorization
@@ -45,15 +42,9 @@ class NotificationPermissionManager {
             hasRequestedPermission = true
             await checkAuthorizationStatus()
 
-            #if DEBUG
-            print("🔔 [NotificationPermission] Authorization \(granted ? "granted" : "denied")")
-            #endif
 
             return granted
         } catch {
-            #if DEBUG
-            print("❌ [NotificationPermission] Authorization request failed: \(error)")
-            #endif
             return false
         }
     }

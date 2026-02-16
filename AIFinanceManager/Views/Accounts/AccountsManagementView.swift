@@ -113,7 +113,6 @@ struct AccountsManagementView: View {
                         do {
                             _ = try await transactionStore.add(transaction)
                         } catch {
-                            print("❌ Failed to create interest transaction: \(error.localizedDescription)")
                         }
                     }
                 }
@@ -193,7 +192,6 @@ struct AccountsManagementView: View {
                                     do {
                                         _ = try await transactionStore.add(transaction)
                                     } catch {
-                                        print("❌ Failed to create interest transaction: \(error.localizedDescription)")
                                     }
                                 }
                             }

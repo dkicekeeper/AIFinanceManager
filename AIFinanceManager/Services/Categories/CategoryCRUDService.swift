@@ -41,9 +41,6 @@ final class CategoryCRUDService: CategoryCRUDServiceProtocol {
 
     func addCategory(_ category: CustomCategory) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategoryCRUDService] No delegate set - cannot add category")
-            #endif
             return
         }
 
@@ -55,16 +52,10 @@ final class CategoryCRUDService: CategoryCRUDServiceProtocol {
         // Persist synchronously to prevent data loss
         saveCategoriesSync(newCategories)
 
-        #if DEBUG
-        print("✅ [CategoryCRUDService] Added category: \(category.name)")
-        #endif
     }
 
     func updateCategory(_ category: CustomCategory) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategoryCRUDService] No delegate set - cannot update category")
-            #endif
             return
         }
 
@@ -72,9 +63,6 @@ final class CategoryCRUDService: CategoryCRUDServiceProtocol {
         var newCategories = delegate.customCategories
         guard let index = newCategories.firstIndex(where: { $0.id == category.id }) else {
             // Category not found - treat as new category
-            #if DEBUG
-            print("⚠️ [CategoryCRUDService] Category not found, adding as new: \(category.name)")
-            #endif
             newCategories.append(category)
             delegate.updateCategories(newCategories)
             saveCategoriesSync(newCategories)
@@ -90,16 +78,10 @@ final class CategoryCRUDService: CategoryCRUDServiceProtocol {
         // Persist synchronously
         saveCategoriesSync(newCategories)
 
-        #if DEBUG
-        print("✅ [CategoryCRUDService] Updated category: \(category.name)")
-        #endif
     }
 
     func deleteCategory(_ category: CustomCategory) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategoryCRUDService] No delegate set - cannot delete category")
-            #endif
             return
         }
 
@@ -111,9 +93,6 @@ final class CategoryCRUDService: CategoryCRUDServiceProtocol {
         // Persist synchronously
         saveCategoriesSync(newCategories)
 
-        #if DEBUG
-        print("✅ [CategoryCRUDService] Deleted category: \(category.name)")
-        #endif
     }
 
     // MARK: - Private Helpers
@@ -125,9 +104,6 @@ final class CategoryCRUDService: CategoryCRUDServiceProtocol {
             do {
                 try coreDataRepo.saveCategoriesSync(categories)
             } catch {
-                #if DEBUG
-                print("❌ [CategoryCRUDService] Failed to save categories: \(error)")
-                #endif
                 // Fallback to async save
                 repository.saveCategories(categories)
             }

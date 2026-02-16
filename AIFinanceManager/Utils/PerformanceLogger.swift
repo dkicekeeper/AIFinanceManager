@@ -66,10 +66,6 @@ class PerformanceLogger {
         )
         measurements[name] = measurement
 
-        #if DEBUG
-        let metadataString = formatMetadata(metadata)
-        print("⏱️ [START] \(name)\(metadataString)")
-        #endif
     }
 
     /// Завершить измерение производительности операции
@@ -80,9 +76,6 @@ class PerformanceLogger {
         guard isEnabled else { return }
 
         guard var measurement = measurements[name] else {
-            #if DEBUG
-            print("⚠️ [WARNING] Attempted to end measurement '\(name)' that was never started")
-            #endif
             return
         }
 
@@ -90,18 +83,6 @@ class PerformanceLogger {
         measurement.metadata.merge(additionalMetadata) { _, new in new }
         measurements[name] = measurement
 
-        #if DEBUG
-        if let durationMs = measurement.durationMs {
-            let severity = getSeverity(durationMs: durationMs)
-            let metadataString = formatMetadata(measurement.metadata)
-            print("\(severity) [END] \(name): \(String(format: "%.2f", durationMs))ms\(metadataString)")
-
-            // Детальное предупреждение для медленных операций
-            if durationMs > 100 {
-                print("   ⚠️ SLOW OPERATION: \(name) took \(String(format: "%.2f", durationMs))ms")
-            }
-        }
-        #endif
     }
 
     /// Измерить производительность блока кода
@@ -159,17 +140,11 @@ class PerformanceLogger {
 
     /// Вывести отчет в консоль
     func printReport() {
-        #if DEBUG
-        print(getReport())
-        #endif
     }
 
     /// Очистить все измерения
     func reset() {
         measurements.removeAll()
-        #if DEBUG
-        print("🔄 Performance measurements reset")
-        #endif
     }
 
     // MARK: - Analysis Helpers

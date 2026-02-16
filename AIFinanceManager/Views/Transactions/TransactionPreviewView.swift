@@ -159,7 +159,6 @@ struct TransactionPreviewView: View {
                 do {
                     _ = try await transactionStore.add(updatedTransaction)
                 } catch {
-                    print("❌ Failed to add transaction: \(error.localizedDescription)")
                 }
             }
 

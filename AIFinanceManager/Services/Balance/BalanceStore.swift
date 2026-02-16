@@ -132,9 +132,6 @@ final class BalanceStore {
     // MARK: - Initialization
 
     init() {
-        #if DEBUG
-        print("✅ BalanceStore initialized")
-        #endif
     }
 
     // MARK: - Account Management
@@ -144,9 +141,6 @@ final class BalanceStore {
         accounts[account.accountId] = account
         balances[account.accountId] = account.currentBalance
 
-        #if DEBUG
-        print("📝 Registered account: \(account.accountId), balance: \(account.currentBalance)")
-        #endif
     }
 
     /// Register multiple accounts
@@ -156,9 +150,6 @@ final class BalanceStore {
             balances[account.accountId] = account.currentBalance
         }
 
-        #if DEBUG
-        print("📝 Registered \(accountList.count) accounts")
-        #endif
     }
 
     /// Remove account from store
@@ -167,9 +158,6 @@ final class BalanceStore {
         balances.removeValue(forKey: accountId)
         calculationModes.removeValue(forKey: accountId)
 
-        #if DEBUG
-        print("🗑️ Removed account: \(accountId)")
-        #endif
     }
 
     /// Get account details
@@ -191,9 +179,6 @@ final class BalanceStore {
         source: BalanceStoreUpdate.Source = .manual
     ) {
         guard var account = accounts[accountId] else {
-            #if DEBUG
-            print("⚠️ Cannot set balance - account not found: \(accountId)")
-            #endif
             return
         }
 
@@ -207,9 +192,6 @@ final class BalanceStore {
             source: source
         ))
 
-        #if DEBUG
-        print("💰 Updated balance for \(accountId): \(balance)")
-        #endif
     }
 
     /// Get current balance for account
@@ -240,9 +222,6 @@ final class BalanceStore {
             updatedCount += 1
         }
 
-        #if DEBUG
-        print("💰 Batch updated \(updatedCount) balances")
-        #endif
     }
 
     /// Perform atomic batch update with custom logic
@@ -255,9 +234,6 @@ final class BalanceStore {
             recordUpdate(update)
         }
 
-        #if DEBUG
-        print("💰 Performed batch update with \(updates.count) changes")
-        #endif
     }
 
     // MARK: - Calculation Mode Management
@@ -266,9 +242,6 @@ final class BalanceStore {
     func setCalculationMode(_ mode: BalanceMode, for accountId: String) {
         calculationModes[accountId] = mode
 
-        #if DEBUG
-        print("⚙️ Set calculation mode for \(accountId): \(mode)")
-        #endif
     }
 
     /// Get calculation mode for account
@@ -300,21 +273,12 @@ final class BalanceStore {
         account.initialBalance = balance
         accounts[accountId] = account
 
-        #if DEBUG
-        print("🏦 Set initial balance for \(accountId): \(balance)")
-        #endif
     }
 
     /// Get initial balance for account
     func getInitialBalance(for accountId: String) -> Double? {
         let balance = accounts[accountId]?.initialBalance
 
-        #if DEBUG
-        print("🔍 [BalanceStore] getInitialBalance for \(accountId):")
-        print("   Account exists: \(accounts[accountId] != nil)")
-        print("   InitialBalance: \(balance?.description ?? "nil")")
-        print("   Mode: \(calculationModes[accountId] ?? .fromInitialBalance)")
-        #endif
 
         return balance
     }
@@ -326,9 +290,6 @@ final class BalanceStore {
         account.initialBalance = nil
         accounts[accountId] = account
 
-        #if DEBUG
-        print("🗑️ Cleared initial balance for \(accountId)")
-        #endif
     }
 
     // MARK: - Deposit Info Management
@@ -355,9 +316,6 @@ final class BalanceStore {
             source: .deposit
         ))
 
-        #if DEBUG
-        print("🏦 Updated deposit info for \(accountId), new balance: \(newBalance)")
-        #endif
     }
 
     // MARK: - State Management
@@ -369,9 +327,6 @@ final class BalanceStore {
         calculationModes.removeAll()
         updateHistory.removeAll()
 
-        #if DEBUG
-        print("🔄 BalanceStore reset")
-        #endif
     }
 
     /// Get current state snapshot
@@ -391,9 +346,6 @@ final class BalanceStore {
         calculationModes = snapshot.calculationModes
         updateHistory = snapshot.updateHistory
 
-        #if DEBUG
-        print("🔄 BalanceStore restored from snapshot")
-        #endif
     }
 
     // MARK: - Private Helpers
@@ -421,27 +373,3 @@ struct BalanceStoreSnapshot {
 
 // MARK: - Debug Extension
 
-#if DEBUG
-extension BalanceStore {
-    /// Print current state for debugging
-    func debugPrintState() {
-        print("====== BalanceStore State ======")
-        print("Accounts: \(accounts.count)")
-        print("Balances: \(balances.count)")
-        print("Calculation Modes: \(calculationModes.count)")
-        print("Update History: \(updateHistory.count)")
-        print("================================")
-
-        for (accountId, balance) in balances.sorted(by: { $0.key < $1.key }) {
-            let mode = calculationModes[accountId] ?? .fromInitialBalance
-            let initial = accounts[accountId]?.initialBalance ?? 0
-            print("  \(accountId): \(balance) (mode: \(mode), initial: \(initial))")
-        }
-    }
-
-    /// Get update history for account
-    func getUpdateHistory(for accountId: String) -> [BalanceStoreUpdate] {
-        return updateHistory.filter { $0.accountId == accountId }
-    }
-}
-#endif

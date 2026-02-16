@@ -49,25 +49,16 @@ class AccountsViewModel {
     /// NOTE: With @Observable, we sync directly instead of using Combine publishers
     func setupTransactionStoreObserver() {
         guard let transactionStore = transactionStore else {
-            #if DEBUG
-            print("⚠️ [AccountsVM] TransactionStore not set, cannot setup observer")
-            #endif
             return
         }
 
         // Direct sync from TransactionStore - @Observable handles change notifications
         self.accounts = transactionStore.accounts
 
-        #if DEBUG
-        print("✅ [AccountsVM] Received \(transactionStore.accounts.count) accounts from TransactionStore")
-        #endif
 
         // DON'T sync initial balances here - they are loaded by AppCoordinator.initialize()
         // through balanceCoordinator.registerAccounts() which loads from Core Data
 
-        #if DEBUG
-        print("✅ [AccountsVM] Setup TransactionStore observer")
-        #endif
     }
 
     /// Sync accounts from TransactionStore
@@ -81,25 +72,15 @@ class AccountsViewModel {
         // and updates them after each transaction
         self.accounts = transactionStore.accounts
 
-        #if DEBUG
-        print("🔄 [AccountsVM] Synced \(accounts.count) accounts from TransactionStore")
-        #endif
     }
 
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
-        #if DEBUG
-        print("🔄 [AccountsVM] reloadFromStorage called")
-        print("   📊 Current accounts count: \(accounts.count)")
-        #endif
 
         // PHASE 3: TransactionStore is the owner - it will reload and publish to observers
         // No need to reload here - accounts will be updated via subscription
         // Just trigger syncInitialBalancesToCoordinator when accounts change
 
-        #if DEBUG
-        print("   ⚠️ About to call syncInitialBalancesToCoordinator - THIS WILL MARK ALL AS MANUAL")
-        #endif
 
         // MIGRATED: Sync accounts with BalanceCoordinator after reload
         syncInitialBalancesToCoordinator()
@@ -108,12 +89,6 @@ class AccountsViewModel {
     // MARK: - Account CRUD Operations
     
     func addAccount(name: String, initialBalance: Double, currency: String, iconSource: IconSource? = nil, shouldCalculateFromTransactions: Bool = false) async {
-        #if DEBUG
-        print("🔍 [AccountsVM] addAccount called:")
-        print("   📝 Name: \(name)")
-        print("   💰 InitialBalance: \(initialBalance)")
-        print("   🧮 shouldCalculateFromTransactions: \(shouldCalculateFromTransactions)")
-        #endif
 
         let account = Account(
             name: name,
@@ -136,15 +111,8 @@ class AccountsViewModel {
             // If shouldCalculateFromTransactions is true, DON'T mark as manual
             // This allows the account balance to be calculated from transactions
             if !shouldCalculateFromTransactions {
-                #if DEBUG
-                print("   ✏️ [AccountsVM] Marking as manual: \(account.id)")
-                #endif
                 await coordinator.markAsManual(account.id)
             } else {
-                #if DEBUG
-                print("   🧮 [AccountsVM] NOT marking as manual - will calculate from transactions: \(account.id)")
-                print("   ✅ [AccountsVM] Initial balance set to: \(initialBalance)")
-                #endif
             }
         }
     }
@@ -165,9 +133,6 @@ class AccountsViewModel {
                 }
             }
         } else {
-            #if DEBUG
-            print("⚠️ [AccountsVM] Account not found for update: \(account.id)")
-            #endif
         }
     }
     
@@ -299,10 +264,6 @@ class AccountsViewModel {
     private func syncInitialBalancesToCoordinator() {
         guard let coordinator = balanceCoordinator else { return }
 
-        #if DEBUG
-        print("🔄 [AccountsVM] syncInitialBalancesToCoordinator called")
-        print("   📊 Syncing \(accounts.count) accounts")
-        #endif
 
         Task {
             // Register all accounts
@@ -310,11 +271,6 @@ class AccountsViewModel {
 
             // Set initial balances and modes based on account configuration
             for account in accounts {
-                #if DEBUG
-                print("   🔍 [AccountsVM] Processing account: \(account.name)")
-                print("      💰 Initial Balance: \(account.initialBalance ?? 0)")
-                print("      🧮 shouldCalculateFromTransactions: \(account.shouldCalculateFromTransactions)")
-                #endif
 
                 // Используем initialBalance вместо balance
                 let initialBal = account.initialBalance ?? 0.0
@@ -323,19 +279,10 @@ class AccountsViewModel {
                 // Only mark as manual if shouldCalculateFromTransactions is false
                 if !account.shouldCalculateFromTransactions {
                     await coordinator.markAsManual(account.id)
-                    #if DEBUG
-                    print("      ✏️ [AccountsVM] Marked as MANUAL")
-                    #endif
                 } else {
-                    #if DEBUG
-                    print("      🧮 [AccountsVM] Will calculate from transactions")
-                    #endif
                 }
             }
 
-            #if DEBUG
-            print("✅ [AccountsVM] Synced \(accounts.count) accounts to BalanceCoordinator")
-            #endif
         }
     }
 
@@ -357,17 +304,11 @@ class AccountsViewModel {
     /// Сохранить все счета (используется после массового обновления балансов)
     /// PHASE 3: Deprecated - TransactionStore handles persistence
     func saveAllAccounts() {
-        #if DEBUG
-        print("⚠️ [AccountsVM] saveAllAccounts is deprecated - TransactionStore handles persistence")
-        #endif
     }
 
     /// Синхронно сохранить все счета (используется при импорте)
     /// PHASE 3: Deprecated - TransactionStore handles persistence
     func saveAllAccountsSync() {
-        #if DEBUG
-        print("⚠️ [AccountsVM] saveAllAccountsSync is deprecated - TransactionStore handles persistence")
-        #endif
     }
 
     // MIGRATED: syncAccountBalances removed - now managed by BalanceCoordinator (Single Source of Truth)

@@ -91,9 +91,6 @@ final class SettingsViewModel {
 
     /// Update base currency
     func updateBaseCurrency(_ currency: String) async {
-        #if DEBUG
-        print("⚙️ [SettingsViewModel] Updating base currency to: \(currency)")
-        #endif
 
         do {
             // Validate currency
@@ -107,9 +104,6 @@ final class SettingsViewModel {
 
             await showSuccess(String(localized: "success.settings.currencyUpdated", defaultValue: "Currency updated successfully"))
 
-            #if DEBUG
-            print("✅ [SettingsViewModel] Currency updated")
-            #endif
         } catch {
             await showError(error.localizedDescription)
         }
@@ -117,9 +111,6 @@ final class SettingsViewModel {
 
     /// Select new wallpaper
     func selectWallpaper(_ image: UIImage) async {
-        #if DEBUG
-        print("⚙️ [SettingsViewModel] Selecting new wallpaper")
-        #endif
 
         await setLoading(true)
 
@@ -146,9 +137,6 @@ final class SettingsViewModel {
 
             await showSuccess(String(localized: "success.settings.wallpaperUpdated", defaultValue: "Wallpaper updated successfully"))
 
-            #if DEBUG
-            print("✅ [SettingsViewModel] Wallpaper selected")
-            #endif
         } catch {
             await showError(error.localizedDescription)
         }
@@ -158,9 +146,6 @@ final class SettingsViewModel {
 
     /// Remove current wallpaper
     func removeWallpaper() async {
-        #if DEBUG
-        print("⚙️ [SettingsViewModel] Removing wallpaper")
-        #endif
 
         guard let fileName = settings.wallpaperImageName else {
             return
@@ -183,9 +168,6 @@ final class SettingsViewModel {
 
             await showSuccess(String(localized: "success.settings.wallpaperRemoved", defaultValue: "Wallpaper removed successfully"))
 
-            #if DEBUG
-            print("✅ [SettingsViewModel] Wallpaper removed")
-            #endif
         } catch {
             await showError(error.localizedDescription)
         }
@@ -197,9 +179,6 @@ final class SettingsViewModel {
 
     /// Export all data to CSV
     func exportAllData() async -> URL? {
-        #if DEBUG
-        print("⚙️ [SettingsViewModel] Exporting all data")
-        #endif
 
         isExporting = true
         exportProgress = 0
@@ -211,9 +190,6 @@ final class SettingsViewModel {
 
             await showSuccess(String(localized: "success.export.completed", defaultValue: "Data exported successfully"))
 
-            #if DEBUG
-            print("✅ [SettingsViewModel] Export completed")
-            #endif
 
             isExporting = false
             return fileURL
@@ -227,9 +203,6 @@ final class SettingsViewModel {
     /// Start CSV import flow
     /// - Parameter url: URL of CSV file to import
     func startImportFlow(from url: URL) async {
-        #if DEBUG
-        print("⚙️ [SettingsViewModel] Starting import flow")
-        #endif
 
         guard let transactionsViewModel = transactionsViewModel,
               let categoriesViewModel = categoriesViewModel else {
@@ -260,9 +233,6 @@ final class SettingsViewModel {
 
     /// Reset all application data
     func resetAllData() async {
-        #if DEBUG
-        print("⚙️ [SettingsViewModel] Resetting all data")
-        #endif
 
         await setLoading(true)
 
@@ -276,9 +246,6 @@ final class SettingsViewModel {
 
             await showSuccess(String(localized: "success.reset.completed", defaultValue: "All data has been reset"))
 
-            #if DEBUG
-            print("✅ [SettingsViewModel] Data reset completed")
-            #endif
         } catch {
             await MainActor.run {
                 HapticManager.error()
@@ -291,9 +258,6 @@ final class SettingsViewModel {
 
     /// Recalculate all account balances
     func recalculateBalances() async {
-        #if DEBUG
-        print("⚙️ [SettingsViewModel] Recalculating balances")
-        #endif
 
         await setLoading(true)
 
@@ -307,9 +271,6 @@ final class SettingsViewModel {
 
             await showSuccess(String(localized: "success.recalculation.completed", defaultValue: "Balances recalculated successfully"))
 
-            #if DEBUG
-            print("✅ [SettingsViewModel] Recalculation completed")
-            #endif
         } catch {
             await MainActor.run {
                 HapticManager.error()
@@ -326,13 +287,7 @@ final class SettingsViewModel {
         do {
             settings = try await storageService.loadSettings()
 
-            #if DEBUG
-            print("✅ [SettingsViewModel] Settings loaded")
-            #endif
         } catch {
-            #if DEBUG
-            print("⚠️ [SettingsViewModel] Failed to load settings: \(error)")
-            #endif
 
             // Use default on error
             settings = AppSettings.makeDefault()
@@ -348,13 +303,7 @@ final class SettingsViewModel {
         do {
             currentWallpaper = try await wallpaperService.loadWallpaper(named: fileName)
 
-            #if DEBUG
-            print("✅ [SettingsViewModel] Wallpaper loaded")
-            #endif
         } catch {
-            #if DEBUG
-            print("⚠️ [SettingsViewModel] Failed to load wallpaper: \(error)")
-            #endif
 
             // Clear invalid wallpaper reference
             settings.wallpaperImageName = nil
@@ -375,9 +324,6 @@ final class SettingsViewModel {
         errorMessage = message
         successMessage = nil
 
-        #if DEBUG
-        print("❌ [SettingsViewModel] Error: \(message)")
-        #endif
 
         // Auto-clear after 5 seconds
         Task {
@@ -394,9 +340,6 @@ final class SettingsViewModel {
         successMessage = message
         errorMessage = nil
 
-        #if DEBUG
-        print("✅ [SettingsViewModel] Success: \(message)")
-        #endif
 
         // Auto-clear after 3 seconds
         Task {

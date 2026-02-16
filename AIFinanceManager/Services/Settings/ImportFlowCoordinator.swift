@@ -81,9 +81,6 @@ final class ImportFlowCoordinator {
 
             currentStep = .preview
 
-            #if DEBUG
-            print("📥 [ImportFlow] File parsed: \(file.rowCount) rows")
-            #endif
         } catch {
             handleError(error)
         }
@@ -91,25 +88,14 @@ final class ImportFlowCoordinator {
 
     /// Continue to column mapping
     func continueToColumnMapping() {
-        #if DEBUG
-        print("🔄 [ImportFlow] Continue button tapped")
-        print("   📄 CSV file exists: \(csvFile != nil)")
-        print("   🎯 Current step before: \(currentStep)")
-        #endif
 
         guard csvFile != nil else {
-            #if DEBUG
-            print("   ❌ No CSV file loaded")
-            #endif
             currentStep = .error("No CSV file loaded")
             return
         }
 
         currentStep = .columnMapping
 
-        #if DEBUG
-        print("   ✅ Transitioned to: \(currentStep)")
-        #endif
     }
 
     /// Continue to entity mapping
@@ -136,9 +122,6 @@ final class ImportFlowCoordinator {
         progress.totalRows = csvFile.rowCount
         importProgress = progress
 
-        #if DEBUG
-        print("📥 [ImportFlow] Starting import: \(csvFile.rowCount) rows")
-        #endif
 
         // Perform import
         let result = await importCoordinator.importTransactions(
@@ -154,13 +137,6 @@ final class ImportFlowCoordinator {
         importResult = result
         currentStep = .result
 
-        #if DEBUG
-        print("✅ [ImportFlow] Import completed")
-        print("   📊 Imported: \(result.importedCount)")
-        print("   ⏭️ Skipped: \(result.skippedCount)")
-        print("   🏦 Created accounts: \(result.createdAccounts)")
-        print("   🏷️ Created categories: \(result.createdCategories)")
-        #endif
 
         // Trigger haptic feedback
         if result.errors.isEmpty {
@@ -197,8 +173,5 @@ final class ImportFlowCoordinator {
         errorMessage = message
         currentStep = .error(message)
 
-        #if DEBUG
-        print("❌ [ImportFlow] Error: \(message)")
-        #endif
     }
 }

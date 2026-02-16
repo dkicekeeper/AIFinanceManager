@@ -87,9 +87,6 @@ actor BalanceUpdateQueue {
     @discardableResult
     func enqueue(_ request: BalanceQueueRequest) async -> Bool {
         guard pendingUpdates.count < maxQueueSize else {
-            #if DEBUG
-            print("⚠️ BalanceUpdateQueue is full, dropping request")
-            #endif
             return false
         }
 
@@ -100,9 +97,6 @@ actor BalanceUpdateQueue {
 
         pendingUpdates.append(request)
 
-        #if DEBUG
-        print("📥 Enqueued update: \(request.id), priority: \(request.priority), queue size: \(pendingUpdates.count)")
-        #endif
 
         // Immediate priority - process right away
         if request.priority == .immediate {
@@ -137,10 +131,6 @@ actor BalanceUpdateQueue {
         isProcessing = true
         defer { isProcessing = false }
 
-        #if DEBUG
-        let startTime = Date()
-        print("⚙️ Processing queue: \(pendingUpdates.count) updates")
-        #endif
 
         // Sort by priority (immediate first, then high, normal, low)
         let sortedUpdates = pendingUpdates.sorted { lhs, rhs in
@@ -160,10 +150,6 @@ actor BalanceUpdateQueue {
         pendingUpdates.removeAll()
         lastProcessedTime = Date()
 
-        #if DEBUG
-        let duration = Date().timeIntervalSince(startTime)
-        print("✅ Queue processed in \(Int(duration * 1000))ms, total: \(totalProcessed)")
-        #endif
     }
 
     /// Force immediate processing of all pending updates
@@ -179,9 +165,6 @@ actor BalanceUpdateQueue {
         processingTask?.cancel()
         pendingUpdates.removeAll()
 
-        #if DEBUG
-        print("🚫 Cancelled all pending updates")
-        #endif
     }
 
     /// Get queue statistics
@@ -201,9 +184,6 @@ actor BalanceUpdateQueue {
     /// This is where we would call the actual balance calculation logic
     /// For now, it's a placeholder for the coordinator to implement
     private func processUpdate(_ update: BalanceQueueRequest) async {
-        #if DEBUG
-        print("  ⚙️ Processing update: \(update.id), operation: \(update.operation)")
-        #endif
 
         // The actual balance calculation will be done by BalanceCoordinator
         // This queue just ensures sequential execution

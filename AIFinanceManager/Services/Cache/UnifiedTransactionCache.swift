@@ -79,39 +79,10 @@ final class UnifiedTransactionCache {
     func invalidateAll() {
         lruCache.removeAll()
 
-        #if DEBUG
-        print("🧹 [UnifiedCache] Invalidated all cache entries")
-        #endif
     }
 
     // MARK: - Cache Statistics
 
-    #if DEBUG
-    /// Cache hit rate (for debugging/optimization)
-    var hitRate: Double {
-        let total = hitCount + missCount
-        guard total > 0 else { return 0 }
-        return Double(hitCount) / Double(total)
-    }
-
-    /// Print cache statistics
-    func printStats() {
-        print("""
-        📊 [UnifiedCache] Statistics:
-           - Capacity: \(capacity)
-           - Hit Rate: \(String(format: "%.1f%%", hitRate * 100))
-           - Hits: \(hitCount)
-           - Misses: \(missCount)
-           - Size: \(lruCache.count)/\(capacity)
-        """)
-    }
-
-    /// Reset statistics
-    func resetStats() {
-        hitCount = 0
-        missCount = 0
-    }
-    #endif
 }
 
 // MARK: - Cache Keys

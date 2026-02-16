@@ -53,12 +53,6 @@ extension TransactionStore {
             }
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Created recurring series: \(series.id)")
-        print("   Description: \(series.description)")
-        print("   Frequency: \(series.frequency.rawValue)")
-        print("   Amount: \(series.amount) \(series.currency)")
-        #endif
     }
 
     // MARK: - Update Recurring Series
@@ -95,9 +89,6 @@ extension TransactionStore {
             }
         }
 
-        #if DEBUG
-        print("✅ [TransactionStore] Updated recurring series: \(series.id)")
-        #endif
     }
 
     // MARK: - Stop Recurring Series
@@ -122,9 +113,6 @@ extension TransactionStore {
         // 4. Cancel notifications
         await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Stopped recurring series: \(seriesId) from \(fromDate)")
-        #endif
     }
 
     // MARK: - Delete Recurring Series
@@ -149,9 +137,6 @@ extension TransactionStore {
         // 4. Cancel notifications
         await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Deleted recurring series: \(seriesId), deleteTxns=\(deleteTransactions)")
-        #endif
     }
 
     // MARK: - Private Validation
@@ -203,15 +188,9 @@ extension TransactionStore {
 
         // 1. Try cache first (O(1))
         if let cached = recurringCache.get(cacheKey) {
-            #if DEBUG
-            print("🎯 [TransactionStore] Cache HIT for planned transactions: \(seriesId)")
-            #endif
             return cached
         }
 
-        #if DEBUG
-        print("❌ [TransactionStore] Cache MISS for planned transactions: \(seriesId)")
-        #endif
 
         // 2. Cache miss: find series
         guard let series = recurringSeries.first(where: { $0.id == seriesId }) else {
@@ -232,9 +211,6 @@ extension TransactionStore {
         // 4. Cache result
         recurringCache.set(cacheKey, value: result.transactions)
 
-        #if DEBUG
-        print("✅ [TransactionStore] Generated \(result.transactions.count) planned transactions for \(seriesId)")
-        #endif
 
         return result.transactions
     }
@@ -269,9 +245,6 @@ extension TransactionStore {
             horizonMonths: horizon
         )
 
-        #if DEBUG
-        print("✅ [TransactionStore] Generated \(result.transactions.count) transactions from \(activeSeries.count) active series")
-        #endif
 
         return result.transactions
     }
@@ -286,9 +259,6 @@ extension TransactionStore {
             recurringCache.remove(cacheKey)
         }
 
-        #if DEBUG
-        print("🗑️ [TransactionStore] Invalidated cache for series: \(seriesId)")
-        #endif
     }
 
     /// Pause a subscription (subscription-specific convenience method)
@@ -310,9 +280,6 @@ extension TransactionStore {
 
         try await updateSeries(updated)
 
-        #if DEBUG
-        print("⏸️ [TransactionStore] Paused subscription: \(seriesId)")
-        #endif
     }
 
     /// Resume a subscription (subscription-specific convenience method)
@@ -334,9 +301,6 @@ extension TransactionStore {
 
         try await updateSeries(updated)
 
-        #if DEBUG
-        print("▶️ [TransactionStore] Resumed subscription: \(seriesId)")
-        #endif
     }
 
     /// Calculate total monthly cost of all active subscriptions in a target currency

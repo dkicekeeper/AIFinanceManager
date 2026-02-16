@@ -28,9 +28,6 @@ final class WallpaperManagementService: WallpaperManagementServiceProtocol {
     // MARK: - WallpaperManagementServiceProtocol
 
     func saveWallpaper(_ image: UIImage) async throws -> String {
-        #if DEBUG
-        print("🖼️ [WallpaperService] Saving wallpaper")
-        #endif
 
         // Compress image
         guard let data = image.jpegData(compressionQuality: 0.8) else {
@@ -58,9 +55,6 @@ final class WallpaperManagementService: WallpaperManagementServiceProtocol {
         do {
             try data.write(to: fileURL, options: .atomic)
 
-            #if DEBUG
-            print("✅ [WallpaperService] Saved: \(fileName) (\(dataSize / 1024) KB)")
-            #endif
         } catch {
             throw WallpaperError.saveFailed(underlying: error)
         }
@@ -75,15 +69,9 @@ final class WallpaperManagementService: WallpaperManagementServiceProtocol {
     }
 
     func loadWallpaper(named fileName: String) async throws -> UIImage {
-        #if DEBUG
-        print("🖼️ [WallpaperService] Loading wallpaper: \(fileName)")
-        #endif
 
         // Check cache first (O(1))
         if let cached = cache.get(fileName) {
-            #if DEBUG
-            print("✅ [WallpaperService] Loaded from cache")
-            #endif
             return cached
         }
 
@@ -103,9 +91,6 @@ final class WallpaperManagementService: WallpaperManagementServiceProtocol {
             // Add to cache for future access
             cache.set(fileName, value: image)
 
-            #if DEBUG
-            print("✅ [WallpaperService] Loaded from disk")
-            #endif
 
             return image
         } catch {
@@ -118,9 +103,6 @@ final class WallpaperManagementService: WallpaperManagementServiceProtocol {
     }
 
     func removeWallpaper(named fileName: String) async throws {
-        #if DEBUG
-        print("🖼️ [WallpaperService] Removing wallpaper: \(fileName)")
-        #endif
 
         // Remove from cache
         cache.remove(fileName)
@@ -131,13 +113,7 @@ final class WallpaperManagementService: WallpaperManagementServiceProtocol {
         if fileManager.fileExists(atPath: fileURL.path) {
             do {
                 try fileManager.removeItem(at: fileURL)
-                #if DEBUG
-                print("✅ [WallpaperService] Removed from disk")
-                #endif
             } catch {
-                #if DEBUG
-                print("⚠️ [WallpaperService] Failed to remove file: \(error)")
-                #endif
                 // Continue anyway - file might already be deleted
             }
         }
@@ -168,9 +144,6 @@ final class WallpaperManagementService: WallpaperManagementServiceProtocol {
 
     func clearCache() {
         cache.removeAll()
-        #if DEBUG
-        print("🧹 [WallpaperService] Cache cleared")
-        #endif
     }
 
     // MARK: - History Management

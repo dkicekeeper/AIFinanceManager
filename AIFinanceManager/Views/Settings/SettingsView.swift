@@ -66,7 +66,7 @@ struct SettingsView: View {
             // Toast messages
             VStack {
                 if let successMessage = settingsViewModel.successMessage {
-                    SuccessMessageView(message: successMessage)
+                    MessageBanner.success(successMessage)
                         .padding(.horizontal, AppSpacing.md)
                         .padding(.top, AppSpacing.sm)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -74,7 +74,7 @@ struct SettingsView: View {
                 }
 
                 if let errorMessage = settingsViewModel.errorMessage {
-                    ErrorMessageView(message: errorMessage)
+                    MessageBanner.error(errorMessage)
                         .padding(.horizontal, AppSpacing.md)
                         .padding(.top, AppSpacing.sm)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -140,34 +140,19 @@ struct SettingsView: View {
                 }
             },
             onPhotoChange: { newItem in
-                #if DEBUG
-                print("📸 [SettingsView] Photo picker changed, newItem: \(newItem != nil ? "present" : "nil")")
-                #endif
 
                 guard let newItem = newItem else {
-                    #if DEBUG
-                    print("⚠️ [SettingsView] No item selected")
-                    #endif
                     return
                 }
 
                 guard let data = try? await newItem.loadTransferable(type: Data.self) else {
-                    #if DEBUG
-                    print("❌ [SettingsView] Failed to load transferable data")
-                    #endif
                     return
                 }
 
                 guard let image = UIImage(data: data) else {
-                    #if DEBUG
-                    print("❌ [SettingsView] Failed to create UIImage from data")
-                    #endif
                     return
                 }
 
-                #if DEBUG
-                print("✅ [SettingsView] Image loaded, calling selectWallpaper")
-                #endif
                 await settingsViewModel.selectWallpaper(image)
 
                 // Reset selectedPhoto to allow selecting the same image again if needed

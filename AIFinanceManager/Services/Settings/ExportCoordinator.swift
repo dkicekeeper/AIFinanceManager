@@ -35,9 +35,6 @@ final class ExportCoordinator: ExportCoordinatorProtocol {
     // MARK: - ExportCoordinatorProtocol
 
     func exportAllData() async throws -> URL {
-        #if DEBUG
-        print("📤 [ExportCoordinator] Starting data export")
-        #endif
 
         guard let transactionsViewModel = transactionsViewModel else {
             throw ExportError.exportFailed(underlying: NSError(
@@ -109,20 +106,9 @@ final class ExportCoordinator: ExportCoordinatorProtocol {
                     // Update progress: Complete
                     await self.updateProgress(1.0)
 
-                    #if DEBUG
-                    await MainActor.run {
-                        print("✅ [ExportCoordinator] Export completed: \(fileName)")
-                        print("   📊 Exported \(transactions.count) transactions")
-                    }
-                    #endif
 
                     continuation.resume(returning: tempURL)
                 } catch {
-                    #if DEBUG
-                    await MainActor.run {
-                        print("❌ [ExportCoordinator] Export failed: \(error)")
-                    }
-                    #endif
 
                     if let urlError = error as? URLError {
                         continuation.resume(throwing: ExportError.fileWriteFailed(underlying: urlError))

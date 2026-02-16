@@ -93,9 +93,6 @@ final class AccountOrderManager {
         if let encoded = try? JSONEncoder().encode(orderMap) {
             userDefaults.set(encoded, forKey: storageKey)
 
-            #if DEBUG
-            print("💾 [AccountOrderManager] Saved order for \(orderMap.count) accounts")
-            #endif
         }
     }
 }

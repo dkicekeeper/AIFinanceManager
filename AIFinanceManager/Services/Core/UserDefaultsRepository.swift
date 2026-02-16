@@ -98,16 +98,10 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
     func updateAccountBalance(accountId: String, balance: Double) {
         // UserDefaults implementation: noop (balance stored in Account.initialBalance)
         // This method exists only for protocol conformance
-        #if DEBUG
-        print("💾 [UserDefaults] updateAccountBalance called for \(accountId): \(balance) (noop)")
-        #endif
     }
 
     func updateAccountBalances(_ balances: [String: Double]) {
         // UserDefaults implementation: noop
-        #if DEBUG
-        print("💾 [UserDefaults] updateAccountBalances called for \(balances.count) accounts (noop)")
-        #endif
     }
 
     // MARK: - Categories
@@ -127,9 +121,6 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
         if let encoded = try? encoder.encode(categories) {
             userDefaults.set(encoded, forKey: storageKeyCustomCategories)
 
-            #if DEBUG
-            print("💾 [UserDefaultsRepository] Saved \(categories.count) categories to UserDefaults")
-            #endif
         }
     }
     

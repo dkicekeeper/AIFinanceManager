@@ -75,14 +75,12 @@ struct ActionSettingsRow: View {
             icon: "square.and.arrow.up",
             title: String(localized: "settings.exportData")
         ) {
-            print("Export tapped")
         }
 
         ActionSettingsRow(
             icon: "square.and.arrow.down",
             title: String(localized: "settings.importData")
         ) {
-            print("Import tapped")
         }
 
         ActionSettingsRow(
@@ -91,7 +89,6 @@ struct ActionSettingsRow: View {
             iconColor: AppColors.warning,
             titleColor: AppColors.warning
         ) {
-            print("Recalculate tapped")
         }
 
         ActionSettingsRow(
@@ -99,7 +96,6 @@ struct ActionSettingsRow: View {
             title: String(localized: "settings.resetData"),
             isDestructive: true
         ) {
-            print("Reset tapped")
         }
     }
 }

@@ -219,7 +219,6 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
                     do {
                         try await transactionStore.addBatch(transactionsBatch)
                     } catch {
-                        print("❌ Failed to add batch: \(error.localizedDescription)")
                     }
 
                     // Batch link subcategories
@@ -249,7 +248,6 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             do {
                 try await transactionStore.finishImport()
             } catch {
-                print("❌ Failed to finish import: \(error.localizedDescription)")
             }
         }
 
@@ -276,9 +274,6 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
 
             // ✅ CRITICAL: Recalculate balances after CSV import
             // This ensures all accounts reflect the imported transactions
-            #if DEBUG
-            print("🔄 [CSVImport] Recalculating all balances after import...")
-            #endif
             await balanceCoordinator.recalculateAll(
                 accounts: accountsVM.accounts,
                 transactions: transactionsViewModel.allTransactions

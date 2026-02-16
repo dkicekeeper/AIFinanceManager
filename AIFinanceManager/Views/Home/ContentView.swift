@@ -147,7 +147,7 @@ struct ContentView: View {
     @ViewBuilder
     private var errorSection: some View {
         if let error = viewModel.errorMessage {
-            ErrorMessageView(message: error)
+            MessageBanner.error(error)
                 .screenPadding()
         }
     }

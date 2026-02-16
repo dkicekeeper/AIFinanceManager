@@ -61,20 +61,8 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         )
 
         if let cached = cache, cached.key == cacheKey {
-            #if DEBUG
-            print("🎯 [CategoryDisplayDataMapper] Cache HIT - skipping mapping")
-            print("   Returning \(cached.result.count) cached categories")
-            #endif
             return cached.result
         }
-
-        #if DEBUG
-        print("🗺️ [CategoryDisplayDataMapper] mapCategories() called")
-        print("   Input: \(categoryExpenses.count) expense entries")
-        if let firstExpense = categoryExpenses.first {
-            print("   Example input: \(firstExpense.key) = \(String(format: "%.2f", firstExpense.value.total))")
-        }
-        #endif
 
         // Filter categories by type
         let filteredCategories = customCategories.filter { $0.type == type }
@@ -133,13 +121,6 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             // If neither has custom order, sort by name
             return category1.name < category2.name
         }
-
-        #if DEBUG
-        print("🗺️ [CategoryDisplayDataMapper] Mapped to \(result.count) display categories")
-        if let firstResult = result.first {
-            print("   Example output: \(firstResult.name) = \(String(format: "%.2f", firstResult.total))")
-        }
-        #endif
 
         // ✅ OPTIMIZATION: Cache the result
         cache = (cacheKey, result)

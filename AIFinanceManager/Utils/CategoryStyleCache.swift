@@ -54,13 +54,6 @@ final class CategoryStyleCache {
         // This avoids false invalidations from array reordering
         let currentSnapshot = Set(customCategories.map { $0.id })
         if currentSnapshot != cachedCategoriesSnapshot {
-            #if DEBUG
-            let added = currentSnapshot.subtracting(cachedCategoriesSnapshot)
-            let removed = cachedCategoriesSnapshot.subtracting(currentSnapshot)
-            print("🔄 [CategoryStyleCache] Categories changed - invalidating cache")
-            print("   Added: \(added.count) categories")
-            print("   Removed: \(removed.count) categories")
-            #endif
             cache.removeAll()
             cachedCategoriesSnapshot = currentSnapshot
         }
@@ -83,9 +76,6 @@ final class CategoryStyleCache {
         // Cache it
         cache[key] = styleData
 
-        #if DEBUG
-        print("💾 [CategoryStyleCache] Cached style for '\(category)' (\(type.rawValue))")
-        #endif
 
         return styleData
     }
@@ -96,9 +86,6 @@ final class CategoryStyleCache {
         cache.removeAll()
         cachedCategoriesSnapshot.removeAll()
 
-        #if DEBUG
-        print("🧹 [CategoryStyleCache] Cache invalidated - removed \(count) entries")
-        #endif
     }
 
     /// Invalidate specific category
@@ -109,9 +96,6 @@ final class CategoryStyleCache {
         let key = "\(category)_\(type.rawValue)"
         cache.removeValue(forKey: key)
 
-        #if DEBUG
-        print("🗑️ [CategoryStyleCache] Invalidated '\(category)' (\(type.rawValue))")
-        #endif
     }
 
     // MARK: - Private Helpers

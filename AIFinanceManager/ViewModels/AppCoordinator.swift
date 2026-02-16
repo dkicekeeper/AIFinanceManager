@@ -170,13 +170,6 @@ class AppCoordinator {
         // ✅ @Observable: No need for Combine observer
         // SwiftUI automatically tracks changes to BalanceCoordinator.balances
 
-        #if DEBUG
-        print("✅ [AppCoordinator] Category SSOT established via Combine")
-        print("✅ [AppCoordinator] Balance SSOT established via BalanceCoordinator")
-        print("✅ [AppCoordinator] TransactionStore SSOT established with sync")
-        print("✅ [AppCoordinator] Settings SSOT established via SettingsViewModel (Phase 1)")
-        print("✅ [AppCoordinator] PHASE 3: Accounts/Categories SSOT via TransactionStore observers")
-        #endif
     }
 
     // MARK: - Public Methods
@@ -202,9 +195,6 @@ class AppCoordinator {
         // With @Observable, we need to manually sync after data loads
         syncTransactionStoreToViewModels()
 
-        #if DEBUG
-        print("✅ [AppCoordinator] TransactionStore loaded: \(transactionStore.transactions.count) transactions, \(transactionStore.accounts.count) accounts, \(transactionStore.categories.count) categories")
-        #endif
 
         // REFACTORED 2026-02-02: Register accounts with BalanceCoordinator
         // This initializes the balance store with current account data
@@ -214,14 +204,8 @@ class AppCoordinator {
         // Balances are now persisted to Core Data and loaded correctly during registerAccounts()
         // Only recalculate when truly needed (not on every app launch)
         // Old code: await balanceCoordinator.recalculateAll(accounts, transactions)
-        #if DEBUG
-        print("✅ [AppCoordinator] Balances loaded from Core Data - skipping recalculation")
-        #endif
 
         // REFACTORED 2026-02-04: Load Settings data (Phase 1)
-        #if DEBUG
-        print("⚙️ [AppCoordinator] Loading settings data...")
-        #endif
         await settingsViewModel.loadInitialData()
 
         PerformanceProfiler.end("AppCoordinator.initialize")
@@ -237,12 +221,6 @@ class AppCoordinator {
     /// This method should be called after TransactionStore updates
     /// - Parameter batchMode: When true, skips intermediate UI updates (for CSV imports, bulk operations)
     func syncTransactionStoreToViewModels(batchMode: Bool = false) {
-        #if DEBUG
-        print("🔄 [AppCoordinator] Syncing TransactionStore to ViewModels\(batchMode ? " (BATCH MODE)" : "")")
-        print("   Transactions: \(transactionStore.transactions.count)")
-        print("   Accounts: \(transactionStore.accounts.count)")
-        print("   Categories: \(transactionStore.categories.count)")
-        #endif
 
         // Sync transactions to TransactionsViewModel
         self.transactionsViewModel.allTransactions = Array(transactionStore.transactions)
@@ -263,8 +241,5 @@ class AppCoordinator {
         // Sync categories to CategoriesViewModel
         self.categoriesViewModel.syncCategoriesFromStore()
 
-        #if DEBUG
-        print("✅ [AppCoordinator] Synced TransactionStore to ViewModels")
-        #endif
     }
 }

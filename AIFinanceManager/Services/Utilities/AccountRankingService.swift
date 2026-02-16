@@ -99,10 +99,6 @@ class AccountRankingService {
 
         guard !accounts.isEmpty else { return [] }
 
-        #if DEBUG
-        let startTime = CFAbsoluteTimeGetCurrent()
-        print("🔍 [AccountRankingService] rankAccounts started: \(accounts.count) accounts, \(transactions.count) transactions")
-        #endif
 
         let now = Date()
 
@@ -126,10 +122,6 @@ class AccountRankingService {
             }
         }
 
-        #if DEBUG
-        let groupTime = (CFAbsoluteTimeGetCurrent() - groupStartTime) * 1000
-        print("⏱️ [AccountRankingService] Grouping transactions: \(groupTime)ms")
-        #endif
 
         #if DEBUG
         let mapStartTime = CFAbsoluteTimeGetCurrent()
@@ -148,10 +140,6 @@ class AccountRankingService {
             return RankedAccount(account: account, score: score, reason: reason)
         }
 
-        #if DEBUG
-        let mapTime = (CFAbsoluteTimeGetCurrent() - mapStartTime) * 1000
-        print("⏱️ [AccountRankingService] Mapping accounts: \(mapTime)ms")
-        #endif
 
         #if DEBUG
         let sortStartTime = CFAbsoluteTimeGetCurrent()
@@ -176,12 +164,6 @@ class AccountRankingService {
             }
             .map { $0.account }
 
-        #if DEBUG
-        let sortTime = (CFAbsoluteTimeGetCurrent() - sortStartTime) * 1000
-        let totalTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-        print("⏱️ [AccountRankingService] Sorting: \(sortTime)ms")
-        print("✅ [AccountRankingService] rankAccounts completed in \(totalTime)ms")
-        #endif
 
         return result
     }

@@ -66,16 +66,10 @@ final class CategoryBudgetCoordinator: CategoryBudgetCoordinatorProtocol {
         resetDay: Int = 1
     ) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategoryBudgetCoordinator] No delegate set - cannot set budget")
-            #endif
             return
         }
 
         guard let index = delegate.customCategories.firstIndex(where: { $0.id == categoryId }) else {
-            #if DEBUG
-            print("⚠️ [CategoryBudgetCoordinator] Category not found: \(categoryId)")
-            #endif
             return
         }
 
@@ -87,23 +81,14 @@ final class CategoryBudgetCoordinator: CategoryBudgetCoordinatorProtocol {
 
         delegate.updateCategory(category)
 
-        #if DEBUG
-        print("✅ [CategoryBudgetCoordinator] Set budget for \(category.name): \(amount)")
-        #endif
     }
 
     func removeBudget(for categoryId: String) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategoryBudgetCoordinator] No delegate set - cannot remove budget")
-            #endif
             return
         }
 
         guard let index = delegate.customCategories.firstIndex(where: { $0.id == categoryId }) else {
-            #if DEBUG
-            print("⚠️ [CategoryBudgetCoordinator] Category not found: \(categoryId)")
-            #endif
             return
         }
 
@@ -116,9 +101,6 @@ final class CategoryBudgetCoordinator: CategoryBudgetCoordinatorProtocol {
 
         delegate.updateCategory(category)
 
-        #if DEBUG
-        print("✅ [CategoryBudgetCoordinator] Removed budget for \(category.name)")
-        #endif
     }
 
     func budgetProgress(for category: CustomCategory) -> BudgetProgress? {
@@ -133,12 +115,6 @@ final class CategoryBudgetCoordinator: CategoryBudgetCoordinatorProtocol {
     }
 
     func refreshBudgetCache(transactions: [Transaction], categories: [CustomCategory]) {
-        #if DEBUG
-        let startTime = Date()
-        print("🔄 [CategoryBudgetCoordinator] Refreshing budget cache...")
-        print("   Transactions: \(transactions.count)")
-        print("   Categories: \(categories.count)")
-        #endif
 
         // Clear cache
         budgetCache.removeAll()
@@ -147,9 +123,6 @@ final class CategoryBudgetCoordinator: CategoryBudgetCoordinatorProtocol {
         let categoriesWithBudgets = categories.filter { $0.budgetAmount != nil && $0.type == .expense }
 
         guard !categoriesWithBudgets.isEmpty else {
-            #if DEBUG
-            print("✅ [CategoryBudgetCoordinator] No categories with budgets - cache cleared")
-            #endif
             return
         }
 
@@ -190,23 +163,12 @@ final class CategoryBudgetCoordinator: CategoryBudgetCoordinatorProtocol {
             }
         }
 
-        #if DEBUG
-        let elapsed = Date().timeIntervalSince(startTime) * 1000
-        print("✅ [CategoryBudgetCoordinator] Cache refreshed in \(String(format: "%.2f", elapsed))ms")
-        print("   Cached budgets: \(budgetCache.count)")
-        if let firstBudget = budgetCache.first {
-            print("   Example: \(firstBudget.key) = \(String(format: "%.2f", firstBudget.value))")
-        }
-        #endif
     }
 
     func clearCache() {
         let count = budgetCache.count
         budgetCache.removeAll()
 
-        #if DEBUG
-        print("🧹 [CategoryBudgetCoordinator] Cache cleared - removed \(count) entries")
-        #endif
     }
 
     // MARK: - Private Helpers

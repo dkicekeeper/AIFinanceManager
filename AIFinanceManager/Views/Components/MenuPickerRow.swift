@@ -71,10 +71,6 @@ struct MenuPickerRow<T: Hashable>: View {
                             .font(AppTypography.body)
                             .foregroundStyle(AppColors.textPrimary)
                     }
-
-//                    Image(systemName: "chevron.up.chevron.down")
-//                        .font(.caption2)
-//                        .foregroundStyle(AppColors.textTertiary)
                 }
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.vertical, AppSpacing.sm)
@@ -82,7 +78,7 @@ struct MenuPickerRow<T: Hashable>: View {
                 .clipShape(Capsule())
             }
         }
-        .padding(AppSpacing.sm)
+        .padding(.horizontal, AppSpacing.lg)
     }
 }
 

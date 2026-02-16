@@ -13,22 +13,25 @@ enum HapticManager {
 
     // MARK: - Notification Feedback
 
+    /// Универсальный метод для notification feedback
+    static func notification(type: UINotificationFeedbackGenerator.FeedbackType) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(type)
+    }
+
     /// Успешное действие (сохранение, добавление)
     static func success() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        notification(type: .success)
     }
 
     /// Предупреждение (удаление, опасное действие)
     static func warning() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.warning)
+        notification(type: .warning)
     }
 
     /// Ошибка
     static func error() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
+        notification(type: .error)
     }
 
     // MARK: - Impact Feedback

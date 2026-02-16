@@ -109,9 +109,6 @@ class CategoriesViewModel {
     /// NOTE: With @Observable, we sync directly instead of using Combine publishers
     func setupTransactionStoreObserver() {
         guard let transactionStore = transactionStore else {
-            #if DEBUG
-            print("⚠️ [CategoriesVM] TransactionStore not set, cannot setup observer")
-            #endif
             return
         }
 
@@ -121,13 +118,6 @@ class CategoriesViewModel {
         self.categorySubcategoryLinks = transactionStore.categorySubcategoryLinks
         self.transactionSubcategoryLinks = transactionStore.transactionSubcategoryLinks
 
-        #if DEBUG
-        print("✅ [CategoriesVM] Received updates from TransactionStore:")
-        print("   - Categories: \(transactionStore.categories.count)")
-        print("   - Subcategories: \(transactionStore.subcategories.count)")
-        print("   - Category-Subcategory Links: \(transactionStore.categorySubcategoryLinks.count)")
-        print("   - Transaction-Subcategory Links: \(transactionStore.transactionSubcategoryLinks.count)")
-        #endif
     }
 
     /// Sync categories from TransactionStore
@@ -283,9 +273,6 @@ class CategoriesViewModel {
         subcategoryCoordinator.saveAllData()
 
         // PHASE 3: Categories are saved by TransactionStore
-        #if DEBUG
-        print("⚠️ [CategoriesVM] saveAllData - category persistence now handled by TransactionStore")
-        #endif
     }
 
     // MARK: - Budget Management

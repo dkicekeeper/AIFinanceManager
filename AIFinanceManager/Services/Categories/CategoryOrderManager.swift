@@ -92,10 +92,6 @@ final class CategoryOrderManager {
     private func saveOrderMap(_ orderMap: [String: Int]) {
         if let encoded = try? JSONEncoder().encode(orderMap) {
             userDefaults.set(encoded, forKey: storageKey)
-
-            #if DEBUG
-            print("💾 [CategoryOrderManager] Saved order for \(orderMap.count) categories")
-            #endif
         }
     }
 }

@@ -402,7 +402,6 @@ extension UniversalRow where Content == Text, Trailing == EmptyView {
                     EmptyView()
                 }
                 .actionRow {
-                    print("Export tapped")
                 }
 
                 UniversalRow(
@@ -416,7 +415,6 @@ extension UniversalRow where Content == Text, Trailing == EmptyView {
                     EmptyView()
                 }
                 .actionRow(role: .destructive) {
-                    print("Delete tapped")
                 }
             }
         }
@@ -518,7 +516,6 @@ extension UniversalRow where Content == Text, Trailing == EmptyView {
                 .foregroundStyle(AppColors.textSecondary)
         }
         .actionRow {
-            print("Card tapped")
         }
 
         UniversalRow(

@@ -215,11 +215,8 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         do {
             let entities = try context.fetch(request)
             let links = entities.map { $0.toCategorySubcategoryLink() }
-            print("📥 [CategoryRepository] Loaded \(links.count) category-subcategory links from Core Data")
             return links
         } catch {
-            print("❌ [CategoryRepository] Failed to load category-subcategory links: \(error.localizedDescription)")
-            print("⚠️ [CategoryRepository] Falling back to UserDefaults")
             return userDefaultsRepository.loadCategorySubcategoryLinks()
         }
     }
@@ -248,8 +245,6 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     func saveCategorySubcategoryLinksSync(_ links: [CategorySubcategoryLink]) throws {
         PerformanceProfiler.start("CategoryRepository.saveCategorySubcategoryLinksSync")
 
-        print("💾 [CategoryRepository] Saving \(links.count) category-subcategory links...")
-
         // Use background context to avoid blocking UI
         let backgroundContext = stack.persistentContainer.newBackgroundContext()
         backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
@@ -259,14 +254,9 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
             // Counts already calculated in internal method
 
-            print("💾 [CategoryRepository] Link sync operation completed")
-
             // Save if there are changes
             if backgroundContext.hasChanges {
                 try backgroundContext.save()
-                print("✅ [CategoryRepository] Saved \(links.count) category-subcategory links to Core Data")
-            } else {
-                print("⚠️ [CategoryRepository] No changes to save for category-subcategory links")
             }
         }
 

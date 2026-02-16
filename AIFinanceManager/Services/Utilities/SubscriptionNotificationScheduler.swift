@@ -43,9 +43,6 @@ class SubscriptionNotificationScheduler {
         // Check notification permissions
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
-            #if DEBUG
-            print("⚠️ [Scheduler] Cannot schedule notifications: permission not granted")
-            #endif
             return
         }
 
@@ -98,23 +95,11 @@ class SubscriptionNotificationScheduler {
             do {
                 try await center.add(request)
                 successCount += 1
-                #if DEBUG
-                print("✅ [Scheduler] Scheduled notification: \(request.identifier)")
-                #endif
             } catch {
                 failureCount += 1
-                #if DEBUG
-                print("❌ [Scheduler] Failed to schedule notification: \(request.identifier), error: \(error)")
-                #endif
             }
         }
 
-        #if DEBUG
-        print("📊 [Scheduler] Scheduled \(successCount)/\(requests.count) notifications for \(series.description)")
-        if failureCount > 0 {
-            print("⚠️ [Scheduler] Failed to schedule \(failureCount) notification(s)")
-        }
-        #endif
     }
     
     /// Cancel all notifications for a subscription
@@ -150,9 +135,6 @@ class SubscriptionNotificationScheduler {
     /// Reschedule notifications for all active subscriptions
     /// This should be called when app becomes active or after a notification is delivered
     func rescheduleAllActiveSubscriptions(subscriptions: [RecurringSeries]) async {
-        #if DEBUG
-        print("🔄 [Scheduler] Rescheduling all active subscriptions...")
-        #endif
 
         var rescheduledCount = 0
 
@@ -170,9 +152,6 @@ class SubscriptionNotificationScheduler {
             }
         }
 
-        #if DEBUG
-        print("✅ [Scheduler] Rescheduled \(rescheduledCount) subscription(s)")
-        #endif
     }
 
     /// Helper: get Russian word for days
@@ -254,12 +233,6 @@ class SubscriptionNotificationScheduler {
             }
         }
 
-        #if DEBUG
-        print("📅 [Scheduler] Next charge date for \(series.description):")
-        print("   Start: \(series.startDate)")
-        print("   Today: \(dateFormatter.string(from: today))")
-        print("   Next: \(dateFormatter.string(from: nextDate))")
-        #endif
 
         return nextDate
     }

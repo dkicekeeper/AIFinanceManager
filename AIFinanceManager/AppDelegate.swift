@@ -15,9 +15,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         // Set notification delegate
         UNUserNotificationCenter.current().delegate = self
 
-        #if DEBUG
-        print("✅ [AppDelegate] Notification center delegate set")
-        #endif
 
         // Post notification to reschedule all subscriptions
         // This will be handled by TransactionStore
@@ -27,9 +24,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        #if DEBUG
-        print("📱 [AppDelegate] Application did become active - triggering notification reschedule")
-        #endif
 
         // Post notification to reschedule all subscriptions
         NotificationCenter.default.post(name: .applicationDidBecomeActive, object: nil)
@@ -43,9 +37,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        #if DEBUG
-        print("📱 [AppDelegate] Notification will present: \(notification.request.identifier)")
-        #endif
 
         // Show notification even when app is in foreground
         completionHandler([.banner, .sound, .badge])
@@ -59,9 +50,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     ) {
         let identifier = response.notification.request.identifier
 
-        #if DEBUG
-        print("👆 [AppDelegate] User tapped notification: \(identifier)")
-        #endif
 
         // Parse notification ID: "subscription_{seriesId}_{offsetDays}"
         if identifier.hasPrefix("subscription_") {
@@ -69,9 +57,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             if components.count >= 3 {
                 let seriesId = components[1]
 
-                #if DEBUG
-                print("📊 [AppDelegate] Subscription notification tapped: \(seriesId)")
-                #endif
 
                 // TODO: Navigate to subscription detail view
                 // This could be implemented using deep linking or NotificationCenter

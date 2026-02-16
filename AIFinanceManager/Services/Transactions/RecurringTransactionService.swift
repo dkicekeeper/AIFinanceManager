@@ -95,9 +95,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                         futureOccurrences.contains { $0.transactionId == tx.id }
                     }
 
-                    #if DEBUG
-                    print("🗑️ [RecurringTransactionService] Updating series \(series.id): deleting \(transactionsToDelete.count) future transactions (BLOCKING)")
-                    #endif
 
                     let semaphore = DispatchSemaphore(value: 0)
 
@@ -106,7 +103,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                             do {
                                 try await transactionStore.delete(transaction)
                             } catch {
-                                print("   ⚠️ Failed to delete transaction: \(error)")
                             }
                         }
                         semaphore.signal()
@@ -114,9 +110,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
                     semaphore.wait()
 
-                    #if DEBUG
-                    print("✅ [RecurringTransactionService] Update deletion completed")
-                    #endif
                 } else {
                     // Fallback: legacy path
                     for occurrence in futureOccurrences {
@@ -174,9 +167,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                 futureOccurrences.contains { $0.transactionId == tx.id }
             }
 
-            #if DEBUG
-            print("🗑️ [RecurringTransactionService] Stopping series \(seriesId): deleting \(transactionsToDelete.count) future transactions (BLOCKING)")
-            #endif
 
             // Use semaphore to block until deletion completes
             let semaphore = DispatchSemaphore(value: 0)
@@ -185,11 +175,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                 for transaction in transactionsToDelete {
                     do {
                         try await transactionStore.delete(transaction)
-                        #if DEBUG
-                        print("   ✅ Deleted future: \(transaction.description) - \(transaction.date)")
-                        #endif
                     } catch {
-                        print("   ⚠️ Failed to delete transaction: \(error)")
                     }
                 }
                 semaphore.signal() // Signal completion
@@ -198,14 +184,8 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
             // ⚠️ BLOCK until deletion completes
             semaphore.wait()
 
-            #if DEBUG
-            print("✅ [RecurringTransactionService] Deletion completed, continuing...")
-            #endif
         } else {
             // Fallback: remove from memory only (legacy path)
-            #if DEBUG
-            print("⚠️ [RecurringTransactionService] TransactionStore NOT available, using legacy path for stopping series")
-            #endif
             for occurrence in futureOccurrences {
                 delegate.allTransactions.removeAll { $0.id == occurrence.transactionId }
             }
@@ -230,9 +210,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                 // Find all transactions for this series
                 let transactionsToDelete = delegate.allTransactions.filter { $0.recurringSeriesId == seriesId }
 
-                #if DEBUG
-                print("🗑️ [RecurringTransactionService] Deleting \(transactionsToDelete.count) transactions for series \(seriesId) (BLOCKING)")
-                #endif
 
                 // Use semaphore to block until deletion completes
                 let semaphore = DispatchSemaphore(value: 0)
@@ -241,11 +218,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                     for transaction in transactionsToDelete {
                         do {
                             try await transactionStore.delete(transaction)
-                            #if DEBUG
-                            print("   ✅ Deleted: \(transaction.description) - \(transaction.amount) \(transaction.currency)")
-                            #endif
                         } catch {
-                            print("   ⚠️ Failed to delete transaction: \(error)")
                         }
                     }
                     semaphore.signal()
@@ -254,14 +227,8 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                 // ⚠️ BLOCK until deletion completes
                 semaphore.wait()
 
-                #if DEBUG
-                print("✅ [RecurringTransactionService] Deletion completed")
-                #endif
             } else {
                 // Fallback: remove from memory only (legacy path)
-                #if DEBUG
-                print("⚠️ [RecurringTransactionService] TransactionStore NOT available, using legacy deletion path")
-                #endif
                 delegate.allTransactions.removeAll { $0.recurringSeriesId == seriesId }
             }
         } else {
@@ -366,21 +333,11 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
         // First, insert new transactions if any
         if !newTransactions.isEmpty {
-            #if DEBUG
-            print("🔄 [RecurringTransactionService] Generated \(newTransactions.count) new transactions")
-            for tx in newTransactions.prefix(3) {
-                print("   📝 \(tx.description) - \(tx.amount) \(tx.currency) - category: \(tx.category) - account: \(tx.accountId ?? "nil")")
-            }
-            #endif
 
             // 🔧 CRITICAL FIX: Add transactions to TransactionStore ONLY
             // TransactionStore will propagate changes back to TransactionsViewModel via observer
             // This ensures Single Source of Truth and avoids duplicate transactions
             if let transactionStore = delegate.transactionStore {
-                #if DEBUG
-                print("✅ [RecurringTransactionService] TransactionStore available, adding transactions...")
-                print("   📊 TransactionStore has \(transactionStore.accounts.count) accounts, \(transactionStore.categories.count) categories")
-                #endif
 
                 // Add to TransactionStore (will sync back to allTransactions via observer)
                 // IMPORTANT: Use Task and await to ensure transactions are added before balance recalculation
@@ -394,32 +351,15 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                             successCount += 1
                         } catch {
                             failCount += 1
-                            print("⚠️ [RecurringTransactionService] Failed to add transaction to store: \(error)")
-                            print("   📝 Transaction: \(transaction.description) - category: \(transaction.category) - account: \(transaction.accountId ?? "nil")")
                         }
                     }
 
-                    #if DEBUG
-                    print("✅ [RecurringTransactionService] Added \(successCount)/\(newTransactions.count) transactions to TransactionStore")
-                    if failCount > 0 {
-                        print("⚠️ [RecurringTransactionService] Failed to add \(failCount) transactions")
-                    }
-                    print("🔄 [RecurringTransactionService] About to recalculate balances...")
-                    print("   📊 Current state:")
-                    print("      - TransactionStore.transactions: \(transactionStore.transactions.count)")
-                    print("      - TransactionStore.accounts: \(transactionStore.accounts.count)")
-                    print("      - delegate.allTransactions: \(delegate.allTransactions.count)")
-                    print("      - delegate.accounts: \(delegate.accounts.count)")
-                    #endif
 
                     // ✅ CRITICAL: Only recalculate balances AFTER transactions are added to store
                     // This ensures TransactionStore has the latest data
                     delegate.scheduleBalanceRecalculation()
                     delegate.scheduleSave()
 
-                    #if DEBUG
-                    print("✅ [RecurringTransactionService] Balance recalculation scheduled")
-                    #endif
 
                     // Schedule notifications for subscriptions
                     for series in delegate.recurringSeries where series.isSubscription && series.subscriptionStatus == .active {
@@ -430,9 +370,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                 }
             } else {
                 // Fallback: add directly if TransactionStore not available (legacy path)
-                #if DEBUG
-                print("⚠️ [RecurringTransactionService] TransactionStore NOT available, using legacy path")
-                #endif
 
                 delegate.insertTransactionsSorted(newTransactions)
 
@@ -513,9 +450,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                     futureOccurrences.contains { $0.transactionId == tx.id }
                 }
 
-                #if DEBUG
-                print("🗑️ [RecurringTransactionService] Updating transaction \(transactionId): deleting \(transactionsToDelete.count) future transactions (BLOCKING)")
-                #endif
 
                 let semaphore = DispatchSemaphore(value: 0)
 
@@ -524,7 +458,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
                         do {
                             try await transactionStore.delete(transaction)
                         } catch {
-                            print("   ⚠️ Failed to delete transaction: \(error)")
                         }
                     }
                     semaphore.signal()
@@ -532,9 +465,6 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
                 semaphore.wait()
 
-                #if DEBUG
-                print("✅ [RecurringTransactionService] Update transaction deletion completed")
-                #endif
             } else {
                 // Fallback: legacy path
                 for occurrence in futureOccurrences {

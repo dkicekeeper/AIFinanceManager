@@ -74,15 +74,9 @@ final class AccountRepository: AccountRepositoryProtocol {
                 }
             }
 
-            #if DEBUG
-            print("💾 [AccountRepository] Loaded \(balances.count) persisted balances")
-            #endif
 
             return balances
         } catch {
-            #if DEBUG
-            print("❌ [AccountRepository] Failed to load balances: \(error)")
-            #endif
             return [:]
         }
     }
@@ -134,15 +128,9 @@ final class AccountRepository: AccountRepositoryProtocol {
                     if let account = try context.fetch(fetchRequest).first {
                         account.balance = balance
 
-                        #if DEBUG
-                        print("💾 [AccountRepository] Updated balance for \(accountId): \(balance)")
-                        #endif
                     }
                 }
             } catch {
-                #if DEBUG
-                print("❌ [AccountRepository] Failed to update balance for \(accountId): \(error)")
-                #endif
             }
         }
     }
@@ -167,14 +155,8 @@ final class AccountRepository: AccountRepositoryProtocol {
                         }
                     }
 
-                    #if DEBUG
-                    print("💾 [AccountRepository] Batch updated \(accounts.count) account balances")
-                    #endif
                 }
             } catch {
-                #if DEBUG
-                print("❌ [AccountRepository] Failed to batch update balances: \(error)")
-                #endif
             }
         }
     }

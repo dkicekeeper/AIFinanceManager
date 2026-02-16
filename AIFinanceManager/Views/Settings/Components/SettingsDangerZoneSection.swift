@@ -44,10 +44,8 @@ struct SettingsDangerZoneSection: View {
     List {
         SettingsDangerZoneSection(
             onRecalculateBalances: {
-                print("Recalculate tapped")
             },
             onResetData: {
-                print("Reset tapped")
             }
         )
     }

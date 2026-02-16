@@ -201,6 +201,6 @@ private struct CategoryGridItem: View {
         baseCurrency: "USD",
         gridColumns: 4,
         onCategoryTap: { _, _ in },
-        emptyStateAction: { print("Add category") }
+        emptyStateAction: { }
     )
 }

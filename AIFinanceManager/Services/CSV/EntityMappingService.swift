@@ -80,9 +80,6 @@ class EntityMappingService: EntityMappingServiceProtocol {
         transactionStore.addAccount(newAccount)
         cache.cacheAccount(name: name, id: newAccount.id)
 
-        #if DEBUG
-        print("✅ [EntityMappingService] Created account in TransactionStore: \(name)")
-        #endif
 
         return .created(id: newAccount.id)
     }
@@ -150,9 +147,6 @@ class EntityMappingService: EntityMappingServiceProtocol {
         transactionStore.addCategory(newCategory)
         cache.cacheCategory(name: name, type: type, id: newCategory.id)
 
-        #if DEBUG
-        print("✅ [EntityMappingService] Created category in TransactionStore: \(newCategory.name)")
-        #endif
 
         return .created(id: newCategory.id, name: name)
     }
@@ -207,9 +201,6 @@ class EntityMappingService: EntityMappingServiceProtocol {
         // Create link
         ensureCategorySubcategoryLink(categoryId: categoryId, subcategoryId: newSubcategory.id)
 
-        #if DEBUG
-        print("✅ [EntityMappingService] Created subcategory in TransactionStore: \(name)")
-        #endif
 
         return .created(id: newSubcategory.id)
     }
@@ -230,9 +221,6 @@ class EntityMappingService: EntityMappingServiceProtocol {
         updatedLinks.append(link)
         transactionStore.updateCategorySubcategoryLinks(updatedLinks)
 
-        #if DEBUG
-        print("✅ [EntityMappingService] Created category-subcategory link: \(categoryId) → \(subcategoryId)")
-        #endif
     }
 
     private func colorToHex(_ color: Color) -> String {

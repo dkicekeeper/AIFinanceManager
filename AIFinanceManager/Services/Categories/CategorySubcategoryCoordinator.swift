@@ -41,9 +41,6 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
 
     func addSubcategory(name: String) -> Subcategory {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - creating orphan subcategory")
-            #endif
             return Subcategory(name: name)
         }
 
@@ -58,25 +55,15 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             repository.saveSubcategories(delegate.subcategories)
         }
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Added subcategory: \(name)")
-        #endif
-
         return subcategory
     }
 
     func updateSubcategory(_ subcategory: Subcategory) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot update subcategory")
-            #endif
             return
         }
 
         guard let index = delegate.subcategories.firstIndex(where: { $0.id == subcategory.id }) else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] Subcategory not found: \(subcategory.name)")
-            #endif
             return
         }
 
@@ -94,16 +81,10 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             repository.saveSubcategories(delegate.subcategories)
         }
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Updated subcategory: \(subcategory.name)")
-        #endif
     }
 
     func deleteSubcategory(_ subcategoryId: String) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot delete subcategory")
-            #endif
             return
         }
 
@@ -126,9 +107,6 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
         }
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Deleted subcategory: \(subcategoryId)")
-        #endif
     }
 
     func searchSubcategories(query: String) -> [Subcategory] {
@@ -153,16 +131,10 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
         }
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Linked subcategory \(subcategoryId) to category \(categoryId)")
-        #endif
     }
 
     func linkSubcategoryToCategoryWithoutSaving(subcategoryId: String, categoryId: String) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot link subcategory to category")
-            #endif
             return
         }
 
@@ -172,9 +144,6 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
         }
 
         guard existingLink == nil else {
-            #if DEBUG
-            print("ℹ️ [CategorySubcategoryCoordinator] Link already exists: \(subcategoryId) → \(categoryId)")
-            #endif
             return
         }
 
@@ -184,9 +153,6 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
 
     func unlinkSubcategoryFromCategory(subcategoryId: String, categoryId: String) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot unlink subcategory")
-            #endif
             return
         }
 
@@ -202,9 +168,6 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
         }
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Unlinked subcategory \(subcategoryId) from category \(categoryId)")
-        #endif
     }
 
     func getSubcategoriesForCategory(_ categoryId: String) -> [Subcategory] {
@@ -231,9 +194,6 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
 
     func linkSubcategoriesToTransaction(transactionId: String, subcategoryIds: [String]) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot link subcategories to transaction")
-            #endif
             return
         }
 
@@ -254,16 +214,10 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
         }
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Linked \(subcategoryIds.count) subcategories to transaction \(transactionId)")
-        #endif
     }
 
     func linkSubcategoriesToTransactionWithoutSaving(transactionId: String, subcategoryIds: [String]) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot link subcategories without saving")
-            #endif
             return
         }
 
@@ -280,9 +234,6 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
 
     func batchLinkSubcategoriesToTransaction(_ links: [String: [String]]) {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot batch link subcategories")
-            #endif
             return
         }
 
@@ -306,33 +257,21 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
         }
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Batch linked subcategories for \(transactionIds.count) transactions")
-        #endif
     }
 
     // MARK: - Batch Operations
 
     func saveTransactionSubcategoryLinks() {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot save transaction subcategory links")
-            #endif
             return
         }
 
         repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Saved transaction subcategory links")
-        #endif
     }
 
     func saveAllData() {
         guard let delegate = delegate else {
-            #if DEBUG
-            print("⚠️ [CategorySubcategoryCoordinator] No delegate set - cannot save all data")
-            #endif
             return
         }
 
@@ -340,9 +279,6 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
         repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
         repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
 
-        #if DEBUG
-        print("✅ [CategorySubcategoryCoordinator] Saved all subcategory data")
-        #endif
     }
 }
 

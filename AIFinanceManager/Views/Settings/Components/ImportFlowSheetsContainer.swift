@@ -42,17 +42,9 @@ struct ImportFlowSheetsContainer<Content: View>: View {
                     } else {
                         false
                     }
-                    #if DEBUG
-                    if isPreview {
-                        print("📋 [ImportFlowSheets] Preview sheet should be presented")
-                    }
-                    #endif
                     return isPreview
                 },
                 set: { newValue in
-                    #if DEBUG
-                    print("📋 [ImportFlowSheets] Preview sheet dismissed: \(!newValue)")
-                    #endif
                     if !newValue { onCancel() }
                 }
             )) {
@@ -66,17 +58,9 @@ struct ImportFlowSheetsContainer<Content: View>: View {
                     } else {
                         false
                     }
-                    #if DEBUG
-                    if isMapping {
-                        print("🗺️ [ImportFlowSheets] Column mapping sheet should be presented")
-                    }
-                    #endif
                     return isMapping
                 },
                 set: { newValue in
-                    #if DEBUG
-                    print("🗺️ [ImportFlowSheets] Column mapping sheet dismissed: \(!newValue)")
-                    #endif
                     if !newValue { onCancel() }
                 }
             )) {
@@ -198,7 +182,6 @@ struct ImportFlowSheetsContainer<Content: View>: View {
             ImportFlowSheetsContainer(
                 flowCoordinator: flowCoordinator,
                 onCancel: {
-                    print("Cancel import flow")
                 }
             ) {
                 Text("Main Content")

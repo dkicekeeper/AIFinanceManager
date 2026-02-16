@@ -447,7 +447,6 @@ struct VoiceInputConfirmationView: View {
                 await MainActor.run {
                     // TODO: Show error alert to user
                     HapticManager.error()
-                    print("❌ Failed to save voice transaction: \(error.localizedDescription)")
                 }
             }
         }

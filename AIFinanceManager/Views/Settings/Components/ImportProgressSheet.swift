@@ -65,7 +65,6 @@ struct ImportProgressSheet: View {
         totalRows: 100,
         progress: 0.42,
         onCancel: {
-            print("Cancel tapped")
         }
     )
 }

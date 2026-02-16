@@ -41,10 +41,8 @@ struct SettingsExportImportSection: View {
     List {
         SettingsExportImportSection(
             onExport: {
-                print("Export tapped")
             },
             onImport: {
-                print("Import tapped")
             }
         )
     }

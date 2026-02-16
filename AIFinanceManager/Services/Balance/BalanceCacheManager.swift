@@ -46,9 +46,6 @@ final class BalanceCacheManager {
         self.balanceCache = LRUCache<String, Double>(capacity: balanceCacheCapacity)
         self.metadataCache = LRUCache<String, BalanceMetadata>(capacity: metadataCacheCapacity)
 
-        #if DEBUG
-        print("✅ BalanceCacheManager initialized (capacity: \(balanceCacheCapacity))")
-        #endif
     }
 
     // MARK: - Cache Operations
@@ -81,9 +78,6 @@ final class BalanceCacheManager {
         )
         metadataCache.set(accountId, value: metadata)
 
-        #if DEBUG
-        print("💾 Cached balance for \(accountId): \(balance)")
-        #endif
     }
 
     /// Update multiple balances in cache
@@ -93,9 +87,6 @@ final class BalanceCacheManager {
             setBalance(balance, for: accountId)
         }
 
-        #if DEBUG
-        print("💾 Cached \(balances.count) balances")
-        #endif
     }
 
     /// Invalidate balance for specific account
@@ -105,9 +96,6 @@ final class BalanceCacheManager {
         metadataCache.remove(accountId)
         invalidations += 1
 
-        #if DEBUG
-        print("🗑️ Invalidated cache for account: \(accountId)")
-        #endif
     }
 
     /// Invalidate balances for multiple accounts
@@ -120,9 +108,6 @@ final class BalanceCacheManager {
 
         invalidations += accountIds.count
 
-        #if DEBUG
-        print("🗑️ Invalidated cache for \(accountIds.count) accounts")
-        #endif
     }
 
     /// Invalidate all cached balances
@@ -133,9 +118,6 @@ final class BalanceCacheManager {
         affectedAccountsCache.removeAll()
         invalidations += count
 
-        #if DEBUG
-        print("🗑️ Invalidated all caches (\(count) entries)")
-        #endif
     }
 
     // MARK: - Metadata Operations
@@ -208,9 +190,6 @@ final class BalanceCacheManager {
 
         invalidate(accountIds: accountsToInvalidate)
 
-        #if DEBUG
-        print("🎯 Smart invalidation: \(accountsToInvalidate.count) accounts affected")
-        #endif
     }
 
     /// Invalidate cache for batch of transactions
@@ -243,9 +222,6 @@ final class BalanceCacheManager {
 
         invalidate(accountIds: accountsToInvalidate)
 
-        #if DEBUG
-        print("🎯 Batch smart invalidation: \(accountsToInvalidate.count) accounts affected from \(transactions.count) transactions")
-        #endif
     }
 
     // MARK: - Statistics
@@ -311,22 +287,3 @@ struct CacheStatistics {
 
 // MARK: - Debug Extension
 
-#if DEBUG
-extension BalanceCacheManager {
-    /// Print cache statistics
-    func debugPrintStatistics() {
-        let stats = getStatistics()
-        print("====== BalanceCacheManager Statistics ======")
-        print("Entries: \(stats.totalEntries) / \(stats.capacity) (\(Int(stats.utilizationPercent))%)")
-        print("Hits: \(stats.hits), Misses: \(stats.misses)")
-        print("Hit Rate: \(Int(stats.hitRate * 100))%")
-        print("Invalidations: \(stats.invalidations)")
-        print("=============================================")
-    }
-
-    /// Get all cached account IDs
-    func getCachedAccountIds() -> [String] {
-        return Array(balanceCache.map { $0.key })
-    }
-}
-#endif

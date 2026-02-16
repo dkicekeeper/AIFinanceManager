@@ -39,9 +39,6 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
     // MARK: - DataResetCoordinatorProtocol
 
     func resetAllData() async throws {
-        #if DEBUG
-        print("🗑️ [DataResetCoordinator] Starting full data reset")
-        #endif
 
         guard let transactionsViewModel = transactionsViewModel else {
             throw DataResetError.viewModelNotAvailable("TransactionsViewModel")
@@ -72,21 +69,12 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
 
             // @Observable handles UI updates automatically - no need for objectWillChange.send()
 
-            #if DEBUG
-            print("✅ [DataResetCoordinator] Data reset completed")
-            #endif
         } catch {
-            #if DEBUG
-            print("❌ [DataResetCoordinator] Reset failed: \(error)")
-            #endif
             throw DataResetError.resetFailed(underlying: error)
         }
     }
 
     func recalculateAllBalances() async throws {
-        #if DEBUG
-        print("♻️ [DataResetCoordinator] Starting balance recalculation")
-        #endif
 
         guard let transactionsViewModel = transactionsViewModel else {
             throw DataResetError.viewModelNotAvailable("TransactionsViewModel")
@@ -104,9 +92,6 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
 
         // @Observable handles UI updates automatically
 
-        #if DEBUG
-        print("✅ [DataResetCoordinator] Balance recalculation completed")
-        #endif
     }
 
     // MARK: - Dependency Injection
