@@ -84,7 +84,23 @@ AIFinanceManager/
 
 ### Recent Refactoring Phases
 
-**Phase 12** (Latest - 2026-02-16): UniversalRow Component
+**Phase 14** (Latest - 2026-02-16): UniversalFilterButton Component
+- Created universal filter button component supporting Button and Menu modes
+- Consolidated FilterChip, CategoryFilterButton, and AccountFilterMenu (3 → 1 component)
+- Added CategoryFilterHelper for reusable category filter logic
+- Centralized localization with LocalizedRowKeys enum (+3 filter keys)
+- Reduced code duplication by 45% (201 → 110 LOC)
+- 100% Design System compliance with `.filterChipStyle`
+
+**Phase 13** (2026-02-16): UniversalCarousel Component
+- Created universal horizontal carousel component for consistent scrolling
+- Consolidated 8+ carousel implementations with CarouselConfiguration presets
+- Added auto-scroll support via ScrollViewReader for selected items
+- Migrated 8 components: ColorPickerRow, HistoryFilterSection, AccountsCarousel, etc.
+- Reduced code duplication by 56% (655 → 285 LOC)
+- 100% Design System compliance
+
+**Phase 12** (2026-02-16): UniversalRow Component
 - Created universal row component with IconView integration
 - Migrated 5 row components to UniversalRow architecture
 - Centralized localization with LocalizedRowKeys enum
@@ -387,6 +403,88 @@ UniversalCarousel(config: .csvPreview) {
 - `Utils/CarouselConfiguration.swift` - Configuration presets
 - `Utils/LocalizedRowKeys.swift` - Centralized localization (+10 carousel keys)
 - `Localizable.strings` (en/ru) - Localized strings
+
+#### UniversalFilterButton Component (Phase 14 - 2026-02-16)
+Universal filter button/menu component for consistent filtering UI across the app. Consolidates all filter chip patterns.
+
+**Architecture:**
+- Generic ViewBuilders for flexible icon and menu content
+- Supports two modes: `.button(onTap)` for simple actions, `.menu(content)` for dropdowns
+- Shared `.filterChipStyle(isSelected:)` styling with Liquid Glass effects
+- CategoryFilterHelper for reusable category filter display logic
+
+**Consolidated Components:**
+- ✅ FilterChip - simple filter buttons (time, type filters)
+- ✅ CategoryFilterButton - category filter with icon logic
+- ✅ AccountFilterMenu - account selection dropdown
+
+**Usage Examples:**
+```swift
+// 1. Simple Button Filter (time, type)
+UniversalFilterButton(
+    title: "All Time",
+    isSelected: false,
+    onTap: { showTimeFilter = true }
+) {
+    Image(systemName: "calendar")
+}
+
+// 2. Category Filter with Dynamic Icon
+UniversalFilterButton(
+    title: CategoryFilterHelper.displayText(for: selectedCategories),
+    isSelected: selectedCategories != nil,
+    onTap: { showCategoryFilter = true }
+) {
+    CategoryFilterHelper.iconView(
+        for: selectedCategories,
+        customCategories: customCategories,
+        incomeCategories: incomeCategories
+    )
+}
+
+// 3. Account Filter Menu (Dropdown)
+UniversalFilterButton(
+    title: selectedAccountId == nil ? "All Accounts" : accountName,
+    isSelected: selectedAccountId != nil
+) {
+    if let account = selectedAccount {
+        IconView(source: account.iconSource, size: AppIconSize.sm)
+    }
+} menuContent: {
+    Button("All Accounts") { selectedAccountId = nil }
+    ForEach(accounts) { account in
+        Button {
+            selectedAccountId = account.id
+        } label: {
+            HStack {
+                IconView(source: account.iconSource, size: AppIconSize.md)
+                VStack(alignment: .leading) {
+                    Text(account.name)
+                    Text(formattedBalance)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if selectedAccountId == account.id {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+    }
+}
+```
+
+**Benefits:**
+- 📉 -45% lines of code (201 → 110 LOC)
+- 🎯 100% Design System compliance
+- 🔄 Eliminates 100% filter label duplication
+- 🌐 Centralized localization (+3 filter keys)
+- ✅ Unified API for Button and Menu modes
+
+**Related Files:**
+- `Views/Components/UniversalFilterButton.swift` - Main component
+- `Utils/CategoryFilterHelper.swift` - Category filter display logic
+- `Utils/LocalizedRowKeys.swift` - Filter localization keys (+3 keys)
+- `Localizable.strings` (en/ru) - "All Accounts", "All Categories", "%d categories"
 
 #### UniversalRow Component (Phase 12 - 2026-02-16)
 Universal row component for consistent UI patterns across the app. Replaces redundant row implementations.

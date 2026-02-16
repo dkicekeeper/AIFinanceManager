@@ -650,3 +650,8 @@
 "iconStyle.preset.placeholder" = "Placeholder";
 "recurring.never" = "Never";
 "reminder.none" = "Never";
+
+// MARK: - Filter Buttons (Phase 14)
+"filter.allAccounts" = "All Accounts";
+"filter.allCategories" = "All Categories";
+"filter.categoriesCount" = "%d categories";

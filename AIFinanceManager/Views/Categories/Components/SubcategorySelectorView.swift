@@ -35,7 +35,7 @@ struct SubcategorySelectorView: View {
         if !availableSubcategories.isEmpty {
             UniversalCarousel(config: .filter) {
                 ForEach(availableSubcategories) { subcategory in
-                    FilterChip(
+                    UniversalFilterButton(
                         title: subcategory.name,
                         isSelected: selectedSubcategoryIds.contains(subcategory.id),
                         showChevron: false,

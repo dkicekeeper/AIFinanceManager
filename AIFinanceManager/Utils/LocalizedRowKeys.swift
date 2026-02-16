@@ -101,6 +101,12 @@ enum LocalizedRowKey: String {
     case selectColor = "common.selectColor"
     case filterBy = "common.filterBy"
 
+    // MARK: - Filter Buttons (Phase 14)
+
+    case allAccounts = "filter.allAccounts"
+    case allCategories = "filter.allCategories"
+    case categoriesCount = "filter.categoriesCount"
+
     // MARK: - CSV Specific
 
     case csvEmptyCell = "csv.emptyCell"
@@ -147,6 +153,11 @@ extension LocalizedRowKey {
         .noDataAvailable, .selectAccount, .selectCategory, .selectSubcategory,
         .selectColor, .filterBy, .csvEmptyCell
     ]
+
+    /// Filter button keys (Phase 14)
+    static let filterKeys: [LocalizedRowKey] = [
+        .allAccounts, .allCategories, .categoriesCount
+    ]
 }
 
 // MARK: - Preview Helper
@@ -176,7 +187,10 @@ extension LocalizedRowKey {
             // Carousel
             .noAccountsAvailable, .noSubcategoriesAvailable, .noCategoriesAvailable,
             .noDataAvailable, .selectAccount, .selectCategory, .selectSubcategory,
-            .selectColor, .filterBy, .csvEmptyCell
+            .selectColor, .filterBy, .csvEmptyCell,
+
+            // Filter buttons
+            .allAccounts, .allCategories, .categoriesCount
         ]
     }
 }

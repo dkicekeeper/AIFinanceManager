@@ -1,30 +1,32 @@
 //
-//  CategoryFilterButton.swift
+//  CategoryFilterHelper.swift
 //  AIFinanceManager
 //
-//  Reusable category filter button component
+//  Helper for category filter display logic
+//  Phase 14: Extracted from CategoryFilterButton for reusability
 //
 
 import SwiftUI
 
-struct CategoryFilterButton: View {
-    let selectedCategories: Set<String>?
-    let customCategories: [CustomCategory]
-    let incomeCategories: [String]
-    let onTap: () -> Void
-
-    private var categoryFilterText: String {
+struct CategoryFilterHelper {
+    /// Generate display text for category filter
+    static func displayText(for selectedCategories: Set<String>?) -> String {
         guard let selectedCategories = selectedCategories else {
-            return "Все категории"
+            return LocalizedRowKey.allCategories.localized
         }
         if selectedCategories.count == 1 {
-            return selectedCategories.first ?? "Все категории"
+            return selectedCategories.first ?? LocalizedRowKey.allCategories.localized
         }
-        return "\(selectedCategories.count) категорий"
+        return LocalizedRowKey.categoriesCount.localized(with: selectedCategories.count)
     }
 
+    /// Generate icon view for single selected category
     @ViewBuilder
-    private var categoryFilterIcon: some View {
+    static func iconView(
+        for selectedCategories: Set<String>?,
+        customCategories: [CustomCategory],
+        incomeCategories: [String]
+    ) -> some View {
         if let selectedCategories = selectedCategories,
            selectedCategories.count == 1,
            let category = selectedCategories.first {
@@ -43,26 +45,4 @@ struct CategoryFilterButton: View {
                 .foregroundStyle(isIncome ? Color.green : iconColor)
         }
     }
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: AppSpacing.sm) {
-                categoryFilterIcon
-                Text(categoryFilterText)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: AppIconSize.sm))
-            }
-            .filterChipStyle(isSelected: selectedCategories != nil)
-        }
-    }
-}
-
-#Preview {
-    CategoryFilterButton(
-        selectedCategories: Set(["Food"]),
-        customCategories: [],
-        incomeCategories: ["Salary"],
-        onTap: {}
-    )
-    .padding()
 }

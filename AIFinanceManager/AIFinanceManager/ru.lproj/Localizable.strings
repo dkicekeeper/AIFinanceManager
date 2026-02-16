@@ -650,3 +650,8 @@
 "iconStyle.preset.placeholder" = "Заглушка";
 "recurring.never" = "Никогда";
 "reminder.none" = "Никогда";
+
+// MARK: - Filter Buttons (Phase 14)
+"filter.allAccounts" = "Все счета";
+"filter.allCategories" = "Все категории";
+"filter.categoriesCount" = "%d категорий";
