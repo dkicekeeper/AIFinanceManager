@@ -20,9 +20,13 @@ public class AccountEntity: NSManagedObject {
 extension AccountEntity {
     /// Convert to domain model
     func toAccount() -> Account {
-        // Migrate from old logo field to iconSource
+        // Load iconSource from JSON data (new approach)
         let iconSource: IconSource?
-        if let logoString = logo, let bankLogo = BankLogo(rawValue: logoString), bankLogo != .none {
+        if let data = iconSourceData,
+           let decoded = try? JSONDecoder().decode(IconSource.self, from: data) {
+            iconSource = decoded
+        } else if let logoString = logo, let bankLogo = BankLogo(rawValue: logoString), bankLogo != .none {
+            // Fallback: Migrate from old logo field to iconSource (backward compatibility)
             iconSource = .bankLogo(bankLogo)
         } else {
             iconSource = nil
@@ -56,12 +60,22 @@ extension AccountEntity {
         entity.name = account.name
         entity.balance = account.initialBalance ?? 0
         entity.currency = account.currency
-        // Save iconSource as logo string (backward compatible)
+
+        // Save full iconSource as JSON data (new approach)
+        if let iconSource = account.iconSource,
+           let encoded = try? JSONEncoder().encode(iconSource) {
+            entity.iconSourceData = encoded
+        } else {
+            entity.iconSourceData = nil
+        }
+
+        // Keep logo field for backward compatibility
         if case .bankLogo(let bankLogo) = account.iconSource {
             entity.logo = bankLogo.rawValue
         } else {
             entity.logo = BankLogo.none.rawValue
         }
+
         entity.isDeposit = account.isDeposit
         entity.bankName = account.depositInfo?.bankName
         entity.createdAt = account.createdDate ?? Date()

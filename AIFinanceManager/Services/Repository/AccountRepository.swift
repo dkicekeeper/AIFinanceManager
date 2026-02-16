@@ -215,12 +215,22 @@ final class AccountRepository: AccountRepositoryProtocol {
                     // ⚠️ CRITICAL FIX: Don't overwrite balance here - it's managed by BalanceCoordinator
                     // Only update balance when creating new accounts
                     existing.currency = account.currency
-                    // Save iconSource as logo string (backward compatible)
+
+                    // Save full iconSource as JSON data (new approach)
+                    if let iconSource = account.iconSource,
+                       let encoded = try? JSONEncoder().encode(iconSource) {
+                        existing.iconSourceData = encoded
+                    } else {
+                        existing.iconSourceData = nil
+                    }
+
+                    // Keep logo field for backward compatibility
                     if case .bankLogo(let bankLogo) = account.iconSource {
                         existing.logo = bankLogo.rawValue
                     } else {
                         existing.logo = BankLogo.none.rawValue
                     }
+
                     existing.isDeposit = account.isDeposit
                     existing.bankName = account.depositInfo?.bankName
                     existing.shouldCalculateFromTransactions = account.shouldCalculateFromTransactions

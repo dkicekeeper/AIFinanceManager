@@ -24,7 +24,8 @@ extension AccountEntity {
     @NSManaged public var currency: String?
     @NSManaged public var id: String?
     @NSManaged public var isDeposit: Bool
-    @NSManaged public var logo: String?
+    @NSManaged public var logo: String?  // Deprecated: Use iconSourceData instead
+    @NSManaged public var iconSourceData: Data?  // Stores full IconSource as JSON
     @NSManaged public var name: String?
     @NSManaged public var shouldCalculateFromTransactions: Bool  // ✨ Phase 10: Track balance calculation mode
     @NSManaged public var targetTransactions: NSSet?
