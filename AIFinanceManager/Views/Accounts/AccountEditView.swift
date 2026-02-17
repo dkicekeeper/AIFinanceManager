@@ -32,30 +32,32 @@ struct AccountEditView: View {
         EditSheetContainer(
             title: account == nil ? String(localized: "modal.newAccount") : String(localized: "modal.editAccount"),
             isSaveDisabled: name.isEmpty,
+            useScrollView: true,
             onSave: saveAccount,
             onCancel: onCancel
         ) {
-            VStack(spacing: 0) {
-                // Hero Section with Icon, Name, Balance, and Currency
-                EditableHeroSection(
-                    iconSource: $selectedIconSource,
-                    title: $name,
-                    balance: $balanceText,
-                    currency: $currency,
-                    titlePlaceholder: String(localized: "account.namePlaceholder"),
-                    config: .accountHero,
-                    currencies: currencies
-                )
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.vertical, AppSpacing.xl)
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // Hero Section with Icon, Name, Balance, and Currency
+                    EditableHeroSection(
+                        iconSource: $selectedIconSource,
+                        title: $name,
+                        balance: $balanceText,
+                        currency: $currency,
+                        titlePlaceholder: String(localized: "account.namePlaceholder"),
+                        config: .accountHero,
+                        currencies: currencies
+                    )
 
-                // Validation Error
-                if let error = validationError {
-                    MessageBanner.error(error)
-                        .padding(.horizontal, AppSpacing.lg)
-                        .padding(.bottom, AppSpacing.md)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                    // Validation Error
+                    if let error = validationError {
+                        MessageBanner.error(error)
+                            .padding(.horizontal, AppSpacing.lg)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.top, AppSpacing.md)
             }
         }
         .onAppear {

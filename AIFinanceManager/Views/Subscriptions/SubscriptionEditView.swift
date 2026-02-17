@@ -123,7 +123,6 @@ struct SubscriptionEditView: View {
                     .cardStyle()
                 }
                 .padding(.horizontal, AppSpacing.lg)
-                .padding(.top, AppSpacing.md)
             }
         }
         .onAppear {
