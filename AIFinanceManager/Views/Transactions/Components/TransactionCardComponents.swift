@@ -12,27 +12,41 @@ import SwiftUI
 struct TransactionIconView: View {
     let transaction: Transaction
     let styleData: CategoryStyleData
+    /// Icon source from the related subscription series (if any)
+    var subscriptionIconSource: IconSource? = nil
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(transaction.type == .internalTransfer ? Color.blue.opacity(0.2) : styleData.lightBackgroundColor)
-                .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
-                .overlay(
-                    Image(systemName: styleData.iconName)
-                        .font(.system(size: AppIconSize.md))
-                        .foregroundStyle(transaction.type == .internalTransfer ? Color.blue : styleData.primaryColor)
+        ZStack(alignment: .topLeading) {
+            // Main icon: subscription logo or category icon
+            if let iconSource = subscriptionIconSource {
+                IconView(
+                    source: iconSource,
+                    style: .circle(
+                        size: AppIconSize.xxl,
+                        tint: .original,
+                        backgroundColor: styleData.lightBackgroundColor
+                    )
                 )
-            
-            // Recurring badge
+            } else {
+                Circle()
+                    .fill(transaction.type == .internalTransfer ? Color.blue.opacity(0.2) : styleData.lightBackgroundColor)
+                    .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
+                    .overlay(
+                        Image(systemName: styleData.iconName)
+                            .font(.system(size: AppIconSize.md))
+                            .foregroundStyle(transaction.type == .internalTransfer ? Color.blue : styleData.primaryColor)
+                    )
+            }
+
+            // Recurring badge — top-left corner
             if transaction.recurringSeriesId != nil {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: AppIconSize.sm))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.primary)
                     .padding(AppSpacing.xs)
-                    .background(Color.white)
+                    .background(Color(uiColor: .systemBackground))
                     .clipShape(Circle())
-                    .offset(x: 16, y: 16)
+                    .offset(x: -8, y: -8)
             }
         }
     }
@@ -152,18 +166,298 @@ struct RegularAccountInfo: View {
     }
 }
 
-#Preview("Transaction Icon") {
-    TransactionIconView(
-        transaction: Transaction(
-            id: "1",
-            date: "2024-01-01",
-            description: "Test",
-            amount: 100,
-            currency: "USD",
+// MARK: - Preview Helpers
+
+private extension Transaction {
+    static func preview(
+        id: String = UUID().uuidString,
+        date: String = DateFormatters.dateFormatter.string(from: Date()),
+        description: String = "",
+        amount: Double = 1000,
+        currency: String = "KZT",
+        type: TransactionType = .expense,
+        category: String = "Food",
+        accountId: String? = nil,
+        targetAccountId: String? = nil,
+        accountName: String? = nil,
+        targetAccountName: String? = nil,
+        recurringSeriesId: String? = nil
+    ) -> Transaction {
+        Transaction(
+            id: id,
+            date: date,
+            description: description,
+            amount: amount,
+            currency: currency,
+            type: type,
+            category: category,
+            accountId: accountId,
+            targetAccountId: targetAccountId,
+            accountName: accountName,
+            targetAccountName: targetAccountName,
+            recurringSeriesId: recurringSeriesId
+        )
+    }
+}
+
+private extension Account {
+    static func preview(
+        id: String = UUID().uuidString,
+        name: String,
+        currency: String = "KZT",
+        iconSource: IconSource? = nil
+    ) -> Account {
+        Account(id: id, name: name, currency: currency, iconSource: iconSource)
+    }
+}
+
+// MARK: - TransactionIconView Previews
+
+#Preview("Icon — Expense categories") {
+    let categories = ["Food", "Transport", "Health", "Shopping", "Entertainment", "Education"]
+    let types: [TransactionType] = [.expense, .expense, .expense, .expense, .expense, .expense]
+
+    ScrollView {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: AppSpacing.lg) {
+            ForEach(Array(zip(categories, types)), id: \.0) { category, type in
+                VStack(spacing: AppSpacing.sm) {
+                    TransactionIconView(
+                        transaction: .preview(type: type, category: category),
+                        styleData: CategoryStyleHelper.cached(category: category, type: type, customCategories: [])
+                    )
+                    Text(category)
+                        .font(AppTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding()
+    }
+}
+
+#Preview("Icon — Income") {
+    HStack(spacing: AppSpacing.xl) {
+        VStack(spacing: AppSpacing.sm) {
+            TransactionIconView(
+                transaction: .preview(type: .income, category: "Salary"),
+                styleData: CategoryStyleHelper.cached(category: "Salary", type: .income, customCategories: [])
+            )
+            Text("Salary").font(AppTypography.caption).foregroundStyle(.secondary)
+        }
+        VStack(spacing: AppSpacing.sm) {
+            TransactionIconView(
+                transaction: .preview(type: .income, category: "Freelance"),
+                styleData: CategoryStyleHelper.cached(category: "Freelance", type: .income, customCategories: [])
+            )
+            Text("Freelance").font(AppTypography.caption).foregroundStyle(.secondary)
+        }
+    }
+    .padding()
+}
+
+#Preview("Icon — Internal Transfer") {
+    VStack(spacing: AppSpacing.sm) {
+        TransactionIconView(
+            transaction: .preview(type: .internalTransfer, category: "Transfer"),
+            styleData: CategoryStyleHelper.cached(category: "Transfer", type: .internalTransfer, customCategories: [])
+        )
+        Text("Transfer").font(AppTypography.caption).foregroundStyle(.secondary)
+    }
+    .padding()
+}
+
+#Preview("Icon — Recurring badge") {
+    HStack(spacing: AppSpacing.xl) {
+        VStack(spacing: AppSpacing.sm) {
+            TransactionIconView(
+                transaction: .preview(type: .expense, category: "Subscriptions", recurringSeriesId: nil),
+                styleData: CategoryStyleHelper.cached(category: "Subscriptions", type: .expense, customCategories: [])
+            )
+            Text("No badge").font(AppTypography.caption).foregroundStyle(.secondary)
+        }
+        VStack(spacing: AppSpacing.sm) {
+            TransactionIconView(
+                transaction: .preview(type: .expense, category: "Subscriptions", recurringSeriesId: "series-1"),
+                styleData: CategoryStyleHelper.cached(category: "Subscriptions", type: .expense, customCategories: [])
+            )
+            Text("With badge").font(AppTypography.caption).foregroundStyle(.secondary)
+        }
+    }
+    .padding()
+}
+
+#Preview("Icon — Subscription logo (brandService)") {
+    HStack(spacing: AppSpacing.xl) {
+        VStack(spacing: AppSpacing.sm) {
+            TransactionIconView(
+                transaction: .preview(type: .expense, category: "Subscriptions", recurringSeriesId: "s1"),
+                styleData: CategoryStyleHelper.cached(category: "Subscriptions", type: .expense, customCategories: []),
+                subscriptionIconSource: .brandService("netflix.com")
+            )
+            Text("Netflix").font(AppTypography.caption).foregroundStyle(.secondary)
+        }
+        VStack(spacing: AppSpacing.sm) {
+            TransactionIconView(
+                transaction: .preview(type: .expense, category: "Subscriptions", recurringSeriesId: "s2"),
+                styleData: CategoryStyleHelper.cached(category: "Subscriptions", type: .expense, customCategories: []),
+                subscriptionIconSource: .sfSymbol("music.note")
+            )
+            Text("Music").font(AppTypography.caption).foregroundStyle(.secondary)
+        }
+    }
+    .padding()
+}
+
+// MARK: - TransactionInfoView Previews
+
+#Preview("Info — Expense with account") {
+    let account = Account.preview(id: "acc-1", name: "Kaspi Gold", iconSource: .bankLogo(.kaspi))
+    TransactionInfoView(
+        transaction: .preview(
+            description: "Supermarket",
             type: .expense,
-            category: "Food"
+            category: "Food",
+            accountId: "acc-1"
         ),
-        styleData: CategoryStyleHelper.cached(category: "Food", type: .expense, customCategories: [])
+        accounts: [account],
+        linkedSubcategories: []
     )
     .padding()
+}
+
+#Preview("Info — With subcategories") {
+    let account = Account.preview(id: "acc-1", name: "Kaspi Gold")
+    let subcategories = [
+        Subcategory(id: "s1", name: "Groceries"),
+        Subcategory(id: "s2", name: "Vegetables")
+    ]
+    TransactionInfoView(
+        transaction: .preview(
+            description: "Weekend shopping",
+            type: .expense,
+            category: "Food",
+            accountId: "acc-1"
+        ),
+        accounts: [account],
+        linkedSubcategories: subcategories
+    )
+    .padding()
+}
+
+#Preview("Info — Deleted account fallback") {
+    TransactionInfoView(
+        transaction: Transaction(
+            id: "t1",
+            date: DateFormatters.dateFormatter.string(from: Date()),
+            description: "Old transaction",
+            amount: 5000,
+            currency: "KZT",
+            type: .expense,
+            category: "Shopping",
+            accountId: "deleted-id",
+            accountName: "Deleted Account"
+        ),
+        accounts: [],   // пустой — аккаунт удалён
+        linkedSubcategories: []
+    )
+    .padding()
+}
+
+#Preview("Info — No description, no account") {
+    TransactionInfoView(
+        transaction: .preview(description: "", type: .income, category: "Salary"),
+        accounts: [],
+        linkedSubcategories: []
+    )
+    .padding()
+}
+
+// MARK: - TransferAccountInfo Previews
+
+#Preview("TransferAccountInfo — Both accounts exist") {
+    let source = Account.preview(id: "src", name: "Kaspi Gold", iconSource: .bankLogo(.kaspi))
+    let target = Account.preview(id: "tgt", name: "Halyk Bank", iconSource: .bankLogo(.halykBank))
+    TransferAccountInfo(
+        transaction: .preview(type: .internalTransfer, category: "Transfer", accountId: "src", targetAccountId: "tgt"),
+        accounts: [source, target]
+    )
+    .padding()
+}
+
+#Preview("TransferAccountInfo — Deleted accounts (fallback)") {
+    TransferAccountInfo(
+        transaction: Transaction(
+            id: "t1",
+            date: DateFormatters.dateFormatter.string(from: Date()),
+            description: "",
+            amount: 10000,
+            currency: "KZT",
+            type: .internalTransfer,
+            category: "Transfer",
+            accountId: "deleted-src",
+            targetAccountId: "deleted-tgt",
+            accountName: "Old Account A",
+            targetAccountName: "Old Account B"
+        ),
+        accounts: []    // оба удалены
+    )
+    .padding()
+}
+
+#Preview("TransferAccountInfo — One account missing") {
+    let source = Account.preview(id: "src", name: "Kaspi Gold", iconSource: .bankLogo(.kaspi))
+    TransferAccountInfo(
+        transaction: Transaction(
+            id: "t1",
+            date: DateFormatters.dateFormatter.string(from: Date()),
+            description: "",
+            amount: 10000,
+            currency: "KZT",
+            type: .internalTransfer,
+            category: "Transfer",
+            accountId: "src",
+            targetAccountId: "missing",
+            targetAccountName: "Deleted Target"
+        ),
+        accounts: [source]
+    )
+    .padding()
+}
+
+// MARK: - RegularAccountInfo Previews
+
+#Preview("RegularAccountInfo — Account exists") {
+    let account = Account.preview(id: "acc-1", name: "Kaspi Gold", iconSource: .bankLogo(.kaspi))
+    RegularAccountInfo(
+        transaction: .preview(accountId: "acc-1"),
+        accounts: [account]
+    )
+    .padding()
+}
+
+#Preview("RegularAccountInfo — Deleted account fallback") {
+    RegularAccountInfo(
+        transaction: Transaction(
+            id: "t1",
+            date: DateFormatters.dateFormatter.string(from: Date()),
+            description: "Old payment",
+            amount: 500,
+            currency: "KZT",
+            type: .expense,
+            category: "Food",
+            accountId: "deleted-id",
+            accountName: "My Old Card"
+        ),
+        accounts: []    // аккаунт удалён
+    )
+    .padding()
+}
+
+#Preview("RegularAccountInfo — No account at all") {
+    RegularAccountInfo(
+        transaction: .preview(accountId: nil),
+        accounts: []
+    )
+    .padding()
+    .overlay { Text("(empty — nothing renders)").font(.caption).foregroundStyle(.secondary) }
 }

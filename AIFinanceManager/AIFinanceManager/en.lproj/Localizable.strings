@@ -15,6 +15,15 @@
 "navigation.entityMapping" = "Entity Mapping";
 "navigation.csvPreview" = "CSV Preview";
 "navigation.transactionPreview" = "Transaction Preview";
+
+// MARK: - Transaction Preview (Phase 16)
+"transactionPreview.found" = "Found: %d transactions";
+"transactionPreview.selectHint" = "Select transactions to import";
+"transactionPreview.selectAll" = "Select All";
+"transactionPreview.deselectAll" = "Deselect All";
+"transactionPreview.addSelected" = "Add Selected (%d)";
+"transactionPreview.noAccount" = "No Account";
+"transactionPreview.account" = "Account";
 "navigation.statementText" = "Statement Text";
 "navigation.voiceInput" = "Voice Input";
 "navigation.subcategorySearch" = "Search Subcategories";

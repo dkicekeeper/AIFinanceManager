@@ -14,6 +14,7 @@ struct TransactionCard: View {
     let accounts: [Account]
     let viewModel: TransactionsViewModel?
     let categoriesViewModel: CategoriesViewModel?
+    let accountsViewModel: AccountsViewModel?   // Phase 16: needed for EditTransactionCoordinator
     let balanceCoordinator: BalanceCoordinator?  // Optional - can't use @ObservedObject with optionals
 
     @State private var showingStopRecurringConfirmation = false
@@ -21,7 +22,7 @@ struct TransactionCard: View {
     @State private var showingDeleteError = false
     @State private var deleteErrorMessage = ""
 
-    // NEW: TransactionStore for refactored delete operations
+    // TransactionStore for delete and edit operations
     @Environment(TransactionStore.self) private var transactionStore
 
     // ✅ CATEGORY REFACTORING: Use cached style data instead of recreating helper
@@ -29,28 +30,48 @@ struct TransactionCard: View {
         CategoryStyleHelper.cached(category: transaction.category, type: transaction.type, customCategories: customCategories)
     }
 
-    init(transaction: Transaction, currency: String, customCategories: [CustomCategory], accounts: [Account], viewModel: TransactionsViewModel? = nil, categoriesViewModel: CategoriesViewModel? = nil, balanceCoordinator: BalanceCoordinator? = nil) {
+    /// Icon source from the subscription series linked to this transaction (nil for generic recurring)
+    private var subscriptionIconSource: IconSource? {
+        guard let seriesId = transaction.recurringSeriesId else { return nil }
+        let series = transactionStore.recurringSeries.first(where: { $0.id == seriesId })
+        guard series?.kind == .subscription else { return nil }
+        return series?.iconSource
+    }
+
+    init(
+        transaction: Transaction,
+        currency: String,
+        customCategories: [CustomCategory],
+        accounts: [Account],
+        viewModel: TransactionsViewModel? = nil,
+        categoriesViewModel: CategoriesViewModel? = nil,
+        accountsViewModel: AccountsViewModel? = nil,
+        balanceCoordinator: BalanceCoordinator? = nil
+    ) {
         self.transaction = transaction
         self.currency = currency
         self.customCategories = customCategories
         self.accounts = accounts
         self.viewModel = viewModel
         self.categoriesViewModel = categoriesViewModel
+        self.accountsViewModel = accountsViewModel
         self.balanceCoordinator = balanceCoordinator
     }
     
+    // MARK: - Display Helpers (Phase 16: delegated to TransactionDisplayHelper)
+
     private var isFutureDate: Bool {
-        let dateFormatter = DateFormatters.dateFormatter
-        guard let transactionDate = dateFormatter.date(from: transaction.date) else { return false }
-        let today = Calendar.current.startOfDay(for: Date())
-        // Транзакция с будущей датой (дата > today)
-        return transactionDate > today
+        TransactionDisplayHelper.isFutureDate(transaction.date)
     }
     
     var body: some View {
         HStack(spacing: AppSpacing.md) {
             // Transaction icon
-            TransactionIconView(transaction: transaction, styleData: styleData)
+            TransactionIconView(
+                transaction: transaction,
+                styleData: styleData,
+                subscriptionIconSource: subscriptionIconSource
+            )
             
             // Transaction info
             TransactionInfoView(
@@ -97,7 +118,6 @@ struct TransactionCard: View {
                 }
             }
         }
-        .padding(.vertical, AppSpacing.sm)
         .opacity(isFutureDate ? 0.5 : 1.0)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -155,14 +175,20 @@ struct TransactionCard: View {
             Text(deleteErrorMessage)
         }
         .onTapGesture {
+            HapticManager.selection()
             showingEditModal = true
         }
         .sheet(isPresented: $showingEditModal) {
-            if let viewModel = viewModel, let categoriesViewModel = categoriesViewModel, let balanceCoordinator = balanceCoordinator {
+            if let viewModel = viewModel,
+               let categoriesViewModel = categoriesViewModel,
+               let accountsViewModel = accountsViewModel,
+               let balanceCoordinator = balanceCoordinator {
                 EditTransactionView(
                     transaction: transaction,
                     transactionsViewModel: viewModel,
                     categoriesViewModel: categoriesViewModel,
+                    accountsViewModel: accountsViewModel,
+                    transactionStore: transactionStore,
                     accounts: accounts,
                     customCategories: customCategories,
                     balanceCoordinator: balanceCoordinator
@@ -252,78 +278,15 @@ struct TransactionCard: View {
     }
     
     private var accessibilityText: String {
-        let typeText: String
-        switch transaction.type {
-        case .income:
-            typeText = String(localized: "transactionType.income")
-        case .expense:
-            typeText = String(localized: "transactionType.expense")
-        case .internalTransfer:
-            typeText = String(localized: "transactionType.transfer")
-        default:
-            typeText = String(localized: "transactionType.transfer")
-        }
-        
-        let amountText = Formatting.formatCurrency(transaction.amount, currency: transaction.currency)
-        var text = "\(typeText), \(transaction.category), \(amountText)"
-
-        if transaction.type == .internalTransfer {
-            // Для переводов: указываем источник и получателя
-            if let sourceId = transaction.accountId,
-               let sourceAccount = accounts.first(where: { $0.id == sourceId }) {
-                text += ", from \(sourceAccount.name)"
-            }
-            if let targetId = transaction.targetAccountId,
-               let targetAccount = accounts.first(where: { $0.id == targetId }) {
-                text += ", to \(targetAccount.name)"
-            }
-        } else {
-            // Для доходов и расходов: указываем счет
-            if let accountId = transaction.accountId,
-               let account = accounts.first(where: { $0.id == accountId }) {
-                text += ", from \(account.name)"
-            }
-        }
-
-        if !transaction.description.isEmpty {
-            text += ", \(transaction.description)"
-        }
-
-        if transaction.recurringSeriesId != nil {
-            text += ", \(String(localized: "transaction.recurring"))"
-        }
-
-        return text
+        TransactionDisplayHelper.accessibilityText(for: transaction, accounts: accounts)
     }
 
     private var amountColor: Color {
-        switch transaction.type {
-        case .income:
-            return .green
-        case .expense:
-            return .primary
-        case .internalTransfer:
-            return .primary // Синий цвет для переводов для консистентности с иконкой
-        case .depositTopUp, .depositInterestAccrual:
-            return .green
-        case .depositWithdrawal:
-            return .primary
-        }
+        TransactionDisplayHelper.amountColor(for: transaction.type)
     }
 
     private var amountPrefix: String {
-        switch transaction.type {
-        case .income:
-            return "+"
-        case .expense:
-            return "-"
-        case .internalTransfer:
-            return ""
-        case .depositTopUp, .depositInterestAccrual:
-            return "+"
-        case .depositWithdrawal:
-            return "-"
-        }
+        TransactionDisplayHelper.amountPrefix(for: transaction.type)
     }
     
     @ViewBuilder
@@ -381,29 +344,124 @@ struct TransactionCard: View {
     }
 }
 
-#Preview {
+#Preview("Expense") {
     let coordinator = AppCoordinator()
-    let dateFormatter = DateFormatters.dateFormatter
     let sampleTransaction = Transaction(
-        id: "test",
-        date: dateFormatter.string(from: Date()),
-        description: "Test transaction",
-        amount: 1000,
+        id: "preview-expense",
+        date: DateFormatters.dateFormatter.string(from: Date()),
+        description: "Coffee & Snacks",
+        amount: 2500,
         currency: "KZT",
         type: .expense,
         category: "Food",
         accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
     )
-    
-    return List {
+
+    List {
         TransactionCard(
             transaction: sampleTransaction,
             currency: "KZT",
             customCategories: coordinator.categoriesViewModel.customCategories,
             accounts: coordinator.accountsViewModel.accounts,
             viewModel: coordinator.transactionsViewModel,
-            categoriesViewModel: coordinator.categoriesViewModel
+            categoriesViewModel: coordinator.categoriesViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator
         )
     }
     .listStyle(PlainListStyle())
+    .environment(coordinator.transactionStore)
+}
+
+#Preview("Income") {
+    let coordinator = AppCoordinator()
+    let sampleTransaction = Transaction(
+        id: "preview-income",
+        date: DateFormatters.dateFormatter.string(from: Date()),
+        description: "Salary",
+        amount: 450000,
+        currency: "KZT",
+        type: .income,
+        category: "Salary",
+        accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
+    )
+
+    List {
+        TransactionCard(
+            transaction: sampleTransaction,
+            currency: "KZT",
+            customCategories: coordinator.categoriesViewModel.customCategories,
+            accounts: coordinator.accountsViewModel.accounts,
+            viewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator
+        )
+    }
+    .listStyle(PlainListStyle())
+    .environment(coordinator.transactionStore)
+}
+
+#Preview("Transfer") {
+    let coordinator = AppCoordinator()
+    let accounts = coordinator.accountsViewModel.accounts
+    let sourceId = accounts.first?.id ?? "src"
+    let targetId = accounts.dropFirst().first?.id ?? "tgt"
+
+    let sampleTransaction = Transaction(
+        id: "preview-transfer",
+        date: DateFormatters.dateFormatter.string(from: Date()),
+        description: "Between accounts",
+        amount: 50000,
+        currency: "KZT",
+        type: .internalTransfer,
+        category: "Transfer",
+        accountId: sourceId,
+        targetAccountId: targetId
+    )
+
+    List {
+        TransactionCard(
+            transaction: sampleTransaction,
+            currency: "KZT",
+            customCategories: coordinator.categoriesViewModel.customCategories,
+            accounts: accounts,
+            viewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator
+        )
+    }
+    .listStyle(PlainListStyle())
+    .environment(coordinator.transactionStore)
+}
+
+#Preview("Recurring") {
+    let coordinator = AppCoordinator()
+    let sampleTransaction = Transaction(
+        id: "preview-recurring",
+        date: DateFormatters.dateFormatter.string(from: Date()),
+        description: "Netflix",
+        amount: 4990,
+        currency: "KZT",
+        type: .expense,
+        category: "Subscriptions",
+        accountId: coordinator.accountsViewModel.accounts.first?.id ?? "",
+        recurringSeriesId: "series-1"
+    )
+
+    List {
+        TransactionCard(
+            transaction: sampleTransaction,
+            currency: "KZT",
+            customCategories: coordinator.categoriesViewModel.customCategories,
+            accounts: coordinator.accountsViewModel.accounts,
+            viewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator
+        )
+    }
+    .listStyle(PlainListStyle())
+    .environment(coordinator.transactionStore)
 }

@@ -478,6 +478,39 @@ extension View {
             return AppColors.surface
         }
     }
+
+    /// Phase 16: Liquid Glass стиль для карточек транзакций (iOS 26+)
+    /// Применяет glassEffect на iOS 26+, стандартный фон на более ранних версиях.
+    /// - Parameters:
+    ///   - isPlanned: Плановая транзакция (синий оттенок на обеих платформах)
+    ///   - radius: Corner radius (по умолчанию .sm для строк)
+    func glassTransactionRowStyle(
+        isPlanned: Bool = false,
+        radius: CGFloat = AppRadius.sm
+    ) -> some View {
+        if #available(iOS 26, *) {
+            return AnyView(
+                self
+                    .padding(.vertical, AppSpacing.sm)
+                    .clipShape(.rect(cornerRadius: radius))
+                    .glassEffect(
+                        isPlanned
+                            ? .regular.tint(.blue.opacity(0.12))
+                            : .regular,
+                        in: .rect(cornerRadius: radius)
+                    )
+            )
+        } else {
+            return AnyView(
+                self
+                    .padding(.vertical, AppSpacing.sm)
+                    .background(
+                        isPlanned ? Color.blue.opacity(0.1) : AppColors.secondaryBackground,
+                        in: RoundedRectangle(cornerRadius: radius)
+                    )
+            )
+        }
+    }
 }
 
 // MARK: - Container Sizes

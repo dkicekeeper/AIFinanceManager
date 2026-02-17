@@ -75,7 +75,8 @@ struct CategorySelectorView: View {
             }
 
             if let warning = warningMessage {
-                WarningMessageView(message: warning)
+                MessageBanner.warning(warning)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
     }

@@ -153,20 +153,57 @@ struct SubscriptionDetailView: View {
                 }
                 Spacer()
             }
-            VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                InfoRow(icon: "tag.fill", label: String(localized: "subscriptions.category"), value: subscription.category)
-                InfoRow(icon: "repeat", label: String(localized: "subscriptions.frequency"), value: subscription.frequency.displayName)
-
+            VStack(
+                spacing: AppSpacing.sm
+            ) {
+                InfoRow(
+                    icon: "tag.fill",
+                    label: String(
+                        localized: "subscriptions.category"
+                    ),
+                    value: subscription.category
+                )
+                InfoRow(
+                    icon: "repeat",
+                    label: String(
+                        localized: "subscriptions.frequency"
+                    ),
+                    value: subscription.frequency.displayName
+                )
+                
                 if let nextDate = nextChargeDate {
-                    InfoRow(icon: "calendar.badge.clock", label: String(localized: "subscriptions.nextCharge"), value: formatDate(nextDate))
+                    InfoRow(
+                        icon: "calendar.badge.clock",
+                        label: String(
+                            localized: "subscriptions.nextCharge"
+                        ),
+                        value: formatDate(
+                            nextDate
+                        )
+                    )
                 }
-
+                
                 if let accountId = subscription.accountId,
-                   let account = transactionsViewModel.accounts.first(where: { $0.id == accountId }) {
-                    InfoRow(icon: "creditcard.fill", label: String(localized: "subscriptions.account"), value: account.name)
+                   let account = transactionsViewModel.accounts.first(
+                    where: {
+                        $0.id == accountId
+                    }) {
+                    InfoRow(
+                        icon: "creditcard.fill",
+                        label: String(
+                            localized: "subscriptions.account"
+                        ),
+                        value: account.name
+                    )
                 }
-
-                InfoRow(icon: "checkmark.circle.fill", label: String(localized: "subscriptions.status"), value: statusText)
+                
+                InfoRow(
+                    icon: "checkmark.circle.fill",
+                    label: String(
+                        localized: "subscriptions.status"
+                    ),
+                    value: statusText
+                )
             }
             .cardStyle()
         }

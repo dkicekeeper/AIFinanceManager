@@ -1,29 +1,35 @@
 //
-//  TransactionPreviewView.swift
+//  ImportTransactionPreviewView.swift
 //  AIFinanceManager
 //
-//  Created on 2024
+//  Final step of the PDF/CSV import flow: review parsed transactions,
+//  select which ones to import, assign accounts, and confirm.
+//
+//  Phase 16 (2026-02-17): Full localization, spring animations, BounceButtonStyle, accessibility
+//  Moved from Views/Transactions/ → Views/Import/ (correct domain)
+//  Renamed: TransactionPreviewView → ImportTransactionPreviewView
 //
 
 import SwiftUI
 
-struct TransactionPreviewView: View {
+struct ImportTransactionPreviewView: View {
     let transactionsViewModel: TransactionsViewModel
     let accountsViewModel: AccountsViewModel
-    @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
+    @Environment(TransactionStore.self) private var transactionStore
     let transactions: [Transaction]
     @Environment(\.dismiss) var dismiss
+
     @State private var selectedTransactions: Set<String> = Set()
     @State private var accountMapping: [String: String] = [:] // transactionId -> accountId
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Заголовок с информацией
+                // Header
                 VStack(spacing: AppSpacing.sm) {
-                    Text("Найдено транзакций: \(transactions.count)")
+                    Text(LocalizedRowKey.transactionPreviewFound.localized(with: transactions.count))
                         .font(AppTypography.h4)
-                    Text("Выберите транзакции для добавления")
+                    Text(LocalizedRowKey.transactionPreviewSelectHint.localized)
                         .font(AppTypography.bodySecondary)
                         .foregroundStyle(AppColors.textSecondary)
                 }
@@ -31,23 +37,24 @@ struct TransactionPreviewView: View {
                 .frame(maxWidth: .infinity)
                 .background(AppColors.surface)
 
-                // Список транзакций
+                // Transaction list
                 List {
                     ForEach(transactions) { transaction in
-                        TransactionPreviewRow(
+                        ImportTransactionPreviewRow(
                             transaction: transaction,
                             isSelected: selectedTransactions.contains(transaction.id),
                             selectedAccountId: accountMapping[transaction.id],
                             availableAccounts: accountsViewModel.accounts.filter { $0.currency == transaction.currency },
                             onToggle: {
-                                if selectedTransactions.contains(transaction.id) {
-                                    selectedTransactions.remove(transaction.id)
-                                    accountMapping.removeValue(forKey: transaction.id)
-                                } else {
-                                    selectedTransactions.insert(transaction.id)
-                                    // Автоматически выбираем первый подходящий счет
-                                    if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
-                                        accountMapping[transaction.id] = account.id
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                                    if selectedTransactions.contains(transaction.id) {
+                                        selectedTransactions.remove(transaction.id)
+                                        accountMapping.removeValue(forKey: transaction.id)
+                                    } else {
+                                        selectedTransactions.insert(transaction.id)
+                                        if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
+                                            accountMapping[transaction.id] = account.id
+                                        }
                                     }
                                 }
                             },
@@ -59,56 +66,63 @@ struct TransactionPreviewView: View {
                 }
                 .listStyle(PlainListStyle())
 
-                // Кнопки действий
+                // Action buttons — Select All / Deselect All
                 HStack(spacing: AppSpacing.md) {
-                    Button(action: {
-                        selectedTransactions = Set(transactions.map { $0.id })
-                        // Автоматически выбираем счета для всех
-                        for transaction in transactions {
-                            if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
-                                accountMapping[transaction.id] = account.id
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            selectedTransactions = Set(transactions.map { $0.id })
+                            for transaction in transactions {
+                                if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
+                                    accountMapping[transaction.id] = account.id
+                                }
                             }
                         }
-                        selectedTransactions = Set(transactions.map { $0.id })
-                    }) {
-                        Text("Выбрать все")
+                    } label: {
+                        Text(LocalizedRowKey.transactionPreviewSelectAll.localized)
                             .frame(maxWidth: .infinity)
                             .padding(AppSpacing.md)
                             .background(AppColors.accent.opacity(0.1))
                             .foregroundStyle(AppColors.accent)
                             .clipShape(.rect(cornerRadius: AppRadius.button))
                     }
+                    .accessibilityLabel(LocalizedRowKey.transactionPreviewSelectAll.localized)
 
-                    Button(action: {
-                        selectedTransactions.removeAll()
-                        accountMapping.removeAll()
-                    }) {
-                        Text("Снять выбор")
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            selectedTransactions.removeAll()
+                            accountMapping.removeAll()
+                        }
+                    } label: {
+                        Text(LocalizedRowKey.transactionPreviewDeselectAll.localized)
                             .frame(maxWidth: .infinity)
                             .padding(AppSpacing.md)
                             .background(AppColors.secondaryBackground)
                             .foregroundStyle(AppColors.textSecondary)
                             .clipShape(.rect(cornerRadius: AppRadius.button))
                     }
+                    .accessibilityLabel(LocalizedRowKey.transactionPreviewDeselectAll.localized)
                 }
                 .cardContentPadding()
 
-                // Кнопка добавления
-                Button(action: {
+                // Add selected button
+                Button {
                     addSelectedTransactions()
-                }) {
-                    Text("Добавить выбранные (\(selectedTransactions.count))")
+                } label: {
+                    Text(LocalizedRowKey.transactionPreviewAddSelected.localized(with: selectedTransactions.count))
                         .frame(maxWidth: .infinity)
                         .padding(AppSpacing.md)
                         .background(selectedTransactions.isEmpty ? AppColors.secondaryBackground : AppColors.accent)
                         .foregroundStyle(.white)
                         .clipShape(.rect(cornerRadius: AppRadius.button))
                 }
+                .buttonStyle(BounceButtonStyle())
                 .disabled(selectedTransactions.isEmpty)
                 .screenPadding()
                 .padding(.bottom, AppSpacing.md)
+                .accessibilityLabel(LocalizedRowKey.transactionPreviewAddSelected.localized(with: selectedTransactions.count))
+                .accessibilityAddTraits(selectedTransactions.isEmpty ? .isButton : [.isButton])
             }
-            .navigationTitle("Предпросмотр транзакций")
+            .navigationTitle(LocalizedRowKey.transactionPreviewTitle.localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -120,9 +134,7 @@ struct TransactionPreviewView: View {
                 }
             }
             .onAppear {
-                // По умолчанию выбираем все транзакции
                 selectedTransactions = Set(transactions.map { $0.id })
-                // Автоматически выбираем счета для всех транзакций
                 for transaction in transactions {
                     if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
                         accountMapping[transaction.id] = account.id
@@ -131,11 +143,10 @@ struct TransactionPreviewView: View {
             }
         }
     }
-    
+
     private func addSelectedTransactions() {
         let transactionsToAdd = transactions.filter { selectedTransactions.contains($0.id) }
 
-        // Phase 7.5: Use TransactionStore for bulk add operation
         Task {
             for transaction in transactionsToAdd {
                 let accountId = accountMapping[transaction.id]
@@ -169,22 +180,31 @@ struct TransactionPreviewView: View {
     }
 }
 
-struct TransactionPreviewRow: View {
+// MARK: - ImportTransactionPreviewRow
+
+struct ImportTransactionPreviewRow: View {
     let transaction: Transaction
     let isSelected: Bool
     let selectedAccountId: String?
     let availableAccounts: [Account]
     let onToggle: () -> Void
     let onAccountSelect: (String) -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             HStack {
+                // Checkbox button with spring animation
                 Button(action: onToggle) {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(isSelected ? AppColors.accent : AppColors.textSecondary)
                         .font(AppTypography.h4)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
                 }
+                .accessibilityLabel(isSelected
+                    ? String(localized: "button.select")
+                    : LocalizedRowKey.transactionPreviewSelectHint.localized
+                )
+                .accessibilityAddTraits(.isButton)
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(transaction.description)
@@ -214,36 +234,92 @@ struct TransactionPreviewRow: View {
                         color: transaction.type == .income ? AppColors.income : AppColors.expense
                     )
 
-                    Text(transaction.type == .income ? "Доход" : transaction.type == .expense ? "Расход" : "Перевод")
+                    Text(transactionTypeLabel)
                         .font(AppTypography.caption)
                         .foregroundStyle(AppColors.textSecondary)
                 }
             }
-            
-            // Выбор счета
+
+            // Account selector (visible only when selected)
             if isSelected && !availableAccounts.isEmpty {
-                Picker("Счет", selection: Binding(
+                Picker(LocalizedRowKey.transactionPreviewAccount.localized, selection: Binding(
                     get: { selectedAccountId ?? "" },
                     set: { onAccountSelect($0) }
                 )) {
-                    Text("Без счета").tag("")
+                    Text(LocalizedRowKey.transactionPreviewNoAccount.localized).tag("")
                     ForEach(availableAccounts) { account in
                         Text("\(account.name) (\(Formatting.currencySymbol(for: account.currency)))").tag(account.id)
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
-                .padding(.leading, 40)
+                .padding(.leading, AppSpacing.xl)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, AppSpacing.xs)
+    }
+
+    private var transactionTypeLabel: String {
+        switch transaction.type {
+        case .income: return String(localized: "transactionType.income")
+        case .expense: return String(localized: "transactionType.expense")
+        default: return String(localized: "transactionType.transfer")
+        }
     }
 }
 
-#Preview {
+// MARK: - Preview
+
+#Preview("Empty") {
     let coordinator = AppCoordinator()
-    TransactionPreviewView(
+    ImportTransactionPreviewView(
         transactionsViewModel: coordinator.transactionsViewModel,
         accountsViewModel: coordinator.accountsViewModel,
         transactions: []
     )
+    .environment(coordinator.transactionStore)
+}
+
+#Preview("With Transactions") {
+    let coordinator = AppCoordinator()
+    let accountId = coordinator.accountsViewModel.accounts.first?.id ?? ""
+    let sampleTransactions: [Transaction] = [
+        Transaction(
+            id: "prev-1",
+            date: DateFormatters.dateFormatter.string(from: Date()),
+            description: "Supermarket",
+            amount: 8500,
+            currency: "KZT",
+            type: .expense,
+            category: "Food",
+            accountId: accountId
+        ),
+        Transaction(
+            id: "prev-2",
+            date: DateFormatters.dateFormatter.string(from: Date().addingTimeInterval(-86400)),
+            description: "Salary",
+            amount: 450000,
+            currency: "KZT",
+            type: .income,
+            category: "Salary",
+            accountId: accountId
+        ),
+        Transaction(
+            id: "prev-3",
+            date: DateFormatters.dateFormatter.string(from: Date().addingTimeInterval(-172800)),
+            description: "Netflix",
+            amount: 4990,
+            currency: "KZT",
+            type: .expense,
+            category: "Subscriptions",
+            accountId: accountId
+        )
+    ]
+
+    ImportTransactionPreviewView(
+        transactionsViewModel: coordinator.transactionsViewModel,
+        accountsViewModel: coordinator.accountsViewModel,
+        transactions: sampleTransactions
+    )
+    .environment(coordinator.transactionStore)
 }

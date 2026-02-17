@@ -95,6 +95,7 @@ struct HistoryTransactionsList: View {
                                 accounts: accountsViewModel.accounts,
                                 viewModel: transactionsViewModel,
                                 categoriesViewModel: categoriesViewModel,
+                                accountsViewModel: accountsViewModel,
                                 balanceCoordinator: accountsViewModel.balanceCoordinator
                             )
                             .listRowInsets(EdgeInsets(

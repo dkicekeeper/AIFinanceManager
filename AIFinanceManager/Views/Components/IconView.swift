@@ -84,9 +84,36 @@ struct IconView: View {
 
     // MARK: - Computed Properties
 
+    /// Эффективный padding с автоматическим определением на основе типа источника
+    /// - SF Symbols: 20% padding для визуального баланса
+    /// - Логотипы (bank/brand): без padding (заполняют контейнер полностью)
+    /// - Placeholder: 15% padding
+    /// - Явно заданный padding имеет приоритет
+    private var effectivePadding: CGFloat? {
+        // Явно заданный padding имеет приоритет
+        if let explicitPadding = style.padding {
+            return explicitPadding
+        }
+
+        // Автоматическое определение padding на основе типа источника
+        switch source {
+        case .sfSymbol:
+            // SF Symbols нуждаются в padding (8% от размера контейнера)
+            return style.size * 0.08
+
+        case .bankLogo, .brandService:
+            // Логотипы и изображения заполняют контейнер полностью (no padding)
+            return nil
+
+        case .none:
+            // Placeholder с небольшим padding (10%)
+            return style.size * 0.1
+        }
+    }
+
     /// Размер контента с учетом padding
     private var contentSize: CGFloat {
-        if let padding = style.padding {
+        if let padding = effectivePadding {
             return style.size - (padding * 2)
         }
         return style.size
@@ -235,9 +262,9 @@ struct IconView: View {
             }
         }
 
-        // Применяем padding если задан
+        // Применяем padding если задан (используем effectivePadding)
         let viewWithPadding = Group {
-            if let padding = style.padding {
+            if let padding = effectivePadding {
                 viewWithBackground.padding(padding)
             } else {
                 viewWithBackground
@@ -443,6 +470,155 @@ struct IconView: View {
         }
     }
     .padding(AppSpacing.lg)
+}
+
+#Preview("Automatic Padding") {
+    ScrollView {
+        VStack(alignment: .leading, spacing: AppSpacing.xxl) {
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                Text("SF Symbols (Auto 8% padding)")
+                    .font(AppTypography.h4)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                HStack(spacing: AppSpacing.lg) {
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .sfSymbol("star.fill"), size: 60)
+                            .background(AppColors.surface)
+                        Text("star.fill")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .sfSymbol("heart.fill"), size: 60)
+                            .background(AppColors.surface)
+                        Text("heart.fill")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .sfSymbol("cart.fill"), size: 60)
+                            .background(AppColors.surface)
+                        Text("cart.fill")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                Text("Bank Logos (No padding - Fill)")
+                    .font(AppTypography.h4)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                HStack(spacing: AppSpacing.lg) {
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .bankLogo(.kaspi), size: 60)
+                            .background(AppColors.surface)
+                        Text("Kaspi")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .bankLogo(.halykBank), size: 60)
+                            .background(AppColors.surface)
+                        Text("Halyk")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .bankLogo(.tbank), size: 60)
+                            .background(AppColors.surface)
+                        Text("T-Bank")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                Text("Brand Services (No padding - Fill)")
+                    .font(AppTypography.h4)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                HStack(spacing: AppSpacing.lg) {
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .brandService("netflix"), size: 60)
+                            .background(AppColors.surface)
+                        Text("Netflix")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .brandService("spotify"), size: 60)
+                            .background(AppColors.surface)
+                        Text("Spotify")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: .brandService("notion"), size: 60)
+                            .background(AppColors.surface)
+                        Text("Notion")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                Text("Placeholder (Auto 10% padding)")
+                    .font(AppTypography.h4)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                HStack(spacing: AppSpacing.lg) {
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(source: nil, size: 60)
+                            .background(AppColors.surface)
+                        Text("nil source")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                Text("Override (Explicit padding: 5pt)")
+                    .font(AppTypography.h4)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                HStack(spacing: AppSpacing.lg) {
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(
+                            source: .sfSymbol("star.fill"),
+                            style: .circle(size: 60, tint: .accentMonochrome, padding: 5)
+                        )
+                        .background(AppColors.surface)
+                        Text("Custom 5pt")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    VStack(spacing: AppSpacing.xs) {
+                        IconView(
+                            source: .bankLogo(.kaspi),
+                            style: .roundedSquare(size: 60, padding: 10)
+                        )
+                        .background(AppColors.surface)
+                        Text("Logo + 10pt")
+                            .font(AppTypography.caption)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                }
+            }
+        }
+        .padding(AppSpacing.lg)
+    }
 }
 
 #Preview("Glass Effect") {

@@ -67,9 +67,19 @@ enum LocalizedRowKey: String {
     case interestToday = "account.interestToday"
     case nextPosting = "account.nextPosting"
 
-    // MARK: - Transaction
+    // MARK: - Transaction (Phase 16)
 
     case makeRecurring = "transactionForm.makeRecurring"
+
+    // Transaction Preview (CSV import)
+    case transactionPreviewTitle = "navigation.transactionPreview"
+    case transactionPreviewFound = "transactionPreview.found"
+    case transactionPreviewSelectHint = "transactionPreview.selectHint"
+    case transactionPreviewSelectAll = "transactionPreview.selectAll"
+    case transactionPreviewDeselectAll = "transactionPreview.deselectAll"
+    case transactionPreviewAddSelected = "transactionPreview.addSelected"
+    case transactionPreviewNoAccount = "transactionPreview.noAccount"
+    case transactionPreviewAccount = "transactionPreview.account"
 
     // MARK: - Subscription
 
@@ -162,6 +172,13 @@ extension LocalizedRowKey {
     static let filterKeys: [LocalizedRowKey] = [
         .allAccounts, .allCategories, .categoriesCount
     ]
+
+    /// Transaction preview keys (Phase 16)
+    static let transactionPreviewKeys: [LocalizedRowKey] = [
+        .transactionPreviewTitle, .transactionPreviewFound, .transactionPreviewSelectHint,
+        .transactionPreviewSelectAll, .transactionPreviewDeselectAll,
+        .transactionPreviewAddSelected, .transactionPreviewNoAccount, .transactionPreviewAccount
+    ]
 }
 
 // MARK: - Preview Helper
@@ -194,7 +211,12 @@ extension LocalizedRowKey {
             .selectColor, .filterBy, .csvEmptyCell,
 
             // Filter buttons
-            .allAccounts, .allCategories, .categoriesCount
+            .allAccounts, .allCategories, .categoriesCount,
+
+            // Transaction preview
+            .transactionPreviewTitle, .transactionPreviewFound, .transactionPreviewSelectHint,
+            .transactionPreviewSelectAll, .transactionPreviewDeselectAll,
+            .transactionPreviewAddSelected, .transactionPreviewNoAccount, .transactionPreviewAccount
         ]
     }
 }

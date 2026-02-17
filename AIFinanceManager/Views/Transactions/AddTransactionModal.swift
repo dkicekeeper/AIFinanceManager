@@ -240,3 +240,37 @@ struct AddTransactionModal: View {
         }
     }
 }
+
+// MARK: - Preview
+
+#Preview("Expense - Food") {
+    let coordinator = AppCoordinator()
+    AddTransactionModal(
+        category: "Food",
+        type: .expense,
+        currency: coordinator.transactionsViewModel.appSettings.baseCurrency,
+        accounts: coordinator.accountsViewModel.accounts,
+        transactionsViewModel: coordinator.transactionsViewModel,
+        categoriesViewModel: coordinator.categoriesViewModel,
+        accountsViewModel: coordinator.accountsViewModel,
+        transactionStore: coordinator.transactionStore,
+        onDismiss: {}
+    )
+    .environment(TimeFilterManager())
+}
+
+#Preview("Income - Salary") {
+    let coordinator = AppCoordinator()
+    AddTransactionModal(
+        category: "Salary",
+        type: .income,
+        currency: coordinator.transactionsViewModel.appSettings.baseCurrency,
+        accounts: coordinator.accountsViewModel.accounts,
+        transactionsViewModel: coordinator.transactionsViewModel,
+        categoriesViewModel: coordinator.categoriesViewModel,
+        accountsViewModel: coordinator.accountsViewModel,
+        transactionStore: coordinator.transactionStore,
+        onDismiss: {}
+    )
+    .environment(TimeFilterManager())
+}

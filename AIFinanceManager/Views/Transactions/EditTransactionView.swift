@@ -3,155 +3,138 @@
 //  AIFinanceManager
 //
 //  Created on 2024
+//  Phase 16 (2026-02-17): Refactored to EditTransactionCoordinator pattern.
+//  Replaced 12 @State variables with coordinator, added MessageBanner for errors.
 //
 
 import SwiftUI
 
 struct EditTransactionView: View {
-    let transaction: Transaction
-    let transactionsViewModel: TransactionsViewModel
-    let categoriesViewModel: CategoriesViewModel
-    let accounts: [Account]
-    let customCategories: [CustomCategory]
-    let balanceCoordinator: BalanceCoordinator
+
+    // MARK: - Coordinator
+
+    @State private var coordinator: EditTransactionCoordinator
+
+    // MARK: - Environment
+
     @Environment(\.dismiss) var dismiss
 
-    // NEW: TransactionStore for refactored update operations
-    @Environment(TransactionStore.self) private var transactionStore
-    
-    @State private var amountText: String = ""
-    @State private var descriptionText: String = ""
-    @State private var selectedCategory: String = ""
-    @State private var selectedSubcategoryIds: Set<String> = []
-    @State private var selectedAccountId: String? = nil
-    @State private var selectedTargetAccountId: String? = nil
-    @State private var selectedDate: Date = Date()
-    @State private var selectedCurrency: String = ""
-    @State private var recurring: RecurringOption = .never
-    @State private var showingSubcategorySearch = false
-    @State private var subcategorySearchText = ""
-    @State private var showingRecurringDisableDialog = false
-    @State private var showingError = false
-    @State private var errorMessage = ""
-    
-    private var availableCategories: [String] {
-        var categories: Set<String> = []
-        let transactionType = transaction.type
+    // MARK: - Initialization
 
-        // Добавляем пользовательские категории нужного типа
-        for customCategory in customCategories where customCategory.type == transactionType {
-            categories.insert(customCategory.name)
-        }
+    init(
+        transaction: Transaction,
+        transactionsViewModel: TransactionsViewModel,
+        categoriesViewModel: CategoriesViewModel,
+        accountsViewModel: AccountsViewModel,
+        transactionStore: TransactionStore,
+        accounts: [Account],
+        customCategories: [CustomCategory],
+        balanceCoordinator: BalanceCoordinator
+    ) {
+        _coordinator = State(initialValue: EditTransactionCoordinator(
+            transaction: transaction,
+            transactionsViewModel: transactionsViewModel,
+            categoriesViewModel: categoriesViewModel,
+            accountsViewModel: accountsViewModel,
+            transactionStore: transactionStore
+        ))
+        self._accounts = accounts
+        self._customCategories = customCategories
+        self._balanceCoordinator = balanceCoordinator
+    }
 
-        // Добавляем категории из существующих транзакций того же типа
-        for tx in transactionsViewModel.allTransactions where tx.type == transactionType {
-            if !tx.category.isEmpty {
-                categories.insert(tx.category)
-            }
-        }
+    // MARK: - Stored Properties (passed from parent, used for UI components)
 
-        // Если категория текущей транзакции не найдена, добавляем её
-        if !transaction.category.isEmpty {
-            categories.insert(transaction.category)
-        }
+    private let _accounts: [Account]
+    private let _customCategories: [CustomCategory]
+    private let _balanceCoordinator: BalanceCoordinator
 
-        return Array(categories).sortedByCustomOrder(customCategories: customCategories, type: transactionType)
-    }
-    
-    private var categoryId: String? {
-        customCategories.first { $0.name == selectedCategory }?.id
-    }
-    
-    private var availableSubcategories: [Subcategory] {
-        guard let categoryId = categoryId else { return [] }
-        return categoriesViewModel.getSubcategoriesForCategory(categoryId)
-    }
-    
-    private var canSave: Bool {
-        // Для переводов категория не нужна
-        if transaction.type == .internalTransfer {
-            return true
-        }
-        // Для остальных типов категория обязательна
-        return !selectedCategory.isEmpty &&
-               availableCategories.contains(selectedCategory)
-    }
-    
+    // MARK: - Body
+
     var body: some View {
+        @Bindable var bindableCoordinator = coordinator
+
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppSpacing.lg) {
-                    // 1. Picker (нет в EditTransactionView - тип транзакции не меняется)
-                    
-                    // 2. Сумма с выбором валюты
-                    AmountInputView(
-                        amount: $amountText,
-                        selectedCurrency: $selectedCurrency,
-                        errorMessage: showingError ? errorMessage : nil,
-                        baseCurrency: transactionsViewModel.appSettings.baseCurrency
-                    )
-                    
-                    // 3. Счет
-                    if !accounts.isEmpty {
-                        if transaction.type == .internalTransfer {
-                            AccountSelectorView(
-                                accounts: accounts,
-                                selectedAccountId: $selectedAccountId,
-                                balanceCoordinator: balanceCoordinator
+            ZStack(alignment: .top) {
+                ScrollView {
+                    VStack(spacing: AppSpacing.lg) {
+                        // Error banner
+                        if let error = coordinator.errorMessage {
+                            MessageBanner.error(error)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                                .padding(.horizontal, AppSpacing.pageHorizontal)
+                        }
+
+                        // 1. Amount + currency
+                        AmountInputView(
+                            amount: $bindableCoordinator.formData.amountText,
+                            selectedCurrency: $bindableCoordinator.formData.selectedCurrency,
+                            errorMessage: nil,
+                            baseCurrency: coordinator.transactionsViewModel.appSettings.baseCurrency
+                        )
+
+                        // 2. Account(s)
+                        if !_accounts.isEmpty {
+                            if coordinator.transaction.type == .internalTransfer {
+                                AccountSelectorView(
+                                    accounts: _accounts,
+                                    selectedAccountId: $bindableCoordinator.formData.selectedAccountId,
+                                    balanceCoordinator: _balanceCoordinator
+                                )
+
+                                AccountSelectorView(
+                                    accounts: _accounts,
+                                    selectedAccountId: $bindableCoordinator.formData.selectedTargetAccountId,
+                                    balanceCoordinator: _balanceCoordinator
+                                )
+                                .padding(.top, AppSpacing.md)
+                            } else {
+                                AccountSelectorView(
+                                    accounts: _accounts,
+                                    selectedAccountId: $bindableCoordinator.formData.selectedAccountId,
+                                    balanceCoordinator: _balanceCoordinator
+                                )
+                            }
+                        }
+
+                        // 3. Category + subcategories (not for transfers)
+                        if coordinator.transaction.type != .internalTransfer {
+                            CategorySelectorView(
+                                categories: coordinator.availableCategories,
+                                type: coordinator.transaction.type,
+                                customCategories: _customCategories,
+                                selectedCategory: Binding(
+                                    get: { coordinator.formData.selectedCategory.isEmpty ? nil : coordinator.formData.selectedCategory },
+                                    set: { coordinator.formData.selectedCategory = $0 ?? "" }
+                                ),
+                                emptyStateMessage: String(localized: "transactionForm.noCategories")
                             )
 
-                            AccountSelectorView(
-                                accounts: accounts,
-                                selectedAccountId: $selectedTargetAccountId,
-                                balanceCoordinator: balanceCoordinator
-                            )
-                            .padding(.top, AppSpacing.md)
-                        } else {
-                            AccountSelectorView(
-                                accounts: accounts,
-                                selectedAccountId: $selectedAccountId,
-                                balanceCoordinator: balanceCoordinator
-                            )
+                            if coordinator.categoryId != nil {
+                                SubcategorySelectorView(
+                                    categoriesViewModel: coordinator.categoriesViewModel,
+                                    categoryId: coordinator.categoryId,
+                                    selectedSubcategoryIds: $bindableCoordinator.formData.selectedSubcategoryIds,
+                                    onSearchTap: {
+                                        withAnimation { coordinator.formData.showingSubcategorySearch = true }
+                                    }
+                                )
+                            }
                         }
-                    }
-                    
-                    // 4. Категория
-                    if transaction.type != .internalTransfer {
-                        CategorySelectorView(
-                            categories: availableCategories,
-                            type: transaction.type,
-                            customCategories: customCategories,
-                            selectedCategory: Binding(
-                                get: { selectedCategory.isEmpty ? nil : selectedCategory },
-                                set: { selectedCategory = $0 ?? "" }
-                            ),
-                            emptyStateMessage: String(localized: "transactionForm.noCategories")
+
+                        // 4. Recurring
+                        MenuPickerRow(
+                            title: String(localized: "quickAdd.makeRecurring"),
+                            selection: $bindableCoordinator.formData.recurring
                         )
-                        
-                        // 5. Подкатегории
-                        if categoryId != nil {
-                            SubcategorySelectorView(
-                                categoriesViewModel: categoriesViewModel,
-                                categoryId: categoryId,
-                                selectedSubcategoryIds: $selectedSubcategoryIds,
-                                onSearchTap: {
-                                    showingSubcategorySearch = true
-                                }
-                            )
-                        }
+
+                        // 5. Description
+                        DescriptionTextField(
+                            text: $bindableCoordinator.formData.descriptionText,
+                            placeholder: String(localized: "transactionForm.descriptionPlaceholder")
+                        )
                     }
-                    
-                    // 6. Повтор операции
-                    MenuPickerRow(
-                        title: String(localized: "quickAdd.makeRecurring"),
-                        selection: $recurring
-                    )
-                    
-                    // 7. Описание
-                    DescriptionTextField(
-                        text: $descriptionText,
-                        placeholder: String(localized: "transactionForm.descriptionPlaceholder")
-                    )
+                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: coordinator.errorMessage)
                 }
             }
             .navigationTitle(String(localized: "transactionForm.editTransaction"))
@@ -166,224 +149,45 @@ struct EditTransactionView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        saveTransaction(date: selectedDate)
+                        coordinator.save { dismiss() }
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .disabled(canSave == false)
+                    .disabled(!coordinator.canSave)
                 }
             }
-            .dateButtonsSafeArea(selectedDate: $selectedDate) { date in
-                saveTransaction(date: date)
+            .dateButtonsSafeArea(selectedDate: $bindableCoordinator.formData.selectedDate) { date in
+                coordinator.formData.selectedDate = date
+                coordinator.save { dismiss() }
             }
-            .sheet(isPresented: $showingSubcategorySearch) {
+            .sheet(isPresented: $bindableCoordinator.formData.showingSubcategorySearch) {
                 SubcategorySearchView(
-                    categoriesViewModel: categoriesViewModel,
-                    categoryId: categoryId ?? "",
-                    selectedSubcategoryIds: $selectedSubcategoryIds,
-                    searchText: $subcategorySearchText
+                    categoriesViewModel: coordinator.categoriesViewModel,
+                    categoryId: coordinator.categoryId ?? "",
+                    selectedSubcategoryIds: $bindableCoordinator.formData.selectedSubcategoryIds,
+                    searchText: $bindableCoordinator.formData.subcategorySearchText
                 )
                 .onAppear {
-                    // Сбрасываем поиск при открытии, чтобы показать все подкатегории
-                    subcategorySearchText = ""
+                    coordinator.formData.subcategorySearchText = ""
                 }
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
-            .onAppear {
-                amountText = String(format: "%.2f", transaction.amount)
-                descriptionText = transaction.description
-                // Устанавливаем категорию только если она существует в доступных
-                if availableCategories.contains(transaction.category) {
-                    selectedCategory = transaction.category
-                } else {
-                    // Если категория не найдена, оставляем пустой (пользователь должен выбрать)
-                    selectedCategory = ""
-                }
-                selectedAccountId = transaction.accountId
-                selectedTargetAccountId = transaction.targetAccountId
-                selectedCurrency = transaction.currency
-                
-                // Загружаем подкатегории из transactionSubcategoryLinks
-                let linkedSubcategories = categoriesViewModel.getSubcategoriesForTransaction(transaction.id)
-                selectedSubcategoryIds = Set(linkedSubcategories.map { $0.id })
-                
-                // Проверяем recurring
-                // Note: recurringSeries should be accessed through SubscriptionsViewModel
-                if let seriesId = transaction.recurringSeriesId,
-                   let series = transactionsViewModel.recurringSeries.first(where: { $0.id == seriesId }) {
-                    recurring = .frequency(series.frequency)
-                } else {
-                    recurring = .never
-                }
-                
-                let dateFormatter = DateFormatters.dateFormatter
-                if let date = dateFormatter.date(from: transaction.date) {
-                    selectedDate = date
-                }
+            .onChange(of: coordinator.formData.selectedAccountId) { _, _ in
+                coordinator.updateCurrencyForSelectedAccount()
             }
-            .onChange(of: recurring) { oldValue, newValue in
-                if newValue == .never && transaction.recurringSeriesId != nil {
-                    // Если выключаем recurring, отключаем все будущие без подтверждения
-                    // Note: stopRecurringSeries should be in SubscriptionsViewModel
-                    if let seriesId = transaction.recurringSeriesId {
-                        transactionsViewModel.stopRecurringSeries(seriesId)
+            .onChange(of: coordinator.formData.recurring) { oldValue, newValue in
+                if newValue == .never, case .frequency = oldValue {
+                    if coordinator.transaction.recurringSeriesId != nil {
+                        coordinator.handleRecurringDisabled()
                     }
-                }
-            }
-            .alert(String(localized: "voice.error"), isPresented: $showingError) {
-                Button(String(localized: "voice.ok"), role: .cancel) {}
-            } message: {
-                Text(errorMessage)
-            }
-        }
-    }
-    
-    private func saveTransaction(date: Date) {
-        // Валидация: проверяем, что сумма введена и положительна
-        guard !amountText.isEmpty,
-              let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")),
-              amount > 0 else {
-            errorMessage = String(localized: "transactionForm.enterPositiveAmount")
-            showingError = true
-            HapticManager.warning()
-            return
-        }
-        
-        // Валидация: категория обязательна (только для не-переводов)
-        if transaction.type != .internalTransfer {
-            guard !selectedCategory.isEmpty,
-                  availableCategories.contains(selectedCategory) else {
-                errorMessage = String(localized: "transactionForm.selectCategory")
-                showingError = true
-                HapticManager.warning()
-                return
-            }
-        }
-        
-        // Валидация для переводов: предотвращаем перевод самому себе
-        if transaction.type == .internalTransfer {
-            guard let sourceId = selectedAccountId,
-                  let targetId = selectedTargetAccountId,
-                  sourceId != targetId else {
-                errorMessage = String(localized: "transactionForm.cannotTransferToSame")
-                showingError = true
-                HapticManager.warning()
-                return
-            }
-            
-            // Проверяем, что оба счета существуют
-            guard accounts.contains(where: { $0.id == sourceId }),
-                  accounts.contains(where: { $0.id == targetId }) else {
-                errorMessage = String(localized: "transactionForm.accountNotFound")
-                showingError = true
-                HapticManager.error()
-                return
-            }
-        }
-        
-        let dateFormatter = DateFormatters.dateFormatter
-        let dateString = dateFormatter.string(from: date)
-        
-        // Обработка recurring
-        var finalRecurringSeriesId: String? = transaction.recurringSeriesId
-        var finalRecurringOccurrenceId: String? = transaction.recurringOccurrenceId
-
-        if case .frequency(let freq) = recurring {
-            if transaction.recurringSeriesId == nil {
-                // Создаем новую recurring серию
-                // Note: createRecurringSeries should be in SubscriptionsViewModel
-                let amountDecimal = Decimal(amount)
-                let series = transactionsViewModel.createRecurringSeries(
-                    amount: amountDecimal,
-                    currency: selectedCurrency,
-                    category: selectedCategory,
-                    subcategory: nil,
-                    description: descriptionText.isEmpty ? selectedCategory : descriptionText,
-                    accountId: selectedAccountId,
-                    targetAccountId: selectedTargetAccountId,
-                    frequency: freq,
-                    startDate: dateString
-                )
-                finalRecurringSeriesId = series.id
-            } else {
-                // Обновляем существующую серию
-                // Note: recurringSeries should be accessed through SubscriptionsViewModel
-                if let seriesId = transaction.recurringSeriesId,
-                   let seriesIndex = transactionsViewModel.recurringSeries.firstIndex(where: { $0.id == seriesId }) {
-                    var series = transactionsViewModel.recurringSeries[seriesIndex]
-                    series.amount = Decimal(amount)
-                    series.category = selectedCategory
-                    series.description = descriptionText.isEmpty ? selectedCategory : descriptionText
-                    series.accountId = selectedAccountId
-                    series.targetAccountId = selectedTargetAccountId
-                    series.frequency = freq
-                    series.isActive = true // Активируем если была отключена
-                    transactionsViewModel.updateRecurringSeries(series)
-                }
-            }
-        } else {
-            // Если recurring выключен, но был включен - это обрабатывается через диалог
-            // Здесь просто не устанавливаем recurringSeriesId
-            finalRecurringSeriesId = nil
-            finalRecurringOccurrenceId = nil
-        }
-        
-        // Конвертируем валюту, если она изменилась
-        Task {
-            var convertedAmount: Double? = nil
-            let accountCurrency = accounts.first(where: { $0.id == selectedAccountId })?.currency ?? transaction.currency
-
-            if selectedCurrency != accountCurrency {
-                convertedAmount = await CurrencyConverter.convert(
-                    amount: amount,
-                    from: selectedCurrency,
-                    to: accountCurrency
-                )
-            }
-
-            let updatedTransaction = Transaction(
-                id: transaction.id,
-                date: dateString,
-                description: descriptionText,
-                amount: amount,
-                currency: selectedCurrency,
-                convertedAmount: convertedAmount,
-                type: transaction.type,
-                category: selectedCategory,
-                subcategory: nil,
-                accountId: selectedAccountId,
-                targetAccountId: selectedTargetAccountId,
-                recurringSeriesId: finalRecurringSeriesId,
-                recurringOccurrenceId: finalRecurringOccurrenceId,
-                createdAt: transaction.createdAt // Сохраняем оригинальный createdAt при редактировании
-            )
-
-            // NEW: Use TransactionStore for update
-            do {
-                try await transactionStore.update(updatedTransaction)
-
-                // Обновляем подкатегории (MainActor already)
-                await MainActor.run {
-                    categoriesViewModel.linkSubcategoriesToTransaction(
-                        transactionId: transaction.id,
-                        subcategoryIds: Array(selectedSubcategoryIds)
-                    )
-
-                    HapticManager.success()
-                    dismiss()
-                }
-            } catch {
-                // Handle error on MainActor
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    showingError = true
-                    HapticManager.error()
                 }
             }
         }
     }
 }
+
+// MARK: - Preview
 
 #Preview {
     let coordinator = AppCoordinator()
@@ -403,9 +207,12 @@ struct EditTransactionView: View {
             transaction: sampleTransaction,
             transactionsViewModel: coordinator.transactionsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            transactionStore: coordinator.transactionStore,
             accounts: coordinator.accountsViewModel.accounts,
             customCategories: coordinator.categoriesViewModel.customCategories,
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )
     }
+    .environment(coordinator.transactionStore)
 }

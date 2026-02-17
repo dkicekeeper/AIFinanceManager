@@ -15,6 +15,15 @@
 "navigation.entityMapping" = "Сопоставление сущностей";
 "navigation.csvPreview" = "Превью CSV";
 "navigation.transactionPreview" = "Предпросмотр транзакций";
+
+// MARK: - Transaction Preview (Phase 16)
+"transactionPreview.found" = "Найдено: %d транзакций";
+"transactionPreview.selectHint" = "Выберите транзакции для добавления";
+"transactionPreview.selectAll" = "Выбрать все";
+"transactionPreview.deselectAll" = "Снять выбор";
+"transactionPreview.addSelected" = "Добавить выбранные (%d)";
+"transactionPreview.noAccount" = "Без счета";
+"transactionPreview.account" = "Счет";
 "navigation.statementText" = "Текст выписки";
 "navigation.voiceInput" = "Голосовой ввод";
 "navigation.subcategorySearch" = "Поиск подкатегорий";

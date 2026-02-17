@@ -42,11 +42,10 @@ struct TransactionRowContent: View {
         self.linkedSubcategories = linkedSubcategories
     }
 
+    // MARK: - Display Helpers (Phase 16: delegated to TransactionDisplayHelper)
+
     private var isFutureDate: Bool {
-        let dateFormatter = DateFormatters.dateFormatter
-        guard let transactionDate = dateFormatter.date(from: transaction.date) else { return false }
-        let today = Calendar.current.startOfDay(for: Date())
-        return transactionDate > today
+        TransactionDisplayHelper.isFutureDate(transaction.date)
     }
 
     // ✅ CATEGORY REFACTORING: Use cached style data instead of recreating helper
@@ -191,60 +190,24 @@ struct TransactionRowContent: View {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Helpers (Phase 16: delegated to TransactionDisplayHelper)
 
     private var amountColor: Color {
-        if isPlanned {
-            return .blue
-        }
-
-        // For deposits with depositAccountId
-        if let depositId = depositAccountId, transaction.type == .internalTransfer {
-            let isIncoming = transaction.targetAccountId == depositId
-            return isIncoming ? .green : .primary
-        }
-
-        switch transaction.type {
-        case .income:
-            return .green
-        case .expense:
-            return .primary
-        case .internalTransfer:
-            return .primary
-        case .depositTopUp, .depositInterestAccrual:
-            return .green
-        case .depositWithdrawal:
-            return .primary
-        }
+        TransactionDisplayHelper.amountColor(
+            for: transaction.type,
+            targetAccountId: transaction.targetAccountId,
+            depositAccountId: depositAccountId,
+            isPlanned: isPlanned
+        )
     }
 
     private var amountPrefix: String {
-        if isPlanned {
-            return "+"
-        }
-
-        // For deposits with depositAccountId
-        if let depositId = depositAccountId {
-            if transaction.type == .depositInterestAccrual {
-                return "+"
-            } else if transaction.type == .internalTransfer {
-                let isIncoming = transaction.targetAccountId == depositId
-                return isIncoming ? "+" : "-"
-            }
-        }
-
-        switch transaction.type {
-        case .income:
-            return "+"
-        case .expense:
-            return "-"
-        case .internalTransfer:
-            return ""
-        case .depositTopUp, .depositInterestAccrual:
-            return "+"
-        case .depositWithdrawal:
-            return "-"
-        }
+        TransactionDisplayHelper.amountPrefix(
+            for: transaction.type,
+            targetAccountId: transaction.targetAccountId,
+            depositAccountId: depositAccountId,
+            isPlanned: isPlanned
+        )
     }
 
     private func formatDate(_ dateString: String) -> String {
