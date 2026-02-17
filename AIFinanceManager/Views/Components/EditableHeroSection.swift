@@ -48,6 +48,7 @@ struct EditableHeroSection: View {
     @State private var showingIconPicker = false
     @State private var isBalanceFocused = false
     @State private var iconScale: CGFloat = 0.8
+    @State private var displayBalance: String = ""
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isBalanceFieldFocused: Bool
 
@@ -149,7 +150,7 @@ struct EditableHeroSection: View {
                 }
             }
         }
-//        .buttonStyle(.plain)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Title View
@@ -165,63 +166,54 @@ struct EditableHeroSection: View {
     // MARK: - Balance View
 
     private var balanceView: some View {
-        VStack(spacing: AppSpacing.xs) {
+        VStack(spacing: AppSpacing.sm) {
             if isBalanceFocused || balance.isEmpty {
                 // Editable balance field
-                HStack(spacing: AppSpacing.sm) {
-                    TextField("0.00", text: $balance)
-                        .font(AppTypography.h4)
-//                        .fontWeight(.semibold)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.center)
-                        .focused($isBalanceFieldFocused)
-                        .frame(maxWidth: 150)
-
-                    if config.showCurrency {
-                        currencyPicker
+                TextField("0", text: $displayBalance)
+                    .font(AppTypography.h2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.center)
+                    .focused($isBalanceFieldFocused)
+                    .onChange(of: displayBalance) { _, newValue in
+                        updateBalanceFromDisplay(newValue)
                     }
-                }
-//                .padding(.horizontal, AppSpacing.md)
-//                .padding(.vertical, AppSpacing.sm)
-//                .background(AppColors.secondaryBackground)
-//                .clipShape(.rect(cornerRadius: AppRadius.md))
-                .onTapGesture {
-                    HapticManager.light()
-                    isBalanceFocused = true
-                    isBalanceFieldFocused = true
-                }
+                    .onAppear {
+                        if !balance.isEmpty {
+                            displayBalance = formatBalanceForEditing(balance)
+                        }
+                    }
+                    .onTapGesture {
+                        HapticManager.light()
+                        isBalanceFocused = true
+                        isBalanceFieldFocused = true
+                    }
             } else {
                 // Display-only balance
                 Button {
                     HapticManager.light()
                     isBalanceFocused = true
                     isBalanceFieldFocused = true
+                    displayBalance = formatBalanceForEditing(balance)
                 } label: {
-                    HStack(spacing: AppSpacing.sm) {
-                        if let amount = parseBalance() {
-                            FormattedAmountText(
-                                amount: amount,
-                                currency: currency,
-                                fontSize: AppTypography.h4,
-                                fontWeight: .semibold,
-                                color: AppColors.textSecondary
-                            )
-                        } else {
-                            Text("0.00")
-                                .font(AppTypography.h4)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(AppColors.textSecondary)
-                        }
-
-                        if config.showCurrency {
-                            Text(Formatting.currencySymbol(for: currency))
-                                .font(AppTypography.h4)
-                                .foregroundStyle(AppColors.textSecondary)
-                        }
+                    if let amount = parseBalance() {
+                        Text(formatBalanceWithoutSymbol(amount))
+                            .font(AppTypography.h2)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppColors.textPrimary)
+                    } else {
+                        Text("0")
+                            .font(AppTypography.h2)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppColors.textPrimary)
                     }
                 }
                 .buttonStyle(.plain)
+            }
+            
+            if config.showCurrency {
+                currencyPicker
             }
         }
         .onChange(of: isBalanceFieldFocused) { _, newValue in
@@ -236,26 +228,10 @@ struct EditableHeroSection: View {
     // MARK: - Currency Picker
 
     private var currencyPicker: some View {
-        Menu {
-            ForEach(currencies, id: \.self) { curr in
-                Button {
-                    HapticManager.selection()
-                    currency = curr
-                } label: {
-                    HStack {
-                        Text(Formatting.currencySymbol(for: curr))
-                        if currency == curr {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            Text(Formatting.currencySymbol(for: currency))
-                .font(AppTypography.h4)
-                .fontWeight(.semibold)
-                .foregroundStyle(AppColors.accent)
-        }
+        CurrencySelectorView(
+            selectedCurrency: $currency,
+            availableCurrencies: currencies
+        )
     }
 
     // MARK: - Helper Methods
@@ -263,6 +239,82 @@ struct EditableHeroSection: View {
     private func parseBalance() -> Double? {
         guard !balance.isEmpty else { return nil }
         return Double(balance.replacingOccurrences(of: ",", with: "."))
+    }
+
+    private func formatBalanceWithoutSymbol(_ amount: Double) -> String {
+        let config = AmountDisplayConfiguration.shared
+        let numberFormatter = config.makeNumberFormatter()
+
+        // Check if we should show decimals
+        let hasDecimals = amount.truncatingRemainder(dividingBy: 1) != 0
+
+        if !config.showDecimalsWhenZero && !hasDecimals {
+            numberFormatter.minimumFractionDigits = 0
+            numberFormatter.maximumFractionDigits = 0
+        }
+
+        guard let formattedAmount = numberFormatter.string(from: NSNumber(value: amount)) else {
+            return String(format: "%.2f", amount)
+        }
+
+        return formattedAmount
+    }
+
+    private func formatBalanceForEditing(_ rawBalance: String) -> String {
+        // Remove any non-numeric characters except decimal separator
+        let cleanedString = rawBalance.replacingOccurrences(of: ",", with: ".")
+        guard let amount = Double(cleanedString) else { return rawBalance }
+
+        let config = AmountDisplayConfiguration.shared
+        let numberFormatter = config.makeNumberFormatter()
+
+        // Check if we should show decimals
+        let hasDecimals = amount.truncatingRemainder(dividingBy: 1) != 0
+
+        if !config.showDecimalsWhenZero && !hasDecimals {
+            numberFormatter.minimumFractionDigits = 0
+            numberFormatter.maximumFractionDigits = 0
+        }
+
+        return numberFormatter.string(from: NSNumber(value: amount)) ?? rawBalance
+    }
+
+    private func updateBalanceFromDisplay(_ displayValue: String) {
+        // Remove thousand separators and convert decimal separator
+        let cleanedString = displayValue
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: ",", with: ".")
+
+        // Validate that it's a valid number format
+        let allowedCharacters = CharacterSet(charactersIn: "0123456789.")
+        let characterSet = CharacterSet(charactersIn: cleanedString)
+
+        guard allowedCharacters.isSuperset(of: characterSet) else { return }
+
+        // Count decimal points
+        let decimalCount = cleanedString.filter { $0 == "." }.count
+        guard decimalCount <= 1 else { return }
+
+        // Update the binding with clean value
+        balance = cleanedString
+
+        // Reformat display with thousand separators
+        if let amount = Double(cleanedString) {
+            let config = AmountDisplayConfiguration.shared
+            let numberFormatter = config.makeNumberFormatter()
+
+            // Check if we should show decimals
+            let hasDecimals = amount.truncatingRemainder(dividingBy: 1) != 0
+
+            if !config.showDecimalsWhenZero && !hasDecimals {
+                numberFormatter.minimumFractionDigits = 0
+                numberFormatter.maximumFractionDigits = 0
+            }
+
+            if let formatted = numberFormatter.string(from: NSNumber(value: amount)) {
+                displayBalance = formatted
+            }
+        }
     }
 
     private func colorFromHex(_ hex: String) -> Color {

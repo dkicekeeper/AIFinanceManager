@@ -50,78 +50,80 @@ struct SubscriptionEditView: View {
                 String(localized: "subscription.newTitle") :
                 String(localized: "subscription.editTitle"),
             isSaveDisabled: description.isEmpty || amountText.isEmpty,
+            useScrollView: true,
             onSave: saveSubscription,
             onCancel: onCancel
         ) {
-            VStack(spacing: 0) {
-                // Hero Section with Icon, Name, Amount, and Currency
-                EditableHeroSection(
-                    iconSource: $selectedIconSource,
-                    title: $description,
-                    balance: $amountText,
-                    currency: $currency,
-                    titlePlaceholder: String(localized: "subscription.namePlaceholder"),
-                    config: .subscriptionHero
-                )
-                .padding(.horizontal, AppSpacing.lg)
-
-                // Validation Error
-                if let error = validationError {
-                    MessageBanner.error(error)
-                        .padding(.horizontal, AppSpacing.lg)
-                        .padding(.top, AppSpacing.md)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-
-                // Account Selector
-                AccountSelectorView(
-                    accounts: transactionsViewModel.accounts,
-                    selectedAccountId: $selectedAccountId,
-                    emptyStateMessage: transactionsViewModel.accounts.isEmpty ?
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // Hero Section with Icon, Name, Amount, and Currency
+                    EditableHeroSection(
+                        iconSource: $selectedIconSource,
+                        title: $description,
+                        balance: $amountText,
+                        currency: $currency,
+                        titlePlaceholder: String(localized: "subscription.namePlaceholder"),
+                        config: .subscriptionHero
+                    )
+                    
+                    // Validation Error
+                    if let error = validationError {
+                        MessageBanner.error(error)
+                            .padding(.horizontal, AppSpacing.lg)
+                            .padding(.top, AppSpacing.md)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                    
+                    // Account Selector
+                    AccountSelectorView(
+                        accounts: transactionsViewModel.accounts,
+                        selectedAccountId: $selectedAccountId,
+                        emptyStateMessage: transactionsViewModel.accounts.isEmpty ?
                         String(localized: "account.noAccountsAvailable") : nil,
-                    warningMessage: selectedAccountId == nil ?
+                        warningMessage: selectedAccountId == nil ?
                         String(localized: "account.selectAccount") : nil,
-                    balanceCoordinator: transactionsViewModel.balanceCoordinator!
-                )
-                .padding(.top, AppSpacing.md)
-
-                // Category Selector
-                CategorySelectorView(
-                    categories: availableCategories,
-                    type: .expense,
-                    customCategories: transactionsViewModel.customCategories,
-                    selectedCategory: $selectedCategory,
-                    warningMessage: selectedCategory == nil ?
+                        balanceCoordinator: transactionsViewModel.balanceCoordinator!
+                    )
+                    
+                    // Category Selector
+                    CategorySelectorView(
+                        categories: availableCategories,
+                        type: .expense,
+                        customCategories: transactionsViewModel.customCategories,
+                        selectedCategory: $selectedCategory,
+                        warningMessage: selectedCategory == nil ?
                         String(localized: "category.selectCategory") : nil
-                )
+                    )
 
-                // Additional Settings Section
-                Section {
-                    VStack(spacing: 0) {
+                    // Additional Settings
+                    VStack(spacing: AppSpacing.md) {
                         // Frequency
                         MenuPickerRow(
                             icon: "arrow.triangle.2.circlepath",
                             title: String(localized: "common.frequency"),
                             selection: $selectedFrequency
                         )
-                        .formDivider()
-
+                        Divider()
+                        
                         // Start Date
                         DatePickerRow(
+                            icon: "calendar",
                             title: String(localized: "common.startDate"),
                             selection: $startDate
                         )
-                        .formDivider()
-
+                        Divider()
+                        
                         // Reminder
                         MenuPickerRow(
+                            icon: "bell",
                             title: String(localized: "subscription.reminders"),
                             selection: $reminder
                         )
                     }
-                } header: {
-                    Text(String(localized: "subscription.basicInfo"))
+                    .cardStyle()
                 }
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.top, AppSpacing.md)
             }
         }
         .onAppear {

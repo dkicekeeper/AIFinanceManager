@@ -78,7 +78,7 @@ struct MenuPickerRow<T: Hashable>: View {
                 .clipShape(Capsule())
             }
         }
-        .padding(.horizontal, AppSpacing.lg)
+//        .padding(.horizontal, AppSpacing.lg)
     }
 }
 

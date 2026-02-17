@@ -30,6 +30,8 @@ struct EditSheetContainer<Content: View>: View {
     let title: String
     /// When `true`, the save (checkmark) button is disabled
     let isSaveDisabled: Bool
+    /// Use ScrollView instead of Form for white background (hero-style views)
+    let useScrollView: Bool
     /// Called when the user taps the checkmark button
     let onSave: () -> Void
     /// Called when the user taps the xmark button
@@ -37,29 +39,59 @@ struct EditSheetContainer<Content: View>: View {
     /// The Form sections content provided by the caller
     @ViewBuilder let content: () -> Content
 
+    init(
+        title: String,
+        isSaveDisabled: Bool,
+        useScrollView: Bool = false,
+        onSave: @escaping () -> Void,
+        onCancel: @escaping () -> Void,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.isSaveDisabled = isSaveDisabled
+        self.useScrollView = useScrollView
+        self.onSave = onSave
+        self.onCancel = onCancel
+        self.content = content
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
+            if useScrollView {
                 content()
-            }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: onCancel) {
-                        Image(systemName: "xmark")
+                    .navigationTitle(title)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        toolbarContent
                     }
+            } else {
+                Form {
+                    content()
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        HapticManager.light()
-                        onSave()
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(isSaveDisabled)
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    toolbarContent
                 }
             }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigationBarLeading) {
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+            }
+        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button {
+                HapticManager.light()
+                onSave()
+            } label: {
+                Image(systemName: "checkmark")
+            }
+            .disabled(isSaveDisabled)
         }
     }
 }

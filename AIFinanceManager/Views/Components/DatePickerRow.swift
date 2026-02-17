@@ -11,33 +11,58 @@ import SwiftUI
 /// Date picker row with inline style
 /// For button-based selection (Yesterday/Today/Calendar), use DateButtonsView directly
 struct DatePickerRow: View {
+    let icon: String?
     let title: String
     @Binding var selection: Date
     let displayedComponents: DatePickerComponents
 
     init(
+        icon: String? = nil,
         title: String = String(localized: "common.startDate"),
         selection: Binding<Date>,
         displayedComponents: DatePickerComponents = .date
     ) {
+        self.icon = icon
         self.title = title
         self._selection = selection
         self.displayedComponents = displayedComponents
     }
 
     var body: some View {
-        DatePicker(
-            title,
-            selection: $selection,
-            displayedComponents: displayedComponents
-        )
-        .padding(AppSpacing.md)
+        HStack(spacing: AppSpacing.md) {
+            // Left side: Icon + Title
+            if let icon = icon {
+                HStack(spacing: AppSpacing.md) {
+                    Image(systemName: icon)
+                        .font(.system(size: AppIconSize.sm))
+                        .foregroundStyle(AppColors.textPrimary)
+                        .frame(
+                            width : AppIconSize.lg,
+                            height: AppIconSize.lg
+                        )
+
+                    DatePicker(
+                        title,
+                        selection: $selection,
+                        displayedComponents: displayedComponents
+                    )
+                }
+            } else {
+                // Without icon - default DatePicker
+                DatePicker(
+                    title,
+                    selection: $selection,
+                    displayedComponents: displayedComponents
+                )
+            }
+        }
+//        .padding(.horizontal, AppSpacing.lg)
     }
 }
 
 // MARK: - Previews
 
-#Preview("Basic Usage") {
+#Preview("With Icon") {
     @Previewable @State var date = Date()
 
     FormSection(
@@ -51,6 +76,7 @@ struct DatePickerRow: View {
             .padding(.leading, AppSpacing.md)
 
         DatePickerRow(
+            icon: "calendar",
             title: String(localized: "common.startDate"),
             selection: $date
         )
@@ -58,7 +84,22 @@ struct DatePickerRow: View {
     .padding()
 }
 
-#Preview("Date & Time") {
+#Preview("Without Icon") {
+    @Previewable @State var date = Date()
+
+    FormSection(
+        header: "Subscription Details",
+        style: .card
+    ) {
+        DatePickerRow(
+            title: String(localized: "common.startDate"),
+            selection: $date
+        )
+    }
+    .padding()
+}
+
+#Preview("Date & Time with Icon") {
     @Previewable @State var datetime = Date()
 
     FormSection(
@@ -66,6 +107,7 @@ struct DatePickerRow: View {
         style: .card
     ) {
         DatePickerRow(
+            icon: "clock",
             title: "Date & Time",
             selection: $datetime,
             displayedComponents: [.date, .hourAndMinute]
