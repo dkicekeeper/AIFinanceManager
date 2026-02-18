@@ -28,6 +28,7 @@ class AppCoordinator {
     let depositsViewModel: DepositsViewModel
     let transactionsViewModel: TransactionsViewModel
     let settingsViewModel: SettingsViewModel  // NEW: Phase 1 - Settings refactoring
+    let insightsViewModel: InsightsViewModel  // NEW: Phase 17 - Financial Insights
 
     // MARK: - New Architecture (Phase 7)
 
@@ -130,6 +131,27 @@ class AppCoordinator {
             categoriesViewModel: categoriesViewModel,
             accountsViewModel: accountsViewModel,
             initialSettings: transactionsViewModel.appSettings
+        )
+
+        // Phase 17: Initialize InsightsService and InsightsViewModel
+        let insightsCache = InsightsCache()
+        let insightsFilterService = TransactionFilterService(dateFormatter: DateFormatters.dateFormatter)
+        let insightsQueryService = TransactionQueryService()
+        let insightsBudgetService = CategoryBudgetService(
+            currencyService: transactionsViewModel.currencyService,
+            appSettings: transactionsViewModel.appSettings
+        )
+        let insightsService = InsightsService(
+            transactionStore: self.transactionStore,
+            filterService: insightsFilterService,
+            queryService: insightsQueryService,
+            budgetService: insightsBudgetService,
+            cache: insightsCache
+        )
+        self.insightsViewModel = InsightsViewModel(
+            insightsService: insightsService,
+            transactionStore: self.transactionStore,
+            transactionsViewModel: self.transactionsViewModel
         )
 
         // @Observable handles change propagation automatically - no manual observer setup needed
@@ -240,6 +262,9 @@ class AppCoordinator {
 
         // Sync categories to CategoriesViewModel
         self.categoriesViewModel.syncCategoriesFromStore()
+
+        // Phase 18: Push-model — invalidate cache and schedule background recompute
+        self.insightsViewModel.invalidateAndRecompute()
 
     }
 }

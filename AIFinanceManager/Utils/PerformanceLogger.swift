@@ -262,4 +262,128 @@ extension PerformanceLogger {
             ])
         }
     }
+
+    // MARK: - Insights Metrics (Phase 17)
+
+    /// Структурированное логирование для InsightsService и InsightsViewModel.
+    /// Каждый метод соответствует одному логическому этапу генерации инсайтов.
+    struct InsightsMetrics {
+
+        // MARK: ViewModel
+
+        static func logLoadStart(transactionCount: Int, timeFilter: String, currency: String) {
+            shared.start("Insights.loadInsights", metadata: [
+                "transactions": transactionCount,
+                "filter": timeFilter,
+                "currency": currency
+            ])
+        }
+
+        static func logLoadEnd(insightCount: Int, monthlyPointCount: Int) {
+            shared.end("Insights.loadInsights", additionalMetadata: [
+                "insightsGenerated": insightCount,
+                "monthlyPoints": monthlyPointCount
+            ])
+        }
+
+        // MARK: Service — top level
+
+        static func logGenerateStart(filteredCount: Int, cacheHit: Bool) {
+            shared.start("Insights.generateAll", metadata: [
+                "filteredTransactions": filteredCount,
+                "cacheHit": cacheHit
+            ])
+        }
+
+        static func logGenerateEnd(total: Int) {
+            shared.end("Insights.generateAll", additionalMetadata: ["totalInsights": total])
+        }
+
+        // MARK: Spending
+
+        static func logSpendingStart(expenseCount: Int, categoryCount: Int) {
+            shared.start("Insights.spending", metadata: [
+                "expenses": expenseCount,
+                "categories": categoryCount
+            ])
+        }
+
+        static func logSpendingEnd(insightCount: Int, topCategory: String, topAmount: Double) {
+            shared.end("Insights.spending", additionalMetadata: [
+                "insights": insightCount,
+                "topCategory": topCategory,
+                "topAmount": String(format: "%.0f", topAmount)
+            ])
+        }
+
+        // MARK: Income
+
+        static func logIncomeStart(incomeCount: Int) {
+            shared.start("Insights.income", metadata: ["incomeTransactions": incomeCount])
+        }
+
+        static func logIncomeEnd(insightCount: Int, thisMonth: Double, prevMonth: Double) {
+            let change = prevMonth > 0 ? ((thisMonth - prevMonth) / prevMonth) * 100 : 0
+            shared.end("Insights.income", additionalMetadata: [
+                "insights": insightCount,
+                "thisMonth": String(format: "%.0f", thisMonth),
+                "prevMonth": String(format: "%.0f", prevMonth),
+                "changePercent": String(format: "%+.1f%%", change)
+            ])
+        }
+
+        // MARK: Budget
+
+        static func logBudgetStart(categoriesWithBudget: Int) {
+            shared.start("Insights.budget", metadata: ["budgetCategories": categoriesWithBudget])
+        }
+
+        static func logBudgetEnd(insightCount: Int, overBudget: Int, atRisk: Int, underBudget: Int) {
+            shared.end("Insights.budget", additionalMetadata: [
+                "insights": insightCount,
+                "overBudget": overBudget,
+                "atRisk": atRisk,
+                "underBudget": underBudget
+            ])
+        }
+
+        // MARK: Recurring
+
+        static func logRecurringStart(activeSeries: Int) {
+            shared.start("Insights.recurring", metadata: ["activeSeries": activeSeries])
+        }
+
+        static func logRecurringEnd(totalMonthly: Double, currency: String) {
+            shared.end("Insights.recurring", additionalMetadata: [
+                "totalMonthly": String(format: "%.0f %@", totalMonthly, currency)
+            ])
+        }
+
+        // MARK: CashFlow
+
+        static func logCashFlowStart(months: Int) {
+            shared.start("Insights.cashFlow", metadata: ["months": months])
+        }
+
+        static func logCashFlowEnd(insightCount: Int, latestNetFlow: Double, projectedBalance: Double) {
+            shared.end("Insights.cashFlow", additionalMetadata: [
+                "insights": insightCount,
+                "latestNetFlow": String(format: "%.0f", latestNetFlow),
+                "projectedBalance": String(format: "%.0f", projectedBalance)
+            ])
+        }
+
+        // MARK: Monthly Data Points
+
+        static func logMonthlyPointStart(months: Int, transactionCount: Int) {
+            shared.start("Insights.monthlyPoints", metadata: [
+                "months": months,
+                "transactions": transactionCount
+            ])
+        }
+
+        static func logMonthlyPointEnd(pointCount: Int) {
+            shared.end("Insights.monthlyPoints", additionalMetadata: ["pointsComputed": pointCount])
+        }
+    }
 }

@@ -398,6 +398,30 @@ extension View {
         }
     }
     
+    /// Применяет glass/material background без clipShape поверх контента.
+    /// Используется для карточек с встроенными Swift Charts — clipShape обрезает Metal-слои Charts.
+    /// На iOS 26+ glassEffect сам обрезает glass по форме, не затрагивая SwiftUI-контент.
+    /// - Parameter radius: Corner radius (по умолчанию .pill)
+    func cardBackground(radius: CGFloat = AppRadius.pill) -> some View {
+        if #available(iOS 26, *) {
+            // ⚠️ Намеренно НЕ применяем clipShape — он обрезает Swift Charts слои.
+            // glassEffect(in: .rect(cornerRadius:)) самостоятельно задаёт форму glass-слоя.
+            return AnyView(
+                self
+                    .glassEffect(.regular, in: .rect(cornerRadius: radius))
+            )
+        } else {
+            return AnyView(
+                self
+                    .background(
+                        .ultraThinMaterial,
+                        in: RoundedRectangle(cornerRadius: radius)
+                    )
+                    .clipShape(.rect(cornerRadius: radius))
+            )
+        }
+    }
+
     /// Применяет стиль для fallback иконок (используется в BrandLogoView, SubscriptionCard)
     /// - Parameter size: Размер иконки
     func fallbackIconStyle(size: CGFloat) -> some View {

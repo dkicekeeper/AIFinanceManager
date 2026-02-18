@@ -1,0 +1,182 @@
+//
+//  InsightsCardView.swift
+//  AIFinanceManager
+//
+//  Phase 17: Financial Insights Feature
+//  Reusable insight card with mini-chart, metric, and trend indicator
+//
+
+import SwiftUI
+
+struct InsightsCardView: View {
+    let insight: Insight
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Text content inside the glass card (padded, not clipped by chart)
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                // Header: icon + title + severity badge
+                HStack(alignment: .top, spacing: AppSpacing.sm) {
+                    Image(systemName: insight.category.icon)
+                        .font(.system(size: AppIconSize.sm))
+                        .foregroundStyle(insight.severity.color)
+
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                        Text(insight.title)
+                            .font(AppTypography.captionEmphasis)
+                            .foregroundStyle(AppColors.textSecondary)
+
+                        Text(insight.subtitle)
+                            .font(AppTypography.h4)
+                            .foregroundStyle(AppColors.textPrimary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    // Trend indicator
+                    if let trend = insight.trend {
+                        trendBadge(trend)
+                    }
+                }
+
+                // Large metric
+                Text(insight.metric.formattedValue)
+                    .font(AppTypography.h2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                if let unit = insight.metric.unit {
+                    Text(unit)
+                        .font(AppTypography.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .padding(.top, -AppSpacing.sm)
+                }
+            }
+            .padding(AppSpacing.lg)
+
+            // Mini chart — rendered OUTSIDE the clip region to avoid being clipped
+            miniChart
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.bottom, AppSpacing.lg)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardBackground(radius: AppRadius.pill)
+    }
+
+    // MARK: - Trend Badge
+
+    private func trendBadge(_ trend: InsightTrend) -> some View {
+        HStack(spacing: AppSpacing.xxs) {
+            Image(systemName: trend.trendIcon)
+                .font(.system(size: 10, weight: .bold))
+
+            if let percent = trend.changePercent {
+                Text(String(format: "%+.1f%%", percent))
+                    .font(AppTypography.caption2)
+                    .fontWeight(.semibold)
+            }
+        }
+        .foregroundStyle(trend.trendColor)
+        .padding(.horizontal, AppSpacing.sm)
+        .padding(.vertical, AppSpacing.xxs)
+        .background(trend.trendColor.opacity(0.12))
+        .clipShape(Capsule())
+    }
+
+    // MARK: - Mini Chart
+
+    @ViewBuilder
+    private var miniChart: some View {
+        switch insight.detailData {
+        case .categoryBreakdown(let items):
+            CategoryBreakdownChart(items: items, compact: true)
+        case .monthlyTrend(let points):
+            CashFlowChart(dataPoints: points, currency: insight.metric.currency ?? "KZT", compact: true)
+        case .budgetProgressList(let items):
+            if let first = items.first {
+                budgetProgressBar(first)
+            }
+        case .recurringList:
+            EmptyView()
+        case .dailyTrend(let points):
+            if !points.isEmpty {
+                SpendingTrendChart(
+                    dataPoints: points.map { MonthlyDataPoint(id: $0.id, month: $0.date, income: 0, expenses: $0.amount, netFlow: -$0.amount, label: $0.label) },
+                    currency: insight.metric.currency ?? "KZT",
+                    compact: true
+                )
+            }
+        case .accountComparison:
+            EmptyView()
+        case .periodTrend(let points):
+            // Phase 18 — mini period cash flow chart
+            PeriodCashFlowChart(
+                dataPoints: points,
+                currency: insight.metric.currency ?? "KZT",
+                granularity: points.first?.granularity ?? .month,
+                compact: true
+            )
+            .frame(height: 60)
+        case .wealthBreakdown:
+            // No mini chart for wealth breakdown (account list)
+            EmptyView()
+        case nil:
+            EmptyView()
+        }
+    }
+
+    private func budgetProgressBar(_ item: BudgetInsightItem) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: AppRadius.xs)
+                        .fill(AppColors.secondaryBackground)
+                        .frame(height: 6)
+
+                    RoundedRectangle(cornerRadius: AppRadius.xs)
+                        .fill(item.isOverBudget ? AppColors.destructive : item.color)
+                        .frame(width: min(geometry.size.width, geometry.size.width * min(item.percentage, 100) / 100), height: 6)
+                }
+            }
+            .frame(height: 6)
+        }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Spending — Top Category") {
+    ScrollView {
+        VStack(spacing: AppSpacing.md) {
+            InsightsCardView(insight: .mockTopSpending())
+            InsightsCardView(insight: .mockMoM())
+            InsightsCardView(insight: .mockAvgDaily())
+        }
+        .screenPadding()
+        .padding(.vertical, AppSpacing.md)
+    }
+}
+
+#Preview("Income & Cash Flow") {
+    ScrollView {
+        VStack(spacing: AppSpacing.md) {
+            InsightsCardView(insight: .mockIncomeGrowth())
+            InsightsCardView(insight: .mockCashFlow())
+            InsightsCardView(insight: .mockProjectedBalance())
+        }
+        .screenPadding()
+        .padding(.vertical, AppSpacing.md)
+    }
+}
+
+#Preview("Budget & Recurring") {
+    ScrollView {
+        VStack(spacing: AppSpacing.md) {
+            InsightsCardView(insight: .mockBudgetOver())
+            InsightsCardView(insight: .mockRecurring())
+        }
+        .screenPadding()
+        .padding(.vertical, AppSpacing.md)
+    }
+}

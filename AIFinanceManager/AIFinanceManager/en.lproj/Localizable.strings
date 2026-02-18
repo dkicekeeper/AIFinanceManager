@@ -671,3 +671,76 @@
 "input.amountPlaceholder" = "0";
 "input.titleHint" = "Tap to edit name";
 "input.balanceHint" = "Tap to edit balance";
+
+// MARK: - Insights (Phase 17)
+"insights.title" = "Insights";
+"insights.all" = "All";
+"insights.spending" = "Spending";
+"insights.income" = "Income";
+"insights.budget" = "Budget";
+"insights.recurring" = "Recurring";
+"insights.cashFlow" = "Cash Flow";
+"insights.netFlow" = "Net Flow";
+"insights.ratio" = "Income/Expense Ratio";
+"insights.loading" = "Analyzing your finances...";
+"insights.emptyState.title" = "No insights yet";
+"insights.emptyState.description" = "Add some transactions to see your financial insights";
+"insights.noInsightsForFilter" = "No insights for this category";
+"insights.topCategory" = "Top Spending Category";
+"insights.ofTotal" = "of total spending";
+"insights.spendingSpike" = "Unusual Spending Detected";
+"insights.monthOverMonth" = "Monthly Spending Change";
+"insights.avgDailySpending" = "Average Daily Spending";
+"insights.days" = "days";
+"insights.incomeGrowth" = "Income Trend";
+"insights.incomeVsExpense" = "Income vs Expenses";
+"insights.vsPreviousPeriod" = "vs previous period";
+"insights.vsAverage" = "vs average";
+"insights.budgetOver" = "Over Budget";
+"insights.budgetUnder" = "Under Budget";
+"insights.projectedOverspend" = "Projected Overspend";
+"insights.categoriesOverBudget" = "%d categories over budget";
+"insights.categoriesAtRisk" = "%d categories at risk";
+"insights.categoriesUnderBudget" = "%d categories on track";
+"insights.categoriesUnit" = "categories";
+"insights.totalRecurring" = "Monthly Recurring Costs";
+"insights.activeRecurring" = "%d active recurring";
+"insights.perMonth" = "per month";
+"insights.netCashFlow" = "Net Cash Flow";
+"insights.bestMonth" = "Best Month";
+"insights.worstMonth" = "Worst Month";
+"insights.projectedBalance" = "Projected Balance";
+"insights.in30Days" = "in 30 days";
+"insights.projected" = "projected change";
+"insights.currentBalance" = "Current balance";
+"insights.cashFlowTrend" = "Cash Flow Trend";
+"insights.breakdown" = "Breakdown";
+"insights.monthlyBreakdown" = "Monthly Breakdown";
+"insights.other" = "Other";
+"insights.noSubcategory" = "No subcategory";
+"insights.spendingTrend" = "Spending Trend";
+"insights.subcategories" = "Subcategories";
+"insights.periodComparison" = "Period Comparison";
+"insights.daysLeft" = "%d days left";
+
+// Phase 18 — Granularity picker
+"insights.granularity.week" = "By Weeks";
+"insights.granularity.month" = "By Months";
+"insights.granularity.quarter" = "By Quarters";
+"insights.granularity.year" = "By Years";
+"insights.granularity.allTime" = "All Time";
+"insights.granularity.week.short" = "Week";
+"insights.granularity.month.short" = "Month";
+"insights.granularity.quarter.short" = "Quarter";
+"insights.granularity.year.short" = "Year";
+"insights.granularity.allTime.short" = "All";
+"insights.granularity.prev.week" = "vs prev. week";
+"insights.granularity.prev.month" = "vs prev. month";
+"insights.granularity.prev.quarter" = "vs prev. quarter";
+"insights.granularity.prev.year" = "vs prev. year";
+
+// Phase 18 — Wealth card
+"insights.wealth" = "Capital";
+"insights.wealth.title" = "Accumulated Capital";
+"insights.wealth.subtitle" = "Total balance across all accounts";
+"insights.wealth.accounts" = "Accounts";

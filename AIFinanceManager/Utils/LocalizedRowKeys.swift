@@ -127,6 +127,15 @@ enum LocalizedRowKey: String {
     case titleHint = "input.titleHint"
     case balanceHint = "input.balanceHint"
 
+    // MARK: - Insights (Phase 17)
+
+    case insightsTitle = "insights.title"
+    case insightsSpending = "insights.spending"
+    case insightsIncome = "insights.income"
+    case insightsBudget = "insights.budget"
+    case insightsRecurring = "insights.recurring"
+    case insightsCashFlow = "insights.cashFlow"
+
     // MARK: - CSV Specific
 
     case csvEmptyCell = "csv.emptyCell"
@@ -221,6 +230,10 @@ extension LocalizedRowKey {
 
             // Animated input
             .amountPlaceholder, .titleHint, .balanceHint,
+
+            // Insights
+            .insightsTitle, .insightsSpending, .insightsIncome,
+            .insightsBudget, .insightsRecurring, .insightsCashFlow,
 
             // Transaction preview
             .transactionPreviewTitle, .transactionPreviewFound, .transactionPreviewSelectHint,

@@ -189,6 +189,11 @@ struct ContentView: View {
         .environment(timeFilterManager)
     }
 
+    private var insightsDestination: some View {
+        InsightsView(insightsViewModel: coordinator.insightsViewModel)
+            .environment(timeFilterManager)
+    }
+
     private var settingsDestination: some View {
         SettingsView(
             settingsViewModel: coordinator.settingsViewModel,
@@ -234,7 +239,10 @@ struct ContentView: View {
                 timeFilterButton
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                settingsButton
+                HStack(spacing: AppSpacing.md) {
+                    insightsButton
+                    settingsButton
+                }
             }
         }
     }
@@ -254,6 +262,13 @@ struct ContentView: View {
         }
         .accessibilityLabel(String(localized: "accessibility.calendar"))
         .accessibilityHint(String(localized: "accessibility.calendarHint"))
+    }
+
+    private var insightsButton: some View {
+        NavigationLink(destination: insightsDestination) {
+            Image(systemName: "chart.bar.xaxis")
+        }
+        .accessibilityLabel(String(localized: "insights.title"))
     }
 
     private var settingsButton: some View {

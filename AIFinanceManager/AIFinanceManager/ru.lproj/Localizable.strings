@@ -671,3 +671,76 @@
 "input.amountPlaceholder" = "0";
 "input.titleHint" = "Нажмите для редактирования";
 "input.balanceHint" = "Нажмите для редактирования суммы";
+
+// MARK: - Insights (Phase 17)
+"insights.title" = "Аналитика";
+"insights.all" = "Все";
+"insights.spending" = "Расходы";
+"insights.income" = "Доходы";
+"insights.budget" = "Бюджет";
+"insights.recurring" = "Регулярные";
+"insights.cashFlow" = "Денежный поток";
+"insights.netFlow" = "Чистый поток";
+"insights.ratio" = "Соотношение доходов/расходов";
+"insights.loading" = "Анализируем ваши финансы...";
+"insights.emptyState.title" = "Пока нет аналитики";
+"insights.emptyState.description" = "Добавьте транзакции, чтобы увидеть финансовую аналитику";
+"insights.noInsightsForFilter" = "Нет данных для этой категории";
+"insights.topCategory" = "Топ категория расходов";
+"insights.ofTotal" = "от общих расходов";
+"insights.spendingSpike" = "Обнаружены необычные траты";
+"insights.monthOverMonth" = "Расходы за месяц";
+"insights.avgDailySpending" = "Среднедневные расходы";
+"insights.days" = "дней";
+"insights.incomeGrowth" = "Тренд доходов";
+"insights.incomeVsExpense" = "Доходы vs Расходы";
+"insights.vsPreviousPeriod" = "к прошлому периоду";
+"insights.vsAverage" = "к среднему";
+"insights.budgetOver" = "Превышение бюджета";
+"insights.budgetUnder" = "В рамках бюджета";
+"insights.projectedOverspend" = "Прогноз перерасхода";
+"insights.categoriesOverBudget" = "%d категорий с перерасходом";
+"insights.categoriesAtRisk" = "%d категорий под угрозой";
+"insights.categoriesUnderBudget" = "%d категорий в норме";
+"insights.categoriesUnit" = "категорий";
+"insights.totalRecurring" = "Ежемесячные регулярные расходы";
+"insights.activeRecurring" = "%d активных подписок";
+"insights.perMonth" = "в месяц";
+"insights.netCashFlow" = "Чистый денежный поток";
+"insights.bestMonth" = "Лучший месяц";
+"insights.worstMonth" = "Худший месяц";
+"insights.projectedBalance" = "Прогноз баланса";
+"insights.in30Days" = "через 30 дней";
+"insights.projected" = "прогнозируемое изменение";
+"insights.currentBalance" = "Текущий баланс";
+"insights.cashFlowTrend" = "Тренд денежных потоков";
+"insights.breakdown" = "Детализация";
+"insights.monthlyBreakdown" = "По месяцам";
+"insights.other" = "Другое";
+"insights.noSubcategory" = "Без подкатегории";
+"insights.spendingTrend" = "Тренд расходов";
+"insights.subcategories" = "Подкатегории";
+"insights.periodComparison" = "Сравнение периодов";
+"insights.daysLeft" = "%d дней осталось";
+
+// Phase 18 — Granularity picker
+"insights.granularity.week" = "По неделям";
+"insights.granularity.month" = "По месяцам";
+"insights.granularity.quarter" = "По кварталам";
+"insights.granularity.year" = "По годам";
+"insights.granularity.allTime" = "Всё время";
+"insights.granularity.week.short" = "Нед";
+"insights.granularity.month.short" = "Мес";
+"insights.granularity.quarter.short" = "Кв";
+"insights.granularity.year.short" = "Год";
+"insights.granularity.allTime.short" = "Всё";
+"insights.granularity.prev.week" = "к пред. неделе";
+"insights.granularity.prev.month" = "к пред. месяцу";
+"insights.granularity.prev.quarter" = "к пред. кварталу";
+"insights.granularity.prev.year" = "к пред. году";
+
+// Phase 18 — Wealth card
+"insights.wealth" = "Капитал";
+"insights.wealth.title" = "Накопленный капитал";
+"insights.wealth.subtitle" = "Общий баланс всех счетов";
+"insights.wealth.accounts" = "Счета";
