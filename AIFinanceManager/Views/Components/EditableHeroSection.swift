@@ -2,18 +2,20 @@
 //  EditableHeroSection.swift
 //  AIFinanceManager
 //
-//  Created on 2026-02-16
 //  Phase 16: Hero-style Edit Views
+//  Updated: Phase 16 - AnimatedHeroInput
 //
 //  Universal hero section component for edit views with:
 //  - Large tappable IconView with spring animation
-//  - Editable title TextField styled as H1
-//  - Optional balance with NumPad TextField
+//  - AnimatedTitleInput: per-character spring+fade animation
+//  - AnimatedAmountInput: per-digit spring+wobble animation
 //  - Inline currency picker as Menu button
 //  - Optional ColorPickerRow carousel
 //
 
 import SwiftUI
+
+// MARK: - HeroConfig
 
 /// Configuration for EditableHeroSection appearance and behavior
 struct HeroConfig {
@@ -26,7 +28,9 @@ struct HeroConfig {
     static let subscriptionHero = HeroConfig(showBalance: true, showCurrency: true)
 }
 
-/// Editable hero section for edit views with icon, title, and optional balance/color
+// MARK: - EditableHeroSection
+
+/// Editable hero section for edit views with animated icon, title, and optional balance/color.
 struct EditableHeroSection: View {
     // MARK: - Bindings
 
@@ -46,11 +50,7 @@ struct EditableHeroSection: View {
     // MARK: - State
 
     @State private var showingIconPicker = false
-    @State private var isBalanceFocused = false
     @State private var iconScale: CGFloat = 0.8
-    @State private var displayBalance: String = ""
-    @FocusState private var isTitleFocused: Bool
-    @FocusState private var isBalanceFieldFocused: Bool
 
     // MARK: - Initializer
 
@@ -93,8 +93,12 @@ struct EditableHeroSection: View {
                     }
                 }
 
-            // Title
-            titleView
+            // Animated Title
+            AnimatedTitleInput(
+                text: $title,
+                placeholder: titlePlaceholder
+            )
+            .padding(.horizontal, AppSpacing.lg)
 
             // Balance (if enabled)
             if config.showBalance {
@@ -123,212 +127,48 @@ struct EditableHeroSection: View {
             HapticManager.light()
             showingIconPicker = true
         } label: {
-            VStack(spacing: AppSpacing.xs) {
-                if config.showColorPicker {
-                    // Category icon with color
+            if config.showColorPicker {
+                // Category icon with selected color
+                IconView(
+                    source: iconSource ?? .sfSymbol("star.fill"),
+                    style: .circle(
+                        size: AppIconSize.largeButton,
+                        tint: .monochrome(Color(hex: selectedColor)),
+                        backgroundColor: AppColors.surface
+                    )
+                )
+            } else {
+                // Account/Subscription icon with glass effect
+                if #available(iOS 18.0, *) {
                     IconView(
-                        source: iconSource ?? .sfSymbol("star.fill"),
-                        style: .circle(
-                            size: AppIconSize.largeButton,
-                            tint: .monochrome(colorFromHex(selectedColor)),
-                            backgroundColor: AppColors.surface
-                        )
+                        source: iconSource,
+                        style: .glassHero()
                     )
                 } else {
-                    // Account/Subscription icon with glass effect
-                    if #available(iOS 18.0, *) {
-                        IconView(
-                            source: iconSource,
-                            style: .glassHero()
-                        )
-                    } else {
-                        IconView(
-                            source: iconSource,
-                            size: AppIconSize.largeButton
-                        )
-                    }
+                    IconView(
+                        source: iconSource,
+                        size: AppIconSize.largeButton
+                    )
                 }
             }
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Title View
-
-    private var titleView: some View {
-        TextField(titlePlaceholder, text: $title)
-            .font(AppTypography.h1)
-            .multilineTextAlignment(.center)
-            .focused($isTitleFocused)
-            .submitLabel(.done)
-    }
-
     // MARK: - Balance View
 
     private var balanceView: some View {
         VStack(spacing: AppSpacing.sm) {
-            if isBalanceFocused || balance.isEmpty {
-                // Editable balance field
-                TextField("0", text: $displayBalance)
-                    .font(AppTypography.h2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(AppColors.textPrimary)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.center)
-                    .focused($isBalanceFieldFocused)
-                    .onChange(of: displayBalance) { _, newValue in
-                        updateBalanceFromDisplay(newValue)
-                    }
-                    .onAppear {
-                        if !balance.isEmpty {
-                            displayBalance = formatBalanceForEditing(balance)
-                        }
-                    }
-                    .onTapGesture {
-                        HapticManager.light()
-                        isBalanceFocused = true
-                        isBalanceFieldFocused = true
-                    }
-            } else {
-                // Display-only balance
-                Button {
-                    HapticManager.light()
-                    isBalanceFocused = true
-                    isBalanceFieldFocused = true
-                    displayBalance = formatBalanceForEditing(balance)
-                } label: {
-                    if let amount = parseBalance() {
-                        Text(formatBalanceWithoutSymbol(amount))
-                            .font(AppTypography.h2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(AppColors.textPrimary)
-                    } else {
-                        Text("0")
-                            .font(AppTypography.h2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(AppColors.textPrimary)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            
+            AnimatedAmountInput(amount: $balance)
+                .padding(.horizontal, AppSpacing.lg)
+
             if config.showCurrency {
-                currencyPicker
+                CurrencySelectorView(
+                    selectedCurrency: $currency,
+                    availableCurrencies: currencies
+                )
             }
         }
-        .onChange(of: isBalanceFieldFocused) { _, newValue in
-            if !newValue {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    isBalanceFocused = false
-                }
-            }
-        }
-    }
-
-    // MARK: - Currency Picker
-
-    private var currencyPicker: some View {
-        CurrencySelectorView(
-            selectedCurrency: $currency,
-            availableCurrencies: currencies
-        )
-    }
-
-    // MARK: - Helper Methods
-
-    private func parseBalance() -> Double? {
-        guard !balance.isEmpty else { return nil }
-        return Double(balance.replacingOccurrences(of: ",", with: "."))
-    }
-
-    private func formatBalanceWithoutSymbol(_ amount: Double) -> String {
-        let config = AmountDisplayConfiguration.shared
-        let numberFormatter = config.makeNumberFormatter()
-
-        // Check if we should show decimals
-        let hasDecimals = amount.truncatingRemainder(dividingBy: 1) != 0
-
-        if !config.showDecimalsWhenZero && !hasDecimals {
-            numberFormatter.minimumFractionDigits = 0
-            numberFormatter.maximumFractionDigits = 0
-        }
-
-        guard let formattedAmount = numberFormatter.string(from: NSNumber(value: amount)) else {
-            return String(format: "%.2f", amount)
-        }
-
-        return formattedAmount
-    }
-
-    private func formatBalanceForEditing(_ rawBalance: String) -> String {
-        // Remove any non-numeric characters except decimal separator
-        let cleanedString = rawBalance.replacingOccurrences(of: ",", with: ".")
-        guard let amount = Double(cleanedString) else { return rawBalance }
-
-        let config = AmountDisplayConfiguration.shared
-        let numberFormatter = config.makeNumberFormatter()
-
-        // Check if we should show decimals
-        let hasDecimals = amount.truncatingRemainder(dividingBy: 1) != 0
-
-        if !config.showDecimalsWhenZero && !hasDecimals {
-            numberFormatter.minimumFractionDigits = 0
-            numberFormatter.maximumFractionDigits = 0
-        }
-
-        return numberFormatter.string(from: NSNumber(value: amount)) ?? rawBalance
-    }
-
-    private func updateBalanceFromDisplay(_ displayValue: String) {
-        // Remove thousand separators and convert decimal separator
-        let cleanedString = displayValue
-            .replacingOccurrences(of: " ", with: "")
-            .replacingOccurrences(of: ",", with: ".")
-
-        // Validate that it's a valid number format
-        let allowedCharacters = CharacterSet(charactersIn: "0123456789.")
-        let characterSet = CharacterSet(charactersIn: cleanedString)
-
-        guard allowedCharacters.isSuperset(of: characterSet) else { return }
-
-        // Count decimal points
-        let decimalCount = cleanedString.filter { $0 == "." }.count
-        guard decimalCount <= 1 else { return }
-
-        // Update the binding with clean value
-        balance = cleanedString
-
-        // Reformat display with thousand separators
-        if let amount = Double(cleanedString) {
-            let config = AmountDisplayConfiguration.shared
-            let numberFormatter = config.makeNumberFormatter()
-
-            // Check if we should show decimals
-            let hasDecimals = amount.truncatingRemainder(dividingBy: 1) != 0
-
-            if !config.showDecimalsWhenZero && !hasDecimals {
-                numberFormatter.minimumFractionDigits = 0
-                numberFormatter.maximumFractionDigits = 0
-            }
-
-            if let formatted = numberFormatter.string(from: NSNumber(value: amount)) {
-                displayBalance = formatted
-            }
-        }
-    }
-
-    private func colorFromHex(_ hex: String) -> Color {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-
-        var rgb: UInt64 = 0
-        Scanner(string: hexSanitized).scanHexInt64(&rgb)
-
-        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
-        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
-        let b = Double(rgb & 0x0000FF) / 255.0
-
-        return Color(red: r, green: g, blue: b)
     }
 }
 
@@ -348,7 +188,7 @@ struct EditableHeroSection: View {
             balance: $balance,
             currency: $currency,
             selectedColor: $color,
-            titlePlaceholder: "Account Name",
+            titlePlaceholder: String(localized: "account.namePlaceholder"),
             config: .accountHero
         )
     }
@@ -369,7 +209,7 @@ struct EditableHeroSection: View {
             balance: $balance,
             currency: $currency,
             selectedColor: $color,
-            titlePlaceholder: "Category Name",
+            titlePlaceholder: String(localized: "category.namePlaceholder"),
             config: .categoryHero
         )
     }
@@ -390,7 +230,7 @@ struct EditableHeroSection: View {
             balance: $balance,
             currency: $currency,
             selectedColor: $color,
-            titlePlaceholder: "Subscription Name",
+            titlePlaceholder: String(localized: "subscription.namePlaceholder"),
             config: .subscriptionHero
         )
     }
@@ -411,7 +251,7 @@ struct EditableHeroSection: View {
             balance: $balance,
             currency: $currency,
             selectedColor: $color,
-            titlePlaceholder: "Enter name...",
+            titlePlaceholder: String(localized: "account.namePlaceholder"),
             config: .accountHero
         )
     }
@@ -435,14 +275,14 @@ struct EditableHeroSection: View {
                     balance: $balance,
                     currency: $currency,
                     selectedColor: $color,
-                    titlePlaceholder: "Enter name",
+                    titlePlaceholder: String(localized: "common.name"),
                     config: selectedConfig
                 )
 
                 Divider()
 
                 VStack(spacing: AppSpacing.md) {
-                    Text("Configuration")
+                    Text(String(localized: "settings.title"))
                         .font(AppTypography.h4)
 
                     Button("Account Hero") {

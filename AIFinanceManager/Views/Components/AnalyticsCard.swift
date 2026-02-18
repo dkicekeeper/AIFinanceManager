@@ -17,7 +17,7 @@ struct AnalyticsCard: View {
             HStack {
                 Text(String(localized: "analytics.history", defaultValue: "История"))
                     .font(AppTypography.h3)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(AppColors.textPrimary)
                 Spacer()
             }
 
@@ -32,16 +32,15 @@ struct AnalyticsCard: View {
             if summary.plannedAmount > 0 {
                 HStack {
                     Text(String(localized: "analytics.planned"))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(.primary)
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.textPrimary)
                     Spacer()
 
                     FormattedAmountText(
                         amount: summary.plannedAmount,
                         currency: currency,
-                        fontSize: AppTypography.bodySmall,
-                        fontWeight: .semibold,
-                        color: .primary
+                        fontSize: AppTypography.body,
+                        color: AppColors.textPrimary
                     )
                 }
             }

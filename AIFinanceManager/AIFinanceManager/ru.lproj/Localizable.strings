@@ -666,3 +666,8 @@
 "filter.allAccounts" = "Все счета";
 "filter.allCategories" = "Все категории";
 "filter.categoriesCount" = "%d категорий";
+
+// MARK: - Animated Input (Phase 16)
+"input.amountPlaceholder" = "0";
+"input.titleHint" = "Нажмите для редактирования";
+"input.balanceHint" = "Нажмите для редактирования суммы";

@@ -53,9 +53,9 @@ struct ExpenseIncomeProgressBar: View {
                 FormattedAmountText(
                     amount: expenseAmount,
                     currency: currency,
-                    fontSize: AppTypography.bodySmall,
+                    fontSize: AppTypography.h4,
                     fontWeight: .semibold,
-                    color: .primary
+                    color: AppColors.textPrimary
                 )
 
                 Spacer()
@@ -63,9 +63,9 @@ struct ExpenseIncomeProgressBar: View {
                 FormattedAmountText(
                     amount: incomeAmount,
                     currency: currency,
-                    fontSize: AppTypography.bodySmall,
+                    fontSize: AppTypography.h4,
                     fontWeight: .semibold,
-                    color: .green
+                    color: AppColors.income
                 )
             }
         }

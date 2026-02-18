@@ -121,6 +121,12 @@ enum LocalizedRowKey: String {
     case allCategories = "filter.allCategories"
     case categoriesCount = "filter.categoriesCount"
 
+    // MARK: - Animated Input (Phase 16)
+
+    case amountPlaceholder = "input.amountPlaceholder"
+    case titleHint = "input.titleHint"
+    case balanceHint = "input.balanceHint"
+
     // MARK: - CSV Specific
 
     case csvEmptyCell = "csv.emptyCell"
@@ -212,6 +218,9 @@ extension LocalizedRowKey {
 
             // Filter buttons
             .allAccounts, .allCategories, .categoriesCount,
+
+            // Animated input
+            .amountPlaceholder, .titleHint, .balanceHint,
 
             // Transaction preview
             .transactionPreviewTitle, .transactionPreviewFound, .transactionPreviewSelectHint,

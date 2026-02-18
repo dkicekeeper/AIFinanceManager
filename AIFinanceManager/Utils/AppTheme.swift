@@ -576,8 +576,11 @@ enum AppSize {
     /// Cursor line width
     static let cursorWidth: CGFloat = 2
 
-    /// Cursor line height
+    /// Cursor line height for numeric amount input
     static let cursorHeight: CGFloat = 36
+
+    /// Cursor line height for large title input (h1)
+    static let cursorHeightLarge: CGFloat = 44
 }
 
 // MARK: - Animation Durations

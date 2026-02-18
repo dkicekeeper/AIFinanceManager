@@ -666,3 +666,8 @@
 "filter.allAccounts" = "All Accounts";
 "filter.allCategories" = "All Categories";
 "filter.categoriesCount" = "%d categories";
+
+// MARK: - Animated Input (Phase 16)
+"input.amountPlaceholder" = "0";
+"input.titleHint" = "Tap to edit name";
+"input.balanceHint" = "Tap to edit balance";
