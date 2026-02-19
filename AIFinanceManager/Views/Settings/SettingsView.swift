@@ -28,7 +28,6 @@ struct SettingsView: View {
     // MARK: - State
 
     @State private var showingResetConfirmation = false
-    @State private var showingRecalculateBalancesConfirmation = false
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
     @State private var selectedPhoto: PhotosPickerItem? = nil
@@ -83,19 +82,6 @@ struct SettingsView: View {
 
                 Spacer()
             }
-        }
-        .alert(
-            String(localized: "alert.recalculateBalances.title"),
-            isPresented: $showingRecalculateBalancesConfirmation
-        ) {
-            Button(String(localized: "alert.recalculateBalances.confirm"), role: .destructive) {
-                Task {
-                    await settingsViewModel.recalculateBalances()
-                }
-            }
-            Button(String(localized: "alert.deleteAllData.cancel"), role: .cancel) {}
-        } message: {
-            Text(String(localized: "alert.recalculateBalances.message"))
         }
         .alert(
             String(localized: "alert.deleteAllData.title"),
@@ -196,9 +182,6 @@ struct SettingsView: View {
 
     private var dangerZoneSection: some View {
         SettingsDangerZoneSection(
-            onRecalculateBalances: {
-                showingRecalculateBalancesConfirmation = true
-            },
             onResetData: {
                 showingResetConfirmation = true
             }

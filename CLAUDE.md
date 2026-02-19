@@ -107,6 +107,15 @@ AIFinanceManager/
 
 ### Recent Refactoring Phases
 
+**Phase 23** (2026-02-20): @ObservationIgnored — Fine-Grained UI Updates
+- **Eliminated unnecessary dependency tracking** in 7 `@Observable` classes
+- **`AppCoordinator`**: 8 зависимостей (ViewModels + Store + Coordinator) помечены `@ObservationIgnored`; observable остаётся только `isInitialized`
+- **`TransactionStore`**: `repository`, `recurringGenerator`, `recurringValidator`, `recurringCache`, `categoryAggregateService`, `monthlyAggregateService`, `coordinator` → `@ObservationIgnored`
+- **`TransactionsViewModel`**: `repository`, `currencyService`, `cacheManager`, `recurringGenerator` → `@ObservationIgnored`
+- **`AddTransactionCoordinator`** / **`EditTransactionCoordinator`** / **`QuickAddCoordinator`**: все публичные VM-зависимости → `@ObservationIgnored`; observable остаётся только `formData`
+- **`DepositsViewModel`**: `repository`, `accountsViewModel` → `@ObservationIgnored`
+- **Правило**: все `let`-зависимости (сервисы, репозитории, другие VM) в `@Observable` классах обязаны быть помечены `@ObservationIgnored`
+
 **Phase 22** (2026-02-19): Persistent Aggregate Caching
 - **Activated `CategoryAggregateEntity`** — schema existed since Phase 8 as stub, now fully live
 - **New `MonthlyAggregateEntity`** — stores pre-computed monthly income/expense totals in CoreData
@@ -287,6 +296,45 @@ func saveAccountsInternal(...) throws {
 - Use @Bindable for two-way bindings
 - Avoid @State in views for complex state - delegate to ViewModels
 - Use Observation framework, not Combine publishers
+
+### @Observable — Правила точечных обновлений (Phase 23)
+
+**Обязательные правила для всех `@Observable` классов:**
+
+#### 1. @ObservationIgnored для зависимостей
+Любое свойство, которое является сервисом, репозиторием, кэшем, форматтером или ссылкой на другой VM/Coordinator — **обязано** быть помечено `@ObservationIgnored`:
+
+```swift
+// ❌ WRONG — SwiftUI начнёт трекать repository и currencyService
+@Observable @MainActor class SomeViewModel {
+    let repository: DataRepositoryProtocol
+    let currencyService = TransactionCurrencyService()
+    var isLoading = false
+}
+
+// ✅ CORRECT — трекается только isLoading
+@Observable @MainActor class SomeViewModel {
+    @ObservationIgnored let repository: DataRepositoryProtocol
+    @ObservationIgnored let currencyService = TransactionCurrencyService()
+    var isLoading = false
+}
+```
+
+**Правило большого пальца**: если свойство не меняется после `init` или его изменение не должно триггерить UI — ставь `@ObservationIgnored`.
+
+#### 2. Хранение VM во View
+| Ситуация | Правильный паттерн |
+|----------|--------------------|
+| VM создаётся внутри View | `@State var vm = SomeViewModel()` |
+| VM передаётся снаружи (только чтение) | `let vm: SomeViewModel` |
+| VM передаётся снаружи (нужен `$binding`) | `@Bindable var vm: SomeViewModel` |
+| VM из environment | `@Environment(SomeViewModel.self) var vm` |
+
+❌ **Никогда не используй** `@StateObject`, `@ObservedObject`, `@EnvironmentObject` — это для старого `ObservableObject`.
+
+#### 3. Текущие исключения (намеренно observable)
+- `TransactionStore.baseCurrency` — `var` без `@ObservationIgnored`, т.к. смена базовой валюты должна триггерить пересчёт UI
+- `DepositsViewModel.balanceCoordinator` — `var?` без `@ObservationIgnored`, т.к. назначается после `init` (late injection)
 
 ### CoreData Usage
 - All CoreData operations through DataRepositoryProtocol
@@ -894,7 +942,7 @@ context.perform {
 
 ---
 
-**Last Updated**: 2026-02-19
-**Project Status**: Active development - Swift 6 compliant, Performance optimized, Persistent aggregate caching
+**Last Updated**: 2026-02-20
+**Project Status**: Active development - Swift 6 compliant, Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates
 **iOS Target**: 26.0+
 **Swift Version**: 6.0+ (strict concurrency mode)

@@ -103,22 +103,12 @@ struct TransactionRowContent: View {
                     if let targetCurrency = transaction.targetCurrency,
                        let targetAmount = transaction.targetAmount,
                        targetCurrency != transaction.currency {
-                        HStack(spacing: 0) {
-                            Text("(")
-                                .font(AppTypography.body)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(amountColor.opacity(0.7))
-                            FormattedAmountView(
-                                amount: targetAmount,
-                                currency: targetCurrency,
-                                prefix: "",
-                                color: amountColor.opacity(0.7)
-                            )
-                            Text(")")
-                                .font(AppTypography.body)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(amountColor.opacity(0.7))
-                        }
+                        FormattedAmountView(
+                            amount: targetAmount,
+                            currency: targetCurrency,
+                            prefix: "",
+                            color: amountColor.opacity(0.7)
+                        )
                     }
                 }
             }

@@ -20,8 +20,8 @@ class DepositsViewModel {
 
     // MARK: - Dependencies
 
-    let repository: DataRepositoryProtocol
-    let accountsViewModel: AccountsViewModel
+    @ObservationIgnored let repository: DataRepositoryProtocol
+    @ObservationIgnored let accountsViewModel: AccountsViewModel
 
     /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth
     /// Injected by AppCoordinator

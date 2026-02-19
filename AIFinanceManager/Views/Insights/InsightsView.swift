@@ -67,16 +67,6 @@ struct InsightsView: View {
         }
         .navigationTitle(String(localized: "insights.title"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    HapticManager.light()
-                    insightsViewModel.refreshInsights()
-                }) {
-                    Image(systemName: "arrow.clockwise")
-                }
-            }
-        }
         .onAppear {
             insightsViewModel.onAppear()
         }

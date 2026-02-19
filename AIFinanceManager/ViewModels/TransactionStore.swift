@@ -101,17 +101,17 @@ final class TransactionStore {
 
     // MARK: - Dependencies
 
-    internal let repository: DataRepositoryProtocol  // ✨ Phase 9: internal for access from extension
-    private let cache: UnifiedTransactionCache
+    @ObservationIgnored internal let repository: DataRepositoryProtocol  // ✨ Phase 9: internal for access from extension
+    @ObservationIgnored private let cache: UnifiedTransactionCache
 
     // ✅ REFACTORED: Balance coordinator is now REQUIRED (not optional)
     // This ensures balance updates always occur, no silent failures
-    private let balanceCoordinator: BalanceCoordinator
+    @ObservationIgnored private let balanceCoordinator: BalanceCoordinator
 
     // ✨ Phase 9: Recurring dependencies (internal for access from extension)
-    internal let recurringGenerator: RecurringTransactionGenerator
-    internal let recurringValidator: RecurringValidationService
-    internal let recurringCache: LRUCache<String, [Transaction]>
+    @ObservationIgnored internal let recurringGenerator: RecurringTransactionGenerator
+    @ObservationIgnored internal let recurringValidator: RecurringValidationService
+    @ObservationIgnored internal let recurringCache: LRUCache<String, [Transaction]>
 
     // Settings
     internal var baseCurrency: String = "KZT"
@@ -123,17 +123,17 @@ final class TransactionStore {
     private var syncDebounceTask: Task<Void, Never>?
 
     // Coordinator for syncing changes to ViewModels (with @Observable we need manual sync)
-    weak var coordinator: AppCoordinator?
+    @ObservationIgnored weak var coordinator: AppCoordinator?
 
     // MARK: - Phase 22: Persistent Aggregate Services
 
     /// Maintains per-category spending totals in CategoryAggregateEntity.
     /// Updated incrementally on each transaction mutation (O(1) per transaction).
-    let categoryAggregateService: CategoryAggregateService
+    @ObservationIgnored let categoryAggregateService: CategoryAggregateService
 
     /// Maintains per-month income/expense totals in MonthlyAggregateEntity.
     /// Used by InsightsService for O(M) chart data instead of O(N×M) scans.
-    let monthlyAggregateService: MonthlyAggregateService
+    @ObservationIgnored let monthlyAggregateService: MonthlyAggregateService
 
     // MARK: - Initialization
 

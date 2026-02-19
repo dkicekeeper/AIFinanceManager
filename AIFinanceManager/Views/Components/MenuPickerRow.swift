@@ -245,14 +245,14 @@ enum RecurringOption: Hashable {
                     text: $name,
                     placeholder: String(localized: "subscription.namePlaceholder")
                 )
-                .formDivider()
+                Divider()
 
                 MenuPickerRow(
                     icon: "arrow.triangle.2.circlepath",
                     title: String(localized: "common.frequency"),
                     selection: $frequency
                 )
-                .formDivider()
+                Divider()
 
                 DatePickerRow(
                     title: String(localized: "common.startDate"),

@@ -56,7 +56,6 @@ struct SectionHeaderView: View {
             .font(AppTypography.bodySmall)
             .fontWeight(.semibold)
             .foregroundStyle(AppColors.textPrimary)
-            .textCase(.uppercase)
     }
 
     private var compactStyle: some View {

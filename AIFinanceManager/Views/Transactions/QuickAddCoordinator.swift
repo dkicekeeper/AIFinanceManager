@@ -17,13 +17,12 @@ final class QuickAddCoordinator {
 
     // MARK: - Dependencies
 
-    // Internal access for temporary exposure during migration
-    let transactionsViewModel: TransactionsViewModel
-    let categoriesViewModel: CategoriesViewModel
-    let accountsViewModel: AccountsViewModel
-    let transactionStore: TransactionStore
-    private var timeFilterManager: TimeFilterManager
-    private let categoryMapper: CategoryDisplayDataMapperProtocol
+    @ObservationIgnored let transactionsViewModel: TransactionsViewModel
+    @ObservationIgnored let categoriesViewModel: CategoriesViewModel
+    @ObservationIgnored let accountsViewModel: AccountsViewModel
+    @ObservationIgnored let transactionStore: TransactionStore
+    @ObservationIgnored private var timeFilterManager: TimeFilterManager
+    @ObservationIgnored private let categoryMapper: CategoryDisplayDataMapperProtocol
 
     // MARK: - Observable State
 

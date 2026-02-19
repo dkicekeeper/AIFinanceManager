@@ -38,10 +38,10 @@ final class EditTransactionCoordinator {
 
     // MARK: - Dependencies
 
-    let transactionsViewModel: TransactionsViewModel
-    let categoriesViewModel: CategoriesViewModel
-    let accountsViewModel: AccountsViewModel
-    private let transactionStore: TransactionStore
+    @ObservationIgnored let transactionsViewModel: TransactionsViewModel
+    @ObservationIgnored let categoriesViewModel: CategoriesViewModel
+    @ObservationIgnored let accountsViewModel: AccountsViewModel
+    @ObservationIgnored private let transactionStore: TransactionStore
 
     // MARK: - Original Transaction
 

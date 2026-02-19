@@ -15,14 +15,13 @@ final class AddTransactionCoordinator {
 
     // MARK: - Dependencies
 
-    // Internal access for temporary exposure during migration
-    let transactionsViewModel: TransactionsViewModel
-    let categoriesViewModel: CategoriesViewModel
-    let accountsViewModel: AccountsViewModel
+    @ObservationIgnored let transactionsViewModel: TransactionsViewModel
+    @ObservationIgnored let categoriesViewModel: CategoriesViewModel
+    @ObservationIgnored let accountsViewModel: AccountsViewModel
 
     // ✅ REFACTORED: TransactionStore is now REQUIRED (not optional)
     // No more dual paths - always use TransactionStore
-    private let transactionStore: TransactionStore
+    @ObservationIgnored private let transactionStore: TransactionStore
 
     // MARK: - State
 

@@ -104,7 +104,6 @@ struct MainTabView: View {
                 PlusTabLabel(isExpanded: tabBarMode == .expanded)
             }
         }
-        .tint(AppColors.accent)
         .onChange(of: selectedTab) { _, new in
             handleTabSelection(new)
         }

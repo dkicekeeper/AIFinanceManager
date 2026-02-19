@@ -20,10 +20,10 @@ public class TransactionEntity: NSManagedObject {
 extension TransactionEntity {
     /// Convert to domain model
     func toTransaction() -> Transaction {
-        // accountId: prefer stored string (survives account deletion / relationship faults),
+        // accountId / targetAccountId: prefer stored strings (survive account deletion / relationship faults),
         // fall back to relationship if the string column is nil (pre-migration data).
         let resolvedAccountId = accountId ?? account?.id
-        let resolvedTargetAccountId = targetAccount?.id
+        let resolvedTargetAccountId = targetAccountId ?? targetAccount?.id
 
         let tx = Transaction(
             id: id ?? "",
@@ -65,8 +65,9 @@ extension TransactionEntity {
         entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
         entity.accountName = transaction.accountName
         entity.targetAccountName = transaction.targetAccountName
-        // Store accountId as a string so it survives account deletion / relationship faults
+        // Store accountId / targetAccountId as strings so they survive account deletion / relationship faults
         entity.accountId = transaction.accountId
+        entity.targetAccountId = transaction.targetAccountId
         // Relationships will be set separately by finding AccountEntity and RecurringSeriesEntity
         return entity
     }

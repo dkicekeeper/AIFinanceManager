@@ -268,6 +268,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         entity.accountName = transaction.accountName
         entity.targetAccountName = transaction.targetAccountName
         entity.accountId = transaction.accountId
+        entity.targetAccountId = transaction.targetAccountId
 
         // Update relationships (also direct, same context.perform block)
         if let accountId = transaction.accountId {
@@ -293,40 +294,42 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         accountDict: [String: AccountEntity],
         seriesDict: [String: RecurringSeriesEntity]
     ) {
-        entity.managedObjectContext?.perform {
-            entity.date = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()
-            entity.descriptionText = transaction.description
-            entity.amount = transaction.amount
-            entity.currency = transaction.currency
-            entity.convertedAmount = transaction.convertedAmount ?? 0
-            entity.type = transaction.type.rawValue
-            entity.category = transaction.category
-            entity.subcategory = transaction.subcategory
-            entity.targetAmount = transaction.targetAmount ?? 0
-            entity.targetCurrency = transaction.targetCurrency
-            entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
-            entity.accountName = transaction.accountName
-            entity.accountId = transaction.accountId
-            entity.targetAccountName = transaction.targetAccountName
+        // Direct mutations — caller is already inside performAndWait { }, so nesting another
+        // async perform { } would fire-and-forget and mutations would execute AFTER save(),
+        // causing data loss on next launch.
+        entity.date = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()
+        entity.descriptionText = transaction.description
+        entity.amount = transaction.amount
+        entity.currency = transaction.currency
+        entity.convertedAmount = transaction.convertedAmount ?? 0
+        entity.type = transaction.type.rawValue
+        entity.category = transaction.category
+        entity.subcategory = transaction.subcategory
+        entity.targetAmount = transaction.targetAmount ?? 0
+        entity.targetCurrency = transaction.targetCurrency
+        entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
+        entity.accountName = transaction.accountName
+        entity.accountId = transaction.accountId
+        entity.targetAccountId = transaction.targetAccountId
+        entity.targetAccountName = transaction.targetAccountName
 
-            // Set relationships using pre-fetched dictionaries
-            if let accountId = transaction.accountId {
-                entity.account = accountDict[accountId]
-            } else {
-                entity.account = nil
-            }
+        // Set relationships using pre-fetched dictionaries
+        if let accountId = transaction.accountId {
+            entity.account = accountDict[accountId]
+        } else {
+            entity.account = nil
+        }
 
-            if let targetAccountId = transaction.targetAccountId {
-                entity.targetAccount = accountDict[targetAccountId]
-            } else {
-                entity.targetAccount = nil
-            }
+        if let targetAccountId = transaction.targetAccountId {
+            entity.targetAccount = accountDict[targetAccountId]
+        } else {
+            entity.targetAccount = nil
+        }
 
-            if let seriesId = transaction.recurringSeriesId {
-                entity.recurringSeries = seriesDict[seriesId]
-            } else {
-                entity.recurringSeries = nil
-            }
+        if let seriesId = transaction.recurringSeriesId {
+            entity.recurringSeries = seriesDict[seriesId]
+        } else {
+            entity.recurringSeries = nil
         }
     }
 
@@ -353,18 +356,19 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         accountDict: [String: AccountEntity],
         seriesDict: [String: RecurringSeriesEntity]
     ) {
-        entity.managedObjectContext?.perform {
-            if let accountId = transaction.accountId {
-                entity.account = accountDict[accountId]
-            }
+        // Direct mutations — caller is already inside performAndWait { }, so nesting another
+        // async perform { } would fire-and-forget and mutations would execute AFTER save(),
+        // causing data loss on next launch.
+        if let accountId = transaction.accountId {
+            entity.account = accountDict[accountId]
+        }
 
-            if let targetAccountId = transaction.targetAccountId {
-                entity.targetAccount = accountDict[targetAccountId]
-            }
+        if let targetAccountId = transaction.targetAccountId {
+            entity.targetAccount = accountDict[targetAccountId]
+        }
 
-            if let seriesId = transaction.recurringSeriesId {
-                entity.recurringSeries = seriesDict[seriesId]
-            }
+        if let seriesId = transaction.recurringSeriesId {
+            entity.recurringSeries = seriesDict[seriesId]
         }
     }
 

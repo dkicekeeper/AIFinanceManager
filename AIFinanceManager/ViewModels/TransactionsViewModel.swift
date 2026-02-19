@@ -74,7 +74,7 @@ class TransactionsViewModel {
 
     // MARK: - Dependencies (Injected)
 
-    let repository: DataRepositoryProtocol
+    @ObservationIgnored let repository: DataRepositoryProtocol
     // MIGRATED: accountBalanceService removed - using BalanceCoordinator instead
     // MIGRATED: balanceCalculationService removed - using BalanceCoordinator instead
 
@@ -91,11 +91,11 @@ class TransactionsViewModel {
 
     // MARK: - Services (Remaining)
 
-    let currencyService = TransactionCurrencyService()
+    @ObservationIgnored let currencyService = TransactionCurrencyService()
 
     /// Phase 8: Minimal cache for read-only display operations
     /// Write operations handled by TransactionStore + UnifiedTransactionCache
-    let cacheManager = TransactionCacheManager()
+    @ObservationIgnored let cacheManager = TransactionCacheManager()
 
     /// Phase 8: Stub aggregate cache for backward compatibility
     /// Aggregate caching now handled by TransactionStore
@@ -109,7 +109,7 @@ class TransactionsViewModel {
     private let queryService: TransactionQueryServiceProtocol
     private let groupingService: TransactionGroupingService
     private let balanceCalculator: BalanceCalculator
-    let recurringGenerator: RecurringTransactionGenerator
+    @ObservationIgnored let recurringGenerator: RecurringTransactionGenerator
 
     private let balanceUpdateCoordinator = BalanceUpdateCoordinatorWrapper()
 

@@ -18,24 +18,24 @@ import Observation
 class AppCoordinator {
     // MARK: - Repository
 
-    let repository: DataRepositoryProtocol
+    @ObservationIgnored let repository: DataRepositoryProtocol
 
     // MARK: - ViewModels
 
-    let accountsViewModel: AccountsViewModel
-    let categoriesViewModel: CategoriesViewModel
+    @ObservationIgnored let accountsViewModel: AccountsViewModel
+    @ObservationIgnored let categoriesViewModel: CategoriesViewModel
     // ✨ Phase 9: Removed SubscriptionsViewModel - recurring operations now in TransactionStore
-    let depositsViewModel: DepositsViewModel
-    let transactionsViewModel: TransactionsViewModel
-    let settingsViewModel: SettingsViewModel  // NEW: Phase 1 - Settings refactoring
-    let insightsViewModel: InsightsViewModel  // NEW: Phase 17 - Financial Insights
+    @ObservationIgnored let depositsViewModel: DepositsViewModel
+    @ObservationIgnored let transactionsViewModel: TransactionsViewModel
+    @ObservationIgnored let settingsViewModel: SettingsViewModel  // NEW: Phase 1 - Settings refactoring
+    @ObservationIgnored let insightsViewModel: InsightsViewModel  // NEW: Phase 17 - Financial Insights
 
     // MARK: - New Architecture (Phase 7)
 
     /// NEW 2026-02-05: TransactionStore - Single Source of Truth for transactions
     /// ✨ Phase 9: Now includes recurring operations (subscriptions + recurring transactions)
     /// Replaces multiple services: TransactionCRUDService, CategoryAggregateService, etc.
-    let transactionStore: TransactionStore
+    @ObservationIgnored let transactionStore: TransactionStore
 
     // MARK: - Coordinators
 
@@ -43,7 +43,7 @@ class AppCoordinator {
 
     /// REFACTORED 2026-02-02: Single entry point for balance operations
     /// Phase 1-4: Foundation completed - Store, Engine, Queue, Cache, Coordinator
-    let balanceCoordinator: BalanceCoordinator
+    @ObservationIgnored let balanceCoordinator: BalanceCoordinator
 
     // MARK: - Private Properties
 

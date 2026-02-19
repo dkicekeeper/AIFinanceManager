@@ -82,19 +82,6 @@ struct FormSection<Content: View>: View {
     }
 }
 
-// MARK: - Helper View for Dividers
-
-extension View {
-    /// Adds a divider below the view (for use in FormSection)
-    func formDivider() -> some View {
-        VStack(spacing: 0) {
-            self
-            Divider()
-                .padding(.leading, AppSpacing.md)
-        }
-    }
-}
-
 // MARK: - Previews
 
 #Preview("Card Style") {
@@ -197,24 +184,6 @@ extension View {
     .padding()
 }
 
-#Preview("With Helper Extension") {
-    FormSection(
-        header: "Using formDivider()",
-        style: .card
-    ) {
-        TextField("Field 1", text: .constant(""))
-            .padding(AppSpacing.md)
-            .formDivider()
-
-        TextField("Field 2", text: .constant(""))
-            .padding(AppSpacing.md)
-            .formDivider()
-
-        TextField("Field 3", text: .constant(""))
-            .padding(AppSpacing.md)
-    }
-    .padding()
-}
 
 #Preview("No Header/Footer") {
     FormSection(style: .card) {
