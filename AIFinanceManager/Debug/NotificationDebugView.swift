@@ -49,14 +49,14 @@ struct NotificationDebugView: View {
                         ForEach(pendingNotifications, id: \.identifier) { request in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(request.content.title)
-                                    .font(.headline)
+                                    .font(AppTypography.bodyLarge)
                                 Text(request.content.body)
-                                    .font(.caption)
+                                    .font(AppTypography.caption)
                                     .foregroundStyle(.secondary)
                                 if let trigger = request.trigger as? UNCalendarNotificationTrigger {
                                     if let nextDate = trigger.nextTriggerDate() {
                                         Text("📅 \(formatDate(nextDate))")
-                                            .font(.caption2)
+                                            .font(AppTypography.caption2)
                                             .foregroundStyle(.blue)
                                     }
                                 }
@@ -89,7 +89,7 @@ struct NotificationDebugView: View {
                 if !testMessage.isEmpty {
                     Section("Last Action") {
                         Text(testMessage)
-                            .font(.caption)
+                            .font(AppTypography.caption)
                     }
                 }
             }

@@ -195,7 +195,8 @@ struct AnimatedAmountInput: View {
         let charCount = displayAmount.count
         let baseSpacing = spacingForFontSize(baseFontSize)
         let totalSpacing = CGFloat(max(0, charCount - 1)) * baseSpacing
-        let testFont = UIFont.systemFont(ofSize: baseFontSize, weight: .bold)
+        let testFont = UIFont(name: "Overpass-Bold", size: baseFontSize)
+            ?? UIFont.systemFont(ofSize: baseFontSize, weight: .bold)
         let textSize = (displayAmount as NSString).size(withAttributes: [.font: testFont])
         let totalWidth = textSize.width + totalSpacing
 

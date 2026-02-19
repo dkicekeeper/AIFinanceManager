@@ -744,3 +744,12 @@
 "insights.wealth.title" = "Accumulated Capital";
 "insights.wealth.subtitle" = "Total balance across all accounts";
 "insights.wealth.accounts" = "Accounts";
+
+// MARK: - Tab Bar
+"tab.home" = "Home";
+"tab.analytics" = "Analytics";
+"tab.settings" = "Settings";
+"tab.voice" = "Voice";
+"tab.ocr" = "Import";
+"tab.add" = "Add";
+"tab.close" = "Close";

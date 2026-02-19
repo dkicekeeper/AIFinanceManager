@@ -84,9 +84,6 @@ struct ContentView: View {
             }
             .padding(.vertical, AppSpacing.md)
         }
-        .safeAreaInset(edge: .bottom) {
-            bottomActions
-        }
         .opacity(isInitializing ? 0 : 1)
     }
 
@@ -151,23 +148,6 @@ struct ContentView: View {
         }
     }
 
-    private var bottomActions: some View {
-        HStack(spacing: AppSpacing.xl) {
-            VoiceInputCoordinator(
-                transactionsViewModel: viewModel,
-                categoriesViewModel: categoriesViewModel,
-                accountsViewModel: accountsViewModel
-            )
-
-            PDFImportCoordinator(
-                transactionsViewModel: viewModel,
-                categoriesViewModel: categoriesViewModel
-            )
-        }
-        .screenPadding()
-        .padding(.bottom, AppSpacing.xl)
-    }
-
     // MARK: - Destinations
 
     private var historyDestination: some View {
@@ -186,22 +166,6 @@ struct ContentView: View {
             transactionsViewModel: viewModel
         )
         .environment(timeFilterManager)
-    }
-
-    private var insightsDestination: some View {
-        InsightsView(insightsViewModel: coordinator.insightsViewModel)
-            .environment(timeFilterManager)
-    }
-
-    private var settingsDestination: some View {
-        SettingsView(
-            settingsViewModel: coordinator.settingsViewModel,
-            transactionsViewModel: viewModel,
-            accountsViewModel: accountsViewModel,
-            categoriesViewModel: categoriesViewModel,
-            transactionStore: transactionStore,
-            depositsViewModel: coordinator.depositsViewModel
-        )
     }
 
     // MARK: - Overlays & Backgrounds
@@ -233,16 +197,8 @@ struct ContentView: View {
     // MARK: - Toolbar
 
     private var toolbarContent: some ToolbarContent {
-        Group {
-            ToolbarItem(placement: .navigationBarLeading) {
-                timeFilterButton
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: AppSpacing.md) {
-                    insightsButton
-                    settingsButton
-                }
-            }
+        ToolbarItem(placement: .navigationBarLeading) {
+            timeFilterButton
         }
     }
 
@@ -261,21 +217,6 @@ struct ContentView: View {
         }
         .accessibilityLabel(String(localized: "accessibility.calendar"))
         .accessibilityHint(String(localized: "accessibility.calendarHint"))
-    }
-
-    private var insightsButton: some View {
-        NavigationLink(destination: insightsDestination) {
-            Image(systemName: "chart.bar.xaxis")
-        }
-        .accessibilityLabel(String(localized: "insights.title"))
-    }
-
-    private var settingsButton: some View {
-        NavigationLink(destination: settingsDestination) {
-            Image(systemName: "gearshape")
-        }
-        .accessibilityLabel(String(localized: "accessibility.settings"))
-        .accessibilityHint(String(localized: "accessibility.settingsHint"))
     }
 
     // MARK: - Sheets

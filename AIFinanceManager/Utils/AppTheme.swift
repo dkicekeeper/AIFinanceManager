@@ -147,53 +147,65 @@ enum AppIconSize {
     static let largeButton: CGFloat = 80
 }
 
+// MARK: - Overpass Font Helper
+
+/// Centralizes Overpass font name constants (PostScript names as registered in UIAppFonts).
+/// Verify with: UIFont.fontNames(forFamilyName: "Overpass")
+private enum AppOverpassFont {
+    static let regular  = "Overpass-Regular"
+    static let medium   = "Overpass-Medium"
+    static let semibold = "Overpass-SemiBold"
+    static let bold     = "Overpass-Bold"
+}
+
 // MARK: - Typography System
 
-/// Консистентная система типографики с уровнями
+/// Консистентная система типографики с уровнями.
+/// Использует Overpass (Google Fonts, SIL OFL) с Dynamic Type через Font.custom(_:size:relativeTo:).
 enum AppTypography {
     // MARK: Headers
 
-    /// H1 - Screen titles (используется через .navigationTitle, не напрямую)
-    static let h1 = Font.largeTitle.weight(.bold)
+    /// H1 - Screen titles (34pt bold, scales with largeTitle)
+    static let h1 = Font.custom(AppOverpassFont.bold, size: 34, relativeTo: .largeTitle)
 
-    /// H2 - Major section titles
-    static let h2 = Font.title.weight(.semibold)
+    /// H2 - Major section titles (28pt semibold, scales with title)
+    static let h2 = Font.custom(AppOverpassFont.semibold, size: 28, relativeTo: .title)
 
-    /// H3 - Card headers, modal titles
-    static let h3 = Font.title2.weight(.semibold)
+    /// H3 - Card headers, modal titles (22pt semibold, scales with title2)
+    static let h3 = Font.custom(AppOverpassFont.semibold, size: 24, relativeTo: .title2)
 
-    /// H4 - Row titles, list item headers
-    static let h4 = Font.title3.weight(.semibold)
+    /// H4 - Row titles, list item headers (20pt semibold, scales with title3)
+    static let h4 = Font.custom(AppOverpassFont.semibold, size: 20, relativeTo: .title3)
 
     // MARK: Body Text
 
-    /// Body Large - Emphasized body text (amounts, important info)
-    static let bodyLarge = Font.body.weight(.medium)
+    /// Body Large - Emphasized body text (17pt medium, scales with body)
+    static let bodyLarge = Font.custom(AppOverpassFont.medium, size: 18, relativeTo: .body)
 
-    /// Body - Default text (descriptions, labels)
-    static let body = Font.body
+    /// Body - Default text (17pt regular, scales with body)
+    static let body = Font.custom(AppOverpassFont.regular, size: 18, relativeTo: .body)
 
-    /// Body Small - Secondary text (account names, dates)
-    static let bodySmall = Font.subheadline
+    /// Body Small - Secondary text (15pt regular, scales with subheadline)
+    static let bodySmall = Font.custom(AppOverpassFont.regular, size: 16, relativeTo: .subheadline)
 
     // MARK: Captions
 
-    /// Caption - Helper text, timestamps, metadata
-    static let caption = Font.caption
+    /// Caption - Helper text, timestamps, metadata (12pt regular, scales with caption)
+    static let caption = Font.custom(AppOverpassFont.regular, size: 14, relativeTo: .caption)
 
-    /// Caption Emphasis - Important helper text
-    static let captionEmphasis = Font.caption.weight(.medium)
+    /// Caption Emphasis - Important helper text (12pt medium, scales with caption)
+    static let captionEmphasis = Font.custom(AppOverpassFont.medium, size: 14, relativeTo: .caption)
 
-    /// Caption 2 - Very small text (legal, footnotes)
-    static let caption2 = Font.caption2
+    /// Caption 2 - Very small text (11pt regular, scales with caption2)
+    static let caption2 = Font.custom(AppOverpassFont.regular, size: 12, relativeTo: .caption2)
 
     // MARK: - Semantic Typography
 
     /// Screen titles (alias для h1)
     static let screenTitle = h1
 
-    /// Section headers (uppercase, secondary color)
-    static let sectionHeader = caption.weight(.medium)
+    /// Section headers (alias для captionEmphasis)
+    static let sectionHeader = captionEmphasis
 
     /// Primary body text (alias для body)
     static let bodyPrimary = body
@@ -201,11 +213,11 @@ enum AppTypography {
     /// Secondary text (alias для bodySmall)
     static let bodySecondary = bodySmall
 
-    /// Label text (alias для bodySmall with medium weight)
-    static let label = bodySmall.weight(.medium)
+    /// Label text (15pt medium, scales with subheadline)
+    static let label = Font.custom(AppOverpassFont.medium, size: 16, relativeTo: .subheadline)
 
-    /// Amount text (emphasized, typically for monetary values)
-    static let amount = bodyLarge.weight(.semibold)
+    /// Amount text (17pt semibold, scales with body)
+    static let amount = Font.custom(AppOverpassFont.semibold, size: 18, relativeTo: .body)
 }
 
 // MARK: - Shadow System
@@ -324,7 +336,7 @@ extension View {
     /// - Parameter isSelected: Если true, применяет выделенный стиль (accent background)
     func chipStyle(isSelected: Bool = false) -> some View {
         self
-            .font(AppTypography.bodySmall.weight(.medium))
+            .font(AppTypography.label)
             .foregroundStyle(AppColors.textPrimary)
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.sm)
@@ -339,8 +351,7 @@ extension View {
         if #available(iOS 26, *) {
             return AnyView(
                 self
-                    .font(AppTypography.bodySmall)
-                    .fontWeight(.medium)
+                    .font(AppTypography.label)
                     .foregroundStyle(AppColors.textPrimary)
                     .padding(.horizontal, AppSpacing.lg)
                     .padding(.vertical, AppSpacing.sm)
@@ -354,8 +365,7 @@ extension View {
         } else {
             return AnyView(
                 self
-                    .font(AppTypography.bodySmall)
-                    .fontWeight(.medium)
+                    .font(AppTypography.label)
                     .foregroundStyle(AppColors.textPrimary)
                     .padding(.horizontal, AppSpacing.lg)
                     .padding(.vertical, AppSpacing.sm)

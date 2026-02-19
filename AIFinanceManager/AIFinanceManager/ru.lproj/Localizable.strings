@@ -744,3 +744,12 @@
 "insights.wealth.title" = "Накопленный капитал";
 "insights.wealth.subtitle" = "Общий баланс всех счетов";
 "insights.wealth.accounts" = "Счета";
+
+// MARK: - Tab Bar
+"tab.home" = "Главная";
+"tab.analytics" = "Аналитика";
+"tab.settings" = "Настройки";
+"tab.voice" = "Голос";
+"tab.ocr" = "Импорт";
+"tab.add" = "Добавить";
+"tab.close" = "Закрыть";

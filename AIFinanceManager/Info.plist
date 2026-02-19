@@ -44,6 +44,13 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Overpass-Regular.ttf</string>
+		<string>Overpass-Medium.ttf</string>
+		<string>Overpass-SemiBold.ttf</string>
+		<string>Overpass-Bold.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

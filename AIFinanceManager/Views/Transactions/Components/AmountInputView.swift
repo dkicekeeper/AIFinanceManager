@@ -366,7 +366,8 @@ struct AmountInputView: View {
         let baseSpacing = spacingForFontSize(baseSize)
         let totalSpacing = CGFloat(max(0, charCount - 1)) * baseSpacing
         
-        let testFont = UIFont.systemFont(ofSize: baseSize, weight: .bold)
+        let testFont = UIFont(name: "Overpass-Bold", size: baseSize)
+            ?? UIFont.systemFont(ofSize: baseSize, weight: .bold)
         let attributes = [NSAttributedString.Key.font: testFont]
         let textSize = (testText as NSString).size(withAttributes: attributes)
         let totalWidth = textSize.width + totalSpacing

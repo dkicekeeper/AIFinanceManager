@@ -149,7 +149,7 @@ struct SiriWaveRecordingView: View {
 #Preview("Single Wave") {
     VStack(spacing: 40) {
         Text("Single Wave")
-            .font(.headline)
+            .font(AppTypography.bodyLarge)
 
         SiriWaveView(
             amplitude: 30,
@@ -164,7 +164,7 @@ struct SiriWaveRecordingView: View {
 #Preview("Recording Indicator") {
     VStack(spacing: 40) {
         Text("Siri-like Recording")
-            .font(.headline)
+            .font(AppTypography.bodyLarge)
 
         SiriWaveRecordingView()
             .padding()

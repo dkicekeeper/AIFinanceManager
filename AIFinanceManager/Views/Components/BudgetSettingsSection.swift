@@ -74,7 +74,7 @@ struct BudgetSettingsSection: View {
 
             if selectedPeriod == .monthly {
                 Text(String(localized: "budget_reset_day_description"))
-                    .font(.caption)
+                    .font(AppTypography.caption)
                     .foregroundStyle(AppColors.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

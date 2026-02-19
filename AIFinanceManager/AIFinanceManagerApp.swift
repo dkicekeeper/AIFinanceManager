@@ -15,7 +15,7 @@ struct AIFinanceManagerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
                 .environment(timeFilterManager)
                 .environment(coordinator)
                 .environment(coordinator.transactionStore)

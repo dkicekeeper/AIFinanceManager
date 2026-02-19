@@ -40,7 +40,7 @@ struct AnimatedDigit: View {
 
     var body: some View {
         Text(String(character))
-            .font(.system(size: fontSize, weight: .bold, design: .rounded))
+            .font(.custom("Overpass-Bold", size: fontSize))
             .foregroundStyle(color)
             .offset(y: offset)
             .scaleEffect(scale)
