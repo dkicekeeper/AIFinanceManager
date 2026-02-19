@@ -233,9 +233,9 @@ struct TransactionCard: View {
                 return mainAmount
             }
             
-            // Сумма для источника — из данных, записанных при создании
-            let sourceCurrency = source.currency
-            let sourceAmount = transaction.convertedAmount ?? transaction.amount
+            // Сумма для источника — используем валюту транзакции (USD/etc), не валюту счёта
+            let sourceCurrency = transaction.currency.isEmpty ? source.currency : transaction.currency
+            let sourceAmount = transaction.amount
 
             if let target = targetAccount {
                 let targetCurrency = target.currency
@@ -300,9 +300,9 @@ struct TransactionCard: View {
         }
 
         if let source = sourceAccount {
-            let sourceCurrency = source.currency
-            // Сумма источника — из данных, записанных при создании
-            let sourceAmount = transaction.convertedAmount ?? transaction.amount
+            // Используем валюту транзакции (то, что ввёл пользователь), не валюту счёта
+            let sourceCurrency = transaction.currency.isEmpty ? source.currency : transaction.currency
+            let sourceAmount = transaction.amount
 
             if let target = targetAccount {
                 let targetCurrency = transaction.targetCurrency ?? target.currency

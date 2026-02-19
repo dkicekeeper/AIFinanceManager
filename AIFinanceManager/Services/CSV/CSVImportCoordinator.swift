@@ -297,7 +297,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
 
     private func resolveCategoryName(for csvRow: CSVRow) -> String {
         if csvRow.type == .internalTransfer {
-            return String(localized: "transactionForm.transfer")
+            return TransactionType.transferCategoryName
         } else if csvRow.effectiveCategoryValue.isEmpty {
             return String(localized: "category.other")
         } else {

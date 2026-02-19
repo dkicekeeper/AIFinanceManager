@@ -119,8 +119,21 @@ final class TransactionStore {
     // Import mode flag - when true, persistence is deferred until finishImport()
     private var isImporting: Bool = false
 
+    // Phase 17: Debounce task for coalescing rapid mutations into single sync
+    private var syncDebounceTask: Task<Void, Never>?
+
     // Coordinator for syncing changes to ViewModels (with @Observable we need manual sync)
     weak var coordinator: AppCoordinator?
+
+    // MARK: - Phase 22: Persistent Aggregate Services
+
+    /// Maintains per-category spending totals in CategoryAggregateEntity.
+    /// Updated incrementally on each transaction mutation (O(1) per transaction).
+    let categoryAggregateService: CategoryAggregateService
+
+    /// Maintains per-month income/expense totals in MonthlyAggregateEntity.
+    /// Used by InsightsService for O(M) chart data instead of O(N×M) scans.
+    let monthlyAggregateService: MonthlyAggregateService
 
     // MARK: - Initialization
 
@@ -137,6 +150,10 @@ final class TransactionStore {
         self.recurringGenerator = RecurringTransactionGenerator(dateFormatter: DateFormatters.dateFormatter)
         self.recurringValidator = RecurringValidationService()
         self.recurringCache = LRUCache<String, [Transaction]>(capacity: 100)
+
+        // Phase 22: Initialize persistent aggregate services
+        self.categoryAggregateService = CategoryAggregateService()
+        self.monthlyAggregateService = MonthlyAggregateService()
 
         // Setup notification observer for app lifecycle
         setupNotificationObservers()
@@ -196,6 +213,10 @@ final class TransactionStore {
     func updateBaseCurrency(_ currency: String) {
         baseCurrency = currency
         cache.invalidateAll() // Currency change affects all cached calculations
+        // Phase 22: Rebuild aggregates — all amounts must be re-converted to new base currency
+        let allTx = transactions
+        categoryAggregateService.rebuild(from: allTx, baseCurrency: currency)
+        monthlyAggregateService.rebuild(from: allTx, baseCurrency: currency)
     }
 
     // MARK: - CRUD Operations
@@ -339,6 +360,13 @@ final class TransactionStore {
         } catch {
             throw TransactionStoreError.persistenceFailed(error)
         }
+
+        // Phase 22: After import, rebuild persistent aggregates from all imported transactions.
+        // This is a single O(N) pass, much cheaper than per-view O(N×M) recomputes.
+        let allTx = transactions
+        let currency = baseCurrency
+        categoryAggregateService.rebuild(from: allTx, baseCurrency: currency)
+        monthlyAggregateService.rebuild(from: allTx, baseCurrency: currency)
     }
 
     /// Update an existing transaction
@@ -418,7 +446,7 @@ final class TransactionStore {
             amount: amount,
             currency: currency,
             type: .internalTransfer,
-            category: "",
+            category: TransactionType.transferCategoryName,
             accountId: sourceId,
             targetAccountId: targetId,
             targetCurrency: targetCurrency ?? currency,
@@ -451,8 +479,8 @@ final class TransactionStore {
                 AccountOrderManager.shared.setOrder(order, for: account.id)
             }
 
-            // Sync to ViewModels after persistence
-            coordinator?.syncTransactionStoreToViewModels()
+            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
+            // @Observable automatically notifies SwiftUI when accounts array changes
         }
 
     }
@@ -475,8 +503,7 @@ final class TransactionStore {
                 AccountOrderManager.shared.setOrder(order, for: account.id)
             }
 
-            // Sync to ViewModels after persistence
-            coordinator?.syncTransactionStoreToViewModels()
+            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
         }
 
     }
@@ -493,8 +520,7 @@ final class TransactionStore {
             // ✅ Remove order from UserDefaults
             AccountOrderManager.shared.removeOrder(for: accountId)
 
-            // Sync to ViewModels after persistence
-            coordinator?.syncTransactionStoreToViewModels()
+            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
         }
 
     }
@@ -531,8 +557,7 @@ final class TransactionStore {
                 CategoryOrderManager.shared.setOrder(order, for: categoryToAdd.id)
             }
 
-            // Sync to ViewModels after persistence
-            coordinator?.syncTransactionStoreToViewModels()
+            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
         }
 
     }
@@ -552,8 +577,7 @@ final class TransactionStore {
             CategoryOrderManager.shared.setOrder(order, for: category.id)
         }
 
-        // Sync to ViewModels after persistence
-        coordinator?.syncTransactionStoreToViewModels()
+        // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
 
     }
 
@@ -566,8 +590,7 @@ final class TransactionStore {
         // ✅ Remove order from UserDefaults
         CategoryOrderManager.shared.removeOrder(for: categoryId)
 
-        // Sync to ViewModels after persistence
-        coordinator?.syncTransactionStoreToViewModels()
+        // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
 
     }
 
@@ -762,25 +785,68 @@ final class TransactionStore {
     /// Apply an event to the store
     /// Phase 1-4: Core event processing - validates, updates state, balances, cache, persists
     /// ✨ Phase 9: Made internal for access from TransactionStore+Recurring extension
+    /// 🗄️ Phase 22: Added incremental aggregate updates for CategoryAggregateEntity + MonthlyAggregateEntity
     internal func apply(_ event: TransactionEvent) async throws {
-
         // 1. Update state (SSOT)
         updateState(event)
 
         // 2. Update balances (incremental)
         updateBalances(for: event)
 
-        // 3. Invalidate cache (automatic)
-        cache.invalidateAll()
+        // 3. Phase 20: Granular cache invalidation — only invalidate what changed
+        invalidateCache(for: event)
 
-        // 4. Persist to repository (unless in import mode)
+        // 4. Phase 22: Incremental aggregate updates (O(1) per transaction)
+        // Skip during import — a full rebuild is triggered after finishImport()
+        if !isImporting {
+            updateAggregates(for: event)
+        }
+
+        // 5. Persist to repository (unless in import mode)
         if !isImporting {
             await persist()
         }
 
-        // 5. Notify observers automatically via @Observable
-        // SwiftUI views will update automatically, but ViewModels need manual sync
-        coordinator?.syncTransactionStoreToViewModels()
+        // 6. Phase 17: Debounced sync — coalesces rapid mutations (e.g., batch adds)
+        // @Observable automatically notifies SwiftUI for TransactionStore property changes.
+        // Debounced sync handles cache invalidation and insights recompute.
+        syncDebounceTask?.cancel()
+        syncDebounceTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 16_000_000) // ~1 frame (16ms)
+            guard !Task.isCancelled else { return }
+            self?.coordinator?.syncTransactionStoreToViewModels()
+        }
+    }
+
+    /// Phase 22: Incremental aggregate maintenance.
+    /// Dispatches O(1) updates to CategoryAggregateService and MonthlyAggregateService.
+    /// Bulk events trigger a full rebuild (same O(N) cost, but once instead of per-view).
+    private func updateAggregates(for event: TransactionEvent) {
+        let currency = baseCurrency
+        switch event {
+        case .added(let tx):
+            categoryAggregateService.applyAdded(tx, baseCurrency: currency)
+            monthlyAggregateService.applyAdded(tx, baseCurrency: currency)
+
+        case .deleted(let tx):
+            categoryAggregateService.applyDeleted(tx, baseCurrency: currency)
+            monthlyAggregateService.applyDeleted(tx, baseCurrency: currency)
+
+        case .updated(let old, let new):
+            categoryAggregateService.applyUpdated(old: old, new: new, baseCurrency: currency)
+            monthlyAggregateService.applyUpdated(old: old, new: new, baseCurrency: currency)
+
+        case .bulkAdded:
+            // Bulk add: rebuild aggregates from the full transaction set
+            let allTx = transactions
+            categoryAggregateService.rebuild(from: allTx, baseCurrency: currency)
+            monthlyAggregateService.rebuild(from: allTx, baseCurrency: currency)
+
+        case .seriesCreated, .seriesUpdated, .seriesStopped, .seriesDeleted:
+            // Recurring events don't directly change individual transactions here;
+            // the transaction mutations go through .added/.deleted/.bulkAdded paths.
+            break
+        }
     }
 
     /// Update state based on event
@@ -1036,6 +1102,49 @@ final class TransactionStore {
     private func persistTransactionSubcategoryLinks() {
         repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
 
+    }
+
+    /// Phase 20: Granular cache invalidation based on event type
+    /// Only invalidates affected cache keys instead of clearing everything
+    private func invalidateCache(for event: TransactionEvent) {
+        // Summary is always affected by any transaction change
+        cache.remove(UnifiedTransactionCache.Key.summary)
+        cache.remove(UnifiedTransactionCache.Key.summaryFiltered)
+
+        // Category expenses always affected
+        cache.remove(UnifiedTransactionCache.Key.categoryExpenses)
+
+        // Phase fix: Invalidate TransactionCacheManager immediately (synchronously),
+        // before the debounced syncTransactionStoreToViewModels fires.
+        // This ensures that when refreshTrigger in QuickAddTransactionView fires
+        // (triggered by allTransactions changing), the cacheManager is already stale
+        // and categoryExpenses() will recompute from fresh transaction data.
+        coordinator?.transactionsViewModel.invalidateCaches()
+
+        switch event {
+        case .added(let tx):
+            cache.remove(UnifiedTransactionCache.Key.dailyExpenses(date: tx.date))
+
+        case .deleted(let tx):
+            cache.remove(UnifiedTransactionCache.Key.dailyExpenses(date: tx.date))
+            // Immediately delete from CoreData so the deletion is persisted
+            // even if the app is killed before the async saveTransactions() Task completes.
+            repository.deleteTransactionImmediately(id: tx.id)
+
+        case .updated(let old, let new):
+            cache.remove(UnifiedTransactionCache.Key.dailyExpenses(date: old.date))
+            if old.date != new.date {
+                cache.remove(UnifiedTransactionCache.Key.dailyExpenses(date: new.date))
+            }
+
+        case .bulkAdded:
+            // Bulk operations affect too many keys — full invalidation
+            cache.invalidateAll()
+
+        case .seriesCreated, .seriesUpdated, .seriesStopped, .seriesDeleted:
+            // Recurring events may affect multiple dates — full invalidation for safety
+            cache.invalidateAll()
+        }
     }
 
     /// Convert amount between currencies

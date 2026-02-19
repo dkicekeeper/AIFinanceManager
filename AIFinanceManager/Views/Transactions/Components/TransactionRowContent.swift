@@ -138,12 +138,14 @@ struct TransactionRowContent: View {
         }
 
         if let source = sourceAccount {
-            let sourceCurrency = source.currency
-            let sourceAmount = transaction.convertedAmount ?? transaction.amount
+            // Use the transaction's own currency/amount (the amount sent from source),
+            // not the account currency — they may differ for cross-currency transfers.
+            let sourceCurrency = transaction.currency.isEmpty ? source.currency : transaction.currency
+            let sourceAmount = transaction.amount
 
             if let target = targetAccount {
                 let targetCurrency = transaction.targetCurrency ?? target.currency
-                let targetAmount = transaction.targetAmount ?? transaction.convertedAmount ?? transaction.amount
+                let targetAmount = transaction.targetAmount ?? transaction.amount
 
                 // For deposits: show + or - based on direction
                 if let depositId = depositAccountId {

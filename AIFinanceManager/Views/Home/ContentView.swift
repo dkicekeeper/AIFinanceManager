@@ -60,14 +60,13 @@ struct ContentView: View {
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
                 loadWallpaperOnce()
             }
-            // @Observable automatically tracks changes - use onChange for specific updates
+            // Phase 17: Only track time filter changes explicitly
+            // Transaction data changes are tracked automatically via @Observable
+            // on transactionStore.transactions (accessed through computed properties)
             .onChange(of: timeFilterManager.currentFilter) { _, _ in
                 updateSummary()
             }
-            .onChange(of: viewModel.allTransactions.count) { _, _ in
-                updateSummary()
-            }
-            .onChange(of: viewModel.dataRefreshTrigger) { _, _ in
+            .onChange(of: transactionStore.transactions.count) { _, _ in
                 updateSummary()
             }
         }

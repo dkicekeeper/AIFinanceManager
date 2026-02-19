@@ -45,9 +45,14 @@ struct CategoryDisplayData: Identifiable, Hashable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+        hasher.combine(total)
+        hasher.combine(budgetProgress?.spent)
     }
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
+            && lhs.total == rhs.total
+            && lhs.budgetProgress?.spent == rhs.budgetProgress?.spent
+            && lhs.budgetAmount == rhs.budgetAmount
     }
 }

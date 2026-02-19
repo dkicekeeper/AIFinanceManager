@@ -56,6 +56,10 @@ final class CoreDataRepository: DataRepositoryProtocol {
         try transactionRepository.saveTransactionsSync(transactions)
     }
 
+    func deleteTransactionImmediately(id: String) {
+        transactionRepository.deleteTransactionImmediately(id: id)
+    }
+
     // MARK: - Accounts (Delegated to AccountRepository)
 
     func loadAccounts() -> [Account] {
@@ -76,9 +80,14 @@ final class CoreDataRepository: DataRepositoryProtocol {
         accountRepository.updateAccountBalance(accountId: accountId, balance: balance)
     }
 
-    /// Batch-обновление балансов нескольких счетов
+    /// Batch-обновление балансов нескольких счетов (fire-and-forget)
     func updateAccountBalances(_ balances: [String: Double]) {
         accountRepository.updateAccountBalances(balances)
+    }
+
+    /// Batch-обновление балансов нескольких счетов — awaited, гарантированно завершается
+    func updateAccountBalancesSync(_ balances: [String: Double]) async {
+        await accountRepository.updateAccountBalancesSync(balances)
     }
 
     /// Load all persisted account balances from Core Data

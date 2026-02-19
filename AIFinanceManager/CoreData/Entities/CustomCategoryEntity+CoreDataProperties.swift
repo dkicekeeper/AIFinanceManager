@@ -29,6 +29,13 @@ extension CustomCategoryEntity {
     @NSManaged public var budgetResetDay: Int64
     @NSManaged public var transactions: NSSet?
 
+    // MARK: - Phase 22: Budget Spending Cache
+    /// Cached total spent in the current budget period (base currency).
+    /// Invalidated whenever a transaction in this category changes.
+    @NSManaged public var cachedSpentAmount: Double
+    @NSManaged public var cachedSpentUpdatedAt: Date?
+    @NSManaged public var cachedSpentCurrency: String?
+
 }
 
 // MARK: Generated accessors for transactions

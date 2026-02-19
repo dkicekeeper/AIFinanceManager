@@ -50,6 +50,9 @@ final class InsightsViewModel {
     /// Background recompute task handle — cancelled and replaced on each data change.
     private var recomputeTask: Task<Void, Never>?
 
+    /// Phase 18: Stale flag — when true, data needs recompute on next onAppear
+    private var isStale: Bool = true
+
     // MARK: - Observable State
 
     private(set) var insights: [Insight] = []
@@ -112,31 +115,32 @@ final class InsightsViewModel {
         applyPrecomputed(for: granularity)
     }
 
-    /// Called when the Insights tab appears — reads from precomputed cache (0ms).
-    /// If cache is empty (first launch), triggers a foreground load.
+    /// Phase 18: Called when Insights tab appears — triggers computation if stale.
+    /// When data is fresh, reads from precomputed cache (0ms).
     func onAppear() {
-        if precomputedInsights[currentGranularity] != nil {
+        if isStale || precomputedInsights[currentGranularity] == nil {
+            Self.logger.debug("🧠 [InsightsVM] onAppear — stale or cache MISS, loading")
+            isStale = false
+            loadInsightsForeground()
+        } else {
             Self.logger.debug("🧠 [InsightsVM] onAppear — cache HIT (instant)")
             applyPrecomputed(for: currentGranularity)
-        } else {
-            Self.logger.debug("🧠 [InsightsVM] onAppear — cache MISS, loading")
-            loadInsightsForeground()
         }
     }
 
-    /// Push-model trigger: called by AppCoordinator when data changes.
-    /// Cancels any in-flight recompute and schedules a new background Task.
+    /// Phase 18: Lazy invalidation — marks data as stale instead of eager recompute.
+    /// Computation deferred until user opens Insights tab (onAppear).
+    /// This eliminates 5-granularity recompute on every transaction change.
     func invalidateAndRecompute() {
-        Self.logger.debug("🔄 [InsightsVM] invalidateAndRecompute — scheduling background recompute")
+        Self.logger.debug("🔄 [InsightsVM] invalidateAndRecompute — marking stale (lazy)")
         insightsService.invalidateCache()
         precomputedInsights = [:]
         precomputedPeriodPoints = [:]
         precomputedTotals = [:]
+        isStale = true
 
+        // Phase 18: Cancel any in-flight recompute — will be triggered on next onAppear
         recomputeTask?.cancel()
-        recomputeTask = Task { [weak self] in
-            await self?.recomputeAllGranularities()
-        }
     }
 
     /// Legacy compatibility — still called if needed.

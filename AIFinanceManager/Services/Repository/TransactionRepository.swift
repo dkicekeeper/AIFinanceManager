@@ -14,6 +14,10 @@ protocol TransactionRepositoryProtocol {
     func loadTransactions(dateRange: DateInterval?) -> [Transaction]
     func saveTransactions(_ transactions: [Transaction])
     func saveTransactionsSync(_ transactions: [Transaction]) throws
+    /// Immediately delete a single transaction from CoreData by ID (synchronous on background context).
+    /// Use this for user-initiated deletions to guarantee the delete is persisted
+    /// even if the app is killed shortly after.
+    func deleteTransactionImmediately(id: String)
 }
 
 /// CoreData implementation of TransactionRepositoryProtocol
@@ -46,7 +50,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         request.fetchBatchSize = 100
 
         // PERFORMANCE: Prefetch relationships чтобы избежать N+1 проблемы
-        request.relationshipKeyPathsForPrefetching = ["account"]
+        request.relationshipKeyPathsForPrefetching = ["account", "targetAccount"]
 
         // Apply date range filter if provided
         if let dateRange = dateRange {
@@ -75,17 +79,14 @@ final class TransactionRepository: TransactionRepositoryProtocol {
     // MARK: - Save Operations
 
     func saveTransactions(_ transactions: [Transaction]) {
-
         Task.detached(priority: .utility) { @MainActor [weak self] in
             guard let self = self else { return }
 
             PerformanceProfiler.start("TransactionRepository.saveTransactions")
-
             let context = self.stack.newBackgroundContext()
 
             await context.perform {
                 do {
-                    // First, fetch all existing transactions to update or delete
                     let fetchRequest = NSFetchRequest<TransactionEntity>(entityName: "TransactionEntity")
                     let existingEntities = try context.fetch(fetchRequest)
 
@@ -96,35 +97,26 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                         }
                     }
 
-                    // Track which IDs we're keeping
                     var keptIds = Set<String>()
-
-                    // Update or create transactions
                     for transaction in transactions {
                         keptIds.insert(transaction.id)
-
                         if let existing = existingDict[transaction.id] {
-                            // Update existing
                             self.updateTransactionEntity(existing, from: transaction, context: context)
                         } else {
-                            // Create new
                             let entity = TransactionEntity.from(transaction, context: context)
                             self.setTransactionRelationships(entity, from: transaction, context: context)
                         }
                     }
 
-                    // Delete transactions that no longer exist
                     for entity in existingEntities {
                         if let id = entity.id, !keptIds.contains(id) {
                             context.delete(entity)
                         }
                     }
 
-                    // Save if there are changes
                     if context.hasChanges {
                         try context.save()
                     }
-
                     PerformanceProfiler.end("TransactionRepository.saveTransactions")
                 } catch {
                     PerformanceProfiler.end("TransactionRepository.saveTransactions")
@@ -232,6 +224,26 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         PerformanceProfiler.end("TransactionRepository.saveTransactionsSync")
     }
 
+    // MARK: - Delete Operations
+
+    func deleteTransactionImmediately(id: String) {
+        print("🔴 [TransactionRepository.deleteTransactionImmediately] called for id=\(id)")
+        let context = stack.newBackgroundContext()
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        context.performAndWait {
+            let request = NSFetchRequest<TransactionEntity>(entityName: "TransactionEntity")
+            request.predicate = NSPredicate(format: "id == %@", id)
+            request.fetchLimit = 1
+            guard let entity = try? context.fetch(request).first else {
+                print("🔴 [TransactionRepository.deleteTransactionImmediately] entity NOT FOUND for id=\(id) (may not be persisted yet)")
+                return
+            }
+            context.delete(entity)
+            try? context.save()
+            print("🔴 [TransactionRepository.deleteTransactionImmediately] deleted and saved for id=\(id)")
+        }
+    }
+
     // MARK: - Private Helper Methods
 
     private nonisolated func updateTransactionEntity(
@@ -239,23 +251,39 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         from transaction: Transaction,
         context: NSManagedObjectContext
     ) {
-        context.perform {
-            entity.date = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()
-            entity.descriptionText = transaction.description
-            entity.amount = transaction.amount
-            entity.currency = transaction.currency
-            entity.convertedAmount = transaction.convertedAmount ?? 0
-            entity.type = transaction.type.rawValue
-            entity.category = transaction.category
-            entity.subcategory = transaction.subcategory
-            entity.targetAmount = transaction.targetAmount ?? 0
-            entity.targetCurrency = transaction.targetCurrency
-            entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
-            entity.accountName = transaction.accountName
-            entity.targetAccountName = transaction.targetAccountName
+        // Mutate directly — caller is already inside context.perform { }, so nesting another
+        // context.perform { } would make it async (fire-and-forget) and mutations would
+        // execute AFTER context.save(), causing data loss on next launch.
+        entity.date = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()
+        entity.descriptionText = transaction.description
+        entity.amount = transaction.amount
+        entity.currency = transaction.currency
+        entity.convertedAmount = transaction.convertedAmount ?? 0
+        entity.type = transaction.type.rawValue
+        entity.category = transaction.category
+        entity.subcategory = transaction.subcategory
+        entity.targetAmount = transaction.targetAmount ?? 0
+        entity.targetCurrency = transaction.targetCurrency
+        entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
+        entity.accountName = transaction.accountName
+        entity.targetAccountName = transaction.targetAccountName
+        entity.accountId = transaction.accountId
 
-            // Update relationships
-            self.setTransactionRelationships(entity, from: transaction, context: context)
+        // Update relationships (also direct, same context.perform block)
+        if let accountId = transaction.accountId {
+            entity.account = fetchAccountSync(id: accountId, context: context)
+        } else {
+            entity.account = nil
+        }
+        if let targetAccountId = transaction.targetAccountId {
+            entity.targetAccount = fetchAccountSync(id: targetAccountId, context: context)
+        } else {
+            entity.targetAccount = nil
+        }
+        if let seriesId = transaction.recurringSeriesId {
+            entity.recurringSeries = fetchRecurringSeriesSync(id: seriesId, context: context)
+        } else {
+            entity.recurringSeries = nil
         }
     }
 
@@ -278,6 +306,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             entity.targetCurrency = transaction.targetCurrency
             entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
             entity.accountName = transaction.accountName
+            entity.accountId = transaction.accountId
             entity.targetAccountName = transaction.targetAccountName
 
             // Set relationships using pre-fetched dictionaries
@@ -306,16 +335,15 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         from transaction: Transaction,
         context: NSManagedObjectContext
     ) {
-        context.perform {
-            if let accountId = transaction.accountId {
-                entity.account = self.fetchAccountSync(id: accountId, context: context)
-            }
-            if let targetAccountId = transaction.targetAccountId {
-                entity.targetAccount = self.fetchAccountSync(id: targetAccountId, context: context)
-            }
-            if let seriesId = transaction.recurringSeriesId {
-                entity.recurringSeries = self.fetchRecurringSeriesSync(id: seriesId, context: context)
-            }
+        // Direct mutations — caller is already inside context.perform { }
+        if let accountId = transaction.accountId {
+            entity.account = fetchAccountSync(id: accountId, context: context)
+        }
+        if let targetAccountId = transaction.targetAccountId {
+            entity.targetAccount = fetchAccountSync(id: targetAccountId, context: context)
+        }
+        if let seriesId = transaction.recurringSeriesId {
+            entity.recurringSeries = fetchRecurringSeriesSync(id: seriesId, context: context)
         }
     }
 

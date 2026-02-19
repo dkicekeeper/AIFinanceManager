@@ -18,7 +18,8 @@ extension AccountEntity {
         return NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
     }
 
-    @NSManaged public var balance: Double
+    @NSManaged public var balance: Double         // Current balance (updated incrementally)
+    @NSManaged public var initialBalance: Double  // Balance at account creation (never changes)
     @NSManaged public var bankName: String?
     @NSManaged public var createdAt: Date?
     @NSManaged public var currency: String?

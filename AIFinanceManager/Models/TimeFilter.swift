@@ -143,4 +143,14 @@ struct TimeFilter: Codable, Equatable, Hashable {
         }
         return preset.localizedName
     }
+
+    /// Stable string key for use in caches keyed by time filter.
+    /// For preset filters this is just the preset rawValue.
+    /// For custom ranges, includes the date interval so different ranges get distinct keys.
+    var stableCacheKey: String {
+        if preset == .custom {
+            return "custom_\(Int(startDate.timeIntervalSince1970))_\(Int(endDate.timeIntervalSince1970))"
+        }
+        return preset.rawValue
+    }
 }

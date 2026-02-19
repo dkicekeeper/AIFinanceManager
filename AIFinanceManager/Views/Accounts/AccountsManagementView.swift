@@ -291,8 +291,7 @@ struct AccountsManagementView: View {
 
 #Preview("Accounts Management - Empty") {
     let coordinator = AppCoordinator()
-    coordinator.accountsViewModel.accounts = []
-    
+    // Phase 16: accounts is computed from TransactionStore — empty by default
     return NavigationStack {
         AccountsManagementView(
             accountsViewModel: coordinator.accountsViewModel,

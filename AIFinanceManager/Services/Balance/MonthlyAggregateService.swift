@@ -1,0 +1,404 @@
+//
+//  MonthlyAggregateService.swift
+//  AIFinanceManager
+//
+//  Phase 22: Persistent monthly income/expense aggregates for InsightsService.
+//
+//  PURPOSE:
+//  Eliminates the O(N × M) computation in InsightsService.computeMonthlyDataPoints().
+//  Stores pre-computed (year, month) → (totalIncome, totalExpenses) tuples in CoreData.
+//  InsightsService reads these O(M) records instead of re-scanning all N transactions.
+//
+//  ARCHITECTURE:
+//  - Uses MonthlyAggregateEntity (new CoreData entity added in Phase 22)
+//  - Incremental updates: on add/delete/update only touch 1 month record
+//  - Full rebuild: on CSV import or base currency change (O(N) single pass)
+//  - Fetch API: read aggregates for a date range (O(M) where M = number of months)
+//
+//  PERFORMANCE IMPACT:
+//  - InsightsService "Last Year" chart: O(12k × 12 months) → O(12 months)
+//  - Per-transaction mutation: O(1) aggregate update
+//
+
+import Foundation
+import CoreData
+import os
+
+// MARK: - Domain Model
+
+/// Monthly income+expense totals for InsightsService chart data.
+struct MonthlyFinancialAggregate: Equatable, Identifiable {
+    var id: String { "\(year)-\(String(format: "%02d", month))-\(currency)" }
+    let year: Int
+    let month: Int          // 1-12
+    let totalIncome: Double
+    let totalExpenses: Double
+    let netFlow: Double
+    let transactionCount: Int
+    let currency: String
+    let lastUpdated: Date
+
+    /// Label for chart display: "Jan 2026"
+    var label: String {
+        guard let date = Calendar.current.date(
+            from: DateComponents(year: year, month: month, day: 1)
+        ) else { return "\(month)/\(year)" }
+        let f = DateFormatter()
+        f.dateFormat = "MMM yyyy"
+        f.locale = .current
+        return f.string(from: date)
+    }
+
+    /// Short label for chart axis: "Jan"
+    var shortLabel: String {
+        guard let date = Calendar.current.date(
+            from: DateComponents(year: year, month: month, day: 1)
+        ) else { return "\(month)" }
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        f.locale = .current
+        return f.string(from: date)
+    }
+}
+
+// MARK: - Service
+
+/// Manages persistent MonthlyAggregateEntity records in CoreData.
+/// All writes happen on background contexts; reads on viewContext.
+final class MonthlyAggregateService: @unchecked Sendable {
+
+    // MARK: - Dependencies
+
+    private let stack: CoreDataStack
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "MonthlyAggregateService")
+
+    // MARK: - Init
+
+    init(stack: CoreDataStack = .shared) {
+        self.stack = stack
+    }
+
+    // MARK: - Public API: Mutations
+
+    /// Apply an added transaction: increment the (year, month) aggregate.
+    func applyAdded(_ transaction: Transaction, baseCurrency: String) {
+        guard isFinancialTransaction(transaction) else { return }
+        let amount = resolveAmount(transaction, baseCurrency: baseCurrency)
+        guard amount != 0 else { return }
+        let date = parseDate(transaction.date)
+        let txType = transaction.type
+        Task.detached(priority: .utility) { [weak self, date] in
+            await self?.increment(
+                date: date,
+                income: txType == .income ? amount : 0,
+                expenses: txType == .expense ? amount : 0,
+                currency: baseCurrency
+            )
+        }
+    }
+
+    /// Apply a deleted transaction: decrement the (year, month) aggregate.
+    func applyDeleted(_ transaction: Transaction, baseCurrency: String) {
+        guard isFinancialTransaction(transaction) else { return }
+        let amount = resolveAmount(transaction, baseCurrency: baseCurrency)
+        guard amount != 0 else { return }
+        let date = parseDate(transaction.date)
+        let txType = transaction.type
+        Task.detached(priority: .utility) { [weak self, date] in
+            await self?.increment(
+                date: date,
+                income: txType == .income ? -amount : 0,
+                expenses: txType == .expense ? -amount : 0,
+                currency: baseCurrency
+            )
+        }
+    }
+
+    /// Apply an updated transaction: revert old, apply new.
+    func applyUpdated(old: Transaction, new: Transaction, baseCurrency: String) {
+        applyDeleted(old, baseCurrency: baseCurrency)
+        applyAdded(new, baseCurrency: baseCurrency)
+    }
+
+    /// Full rebuild from all transactions. Called after CSV import or base currency change.
+    func rebuild(from transactions: [Transaction], baseCurrency: String) {
+        Task.detached(priority: .utility) { [weak self] in
+            await self?.performRebuild(transactions: transactions, baseCurrency: baseCurrency)
+        }
+    }
+
+    // MARK: - Public API: Reads
+
+    /// Fetch monthly aggregates for the last N months ending at `anchor` date.
+    /// Returns an array of `months` elements, one per month, sorted chronologically.
+    /// Missing months return zero-value entries (no transactions that month).
+    func fetchLast(
+        _ months: Int,
+        anchor: Date = Date(),
+        currency: String
+    ) -> [MonthlyFinancialAggregate] {
+        let calendar = Calendar.current
+        // Build list of (year, month) pairs
+        let anchorStart = startOfMonth(calendar, for: anchor)
+        var yearMonths: [(year: Int, month: Int, start: Date)] = []
+        for i in (0..<months).reversed() {
+            guard let date = calendar.date(byAdding: .month, value: -i, to: anchorStart) else { continue }
+            let comps = calendar.dateComponents([.year, .month], from: date)
+            if let y = comps.year, let m = comps.month {
+                yearMonths.append((y, m, date))
+            }
+        }
+        return fetchFor(yearMonths: yearMonths, currency: currency)
+    }
+
+    /// Fetch monthly aggregates between startDate and endDate (inclusive).
+    func fetchRange(
+        from startDate: Date,
+        to endDate: Date,
+        currency: String
+    ) -> [MonthlyFinancialAggregate] {
+        let calendar = Calendar.current
+        var yearMonths: [(year: Int, month: Int, start: Date)] = []
+        var current = startOfMonth(calendar, for: startDate)
+        while current <= endDate {
+            let comps = calendar.dateComponents([.year, .month], from: current)
+            if let y = comps.year, let m = comps.month {
+                yearMonths.append((y, m, current))
+            }
+            guard let next = calendar.date(byAdding: .month, value: 1, to: current) else { break }
+            current = next
+        }
+        return fetchFor(yearMonths: yearMonths, currency: currency)
+    }
+
+    // MARK: - Private: Fetch Helper
+
+    private func fetchFor(
+        yearMonths: [(year: Int, month: Int, start: Date)],
+        currency: String
+    ) -> [MonthlyFinancialAggregate] {
+        guard !yearMonths.isEmpty else { return [] }
+
+        let context = stack.viewContext
+        let request = MonthlyAggregateEntity.fetchRequest()
+        let subPredicates: [NSPredicate] = yearMonths.map { ym in
+            NSPredicate(
+                format: "year == %d AND month == %d AND currency == %@",
+                Int16(ym.year), Int16(ym.month), currency
+            )
+        }
+        request.predicate = NSCompoundPredicate(orPredicateWithSubpredicates: subPredicates)
+
+        var entityMap: [String: MonthlyAggregateEntity] = [:]
+        do {
+            let entities = try context.fetch(request)
+            for e in entities {
+                let key = "\(e.year)-\(e.month)"
+                entityMap[key] = e
+            }
+        } catch {
+            Self.logger.error("❌ [MonthlyAgg] fetchFor failed: \(error.localizedDescription, privacy: .public)")
+        }
+
+        // Map each (year, month) to result, inserting zeros for missing months
+        return yearMonths.map { ym in
+            let key = "\(ym.year)-\(ym.month)"
+            if let e = entityMap[key] {
+                return MonthlyFinancialAggregate(
+                    year: Int(e.year),
+                    month: Int(e.month),
+                    totalIncome: e.totalIncome,
+                    totalExpenses: e.totalExpenses,
+                    netFlow: e.netFlow,
+                    transactionCount: Int(e.transactionCount),
+                    currency: e.currency ?? currency,
+                    lastUpdated: e.lastUpdated ?? Date()
+                )
+            } else {
+                return MonthlyFinancialAggregate(
+                    year: ym.year,
+                    month: ym.month,
+                    totalIncome: 0,
+                    totalExpenses: 0,
+                    netFlow: 0,
+                    transactionCount: 0,
+                    currency: currency,
+                    lastUpdated: Date()
+                )
+            }
+        }
+    }
+
+    // MARK: - Private: Incremental Update
+
+    private func increment(
+        date: Date?,
+        income: Double,
+        expenses: Double,
+        currency: String
+    ) async {
+        guard let date = date else { return }
+        let calendar = Calendar.current
+        let comps = calendar.dateComponents([.year, .month], from: date)
+        guard let year = comps.year, let month = comps.month else { return }
+
+        let context = stack.newBackgroundContext()
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+
+        await context.perform {
+            self.upsertMonthly(
+                year: Int16(year),
+                month: Int16(month),
+                incomeDelta: income,
+                expensesDelta: expenses,
+                currency: currency,
+                context: context
+            )
+            do {
+                if context.hasChanges { try context.save() }
+            } catch {
+                Self.logger.error("❌ [MonthlyAgg] increment save failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func upsertMonthly(
+        year: Int16,
+        month: Int16,
+        incomeDelta: Double,
+        expensesDelta: Double,
+        currency: String,
+        context: NSManagedObjectContext
+    ) {
+        let entityId = "monthly_\(year)_\(month)_\(currency)"
+        let request = MonthlyAggregateEntity.fetchRequest()
+        request.predicate = NSPredicate(format: "id == %@", entityId)
+        request.fetchLimit = 1
+
+        do {
+            let existing = try context.fetch(request).first
+            let entity = existing ?? {
+                let e = MonthlyAggregateEntity(context: context)
+                e.id = entityId
+                e.year = year
+                e.month = month
+                e.currency = currency
+                e.totalIncome = 0
+                e.totalExpenses = 0
+                e.netFlow = 0
+                e.transactionCount = 0
+                return e
+            }()
+
+            entity.totalIncome = max(0, entity.totalIncome + incomeDelta)
+            entity.totalExpenses = max(0, entity.totalExpenses + expensesDelta)
+            entity.netFlow = entity.totalIncome - entity.totalExpenses
+            entity.transactionCount += (incomeDelta != 0 || expensesDelta != 0) ? 1 : 0
+            entity.lastUpdated = Date()
+        } catch {
+            Self.logger.error("❌ [MonthlyAgg] upsert failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    // MARK: - Private: Full Rebuild
+
+    private func performRebuild(transactions: [Transaction], baseCurrency: String) async {
+        let context = stack.newBackgroundContext()
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        let calendar = Calendar.current
+
+        Self.logger.debug("🔄 [MonthlyAgg] Rebuild START — \(transactions.count) transactions")
+
+        await context.perform {
+            // 1. Delete all existing monthly aggregates
+            let deleteRequest = NSBatchDeleteRequest(
+                fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: "MonthlyAggregateEntity")
+            )
+            do {
+                _ = try context.execute(deleteRequest)
+                context.reset()
+            } catch {
+                Self.logger.error("❌ [MonthlyAgg] batch delete failed: \(error.localizedDescription, privacy: .public)")
+            }
+
+            // 2. Single pass: group by (year, month)
+            struct MonthAcc {
+                var income: Double = 0
+                var expenses: Double = 0
+                var count: Int32 = 0
+            }
+            var acc: [String: MonthAcc] = [:]
+
+            let dateFormatter = DateFormatters.dateFormatter
+
+            for tx in transactions {
+                guard self.isFinancialTransaction(tx) else { continue }
+                let amount = self.resolveAmount(tx, baseCurrency: baseCurrency)
+                guard amount > 0 else { continue }
+
+                guard let date = dateFormatter.date(from: tx.date) else { continue }
+                let comps = calendar.dateComponents([.year, .month], from: date)
+                guard let year = comps.year, let month = comps.month else { continue }
+
+                let key = "monthly_\(year)_\(month)_\(baseCurrency)"
+                var entry = acc[key] ?? MonthAcc()
+                switch tx.type {
+                case .income:       entry.income += amount
+                case .expense:      entry.expenses += amount
+                default:            break
+                }
+                entry.count += 1
+                acc[key] = entry
+            }
+
+            // 3. Persist
+            let now = Date()
+            for (key, value) in acc {
+                // Parse year/month from key "monthly_2026_2_KZT"
+                let parts = key.components(separatedBy: "_")
+                guard parts.count >= 4,
+                      let year = Int16(parts[1]),
+                      let month = Int16(parts[2]) else { continue }
+
+                let e = MonthlyAggregateEntity(context: context)
+                e.id = key
+                e.year = year
+                e.month = month
+                e.currency = baseCurrency
+                e.totalIncome = value.income
+                e.totalExpenses = value.expenses
+                e.netFlow = value.income - value.expenses
+                e.transactionCount = value.count
+                e.lastUpdated = now
+            }
+
+            do {
+                if context.hasChanges { try context.save() }
+                Self.logger.debug("✅ [MonthlyAgg] Rebuild DONE — \(acc.count) month records")
+            } catch {
+                Self.logger.error("❌ [MonthlyAgg] Rebuild save failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func isFinancialTransaction(_ tx: Transaction) -> Bool {
+        tx.type == .income || tx.type == .expense
+    }
+
+    private func resolveAmount(_ tx: Transaction, baseCurrency: String) -> Double {
+        if tx.currency == baseCurrency { return tx.amount }
+        if let c = tx.convertedAmount, c > 0 { return c }
+        return CurrencyConverter.convertSync(amount: tx.amount, from: tx.currency, to: baseCurrency) ?? tx.amount
+    }
+
+    private func parseDate(_ dateString: String) -> Date? {
+        return DateFormatters.dateFormatter.date(from: dateString)
+    }
+
+    private func startOfMonth(_ calendar: Calendar, for date: Date) -> Date {
+        let comps = calendar.dateComponents([.year, .month], from: date)
+        return calendar.date(from: comps) ?? date
+    }
+}

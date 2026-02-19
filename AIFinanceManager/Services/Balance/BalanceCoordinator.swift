@@ -74,59 +74,57 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
     // MARK: - Account Management
 
-    func registerAccounts(_ accounts: [Account]) async {
+    /// Register accounts and compute initial balances.
+    /// - Parameters:
+    ///   - accounts: All accounts to register.
+    ///   - transactions: All transactions (used to recalculate balances for
+    ///     `shouldCalculateFromTransactions = true` accounts on startup).
+    func registerAccounts(_ accounts: [Account], transactions: [Transaction] = []) async {
 
-        // ✅ FIX: Load persisted balances from Core Data FIRST
-        // This ensures we use the real current balances, not stale account.initialBalance values
-        guard let coreDataRepo = repository as? CoreDataRepository else {
-            // Fallback for non-Core Data repositories
-            let accountBalances = accounts.map { AccountBalance.from($0) }
-            store.registerAccounts(accountBalances)
-            return
-        }
-
-        // Load persisted balances from Core Data for all accounts
-        let persistedBalances = coreDataRepo.loadAllAccountBalances()
-
-
-        // Create AccountBalance objects with CORRECT currentBalance from Core Data
+        // Build AccountBalance objects
         var accountBalances: [AccountBalance] = []
         for account in accounts {
-            // Use persisted balance if available, otherwise use initialBalance
-            let currentBalance = persistedBalances[account.id] ?? (account.initialBalance ?? 0)
-
             let accountBalance = AccountBalance(
                 accountId: account.id,
-                currentBalance: currentBalance,  // ✅ Use real balance from Core Data!
-                initialBalance: account.initialBalance,  // Keep initialBalance for calculations
+                currentBalance: account.initialBalance ?? 0,
+                initialBalance: account.initialBalance,
                 depositInfo: account.depositInfo,
                 currency: account.currency,
                 isDeposit: account.isDeposit
             )
             accountBalances.append(accountBalance)
-
         }
 
-        // ✅ CRITICAL FIX: Register accounts with correct balances in BalanceStore
         store.registerAccounts(accountBalances)
 
-        // ✅ CRITICAL FIX: Update BalanceStore with correct current balances
-        // This ensures processAddTransaction/processRemoveTransaction use correct currentBalance
-        var balancesToUpdate: [String: Double] = [:]
-        for accountBalance in accountBalances {
-            balancesToUpdate[accountBalance.accountId] = accountBalance.currentBalance
+        var finalBalances: [String: Double] = [:]
+
+        for account in accounts {
+            if account.shouldCalculateFromTransactions {
+                // DYNAMIC: entity.balance is unreliable (async persist may not complete before
+                // app is killed). Always recalculate from scratch: initialBalance(0) + Σtransactions.
+                guard let ab = accountBalances.first(where: { $0.accountId == account.id }) else { continue }
+                let calculated = engine.calculateBalance(account: ab, transactions: transactions, mode: .fromInitialBalance)
+                finalBalances[account.id] = calculated
+            } else {
+                // MANUAL: entity.balance is the reliable current balance — updated synchronously
+                // by persistBalance() on every transaction add/remove/update.
+                // initialBalance is stored separately and never overwritten after account creation.
+                finalBalances[account.id] = account.balance
+            }
         }
-        store.updateBalances(balancesToUpdate, source: .manual)
 
-        // Publish balances to UI and cache
-        var updatedBalances: [String: Double] = [:]
-        for accountBalance in accountBalances {
-            updatedBalances[accountBalance.accountId] = accountBalance.currentBalance
-            cache.setBalance(accountBalance.currentBalance, for: accountBalance.accountId)
+        store.updateBalances(finalBalances, source: .manual)
+        cache.setBalances(finalBalances)
+
+        // Merge into existing balances — don't replace the whole dictionary.
+        // If registerAccounts is called for a single new account (e.g. after addAccount),
+        // we must preserve all other accounts' current balances already in self.balances.
+        var merged = self.balances
+        for (id, balance) in finalBalances {
+            merged[id] = balance
         }
-
-        self.balances = updatedBalances
-
+        self.balances = merged
     }
 
     func removeAccount(_ accountId: String) async {
@@ -638,18 +636,10 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         // Calculate hash of transactions for cache key
         let transactionsHash = transactions.map { $0.id }.hashValue
 
-
         for account in accounts {
             // Get AccountBalance from store (contains initialBalance)
             // Don't create new AccountBalance from Account model!
             guard let accountBalance = store.getAccount(account.id) else {
-                continue
-            }
-
-
-            // ✅ OPTIMIZATION: Check LRU cache first (10x performance boost)
-            if let cachedBalance = getCachedBalance(accountId: account.id, transactionsHash: transactionsHash) {
-                newBalances[account.id] = cachedBalance
                 continue
             }
 
@@ -730,7 +720,11 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
             return  // Only persist for CoreDataRepository
         }
 
-        coreDataRepo.updateAccountBalance(accountId: accountId, balance: balance)
+        // Use updateAccountBalancesSync with unique operation ID so concurrent saves for source
+        // and target accounts of internal transfers don't block each other.
+        Task.detached(priority: .userInitiated) {
+            await coreDataRepo.updateAccountBalancesSync([accountId: balance])
+        }
     }
 
     /// Persist multiple balances to Core Data

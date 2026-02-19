@@ -155,24 +155,74 @@ final class InsightsService {
         cache.invalidateAll()
     }
 
-    // MARK: - Monthly Data Points (shared utility)
+    // MARK: - Monthly Data Points (Phase 22: reads from MonthlyAggregateService)
 
+    /// Compute monthly data points for chart display.
+    ///
+    /// Phase 22 optimization: reads pre-computed MonthlyAggregateEntity records from CoreData
+    /// instead of scanning all transactions (O(M) lookups vs the previous O(N×M) passes).
+    /// Falls back to the original transaction-scan path if aggregates are unavailable
+    /// (e.g. on first launch before a full rebuild).
     func computeMonthlyDataPoints(
         transactions: [Transaction],
         months: Int,
         baseCurrency: String,
-        cacheManager: TransactionCacheManager,  // kept for API compatibility; not used inside (see calculateMonthlySummary)
+        cacheManager: TransactionCacheManager,  // kept for API compatibility; not used inside
         currencyService: TransactionCurrencyService,
         anchorDate: Date? = nil
     ) -> [MonthlyDataPoint] {
         PerformanceLogger.InsightsMetrics.logMonthlyPointStart(months: months, transactionCount: transactions.count)
-        Self.logger.debug("📅 [Insights] Monthly points START — months=\(months), transactions=\(transactions.count)")
 
-        let calendar = Calendar.current
-        // Bug 1 fix: anchor to the provided date (e.g. end of timeFilter range) so that
-        // historical filters (Last Year, Last 3 Months, etc.) produce month points relative
-        // to their period end, not relative to today.
         let anchor = anchorDate ?? Date()
+
+        // Phase 22: Try fast path — read from persistent MonthlyAggregateEntity
+        let aggregates = transactionStore.monthlyAggregateService.fetchLast(
+            months,
+            anchor: anchor,
+            currency: baseCurrency
+        )
+
+        // If we got a full set of aggregate records, use them directly (O(M) fetch)
+        if aggregates.count == months {
+            Self.logger.debug("⚡️ [Insights] Monthly points FAST PATH — \(months) months from CoreData aggregates")
+            let dataPoints: [MonthlyDataPoint] = aggregates.map { agg in
+                let monthDate = Calendar.current.date(
+                    from: DateComponents(year: agg.year, month: agg.month, day: 1)
+                ) ?? Date()
+                return MonthlyDataPoint(
+                    id: Self.yearMonthFormatter.string(from: monthDate),
+                    month: monthDate,
+                    income: agg.totalIncome,
+                    expenses: agg.totalExpenses,
+                    netFlow: agg.netFlow,
+                    label: Self.monthYearFormatter.string(from: monthDate)
+                )
+            }
+            PerformanceLogger.InsightsMetrics.logMonthlyPointEnd(pointCount: dataPoints.count)
+            Self.logger.debug("📅 [Insights] Monthly points END (fast) — \(dataPoints.count) points")
+            return dataPoints
+        }
+
+        // Phase 22 fallback: aggregates not ready yet (first launch) — use transaction scan
+        Self.logger.debug("📅 [Insights] Monthly points SLOW PATH — aggregates count=\(aggregates.count) (expected \(months)), scanning transactions")
+        return computeMonthlyDataPointsSlow(
+            transactions: transactions,
+            months: months,
+            baseCurrency: baseCurrency,
+            currencyService: currencyService,
+            anchor: anchor
+        )
+    }
+
+    /// Original O(N×M) implementation used as fallback before aggregates are built.
+    private func computeMonthlyDataPointsSlow(
+        transactions: [Transaction],
+        months: Int,
+        baseCurrency: String,
+        currencyService: TransactionCurrencyService,
+        anchor: Date
+    ) -> [MonthlyDataPoint] {
+        let calendar = Calendar.current
         var dataPoints: [MonthlyDataPoint] = []
         dataPoints.reserveCapacity(months)
 
@@ -183,16 +233,13 @@ final class InsightsService {
             else { continue }
 
             let monthTransactions = filterService.filterByTimeRange(transactions, start: monthStart, end: monthEnd)
-            // Use cache-bypassing helper — see calculateMonthlySummary for root cause explanation.
             let (monthIncome, monthExpenses) = calculateMonthlySummary(
                 transactions: monthTransactions,
                 baseCurrency: baseCurrency,
                 currencyService: currencyService
             )
             let monthNetFlow = monthIncome - monthExpenses
-
             let label = Self.monthYearFormatter.string(from: monthStart)
-            Self.logger.debug("   📅 \(label, privacy: .public) — txn=\(monthTransactions.count), income=\(String(format: "%.0f", monthIncome), privacy: .public), exp=\(String(format: "%.0f", monthExpenses), privacy: .public), net=\(String(format: "%.0f", monthNetFlow), privacy: .public)")
 
             dataPoints.append(MonthlyDataPoint(
                 id: Self.yearMonthFormatter.string(from: monthStart),
@@ -205,7 +252,6 @@ final class InsightsService {
         }
 
         PerformanceLogger.InsightsMetrics.logMonthlyPointEnd(pointCount: dataPoints.count)
-        Self.logger.debug("📅 [Insights] Monthly points END — \(dataPoints.count) points computed")
         return dataPoints
     }
 
@@ -249,18 +295,37 @@ final class InsightsService {
         }
 
         // 1. Top spending category
+        // Phase 22: Try fast path — read category totals from CategoryAggregateService (O(M) fetch)
+        // This replaces the O(N) grouping + reduce over filtered expense transactions.
+        let range = timeFilter.dateRange()
+        let aggCategories = transactionStore.categoryAggregateService.fetchRange(
+            from: range.start, to: range.end, currency: baseCurrency
+        )
+
+        // Build sortedCategories from aggregates when available; fall back to transaction scan
+        let sortedCategories: [(key: String, total: Double)]
+        if !aggCategories.isEmpty {
+            Self.logger.debug("⚡️ [Insights] Category spending FAST PATH — \(aggCategories.count) categories from CoreData")
+            sortedCategories = aggCategories.map { (key: $0.categoryName, total: $0.totalExpenses) }
+        } else {
+            // Slow path: group expenses by category and sum (O(N))
+            let categoryGroups = Dictionary(grouping: expenses, by: { $0.category })
+            sortedCategories = categoryGroups
+                .map { key, txns in
+                    let total = txns.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
+                    return (key: key, total: total)
+                }
+                .sorted { $0.total > $1.total }
+        }
+
+        // For subcategory breakdown we still need the expense transactions (already filtered above)
+        // so we build a lookup map once for the top 5 categories only
         let categoryGroups = Dictionary(grouping: expenses, by: { $0.category })
-        let sortedCategories: [(key: String, total: Double)] = categoryGroups
-            .map { key, txns in
-                let total = txns.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
-                return (key: key, total: total)
-            }
-            .sorted { $0.total > $1.total }
 
         let topCategoryName = sortedCategories.first?.key ?? "—"
         let topCategoryAmount = sortedCategories.first?.total ?? 0
-        PerformanceLogger.InsightsMetrics.logSpendingStart(expenseCount: expenses.count, categoryCount: categoryGroups.count)
-        Self.logger.debug("🛒 [Insights] Spending — expenses=\(expenses.count), categories=\(categoryGroups.count), top='\(topCategoryName, privacy: .public)' (\(String(format: "%.0f", topCategoryAmount), privacy: .public) \(baseCurrency, privacy: .public))")
+        PerformanceLogger.InsightsMetrics.logSpendingStart(expenseCount: expenses.count, categoryCount: sortedCategories.count)
+        Self.logger.debug("🛒 [Insights] Spending — expenses=\(expenses.count), categories=\(sortedCategories.count), top='\(topCategoryName, privacy: .public)' (\(String(format: "%.0f", topCategoryAmount), privacy: .public) \(baseCurrency, privacy: .public))")
         for cat in sortedCategories.prefix(5) {
             let pct = periodSummary.totalExpenses > 0 ? (cat.total / periodSummary.totalExpenses) * 100 : 0
             Self.logger.debug("   🛒 \(cat.key, privacy: .public): \(String(format: "%.0f", cat.total), privacy: .public) (\(String(format: "%.1f%%", pct), privacy: .public))")
@@ -395,8 +460,8 @@ final class InsightsService {
         }
 
         // 3. Average daily spending (uses already-computed periodSummary)
-        let range = timeFilter.dateRange()
-        let days = max(1, calendar.dateComponents([.day], from: range.start, to: min(range.end, refDate)).day ?? 1)
+        let periodRange = timeFilter.dateRange()
+        let days = max(1, calendar.dateComponents([.day], from: periodRange.start, to: min(periodRange.end, refDate)).day ?? 1)
         let avgDaily = periodSummary.totalExpenses / Double(days)
 
         Self.logger.debug("📆 [Insights] Avg daily — totalExpenses=\(String(format: "%.0f", periodSummary.totalExpenses), privacy: .public), days=\(days), avg=\(String(format: "%.0f", avgDaily), privacy: .public) \(baseCurrency, privacy: .public)")

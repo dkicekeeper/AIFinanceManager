@@ -65,7 +65,10 @@ class TransactionCacheManager {
 
     var summaryCacheInvalidated = false
     var cachedSummary: Summary?
-    private var cachedCategoryExpenses: [String: CategoryExpense] = [:]
+
+    /// Per-filter cache: key is TimeFilter.stableCacheKey string, value is expenses dict.
+    /// Fixes the bug where all time filters shared a single cached result.
+    private var cachedCategoryExpensesByFilter: [String: [String: CategoryExpense]] = [:]
 
     // Category lists cache
     var categoryListsCacheInvalidated = false
@@ -76,20 +79,27 @@ class TransactionCacheManager {
     func invalidateCategoryExpenses() {
         summaryCacheInvalidated = true
         cachedSummary = nil
-        cachedCategoryExpenses.removeAll()
+        cachedCategoryExpensesByFilter.removeAll()
     }
 
     func getCachedCategoryExpenses(for key: Any) -> [String: CategoryExpense]? {
-        // Simple cache - return if exists (ignoring key for now)
-        // Phase 8: Simplified caching - TransactionStore handles proper caching
-        return summaryCacheInvalidated ? nil : (cachedCategoryExpenses.isEmpty ? nil : cachedCategoryExpenses)
+        guard !summaryCacheInvalidated else { return nil }
+        let cacheKey = stableCacheKey(from: key)
+        return cachedCategoryExpensesByFilter[cacheKey]
     }
 
     func setCachedCategoryExpenses(_ expenses: [String: CategoryExpense], for key: Any) {
-        // Simple cache - store without key differentiation
-        // Phase 8: Simplified caching - TransactionStore handles proper caching
-        cachedCategoryExpenses = expenses
+        let cacheKey = stableCacheKey(from: key)
+        cachedCategoryExpensesByFilter[cacheKey] = expenses
         summaryCacheInvalidated = false
+    }
+
+    /// Derive a stable string key from the provided key (TimeFilter or any Hashable).
+    private func stableCacheKey(from key: Any) -> String {
+        if let timeFilter = key as? TimeFilter {
+            return timeFilter.stableCacheKey
+        }
+        return String(describing: key)
     }
 
     func invalidateAll() {
@@ -97,7 +107,7 @@ class TransactionCacheManager {
         subcategoryIndex.removeAll()
         cachedAccountBalances.removeAll()
         cachedSummary = nil
-        cachedCategoryExpenses.removeAll()
+        cachedCategoryExpensesByFilter.removeAll()
         cachedUniqueCategories = nil
         cachedExpenseCategories = nil
         cachedIncomeCategories = nil

@@ -94,14 +94,10 @@ struct QuickAddTransactionView: View {
         // This prevents cascading updates during CSV imports and data loading
         .onChange(of: refreshTrigger) { old, new in
             // ✅ OPTIMIZATION: Skip if value didn't actually change (deduplication)
-            guard old != new else {
-                return
-            }
+            guard old != new else { return }
 
             // ✅ OPTIMIZATION: Skip if same as last processed value
-            guard new != lastRefreshTrigger else {
-                return
-            }
+            guard new != lastRefreshTrigger else { return }
 
             // Cancel previous debounce task
             debounceTask?.cancel()
@@ -118,7 +114,6 @@ struct QuickAddTransactionView: View {
                 await MainActor.run {
                     lastRefreshTrigger = new
                     coordinator.refreshData()
-
                 }
             }
         }
@@ -128,10 +123,23 @@ struct QuickAddTransactionView: View {
 
     /// ✅ OPTIMIZATION: Combined refresh trigger that watches all data sources
     /// Prevents multiple .onChange handlers and enables debouncing
+    ///
+    /// Uses XOR of:
+    ///  - current time filter (changes when user switches filter)
+    ///  - category count (changes when category is added/removed)
+    ///  - transaction count (changes when a transaction is added/deleted)
+    ///  - truncated total of expense amounts (changes when a transaction's amount is edited)
+    ///    Truncated to Int to avoid Float precision noise causing spurious refreshes.
     private var refreshTrigger: Int {
-        timeFilterManager.currentFilter.hashValue
+        let expenseAmountHash = Int(
+            coordinator.transactionsViewModel.allTransactions
+                .filter { $0.type == .expense }
+                .reduce(0.0) { $0 + $1.amount }
+        )
+        return timeFilterManager.currentFilter.hashValue
             ^ coordinator.categoriesViewModel.customCategories.count
             ^ coordinator.transactionsViewModel.allTransactions.count
+            ^ expenseAmountHash
     }
 
     // MARK: - Sheets

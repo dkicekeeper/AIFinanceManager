@@ -66,7 +66,7 @@ class AccountOperationService: AccountOperationServiceProtocol {
             currency: currency,
             convertedAmount: convertedAmountForSource,
             type: .internalTransfer,
-            category: String(localized: "transactionForm.transfer"),
+            category: TransactionType.transferCategoryName,
             subcategory: nil,
             accountId: sourceId,
             targetAccountId: targetId,

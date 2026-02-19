@@ -2,6 +2,7 @@
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24512" systemVersion="25C56" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
     <entity name="AccountEntity" representedClassName=".AccountEntity" syncable="YES">
         <attribute name="balance" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="initialBalance" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="bankName" optional="YES" attributeType="String"/>
         <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="currency" attributeType="String" defaultValueString="KZT"/>
@@ -83,6 +84,9 @@
         <attribute name="id" attributeType="String"/>
         <attribute name="name" attributeType="String"/>
         <attribute name="type" attributeType="String"/>
+        <attribute name="cachedSpentAmount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="cachedSpentUpdatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="cachedSpentCurrency" optional="YES" attributeType="String"/>
         <uniquenessConstraints>
             <uniquenessConstraint>
                 <constraint value="id"/>
@@ -136,6 +140,7 @@
         </uniquenessConstraints>
     </entity>
     <entity name="TransactionEntity" representedClassName=".TransactionEntity" syncable="YES">
+        <attribute name="accountId" optional="YES" attributeType="String"/>
         <attribute name="accountName" optional="YES" attributeType="String"/>
         <attribute name="amount" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="category" attributeType="String"/>
@@ -180,6 +185,29 @@
         <attribute name="id" attributeType="String"/>
         <attribute name="subcategoryId" attributeType="String"/>
         <attribute name="transactionId" attributeType="String"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="id"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
+    <entity name="MonthlyAggregateEntity" representedClassName=".MonthlyAggregateEntity" syncable="YES">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="year" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="month" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="currency" attributeType="String" defaultValueString="KZT"/>
+        <attribute name="totalIncome" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="totalExpenses" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="netFlow" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="transactionCount" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="lastUpdated" attributeType="Date" usesScalarValueType="NO"/>
+        <fetchIndex name="byYearMonthIndex">
+            <fetchIndexElement property="year" type="Binary" order="descending"/>
+            <fetchIndexElement property="month" type="Binary" order="descending"/>
+        </fetchIndex>
+        <fetchIndex name="byCurrencyIndex">
+            <fetchIndexElement property="currency" type="Binary" order="ascending"/>
+        </fetchIndex>
         <uniquenessConstraints>
             <uniquenessConstraint>
                 <constraint value="id"/>

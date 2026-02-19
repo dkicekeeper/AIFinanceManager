@@ -20,7 +20,12 @@ public class TransactionEntity: NSManagedObject {
 extension TransactionEntity {
     /// Convert to domain model
     func toTransaction() -> Transaction {
-        return Transaction(
+        // accountId: prefer stored string (survives account deletion / relationship faults),
+        // fall back to relationship if the string column is nil (pre-migration data).
+        let resolvedAccountId = accountId ?? account?.id
+        let resolvedTargetAccountId = targetAccount?.id
+
+        let tx = Transaction(
             id: id ?? "",
             date: DateFormatters.dateFormatter.string(from: date ?? Date()),
             description: descriptionText ?? "",
@@ -30,8 +35,8 @@ extension TransactionEntity {
             type: TransactionType(rawValue: type ?? "expense") ?? .expense,
             category: category ?? "",
             subcategory: subcategory,
-            accountId: account?.id,
-            targetAccountId: targetAccount?.id,
+            accountId: resolvedAccountId,
+            targetAccountId: resolvedTargetAccountId,
             accountName: accountName ?? account?.name,
             targetAccountName: targetAccountName ?? targetAccount?.name,
             targetCurrency: targetCurrency ?? targetAccount?.currency,
@@ -40,6 +45,7 @@ extension TransactionEntity {
             recurringOccurrenceId: nil,
             createdAt: createdAt?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
         )
+        return tx
     }
     
     /// Create from domain model
@@ -59,6 +65,8 @@ extension TransactionEntity {
         entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
         entity.accountName = transaction.accountName
         entity.targetAccountName = transaction.targetAccountName
+        // Store accountId as a string so it survives account deletion / relationship faults
+        entity.accountId = transaction.accountId
         // Relationships will be set separately by finding AccountEntity and RecurringSeriesEntity
         return entity
     }

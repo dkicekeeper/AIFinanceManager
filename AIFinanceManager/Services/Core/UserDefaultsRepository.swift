@@ -62,16 +62,21 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
         // Perform save asynchronously on background queue
         Task.detached(priority: .utility) {
             PerformanceProfiler.start("saveTransactions")
-            
+
             let encoder = JSONEncoder()
             if let encoded = try? encoder.encode(transactions) {
                 UserDefaults.standard.set(encoded, forKey: self.storageKeyTransactions)
             }
-            
+
             PerformanceProfiler.end("saveTransactions")
         }
     }
-    
+
+    func deleteTransactionImmediately(id: String) {
+        // UserDefaults fallback: no immediate per-record delete; no-op.
+        // Deletions are handled by the next full saveTransactions() call.
+    }
+
     // MARK: - Accounts
     
     func loadAccounts() -> [Account] {

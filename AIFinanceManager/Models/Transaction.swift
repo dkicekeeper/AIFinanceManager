@@ -14,6 +14,10 @@ enum TransactionType: String, Codable {
     case depositTopUp = "deposit_topup"
     case depositWithdrawal = "deposit_withdrawal"
     case depositInterestAccrual = "deposit_interest"
+
+    /// Static category name stored for internalTransfer transactions.
+    /// Must be locale-independent so it survives locale changes and app restarts.
+    static let transferCategoryName = "Transfer"
 }
 
 struct Transaction: Identifiable, Codable, Equatable {
@@ -239,10 +243,11 @@ struct Account: Identifiable, Codable, Equatable {
     var depositInfo: DepositInfo? // Опциональная информация о депозите (nil для обычных счетов)
     var createdDate: Date?
     var shouldCalculateFromTransactions: Bool // Режим расчета баланса: true = из транзакций, false = manual
-    var initialBalance: Double?  // Начальный баланс для manual счетов (nil для shouldCalculateFromTransactions=true)
+    var initialBalance: Double?  // Начальный баланс при создании счёта (задаётся один раз, не меняется)
+    var balance: Double          // Текущий баланс (обновляется BalanceCoordinator инкрементально)
     var order: Int? // Order for displaying accounts
 
-    init(id: String = UUID().uuidString, name: String, currency: String, iconSource: IconSource? = nil, depositInfo: DepositInfo? = nil, createdDate: Date? = nil, shouldCalculateFromTransactions: Bool = false, initialBalance: Double? = nil, order: Int? = nil) {
+    init(id: String = UUID().uuidString, name: String, currency: String, iconSource: IconSource? = nil, depositInfo: DepositInfo? = nil, createdDate: Date? = nil, shouldCalculateFromTransactions: Bool = false, initialBalance: Double? = nil, balance: Double? = nil, order: Int? = nil) {
         self.id = id
         self.name = name
         self.currency = currency
@@ -250,7 +255,10 @@ struct Account: Identifiable, Codable, Equatable {
         self.depositInfo = depositInfo
         self.createdDate = createdDate ?? Date()
         self.shouldCalculateFromTransactions = shouldCalculateFromTransactions
-        self.initialBalance = initialBalance ?? (shouldCalculateFromTransactions ? 0.0 : nil)
+        let resolvedInitial = initialBalance ?? (shouldCalculateFromTransactions ? 0.0 : nil)
+        self.initialBalance = resolvedInitial
+        // Current balance starts equal to initialBalance; updated later by BalanceCoordinator
+        self.balance = balance ?? resolvedInitial ?? 0.0
         self.order = order
     }
 
@@ -269,7 +277,6 @@ struct Account: Identifiable, Codable, Equatable {
         if let savedIconSource = try container.decodeIfPresent(IconSource.self, forKey: .iconSource) {
             iconSource = savedIconSource
         } else if let oldBankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) {
-            // Migrate old bankLogo to iconSource
             iconSource = oldBankLogo != .none ? .bankLogo(oldBankLogo) : nil
         } else {
             iconSource = nil
@@ -277,20 +284,21 @@ struct Account: Identifiable, Codable, Equatable {
 
         depositInfo = try container.decodeIfPresent(DepositInfo.self, forKey: .depositInfo)
         createdDate = try container.decodeIfPresent(Date.self, forKey: .createdDate)
-        // Для обратной совместимости: если поля нет, используем false (manual mode)
         shouldCalculateFromTransactions = try container.decodeIfPresent(Bool.self, forKey: .shouldCalculateFromTransactions) ?? false
 
-        // Для обратной совместимости: мигрируем старое поле balance в initialBalance
+        // initialBalance — starting balance at account creation, stored separately
         if let savedInitialBalance = try container.decodeIfPresent(Double.self, forKey: .initialBalance) {
             initialBalance = savedInitialBalance
         } else if let oldBalance = try? container.decodeIfPresent(Double.self, forKey: .balance) {
-            // Миграция: старые данные с полем balance переносим в initialBalance
             initialBalance = shouldCalculateFromTransactions ? 0.0 : oldBalance
         } else {
             initialBalance = shouldCalculateFromTransactions ? 0.0 : nil
         }
 
-        // Order is optional, defaults to nil for backward compatibility
+        // balance — current running balance; on decode use balance field if present, else initialBalance
+        let decodedBalance = try? container.decodeIfPresent(Double.self, forKey: .balance)
+        balance = decodedBalance ?? initialBalance ?? 0.0
+
         order = try container.decodeIfPresent(Int.self, forKey: .order)
     }
 
@@ -304,6 +312,7 @@ struct Account: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(createdDate, forKey: .createdDate)
         try container.encode(shouldCalculateFromTransactions, forKey: .shouldCalculateFromTransactions)
         try container.encodeIfPresent(initialBalance, forKey: .initialBalance)
+        try container.encode(balance, forKey: .balance)
         try container.encodeIfPresent(order, forKey: .order)
     }
     

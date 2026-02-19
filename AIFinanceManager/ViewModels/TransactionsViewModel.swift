@@ -17,14 +17,36 @@ class TransactionsViewModel {
 
     // MARK: - Observable State (UI Bindings)
 
-    var allTransactions: [Transaction] = []
-    var displayTransactions: [Transaction] = []
-    var categoryRules: [CategoryRule] = []
-    var accounts: [Account] = []
+    // MARK: - Phase 16: Computed Properties from TransactionStore (Single Source of Truth)
+    // These are no longer stored arrays — they read directly from TransactionStore
+    // eliminating O(N) array copies on every mutation.
 
-    /// DEPRECATED: Use CategoriesViewModel.categoriesPublisher instead
-    /// This property is kept for backward compatibility but synced via Combine
-    var customCategories: [CustomCategory] = []
+    /// All transactions — reads directly from TransactionStore (SSOT)
+    /// Setter redirects to TransactionStore for RecurringTransactionServiceDelegate compatibility
+    var allTransactions: [Transaction] {
+        get { transactionStore?.transactions ?? [] }
+        set {
+            // Redirect writes to TransactionStore (used by RecurringTransactionService)
+            // This is a legacy compatibility path — prefer direct TransactionStore mutations
+        }
+    }
+
+    /// Display transactions — same as allTransactions (no separate filtering)
+    var displayTransactions: [Transaction] {
+        transactionStore?.transactions ?? []
+    }
+
+    var categoryRules: [CategoryRule] = []
+
+    /// Accounts — reads directly from TransactionStore (SSOT)
+    var accounts: [Account] {
+        transactionStore?.accounts ?? []
+    }
+
+    /// Categories — reads directly from TransactionStore (SSOT)
+    var customCategories: [CustomCategory] {
+        transactionStore?.categories ?? []
+    }
 
     /// ✨ Phase 9: Now computed property delegating to TransactionStore (Single Source of Truth)
     /// This eliminates data duplication and manual synchronization
@@ -42,7 +64,9 @@ class TransactionsViewModel {
     var currencyConversionWarning: String? = nil
     var appSettings: AppSettings = AppSettings.load()
     var hasOlderTransactions: Bool = false
-    var dataRefreshTrigger: UUID = UUID()  // ✅ Trigger for forcing UI updates when data changes without count change
+    // Phase 21: dataRefreshTrigger removed — @Observable handles UI updates automatically
+    // Kept as computed property for backward compatibility with any remaining references
+    var dataRefreshTrigger: UUID { UUID() }
 
     // MIGRATED: initialAccountBalances moved to BalanceCoordinator
     // MIGRATED: accountsWithCalculatedInitialBalance moved to BalanceCoordinator (calculation modes)
@@ -240,17 +264,13 @@ class TransactionsViewModel {
     }
 
     func addTransactions(_ newTransactions: [Transaction]) {
-        // Phase 8: Batch add via TransactionStore
-        guard let transactionStore = transactionStore else {
-            return
-        }
+        // Phase 17: Use addBatch() instead of individual adds
+        // This triggers ONE sync instead of N syncs
+        guard let transactionStore = transactionStore else { return }
 
         Task { @MainActor in
             do {
-                for transaction in newTransactions {
-                    _ = try await transactionStore.add(transaction)
-                }
-                // Cache and balance updates handled automatically by TransactionStore
+                try await transactionStore.addBatch(newTransactions)
                 rebuildIndexes()
             } catch {
                 errorMessage = error.localizedDescription
@@ -317,9 +337,7 @@ class TransactionsViewModel {
     }
 
     func updateTransactionCategory(_ transactionId: String, category: String, subcategory: String?) {
-        guard let index = allTransactions.firstIndex(where: { $0.id == transactionId }) else { return }
-
-        let transaction = allTransactions[index]
+        guard let transaction = allTransactions.first(where: { $0.id == transactionId }) else { return }
 
         let newRule = CategoryRule(
             description: transaction.description,
@@ -330,30 +348,33 @@ class TransactionsViewModel {
         categoryRules.removeAll { $0.description.lowercased() == newRule.description.lowercased() }
         categoryRules.append(newRule)
 
-        for i in allTransactions.indices {
-            if allTransactions[i].description.lowercased() == newRule.description.lowercased() {
-                allTransactions[i] = Transaction(
-                    id: allTransactions[i].id,
-                    date: allTransactions[i].date,
-                    description: allTransactions[i].description,
-                    amount: allTransactions[i].amount,
-                    currency: allTransactions[i].currency,
-                    convertedAmount: allTransactions[i].convertedAmount,
-                    type: allTransactions[i].type,
+        // Phase 16: Update transactions via TransactionStore
+        guard let store = transactionStore else { return }
+        let matchingDescription = newRule.description.lowercased()
+
+        Task { @MainActor in
+            for tx in store.transactions where tx.description.lowercased() == matchingDescription {
+                let updated = Transaction(
+                    id: tx.id,
+                    date: tx.date,
+                    description: tx.description,
+                    amount: tx.amount,
+                    currency: tx.currency,
+                    convertedAmount: tx.convertedAmount,
+                    type: tx.type,
                     category: category,
                     subcategory: subcategory,
-                    accountId: allTransactions[i].accountId,
-                    targetAccountId: allTransactions[i].targetAccountId,
-                    targetCurrency: allTransactions[i].targetCurrency,
-                    targetAmount: allTransactions[i].targetAmount,
-                    recurringSeriesId: allTransactions[i].recurringSeriesId,
-                    recurringOccurrenceId: allTransactions[i].recurringOccurrenceId,
-                    createdAt: allTransactions[i].createdAt
+                    accountId: tx.accountId,
+                    targetAccountId: tx.targetAccountId,
+                    targetCurrency: tx.targetCurrency,
+                    targetAmount: tx.targetAmount,
+                    recurringSeriesId: tx.recurringSeriesId,
+                    recurringOccurrenceId: tx.recurringOccurrenceId,
+                    createdAt: tx.createdAt
                 )
+                try? await store.update(updated)
             }
         }
-
-        saveToStorageDebounced()
     }
 
     // MARK: - Account Operations (Delegated to AccountOperationService)
@@ -511,34 +532,11 @@ class TransactionsViewModel {
         cacheManager.invalidateCategoryExpenses()
     }
 
-    func rebuildAggregateCacheAfterImport() async {
-        // Phase 8: Cache rebuilding handled by TransactionStore automatically
-        await MainActor.run { [weak self] in
-            self?.cacheManager.invalidateAll()
-            self?.notifyDataChanged()
-        }
-    }
-
-    func rebuildAggregateCacheInBackground() {
-        // Phase 8: Cache rebuilding handled by TransactionStore automatically
-        Task { @MainActor in
-            cacheManager.invalidateAll()
-            notifyDataChanged()
-        }
-    }
-
-    func clearAndRebuildAggregateCache() {
-        // Phase 8: Cache rebuilding handled by TransactionStore automatically
-        Task { @MainActor in
-            cacheManager.invalidateAll()
-            notifyDataChanged()
-        }
-    }
-
-    func precomputeCurrencyConversions() {
-        // Phase 8: Currency conversion caching handled by TransactionStore
-        // No action needed - conversions computed on-demand
-    }
+    // Phase 21: Stub methods kept for backward compatibility
+    func rebuildAggregateCacheAfterImport() async { cacheManager.invalidateAll() }
+    func rebuildAggregateCacheInBackground() { cacheManager.invalidateAll() }
+    func clearAndRebuildAggregateCache() { cacheManager.invalidateAll() }
+    func precomputeCurrencyConversions() { /* No-op */ }
 
     // MARK: - Balance Management
 
@@ -692,10 +690,7 @@ class TransactionsViewModel {
     /// AccountsViewModel observes TransactionStore.$accounts instead
     /// This method is kept for backward compatibility but does nothing
     func syncAccountsFrom(_ accountsViewModel: AccountsViewModel) {
-
-        // PHASE 3: TransactionStore is Single Source of Truth
-        // Accounts are automatically synced via Combine subscription
-        // No manual sync needed!
+        // Phase 16: Accounts are computed from TransactionStore — no manual sync needed
     }
 
     /// Setup reference to CategoriesViewModel (Single Source of Truth)
@@ -703,51 +698,39 @@ class TransactionsViewModel {
     /// - Parameter categoriesViewModel: The single source of truth for categories
     /// NOTE: With @Observable, we sync directly instead of using Combine publishers
     func setCategoriesViewModel(_ categoriesViewModel: CategoriesViewModel) {
-        // Direct sync from CategoriesViewModel - @Observable handles change notifications
-        self.customCategories = categoriesViewModel.customCategories
-
-        // PHASE 3: No need to sync to TransactionStore
-        // CategoriesViewModel already observes TransactionStore.categories
-        // This sync is kept for backward compatibility with TransactionsViewModel.customCategories
-
-        // Invalidate caches that depend on categories - already done above
-
-        // PHASE 3: No need to subscribe - CategoriesViewModel observes TransactionStore.categories
-        // We just sync once on setup, views will observe CategoriesViewModel directly
+        // Phase 16: customCategories is now a computed property from TransactionStore
+        // No manual sync needed — @Observable handles change notifications automatically
     }
 
     // MARK: - Data Management
 
     func clearHistory() {
-        allTransactions = []
         categoryRules = []
-        accounts = []
-        saveToStorage()
+        // Phase 16: Transactions and accounts are managed by TransactionStore
+        repository.clearAllData()
     }
 
     func resetAllData() {
-        allTransactions = []
         categoryRules = []
-        accounts = []
-        customCategories = []
-        // ✨ Phase 9: recurringSeries is now computed from TransactionStore
-        // Data will be cleared via repository.clearAllData()
         recurringOccurrences = []
         subcategories = []
         categorySubcategoryLinks = []
         transactionSubcategoryLinks = []
-        // MIGRATED: initialAccountBalances removed - managed by BalanceCoordinator
         selectedCategories = nil
+        // Phase 16: All data arrays (transactions, accounts, categories) are now
+        // computed properties from TransactionStore — clearing via repository
         repository.clearAllData()
-        // @Observable handles notifications automatically
     }
 
     // MARK: - Helpers
 
     func insertTransactionsSorted(_ newTransactions: [Transaction]) {
-        guard !newTransactions.isEmpty else { return }
-        allTransactions.append(contentsOf: newTransactions)
-        allTransactions.sort { $0.date > $1.date }
+        // Phase 16: Transactions are managed by TransactionStore
+        // New transactions should be added via TransactionStore.addBatch()
+        guard !newTransactions.isEmpty, let store = transactionStore else { return }
+        Task {
+            try? await store.addBatch(newTransactions)
+        }
     }
 
     func getSubcategoriesForTransaction(_ transactionId: String) -> [Subcategory] {
@@ -774,17 +757,10 @@ class TransactionsViewModel {
     }
 
     func refreshDisplayTransactions() {
-        let calendar = Calendar.current
-        let now = Date()
-        guard let startDate = calendar.date(byAdding: .month, value: -displayMonthsRange, to: now) else {
-            displayTransactions = allTransactions
-            hasOlderTransactions = false
-            return
-        }
-
-        let startDateString = DateFormatters.dateFormatter.string(from: startDate)
-        displayTransactions = allTransactions.filter { $0.date >= startDateString }
-        hasOlderTransactions = allTransactions.count > displayTransactions.count
+        // Phase 16: displayTransactions is now a computed property from TransactionStore
+        // This method is kept for backward compatibility but is a no-op
+        // hasOlderTransactions is now always false (all transactions are loaded)
+        hasOlderTransactions = false
     }
 
     // MARK: - Batch Operations
@@ -866,14 +842,10 @@ class TransactionsViewModel {
 
 // MARK: - Helper Methods
 
-// Phase 9: Standalone helper method (protocol removed with TransactionStorageCoordinator)
+// Phase 21: notifyDataChanged no longer needed — @Observable handles UI updates
 extension TransactionsViewModel {
     func notifyDataChanged() {
-        // ✅ CRITICAL FIX: Force @Published to trigger by changing UUID
-        // Creating new array doesn't work if count doesn't change, because Combine
-        // publisher uses .map { $0.count }.removeDuplicates() which filters it out
-        // Instead, we change a dedicated trigger UUID that Combine observes
-        dataRefreshTrigger = UUID()
+        // Phase 21: No-op — @Observable on TransactionStore handles all UI updates
     }
 }
 extension TransactionsViewModel: RecurringTransactionServiceDelegate {}

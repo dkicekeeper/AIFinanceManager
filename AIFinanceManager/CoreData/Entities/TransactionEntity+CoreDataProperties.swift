@@ -18,6 +18,7 @@ extension TransactionEntity {
         return NSFetchRequest<TransactionEntity>(entityName: "TransactionEntity")
     }
 
+    @NSManaged public var accountId: String?
     @NSManaged public var amount: Double
     @NSManaged public var category: String?
     @NSManaged public var convertedAmount: Double

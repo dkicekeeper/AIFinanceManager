@@ -41,6 +41,15 @@ extension AccountEntity {
             // For now, we'll return nil and handle deposits separately if needed
         }
 
+        // `balance`        — current running balance, updated by BalanceCoordinator on every mutation
+        // `initialBalance` — balance at account creation, stored once and never overwritten
+        //
+        // Migration note: accounts created before this field existed will have initialBalance == 0.
+        // For manual accounts that never had initialBalance set (0) but balance > 0, we can't
+        // recover initialBalance, but that's fine — we only need `balance` (current) at startup.
+
+        let resolvedInitialBalance: Double? = shouldCalculateFromTransactions ? 0.0 : initialBalance
+
         return Account(
             id: id ?? "",
             name: name ?? "",
@@ -48,8 +57,9 @@ extension AccountEntity {
             iconSource: iconSource,
             depositInfo: depositInfo,
             createdDate: createdAt,
-            shouldCalculateFromTransactions: shouldCalculateFromTransactions,  // ✨ Phase 10: Restore calculation mode
-            initialBalance: balance
+            shouldCalculateFromTransactions: shouldCalculateFromTransactions,
+            initialBalance: resolvedInitialBalance,
+            balance: balance  // Pass current balance separately
         )
     }
 
@@ -58,7 +68,10 @@ extension AccountEntity {
         let entity = AccountEntity(context: context)
         entity.id = account.id
         entity.name = account.name
-        entity.balance = account.initialBalance ?? 0
+        // On creation: balance = initialBalance (no transactions yet)
+        let startingBalance = account.initialBalance ?? 0
+        entity.balance = startingBalance
+        entity.initialBalance = startingBalance  // Stored separately — never overwritten after creation
         entity.currency = account.currency
 
         // Save full iconSource as JSON data (new approach)

@@ -108,10 +108,8 @@ struct BalanceCalculationEngine {
 
             case .internalTransfer:
                 if tx.accountId == accountId {
-                    // Source account - subtract
                     balance -= getSourceAmount(tx)
                 } else if tx.targetAccountId == accountId {
-                    // Target account - add
                     balance += getTargetAmount(tx)
                 }
 

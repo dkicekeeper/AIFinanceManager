@@ -71,11 +71,34 @@ AIFinanceManager/
 - Located at: `AIFinanceManager/ViewModels/AppCoordinator.swift`
 - Provides: Repository, all ViewModels, Stores, and Coordinators
 
-#### TransactionStore (Phase 7+, Enhanced Phase 9)
-- Single source of truth for transactions
-- Handles subscriptions and recurring transactions
-- Replaces multiple legacy services
+#### TransactionStore (Phase 7+, Enhanced Phase 9, Performance Phase 16-22)
+- **THE** single source of truth for transactions, accounts, and categories
+- ViewModels use computed properties reading directly from TransactionStore (Phase 16)
+- Debounced sync with 16ms coalesce window (Phase 17)
+- Granular cache invalidation per event type (Phase 20)
 - Event-driven architecture with TransactionStoreEvent
+- Handles subscriptions and recurring transactions
+- Phase 22: Owns `categoryAggregateService` and `monthlyAggregateService` — persistent aggregate maintenance
+
+#### CategoryAggregateService (Phase 22)
+- Maintains `CategoryAggregateEntity` records in CoreData (already had schema, now active)
+- Incremental O(1) updates on each transaction mutation
+- Stores spending totals per (category, year, month) — monthly, yearly, and all-time granularity
+- `fetchRange(from:to:currency:)` used by InsightsService for O(M) category breakdown instead of O(N) scan
+- Located at: `Services/Categories/CategoryAggregateService.swift`
+
+#### MonthlyAggregateService (Phase 22)
+- New `MonthlyAggregateEntity` CoreData entity (added Phase 22)
+- Stores (totalIncome, totalExpenses, netFlow) per (year, month, currency)
+- InsightsService `computeMonthlyDataPoints()` reads these — O(M) instead of O(N×M)
+- Graceful fallback: if aggregates not ready (first launch), uses original O(N×M) transaction scan
+- Located at: `Services/Balance/MonthlyAggregateService.swift`
+
+#### BudgetSpendingCacheService (Phase 22)
+- Caches current-period spending totals in `CustomCategoryEntity.cachedSpentAmount`
+- `CategoryBudgetService.calculateSpent()` reads cache first (O(1)), falls back to O(N) scan
+- Invalidated on any transaction mutation in the relevant category
+- Located at: `Services/Categories/BudgetSpendingCacheService.swift`
 
 #### BalanceCoordinator (Phase 1-4)
 - Single entry point for balance operations
@@ -84,7 +107,39 @@ AIFinanceManager/
 
 ### Recent Refactoring Phases
 
-**Phase 15** (Latest - 2026-02-16): MessageBanner Component
+**Phase 22** (2026-02-19): Persistent Aggregate Caching
+- **Activated `CategoryAggregateEntity`** — schema existed since Phase 8 as stub, now fully live
+- **New `MonthlyAggregateEntity`** — stores pre-computed monthly income/expense totals in CoreData
+- **New `BudgetSpendingCacheService`** — caches period spending in `CustomCategoryEntity.cachedSpentAmount`
+- **InsightsService fast path** — `computeMonthlyDataPoints()` reads from CoreData (O(M)) with fallback to O(N×M) scan
+- **Category spending fast path** — `generateSpendingInsights()` reads from `CategoryAggregateService.fetchRange()` first
+- **Incremental maintenance** — `TransactionStore.apply()` calls `updateAggregates(for:)` after each event
+- **Rebuild on currency change** — `updateBaseCurrency()` triggers full rebuild of all aggregates
+- **Rebuild after CSV import** — `finishImport()` triggers full rebuild from all imported transactions
+- **Startup rebuild check** — `AppCoordinator.initialize()` runs background rebuild if CoreData is empty
+
+**Performance improvements (Phase 22):**
+- InsightsService "Last Year" chart: O(N×M) → O(M) CoreData fetch (12k tx × 12 months → 12 records)
+- Category spending breakdown: O(N) filter+group → O(M) CoreData fetch per filter period
+- Budget progress read: O(N) scan per category → O(1) CoreData field read
+- CSV import aggregate rebuild: single O(N) pass after import (instead of repeated O(N) per view)
+
+**Phase 16-21** (2026-02-19): Performance Refactoring
+- **Phase 16**: Eliminated `syncTransactionStoreToViewModels()` array copies — ViewModels now use computed properties reading directly from TransactionStore (SSOT). Removed 5 redundant array copies per mutation.
+- **Phase 17**: Added debounced sync (16ms coalesce) in `TransactionStore.apply()`. Fixed `addTransactions()` to use `addBatch()` instead of individual `add()` loop. Reduced ContentView onChange handlers from 3 to 2.
+- **Phase 18**: Made InsightsViewModel lazy — marks data as stale instead of eagerly recomputing all 5 granularities on every data change. Computation deferred until user opens Insights tab.
+- **Phase 19**: Streamlined startup — removed duplicate `transactionsViewModel.loadDataAsync()`, balance registration uses already-loaded TransactionStore data.
+- **Phase 20**: Granular cache invalidation — `apply()` now invalidates only affected cache keys (summary, daily expenses for affected dates) instead of `cache.invalidateAll()`.
+- **Phase 21**: Removed stub methods and `dataRefreshTrigger`/`notifyDataChanged()` — @Observable handles UI updates automatically.
+
+**Performance improvements:**
+- Sync operations per transaction mutation: 7 → 1 (debounced)
+- Array copies per mutation: 5 → 0
+- Insights recompute per mutation: 5 granularities → 0 (lazy)
+- CSV import of 100 transactions: 700 operations → 1 batch sync
+- Startup: eliminated duplicate data loading
+
+**Phase 15** (2026-02-16): MessageBanner Component
 - Created universal message banner with beautiful spring animations
 - Consolidated ErrorMessageView and SuccessMessageView (2 → 1 component)
 - Added `.warning` and `.info` message type variants
@@ -839,7 +894,7 @@ context.perform {
 
 ---
 
-**Last Updated**: 2026-02-15
-**Project Status**: Active development - Swift 6 compliant
+**Last Updated**: 2026-02-19
+**Project Status**: Active development - Swift 6 compliant, Performance optimized, Persistent aggregate caching
 **iOS Target**: 26.0+
 **Swift Version**: 6.0+ (strict concurrency mode)

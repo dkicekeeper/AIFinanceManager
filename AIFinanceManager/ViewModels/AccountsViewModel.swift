@@ -17,9 +17,11 @@ import Observation
 class AccountsViewModel {
     // MARK: - Observable Properties
 
-    /// PHASE 3: Accounts are now observed from TransactionStore (Single Source of Truth)
-    /// This is a computed property - ViewModels no longer own the data
-    var accounts: [Account] = []
+    /// Phase 16: Accounts read directly from TransactionStore (Single Source of Truth)
+    /// No more array copies — @Observable tracks changes automatically
+    var accounts: [Account] {
+        transactionStore?.accounts ?? []
+    }
 
     // MARK: - Dependencies
 
@@ -44,34 +46,13 @@ class AccountsViewModel {
         // self.accounts = repository.loadAccounts()
     }
 
-    /// PHASE 3: Setup subscription to TransactionStore.accounts
-    /// Called by AppCoordinator after TransactionStore is initialized
-    /// NOTE: With @Observable, we sync directly instead of using Combine publishers
+    /// Phase 16: No-ops — accounts is now a computed property from TransactionStore
     func setupTransactionStoreObserver() {
-        guard let transactionStore = transactionStore else {
-            return
-        }
-
-        // Direct sync from TransactionStore - @Observable handles change notifications
-        self.accounts = transactionStore.accounts
-
-
-        // DON'T sync initial balances here - they are loaded by AppCoordinator.initialize()
-        // through balanceCoordinator.registerAccounts() which loads from Core Data
-
+        // Phase 16: accounts is now a computed property — no setup needed
     }
 
-    /// Sync accounts from TransactionStore
-    /// Called by AppCoordinator when TransactionStore.accounts changes
     func syncAccountsFromStore() {
-        guard let transactionStore = transactionStore else { return }
-
-        // Simply sync the accounts list
-        // DON'T sync balances here - they are managed by BalanceCoordinator
-        // BalanceCoordinator loads correct balances from Core Data on startup
-        // and updates them after each transaction
-        self.accounts = transactionStore.accounts
-
+        // Phase 16: accounts is now a computed property — no sync needed
     }
 
     /// Перезагружает все данные из хранилища (используется после импорта)

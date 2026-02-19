@@ -19,7 +19,8 @@ protocol DataRepositoryProtocol {
     func loadTransactions(dateRange: DateInterval?) -> [Transaction]
     
     func saveTransactions(_ transactions: [Transaction])
-    
+    func deleteTransactionImmediately(id: String)
+
     // MARK: - Accounts
     func loadAccounts() -> [Account]
     func saveAccounts(_ accounts: [Account])

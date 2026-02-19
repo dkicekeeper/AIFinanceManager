@@ -17,9 +17,11 @@ import Observation
 class CategoriesViewModel {
     // MARK: - Observable Properties
 
-    /// PHASE 3: Categories are now observed from TransactionStore (Single Source of Truth)
-    /// This is synced from TransactionStore - ViewModels no longer own the data
-    private(set) var customCategories: [CustomCategory] = []
+    /// Phase 16: Categories read directly from TransactionStore (Single Source of Truth)
+    /// No more array copies — @Observable tracks changes automatically
+    var customCategories: [CustomCategory] {
+        transactionStore?.categories ?? []
+    }
 
     var categoryRules: [CategoryRule] = []
     var subcategories: [Subcategory] = []
@@ -103,28 +105,22 @@ class CategoriesViewModel {
         }
     }
 
-    /// PHASE 3: Setup initial sync from TransactionStore
-    /// ✨ Phase 10: Sync categories, subcategories and links
-    /// Called by AppCoordinator after TransactionStore is initialized
-    /// NOTE: With @Observable, we sync directly instead of using Combine publishers
+    /// Phase 16: Setup initial sync from TransactionStore for subcategory data
+    /// Categories are now a computed property, but subcategory data still needs initial sync
     func setupTransactionStoreObserver() {
-        guard let transactionStore = transactionStore else {
-            return
-        }
-
-        // Direct sync from TransactionStore - @Observable handles change notifications
-        self.customCategories = transactionStore.categories
+        guard let transactionStore = transactionStore else { return }
+        // Phase 16: customCategories is computed — no sync needed
+        // Subcategory data still needs sync (not yet migrated to computed)
         self.subcategories = transactionStore.subcategories
         self.categorySubcategoryLinks = transactionStore.categorySubcategoryLinks
         self.transactionSubcategoryLinks = transactionStore.transactionSubcategoryLinks
-
     }
 
-    /// Sync categories from TransactionStore
-    /// Called when TransactionStore data changes
+    /// Phase 16: Sync subcategory data from TransactionStore
+    /// Categories are computed — only subcategory data needs manual sync
     func syncCategoriesFromStore() {
         guard let transactionStore = transactionStore else { return }
-        self.customCategories = transactionStore.categories
+        // Phase 16: customCategories is computed — no sync needed
         self.subcategories = transactionStore.subcategories
         self.categorySubcategoryLinks = transactionStore.categorySubcategoryLinks
         self.transactionSubcategoryLinks = transactionStore.transactionSubcategoryLinks
@@ -142,10 +138,11 @@ class CategoriesViewModel {
 
     // MARK: - Public Methods for Mutation
 
-    /// Internal method to update categories array (triggers publisher)
-    /// - Parameter categories: New categories array
+    /// Phase 16: Categories are now computed from TransactionStore
+    /// Updates should go through TransactionStore directly
     func updateCategories(_ categories: [CustomCategory]) {
-        customCategories = categories
+        // Phase 16: customCategories is computed — updates go through TransactionStore
+        // This is a backward compatibility stub
     }
 
     // MARK: - Category CRUD Operations

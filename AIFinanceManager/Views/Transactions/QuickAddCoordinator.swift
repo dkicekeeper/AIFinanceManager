@@ -81,13 +81,11 @@ final class QuickAddCoordinator {
 
         PerformanceProfiler.start("QuickAddCoordinator.updateCategories")
 
-
         // Get category expenses from TransactionsViewModel
         let categoryExpenses = transactionsViewModel.categoryExpenses(
             timeFilterManager: timeFilterManager,
             categoriesViewModel: categoriesViewModel
         )
-
 
         // Map to display data
         let newCategories = categoryMapper.mapCategories(
@@ -97,11 +95,7 @@ final class QuickAddCoordinator {
             baseCurrency: transactionsViewModel.appSettings.baseCurrency
         )
 
-
-        // ✅ CRITICAL: Assign to @Published property to trigger SwiftUI update
-        // Even though categories is @Published, we need to ensure SwiftUI sees the change
         categories = newCategories
-
 
         PerformanceProfiler.end("QuickAddCoordinator.updateCategories")
     }

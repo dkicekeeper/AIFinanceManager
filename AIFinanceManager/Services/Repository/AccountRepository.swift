@@ -16,6 +16,8 @@ protocol AccountRepositoryProtocol {
     func saveAccountsSync(_ accounts: [Account]) throws
     func updateAccountBalance(accountId: String, balance: Double)
     func updateAccountBalances(_ balances: [String: Double])
+    /// Synchronously (awaited) persist multiple balances — safe to call from async context.
+    func updateAccountBalancesSync(_ balances: [String: Double]) async
     func loadAllAccountBalances() -> [String: Double]
 }
 
@@ -140,24 +142,34 @@ final class AccountRepository: AccountRepositoryProtocol {
 
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
+            await self.updateAccountBalancesSync(balances)
+        }
+    }
 
-            do {
-                try await self.saveCoordinator.performSave(operation: "updateAccountBalances") { context in
-                    let accountIds = Array(balances.keys)
-                    let fetchRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
-                    fetchRequest.predicate = NSPredicate(format: "id IN %@", accountIds)
+    /// Awaited (non-fire-and-forget) version — guaranteed to finish before returning.
+    func updateAccountBalancesSync(_ balances: [String: Double]) async {
+        guard !balances.isEmpty else { return }
 
-                    let accounts = try context.fetch(fetchRequest)
+        // Use a unique operation name per call so concurrent saves for different account sets
+        // don't get rejected by CoreDataSaveCoordinator's duplicate-operation guard.
+        let operationId = "updateAccountBalancesSync_\(UUID().uuidString)"
 
-                    for account in accounts {
-                        if let accountId = account.id, let newBalance = balances[accountId] {
-                            account.balance = newBalance
-                        }
+        do {
+            try await saveCoordinator.performSave(operation: operationId) { context in
+                let accountIds = Array(balances.keys)
+                let fetchRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
+                fetchRequest.predicate = NSPredicate(format: "id IN %@", accountIds)
+
+                let accounts = try context.fetch(fetchRequest)
+                for account in accounts {
+                    if let accountId = account.id, let newBalance = balances[accountId] {
+                        account.balance = newBalance
                     }
-
                 }
-            } catch {
             }
+        } catch {
+            // Save failed — balance will be recalculated from transactions on next startup
+            // for dynamic accounts; manual accounts may show stale balance until next update
         }
     }
 
@@ -194,8 +206,8 @@ final class AccountRepository: AccountRepositoryProtocol {
                 // Update existing - MUST use performAndWait for synchronous execution
                 context.performAndWait {
                     existing.name = account.name
-                    // ⚠️ CRITICAL FIX: Don't overwrite balance here - it's managed by BalanceCoordinator
-                    // Only update balance when creating new accounts
+                    // ⚠️ CRITICAL: Don't overwrite `balance` here — it's managed by BalanceCoordinator
+                    // ⚠️ CRITICAL: Don't overwrite `initialBalance` — it's set once at creation and never changes
                     existing.currency = account.currency
 
                     // Save full iconSource as JSON data (new approach)

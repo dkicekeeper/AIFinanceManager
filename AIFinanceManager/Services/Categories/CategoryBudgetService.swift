@@ -2,13 +2,15 @@
 //  CategoryBudgetService.swift
 //  AIFinanceManager
 //
-//  Service for category budget calculations and progress tracking
-//  Extracted from CategoriesViewModel for better separation of concerns
+//  Service for category budget calculations and progress tracking.
+//  Extracted from CategoriesViewModel for better separation of concerns.
+//
+//  Phase 22: Added BudgetSpendingCacheService fast path for O(1) reads.
 //
 
 import Foundation
 
-/// Service responsible for budget calculations and period management
+/// Service responsible for budget calculations and period management.
 struct CategoryBudgetService {
 
     // MARK: - Dependencies
@@ -16,22 +18,27 @@ struct CategoryBudgetService {
     let currencyService: TransactionCurrencyService?
     let appSettings: AppSettings?
 
+    /// Phase 22: Optional budget spending cache for O(1) period-total reads.
+    var budgetCache: BudgetSpendingCacheService?
+
     // MARK: - Initialization
 
     init(
         currencyService: TransactionCurrencyService? = nil,
-        appSettings: AppSettings? = nil
+        appSettings: AppSettings? = nil,
+        budgetCache: BudgetSpendingCacheService? = nil
     ) {
         self.currencyService = currencyService
         self.appSettings = appSettings
+        self.budgetCache = budgetCache
     }
 
     // MARK: - Public Methods
 
-    /// Calculate budget progress for a category
+    /// Calculate budget progress for a category.
     /// - Parameters:
     ///   - category: The category to calculate progress for
-    ///   - transactions: All transactions to analyze
+    ///   - transactions: All transactions to analyze (used as fallback)
     /// - Returns: BudgetProgress if category has budget, nil otherwise
     func budgetProgress(for category: CustomCategory, transactions: [Transaction]) -> BudgetProgress? {
         // Only expense categories can have budgets
@@ -44,12 +51,24 @@ struct CategoryBudgetService {
         return BudgetProgress(budgetAmount: budgetAmount, spent: spent)
     }
 
-    /// Calculate spent amount for a category in current budget period
-    /// - Parameters:
-    ///   - category: The category to calculate spent for
-    ///   - transactions: All transactions to analyze
-    /// - Returns: Total spent in base currency
+    /// Calculate spent amount for a category in the current budget period.
+    ///
+    /// Phase 22 fast path: reads from BudgetSpendingCacheService (O(1) CoreData field read).
+    /// Falls back to O(N) transaction scan if cache is unavailable (first launch / cache miss).
     func calculateSpent(for category: CustomCategory, transactions: [Transaction]) -> Double {
+        let baseCurrency = appSettings?.baseCurrency ?? "KZT"
+
+        // Phase 22: Fast path — read from persistent cache in CustomCategoryEntity
+        if let cached = budgetCache?.cachedSpent(for: category.name, currency: baseCurrency) {
+            return cached
+        }
+
+        // Slow path: O(N) scan (first launch or cache not yet populated)
+        return calculateSpentSlow(for: category, transactions: transactions)
+    }
+
+    /// Original O(N) scan implementation, used as fallback when cache is unavailable.
+    func calculateSpentSlow(for category: CustomCategory, transactions: [Transaction]) -> Double {
         let periodStart = budgetPeriodStart(for: category)
         let periodEnd = Date()
 
@@ -80,7 +99,7 @@ struct CategoryBudgetService {
             }
     }
 
-    /// Calculate budget period start date for a category
+    /// Calculate budget period start date for a category.
     /// - Parameter category: The category to calculate period start for
     /// - Returns: Start date of current budget period
     func budgetPeriodStart(for category: CustomCategory) -> Date {
@@ -121,18 +140,16 @@ struct CategoryBudgetService {
 
 extension CategoryBudgetService {
 
-    /// Create budget service with dependencies from TransactionsViewModel
-    /// - Parameters:
-    ///   - currencyService: Currency conversion service
-    ///   - appSettings: App settings for base currency
-    /// - Returns: Configured budget service
+    /// Create budget service with all dependencies (Phase 22: includes BudgetSpendingCacheService).
     static func create(
         currencyService: TransactionCurrencyService,
-        appSettings: AppSettings
+        appSettings: AppSettings,
+        budgetCache: BudgetSpendingCacheService? = nil
     ) -> CategoryBudgetService {
         CategoryBudgetService(
             currencyService: currencyService,
-            appSettings: appSettings
+            appSettings: appSettings,
+            budgetCache: budgetCache
         )
     }
 }

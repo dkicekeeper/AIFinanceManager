@@ -137,9 +137,14 @@ class AppCoordinator {
         let insightsCache = InsightsCache()
         let insightsFilterService = TransactionFilterService(dateFormatter: DateFormatters.dateFormatter)
         let insightsQueryService = TransactionQueryService()
+
+        // Phase 22: Budget spending cache for O(1) period spending lookups
+        let budgetSpendingCache = BudgetSpendingCacheService()
+
         let insightsBudgetService = CategoryBudgetService(
             currencyService: transactionsViewModel.currencyService,
-            appSettings: transactionsViewModel.appSettings
+            appSettings: transactionsViewModel.appSettings,
+            budgetCache: budgetSpendingCache
         )
         let insightsService = InsightsService(
             transactionStore: self.transactionStore,
@@ -207,28 +212,49 @@ class AppCoordinator {
         isInitialized = true
         PerformanceProfiler.start("AppCoordinator.initialize")
 
-        // Load data asynchronously - this is non-blocking
-        await transactionsViewModel.loadDataAsync()
-
-        // NEW 2026-02-05: Load data into TransactionStore
+        // Phase 19: Streamlined startup — no duplicate loads
+        // 1. Load all data into TransactionStore (single source of truth)
         try? await transactionStore.loadData()
 
-        // CRITICAL: Sync data from TransactionStore to ViewModels
-        // With @Observable, we need to manually sync after data loads
-        syncTransactionStoreToViewModels()
+        // 2. Sync subcategory data and invalidate caches (no array copies)
+        syncTransactionStoreToViewModels(batchMode: true)
 
+        // 3. Register accounts with BalanceCoordinator.
+        // Passing transactions so that shouldCalculateFromTransactions accounts
+        // are recalculated from scratch (CoreData `balance` field is unreliable
+        // for these accounts since persistBalance() is async Task.detached).
+        await balanceCoordinator.registerAccounts(
+            transactionStore.accounts,
+            transactions: transactionStore.transactions
+        )
 
-        // REFACTORED 2026-02-02: Register accounts with BalanceCoordinator
-        // This initializes the balance store with current account data
-        await balanceCoordinator.registerAccounts(accountsViewModel.accounts)
+        // 4. Generate recurring transactions (needs loaded data)
+        transactionsViewModel.generateRecurringTransactions()
 
-        // ✅ OPTIMIZED 2026-02-10: No need to recalculate on launch
-        // Balances are now persisted to Core Data and loaded correctly during registerAccounts()
-        // Only recalculate when truly needed (not on every app launch)
-        // Old code: await balanceCoordinator.recalculateAll(accounts, transactions)
-
-        // REFACTORED 2026-02-04: Load Settings data (Phase 1)
+        // 5. Load settings
         await settingsViewModel.loadInitialData()
+
+        // Phase 22: Rebuild persistent aggregates if CoreData is missing them.
+        // Runs in background — doesn't block startup. On subsequent launches the
+        // aggregates are already built and maintained incrementally via apply().
+        Task.detached(priority: .background) { [weak self] in
+            guard let self = self else { return }
+            let txCount = await self.transactionStore.transactions.count
+            let currency = await self.transactionStore.baseCurrency
+            let allTx = await self.transactionStore.transactions
+
+            // Check if aggregates exist; rebuild only if CoreData is empty
+            let existingMonthly = await self.transactionStore.monthlyAggregateService.fetchLast(
+                1, currency: currency
+            )
+            if existingMonthly.first?.transactionCount == 0 && txCount > 0 {
+                await self.transactionStore.categoryAggregateService.rebuild(from: allTx, baseCurrency: currency)
+                await self.transactionStore.monthlyAggregateService.rebuild(from: allTx, baseCurrency: currency)
+            }
+        }
+
+        // Phase 19: Removed transactionsViewModel.loadDataAsync() — was duplicating TransactionStore work
+        // (generateRecurringAsync + loadAggregateCacheAsync which was a no-op)
 
         PerformanceProfiler.end("AppCoordinator.initialize")
     }
@@ -238,33 +264,21 @@ class AppCoordinator {
     /// REMOVED: setupViewModelObservers() - not needed with @Observable
     /// @Observable automatically notifies SwiftUI of changes, no manual propagation needed
 
-    /// Setup manual syncing from TransactionStore to ViewModels
-    /// With @Observable, we don't have Combine publishers, so we sync on-demand
-    /// This method should be called after TransactionStore updates
-    /// - Parameter batchMode: When true, skips intermediate UI updates (for CSV imports, bulk operations)
+    /// Phase 16: Lightweight sync — no array copies needed
+    /// With computed properties, ViewModels read directly from TransactionStore.
+    /// This method now only handles cache invalidation and insights.
+    /// - Parameter batchMode: When true, skips insights recompute (for CSV imports, bulk operations)
     func syncTransactionStoreToViewModels(batchMode: Bool = false) {
-
-        // Sync transactions to TransactionsViewModel
-        self.transactionsViewModel.allTransactions = Array(transactionStore.transactions)
-        self.transactionsViewModel.displayTransactions = Array(transactionStore.transactions)
-
-        // Invalidate caches when transactions change
+        // Phase 16: No array copies — ViewModels use computed properties from TransactionStore
+        // Only invalidate caches that derived computations depend on
         self.transactionsViewModel.invalidateCaches()
 
-        // Trigger data changed notification
-        self.transactionsViewModel.notifyDataChanged()
-
-        // Sync accounts to TransactionsViewModel
-        self.transactionsViewModel.accounts = Array(transactionStore.accounts)
-
-        // Sync accounts to AccountsViewModel
-        self.accountsViewModel.syncAccountsFromStore()
-
-        // Sync categories to CategoriesViewModel
+        // Sync subcategory data to CategoriesViewModel (not yet computed properties)
         self.categoriesViewModel.syncCategoriesFromStore()
 
         // Phase 18: Push-model — invalidate cache and schedule background recompute
-        self.insightsViewModel.invalidateAndRecompute()
-
+        if !batchMode {
+            self.insightsViewModel.invalidateAndRecompute()
+        }
     }
 }

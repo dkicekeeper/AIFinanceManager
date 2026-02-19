@@ -28,8 +28,11 @@ protocol BalanceCoordinatorProtocol: ObservableObject {
     // MARK: - Account Management
 
     /// Register accounts with the coordinator
-    /// - Parameter accounts: Array of accounts to register
-    func registerAccounts(_ accounts: [Account]) async
+    /// - Parameters:
+    ///   - accounts: Array of accounts to register
+    ///   - transactions: All transactions — used to recalculate balances for
+    ///     `shouldCalculateFromTransactions = true` accounts on startup (default: [])
+    func registerAccounts(_ accounts: [Account], transactions: [Transaction]) async
 
     /// Remove account from coordinator
     /// - Parameter accountId: Account ID to remove
@@ -174,6 +177,11 @@ struct BalanceCoordinatorStatistics {
 // MARK: - Default Implementations
 
 extension BalanceCoordinatorProtocol {
+    /// Register accounts without transactions (backward-compatible overload)
+    func registerAccounts(_ accounts: [Account]) async {
+        await registerAccounts(accounts, transactions: [])
+    }
+
     /// Update for transaction with default priority
     func updateForTransaction(_ transaction: Transaction, operation: TransactionUpdateOperation) async {
         await updateForTransaction(transaction, operation: operation, priority: .high)
