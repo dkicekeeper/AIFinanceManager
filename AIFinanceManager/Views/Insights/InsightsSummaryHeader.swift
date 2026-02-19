@@ -2,8 +2,8 @@
 //  InsightsSummaryHeader.swift
 //  AIFinanceManager
 //
-//  Phase 17: Financial Insights Feature
-//  Summary header showing income/expenses/net flow with mini trend chart
+//  Phase 23: P7 — switched from MonthlyDataPoint to PeriodDataPoint.
+//  Eliminates per-render .map { $0.asMonthlyDataPoint() } allocation in InsightsView.body.
 //
 
 import SwiftUI
@@ -14,13 +14,13 @@ struct InsightsSummaryHeader: View {
     let totalExpenses: Double
     let netFlow: Double
     let currency: String
-    let monthlyTrend: [MonthlyDataPoint]
+    /// Phase 23 P7: PeriodDataPoint instead of MonthlyDataPoint — no conversion needed.
+    let periodDataPoints: [PeriodDataPoint]
 
     private static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsSummaryHeader")
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
-            // Summary amounts — padded inside the card
             HStack(spacing: AppSpacing.lg) {
                 summaryItem(
                     title: String(localized: "insights.income"),
@@ -46,12 +46,13 @@ struct InsightsSummaryHeader: View {
             }
             .padding([.horizontal, .top], AppSpacing.lg)
 
-            // Mini trend chart — rendered AFTER the text section with its own padding.
+            // Mini trend chart.
             // Using cardBackground (not glassCardStyle) so clipShape doesn't cut Charts layers.
-            if monthlyTrend.count >= 2 {
-                IncomeExpenseChart(
-                    dataPoints: monthlyTrend,
+            if periodDataPoints.count >= 2 {
+                PeriodIncomeExpenseChart(
+                    dataPoints: periodDataPoints,
                     currency: currency,
+                    granularity: periodDataPoints.first?.granularity ?? .month,
                     compact: true
                 )
                 .padding([.horizontal, .bottom], AppSpacing.lg)
@@ -59,10 +60,7 @@ struct InsightsSummaryHeader: View {
         }
         .cardBackground(radius: AppRadius.pill)
         .onAppear {
-            let inc = String(format: "%.0f", totalIncome)
-            let exp = String(format: "%.0f", totalExpenses)
-            let net = String(format: "%.0f", netFlow)
-            Self.logger.debug("📊 [SummaryHeader] RENDER — income=\(inc, privacy: .public), expenses=\(exp, privacy: .public), net=\(net, privacy: .public) \(currency, privacy: .public), trendPoints=\(monthlyTrend.count)")
+            Self.logger.debug("📊 [SummaryHeader] RENDER — income=\(String(format: "%.0f", totalIncome), privacy: .public), expenses=\(String(format: "%.0f", totalExpenses), privacy: .public), net=\(String(format: "%.0f", netFlow), privacy: .public) \(currency, privacy: .public), pts=\(periodDataPoints.count)")
         }
     }
 
@@ -91,7 +89,7 @@ struct InsightsSummaryHeader: View {
         totalExpenses: 320_000,
         netFlow: 210_000,
         currency: "KZT",
-        monthlyTrend: MonthlyDataPoint.mockTrend()
+        periodDataPoints: PeriodDataPoint.mockMonthly()
     )
     .screenPadding()
     .padding(.vertical, AppSpacing.md)
@@ -103,7 +101,7 @@ struct InsightsSummaryHeader: View {
         totalExpenses: 340_000,
         netFlow: -60_000,
         currency: "KZT",
-        monthlyTrend: MonthlyDataPoint.mockTrend()
+        periodDataPoints: PeriodDataPoint.mockMonthly()
     )
     .screenPadding()
     .padding(.vertical, AppSpacing.md)
@@ -115,7 +113,7 @@ struct InsightsSummaryHeader: View {
         totalExpenses: 310_000,
         netFlow: 140_000,
         currency: "USD",
-        monthlyTrend: []
+        periodDataPoints: []
     )
     .screenPadding()
     .padding(.vertical, AppSpacing.md)

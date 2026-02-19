@@ -28,7 +28,6 @@ struct CashFlowInsightsSection: View {
                         granularity: granularity,
                         compact: false
                     )
-                    .padding(.horizontal, AppSpacing.lg)
                     .screenPadding()
                 }
 

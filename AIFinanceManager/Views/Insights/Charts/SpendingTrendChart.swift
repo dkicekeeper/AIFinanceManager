@@ -82,13 +82,15 @@ struct SpendingTrendChart: View {
 
     var body: some View {
         if scrollable && !compact && dataPoints.count > 6 {
-            let minWidth = UIScreen.main.bounds.width - 48
-            let chartWidth = max(minWidth, CGFloat(dataPoints.count) * 50)
-            ScrollView(.horizontal, showsIndicators: false) {
-                chartContent
-                    .frame(width: chartWidth)
+            GeometryReader { proxy in
+                let chartWidth = max(proxy.size.width, CGFloat(dataPoints.count) * 50)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    chartContent
+                        .frame(width: chartWidth)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: 200)
         } else {
             chartContent
         }

@@ -42,7 +42,7 @@ private struct GranularityChip: View {
         Button(action: onTap) {
             HStack(spacing: AppSpacing.xs) {
                 Image(systemName: granularity.icon)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppTypography.caption.weight(.semibold))
                 Text(granularity.shortName)
                     .font(AppTypography.bodySmall)
                     .fontWeight(isSelected ? .semibold : .regular)

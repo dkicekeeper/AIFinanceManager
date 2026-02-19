@@ -2,11 +2,10 @@
 //  InsightsView.swift
 //  AIFinanceManager
 //
-//  Phase 18: Financial Insights Feature
-//  Main insights screen with:
-//  - Push-model data (instant load from precomputed cache)
-//  - Granularity picker (Week/Month/Quarter/Year/AllTime) replacing TimeFilter sheet
-//  - Summary header navigating to InsightsSummaryDetailView
+//  Phase 23: Insights Performance & UI fixes
+//  - P6: removed duplicate onChange(of: selectedGranularity) — picker's onSelect callback suffices
+//  - P7: InsightsSummaryHeader now receives PeriodDataPoint directly (no per-render conversion)
+//  - Loading / empty state kept; sections unchanged
 //
 
 import SwiftUI
@@ -31,6 +30,7 @@ struct InsightsView: View {
                     emptyState
                 } else {
                     // Summary header — tappable, navigates to full period breakdown
+                    // P7: pass PeriodDataPoint directly — no per-render .map { asMonthlyDataPoint() }
                     NavigationLink(destination: InsightsSummaryDetailView(
                         totalIncome: insightsViewModel.totalIncome,
                         totalExpenses: insightsViewModel.totalExpenses,
@@ -44,7 +44,7 @@ struct InsightsView: View {
                             totalExpenses: insightsViewModel.totalExpenses,
                             netFlow: insightsViewModel.netFlow,
                             currency: insightsViewModel.baseCurrency,
-                            monthlyTrend: insightsViewModel.periodDataPoints.map { $0.asMonthlyDataPoint() }
+                            periodDataPoints: insightsViewModel.periodDataPoints
                         )
                         .screenPadding()
                         .contentShape(Rectangle())
@@ -80,9 +80,8 @@ struct InsightsView: View {
         .onAppear {
             insightsViewModel.onAppear()
         }
-        .onChange(of: selectedGranularity) { _, newGranularity in
-            insightsViewModel.switchGranularity(newGranularity)
-        }
+        // P6: onChange removed — InsightsGranularityPicker.onSelect already calls switchGranularity.
+        // Keeping both caused double switchGranularity call on every picker tap.
     }
 
     // MARK: - Category Filter Carousel

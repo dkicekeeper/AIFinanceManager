@@ -8,6 +8,8 @@
 //  - PeriodDataPoint overload (granularity-aware)
 //  - Horizontal scroll when point count exceeds screen width
 //
+//  Phase 23-C: Replaced UIScreen.main.bounds with GeometryReader — no UIKit dependency.
+//
 
 import SwiftUI
 import Charts
@@ -74,13 +76,15 @@ struct IncomeExpenseChart: View {
     var body: some View {
         if scrollable && !compact && dataPoints.count > 6 {
             let pointWidth: CGFloat = 50
-            let minWidth = UIScreen.main.bounds.width - 48
-            let chartWidth = max(minWidth, CGFloat(dataPoints.count) * pointWidth)
-            ScrollView(.horizontal, showsIndicators: false) {
-                chartContent
-                    .frame(width: chartWidth)
+            GeometryReader { proxy in
+                let chartWidth = max(proxy.size.width, CGFloat(dataPoints.count) * pointWidth)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    chartContent
+                        .frame(width: chartWidth)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: 200)
         } else {
             chartContent
         }
@@ -110,18 +114,21 @@ struct PeriodIncomeExpenseChart: View {
     private var pointWidth: CGFloat { compact ? 30 : granularity.pointWidth }
     private var chartHeight: CGFloat { compact ? 60 : 220 }
 
-    private var chartWidth: CGFloat {
-        let minWidth = UIScreen.main.bounds.width - 48
-        return max(minWidth, CGFloat(dataPoints.count) * pointWidth)
+    private func chartWidth(containerWidth: CGFloat) -> CGFloat {
+        max(containerWidth, CGFloat(dataPoints.count) * pointWidth)
     }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            chartContent
-                .frame(width: compact ? UIScreen.main.bounds.width - 48 : chartWidth,
-                       height: chartHeight)
+        GeometryReader { proxy in
+            let container = proxy.size.width
+            ScrollView(.horizontal, showsIndicators: false) {
+                chartContent
+                    .frame(width: compact ? container : chartWidth(containerWidth: container),
+                           height: chartHeight)
+            }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: chartHeight)
     }
 
     private var chartContent: some View {

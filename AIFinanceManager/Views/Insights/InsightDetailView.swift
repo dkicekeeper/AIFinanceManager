@@ -2,8 +2,10 @@
 //  InsightDetailView.swift
 //  AIFinanceManager
 //
-//  Phase 17: Financial Insights Feature
-//  Detail drill-down view for a tapped insight card
+//  Phase 23: UI fixes
+//  - P9: viewModel replaced with onCategoryTap closure — SRP, no full ViewModel dependency
+//  - P10: monthlyDetailList + periodDetailList merged into single periodBreakdownList
+//  - P22: budgetChartSection uses LazyVStack
 //
 
 import SwiftUI
@@ -12,8 +14,9 @@ import os
 struct InsightDetailView: View {
     let insight: Insight
     let currency: String
-    /// Optional — needed only for category drill-down navigation (category items → CategoryDeepDiveView)
-    var viewModel: InsightsViewModel? = nil
+    /// P9: SRP — pass only what's needed for drill-down, not the entire ViewModel.
+    /// Nil = no drill-down chevron shown.
+    var onCategoryTap: ((CategoryBreakdownItem) -> AnyView)? = nil
 
     private static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightDetailView")
 
@@ -34,7 +37,7 @@ struct InsightDetailView: View {
         .navigationTitle(insight.title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            Self.logger.debug("📋 [InsightDetail] OPEN — type=\(String(describing: insight.type), privacy: .public), category=\(String(describing: insight.category), privacy: .public), metric=\(insight.metric.formattedValue, privacy: .public), drillDown=\(viewModel != nil)")
+            Self.logger.debug("📋 [InsightDetail] OPEN — type=\(String(describing: insight.type), privacy: .public), category=\(String(describing: insight.category), privacy: .public), metric=\(insight.metric.formattedValue, privacy: .public), drillDown=\(onCategoryTap != nil)")
         }
     }
 
@@ -116,8 +119,9 @@ struct InsightDetailView: View {
         .screenPadding()
     }
 
+    // P22: LazyVStack eliminates upfront layout of all budget rows
     private func budgetChartSection(_ items: [BudgetInsightItem]) -> some View {
-        VStack(spacing: AppSpacing.md) {
+        LazyVStack(spacing: AppSpacing.md) {
             ForEach(items) { item in
                 VStack(alignment: .leading, spacing: AppSpacing.sm) {
                     HStack {
@@ -134,21 +138,19 @@ struct InsightDetailView: View {
                             .foregroundStyle(item.isOverBudget ? AppColors.destructive : AppColors.textPrimary)
                     }
 
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: AppRadius.xs)
-                                .fill(AppColors.secondaryBackground)
-                                .frame(height: 8)
+                    // P9: replaced GeometryReader with scaleEffect — no layout thrash
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: AppRadius.xs)
+                            .fill(AppColors.secondaryBackground)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 8)
 
-                            RoundedRectangle(cornerRadius: AppRadius.xs)
-                                .fill(item.isOverBudget ? AppColors.destructive : item.color)
-                                .frame(
-                                    width: min(geometry.size.width, geometry.size.width * min(item.percentage, 100) / 100),
-                                    height: 8
-                                )
-                        }
+                        RoundedRectangle(cornerRadius: AppRadius.xs)
+                            .fill(item.isOverBudget ? AppColors.destructive : item.color)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 8)
+                            .scaleEffect(x: min(item.percentage, 100) / 100, anchor: .leading)
                     }
-                    .frame(height: 8)
 
                     HStack {
                         Text(Formatting.formatCurrencySmart(item.spent, currency: currency))
@@ -185,16 +187,25 @@ struct InsightDetailView: View {
         case .recurringList(let items):
             recurringDetailList(items)
         case .budgetProgressList:
-            EmptyView() // Already shown in chart section
+            EmptyView()
+        // P10: monthlyTrend and periodTrend share one rendering function
         case .monthlyTrend(let points):
-            monthlyDetailList(points)
+            periodBreakdownList(points.map { BreakdownPoint(label: $0.label, income: $0.income, expenses: $0.expenses, netFlow: $0.netFlow) })
         case .periodTrend(let points):
-            periodDetailList(points)
+            periodBreakdownList(points.map { BreakdownPoint(label: $0.label, income: $0.income, expenses: $0.expenses, netFlow: $0.netFlow) })
         case .wealthBreakdown(let accounts):
             accountDetailList(accounts)
         default:
             EmptyView()
         }
+    }
+
+    /// Unified point model for breakdown list — eliminates monthlyDetailList/periodDetailList duplication.
+    private struct BreakdownPoint {
+        let label: String
+        let income: Double
+        let expenses: Double
+        let netFlow: Double
     }
 
     private func categoryDetailList(_ items: [CategoryBreakdownItem]) -> some View {
@@ -244,10 +255,10 @@ struct InsightDetailView: View {
                         .font(AppTypography.caption)
                         .foregroundStyle(AppColors.textSecondary)
                 }
-                // Chevron appears only when drill-down is available
-                if viewModel != nil {
+                // P9: chevron only when drill-down closure is provided
+                if onCategoryTap != nil {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(AppColors.textTertiary)
                 }
             }
@@ -255,17 +266,10 @@ struct InsightDetailView: View {
         .padding(.vertical, AppSpacing.sm)
         .screenPadding()
 
-        if let vm = viewModel {
-            let catStore = vm  // capture for NavigationLink
-            NavigationLink(destination: CategoryDeepDiveView(
-                categoryName: item.categoryName,
-                color: item.color,
-                iconSource: item.iconSource,
-                currency: currency,
-                viewModel: catStore
-            )) {
-                rowContent
-                    .contentShape(Rectangle())
+        // P9: drill-down destination provided by caller via closure (AnyView)
+        if let destination = onCategoryTap?(item) {
+            NavigationLink(destination: destination) {
+                rowContent.contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         } else {
@@ -316,16 +320,15 @@ struct InsightDetailView: View {
         }
     }
 
-    // MARK: - Phase 18 detail lists
-
-    private func periodDetailList(_ points: [PeriodDataPoint]) -> some View {
+    // P10: Single unified function replacing monthlyDetailList + periodDetailList.
+    private func periodBreakdownList(_ points: [BreakdownPoint]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Text(String(localized: "insights.monthlyBreakdown"))
                 .font(AppTypography.h3)
                 .foregroundStyle(AppColors.textPrimary)
                 .screenPadding()
 
-            ForEach(points.reversed()) { point in
+            ForEach(points.reversed(), id: \.label) { point in
                 HStack {
                     Text(point.label)
                         .font(AppTypography.body)
@@ -399,44 +402,6 @@ struct InsightDetailView: View {
         }
     }
 
-    private func monthlyDetailList(_ points: [MonthlyDataPoint]) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text(String(localized: "insights.monthlyBreakdown"))
-                .font(AppTypography.h3)
-                .foregroundStyle(AppColors.textPrimary)
-                .screenPadding()
-
-            ForEach(points.reversed()) { point in
-                HStack {
-                    Text(point.label)
-                        .font(AppTypography.body)
-                        .foregroundStyle(AppColors.textPrimary)
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                        FormattedAmountText(
-                            amount: point.netFlow,
-                            currency: currency,
-                            fontSize: AppTypography.body,
-                            fontWeight: .semibold,
-                            color: point.netFlow >= 0 ? AppColors.success : AppColors.destructive
-                        )
-                        HStack(spacing: AppSpacing.xs) {
-                            Text("+\(Formatting.formatCurrencySmart(point.income, currency: currency))")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.success)
-                            Text("-\(Formatting.formatCurrencySmart(point.expenses, currency: currency))")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.destructive)
-                        }
-                    }
-                }
-                .padding(.vertical, AppSpacing.sm)
-                .screenPadding()
-            }
-        }
-    }
 }
 
 // MARK: - Previews

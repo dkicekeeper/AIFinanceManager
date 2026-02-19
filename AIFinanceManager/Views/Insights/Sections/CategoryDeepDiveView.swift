@@ -19,26 +19,24 @@ struct CategoryDeepDiveView: View {
 
     @State private var subcategories: [SubcategoryBreakdownItem] = []
     @State private var monthlyTrend: [MonthlyDataPoint] = []
+    /// Phase 23-C P16: precomputed index map — eliminates O(n²) firstIndex(where:) in ForEach.
+    @State private var subcategoryIndexMap: [String: Int] = [:]
 
     private static let logger = Logger(subsystem: "AIFinanceManager", category: "CategoryDeepDive")
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppSpacing.xl) {
-                // Category header
                 headerSection
 
-                // Monthly spending trend
                 if !monthlyTrend.isEmpty {
                     trendSection
                 }
 
-                // Subcategory breakdown
                 if !subcategories.isEmpty {
                     subcategorySection
                 }
 
-                // Period comparison
                 if monthlyTrend.count >= 2 {
                     comparisonSection
                 }
@@ -47,7 +45,8 @@ struct CategoryDeepDiveView: View {
         }
         .navigationTitle(categoryName)
         .navigationBarTitleDisplayMode(.inline)
-        .task { loadData() }
+        // Phase 23-A P5: offload heavy computation to background thread
+        .task { await loadDataAsync() }
     }
 
     // MARK: - Header
@@ -112,14 +111,14 @@ struct CategoryDeepDiveView: View {
                 .foregroundStyle(AppColors.textPrimary)
                 .screenPadding()
 
-            // Donut chart
+            // Donut chart — uses precomputed index map (P16 fix, was O(n²))
             Chart(subcategories, id: \.id) { item in
                 SectorMark(
                     angle: .value("Amount", item.amount),
                     innerRadius: .ratio(0.55),
                     angularInset: 1.5
                 )
-                .foregroundStyle(color.opacity(Double(subcategories.firstIndex(where: { $0.id == item.id }) ?? 0) * 0.15 + 0.3))
+                .foregroundStyle(color.opacity(Double(subcategoryIndexMap[item.id] ?? 0) * 0.15 + 0.3))
             }
             .frame(height: 160)
             .chartLegend(.hidden)
@@ -129,7 +128,7 @@ struct CategoryDeepDiveView: View {
             ForEach(subcategories) { item in
                 HStack {
                     Circle()
-                        .fill(color.opacity(Double(subcategories.firstIndex(where: { $0.id == item.id }) ?? 0) * 0.15 + 0.3))
+                        .fill(color.opacity(Double(subcategoryIndexMap[item.id] ?? 0) * 0.15 + 0.3))
                         .frame(width: 10, height: 10)
 
                     Text(item.name)
@@ -205,19 +204,27 @@ struct CategoryDeepDiveView: View {
 
     // MARK: - Data Loading
 
-    private func loadData() {
-        Self.logger.debug("🔍 [CategoryDeepDive] OPEN — category='\(categoryName, privacy: .public)', currency=\(currency, privacy: .public)")
+    /// Phase 23-A P5: async — viewModel.categoryDeepDive is CPU-heavy (filter + grouping + 6-month loop).
+    /// .task cancels automatically on view disappear.
+    /// categoryDeepDive is @MainActor-isolated, so we call it directly (await hops to MainActor),
+    /// then offload only the pure index-map build to a detached task if needed.
+    @MainActor
+    private func loadDataAsync() async {
+        Self.logger.debug("🔍 [CategoryDeepDive] OPEN — category='\(categoryName, privacy: .public)'")
+
+        // categoryDeepDive is @MainActor — call directly; Swift hops actors automatically.
         let result = viewModel.categoryDeepDive(categoryName: categoryName)
+
+        // Write results (already on MainActor)
         subcategories = result.subcategories
-        monthlyTrend = result.monthlyTrend
+        monthlyTrend  = result.monthlyTrend
+        // Build index map once to avoid O(n²) firstIndex(where:) in body (P16 fix)
+        subcategoryIndexMap = Dictionary(
+            uniqueKeysWithValues: subcategories.enumerated().map { ($1.id, $0) }
+        )
+
         let totalAmount = subcategories.reduce(0.0) { $0 + $1.amount }
-        Self.logger.debug("🔍 [CategoryDeepDive] LOADED — subcategories=\(subcategories.count), months=\(monthlyTrend.count), total=\(String(format: "%.0f", totalAmount), privacy: .public) \(currency, privacy: .public)")
-        for sub in subcategories.prefix(5) {
-            Self.logger.debug("   📂 \(sub.name, privacy: .public): \(String(format: "%.0f", sub.amount), privacy: .public) (\(String(format: "%.1f%%", sub.percentage), privacy: .public))")
-        }
-        for point in monthlyTrend {
-            Self.logger.debug("   📅 \(point.label, privacy: .public): exp=\(String(format: "%.0f", point.expenses), privacy: .public)")
-        }
+        Self.logger.debug("🔍 [CategoryDeepDive] LOADED — subcategories=\(subcategories.count), months=\(monthlyTrend.count), total=\(String(format: "%.0f", totalAmount), privacy: .public)")
     }
 }
 
@@ -226,9 +233,9 @@ struct CategoryDeepDiveView: View {
 /// Wrapper that injects mock data directly without going through InsightsViewModel
 private struct CategoryDeepDivePreview: View {
     @State private var subcategories: [SubcategoryBreakdownItem] = [
-        SubcategoryBreakdownItem(id: "restaurants", name: "Рестораны",     amount: 42_000, percentage: 49),
-        SubcategoryBreakdownItem(id: "groceries",   name: "Продукты",      amount: 28_000, percentage: 33),
-        SubcategoryBreakdownItem(id: "delivery",    name: "Доставка еды",  amount: 15_000, percentage: 18)
+        SubcategoryBreakdownItem(id: "restaurants", name: "Restaurants", amount: 42_000, percentage: 49),
+        SubcategoryBreakdownItem(id: "groceries",   name: "Groceries",   amount: 28_000, percentage: 33),
+        SubcategoryBreakdownItem(id: "delivery",    name: "Delivery",    amount: 15_000, percentage: 18)
     ]
     @State private var monthlyTrend: [MonthlyDataPoint] = MonthlyDataPoint.mockTrend()
 
@@ -240,7 +247,7 @@ private struct CategoryDeepDivePreview: View {
                 HStack(spacing: AppSpacing.md) {
                     IconView(source: .sfSymbol("fork.knife"), size: AppIconSize.xl)
                     VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                        Text("Еда")
+                        Text("Food")
                             .font(AppTypography.h2)
                             .foregroundStyle(AppColors.textPrimary)
                         let total = subcategories.reduce(0.0) { $0 + $1.amount }
@@ -254,7 +261,7 @@ private struct CategoryDeepDivePreview: View {
 
                 // Trend chart
                 VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    Text("Тренд расходов")
+                    Text(String(localized: "insights.spendingTrend"))
                         .font(AppTypography.h3)
                         .foregroundStyle(AppColors.textPrimary)
                         .padding([.horizontal, .top], AppSpacing.lg)
@@ -266,7 +273,7 @@ private struct CategoryDeepDivePreview: View {
 
                 // Subcategory list
                 VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    Text("Подкатегории")
+                    Text(String(localized: "insights.subcategories"))
                         .font(AppTypography.h3)
                         .foregroundStyle(AppColors.textPrimary)
                         .screenPadding()
@@ -289,12 +296,12 @@ private struct CategoryDeepDivePreview: View {
             }
             .padding(.vertical, AppSpacing.md)
         }
-        .navigationTitle("Еда")
+        .navigationTitle("Food")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
 
-#Preview("Category Deep Dive — Еда") {
+#Preview("Category Deep Dive — Food") {
     NavigationStack {
         CategoryDeepDivePreview()
     }

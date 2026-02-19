@@ -18,27 +18,6 @@ struct InsightsSummaryDetailView: View {
     let periodDataPoints: [PeriodDataPoint]
     let granularity: InsightGranularity
 
-    // MARK: - Legacy init (backward compatibility)
-
-    /// Legacy initializer kept for any remaining call sites still passing MonthlyDataPoint.
-    init(
-        totalIncome: Double,
-        totalExpenses: Double,
-        netFlow: Double,
-        currency: String,
-        monthlyTrend: [MonthlyDataPoint],
-        timeFilter: TimeFilter
-    ) {
-        self.totalIncome = totalIncome
-        self.totalExpenses = totalExpenses
-        self.netFlow = netFlow
-        self.currency = currency
-        self.periodDataPoints = monthlyTrend.map { $0.asPeriodDataPoint() }
-        self.granularity = .month
-    }
-
-    // MARK: - Phase 18 init (PeriodDataPoint)
-
     init(
         totalIncome: Double,
         totalExpenses: Double,

@@ -69,7 +69,7 @@ struct InsightsCardView: View {
     private func trendBadge(_ trend: InsightTrend) -> some View {
         HStack(spacing: AppSpacing.xxs) {
             Image(systemName: trend.trendIcon)
-                .font(.system(size: 10, weight: .bold))
+                .font(AppTypography.caption2.weight(.bold))
 
             if let percent = trend.changePercent {
                 Text(String(format: "%+.1f%%", percent))
@@ -126,20 +126,19 @@ struct InsightsCardView: View {
         }
     }
 
+    // P9 (card): scaleEffect replaces GeometryReader — no layout thrash
     private func budgetProgressBar(_ item: BudgetInsightItem) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xs) {
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: AppRadius.xs)
-                        .fill(AppColors.secondaryBackground)
-                        .frame(height: 6)
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: AppRadius.xs)
+                .fill(AppColors.secondaryBackground)
+                .frame(maxWidth: .infinity)
+                .frame(height: 6)
 
-                    RoundedRectangle(cornerRadius: AppRadius.xs)
-                        .fill(item.isOverBudget ? AppColors.destructive : item.color)
-                        .frame(width: min(geometry.size.width, geometry.size.width * min(item.percentage, 100) / 100), height: 6)
-                }
-            }
-            .frame(height: 6)
+            RoundedRectangle(cornerRadius: AppRadius.xs)
+                .fill(item.isOverBudget ? AppColors.destructive : item.color)
+                .frame(maxWidth: .infinity)
+                .frame(height: 6)
+                .scaleEffect(x: min(item.percentage, 100) / 100, anchor: .leading)
         }
     }
 }

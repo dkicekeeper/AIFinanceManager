@@ -672,7 +672,20 @@ final class InsightsService {
             ))
         }
 
-        let overBudgetItems = budgetItems.filter { $0.isOverBudget }
+        // Phase 23-C P15: single pass to partition budget items (was 5 separate filter calls)
+        var overBudgetItems: [BudgetInsightItem] = []
+        var projectedOverspendItems: [BudgetInsightItem] = []
+        var underBudgetItems: [BudgetInsightItem] = []
+        for item in budgetItems {
+            if item.isOverBudget {
+                overBudgetItems.append(item)
+            } else if item.projectedSpend > item.budgetAmount {
+                projectedOverspendItems.append(item)
+            } else if item.percentage < 80 && item.percentage > 0 {
+                underBudgetItems.append(item)
+            }
+        }
+
         if !overBudgetItems.isEmpty {
             insights.append(Insight(
                 id: "budget_over",
@@ -692,7 +705,6 @@ final class InsightsService {
             ))
         }
 
-        let projectedOverspendItems = budgetItems.filter { !$0.isOverBudget && $0.projectedSpend > $0.budgetAmount }
         if !projectedOverspendItems.isEmpty {
             insights.append(Insight(
                 id: "budget_projected_over",
@@ -712,7 +724,6 @@ final class InsightsService {
             ))
         }
 
-        let underBudgetItems = budgetItems.filter { !$0.isOverBudget && $0.percentage < 80 && $0.percentage > 0 }
         if !underBudgetItems.isEmpty {
             insights.append(Insight(
                 id: "budget_under",
@@ -732,8 +743,8 @@ final class InsightsService {
             ))
         }
 
-        let projectedCount = budgetItems.filter { !$0.isOverBudget && $0.projectedSpend > $0.budgetAmount }.count
-        let underCount = budgetItems.filter { !$0.isOverBudget && $0.percentage < 80 && $0.percentage > 0 }.count
+        let projectedCount = projectedOverspendItems.count
+        let underCount = underBudgetItems.count
         PerformanceLogger.InsightsMetrics.logBudgetEnd(insightCount: insights.count, overBudget: overBudgetCount, atRisk: projectedCount, underBudget: underCount)
         Self.logger.debug("💼 [Insights] Budget END — \(insights.count) insights, over=\(overBudgetCount), atRisk=\(projectedCount), under=\(underCount)")
         return insights
@@ -931,23 +942,8 @@ final class InsightsService {
         }
 
         // 3. Projected balance (30 days ahead)
-        // Use real account balances from BalanceCoordinator (via callback), not initialBalance
         let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
-
-        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
-        let monthlyRecurringNet = activeSeries.reduce(0.0) { total, series in
-            let amount = NSDecimalNumber(decimal: series.amount).doubleValue
-            let monthly: Double
-            switch series.frequency {
-            case .daily:   monthly = amount * 30
-            case .weekly:  monthly = amount * 4.33
-            case .monthly: monthly = amount
-            case .yearly:  monthly = amount / 12
-            }
-            let isIncome = transactionStore.categories.first { $0.name == series.category }?.type == .income
-            return total + (isIncome ? monthly : -monthly)
-        }
-
+        let monthlyRecurringNet = self.monthlyRecurringNet(baseCurrency: baseCurrency)
         let projectedBalance = currentBalance + monthlyRecurringNet
 
         let accountCount = transactionStore.accounts.count
@@ -1066,19 +1062,19 @@ final class InsightsService {
         return (subcategories, monthlyTrend)
     }
 
-    // MARK: - Granularity-based API (Phase 18)
+    // MARK: - Granularity-based API (Phase 18, updated Phase 23)
 
-    /// Generates all insights for a given granularity. Data is ALWAYS all-time; granularity
-    /// controls how charts group and compare periods.
+    /// Generates all insights for a given granularity.
+    /// Phase 23: accepts pre-built `transactions` array — caller builds it once on MainActor,
+    /// avoiding repeated Array(transactionStore.transactions) copies per granularity (P3/P4 fix).
     func generateAllInsights(
         granularity: InsightGranularity,
+        transactions allTransactions: [Transaction],
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
         balanceFor: (String) -> Double
     ) -> [Insight] {
-        let allTransactions = Array(transactionStore.transactions)
-
         // For period summary: compute all-time income/expense totals
         let (allIncome, allExpenses) = calculateMonthlySummary(
             transactions: allTransactions,
@@ -1091,12 +1087,10 @@ final class InsightsService {
             netFlow: allIncome - allExpenses
         )
 
-        // Build a TimeFilter that covers all-time for budget/spending/income helpers
         let firstDate = allTransactions
             .compactMap { DateFormatters.dateFormatter.date(from: $0.date) }
             .min()
         let allTimeFilter = TimeFilter(preset: .allTime)
-        _ = firstDate // used below for computePeriodDataPoints
 
         var insights: [Insight] = []
 
@@ -1128,7 +1122,6 @@ final class InsightsService {
 
         insights.append(contentsOf: generateRecurringInsights(baseCurrency: baseCurrency))
 
-        // Cash flow section — use period data points for the selected granularity
         let periodPoints = computePeriodDataPoints(
             transactions: allTransactions,
             granularity: granularity,
@@ -1144,7 +1137,6 @@ final class InsightsService {
             balanceFor: balanceFor
         ))
 
-        // Wealth card
         insights.append(contentsOf: generateWealthInsights(
             periodPoints: periodPoints,
             allTransactions: allTransactions,
@@ -1301,20 +1293,7 @@ final class InsightsService {
 
         // 3. Projected balance (recurring delta)
         let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
-        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
-        let monthlyRecurringNet = activeSeries.reduce(0.0) { total, series in
-            let amount = NSDecimalNumber(decimal: series.amount).doubleValue
-            let monthly: Double
-            switch series.frequency {
-            case .daily:   monthly = amount * 30
-            case .weekly:  monthly = amount * 4.33
-            case .monthly: monthly = amount
-            case .yearly:  monthly = amount / 12
-            }
-            let isIncome = transactionStore.categories.first { $0.name == series.category }?.type == .income
-            return total + (isIncome ? monthly : -monthly)
-        }
-
+        let monthlyRecurringNet = self.monthlyRecurringNet(baseCurrency: baseCurrency)
         let projectedBalance = currentBalance + monthlyRecurringNet
         let projectedMetricFormatted = monthlyRecurringNet >= 0
             ? "+" + Formatting.formatCurrencySmart(monthlyRecurringNet, currency: baseCurrency)
@@ -1482,5 +1461,23 @@ final class InsightsService {
             }
         }
         return (income, expenses)
+    }
+
+    /// Phase 23-C P12: shared monthly recurring net calculation.
+    /// Was duplicated verbatim in generateCashFlowInsights and generateCashFlowInsightsFromPeriodPoints.
+    private func monthlyRecurringNet(baseCurrency: String) -> Double {
+        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
+        return activeSeries.reduce(0.0) { total, series in
+            let amount = NSDecimalNumber(decimal: series.amount).doubleValue
+            let monthly: Double
+            switch series.frequency {
+            case .daily:   monthly = amount * 30
+            case .weekly:  monthly = amount * 4.33
+            case .monthly: monthly = amount
+            case .yearly:  monthly = amount / 12
+            }
+            let isIncome = transactionStore.categories.first { $0.name == series.category }?.type == .income
+            return total + (isIncome ? monthly : -monthly)
+        }
     }
 }

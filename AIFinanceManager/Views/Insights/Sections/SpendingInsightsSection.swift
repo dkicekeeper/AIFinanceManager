@@ -5,13 +5,17 @@
 //  Phase 17: Financial Insights Feature
 //  Section displaying spending-related insights
 //
+//  Phase 23: P9 — viewModel replaced with onCategoryTap closure in InsightDetailView.
+//  SpendingInsightsSection still holds a viewModel reference to build the closure,
+//  but InsightDetailView itself no longer depends on the full ViewModel.
+//
 
 import SwiftUI
 
 struct SpendingInsightsSection: View {
     let insights: [Insight]
     let currency: String
-    /// Passed through to InsightDetailView so category rows can drill down to CategoryDeepDiveView
+    /// Used only to build the onCategoryTap closure for category drill-down.
     var viewModel: InsightsViewModel? = nil
 
     var body: some View {
@@ -23,13 +27,29 @@ struct SpendingInsightsSection: View {
                     NavigationLink(destination: InsightDetailView(
                         insight: insight,
                         currency: currency,
-                        viewModel: viewModel
+                        onCategoryTap: categoryTapHandler
                     )) {
                         InsightsCardView(insight: insight)
                     }
                     .buttonStyle(.plain)
                 }
             }
+        }
+    }
+
+    /// Returns an AnyView drill-down destination for a tapped category row, or nil if no viewModel.
+    private var categoryTapHandler: ((CategoryBreakdownItem) -> AnyView)? {
+        guard let vm = viewModel else { return nil }
+        return { item in
+            AnyView(
+                CategoryDeepDiveView(
+                    categoryName: item.categoryName,
+                    color: item.color,
+                    iconSource: item.iconSource,
+                    currency: currency,
+                    viewModel: vm
+                )
+            )
         }
     }
 

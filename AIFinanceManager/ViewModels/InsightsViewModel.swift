@@ -2,14 +2,12 @@
 //  InsightsViewModel.swift
 //  AIFinanceManager
 //
-//  Phase 18: Financial Insights Feature — Push-model + Granularity
-//  ViewModel managing insights state and user interactions.
-//
-//  Push-model:
-//  - Insights are computed in the background when data changes (add/update/delete)
-//  - Opening the Insights tab is instant (reads precomputed data, 0ms)
-//  - `invalidateAndRecompute()` is called by AppCoordinator.syncTransactionStoreToViewModels()
-//  - Background Task computes all granularities; UI reads from `precomputedInsights` cache
+//  Phase 23: Insights Performance & UI fixes
+//  - 23-A: All heavy computation offloaded to background thread via Task.detached
+//  - Eliminated UI freezes on first tab open (loadInsightsForeground blocked MainActor)
+//  - Single Array copy of transactions per cycle — not per granularity (P4 fix)
+//  - makeBalanceSnapshot() captures balances on MainActor before background hop
+//  - Only the final UI write hops back via await MainActor.run
 //
 
 import Foundation
@@ -115,22 +113,21 @@ final class InsightsViewModel {
         applyPrecomputed(for: granularity)
     }
 
-    /// Phase 18: Called when Insights tab appears — triggers computation if stale.
+    /// Called when Insights tab appears — triggers computation if stale.
     /// When data is fresh, reads from precomputed cache (0ms).
     func onAppear() {
         if isStale || precomputedInsights[currentGranularity] == nil {
             Self.logger.debug("🧠 [InsightsVM] onAppear — stale or cache MISS, loading")
             isStale = false
-            loadInsightsForeground()
+            loadInsightsBackground()
         } else {
             Self.logger.debug("🧠 [InsightsVM] onAppear — cache HIT (instant)")
             applyPrecomputed(for: currentGranularity)
         }
     }
 
-    /// Phase 18: Lazy invalidation — marks data as stale instead of eager recompute.
-    /// Computation deferred until user opens Insights tab (onAppear).
-    /// This eliminates 5-granularity recompute on every transaction change.
+    /// Lazy invalidation — marks stale without eager recompute.
+    /// Computation is deferred until user opens the Insights tab.
     func invalidateAndRecompute() {
         Self.logger.debug("🔄 [InsightsVM] invalidateAndRecompute — marking stale (lazy)")
         insightsService.invalidateCache()
@@ -138,12 +135,9 @@ final class InsightsViewModel {
         precomputedPeriodPoints = [:]
         precomputedTotals = [:]
         isStale = true
-
-        // Phase 18: Cancel any in-flight recompute — will be triggered on next onAppear
         recomputeTask?.cancel()
     }
 
-    /// Legacy compatibility — still called if needed.
     func invalidateCache() {
         invalidateAndRecompute()
     }
@@ -152,6 +146,7 @@ final class InsightsViewModel {
         Self.logger.debug("🔄 [InsightsVM] refreshInsights — manual refresh")
         PerformanceLogger.shared.reset()
         invalidateAndRecompute()
+        loadInsightsBackground()
     }
 
     func selectCategory(_ category: InsightCategory?) {
@@ -173,131 +168,108 @@ final class InsightsViewModel {
         )
     }
 
-    // MARK: - Private: Background Recompute
+    // MARK: - Private: Background Loading
 
-    /// Computes insights for ALL granularities in a single background Task.
-    /// When done, atomically updates the UI for the currently selected granularity.
-    private func recomputeAllGranularities() async {
-        guard !Task.isCancelled else { return }
+    /// Phase 23-A: Offloads ALL computation to a detached background task.
+    /// Values needed for computation are captured on MainActor before the hop.
+    /// Only the final UI write returns to MainActor via await MainActor.run { }.
+    private func loadInsightsBackground() {
+        isLoading = true
+        recomputeTask?.cancel()
 
-        Self.logger.debug("🔧 [InsightsVM] Background recompute START — \(InsightGranularity.allCases.count) granularities")
-
+        // Capture everything needed on the background thread while on MainActor
         let currency = baseCurrency
         let cacheManager = transactionsViewModel.cacheManager
         let currencyService = transactionsViewModel.currencyService
-        let balanceFor: (String) -> Double = { [weak self] accountId in
-            self?.transactionsViewModel.calculateTransactionsBalance(for: accountId) ?? 0
+        let service = insightsService
+        // Single Array copy for the entire recompute — not per-granularity (P4 fix)
+        let allTransactions = Array(transactionStore.transactions)
+        // Balance snapshot: captures account balances safely before leaving MainActor
+        let balanceSnapshot = makeBalanceSnapshot()
+        let granularity = currentGranularity
+
+        recomputeTask = Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self, !Task.isCancelled else { return }
+            Self.logger.debug("🔧 [InsightsVM] Background recompute START (detached) — \(InsightGranularity.allCases.count) granularities")
+
+            let firstDate = allTransactions
+                .compactMap { DateFormatters.dateFormatter.date(from: $0.date) }
+                .min()
+
+            var newInsights = [InsightGranularity: [Insight]]()
+            var newPoints   = [InsightGranularity: [PeriodDataPoint]]()
+            var newTotals   = [InsightGranularity: PeriodTotals]()
+
+            for gran in InsightGranularity.allCases {
+                guard !Task.isCancelled else { break }
+
+                // generateAllInsights now accepts pre-built transactions (P3 fix)
+                let computedInsights = await service.generateAllInsights(
+                    granularity: gran,
+                    transactions: allTransactions,
+                    baseCurrency: currency,
+                    cacheManager: cacheManager,
+                    currencyService: currencyService,
+                    balanceFor: { balanceSnapshot[$0] ?? 0 }
+                )
+
+                let points = await service.computePeriodDataPoints(
+                    transactions: allTransactions,
+                    granularity: gran,
+                    baseCurrency: currency,
+                    currencyService: currencyService,
+                    firstTransactionDate: firstDate
+                )
+
+                var income: Double = 0; var expenses: Double = 0
+                for p in points { income += p.income; expenses += p.expenses }
+
+                newInsights[gran] = computedInsights
+                newPoints[gran]   = points
+                newTotals[gran]   = PeriodTotals(income: income, expenses: expenses, netFlow: income - expenses)
+                Self.logger.debug("🔧 [InsightsVM] Gran .\(gran.rawValue, privacy: .public) — \(computedInsights.count) insights, \(points.count) pts")
+            }
+
+            guard !Task.isCancelled else { return }
+
+            // Hop back to MainActor only for the UI write
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.precomputedInsights    = newInsights
+                self.precomputedPeriodPoints = newPoints
+                self.precomputedTotals      = newTotals
+                self.applyPrecomputed(for: granularity)
+                Self.logger.debug("🔧 [InsightsVM] Background recompute END — UI updated")
+            }
         }
-
-        var newInsights = [InsightGranularity: [Insight]]()
-        var newPoints   = [InsightGranularity: [PeriodDataPoint]]()
-        var newTotals   = [InsightGranularity: PeriodTotals]()
-
-        for granularity in InsightGranularity.allCases {
-            guard !Task.isCancelled else { break }
-
-            let computedInsights = insightsService.generateAllInsights(
-                granularity: granularity,
-                baseCurrency: currency,
-                cacheManager: cacheManager,
-                currencyService: currencyService,
-                balanceFor: balanceFor
-            )
-
-            let allTx = Array(transactionStore.transactions)
-            let firstDate = allTx.compactMap { DateFormatters.dateFormatter.date(from: $0.date) }.min()
-            let points = insightsService.computePeriodDataPoints(
-                transactions: allTx,
-                granularity: granularity,
-                baseCurrency: currency,
-                currencyService: currencyService,
-                firstTransactionDate: firstDate
-            )
-
-            var income: Double = 0; var expenses: Double = 0
-            for p in points { income += p.income; expenses += p.expenses }
-            let totals = PeriodTotals(income: income, expenses: expenses, netFlow: income - expenses)
-
-            newInsights[granularity] = computedInsights
-            newPoints[granularity] = points
-            newTotals[granularity] = totals
-            Self.logger.debug("🔧 [InsightsVM] Granularity .\(granularity.rawValue, privacy: .public) — \(computedInsights.count) insights, \(points.count) points")
-        }
-
-        guard !Task.isCancelled else { return }
-
-        // Apply to UI on main actor (already @MainActor, but Task.detached would need explicit hop)
-        precomputedInsights = newInsights
-        precomputedPeriodPoints = newPoints
-        precomputedTotals = newTotals
-
-        // Update visible state for current granularity
-        applyPrecomputed(for: currentGranularity)
-
-        Self.logger.debug("🔧 [InsightsVM] Background recompute END")
     }
 
     /// Applies precomputed data for the given granularity to observable properties.
     private func applyPrecomputed(for granularity: InsightGranularity) {
-        insights = precomputedInsights[granularity] ?? []
+        insights       = precomputedInsights[granularity] ?? []
         periodDataPoints = precomputedPeriodPoints[granularity] ?? []
-        let totals = precomputedTotals[granularity]
+        let totals     = precomputedTotals[granularity]
         totalIncome    = totals?.income   ?? 0
         totalExpenses  = totals?.expenses ?? 0
         netFlow        = totals?.netFlow  ?? 0
         isLoading = false
     }
 
-    /// Foreground fallback (first launch, no precomputed data).
-    private func loadInsightsForeground() {
-        isLoading = true
-        let currency = baseCurrency
-        let cacheManager = transactionsViewModel.cacheManager
-        let currencyService = transactionsViewModel.currencyService
-        let balanceFor: (String) -> Double = { [weak self] accountId in
-            self?.transactionsViewModel.calculateTransactionsBalance(for: accountId) ?? 0
+    /// Captures a snapshot of account balances on MainActor for safe use on background thread.
+    private func makeBalanceSnapshot() -> [String: Double] {
+        var snapshot = [String: Double]()
+        snapshot.reserveCapacity(transactionStore.accounts.count)
+        for account in transactionStore.accounts {
+            snapshot[account.id] = transactionsViewModel.calculateTransactionsBalance(for: account.id)
         }
-
-        let computedInsights = insightsService.generateAllInsights(
-            granularity: currentGranularity,
-            baseCurrency: currency,
-            cacheManager: cacheManager,
-            currencyService: currencyService,
-            balanceFor: balanceFor
-        )
-
-        let allTx = Array(transactionStore.transactions)
-        let firstDate = allTx.compactMap { DateFormatters.dateFormatter.date(from: $0.date) }.min()
-        let points = insightsService.computePeriodDataPoints(
-            transactions: allTx,
-            granularity: currentGranularity,
-            baseCurrency: currency,
-            currencyService: currencyService,
-            firstTransactionDate: firstDate
-        )
-
-        var income: Double = 0; var expenses: Double = 0
-        for p in points { income += p.income; expenses += p.expenses }
-
-        precomputedInsights[currentGranularity] = computedInsights
-        precomputedPeriodPoints[currentGranularity] = points
-        precomputedTotals[currentGranularity] = PeriodTotals(income: income, expenses: expenses, netFlow: income - expenses)
-
-        applyPrecomputed(for: currentGranularity)
-
-        // Schedule background computation for the rest of the granularities
-        recomputeTask?.cancel()
-        recomputeTask = Task { [weak self] in
-            await self?.recomputeAllGranularities()
-        }
+        return snapshot
     }
 
-    // MARK: - Legacy loadInsights (for backwards compatibility with any call sites)
+    // MARK: - Legacy loadInsights
 
     /// Backward-compatible bridge: converts TimeFilter preset to InsightGranularity.
     func loadInsights(timeFilter: TimeFilter) {
         currentTimeFilter = timeFilter
-        // Map TimeFilter preset to a granularity
         switch timeFilter.preset {
         case .today, .yesterday, .thisWeek, .last30Days:
             switchGranularity(.week)
