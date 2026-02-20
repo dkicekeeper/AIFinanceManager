@@ -12,8 +12,8 @@ struct CashFlowInsightsSection: View {
     let insights: [Insight]
     let currency: String
     /// Phase 18: period data points for the scrollable chart
-    var periodDataPoints: [PeriodDataPoint] = []
-    var granularity: InsightGranularity = .month
+    let periodDataPoints: [PeriodDataPoint]
+    let granularity: InsightGranularity
 
     var body: some View {
         if !insights.isEmpty {
