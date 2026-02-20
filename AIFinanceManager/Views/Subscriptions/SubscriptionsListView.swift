@@ -12,8 +12,17 @@ struct SubscriptionsListView: View {
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
     @Environment(TimeFilterManager.self) private var timeFilterManager
-    @State private var showingEditView = false
-    @State private var editingSubscription: RecurringSeries?
+    private enum SubscriptionSheetItem: Identifiable {
+        case new
+        case edit(RecurringSeries)
+        var id: String {
+            switch self {
+            case .new: return "new"
+            case .edit(let sub): return sub.id
+            }
+        }
+    }
+    @State private var sheetItem: SubscriptionSheetItem?
 
     var body: some View {
         ScrollView {
@@ -39,48 +48,30 @@ struct SubscriptionsListView: View {
         .navigationTitle(String(localized: "subscriptions.title"))
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    editingSubscription = nil
-                    showingEditView = true
+                    sheetItem = .new
                 } label: {
                     Image(systemName: "plus")
                 }
             }
         }
-            .sheet(isPresented: $showingEditView) {
-                if let subscription = editingSubscription {
-                    SubscriptionEditView(
-                        transactionStore: transactionStore,
-                        transactionsViewModel: transactionsViewModel,
-                        subscription: subscription,
-                        onSave: { updatedSubscription in
-                            Task {
-                                try await transactionStore.updateSeries(updatedSubscription)
-                                showingEditView = false
-                            }
-                        },
-                        onCancel: {
-                            showingEditView = false
-                        }
-                    )
-                } else {
-                    SubscriptionEditView(
-                        transactionStore: transactionStore,
-                        transactionsViewModel: transactionsViewModel,
-                        subscription: nil,
-                        onSave: { newSubscription in
-                            Task {
-                                try await transactionStore.createSeries(newSubscription)
-                                showingEditView = false
-                            }
-                        },
-                        onCancel: {
-                            showingEditView = false
-                        }
-                    )
-                }
+        .sheet(item: $sheetItem) { item in
+            switch item {
+            case .new:
+                SubscriptionEditView(
+                    transactionStore: transactionStore,
+                    transactionsViewModel: transactionsViewModel,
+                    subscription: nil
+                )
+            case .edit(let subscription):
+                SubscriptionEditView(
+                    transactionStore: transactionStore,
+                    transactionsViewModel: transactionsViewModel,
+                    subscription: subscription
+                )
             }
+        }
     }
     
     private var emptyState: some View {
@@ -90,8 +81,7 @@ struct SubscriptionsListView: View {
             description: String(localized: "subscriptions.emptyDescription"),
             actionTitle: String(localized: "subscriptions.addSubscription"),
             action: {
-                editingSubscription = nil
-                showingEditView = true
+                sheetItem = .new
             }
         )
     }
