@@ -32,7 +32,7 @@ struct SubscriptionCard: View {
                 )
                 
                 if let nextChargeDate = nextChargeDate {
-                    Text(String(format: String(localized: "subscriptions.nextCharge"), formatDate(nextChargeDate)))
+                    Text(String(format: String(localized: "subscriptions.nextChargeOn"), formatDate(nextChargeDate)))
                         .font(AppTypography.caption)
                         .foregroundStyle(.secondary)
                 }
