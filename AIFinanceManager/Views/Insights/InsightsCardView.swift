@@ -8,44 +8,61 @@
 
 import SwiftUI
 
-struct InsightsCardView: View {
+struct InsightsCardView<BottomChart: View>: View {
     let insight: Insight
+
+    private let hasBottomChart: Bool
+    @ViewBuilder private let bottomChartContent: () -> BottomChart
+
+    // MARK: - Init (backward compatible — no embedded chart)
+    init(insight: Insight) where BottomChart == EmptyView {
+        self.insight = insight
+        self.hasBottomChart = false
+        self.bottomChartContent = { EmptyView() }
+    }
+
+    // MARK: - Init (with embedded full-size chart)
+    init(insight: Insight, @ViewBuilder bottomChart: @escaping () -> BottomChart) {
+        self.insight = insight
+        self.hasBottomChart = true
+        self.bottomChartContent = bottomChart
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            // Text content inside the glass card (padded, not clipped by chart)
-            // Header: icon + title + severity badge
+            // Header: icon + title + conditional mini-chart overlay
             HStack(alignment: .top, spacing: AppSpacing.sm) {
                 Image(systemName: insight.category.icon)
                     .font(.system(size: AppIconSize.md))
                     .foregroundStyle(insight.severity.color)
-                
+
                 Text(insight.title)
                     .font(AppTypography.body)
                     .foregroundStyle(AppColors.textSecondary)
-                
+
                 Spacer()
-                
-                // Mini chart — rendered OUTSIDE the clip region to avoid being clipped
+                    // Mini chart rendered OUTSIDE clip region to avoid being clipped.
+                    // Hidden when a full-size bottom chart is injected.
                     .overlay(alignment: .topTrailing) {
-                        miniChart
-                            .frame(width: 120, height: 100)
+                        if !hasBottomChart {
+                            miniChart
+                                .frame(width: 120, height: 100)
+                        }
                     }
             }
-            
+
             Text(insight.subtitle)
                 .font(AppTypography.h4)
                 .foregroundStyle(AppColors.textPrimary)
                 .lineLimit(1)
-            
+
             HStack(spacing: AppSpacing.sm) {
-                
                 // Large metric
                 Text(insight.metric.formattedValue)
                     .font(AppTypography.h2)
                     .fontWeight(.bold)
                     .foregroundStyle(AppColors.textPrimary)
-                
+
                 // Trend indicator
                 if let trend = insight.trend {
                     trendBadge(trend)
@@ -55,6 +72,11 @@ struct InsightsCardView: View {
                         .font(AppTypography.bodyLarge)
                         .foregroundStyle(AppColors.textSecondary)
                 }
+            }
+
+            // Full-size chart — shown only when injected via init(insight:bottomChart:)
+            if hasBottomChart {
+                bottomChartContent()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
