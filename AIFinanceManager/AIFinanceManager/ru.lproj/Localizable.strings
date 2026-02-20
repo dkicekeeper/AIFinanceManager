@@ -413,6 +413,25 @@
 "subscriptions.status.archived" = "В архиве";
 "subscriptions.status.unknown" = "Неизвестно";
 
+// Notification Permission
+"notification.permission.title" = "Включить напоминания?";
+"notification.permission.description" = "Получайте уведомления о предстоящих списаниях по подпискам, чтобы не пропустить важные платежи";
+"notification.permission.allow" = "Разрешить уведомления";
+"notification.permission.skip" = "Не сейчас";
+
+// Active count (EmptyState)
+"emptyState.noActiveSubscriptions" = "Нет активных подписок";
+"subscriptions.activeCount" = "Активных %lld";
+
+// Next charge inline text (format string for SubscriptionCard)
+"subscriptions.nextChargeOn" = "Следующее: %@";
+
+// Frequency display names
+"frequency.daily" = "Ежедневно";
+"frequency.weekly" = "Еженедельно";
+"frequency.monthly" = "Ежемесячно";
+"frequency.yearly" = "Ежегодно";
+
 // Subscription Form
 "subscription.basicInfo" = "Основная информация";
 "subscription.namePlaceholder" = "Название подписки";

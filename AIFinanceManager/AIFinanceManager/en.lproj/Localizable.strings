@@ -413,6 +413,25 @@
 "subscriptions.status.archived" = "Archived";
 "subscriptions.status.unknown" = "Unknown";
 
+// Notification Permission
+"notification.permission.title" = "Enable Reminders?";
+"notification.permission.description" = "Get notified about upcoming subscription charges so you never miss an important payment";
+"notification.permission.allow" = "Allow Notifications";
+"notification.permission.skip" = "Not Now";
+
+// Active count (EmptyState)
+"emptyState.noActiveSubscriptions" = "No active subscriptions";
+"subscriptions.activeCount" = "%lld active";
+
+// Next charge inline text (format string for SubscriptionCard)
+"subscriptions.nextChargeOn" = "Next charge: %@";
+
+// Frequency display names
+"frequency.daily" = "Daily";
+"frequency.weekly" = "Weekly";
+"frequency.monthly" = "Monthly";
+"frequency.yearly" = "Yearly";
+
 // Subscription Form
 "subscription.basicInfo" = "Basic Information";
 "subscription.namePlaceholder" = "Subscription Name";
