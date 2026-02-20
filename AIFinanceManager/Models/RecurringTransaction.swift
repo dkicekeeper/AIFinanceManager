@@ -199,10 +199,10 @@ enum RecurringFrequency: String, Codable, CaseIterable {
     
     var displayName: String {
         switch self {
-        case .daily: return NSLocalizedString("Daily", comment: "")
-        case .weekly: return NSLocalizedString("Weekly", comment: "")
-        case .monthly: return NSLocalizedString("Monthly", comment: "")
-        case .yearly: return NSLocalizedString("Yearly", comment: "")
+        case .daily:   return String(localized: "frequency.daily")
+        case .weekly:  return String(localized: "frequency.weekly")
+        case .monthly: return String(localized: "frequency.monthly")
+        case .yearly:  return String(localized: "frequency.yearly")
         }
     }
 }

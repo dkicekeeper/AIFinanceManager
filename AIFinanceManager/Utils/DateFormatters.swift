@@ -27,20 +27,20 @@ enum DateFormatters {
         return formatter
     }()
     
-    /// Форматтер для отображения даты в формате "d MMMM" (русская локализация)
+    /// Форматтер для отображения даты в формате "d MMMM" (локаль устройства)
     static let displayDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMMM"
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = .current
         formatter.timeZone = TimeZone.current
         return formatter
     }()
-    
-    /// Форматтер для отображения даты с годом в формате "d MMMM yyyy" (русская локализация)
+
+    /// Форматтер для отображения даты с годом в формате "d MMMM yyyy" (локаль устройства)
     static let displayDateWithYearFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMMM yyyy"
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = .current
         formatter.timeZone = TimeZone.current
         return formatter
     }()
