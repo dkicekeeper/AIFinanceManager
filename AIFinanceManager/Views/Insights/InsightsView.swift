@@ -129,41 +129,68 @@ struct InsightsView: View {
             .padding(.top, AppSpacing.xxxl)
         } else if insightsViewModel.selectedCategory == nil {
             // Show all sections
-            SpendingInsightsSection(
+            InsightsSectionView(
+                category: .spending,
                 insights: insightsViewModel.spendingInsights,
                 currency: insightsViewModel.baseCurrency,
-                viewModel: insightsViewModel
+                onCategoryTap: { [insightsViewModel] item in
+                    AnyView(
+                        CategoryDeepDiveView(
+                            categoryName: item.categoryName,
+                            color: item.color,
+                            iconSource: item.iconSource,
+                            currency: insightsViewModel.baseCurrency,
+                            viewModel: insightsViewModel
+                        )
+                    )
+                }
             )
 
-            IncomeInsightsSection(
+            InsightsSectionView(
+                category: .income,
                 insights: insightsViewModel.incomeInsights,
                 currency: insightsViewModel.baseCurrency
             )
 
-            BudgetInsightsSection(
+            InsightsSectionView(
+                category: .budget,
                 insights: insightsViewModel.budgetInsights,
                 currency: insightsViewModel.baseCurrency
             )
 
-            RecurringInsightsSection(
+            InsightsSectionView(
+                category: .recurring,
                 insights: insightsViewModel.recurringInsights,
                 currency: insightsViewModel.baseCurrency
             )
 
-            CashFlowInsightsSection(
+            InsightsSectionView(
+                category: .cashFlow,
                 insights: insightsViewModel.cashFlowInsights,
                 currency: insightsViewModel.baseCurrency,
                 periodDataPoints: insightsViewModel.periodDataPoints,
                 granularity: insightsViewModel.currentGranularity
-            )
-
-            // Phase 18 — Wealth section
-            if !insightsViewModel.wealthInsights.isEmpty {
-                WealthInsightsSection(
-                    insights: insightsViewModel.wealthInsights,
-                    periodDataPoints: insightsViewModel.periodDataPoints,
+            ) {
+                PeriodCashFlowChart(
+                    dataPoints: insightsViewModel.periodDataPoints,
+                    currency: insightsViewModel.baseCurrency,
                     granularity: insightsViewModel.currentGranularity,
-                    currency: insightsViewModel.baseCurrency
+                    compact: false
+                )
+            }
+
+            InsightsSectionView(
+                category: .wealth,
+                insights: insightsViewModel.wealthInsights,
+                currency: insightsViewModel.baseCurrency,
+                periodDataPoints: insightsViewModel.periodDataPoints,
+                granularity: insightsViewModel.currentGranularity
+            ) {
+                WealthChart(
+                    dataPoints: insightsViewModel.periodDataPoints,
+                    currency: insightsViewModel.baseCurrency,
+                    granularity: insightsViewModel.currentGranularity,
+                    compact: false
                 )
             }
         } else {
