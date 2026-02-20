@@ -30,7 +30,9 @@ struct IncomeExpenseChart: View {
                 y: .value("Amount", point.income),
                 width: compact ? 6 : 12
             )
-            .foregroundStyle(AppColors.success.opacity(0.8))
+            .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
+            .foregroundStyle(AppColors.success.opacity(0.85))
+            .shadow(color: AppColors.success.opacity(0.5), radius: 8, x: 0, y: 0)
             .position(by: .value("Type", "Income"))
 
             BarMark(
@@ -38,15 +40,22 @@ struct IncomeExpenseChart: View {
                 y: .value("Amount", point.expenses),
                 width: compact ? 6 : 12
             )
-            .foregroundStyle(AppColors.destructive.opacity(0.8))
+            .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
+            .foregroundStyle(AppColors.destructive.opacity(0.85))
+            .shadow(color: AppColors.destructive.opacity(0.5), radius: 8, x: 0, y: 0)
             .position(by: .value("Type", "Expenses"))
         }
         .chartXAxis {
             if compact {
                 AxisMarks { _ in }
             } else {
-                AxisMarks(values: .stride(by: .month)) { _ in
-                    AxisValueLabel(format: .dateTime.month(.abbreviated))
+                AxisMarks(values: .stride(by: .month)) { value in
+                    AxisValueLabel {
+                        if let date = value.as(Date.self) {
+                            Text(formatAxisDate(date))
+                                .font(AppTypography.caption2)
+                        }
+                    }
                 }
             }
         }
@@ -70,6 +79,13 @@ struct IncomeExpenseChart: View {
             "Expenses": AppColors.destructive
         ])
         .chartLegend(compact ? .hidden : .automatic)
+        .chartPlotStyle { content in
+            if compact {
+                content
+            } else {
+                content.padding(.trailing, AppSpacing.md)
+            }
+        }
         .frame(height: compact ? 60 : 200)
     }
 
@@ -90,6 +106,14 @@ struct IncomeExpenseChart: View {
         }
     }
 
+    /// Cached formatter for X-axis month labels. Locale captured at first use.
+    /// Re-assigning `locale` is a reference assignment (cheap); no re-allocation.
+    private static let axisMonthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        return f
+    }()
+
     private func formatCompact(_ value: Double) -> String {
         if value >= 1_000_000 {
             return String(format: "%.1fM", value / 1_000_000)
@@ -97,6 +121,23 @@ struct IncomeExpenseChart: View {
             return String(format: "%.0fK", value / 1_000)
         }
         return String(format: "%.0f", value)
+    }
+
+    /// Форматирует дату для X-оси: 3 chars uppercase + год если не текущий.
+    /// Пример: "ЯНВ" (текущий год), "ЯНВ'24" (другой год). Локаль-зависимо.
+    private func formatAxisDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: Date())
+        let dateYear = calendar.component(.year, from: date)
+
+        Self.axisMonthFormatter.locale = .current
+        let month = String(Self.axisMonthFormatter.string(from: date).uppercased().prefix(3))
+
+        if dateYear == currentYear {
+            return month
+        } else {
+            return "\(month)'\(String(format: "%02d", dateYear % 100))"
+        }
     }
 }
 
@@ -138,7 +179,9 @@ struct PeriodIncomeExpenseChart: View {
                 y: .value("Income", point.income),
                 width: .fixed(compact ? 6 : max(8, pointWidth * 0.38))
             )
-            .foregroundStyle(AppColors.success.opacity(0.8))
+            .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
+            .foregroundStyle(AppColors.success.opacity(0.85))
+            .shadow(color: AppColors.success.opacity(0.35), radius: 4, x: 0, y: 2)
             .position(by: .value("Type", "Income"))
 
             BarMark(
@@ -146,7 +189,9 @@ struct PeriodIncomeExpenseChart: View {
                 y: .value("Expenses", point.expenses),
                 width: .fixed(compact ? 6 : max(8, pointWidth * 0.38))
             )
-            .foregroundStyle(AppColors.destructive.opacity(0.8))
+            .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
+            .foregroundStyle(AppColors.destructive.opacity(0.85))
+            .shadow(color: AppColors.destructive.opacity(0.35), radius: 4, x: 0, y: 2)
             .position(by: .value("Type", "Expenses"))
         }
         
@@ -157,7 +202,7 @@ struct PeriodIncomeExpenseChart: View {
                 AxisMarks { value in
                     AxisValueLabel {
                         if let label = value.as(String.self) {
-                            Text(label)
+                            Text(axisLabelMap[label] ?? label)
                                 .font(AppTypography.caption2)
                                 .lineLimit(1)
                         }
@@ -165,6 +210,7 @@ struct PeriodIncomeExpenseChart: View {
                 }
             }
         }
+        
         .chartYAxis {
             if compact {
                 AxisMarks { _ in }
@@ -180,11 +226,19 @@ struct PeriodIncomeExpenseChart: View {
                 }
             }
         }
+        
         .chartForegroundStyleScale([
             "Income": AppColors.success,
             "Expenses": AppColors.destructive
         ])
         .chartLegend(compact ? .hidden : .automatic)
+        .chartPlotStyle { content in
+            if compact {
+                content
+            } else {
+                content.padding(.trailing, AppSpacing.md)
+            }
+        }
     }
 
     private func formatCompact(_ value: Double) -> String {
@@ -194,6 +248,65 @@ struct PeriodIncomeExpenseChart: View {
             return String(format: "%.0fK", value / 1_000)
         }
         return String(format: "%.0f", value)
+    }
+
+    /// Маппинг полный label → компактный label для X-оси.
+    /// Строится из dataPoints при каждом создании View (несущественные затраты для ≤52 точек).
+    private var axisLabelMap: [String: String] {
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: Date())
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.dateFormat = "MMM"
+        return Dictionary(
+            uniqueKeysWithValues: dataPoints.map { point in
+                (point.label, compactPeriodLabel(
+                    point: point,
+                    calendar: calendar,
+                    currentYear: currentYear,
+                    formatter: formatter
+                ))
+            }
+        )
+    }
+
+    /// Возвращает компактный лейбл для X-оси по гранулярности.
+    /// .month   → "ЯНВ" / "ЯНВ'25"
+    /// .week    → "W07" / "W07'25"
+    /// .quarter → "Q1" / "Q1'25"
+    /// .year    → "2025" (полный год)
+    /// .allTime → оригинальный лейбл
+    private func compactPeriodLabel(
+        point: PeriodDataPoint,
+        calendar: Calendar,
+        currentYear: Int,
+        formatter: DateFormatter
+    ) -> String {
+        let pointYear = calendar.component(.year, from: point.periodStart)
+        let shortYear = String(format: "%02d", pointYear % 100)
+
+        switch point.granularity {
+        case .month:
+            let month = String(formatter.string(from: point.periodStart).uppercased().prefix(3))
+            return pointYear == currentYear ? month : "\(month)'\(shortYear)"
+
+        case .week:
+            let weekNum = calendar.component(.weekOfYear, from: point.periodStart)
+            return pointYear == currentYear
+                ? String(format: "W%02d", weekNum)
+                : String(format: "W%02d'\(shortYear)", weekNum)
+
+        case .quarter:
+            let month = calendar.component(.month, from: point.periodStart)
+            let quarter = (month - 1) / 3 + 1
+            return pointYear == currentYear ? "Q\(quarter)" : "Q\(quarter)'\(shortYear)"
+
+        case .year:
+            return "\(pointYear)"
+
+        case .allTime:
+            return point.label
+        }
     }
 }
 
