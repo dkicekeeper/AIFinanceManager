@@ -15,25 +15,17 @@ struct SubscriptionDetailView: View {
     let subscription: RecurringSeries
     @State private var showingEditView = false
     @State private var showingDeleteConfirmation = false
+    @State private var cachedTransactions: [Transaction] = []
     @Environment(\.dismiss) var dismiss
-    
-    // ✨ Phase 9: Use TransactionStore.getPlannedTransactions()
-    private var subscriptionTransactions: [Transaction] {
-        // Get all existing transactions for this subscription from store
-        let existingTransactions = transactionStore.transactions.filter {
+
+    private func refreshTransactions() async {
+        let existing = transactionStore.transactions.filter {
             $0.recurringSeriesId == subscription.id
         }
-        
-        // Get future planned transactions (next 6 months)
-        let plannedTransactions = transactionStore.getPlannedTransactions(for: subscription.id, horizon: 6)
-        
-        // Combine and sort by date (ascending - nearest first, furthest last)
-        let allTransactions = (existingTransactions + plannedTransactions)
-            .sorted { $0.date < $1.date } // Nearest first (ascending order)
-        
-        return allTransactions
+        let planned = transactionStore.getPlannedTransactions(for: subscription.id, horizon: 6)
+        cachedTransactions = (existing + planned).sorted { $0.date < $1.date }
     }
-    
+
     private var nextChargeDate: Date? {
         transactionStore.nextChargeDate(for: subscription.id)
     }
@@ -46,17 +38,16 @@ struct SubscriptionDetailView: View {
                     .screenPadding()
                 
                 // Transactions history
-                if !subscriptionTransactions.isEmpty {
+                if !cachedTransactions.isEmpty {
                     transactionsSection
                         .screenPadding()
                 }
             }
             .padding(.vertical, AppSpacing.md)
         }
-//        .navigationTitle(subscription.description)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
                         showingEditView = true
@@ -98,16 +89,7 @@ struct SubscriptionDetailView: View {
             SubscriptionEditView(
                 transactionStore: transactionStore,
                 transactionsViewModel: transactionsViewModel,
-                subscription: subscription,
-                onSave: { updatedSubscription in
-                    Task {
-                        try await transactionStore.updateSeries(updatedSubscription)
-                        showingEditView = false
-                    }
-                },
-                onCancel: {
-                    showingEditView = false
-                }
+                subscription: subscription
             )
         }
         .alert(String(localized: "subscriptions.deleteConfirmTitle"), isPresented: $showingDeleteConfirmation) {
@@ -128,6 +110,12 @@ struct SubscriptionDetailView: View {
             }
         } message: {
             Text(String(localized: "subscriptions.deleteConfirmMessage"))
+        }
+        .task(id: subscription.id) {
+            await refreshTransactions()
+        }
+        .onChange(of: transactionStore.transactions.count) { _, _ in
+            Task { await refreshTransactions() }
         }
     }
     
@@ -228,7 +216,7 @@ struct SubscriptionDetailView: View {
                 .font(AppTypography.h4)
 
             VStack(spacing: AppSpacing.sm) {
-                ForEach(subscriptionTransactions) { transaction in
+                ForEach(cachedTransactions) { transaction in
                     let isPlanned = transaction.id.hasPrefix("planned-")
 
                     TransactionRowContent(
