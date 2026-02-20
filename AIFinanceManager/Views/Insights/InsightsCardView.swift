@@ -12,40 +12,46 @@ struct InsightsCardView: View {
     let insight: Insight
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
             // Text content inside the glass card (padded, not clipped by chart)
-            VStack(alignment: .leading, spacing: AppSpacing.md) {
-                // Header: icon + title + severity badge
-                HStack(alignment: .top, spacing: AppSpacing.sm) {
-                    Image(systemName: insight.category.icon)
-                        .font(.system(size: AppIconSize.sm))
-                        .foregroundStyle(insight.severity.color)
+            // Header: icon + title + severity badge
+            HStack(alignment: .top, spacing: AppSpacing.sm) {
+                Image(systemName: insight.category.icon)
+                    .font(.system(size: AppIconSize.md))
+                    .foregroundStyle(insight.severity.color)
+                
+                Text(insight.title)
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppColors.textSecondary)
+                
+                Spacer()
+                
+                // Mini chart — rendered OUTSIDE the clip region to avoid being clipped
+                miniChart
+                
+            }
+            
+            Text(insight.subtitle)
+                .font(AppTypography.h4)
+                .foregroundStyle(AppColors.textPrimary)
+                .lineLimit(1)
+  
+            HStack(alignment: .center, spacing: AppSpacing.sm) {
+                
 
-                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                        Text(insight.title)
-                            .font(AppTypography.captionEmphasis)
-                            .foregroundStyle(AppColors.textSecondary)
-
-                        Text(insight.subtitle)
-                            .font(AppTypography.h4)
-                            .foregroundStyle(AppColors.textPrimary)
-                            .lineLimit(1)
-                    }
-
-                    Spacer()
-
-                    // Trend indicator
-                    if let trend = insight.trend {
-                        trendBadge(trend)
-                    }
-                }
-
+                
                 // Large metric
                 Text(insight.metric.formattedValue)
                     .font(AppTypography.h2)
                     .fontWeight(.bold)
                     .foregroundStyle(AppColors.textPrimary)
-
+                
+                //                    Spacer()
+                
+                // Trend indicator
+                if let trend = insight.trend {
+                    trendBadge(trend)
+                }
                 if let unit = insight.metric.unit {
                     Text(unit)
                         .font(AppTypography.caption)
@@ -53,15 +59,9 @@ struct InsightsCardView: View {
                         .padding(.top, -AppSpacing.sm)
                 }
             }
-            .padding(AppSpacing.lg)
-
-            // Mini chart — rendered OUTSIDE the clip region to avoid being clipped
-            miniChart
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.bottom, AppSpacing.lg)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardBackground(radius: AppRadius.pill)
+        .glassCardStyle(radius: AppRadius.pill)
     }
 
     // MARK: - Trend Badge
