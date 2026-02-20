@@ -24,12 +24,12 @@ struct NotificationPermissionView: View {
                 .padding(.bottom, AppSpacing.md)
 
             // Title
-            Text("Включить напоминания?")
+            Text(String(localized: "notification.permission.title"))
                 .font(AppTypography.h2)
                 .multilineTextAlignment(.center)
 
             // Description
-            Text("Получайте уведомления о предстоящих списаниях по подпискам, чтобы не пропустить важные платежи")
+            Text(String(localized: "notification.permission.description"))
                 .font(AppTypography.body)
                 .foregroundStyle(AppColors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -46,7 +46,7 @@ struct NotificationPermissionView: View {
                         dismiss()
                     }
                 } label: {
-                    Text("Разрешить уведомления")
+                    Text(String(localized: "notification.permission.allow"))
                         .font(AppTypography.body)
                         .bold()
                         .foregroundStyle(.white)
@@ -61,7 +61,7 @@ struct NotificationPermissionView: View {
                     onSkip()
                     dismiss()
                 } label: {
-                    Text("Не сейчас")
+                    Text(String(localized: "notification.permission.skip"))
                         .font(AppTypography.body)
                         .foregroundStyle(AppColors.textSecondary)
                 }
