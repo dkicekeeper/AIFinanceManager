@@ -1,12 +1,30 @@
 # AIFinanceManager - Project Guide for Claude
 
+## Quick Start
+
+```bash
+# Open project (requires Xcode 26+ beta)
+open AIFinanceManager.xcodeproj
+
+# Build via CLI
+xcodebuild build \
+  -scheme AIFinanceManager \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+
+# Run unit tests
+xcodebuild test \
+  -scheme AIFinanceManager \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -only-testing:AIFinanceManagerTests
+```
+
 ## Project Overview
 
 AIFinanceManager is a native iOS finance management application built with SwiftUI and CoreData. The app helps users track accounts, transactions, budgets, deposits, and recurring payments with a modern, user-friendly interface.
 
 **Tech Stack:**
 - SwiftUI (iOS 26+ with Liquid Glass adoption)
-- Swift 6.0+ with strict concurrency
+- Swift 5.0 (project setting), targeting Swift 6 patterns; `SWIFT_STRICT_CONCURRENCY = targeted`
 - CoreData for persistence
 - Observation framework (@Observable)
 - MVVM + Coordinator architecture
@@ -942,7 +960,14 @@ context.perform {
 
 ---
 
+## Reference Docs
+
+The `docs/` directory contains 200+ historical analysis and implementation docs from past sessions.
+Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `docs/COMPONENT_INVENTORY.md`
+
+---
+
 **Last Updated**: 2026-02-20
-**Project Status**: Active development - Swift 6 compliant, Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates
-**iOS Target**: 26.0+
-**Swift Version**: 6.0+ (strict concurrency mode)
+**Project Status**: Active development - Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates
+**iOS Target**: 26.0+ (requires Xcode 26+ beta)
+**Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`
