@@ -25,6 +25,7 @@ struct SubscriptionCalendarView: View {
         let f = DateFormatter()
         f.dateFormat = "LLLL yyyy"
         f.locale = .current
+        f.timeZone = TimeZone.current
         return f
     }()
 
@@ -257,7 +258,8 @@ struct SubscriptionCalendarView: View {
         for day in 1...range.count {
             if let date = calendar.date(byAdding: .day, value: day - 1, to: firstDayOfMonth) {
                 let comps = calendar.dateComponents([.year, .month, .day], from: date)
-                let id = "\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)"
+                guard let year = comps.year, let month = comps.month, let day = comps.day else { continue }
+                let id = "\(year)-\(month)-\(day)"
                 days.append(CalendarDay(id: id, date: date))
             }
         }
