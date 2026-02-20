@@ -7,6 +7,11 @@
 
 import SwiftUI
 
+private struct CalendarDay: Identifiable {
+    let id: String
+    let date: Date?
+}
+
 struct SubscriptionCalendarView: View {
     let subscriptions: [RecurringSeries]
     let baseCurrency: String
@@ -15,6 +20,13 @@ struct SubscriptionCalendarView: View {
     private let calendar = Calendar.current
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
+
+    private static let monthYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "LLLL yyyy"
+        f.locale = .current
+        return f
+    }()
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
@@ -46,7 +58,6 @@ struct SubscriptionCalendarView: View {
                 .animation(.easeInOut(duration: AppAnimation.slow), value: currentMonthIndex)
             }
             .frame(height: calculateCalendarHeight())
-//            .animation(.spring(response: 0.5, dampingFraction: 0.65), value: calculateCalendarHeight())
         }
         .glassCardStyle()
         .task {
@@ -106,9 +117,9 @@ struct SubscriptionCalendarView: View {
     private func monthGrid(for monthStart: Date, availableHeight: CGFloat) -> some View {
         // Days grid only (weekday headers are now static)
         LazyVGrid(columns: columns, spacing: AppSpacing.xs) {
-            let days = daysInMonth(for: monthStart)
-            ForEach(0..<days.count, id: \.self) { index in
-                if let date = days[index] {
+            let days = calendarDays(for: monthStart)
+            ForEach(days) { day in
+                if let date = day.date {
                     dateCell(for: date)
                 } else {
                     Color.clear
@@ -172,7 +183,7 @@ struct SubscriptionCalendarView: View {
     private func calculateCalendarHeight() -> CGFloat {
         // Calculate number of weeks needed for the current month
         let currentMonth = allMonths[currentMonthIndex]
-        let days = daysInMonth(for: currentMonth)
+        let days = calendarDays(for: currentMonth)
         let weeksCount = ceil(Double(days.count) / 7.0)
 
         // Cell height (60) * weeks + spacing between rows
@@ -228,35 +239,38 @@ struct SubscriptionCalendarView: View {
         return rotated
     }
 
-    private func daysInMonth(for monthStart: Date) -> [Date?] {
+    private func calendarDays(for monthStart: Date) -> [CalendarDay] {
         guard let range = calendar.range(of: .day, in: .month, for: monthStart),
-              let firstDayOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthStart)) else {
+              let firstDayOfMonth = calendar.date(
+                  from: calendar.dateComponents([.year, .month], from: monthStart)
+              ) else {
             return []
         }
 
         let weekdayOfFirst = calendar.component(.weekday, from: firstDayOfMonth)
         let firstDayIndex = (weekdayOfFirst - calendar.firstWeekday + 7) % 7
 
-        var days: [Date?] = Array(repeating: nil, count: firstDayIndex)
+        var days: [CalendarDay] = (0..<firstDayIndex).map { i in
+            CalendarDay(id: "empty-\(i)", date: nil)
+        }
 
         for day in 1...range.count {
             if let date = calendar.date(byAdding: .day, value: day - 1, to: firstDayOfMonth) {
-                days.append(date)
+                let comps = calendar.dateComponents([.year, .month, .day], from: date)
+                let id = "\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)"
+                days.append(CalendarDay(id: id, date: date))
             }
         }
-
         return days
     }
 
     private func formatMonthYear(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "LLLL yyyy"
-        formatter.locale = Locale.current
-        return formatter.string(from: date).capitalized
+        Self.monthYearFormatter.string(from: date).capitalized
     }
 
     private func subscriptionsOnDate(_ date: Date) -> [RecurringSeries] {
-        let dayInterval = DateInterval(start: date, end: calendar.date(byAdding: .day, value: 1, to: date)!.addingTimeInterval(-1))
+        guard let endDate = calendar.date(byAdding: .day, value: 1, to: date) else { return [] }
+        let dayInterval = DateInterval(start: date, end: endDate.addingTimeInterval(-1))
         return subscriptions.filter { sub in
             !sub.occurrences(in: dayInterval).isEmpty
         }
