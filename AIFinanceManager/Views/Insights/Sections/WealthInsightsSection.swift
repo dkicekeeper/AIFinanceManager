@@ -19,23 +19,35 @@ struct WealthInsightsSection: View {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
                 sectionHeader
 
-                // Cumulative balance (wealth) chart
-                if periodDataPoints.count >= 2 {
-                    WealthChart(
-                        dataPoints: periodDataPoints,
-                        currency: currency,
-                        granularity: granularity,
-                        compact: false
-                    )
-                    .padding(.horizontal, AppSpacing.lg)
-                    .screenPadding()
-                }
-
-                ForEach(insights) { insight in
-                    NavigationLink(destination: InsightDetailView(insight: insight, currency: currency)) {
-                        InsightsCardView(insight: insight)
+                if periodDataPoints.count >= 2, let firstInsight = insights.first {
+                    // First card — WealthChart embedded inside InsightsCardView
+                    NavigationLink(destination: InsightDetailView(insight: firstInsight, currency: currency)) {
+                        InsightsCardView(insight: firstInsight) {
+                            WealthChart(
+                                dataPoints: periodDataPoints,
+                                currency: currency,
+                                granularity: granularity,
+                                compact: false
+                            )
+                        }
                     }
                     .buttonStyle(.plain)
+
+                    // Remaining cards — standard
+                    ForEach(insights.dropFirst()) { insight in
+                        NavigationLink(destination: InsightDetailView(insight: insight, currency: currency)) {
+                            InsightsCardView(insight: insight)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    // No period data — all cards rendered without bottom chart
+                    ForEach(insights) { insight in
+                        NavigationLink(destination: InsightDetailView(insight: insight, currency: currency)) {
+                            InsightsCardView(insight: insight)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
