@@ -696,6 +696,7 @@
 "insights.all" = "Все";
 "insights.spending" = "Расходы";
 "insights.income" = "Доходы";
+"insights.expenses" = "Расходы";
 "insights.budget" = "Бюджет";
 "insights.recurring" = "Регулярные";
 "insights.cashFlow" = "Денежный поток";

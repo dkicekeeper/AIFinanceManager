@@ -60,7 +60,7 @@ struct InsightsSummaryDetailView: View {
 
     private var periodTotalsSection: some View {
         VStack(spacing: AppSpacing.md) {
-            HStack(spacing: AppSpacing.lg) {
+            HStack(alignment: .top, spacing: AppSpacing.xs) {
                 totalItem(
                     title: String(localized: "insights.income"),
                     amount: totalIncome,
@@ -80,8 +80,7 @@ struct InsightsSummaryDetailView: View {
                 )
             }
         }
-        .padding(AppSpacing.lg)
-        .cardBackground(radius: AppRadius.pill)
+        .glassCardStyle(radius: AppRadius.pill)
         .screenPadding()
     }
 
@@ -148,12 +147,22 @@ struct InsightsSummaryDetailView: View {
                             color: point.netFlow >= 0 ? AppColors.success : AppColors.destructive
                         )
                         HStack(spacing: AppSpacing.xs) {
-                            Text("+\(Formatting.formatCurrencySmart(point.income, currency: currency))")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.success)
-                            Text("-\(Formatting.formatCurrencySmart(point.expenses, currency: currency))")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.destructive)
+                            FormattedAmountText(
+                                amount: point.income,
+                                currency: currency,
+                                prefix: "+",
+                                fontSize: AppTypography.caption,
+                                fontWeight: .regular,
+                                color: AppColors.success
+                            )
+                            FormattedAmountText(
+                                amount: point.expenses,
+                                currency: currency,
+                                prefix: "-",
+                                fontSize: AppTypography.caption,
+                                fontWeight: .regular,
+                                color: AppColors.destructive
+                            )
                         }
                     }
                 }

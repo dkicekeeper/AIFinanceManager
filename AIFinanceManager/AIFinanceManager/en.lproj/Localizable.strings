@@ -696,6 +696,7 @@
 "insights.all" = "All";
 "insights.spending" = "Spending";
 "insights.income" = "Income";
+"insights.expenses" = "Expenses";
 "insights.budget" = "Budget";
 "insights.recurring" = "Recurring";
 "insights.cashFlow" = "Cash Flow";

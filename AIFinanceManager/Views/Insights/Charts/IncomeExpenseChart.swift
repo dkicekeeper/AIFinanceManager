@@ -149,6 +149,7 @@ struct PeriodIncomeExpenseChart: View {
             .foregroundStyle(AppColors.destructive.opacity(0.8))
             .position(by: .value("Type", "Expenses"))
         }
+        
         .chartXAxis {
             if compact {
                 AxisMarks { _ in }

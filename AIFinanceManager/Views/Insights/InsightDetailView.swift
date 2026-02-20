@@ -153,15 +153,23 @@ struct InsightDetailView: View {
                     }
 
                     HStack {
-                        Text(Formatting.formatCurrencySmart(item.spent, currency: currency))
-                            .font(AppTypography.caption)
-                            .foregroundStyle(AppColors.textSecondary)
+                        FormattedAmountText(
+                            amount: item.spent,
+                            currency: currency,
+                            fontSize: AppTypography.caption,
+                            fontWeight: .regular,
+                            color: AppColors.textSecondary
+                        )
                         Text("/")
                             .font(AppTypography.caption)
                             .foregroundStyle(AppColors.textTertiary)
-                        Text(Formatting.formatCurrencySmart(item.budgetAmount, currency: currency))
-                            .font(AppTypography.caption)
-                            .foregroundStyle(AppColors.textSecondary)
+                        FormattedAmountText(
+                            amount: item.budgetAmount,
+                            currency: currency,
+                            fontSize: AppTypography.caption,
+                            fontWeight: .regular,
+                            color: AppColors.textSecondary
+                        )
                         Spacer()
                         if item.daysRemaining > 0 {
                             Text(String(format: String(localized: "insights.daysLeft"), item.daysRemaining))
@@ -248,9 +256,13 @@ struct InsightDetailView: View {
 
             HStack(spacing: AppSpacing.xs) {
                 VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                    Text(Formatting.formatCurrencySmart(item.amount, currency: currency))
-                        .font(AppTypography.body)
-                        .fontWeight(.semibold)
+                    FormattedAmountText(
+                        amount: item.amount,
+                        currency: currency,
+                        fontSize: AppTypography.body,
+                        fontWeight: .semibold,
+                        color: AppColors.textPrimary
+                    )
                     Text(String(format: "%.1f%%", item.percentage))
                         .font(AppTypography.caption)
                         .foregroundStyle(AppColors.textSecondary)
@@ -306,9 +318,13 @@ struct InsightDetailView: View {
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                        Text(Formatting.formatCurrencySmart(item.monthlyEquivalent, currency: currency))
-                            .font(AppTypography.body)
-                            .fontWeight(.semibold)
+                        FormattedAmountText(
+                            amount: item.monthlyEquivalent,
+                            currency: currency,
+                            fontSize: AppTypography.body,
+                            fontWeight: .semibold,
+                            color: AppColors.textPrimary
+                        )
                         Text(String(localized: "insights.perMonth"))
                             .font(AppTypography.caption)
                             .foregroundStyle(AppColors.textSecondary)
@@ -345,12 +361,22 @@ struct InsightDetailView: View {
                             color: point.netFlow >= 0 ? AppColors.success : AppColors.destructive
                         )
                         HStack(spacing: AppSpacing.xs) {
-                            Text("+\(Formatting.formatCurrencySmart(point.income, currency: currency))")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.success)
-                            Text("-\(Formatting.formatCurrencySmart(point.expenses, currency: currency))")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.destructive)
+                            FormattedAmountText(
+                                amount: point.income,
+                                currency: currency,
+                                prefix: "+",
+                                fontSize: AppTypography.caption,
+                                fontWeight: .regular,
+                                color: AppColors.success
+                            )
+                            FormattedAmountText(
+                                amount: point.expenses,
+                                currency: currency,
+                                prefix: "-",
+                                fontSize: AppTypography.caption,
+                                fontWeight: .regular,
+                                color: AppColors.destructive
+                            )
                         }
                     }
                 }

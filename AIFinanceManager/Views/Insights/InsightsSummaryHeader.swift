@@ -44,7 +44,6 @@ struct InsightsSummaryHeader: View {
                     color: netFlow >= 0 ? AppColors.success : AppColors.destructive
                 )
             }
-            .padding([.horizontal, .top], AppSpacing.lg)
 
             // Mini trend chart.
             // Using cardBackground (not glassCardStyle) so clipShape doesn't cut Charts layers.
@@ -55,10 +54,9 @@ struct InsightsSummaryHeader: View {
                     granularity: periodDataPoints.first?.granularity ?? .month,
                     compact: true
                 )
-                .padding([.horizontal, .bottom], AppSpacing.lg)
             }
         }
-        .cardBackground(radius: AppRadius.pill)
+        .glassCardStyle(radius: AppRadius.pill)
         .onAppear {
             Self.logger.debug("📊 [SummaryHeader] RENDER — income=\(String(format: "%.0f", totalIncome), privacy: .public), expenses=\(String(format: "%.0f", totalExpenses), privacy: .public), net=\(String(format: "%.0f", netFlow), privacy: .public) \(currency, privacy: .public), pts=\(periodDataPoints.count)")
         }

@@ -63,9 +63,13 @@ struct CategoryDeepDiveView: View {
                     .foregroundStyle(AppColors.textPrimary)
 
                 let totalAmount = subcategories.reduce(0.0) { $0 + $1.amount }
-                Text(Formatting.formatCurrencySmart(totalAmount, currency: currency))
-                    .font(AppTypography.h3)
-                    .foregroundStyle(color)
+                FormattedAmountText(
+                    amount: totalAmount,
+                    currency: currency,
+                    fontSize: AppTypography.h3,
+                    fontWeight: .semibold,
+                    color: color
+                )
             }
 
             Spacer()
@@ -138,9 +142,13 @@ struct CategoryDeepDiveView: View {
                     Spacer()
 
                     VStack(alignment: .trailing) {
-                        Text(Formatting.formatCurrencySmart(item.amount, currency: currency))
-                            .font(AppTypography.body)
-                            .fontWeight(.semibold)
+                        FormattedAmountText(
+                            amount: item.amount,
+                            currency: currency,
+                            fontSize: AppTypography.body,
+                            fontWeight: .semibold,
+                            color: AppColors.textPrimary
+                        )
                         Text(String(format: "%.1f%%", item.percentage))
                             .font(AppTypography.caption)
                             .foregroundStyle(AppColors.textSecondary)
@@ -170,9 +178,13 @@ struct CategoryDeepDiveView: View {
                         Text(current.label)
                             .font(AppTypography.bodySmall)
                             .foregroundStyle(AppColors.textSecondary)
-                        Text(Formatting.formatCurrencySmart(current.expenses, currency: currency))
-                            .font(AppTypography.h3)
-                            .fontWeight(.bold)
+                        FormattedAmountText(
+                            amount: current.expenses,
+                            currency: currency,
+                            fontSize: AppTypography.h3,
+                            fontWeight: .bold,
+                            color: AppColors.textPrimary
+                        )
                     }
 
                     Spacer()
@@ -191,9 +203,13 @@ struct CategoryDeepDiveView: View {
                         Text(previous.label)
                             .font(AppTypography.bodySmall)
                             .foregroundStyle(AppColors.textSecondary)
-                        Text(Formatting.formatCurrencySmart(previous.expenses, currency: currency))
-                            .font(AppTypography.h3)
-                            .foregroundStyle(AppColors.textSecondary)
+                        FormattedAmountText(
+                            amount: previous.expenses,
+                            currency: currency,
+                            fontSize: AppTypography.h3,
+                            fontWeight: .semibold,
+                            color: AppColors.textSecondary
+                        )
                     }
                 }
             }
@@ -251,9 +267,13 @@ private struct CategoryDeepDivePreview: View {
                             .font(AppTypography.h2)
                             .foregroundStyle(AppColors.textPrimary)
                         let total = subcategories.reduce(0.0) { $0 + $1.amount }
-                        Text(Formatting.formatCurrencySmart(total, currency: "KZT"))
-                            .font(AppTypography.h3)
-                            .foregroundStyle(.orange)
+                        FormattedAmountText(
+                            amount: total,
+                            currency: "KZT",
+                            fontSize: AppTypography.h3,
+                            fontWeight: .semibold,
+                            color: .orange
+                        )
                     }
                     Spacer()
                 }
@@ -283,8 +303,13 @@ private struct CategoryDeepDivePreview: View {
                             Text(item.name).font(AppTypography.body)
                             Spacer()
                             VStack(alignment: .trailing) {
-                                Text(Formatting.formatCurrencySmart(item.amount, currency: "KZT"))
-                                    .font(AppTypography.body).fontWeight(.semibold)
+                                FormattedAmountText(
+                                    amount: item.amount,
+                                    currency: "KZT",
+                                    fontSize: AppTypography.body,
+                                    fontWeight: .semibold,
+                                    color: AppColors.textPrimary
+                                )
                                 Text(String(format: "%.1f%%", item.percentage))
                                     .font(AppTypography.caption).foregroundStyle(AppColors.textSecondary)
                             }

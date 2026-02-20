@@ -27,18 +27,18 @@ struct InsightsCardView: View {
                 Spacer()
                 
                 // Mini chart — rendered OUTSIDE the clip region to avoid being clipped
-                miniChart
-                
+                    .overlay(alignment: .topTrailing) {
+                        miniChart
+                            .frame(width: 120, height: 100)
+                    }
             }
             
             Text(insight.subtitle)
                 .font(AppTypography.h4)
                 .foregroundStyle(AppColors.textPrimary)
                 .lineLimit(1)
-  
-            HStack(alignment: .center, spacing: AppSpacing.sm) {
-                
-
+            
+            HStack(spacing: AppSpacing.sm) {
                 
                 // Large metric
                 Text(insight.metric.formattedValue)
@@ -46,17 +46,14 @@ struct InsightsCardView: View {
                     .fontWeight(.bold)
                     .foregroundStyle(AppColors.textPrimary)
                 
-                //                    Spacer()
-                
                 // Trend indicator
                 if let trend = insight.trend {
                     trendBadge(trend)
                 }
                 if let unit = insight.metric.unit {
                     Text(unit)
-                        .font(AppTypography.caption)
+                        .font(AppTypography.bodyLarge)
                         .foregroundStyle(AppColors.textSecondary)
-                        .padding(.top, -AppSpacing.sm)
                 }
             }
         }
