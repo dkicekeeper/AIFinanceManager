@@ -20,22 +20,35 @@ struct CashFlowInsightsSection: View {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
                 sectionHeader
 
-                // Period chart — shown when period data points are available
-                if periodDataPoints.count >= 2 {
-                    PeriodCashFlowChart(
-                        dataPoints: periodDataPoints,
-                        currency: currency,
-                        granularity: granularity,
-                        compact: false
-                    )
-                    .screenPadding()
-                }
-
-                ForEach(insights) { insight in
-                    NavigationLink(destination: InsightDetailView(insight: insight, currency: currency)) {
-                        InsightsCardView(insight: insight)
+                if periodDataPoints.count >= 2, let firstInsight = insights.first {
+                    // First card — PeriodCashFlowChart embedded inside InsightsCardView
+                    NavigationLink(destination: InsightDetailView(insight: firstInsight, currency: currency)) {
+                        InsightsCardView(insight: firstInsight) {
+                            PeriodCashFlowChart(
+                                dataPoints: periodDataPoints,
+                                currency: currency,
+                                granularity: granularity,
+                                compact: false
+                            )
+                        }
                     }
                     .buttonStyle(.plain)
+
+                    // Remaining cards — standard (mini chart overlay preserved)
+                    ForEach(insights.dropFirst()) { insight in
+                        NavigationLink(destination: InsightDetailView(insight: insight, currency: currency)) {
+                            InsightsCardView(insight: insight)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else {
+                    // No period data available — all cards rendered without bottom chart
+                    ForEach(insights) { insight in
+                        NavigationLink(destination: InsightDetailView(insight: insight, currency: currency)) {
+                            InsightsCardView(insight: insight)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
