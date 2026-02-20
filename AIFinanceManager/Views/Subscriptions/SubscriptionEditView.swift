@@ -13,8 +13,8 @@ struct SubscriptionEditView: View {
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
     let subscription: RecurringSeries?
-    let onSave: (RecurringSeries) -> Void
-    let onCancel: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
 
     @State private var description: String = ""
     @State private var amountText: String = ""
@@ -27,8 +27,9 @@ struct SubscriptionEditView: View {
     @State private var reminder: ReminderOption = .none
     @State private var showingNotificationPermission = false
     @State private var validationError: String? = nil
+    @State private var availableCategories: [String] = []
 
-    private var availableCategories: [String] {
+    private func computeAvailableCategories() -> [String] {
         var categories: Set<String> = []
         for customCategory in transactionsViewModel.customCategories where customCategory.type == .expense {
             categories.insert(customCategory.name)
@@ -41,7 +42,10 @@ struct SubscriptionEditView: View {
         if categories.isEmpty {
             categories.insert("Uncategorized")
         }
-        return Array(categories).sortedByCustomOrder(customCategories: transactionsViewModel.customCategories, type: .expense)
+        return Array(categories).sortedByCustomOrder(
+            customCategories: transactionsViewModel.customCategories,
+            type: .expense
+        )
     }
 
     var body: some View {
@@ -52,7 +56,7 @@ struct SubscriptionEditView: View {
             isSaveDisabled: description.isEmpty || amountText.isEmpty,
             useScrollView: true,
             onSave: saveSubscription,
-            onCancel: onCancel
+            onCancel: { dismiss() }
         ) {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
@@ -75,15 +79,17 @@ struct SubscriptionEditView: View {
                     }
                     
                     // Account Selector
-                    AccountSelectorView(
-                        accounts: transactionsViewModel.accounts,
-                        selectedAccountId: $selectedAccountId,
-                        emptyStateMessage: transactionsViewModel.accounts.isEmpty ?
-                        String(localized: "account.noAccountsAvailable") : nil,
-                        warningMessage: selectedAccountId == nil ?
-                        String(localized: "account.selectAccount") : nil,
-                        balanceCoordinator: transactionsViewModel.balanceCoordinator!
-                    )
+                    if let balanceCoordinator = transactionsViewModel.balanceCoordinator {
+                        AccountSelectorView(
+                            accounts: transactionsViewModel.accounts,
+                            selectedAccountId: $selectedAccountId,
+                            emptyStateMessage: transactionsViewModel.accounts.isEmpty ?
+                                String(localized: "account.noAccountsAvailable") : nil,
+                            warningMessage: selectedAccountId == nil ?
+                                String(localized: "account.selectAccount") : nil,
+                            balanceCoordinator: balanceCoordinator
+                        )
+                    }
                     
                     // Category Selector
                     CategorySelectorView(
@@ -126,6 +132,7 @@ struct SubscriptionEditView: View {
             }
         }
         .onAppear {
+            availableCategories = computeAvailableCategories()
             if let subscription = subscription {
                 description = subscription.description
                 amountText = NSDecimalNumber(decimal: subscription.amount).stringValue
@@ -234,8 +241,22 @@ struct SubscriptionEditView: View {
             status: subscription?.status ?? .active
         )
 
-        HapticManager.success()
-        onSave(series)
+        Task {
+            do {
+                if subscription == nil {
+                    try await transactionStore.createSeries(series)
+                } else {
+                    try await transactionStore.updateSeries(series)
+                }
+                HapticManager.success()
+                dismiss()
+            } catch {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    validationError = error.localizedDescription
+                }
+                HapticManager.error()
+            }
+        }
     }
 }
 
@@ -244,8 +265,6 @@ struct SubscriptionEditView: View {
     SubscriptionEditView(
         transactionStore: coordinator.transactionStore,
         transactionsViewModel: coordinator.transactionsViewModel,
-        subscription: nil,
-        onSave: { _ in },
-        onCancel: {}
+        subscription: nil
     )
 }
