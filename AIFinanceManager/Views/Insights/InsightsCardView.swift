@@ -11,21 +11,22 @@ import SwiftUI
 struct InsightsCardView<BottomChart: View>: View {
     let insight: Insight
 
-    private let hasBottomChart: Bool
     @ViewBuilder private let bottomChartContent: () -> BottomChart
 
     // MARK: - Init (backward compatible — no embedded chart)
     init(insight: Insight) where BottomChart == EmptyView {
         self.insight = insight
-        self.hasBottomChart = false
         self.bottomChartContent = { EmptyView() }
     }
 
     // MARK: - Init (with embedded full-size chart)
     init(insight: Insight, @ViewBuilder bottomChart: @escaping () -> BottomChart) {
         self.insight = insight
-        self.hasBottomChart = true
         self.bottomChartContent = bottomChart
+    }
+
+    private var hasBottomChart: Bool {
+        BottomChart.self != EmptyView.self
     }
 
     var body: some View {
@@ -41,14 +42,14 @@ struct InsightsCardView<BottomChart: View>: View {
                     .foregroundStyle(AppColors.textSecondary)
 
                 Spacer()
-                    // Mini chart rendered OUTSIDE clip region to avoid being clipped.
-                    // Hidden when a full-size bottom chart is injected.
-                    .overlay(alignment: .topTrailing) {
-                        if !hasBottomChart {
-                            miniChart
-                                .frame(width: 120, height: 100)
-                        }
-                    }
+            }
+            // Mini chart rendered OUTSIDE clip region to avoid being clipped.
+            // Hidden when a full-size bottom chart is injected.
+            .overlay(alignment: .topTrailing) {
+                if !hasBottomChart {
+                    miniChart
+                        .frame(width: 120, height: 100)
+                }
             }
 
             Text(insight.subtitle)
