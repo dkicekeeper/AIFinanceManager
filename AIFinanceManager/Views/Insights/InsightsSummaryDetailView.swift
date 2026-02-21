@@ -112,7 +112,7 @@ struct InsightsSummaryDetailView: View {
                 dataPoints: periodDataPoints,
                 currency: currency,
                 granularity: granularity,
-                compact: false
+                mode: .full
             )
             .padding([.horizontal, .bottom], AppSpacing.lg)
         }

@@ -285,7 +285,7 @@ private struct CategoryDeepDivePreview: View {
                         .font(AppTypography.h3)
                         .foregroundStyle(AppColors.textPrimary)
                         .padding([.horizontal, .top], AppSpacing.lg)
-                    SpendingTrendChart(dataPoints: monthlyTrend, currency: "KZT")
+                    SpendingTrendChart(dataPoints: monthlyTrend, currency: "KZT", mode: .full)
                         .padding([.horizontal, .bottom], AppSpacing.lg)
                 }
                 .cardBackground(radius: AppRadius.pill)

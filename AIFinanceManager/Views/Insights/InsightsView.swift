@@ -44,7 +44,8 @@ struct InsightsView: View {
                             totalExpenses: insightsViewModel.totalExpenses,
                             netFlow: insightsViewModel.netFlow,
                             currency: insightsViewModel.baseCurrency,
-                            periodDataPoints: insightsViewModel.periodDataPoints
+                            periodDataPoints: insightsViewModel.periodDataPoints,
+                            healthScore: insightsViewModel.healthScore
                         )
                         .screenPadding()
                         .contentShape(Rectangle())
@@ -175,7 +176,7 @@ struct InsightsView: View {
                     dataPoints: insightsViewModel.periodDataPoints,
                     currency: insightsViewModel.baseCurrency,
                     granularity: insightsViewModel.currentGranularity,
-                    compact: false
+                    mode: .full
                 )
             }
 
@@ -190,7 +191,25 @@ struct InsightsView: View {
                     dataPoints: insightsViewModel.periodDataPoints,
                     currency: insightsViewModel.baseCurrency,
                     granularity: insightsViewModel.currentGranularity,
-                    compact: false
+                    mode: .full
+                )
+            }
+
+            // Phase 24 — Savings section
+            if !insightsViewModel.savingsInsights.isEmpty {
+                InsightsSectionView(
+                    category: .savings,
+                    insights: insightsViewModel.savingsInsights,
+                    currency: insightsViewModel.baseCurrency
+                )
+            }
+
+            // Phase 24 — Forecasting section (populated in Phase 2)
+            if !insightsViewModel.forecastingInsights.isEmpty {
+                InsightsSectionView(
+                    category: .forecasting,
+                    insights: insightsViewModel.forecastingInsights,
+                    currency: insightsViewModel.baseCurrency
                 )
             }
         } else {

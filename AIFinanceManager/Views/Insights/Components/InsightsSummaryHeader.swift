@@ -16,6 +16,8 @@ struct InsightsSummaryHeader: View {
     let currency: String
     /// Phase 23 P7: PeriodDataPoint instead of MonthlyDataPoint — no conversion needed.
     let periodDataPoints: [PeriodDataPoint]
+    /// Phase 24: optional financial health score shown as a compact badge.
+    var healthScore: FinancialHealthScore? = nil
 
     private static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsSummaryHeader")
 
@@ -45,6 +47,11 @@ struct InsightsSummaryHeader: View {
                 )
             }
 
+            // Phase 24 — Health score badge (shown only when score is available)
+            if let hs = healthScore {
+                healthScoreBadge(hs)
+            }
+
             // Mini trend chart.
             // Using cardBackground (not glassCardStyle) so clipShape doesn't cut Charts layers.
             if periodDataPoints.count >= 2 {
@@ -52,13 +59,40 @@ struct InsightsSummaryHeader: View {
                     dataPoints: periodDataPoints,
                     currency: currency,
                     granularity: periodDataPoints.first?.granularity ?? .month,
-                    compact: true
+                    mode: .compact
                 )
             }
         }
         .glassCardStyle(radius: AppRadius.pill)
         .onAppear {
             Self.logger.debug("📊 [SummaryHeader] RENDER — income=\(String(format: "%.0f", totalIncome), privacy: .public), expenses=\(String(format: "%.0f", totalExpenses), privacy: .public), net=\(String(format: "%.0f", netFlow), privacy: .public) \(currency, privacy: .public), pts=\(periodDataPoints.count)")
+        }
+    }
+
+    @ViewBuilder
+    private func healthScoreBadge(_ hs: FinancialHealthScore) -> some View {
+        HStack(spacing: AppSpacing.sm) {
+            Image(systemName: "heart.text.square.fill")
+                .foregroundStyle(hs.gradeColor)
+                .font(AppTypography.body)
+
+            Text(String(localized: "insights.healthScore"))
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textSecondary)
+
+            Spacer()
+
+            Text("\(hs.score)")
+                .font(AppTypography.body.bold())
+                .foregroundStyle(hs.gradeColor)
+
+            Text(hs.grade)
+                .font(AppTypography.caption)
+                .foregroundStyle(hs.gradeColor)
+                .padding(.horizontal, AppSpacing.xs)
+                .padding(.vertical, 2)
+                .background(hs.gradeColor.opacity(0.12))
+                .clipShape(Capsule())
         }
     }
 

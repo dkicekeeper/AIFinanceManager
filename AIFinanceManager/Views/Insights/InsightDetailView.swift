@@ -88,15 +88,16 @@ struct InsightDetailView: View {
         Group {
             switch insight.detailData {
             case .categoryBreakdown(let items):
-                CategoryBreakdownChart(items: items)
+                CategoryBreakdownChart(items: items, mode: .full)
             case .monthlyTrend(let points):
-                CashFlowChart(dataPoints: points, currency: currency)
+                CashFlowChart(dataPoints: points, currency: currency, mode: .full)
             case .periodTrend(let points):
                 // Phase 18 — granularity-aware chart
                 PeriodCashFlowChart(
                     dataPoints: points,
                     currency: currency,
-                    granularity: points.first?.granularity ?? .month
+                    granularity: points.first?.granularity ?? .month,
+                    mode: .full
                 )
             case .budgetProgressList(let items):
                 budgetChartSection(items)
@@ -105,7 +106,8 @@ struct InsightDetailView: View {
             case .dailyTrend(let points):
                 SpendingTrendChart(
                     dataPoints: points.map { MonthlyDataPoint(id: $0.id, month: $0.date, income: 0, expenses: $0.amount, netFlow: -$0.amount, label: $0.label) },
-                    currency: currency
+                    currency: currency,
+                    mode: .full
                 )
             case .accountComparison:
                 EmptyView()

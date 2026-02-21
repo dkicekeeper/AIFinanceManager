@@ -110,9 +110,9 @@ struct InsightsCardView<BottomChart: View>: View {
     private var miniChart: some View {
         switch insight.detailData {
         case .categoryBreakdown(let items):
-            CategoryBreakdownChart(items: items, compact: true)
+            CategoryBreakdownChart(items: items, mode: .compact)
         case .monthlyTrend(let points):
-            CashFlowChart(dataPoints: points, currency: insight.metric.currency ?? "KZT", compact: true)
+            CashFlowChart(dataPoints: points, currency: insight.metric.currency ?? "KZT", mode: .compact)
         case .budgetProgressList(let items):
             if let first = items.first {
                 budgetProgressBar(first)
@@ -124,7 +124,7 @@ struct InsightsCardView<BottomChart: View>: View {
                 SpendingTrendChart(
                     dataPoints: points.map { MonthlyDataPoint(id: $0.id, month: $0.date, income: 0, expenses: $0.amount, netFlow: -$0.amount, label: $0.label) },
                     currency: insight.metric.currency ?? "KZT",
-                    compact: true
+                    mode: .compact
                 )
             }
         case .accountComparison:
@@ -135,7 +135,7 @@ struct InsightsCardView<BottomChart: View>: View {
                 dataPoints: points,
                 currency: insight.metric.currency ?? "KZT",
                 granularity: points.first?.granularity ?? .month,
-                compact: true
+                mode: .compact
             )
             .frame(height: 60)
         case .wealthBreakdown:

@@ -355,7 +355,7 @@ struct WealthChart: View {
     CashFlowChart(
         dataPoints: MonthlyDataPoint.mockTrend(),
         currency: "KZT",
-        compact: true
+        mode: .compact
     )
     .screenPadding()
     .frame(height: 80)
