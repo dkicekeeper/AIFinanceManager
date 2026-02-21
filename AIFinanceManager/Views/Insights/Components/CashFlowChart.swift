@@ -19,7 +19,8 @@ import Charts
 struct CashFlowChart: View {
     let dataPoints: [MonthlyDataPoint]
     let currency: String
-    var compact: Bool = false
+    var mode: ChartDisplayMode = .full
+    private var isCompact: Bool { mode == .compact }
     /// Phase 18: enable horizontal scroll for large datasets
     var scrollable: Bool = false
 
@@ -51,9 +52,9 @@ struct CashFlowChart: View {
             )
             .foregroundStyle(lineColor)
             .interpolationMethod(.catmullRom)
-            .lineStyle(StrokeStyle(lineWidth: compact ? 1.5 : 2))
+            .lineStyle(StrokeStyle(lineWidth: isCompact ? 1.5 : 2))
 
-            if !compact {
+            if !isCompact {
                 PointMark(
                     x: .value("Month", point.month),
                     y: .value("Net Flow", point.netFlow)
@@ -67,7 +68,7 @@ struct CashFlowChart: View {
             }
         }
         .chartXAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks(values: .stride(by: .month)) { _ in
@@ -76,7 +77,7 @@ struct CashFlowChart: View {
             }
         }
         .chartYAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks { value in
@@ -90,11 +91,11 @@ struct CashFlowChart: View {
                 }
             }
         }
-        .frame(height: compact ? 60 : 200)
+        .frame(height: isCompact ? 60 : 200)
     }
 
     var body: some View {
-        if scrollable && !compact && dataPoints.count > 6 {
+        if scrollable && !isCompact && dataPoints.count > 6 {
             // containerRelativeFrame gives the available width without UIScreen dependency
             GeometryReader { proxy in
                 let minWidth = proxy.size.width
@@ -126,10 +127,11 @@ struct PeriodCashFlowChart: View {
     let dataPoints: [PeriodDataPoint]
     let currency: String
     let granularity: InsightGranularity
-    var compact: Bool = false
+    var mode: ChartDisplayMode = .full
+    private var isCompact: Bool { mode == .compact }
 
-    private var pointWidth: CGFloat { compact ? 30 : granularity.pointWidth }
-    private var chartHeight: CGFloat { compact ? 60 : 200 }
+    private var pointWidth: CGFloat { isCompact ? 30 : granularity.pointWidth }
+    private var chartHeight: CGFloat { isCompact ? 60 : 200 }
 
     private func chartWidth(containerWidth: CGFloat) -> CGFloat {
         max(containerWidth, CGFloat(dataPoints.count) * pointWidth)
@@ -144,7 +146,7 @@ struct PeriodCashFlowChart: View {
             let container = proxy.size.width
             ScrollView(.horizontal, showsIndicators: false) {
                 chartContent
-                    .frame(width: compact ? container : chartWidth(containerWidth: container),
+                    .frame(width: isCompact ? container : chartWidth(containerWidth: container),
                            height: chartHeight)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -176,9 +178,9 @@ struct PeriodCashFlowChart: View {
             )
             .foregroundStyle(lineColor)
             .interpolationMethod(.catmullRom)
-            .lineStyle(StrokeStyle(lineWidth: compact ? 1.5 : 2))
+            .lineStyle(StrokeStyle(lineWidth: isCompact ? 1.5 : 2))
 
-            if !compact {
+            if !isCompact {
                 PointMark(
                     x: .value("Period", point.label),
                     y: .value("Net Flow", point.netFlow)
@@ -192,7 +194,7 @@ struct PeriodCashFlowChart: View {
             }
         }
         .chartXAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks { value in
@@ -207,7 +209,7 @@ struct PeriodCashFlowChart: View {
             }
         }
         .chartYAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks { value in
@@ -239,10 +241,11 @@ struct WealthChart: View {
     let dataPoints: [PeriodDataPoint]
     let currency: String
     let granularity: InsightGranularity
-    var compact: Bool = false
+    var mode: ChartDisplayMode = .full
+    private var isCompact: Bool { mode == .compact }
 
-    private var pointWidth: CGFloat { compact ? 30 : granularity.pointWidth }
-    private var chartHeight: CGFloat { compact ? 60 : 200 }
+    private var pointWidth: CGFloat { isCompact ? 30 : granularity.pointWidth }
+    private var chartHeight: CGFloat { isCompact ? 60 : 200 }
 
     private func chartWidth(containerWidth: CGFloat) -> CGFloat {
         max(containerWidth, CGFloat(dataPoints.count) * pointWidth)
@@ -255,7 +258,7 @@ struct WealthChart: View {
             let container = proxy.size.width
             ScrollView(.horizontal, showsIndicators: false) {
                 chartContent
-                    .frame(width: compact ? container : chartWidth(containerWidth: container),
+                    .frame(width: isCompact ? container : chartWidth(containerWidth: container),
                            height: chartHeight)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -286,9 +289,9 @@ struct WealthChart: View {
             )
             .foregroundStyle(lineColor)
             .interpolationMethod(.catmullRom)
-            .lineStyle(StrokeStyle(lineWidth: compact ? 1.5 : 2.5))
+            .lineStyle(StrokeStyle(lineWidth: isCompact ? 1.5 : 2.5))
 
-            if !compact {
+            if !isCompact {
                 PointMark(
                     x: .value("Period", point.label),
                     y: .value("Balance", balance)
@@ -298,7 +301,7 @@ struct WealthChart: View {
             }
         }
         .chartXAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks { value in
@@ -313,7 +316,7 @@ struct WealthChart: View {
             }
         }
         .chartYAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks { value in
