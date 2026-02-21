@@ -19,7 +19,7 @@
 //          periodDataPoints: points, granularity: .month
 //      ) {
 //          PeriodCashFlowChart(dataPoints: points, currency: currency,
-//                              granularity: .month, compact: false)
+//                              granularity: .month, mode: .full)
 //      }
 //
 

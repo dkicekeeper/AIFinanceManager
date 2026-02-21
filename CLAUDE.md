@@ -125,6 +125,23 @@ AIFinanceManager/
 
 ### Recent Refactoring Phases
 
+**Phase 25** (2026-02-22): ChartDisplayMode — Consistent Chart API
+- Replaced `compact: Bool` with `ChartDisplayMode` enum (`.compact` / `.full`) across all 7 chart components
+- New `Utils/ChartDisplayMode.swift` — `showAxes` and `showLegend` computed helpers
+- Each struct uses `private var isCompact: Bool { mode == .compact }` — minimal body diff
+- `InsightsCardView` → `.compact`, all detail/section views → `.full` (explicit at every call site)
+- Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
+- Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
+
+**Phase 24** (2026-02-22): Full Intelligence Suite — New Insights
+- Added 10 new `InsightType` cases and 2 new `InsightCategory` cases (`.savings`, `.forecasting`)
+- **Savings category** (3 insights): savingsRate, emergencyFund, savingsMomentum
+- **Forecasting category** (6 insights): spendingForecast, balanceRunway, yearOverYear, incomeSeasonality, spendingVelocity, incomeSourceBreakdown
+- **Behavioral insights** (2): duplicateSubscriptions (→ `.recurring`), accountDormancy (→ `.wealth`)
+- **FinancialHealthScore**: composite 0-100 score (5 weighted components), shown in `InsightsSummaryHeader` badge
+- `InsightsViewModel` gains `savingsInsights`, `forecastingInsights`, `healthScore` properties
+- Localization: 29 new keys (en + ru)
+
 **Phase 23** (2026-02-20): @ObservationIgnored — Fine-Grained UI Updates
 - **Eliminated unnecessary dependency tracking** in 7 `@Observable` classes
 - **`AppCoordinator`**: 8 зависимостей (ViewModels + Store + Coordinator) помечены `@ObservationIgnored`; observable остаётся только `isInitialized`
