@@ -48,6 +48,22 @@ enum InsightType: String {
     // Phase 18 — Wealth
     case totalWealth      // Current sum of all account balances
     case wealthGrowth     // Monthly/period growth of accumulated balance
+
+    // Phase 24 — Savings
+    case savingsRate       // (income - expenses) / income %
+    case emergencyFund     // months of expenses covered by balance
+    case savingsMomentum   // savings rate trend vs 3-month average
+
+    // Phase 24 — Forecasting
+    case spendingForecast  // projected 30-day spend
+    case balanceRunway     // months until balance runs out at current burn
+    case yearOverYear      // this month vs same month last year
+    case incomeSeasonality // historically strongest/weakest income months
+    case spendingVelocity  // daily spend pace vs last month
+
+    // Phase 24 — Behavioral
+    case duplicateSubscriptions // possible duplicate recurring items
+    case accountDormancy        // accounts idle 30+ days with non-zero balance
 }
 
 // MARK: - Insight Metric
@@ -123,27 +139,33 @@ enum InsightCategory: String, CaseIterable {
     case budget
     case recurring
     case cashFlow
-    case wealth     // Phase 18 — Accumulated capital card
+    case wealth      // Phase 18 — Accumulated capital card
+    case savings     // Phase 24 — Savings rate, emergency fund, momentum
+    case forecasting // Phase 24 — Spend forecast, runway, YoY, seasonality
 
     var displayName: String {
         switch self {
-        case .spending: return String(localized: "insights.spending")
-        case .income:   return String(localized: "insights.income")
-        case .budget:   return String(localized: "insights.budget")
-        case .recurring: return String(localized: "insights.recurring")
-        case .cashFlow: return String(localized: "insights.cashFlow")
-        case .wealth:   return String(localized: "insights.wealth")
+        case .spending:    return String(localized: "insights.spending")
+        case .income:      return String(localized: "insights.income")
+        case .budget:      return String(localized: "insights.budget")
+        case .recurring:   return String(localized: "insights.recurring")
+        case .cashFlow:    return String(localized: "insights.cashFlow")
+        case .wealth:      return String(localized: "insights.wealth")
+        case .savings:     return String(localized: "insights.savings")
+        case .forecasting: return String(localized: "insights.forecasting")
         }
     }
 
     var icon: String {
         switch self {
-        case .spending:  return "arrow.down.circle"
-        case .income:    return "arrow.up.circle"
-        case .budget:    return "gauge.with.dots.needle.33percent"
-        case .recurring: return "repeat.circle"
-        case .cashFlow:  return "chart.line.uptrend.xyaxis"
-        case .wealth:    return "banknote"
+        case .spending:    return "arrow.down.circle"
+        case .income:      return "arrow.up.circle"
+        case .budget:      return "gauge.with.dots.needle.33percent"
+        case .recurring:   return "repeat.circle"
+        case .cashFlow:    return "chart.line.uptrend.xyaxis"
+        case .wealth:      return "banknote"
+        case .savings:     return "banknote.fill"
+        case .forecasting: return "chart.line.uptrend.xyaxis.circle"
         }
     }
 }
@@ -237,4 +259,35 @@ struct AccountInsightItem: Identifiable {
     let transactionCount: Int
     let lastActivityDate: Date?
     let iconSource: IconSource?
+}
+
+// MARK: - Financial Health Score (Phase 24)
+
+/// A composite 0-100 score summarising the user's financial wellness.
+struct FinancialHealthScore {
+    let score: Int           // 0-100
+    let grade: String        // "Excellent" / "Good" / "Fair" / "Needs Attention"
+    let gradeColor: Color
+
+    let savingsRateScore:      Int    // 0-100, weight 0.30
+    let budgetAdherenceScore:  Int    // 0-100, weight 0.25
+    let recurringRatioScore:   Int    // 0-100, weight 0.20
+    let emergencyFundScore:    Int    // 0-100, weight 0.15
+    let cashflowScore:         Int    // 0 or 100, weight 0.10
+}
+
+extension FinancialHealthScore {
+    /// Returns a placeholder when there is not enough data to compute a score.
+    static func unavailable() -> FinancialHealthScore {
+        FinancialHealthScore(
+            score: 0,
+            grade: String(localized: "insights.healthGrade.needsAttention"),
+            gradeColor: AppColors.destructive,
+            savingsRateScore: 0,
+            budgetAdherenceScore: 0,
+            recurringRatioScore: 0,
+            emergencyFundScore: 0,
+            cashflowScore: 0
+        )
+    }
 }

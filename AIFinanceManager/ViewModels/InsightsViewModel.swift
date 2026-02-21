@@ -61,6 +61,8 @@ final class InsightsViewModel {
     private(set) var totalIncome: Double = 0
     private(set) var totalExpenses: Double = 0
     private(set) var netFlow: Double = 0
+    /// Phase 24 — Financial Health Score (computed once per recompute cycle, using .month granularity data)
+    private(set) var healthScore: FinancialHealthScore? = nil
 
     // MARK: - Granularity (replaces TimeFilter for Insights)
 
@@ -76,12 +78,14 @@ final class InsightsViewModel {
         return insights.filter { $0.category == category }
     }
 
-    var spendingInsights: [Insight]  { insights.filter { $0.category == .spending } }
-    var incomeInsights: [Insight]    { insights.filter { $0.category == .income } }
-    var budgetInsights: [Insight]    { insights.filter { $0.category == .budget } }
-    var recurringInsights: [Insight] { insights.filter { $0.category == .recurring } }
-    var cashFlowInsights: [Insight]  { insights.filter { $0.category == .cashFlow } }
-    var wealthInsights: [Insight]    { insights.filter { $0.category == .wealth } }
+    var spendingInsights: [Insight]     { insights.filter { $0.category == .spending } }
+    var incomeInsights: [Insight]       { insights.filter { $0.category == .income } }
+    var budgetInsights: [Insight]       { insights.filter { $0.category == .budget } }
+    var recurringInsights: [Insight]    { insights.filter { $0.category == .recurring } }
+    var cashFlowInsights: [Insight]     { insights.filter { $0.category == .cashFlow } }
+    var wealthInsights: [Insight]       { insights.filter { $0.category == .wealth } }
+    var savingsInsights: [Insight]      { insights.filter { $0.category == .savings } }     // Phase 24
+    var forecastingInsights: [Insight]  { insights.filter { $0.category == .forecasting } } // Phase 24
 
     var baseCurrency: String {
         transactionsViewModel.appSettings.baseCurrency
@@ -232,12 +236,25 @@ final class InsightsViewModel {
 
             guard !Task.isCancelled else { return }
 
+            // Phase 24: Compute health score once using .month granularity totals + period data
+            let monthTotals  = newTotals[.month]
+            let monthPoints  = newPoints[.month] ?? []
+            let latestNetFlow = monthPoints.last?.netFlow ?? 0
+            let computedHealthScore = await service.computeHealthScore(
+                totalIncome: monthTotals?.income   ?? 0,
+                totalExpenses: monthTotals?.expenses ?? 0,
+                latestNetFlow: latestNetFlow,
+                baseCurrency: currency,
+                balanceFor: { balanceSnapshot[$0] ?? 0 }
+            )
+
             // Hop back to MainActor only for the UI write
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.precomputedInsights    = newInsights
                 self.precomputedPeriodPoints = newPoints
                 self.precomputedTotals      = newTotals
+                self.healthScore            = computedHealthScore
                 self.applyPrecomputed(for: granularity)
                 Self.logger.debug("🔧 [InsightsVM] Background recompute END — UI updated")
             }

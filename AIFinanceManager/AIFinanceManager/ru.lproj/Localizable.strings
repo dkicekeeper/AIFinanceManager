@@ -764,6 +764,43 @@
 "insights.wealth.title" = "Накопленный капитал";
 "insights.wealth.subtitle" = "Общий баланс всех счетов";
 "insights.wealth.accounts" = "Счета";
+"insights.wealthGrowth" = "Изменение капитала";
+
+// Phase 24 — Savings
+"insights.savings" = "Сбережения";
+"insights.savingsRate" = "Норма сбережений";
+"insights.emergencyFund" = "Финансовая подушка";
+"insights.monthsCovered" = "покрывает %d месяцев";
+"insights.months" = "месяцев";
+"insights.savingsMomentum" = "Динамика сбережений";
+"insights.vsPrevious3Months" = "к среднему за 3 месяца";
+
+// Phase 24 — Spending (stub completions)
+"insights.categoryTrend" = "Тренд расходов";
+"insights.categoryTrend.risingMonths" = "Растёт %d месяцев";
+"insights.subscriptionGrowth" = "Рост подписок";
+"insights.vsThreeMonthsAgo" = "к 3 месяцам назад";
+
+// Phase 24 — Forecasting
+"insights.forecasting" = "Прогноз";
+"insights.spendingForecast" = "Прогноз расходов";
+"insights.balanceRunway" = "Запас баланса";
+"insights.balanceRunway.months" = "месяцев хватит";
+"insights.yearOverYear" = "Год к году";
+"insights.incomeSeasonality" = "Сезонность доходов";
+"insights.spendingVelocity" = "Темп расходов";
+"insights.incomeSourceBreakdown" = "Источники дохода";
+
+// Phase 24 — Health Score & Behavioral
+"insights.healthScore" = "Финансовое здоровье";
+"insights.healthGrade.excellent" = "Отлично";
+"insights.healthGrade.good" = "Хорошо";
+"insights.healthGrade.fair" = "Неплохо";
+"insights.healthGrade.needsAttention" = "Требует внимания";
+"insights.duplicateSubscriptions.title" = "Возможные дубликаты подписок";
+"insights.duplicateSubscriptions.subtitle" = "возможных дубликата";
+"insights.accountDormancy.title" = "Обнаружен неактивный счёт";
+"insights.accountDormancy.subtitle" = "счёта без активности 30+ дней";
 
 // MARK: - Tab Bar
 "tab.home" = "Главная";

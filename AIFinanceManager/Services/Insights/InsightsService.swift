@@ -1146,6 +1146,42 @@ final class InsightsService {
             balanceFor: balanceFor
         ))
 
+        // Phase 24 — Spending stubs
+        if let spike = generateSpendingSpike(baseCurrency: baseCurrency) {
+            insights.append(spike)
+        }
+        if let trend = generateCategoryTrend(baseCurrency: baseCurrency) {
+            insights.append(trend)
+        }
+
+        // Phase 24 — Recurring stub
+        if let growth = generateSubscriptionGrowth(baseCurrency: baseCurrency) {
+            insights.append(growth)
+        }
+
+        // Phase 24 — Savings category
+        insights.append(contentsOf: generateSavingsInsights(
+            allIncome: allIncome,
+            allExpenses: allExpenses,
+            baseCurrency: baseCurrency,
+            balanceFor: balanceFor
+        ))
+
+        // Phase 24 — Forecasting category
+        insights.append(contentsOf: generateForecastingInsights(
+            allTransactions: allTransactions,
+            baseCurrency: baseCurrency,
+            balanceFor: balanceFor
+        ))
+
+        // Phase 24 — Behavioral (appended to relevant existing categories)
+        if let duplicates = generateDuplicateSubscriptions(baseCurrency: baseCurrency) {
+            insights.append(duplicates)
+        }
+        if let dormancy = generateAccountDormancy(allTransactions: allTransactions, balanceFor: balanceFor) {
+            insights.append(dormancy)
+        }
+
         return insights
     }
 
@@ -1272,7 +1308,8 @@ final class InsightsService {
         ))
 
         // 2. Best period
-        if let best = periodPoints.max(by: { $0.netFlow < $1.netFlow }) {
+        let bestPeriod = periodPoints.max(by: { $0.netFlow < $1.netFlow })
+        if let best = bestPeriod {
             insights.append(Insight(
                 id: "best_month",
                 type: .bestMonth,
@@ -1291,7 +1328,29 @@ final class InsightsService {
             ))
         }
 
-        // 3. Projected balance (recurring delta)
+        // 3. Worst period (Phase 24 — complement to Best)
+        if let worst = periodPoints.min(by: { $0.netFlow < $1.netFlow }),
+           worst.netFlow < 0,
+           worst.key != (bestPeriod?.key ?? "") {
+            insights.append(Insight(
+                id: "worst_month",
+                type: .worstMonth,
+                title: String(localized: "insights.worstMonth"),
+                subtitle: worst.label,
+                metric: InsightMetric(
+                    value: worst.netFlow,
+                    formattedValue: Formatting.formatCurrencySmart(worst.netFlow, currency: baseCurrency),
+                    currency: baseCurrency,
+                    unit: nil
+                ),
+                trend: nil,
+                severity: .warning,
+                category: .cashFlow,
+                detailData: .periodTrend(periodPoints)
+            ))
+        }
+
+        // 4. Projected balance (recurring delta)
         let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         let monthlyRecurringNet = self.monthlyRecurringNet(baseCurrency: baseCurrency)
         let projectedBalance = currentBalance + monthlyRecurringNet
@@ -1384,7 +1443,9 @@ final class InsightsService {
             : nil
         let direction: TrendDirection = currentPeriodNetFlow > 0 ? .up : (currentPeriodNetFlow < 0 ? .down : .flat)
 
-        return [Insight(
+        var wealthInsights: [Insight] = []
+
+        wealthInsights.append(Insight(
             id: "total_wealth",
             type: .totalWealth,
             title: String(localized: "insights.wealth.title"),
@@ -1404,7 +1465,711 @@ final class InsightsService {
             severity: totalWealth >= 0 ? .positive : .critical,
             category: .wealth,
             detailData: .wealthBreakdown(accountItems)
-        )]
+        ))
+
+        // Wealth Growth (Phase 24) — period-over-period wealth change
+        if let pct = changePercent, abs(pct) > 1 {
+            let wealthGrowthSeverity: InsightSeverity = currentPeriodNetFlow > 0 ? .positive : .warning
+            wealthInsights.append(Insight(
+                id: "wealth_growth",
+                type: .wealthGrowth,
+                title: String(localized: "insights.wealthGrowth"),
+                subtitle: granularity.comparisonPeriodName,
+                metric: InsightMetric(
+                    value: currentPeriodNetFlow,
+                    formattedValue: Formatting.formatCurrencySmart(currentPeriodNetFlow, currency: baseCurrency),
+                    currency: baseCurrency,
+                    unit: nil
+                ),
+                trend: InsightTrend(
+                    direction: direction,
+                    changePercent: pct,
+                    changeAbsolute: nil,
+                    comparisonPeriod: granularity.comparisonPeriodName
+                ),
+                severity: wealthGrowthSeverity,
+                category: .wealth,
+                detailData: .periodTrend(cumulativePoints)
+            ))
+        }
+
+        return wealthInsights
+    }
+
+    // MARK: - Spending Spike (Phase 24)
+
+    /// Detects a category whose current-month spending exceeds 1.5× its 3-month historical average.
+    private func generateSpendingSpike(baseCurrency: String) -> Insight? {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: startOfMonth(calendar, for: now)) else { return nil }
+
+        let monthlyAggregates = transactionStore.categoryAggregateService.fetchRange(
+            from: threeMonthsAgo, to: now, currency: baseCurrency
+        )
+        guard !monthlyAggregates.isEmpty else { return nil }
+
+        let currentComps = calendar.dateComponents([.year, .month], from: now)
+        let currentYear = currentComps.year ?? 0
+        let currentMonth = currentComps.month ?? 0
+
+        let byCategory = Dictionary(grouping: monthlyAggregates, by: { $0.categoryName })
+
+        var spikeCategory: String? = nil
+        var spikeAmount: Double = 0
+        var spikeMultiplier: Double = 1.5 // minimum threshold
+
+        for (catName, records) in byCategory {
+            let current = records.first { $0.year == currentYear && $0.month == currentMonth }
+            let historical = records.filter { !($0.year == currentYear && $0.month == currentMonth) }
+            guard let currentAmount = current?.totalExpenses, currentAmount > 0, !historical.isEmpty else { continue }
+
+            let histAvg = historical.reduce(0.0) { $0 + $1.totalExpenses } / Double(historical.count)
+            guard histAvg > 100 else { continue } // ignore tiny amounts
+
+            let multiplier = currentAmount / histAvg
+            if multiplier > spikeMultiplier {
+                spikeMultiplier = multiplier
+                spikeCategory = catName
+                spikeAmount = currentAmount
+            }
+        }
+
+        guard let catName = spikeCategory else { return nil }
+        let changePercent = (spikeMultiplier - 1) * 100
+
+        Self.logger.debug("⚡️ [Insights] SpendingSpike — '\(catName, privacy: .public)' ×\(String(format: "%.1f", spikeMultiplier), privacy: .public)")
+        return Insight(
+            id: "spending_spike",
+            type: .spendingSpike,
+            title: String(localized: "insights.spendingSpike"),
+            subtitle: catName,
+            metric: InsightMetric(
+                value: spikeAmount,
+                formattedValue: Formatting.formatCurrencySmart(spikeAmount, currency: baseCurrency),
+                currency: baseCurrency,
+                unit: nil
+            ),
+            trend: InsightTrend(
+                direction: .up,
+                changePercent: changePercent,
+                changeAbsolute: nil,
+                comparisonPeriod: String(localized: "insights.vsAverage")
+            ),
+            severity: spikeMultiplier > 2 ? .critical : .warning,
+            category: .spending,
+            detailData: nil
+        )
+    }
+
+    // MARK: - Category Trend (Phase 24)
+
+    /// Finds the expense category that has been rising for the most consecutive months (min 2).
+    private func generateCategoryTrend(baseCurrency: String) -> Insight? {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let sixMonthsAgo = calendar.date(byAdding: .month, value: -6, to: startOfMonth(calendar, for: now)) else { return nil }
+
+        let monthlyAggregates = transactionStore.categoryAggregateService.fetchRange(
+            from: sixMonthsAgo, to: now, currency: baseCurrency
+        )
+        guard monthlyAggregates.count >= 4 else { return nil }
+
+        let byCategory = Dictionary(grouping: monthlyAggregates, by: { $0.categoryName })
+
+        var bestCategory: String? = nil
+        var bestStreak = 1 // minimum required streak
+        var bestLatestAmount: Double = 0
+        var bestChangePercent: Double = 0
+
+        for (catName, records) in byCategory {
+            guard records.count >= 3 else { continue }
+            let sorted = records.sorted { $0.year != $1.year ? $0.year < $1.year : $0.month < $1.month }
+
+            var streak = 0
+            for i in (1..<sorted.count).reversed() {
+                if sorted[i].totalExpenses > sorted[i - 1].totalExpenses {
+                    streak += 1
+                } else {
+                    break
+                }
+            }
+            if streak >= 2 && streak > bestStreak {
+                bestStreak = streak
+                bestCategory = catName
+                bestLatestAmount = sorted.last?.totalExpenses ?? 0
+                let prevAmount = sorted[max(0, sorted.count - 2)].totalExpenses
+                bestChangePercent = prevAmount > 0 ? ((bestLatestAmount - prevAmount) / prevAmount) * 100 : 0
+            }
+        }
+
+        guard let catName = bestCategory else { return nil }
+        Self.logger.debug("📈 [Insights] CategoryTrend — '\(catName, privacy: .public)' rising for \(bestStreak + 1) months")
+        return Insight(
+            id: "category_trend_\(catName)",
+            type: .categoryTrend,
+            title: String(localized: "insights.categoryTrend"),
+            subtitle: String(format: String(localized: "insights.categoryTrend.risingMonths"), bestStreak + 1),
+            metric: InsightMetric(
+                value: bestLatestAmount,
+                formattedValue: Formatting.formatCurrencySmart(bestLatestAmount, currency: baseCurrency),
+                currency: baseCurrency,
+                unit: nil
+            ),
+            trend: InsightTrend(
+                direction: .up,
+                changePercent: bestChangePercent,
+                changeAbsolute: nil,
+                comparisonPeriod: String(localized: "insights.vsPreviousPeriod")
+            ),
+            severity: .warning,
+            category: .spending,
+            detailData: nil
+        )
+    }
+
+    // MARK: - Subscription Growth (Phase 24)
+
+    /// Compares current monthly recurring total with the total 3 months ago.
+    private func generateSubscriptionGrowth(baseCurrency: String) -> Insight? {
+        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
+        guard activeSeries.count >= 2 else { return nil }
+
+        let calendar = Calendar.current
+        let now = Date()
+        guard let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: now) else { return nil }
+
+        let dateFormatter = DateFormatters.dateFormatter
+
+        let currentTotal = activeSeries.reduce(0.0) { $0 + seriesMonthlyEquivalent($1, baseCurrency: baseCurrency) }
+        let prevSeries = activeSeries.filter { series in
+            guard let start = dateFormatter.date(from: series.startDate) else { return false }
+            return start < threeMonthsAgo
+        }
+        let prevTotal = prevSeries.reduce(0.0) { $0 + seriesMonthlyEquivalent($1, baseCurrency: baseCurrency) }
+
+        guard prevTotal > 0, currentTotal > 0 else { return nil }
+        let changePercent = ((currentTotal - prevTotal) / prevTotal) * 100
+        guard abs(changePercent) > 5 else { return nil }
+
+        let direction: TrendDirection = changePercent > 0 ? .up : .down
+        let severity: InsightSeverity = changePercent > 10 ? .warning : (changePercent < -10 ? .positive : .neutral)
+        Self.logger.debug("🔁 [Insights] SubscriptionGrowth — \(String(format: "%+.1f%%", changePercent), privacy: .public)")
+        return Insight(
+            id: "subscription_growth",
+            type: .subscriptionGrowth,
+            title: String(localized: "insights.subscriptionGrowth"),
+            subtitle: String(localized: "insights.vsThreeMonthsAgo"),
+            metric: InsightMetric(
+                value: currentTotal,
+                formattedValue: Formatting.formatCurrencySmart(currentTotal, currency: baseCurrency),
+                currency: baseCurrency,
+                unit: String(localized: "insights.perMonth")
+            ),
+            trend: InsightTrend(
+                direction: direction,
+                changePercent: changePercent,
+                changeAbsolute: currentTotal - prevTotal,
+                comparisonPeriod: String(localized: "insights.vsThreeMonthsAgo")
+            ),
+            severity: severity,
+            category: .recurring,
+            detailData: nil
+        )
+    }
+
+    // MARK: - Savings Insights (Phase 24)
+
+    func generateSavingsInsights(
+        allIncome: Double,
+        allExpenses: Double,
+        baseCurrency: String,
+        balanceFor: (String) -> Double
+    ) -> [Insight] {
+        var insights: [Insight] = []
+
+        if let rate = generateSavingsRate(allIncome: allIncome, allExpenses: allExpenses, baseCurrency: baseCurrency) {
+            insights.append(rate)
+        }
+        if let fund = generateEmergencyFund(baseCurrency: baseCurrency, balanceFor: balanceFor) {
+            insights.append(fund)
+        }
+        if let momentum = generateSavingsMomentum(baseCurrency: baseCurrency) {
+            insights.append(momentum)
+        }
+        return insights
+    }
+
+    private func generateSavingsRate(allIncome: Double, allExpenses: Double, baseCurrency: String) -> Insight? {
+        guard allIncome > 0 else { return nil }
+        let rate = ((allIncome - allExpenses) / allIncome) * 100
+        let savedAmount = allIncome - allExpenses
+        let severity: InsightSeverity = rate > 20 ? .positive : (rate >= 10 ? .warning : .critical)
+        Self.logger.debug("💰 [Insights] SavingsRate — \(String(format: "%.1f%%", rate), privacy: .public), severity=\(String(describing: severity), privacy: .public)")
+        return Insight(
+            id: "savings_rate",
+            type: .savingsRate,
+            title: String(localized: "insights.savingsRate"),
+            subtitle: Formatting.formatCurrencySmart(max(0, savedAmount), currency: baseCurrency),
+            metric: InsightMetric(
+                value: rate,
+                formattedValue: String(format: "%.1f%%", rate),
+                currency: nil,
+                unit: nil
+            ),
+            trend: nil,
+            severity: severity,
+            category: .savings,
+            detailData: nil
+        )
+    }
+
+    private func generateEmergencyFund(baseCurrency: String, balanceFor: (String) -> Double) -> Insight? {
+        let totalBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
+        guard totalBalance > 0 else { return nil }
+
+        let aggregates = transactionStore.monthlyAggregateService.fetchLast(3, currency: baseCurrency)
+        guard !aggregates.isEmpty else { return nil }
+
+        let avgMonthlyExpenses = aggregates.reduce(0.0) { $0 + $1.totalExpenses } / Double(aggregates.count)
+        guard avgMonthlyExpenses > 0 else { return nil }
+
+        let monthsCovered = totalBalance / avgMonthlyExpenses
+        let severity: InsightSeverity = monthsCovered >= 3 ? .positive : (monthsCovered >= 1 ? .warning : .critical)
+        let monthsInt = Int(monthsCovered.rounded(.down))
+        Self.logger.debug("🛡 [Insights] EmergencyFund — \(String(format: "%.1f", monthsCovered), privacy: .public) months, severity=\(String(describing: severity), privacy: .public)")
+        return Insight(
+            id: "emergency_fund",
+            type: .emergencyFund,
+            title: String(localized: "insights.emergencyFund"),
+            subtitle: String(format: String(localized: "insights.monthsCovered"), monthsInt),
+            metric: InsightMetric(
+                value: monthsCovered,
+                formattedValue: String(format: "%.1f", monthsCovered),
+                currency: nil,
+                unit: String(localized: "insights.months")
+            ),
+            trend: nil,
+            severity: severity,
+            category: .savings,
+            detailData: nil
+        )
+    }
+
+    private func generateSavingsMomentum(baseCurrency: String) -> Insight? {
+        let aggregates = transactionStore.monthlyAggregateService.fetchLast(4, currency: baseCurrency)
+        guard aggregates.count >= 2 else { return nil }
+
+        let rates: [Double] = aggregates.map { agg in
+            guard agg.totalIncome > 0 else { return 0 }
+            return ((agg.totalIncome - agg.totalExpenses) / agg.totalIncome) * 100
+        }
+
+        guard let currentRate = rates.last else { return nil }
+        let prevRates = Array(rates.dropLast())
+        guard !prevRates.isEmpty else { return nil }
+
+        let avgPrevRate = prevRates.reduce(0.0, +) / Double(prevRates.count)
+        let delta = currentRate - avgPrevRate
+        guard abs(delta) > 1 else { return nil }
+
+        let direction: TrendDirection = delta > 0 ? .up : .down
+        let severity: InsightSeverity = delta > 2 ? .positive : (delta < -2 ? .warning : .neutral)
+        Self.logger.debug("📊 [Insights] SavingsMomentum — current=\(String(format: "%.1f%%", currentRate), privacy: .public), avgPrev=\(String(format: "%.1f%%", avgPrevRate), privacy: .public), delta=\(String(format: "%+.1f%%", delta), privacy: .public)")
+        return Insight(
+            id: "savings_momentum",
+            type: .savingsMomentum,
+            title: String(localized: "insights.savingsMomentum"),
+            subtitle: String(localized: "insights.vsPrevious3Months"),
+            metric: InsightMetric(
+                value: currentRate,
+                formattedValue: String(format: "%.1f%%", currentRate),
+                currency: nil,
+                unit: nil
+            ),
+            trend: InsightTrend(
+                direction: direction,
+                changePercent: delta,
+                changeAbsolute: nil,
+                comparisonPeriod: String(localized: "insights.vsPrevious3Months")
+            ),
+            severity: severity,
+            category: .savings,
+            detailData: nil
+        )
+    }
+
+    // MARK: - Forecasting Insights (Phase 24)
+
+    func generateForecastingInsights(
+        allTransactions: [Transaction],
+        baseCurrency: String,
+        balanceFor: (String) -> Double
+    ) -> [Insight] {
+        var insights: [Insight] = []
+
+        if let forecast = generateSpendingForecast(baseCurrency: baseCurrency) {
+            insights.append(forecast)
+        }
+        if let runway = generateBalanceRunway(baseCurrency: baseCurrency, balanceFor: balanceFor) {
+            insights.append(runway)
+        }
+        if let yoy = generateYearOverYear(baseCurrency: baseCurrency) {
+            insights.append(yoy)
+        }
+        if let seasonality = generateIncomeSeasonality(baseCurrency: baseCurrency) {
+            insights.append(seasonality)
+        }
+        if let velocity = generateSpendingVelocity(baseCurrency: baseCurrency) {
+            insights.append(velocity)
+        }
+        if let breakdown = generateIncomeSourceBreakdown(allTransactions: allTransactions, baseCurrency: baseCurrency) {
+            insights.append(breakdown)
+        }
+        return insights
+    }
+
+    /// Projects month-end spend = avg daily rate × remaining days + pending recurring.
+    private func generateSpendingForecast(baseCurrency: String) -> Insight? {
+        let calendar = Calendar.current
+        let now = Date()
+        let monthStart = startOfMonth(calendar, for: now)
+
+        // Avg daily spend from last 30 days
+        guard let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) else { return nil }
+        let last30Aggregates = transactionStore.categoryAggregateService.fetchRange(
+            from: thirtyDaysAgo, to: now, currency: baseCurrency
+        )
+        let last30Spent = last30Aggregates.reduce(0.0) { $0 + $1.totalExpenses }
+        let avgDailySpend = last30Spent / 30
+
+        // Days remaining this month
+        let totalDaysInMonth = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
+        let dayOfMonth = calendar.component(.day, from: now)
+        let daysRemaining = totalDaysInMonth - dayOfMonth
+
+        // Pending recurring this month
+        let monthlyRecurringExpenses = transactionStore.recurringSeries
+            .filter { $0.isActive }
+            .filter { series in
+                let isExpense = transactionStore.categories.first { c in c.name == series.category }?.type != .income
+                return isExpense
+            }
+            .reduce(0.0) { total, series in
+                // Only count remaining occurrences this month
+                let dateFormatter = DateFormatters.dateFormatter
+                guard let startDate = dateFormatter.date(from: series.startDate) else { return total }
+                // Include if series started before or during this month
+                if startDate > now { return total }
+                return total + seriesMonthlyEquivalent(series, baseCurrency: baseCurrency)
+            }
+
+        let spentSoFar = transactionStore.monthlyAggregateService
+            .fetchLast(1, currency: baseCurrency)
+            .first?.totalExpenses ?? 0
+
+        let pendingRecurring = max(0, (monthlyRecurringExpenses / Double(totalDaysInMonth)) * Double(daysRemaining))
+        let forecast = spentSoFar + (avgDailySpend * Double(daysRemaining)) + pendingRecurring
+
+        let monthlyIncome = transactionStore.monthlyAggregateService
+            .fetchLast(1, currency: baseCurrency)
+            .first?.totalIncome ?? 0
+
+        let severity: InsightSeverity = monthlyIncome > 0 ? (forecast > monthlyIncome ? .warning : .positive) : .neutral
+        _ = monthStart // suppress unused warning
+
+        Self.logger.debug("🔮 [Insights] SpendingForecast — spentSoFar=\(String(format: "%.0f", spentSoFar), privacy: .public), avgDaily=\(String(format: "%.0f", avgDailySpend), privacy: .public), daysLeft=\(daysRemaining), forecast=\(String(format: "%.0f", forecast), privacy: .public) \(baseCurrency, privacy: .public)")
+        return Insight(
+            id: "spending_forecast",
+            type: .spendingForecast,
+            title: String(localized: "insights.spendingForecast"),
+            subtitle: String(format: "%d " + String(localized: "insights.days") + " " + String(localized: "insights.remaining"), daysRemaining),
+            metric: InsightMetric(
+                value: forecast,
+                formattedValue: Formatting.formatCurrencySmart(forecast, currency: baseCurrency),
+                currency: baseCurrency,
+                unit: nil
+            ),
+            trend: nil,
+            severity: severity,
+            category: .forecasting,
+            detailData: nil
+        )
+    }
+
+    /// How many months the current balance will last at the current net-burn rate.
+    private func generateBalanceRunway(baseCurrency: String, balanceFor: (String) -> Double) -> Insight? {
+        let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
+        guard currentBalance > 0 else { return nil }
+
+        let aggregates = transactionStore.monthlyAggregateService.fetchLast(3, currency: baseCurrency)
+        guard !aggregates.isEmpty else { return nil }
+
+        let avgMonthlyNetFlow = aggregates.reduce(0.0) { $0 + $1.netFlow } / Double(aggregates.count)
+
+        if avgMonthlyNetFlow > 0 {
+            // Positive net: show how much being saved monthly
+            return Insight(
+                id: "balance_runway",
+                type: .balanceRunway,
+                title: String(localized: "insights.balanceRunway"),
+                subtitle: Formatting.formatCurrencySmart(avgMonthlyNetFlow, currency: baseCurrency) + " " + String(localized: "insights.perMonth"),
+                metric: InsightMetric(
+                    value: avgMonthlyNetFlow,
+                    formattedValue: "+" + Formatting.formatCurrencySmart(avgMonthlyNetFlow, currency: baseCurrency),
+                    currency: baseCurrency,
+                    unit: String(localized: "insights.perMonth")
+                ),
+                trend: nil,
+                severity: .positive,
+                category: .forecasting,
+                detailData: nil
+            )
+        }
+
+        let runway = currentBalance / abs(avgMonthlyNetFlow)
+        let severity: InsightSeverity = runway >= 3 ? .positive : (runway >= 1 ? .warning : .critical)
+        Self.logger.debug("🛤 [Insights] BalanceRunway — balance=\(String(format: "%.0f", currentBalance), privacy: .public), burn=\(String(format: "%.0f", avgMonthlyNetFlow), privacy: .public)/mo, runway=\(String(format: "%.1f", runway), privacy: .public) months")
+        return Insight(
+            id: "balance_runway",
+            type: .balanceRunway,
+            title: String(localized: "insights.balanceRunway"),
+            subtitle: String(format: "%.1f " + String(localized: "insights.balanceRunway.months"), runway),
+            metric: InsightMetric(
+                value: runway,
+                formattedValue: String(format: "%.1f", runway),
+                currency: nil,
+                unit: String(localized: "insights.months")
+            ),
+            trend: nil,
+            severity: severity,
+            category: .forecasting,
+            detailData: nil
+        )
+    }
+
+    /// Compares this month's expenses against the same month last year.
+    private func generateYearOverYear(baseCurrency: String) -> Insight? {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let oneYearAgo = calendar.date(byAdding: .year, value: -1, to: now) else { return nil }
+
+        let thisMonth = transactionStore.monthlyAggregateService
+            .fetchLast(1, currency: baseCurrency)
+            .first
+
+        let lastYear = transactionStore.monthlyAggregateService
+            .fetchLast(1, anchor: oneYearAgo, currency: baseCurrency)
+            .first
+
+        guard let thisExpenses = thisMonth?.totalExpenses,
+              let lastYearExpenses = lastYear?.totalExpenses,
+              lastYearExpenses > 0 else { return nil }
+
+        let delta = ((thisExpenses - lastYearExpenses) / lastYearExpenses) * 100
+        guard abs(delta) > 3 else { return nil }
+
+        let direction: TrendDirection = delta > 0 ? .up : .down
+        let severity: InsightSeverity = delta <= -10 ? .positive : (delta >= 15 ? .warning : .neutral)
+        let thisLabel = thisMonth?.label ?? ""
+        Self.logger.debug("📅 [Insights] YoY — this=\(String(format: "%.0f", thisExpenses), privacy: .public), lastYear=\(String(format: "%.0f", lastYearExpenses), privacy: .public), delta=\(String(format: "%+.1f%%", delta), privacy: .public)")
+        return Insight(
+            id: "year_over_year",
+            type: .yearOverYear,
+            title: String(localized: "insights.yearOverYear"),
+            subtitle: thisLabel,
+            metric: InsightMetric(
+                value: thisExpenses,
+                formattedValue: Formatting.formatCurrencySmart(thisExpenses, currency: baseCurrency),
+                currency: baseCurrency,
+                unit: nil
+            ),
+            trend: InsightTrend(
+                direction: direction,
+                changePercent: delta,
+                changeAbsolute: thisExpenses - lastYearExpenses,
+                comparisonPeriod: String(localized: "insights.yearOverYear")
+            ),
+            severity: severity,
+            category: .forecasting,
+            detailData: nil
+        )
+    }
+
+    /// Identifies which calendar month historically generates the highest income.
+    private func generateIncomeSeasonality(baseCurrency: String) -> Insight? {
+        // Fetch all-time monthly aggregates
+        let calendar = Calendar.current
+        let now = Date()
+        guard let fiveYearsAgo = calendar.date(byAdding: .year, value: -5, to: now) else { return nil }
+
+        let allAggregates = transactionStore.monthlyAggregateService.fetchRange(
+            from: fiveYearsAgo, to: now, currency: baseCurrency
+        )
+        guard allAggregates.count >= 12 else { return nil }
+
+        // Group by calendar month (1-12) and compute average income per month
+        var incomeByMonth = [Int: [Double]]()
+        for agg in allAggregates where agg.totalIncome > 0 {
+            incomeByMonth[agg.month, default: []].append(agg.totalIncome)
+        }
+        guard incomeByMonth.count >= 6 else { return nil }
+
+        let avgByMonth: [(month: Int, avg: Double)] = incomeByMonth.map { month, incomes in
+            (month: month, avg: incomes.reduce(0, +) / Double(incomes.count))
+        }
+        let overallAvg = avgByMonth.reduce(0.0) { $0 + $1.avg } / Double(avgByMonth.count)
+        guard overallAvg > 0 else { return nil }
+
+        guard let peak = avgByMonth.max(by: { $0.avg < $1.avg }) else { return nil }
+        let peakPercent = ((peak.avg - overallAvg) / overallAvg) * 100
+        guard peakPercent > 10 else { return nil }
+
+        // Get month name
+        let monthDate = calendar.date(from: DateComponents(year: 2024, month: peak.month, day: 1)) ?? now
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMMM"
+        monthFormatter.locale = .current
+        let monthName = monthFormatter.string(from: monthDate)
+
+        Self.logger.debug("🌊 [Insights] IncomeSeasonality — peak month \(peak.month) (\(monthName, privacy: .public)), +\(String(format: "%.0f%%", peakPercent), privacy: .public) above avg")
+        return Insight(
+            id: "income_seasonality",
+            type: .incomeSeasonality,
+            title: String(localized: "insights.incomeSeasonality"),
+            subtitle: monthName,
+            metric: InsightMetric(
+                value: peakPercent,
+                formattedValue: String(format: "+%.0f%%", peakPercent),
+                currency: nil,
+                unit: nil
+            ),
+            trend: nil,
+            severity: .neutral,
+            category: .forecasting,
+            detailData: nil
+        )
+    }
+
+    /// Compares current daily spending rate vs last month's daily rate.
+    private func generateSpendingVelocity(baseCurrency: String) -> Insight? {
+        let calendar = Calendar.current
+        let now = Date()
+        let dayOfMonth = calendar.component(.day, from: now)
+        guard dayOfMonth > 3 else { return nil } // need a few days of data
+
+        let thisMonth = transactionStore.monthlyAggregateService.fetchLast(1, currency: baseCurrency).first
+        let lastMonth = transactionStore.monthlyAggregateService.fetchLast(2, currency: baseCurrency).first
+
+        guard let spentSoFar = thisMonth?.totalExpenses, spentSoFar > 0 else { return nil }
+        guard let lastMonthTotal = lastMonth?.totalExpenses, lastMonthTotal > 0 else { return nil }
+
+        let currentDailyRate = spentSoFar / Double(dayOfMonth)
+
+        // Last month days
+        guard let prevMonthDate = calendar.date(byAdding: .month, value: -1, to: now) else { return nil }
+        let lastMonthDays = Double(calendar.range(of: .day, in: .month, for: prevMonthDate)?.count ?? 30)
+        let lastMonthDailyRate = lastMonthTotal / lastMonthDays
+
+        let ratio = currentDailyRate / lastMonthDailyRate
+        guard abs(ratio - 1.0) > 0.1 else { return nil } // only show if >10% difference
+
+        let changePercent = (ratio - 1.0) * 100
+        let direction: TrendDirection = ratio > 1 ? .up : .down
+        let severity: InsightSeverity = ratio > 1.3 ? .warning : (ratio < 0.8 ? .positive : .neutral)
+
+        Self.logger.debug("⏱ [Insights] SpendingVelocity — ratio=\(String(format: "%.2f", ratio), privacy: .public)x, change=\(String(format: "%+.1f%%", changePercent), privacy: .public)")
+        return Insight(
+            id: "spending_velocity",
+            type: .spendingVelocity,
+            title: String(localized: "insights.spendingVelocity"),
+            subtitle: String(format: "%+.0f%%", changePercent),
+            metric: InsightMetric(
+                value: ratio,
+                formattedValue: String(format: "%.1fx", ratio),
+                currency: nil,
+                unit: nil
+            ),
+            trend: InsightTrend(
+                direction: direction,
+                changePercent: changePercent,
+                changeAbsolute: currentDailyRate - lastMonthDailyRate,
+                comparisonPeriod: String(localized: "insights.vsPreviousPeriod")
+            ),
+            severity: severity,
+            category: .forecasting,
+            detailData: nil
+        )
+    }
+
+    /// Groups income transactions by category to show income source distribution.
+    private func generateIncomeSourceBreakdown(allTransactions: [Transaction], baseCurrency: String) -> Insight? {
+        let incomeCategories = transactionStore.categories.filter { $0.type == .income }
+        guard incomeCategories.count >= 2 else { return nil }
+
+        let incomeTransactions = allTransactions.filter { $0.type == .income }
+        guard !incomeTransactions.isEmpty else { return nil }
+
+        let totalIncome = incomeTransactions.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
+        guard totalIncome > 0 else { return nil }
+
+        let grouped = Dictionary(grouping: incomeTransactions, by: { $0.category })
+        let breakdownItems: [CategoryBreakdownItem] = grouped
+            .map { catName, txns -> CategoryBreakdownItem in
+                let amount = txns.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
+                let pct = (amount / totalIncome) * 100
+                let cat = transactionStore.categories.first { $0.name == catName }
+                return CategoryBreakdownItem(
+                    id: catName,
+                    categoryName: catName,
+                    amount: amount,
+                    percentage: pct,
+                    color: Color(hex: cat?.colorHex ?? "#5856D6"),
+                    iconSource: cat?.iconSource,
+                    subcategories: []
+                )
+            }
+            .sorted { $0.amount > $1.amount }
+
+        guard let top = breakdownItems.first else { return nil }
+        let topPercent = top.percentage
+
+        Self.logger.debug("💼 [Insights] IncomeSourceBreakdown — \(breakdownItems.count) sources, top='\(top.categoryName, privacy: .public)' \(String(format: "%.0f%%", topPercent), privacy: .public)")
+        return Insight(
+            id: "income_source_breakdown",
+            type: .incomeSourceBreakdown,
+            title: String(localized: "insights.incomeSourceBreakdown"),
+            subtitle: top.categoryName,
+            metric: InsightMetric(
+                value: topPercent,
+                formattedValue: String(format: "%.0f%%", topPercent),
+                currency: nil,
+                unit: nil
+            ),
+            trend: nil,
+            severity: .neutral,
+            category: .income,
+            detailData: .categoryBreakdown(breakdownItems)
+        )
+    }
+
+    // MARK: - Private Helper: Monthly Equivalent
+
+    /// Converts a recurring series amount to monthly equivalent in baseCurrency.
+    private func seriesMonthlyEquivalent(_ series: RecurringSeries, baseCurrency: String) -> Double {
+        let amount = NSDecimalNumber(decimal: series.amount).doubleValue
+        let rawMonthly: Double
+        switch series.frequency {
+        case .daily:   rawMonthly = amount * 30
+        case .weekly:  rawMonthly = amount * 4.33
+        case .monthly: rawMonthly = amount
+        case .yearly:  rawMonthly = amount / 12
+        }
+        if series.currency != baseCurrency,
+           let converted = CurrencyConverter.convertSync(amount: rawMonthly, from: series.currency, to: baseCurrency) {
+            return converted
+        }
+        return rawMonthly
     }
 
     // MARK: - Helpers
@@ -1461,6 +2226,194 @@ final class InsightsService {
             }
         }
         return (income, expenses)
+    }
+
+    // MARK: - Financial Health Score (Phase 24)
+
+    /// Computes a composite 0-100 financial health score from five weighted components.
+    /// Call after `generateAllInsights` once totals and period data points are available.
+    func computeHealthScore(
+        totalIncome: Double,
+        totalExpenses: Double,
+        latestNetFlow: Double,
+        baseCurrency: String,
+        balanceFor: (String) -> Double
+    ) -> FinancialHealthScore {
+        guard totalIncome > 0 else { return .unavailable() }
+
+        let calendar = Calendar.current
+        let now = Date()
+
+        // --- Component 1: Savings Rate (weight 0.30) ---
+        let savingsRate = (totalIncome - totalExpenses) / totalIncome * 100
+        let savingsRateScore = Int(min(savingsRate / 20.0 * 100, 100).rounded())
+
+        // --- Component 2: Budget Adherence (weight 0.25) ---
+        let monthStart = startOfMonth(calendar, for: now)
+        let currentMonthAggregates = transactionStore.categoryAggregateService.fetchRange(
+            from: monthStart, to: now, currency: baseCurrency
+        )
+        let categoriesWithBudget = transactionStore.categories.filter { ($0.budgetAmount ?? 0) > 0 }
+        let onBudgetCount = categoriesWithBudget.filter { category in
+            let spent = currentMonthAggregates.first { $0.categoryName == category.name }?.totalExpenses ?? 0
+            return spent <= (category.budgetAmount ?? 0)
+        }.count
+        let totalBudgetCount = categoriesWithBudget.count
+        let budgetAdherenceScore = totalBudgetCount > 0
+            ? Int((Double(onBudgetCount) / Double(totalBudgetCount) * 100).rounded())
+            : 50 // neutral when no budgets set
+
+        // --- Component 3: Recurring Ratio (weight 0.20) ---
+        let recurringCost = transactionStore.recurringSeries
+            .filter { $0.isActive }
+            .reduce(0.0) { total, series in
+                let isExpense = transactionStore.categories.first { $0.name == series.category }?.type != .income
+                return isExpense ? total + seriesMonthlyEquivalent(series, baseCurrency: baseCurrency) : total
+            }
+        let recurringRatioScore = Int(max(0, (1.0 - recurringCost / max(totalIncome, 1)) * 100).rounded())
+
+        // --- Component 4: Emergency Fund (weight 0.15) ---
+        let totalBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
+        let last3Months = transactionStore.monthlyAggregateService.fetchLast(3, anchor: now, currency: baseCurrency)
+        let avgMonthlyExpenses = last3Months.isEmpty
+            ? totalExpenses / 12
+            : last3Months.reduce(0.0) { $0 + $1.totalExpenses } / Double(last3Months.count)
+        let monthsCovered = avgMonthlyExpenses > 0 ? totalBalance / avgMonthlyExpenses : 0
+        let emergencyFundScore = Int(min(monthsCovered / 6.0 * 100, 100).rounded())
+
+        // --- Component 5: Cash Flow (weight 0.10) ---
+        let cashflowScore = latestNetFlow > 0 ? 100 : 0
+
+        // --- Weighted Total ---
+        let total = Double(savingsRateScore)     * 0.30
+                  + Double(budgetAdherenceScore) * 0.25
+                  + Double(recurringRatioScore)  * 0.20
+                  + Double(emergencyFundScore)   * 0.15
+                  + Double(cashflowScore)        * 0.10
+        let score = Int(total.rounded())
+
+        let (grade, gradeColor): (String, Color)
+        switch score {
+        case 80...100: (grade, gradeColor) = (String(localized: "insights.healthGrade.excellent"),     AppColors.success)
+        case 60..<80:  (grade, gradeColor) = (String(localized: "insights.healthGrade.good"),          AppColors.accent)
+        case 40..<60:  (grade, gradeColor) = (String(localized: "insights.healthGrade.fair"),          AppColors.warning)
+        default:       (grade, gradeColor) = (String(localized: "insights.healthGrade.needsAttention"), AppColors.destructive)
+        }
+
+        return FinancialHealthScore(
+            score: score,
+            grade: grade,
+            gradeColor: gradeColor,
+            savingsRateScore:     max(0, min(savingsRateScore, 100)),
+            budgetAdherenceScore: max(0, min(budgetAdherenceScore, 100)),
+            recurringRatioScore:  max(0, min(recurringRatioScore, 100)),
+            emergencyFundScore:   max(0, min(emergencyFundScore, 100)),
+            cashflowScore:        cashflowScore
+        )
+    }
+
+    // MARK: - Behavioral Insights (Phase 24)
+
+    /// Detects possible duplicate subscriptions — active series with the same category
+    /// OR monthly cost within 15% of each other.
+    private func generateDuplicateSubscriptions(baseCurrency: String) -> Insight? {
+        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive && $0.kind == .subscription }
+        guard activeSeries.count >= 2 else { return nil }
+
+        // Group by category; flag categories with 2+ subscriptions
+        let grouped = Dictionary(grouping: activeSeries, by: \.category)
+        let duplicateGroups = grouped.filter { $0.value.count >= 2 }
+        guard !duplicateGroups.isEmpty else {
+            // Secondary check: any two subscriptions with monthly cost within 15%
+            let costs = activeSeries.map { seriesMonthlyEquivalent($0, baseCurrency: baseCurrency) }.sorted()
+            var hasSimilarCost = false
+            for i in 0..<costs.count - 1 {
+                let a = costs[i]; let b = costs[i + 1]
+                guard a > 0 else { continue }
+                if abs(a - b) / a < 0.15 { hasSimilarCost = true; break }
+            }
+            guard hasSimilarCost else { return nil }
+
+            let totalDuplicateCost = costs.dropFirst().reduce(0, +) // rough estimate
+            return Insight(
+                id: "duplicateSubscriptions",
+                type: .duplicateSubscriptions,
+                title: String(localized: "insights.duplicateSubscriptions.title"),
+                subtitle: String(localized: "insights.duplicateSubscriptions.subtitle"),
+                metric: InsightMetric(
+                    value: totalDuplicateCost,
+                    formattedValue: Formatting.formatCurrency(totalDuplicateCost, currency: baseCurrency),
+                    currency: baseCurrency, unit: nil
+                ),
+                trend: nil,
+                severity: .warning,
+                category: .recurring,
+                detailData: nil
+            )
+        }
+
+        let duplicateCount = duplicateGroups.values.reduce(0) { $0 + $1.count }
+        let duplicateCost = duplicateGroups.values.flatMap { $0 }
+            .reduce(0.0) { $0 + seriesMonthlyEquivalent($1, baseCurrency: baseCurrency) }
+        return Insight(
+            id: "duplicateSubscriptions",
+            type: .duplicateSubscriptions,
+            title: String(localized: "insights.duplicateSubscriptions.title"),
+            subtitle: "\(duplicateCount) \(String(localized: "insights.duplicateSubscriptions.subtitle"))",
+            metric: InsightMetric(
+                value: duplicateCost,
+                formattedValue: Formatting.formatCurrency(duplicateCost, currency: baseCurrency),
+                currency: baseCurrency, unit: nil
+            ),
+            trend: nil,
+            severity: .warning,
+            category: .recurring,
+            detailData: nil
+        )
+    }
+
+    /// Flags accounts that have been idle for 30+ days but still hold a positive balance.
+    private func generateAccountDormancy(allTransactions: [Transaction], balanceFor: (String) -> Double) -> Insight? {
+        let dateFormatter = DateFormatters.dateFormatter
+        let now = Date()
+        guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now) else { return nil }
+
+        let dormantAccounts: [AccountInsightItem] = transactionStore.accounts.compactMap { account in
+            let balance = balanceFor(account.id)
+            guard balance > 0 else { return nil }
+            let lastTx = allTransactions
+                .filter { $0.accountId == account.id }
+                .compactMap { dateFormatter.date(from: $0.date) }
+                .max()
+            guard let last = lastTx, last < thirtyDaysAgo else { return nil }
+            return AccountInsightItem(
+                id: account.id,
+                accountName: account.name,
+                currency: account.currency,
+                balance: balance,
+                transactionCount: 0,
+                lastActivityDate: last,
+                iconSource: account.iconSource
+            )
+        }
+        guard !dormantAccounts.isEmpty else { return nil }
+
+        let totalDormantBalance = dormantAccounts.reduce(0.0) { $0 + $1.balance }
+        return Insight(
+            id: "accountDormancy",
+            type: .accountDormancy,
+            title: String(localized: "insights.accountDormancy.title"),
+            subtitle: "\(dormantAccounts.count) \(String(localized: "insights.accountDormancy.subtitle"))",
+            metric: InsightMetric(
+                value: Double(dormantAccounts.count),
+                formattedValue: "\(dormantAccounts.count)",
+                currency: nil, unit: nil
+            ),
+            trend: nil,
+            severity: .neutral,
+            category: .wealth,
+            detailData: .accountComparison(dormantAccounts)
+        )
     }
 
     /// Phase 23-C P12: shared monthly recurring net calculation.

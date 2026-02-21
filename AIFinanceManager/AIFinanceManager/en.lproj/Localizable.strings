@@ -764,6 +764,43 @@
 "insights.wealth.title" = "Accumulated Capital";
 "insights.wealth.subtitle" = "Total balance across all accounts";
 "insights.wealth.accounts" = "Accounts";
+"insights.wealthGrowth" = "Wealth Change";
+
+// Phase 24 — Savings
+"insights.savings" = "Savings";
+"insights.savingsRate" = "Savings Rate";
+"insights.emergencyFund" = "Emergency Fund";
+"insights.monthsCovered" = "%d months covered";
+"insights.months" = "months";
+"insights.savingsMomentum" = "Savings Momentum";
+"insights.vsPrevious3Months" = "vs previous 3 months";
+
+// Phase 24 — Spending (stub completions)
+"insights.categoryTrend" = "Spending Trend";
+"insights.categoryTrend.risingMonths" = "Rising for %d months";
+"insights.subscriptionGrowth" = "Subscription Growth";
+"insights.vsThreeMonthsAgo" = "vs 3 months ago";
+
+// Phase 24 — Forecasting
+"insights.forecasting" = "Forecast";
+"insights.spendingForecast" = "Monthly Spending Forecast";
+"insights.balanceRunway" = "Balance Runway";
+"insights.balanceRunway.months" = "months of runway";
+"insights.yearOverYear" = "Year-over-Year";
+"insights.incomeSeasonality" = "Income Seasonality";
+"insights.spendingVelocity" = "Spending Velocity";
+"insights.incomeSourceBreakdown" = "Income Sources";
+
+// Phase 24 — Health Score & Behavioral
+"insights.healthScore" = "Financial Health";
+"insights.healthGrade.excellent" = "Excellent";
+"insights.healthGrade.good" = "Good";
+"insights.healthGrade.fair" = "Fair";
+"insights.healthGrade.needsAttention" = "Needs Attention";
+"insights.duplicateSubscriptions.title" = "Possible Duplicate Subscriptions";
+"insights.duplicateSubscriptions.subtitle" = "potential duplicates detected";
+"insights.accountDormancy.title" = "Idle Account Detected";
+"insights.accountDormancy.subtitle" = "accounts idle 30+ days";
 
 // MARK: - Tab Bar
 "tab.home" = "Home";
