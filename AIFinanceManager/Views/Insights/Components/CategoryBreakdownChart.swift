@@ -11,7 +11,8 @@ import Charts
 
 struct CategoryBreakdownChart: View {
     let items: [CategoryBreakdownItem]
-    var compact: Bool = false
+    var mode: ChartDisplayMode = .full
+    private var isCompact: Bool { mode == .compact }
 
     private var displayItems: [CategoryBreakdownItem] {
         // Show top 5, group rest as "Other"
@@ -32,7 +33,7 @@ struct CategoryBreakdownChart: View {
     }
 
     var body: some View {
-        if compact {
+        if isCompact {
             compactChart
         } else {
             fullChart
@@ -106,7 +107,7 @@ struct CategoryBreakdownChart: View {
 
 #Preview("Compact (card mini-chart)") {
     VStack {
-        CategoryBreakdownChart(items: CategoryBreakdownItem.mockItems(), compact: true)
+        CategoryBreakdownChart(items: CategoryBreakdownItem.mockItems(), mode: .compact)
             .screenPadding()
     }
     .frame(height: 100)
