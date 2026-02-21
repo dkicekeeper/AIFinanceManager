@@ -13,7 +13,8 @@ import Charts
 struct SpendingTrendChart: View {
     let dataPoints: [MonthlyDataPoint]
     let currency: String
-    var compact: Bool = false
+    var mode: ChartDisplayMode = .full
+    private var isCompact: Bool { mode == .compact }
     /// Phase 18: wrap in horizontal ScrollView when dataPoints.count exceeds 6
     var scrollable: Bool = false
 
@@ -42,9 +43,9 @@ struct SpendingTrendChart: View {
             )
             .foregroundStyle(AppColors.destructive)
             .interpolationMethod(.catmullRom)
-            .lineStyle(StrokeStyle(lineWidth: compact ? 1.5 : 2))
+            .lineStyle(StrokeStyle(lineWidth: isCompact ? 1.5 : 2))
 
-            if !compact {
+            if !isCompact {
                 PointMark(
                     x: .value("Month", point.month),
                     y: .value("Expenses", point.expenses)
@@ -54,7 +55,7 @@ struct SpendingTrendChart: View {
             }
         }
         .chartXAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }   // Hidden in compact mode
             } else {
                 AxisMarks(values: .stride(by: .month)) { _ in
@@ -63,7 +64,7 @@ struct SpendingTrendChart: View {
             }
         }
         .chartYAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }   // Hidden in compact mode
             } else {
                 AxisMarks { value in
@@ -77,11 +78,11 @@ struct SpendingTrendChart: View {
                 }
             }
         }
-        .frame(height: compact ? 60 : 200)
+        .frame(height: isCompact ? 60 : 200)
     }
 
     var body: some View {
-        if scrollable && !compact && dataPoints.count > 6 {
+        if scrollable && !isCompact && dataPoints.count > 6 {
             GeometryReader { proxy in
                 let chartWidth = max(proxy.size.width, CGFloat(dataPoints.count) * 50)
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -121,7 +122,7 @@ struct SpendingTrendChart: View {
     SpendingTrendChart(
         dataPoints: MonthlyDataPoint.mockTrend(),
         currency: "KZT",
-        compact: true
+        mode: .compact
     )
     .screenPadding()
     .frame(height: 80)
