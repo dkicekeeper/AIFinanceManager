@@ -46,10 +46,8 @@
 	<true/>
 	<key>UIAppFonts</key>
 	<array>
-		<string>Overpass-Regular.ttf</string>
-		<string>Overpass-Medium.ttf</string>
-		<string>Overpass-SemiBold.ttf</string>
-		<string>Overpass-Bold.ttf</string>
+		<string>Inter-VariableFont_opsz,wght.ttf</string>
+		<string>Inter-Italic-VariableFont_opsz,wght.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
