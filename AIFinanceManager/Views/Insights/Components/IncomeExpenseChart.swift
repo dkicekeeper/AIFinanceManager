@@ -19,7 +19,8 @@ import Charts
 struct IncomeExpenseChart: View {
     let dataPoints: [MonthlyDataPoint]
     let currency: String
-    var compact: Bool = false
+    var mode: ChartDisplayMode = .full
+    private var isCompact: Bool { mode == .compact }
     /// When true, wraps in a horizontal ScrollView (Phase 18)
     var scrollable: Bool = false
 
@@ -28,7 +29,7 @@ struct IncomeExpenseChart: View {
             BarMark(
                 x: .value("Month", point.month),
                 y: .value("Amount", point.income),
-                width: compact ? 6 : 12
+                width: isCompact ? 6 : 12
             )
             .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
             .foregroundStyle(AppColors.success.opacity(0.85))
@@ -38,7 +39,7 @@ struct IncomeExpenseChart: View {
             BarMark(
                 x: .value("Month", point.month),
                 y: .value("Amount", point.expenses),
-                width: compact ? 6 : 12
+                width: isCompact ? 6 : 12
             )
             .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
             .foregroundStyle(AppColors.destructive.opacity(0.85))
@@ -46,7 +47,7 @@ struct IncomeExpenseChart: View {
             .position(by: .value("Type", "Expenses"))
         }
         .chartXAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks(values: .stride(by: .month)) { value in
@@ -60,7 +61,7 @@ struct IncomeExpenseChart: View {
             }
         }
         .chartYAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks { value in
@@ -78,19 +79,19 @@ struct IncomeExpenseChart: View {
             "Income": AppColors.success,
             "Expenses": AppColors.destructive
         ])
-        .chartLegend(compact ? .hidden : .automatic)
+        .chartLegend(isCompact ? .hidden : .automatic)
         .chartPlotStyle { content in
-            if compact {
+            if isCompact {
                 content
             } else {
                 content.padding(.trailing, AppSpacing.md)
             }
         }
-        .frame(height: compact ? 60 : 200)
+        .frame(height: isCompact ? 60 : 200)
     }
 
     var body: some View {
-        if scrollable && !compact && dataPoints.count > 6 {
+        if scrollable && !isCompact && dataPoints.count > 6 {
             let pointWidth: CGFloat = 50
             GeometryReader { proxy in
                 let chartWidth = max(proxy.size.width, CGFloat(dataPoints.count) * pointWidth)
@@ -150,10 +151,11 @@ struct PeriodIncomeExpenseChart: View {
     let dataPoints: [PeriodDataPoint]
     let currency: String
     let granularity: InsightGranularity
-    var compact: Bool = false
+    var mode: ChartDisplayMode = .full
+    private var isCompact: Bool { mode == .compact }
 
-    private var pointWidth: CGFloat { compact ? 30 : granularity.pointWidth }
-    private var chartHeight: CGFloat { compact ? 60 : 220 }
+    private var pointWidth: CGFloat { isCompact ? 30 : granularity.pointWidth }
+    private var chartHeight: CGFloat { isCompact ? 60 : 220 }
 
     private func chartWidth(containerWidth: CGFloat) -> CGFloat {
         max(containerWidth, CGFloat(dataPoints.count) * pointWidth)
@@ -164,7 +166,7 @@ struct PeriodIncomeExpenseChart: View {
             let container = proxy.size.width
             ScrollView(.horizontal, showsIndicators: false) {
                 chartContent
-                    .frame(width: compact ? container : chartWidth(containerWidth: container),
+                    .frame(width: isCompact ? container : chartWidth(containerWidth: container),
                            height: chartHeight)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -177,7 +179,7 @@ struct PeriodIncomeExpenseChart: View {
             BarMark(
                 x: .value("Period", point.label),
                 y: .value("Income", point.income),
-                width: .fixed(compact ? 6 : max(8, pointWidth * 0.38))
+                width: .fixed(isCompact ? 6 : max(8, pointWidth * 0.38))
             )
             .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
             .foregroundStyle(AppColors.success.opacity(0.85))
@@ -187,16 +189,16 @@ struct PeriodIncomeExpenseChart: View {
             BarMark(
                 x: .value("Period", point.label),
                 y: .value("Expenses", point.expenses),
-                width: .fixed(compact ? 6 : max(8, pointWidth * 0.38))
+                width: .fixed(isCompact ? 6 : max(8, pointWidth * 0.38))
             )
             .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
             .foregroundStyle(AppColors.destructive.opacity(0.85))
             .shadow(color: AppColors.destructive.opacity(0.35), radius: 4, x: 0, y: 2)
             .position(by: .value("Type", "Expenses"))
         }
-        
+
         .chartXAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks { value in
@@ -210,9 +212,9 @@ struct PeriodIncomeExpenseChart: View {
                 }
             }
         }
-        
+
         .chartYAxis {
-            if compact {
+            if isCompact {
                 AxisMarks { _ in }
             } else {
                 AxisMarks { value in
@@ -226,14 +228,14 @@ struct PeriodIncomeExpenseChart: View {
                 }
             }
         }
-        
+
         .chartForegroundStyleScale([
             "Income": AppColors.success,
             "Expenses": AppColors.destructive
         ])
-        .chartLegend(compact ? .hidden : .automatic)
+        .chartLegend(isCompact ? .hidden : .automatic)
         .chartPlotStyle { content in
-            if compact {
+            if isCompact {
                 content
             } else {
                 content.padding(.trailing, AppSpacing.md)
@@ -325,7 +327,7 @@ struct PeriodIncomeExpenseChart: View {
     IncomeExpenseChart(
         dataPoints: MonthlyDataPoint.mockTrend(),
         currency: "KZT",
-        compact: true
+        mode: .compact
     )
     .screenPadding()
     .frame(height: 80)
