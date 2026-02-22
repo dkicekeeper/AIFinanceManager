@@ -166,42 +166,43 @@ final class CategoryAggregateService: @unchecked Sendable {
 
     /// Fetch spending totals for a date range. Groups by category, returns sorted desc.
     /// Used by InsightsService instead of O(N) transaction filtering.
+    ///
+    /// Uses a single range predicate (7 conditions, constant size) instead of one
+    /// OR-subpredicate per calendar month. This avoids the SQLite
+    /// "Expression tree too large" crash that occurs for ranges > ~80 months.
     func fetchRange(
         from startDate: Date,
         to endDate: Date,
         currency: String
     ) -> [CategoryMonthlyAggregate] {
         let calendar = Calendar.current
-        var months: [(year: Int, month: Int)] = []
+        let startComps = calendar.dateComponents([.year, .month], from: startDate)
+        let endComps   = calendar.dateComponents([.year, .month], from: endDate)
 
-        // Enumerate months in range
-        var current = startDate
-        while current <= endDate {
-            let comps = calendar.dateComponents([.year, .month], from: current)
-            if let y = comps.year, let m = comps.month {
-                months.append((y, m))
-            }
-            guard let next = calendar.date(byAdding: .month, value: 1, to: current) else { break }
-            current = next
-        }
+        guard let startYear  = startComps.year,
+              let startMonth = startComps.month,
+              let endYear    = endComps.year,
+              let endMonth   = endComps.month
+        else { return [] }
 
-        guard !months.isEmpty else { return [] }
+        // Validate range is not inverted
+        guard endYear * 100 + endMonth >= startYear * 100 + startMonth else { return [] }
 
-        // Batch fetch all needed months
-        let yearMonthPairs = months.map { "(\($0.year), \($0.month))" }.joined(separator: ", ")
-        _ = yearMonthPairs  // used below in predicate building
+        // Only fetch monthly rows (year > 0 AND month > 0) within the half-open
+        // year/month boundary. This is always 7 predicates — constant size.
+        let predicate = NSPredicate(
+            format: "currency == %@"
+                + " AND year > 0 AND month > 0"
+                + " AND (year > %d OR (year == %d AND month >= %d))"
+                + " AND (year < %d OR (year == %d AND month <= %d))",
+            currency,
+            Int16(startYear), Int16(startYear), Int16(startMonth),
+            Int16(endYear),   Int16(endYear),   Int16(endMonth)
+        )
 
         let context = stack.viewContext
         let request = CategoryAggregateEntity.fetchRequest()
-
-        // Build OR predicate for each (year, month) pair
-        let subPredicates: [NSPredicate] = months.map { ym in
-            NSPredicate(
-                format: "year == %d AND month == %d AND currency == %@",
-                Int16(ym.year), Int16(ym.month), currency
-            )
-        }
-        request.predicate = NSCompoundPredicate(orPredicateWithSubpredicates: subPredicates)
+        request.predicate = predicate
         request.sortDescriptors = [NSSortDescriptor(key: "categoryName", ascending: true)]
 
         do {
