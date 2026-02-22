@@ -55,15 +55,7 @@ struct InsightDetailView: View {
                 Spacer()
 
                 if let trend = insight.trend {
-                    HStack(spacing: AppSpacing.xxs) {
-                        Image(systemName: trend.trendIcon)
-                        if let percent = trend.changePercent {
-                            Text(String(format: "%+.1f%%", percent))
-                        }
-                    }
-                    .font(AppTypography.bodySmall)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(trend.trendColor)
+                    InsightTrendBadge(trend: trend, style: .inline)
                 }
             }
 
@@ -125,64 +117,7 @@ struct InsightDetailView: View {
     private func budgetChartSection(_ items: [BudgetInsightItem]) -> some View {
         LazyVStack(spacing: AppSpacing.md) {
             ForEach(items) { item in
-                VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                    HStack {
-                        if let iconSource = item.iconSource {
-                            IconView(source: iconSource, size: AppIconSize.lg)
-                        }
-                        Text(item.categoryName)
-                            .font(AppTypography.body)
-                            .foregroundStyle(AppColors.textPrimary)
-                        Spacer()
-                        Text(String(format: "%.0f%%", item.percentage))
-                            .font(AppTypography.bodySmall)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(item.isOverBudget ? AppColors.destructive : AppColors.textPrimary)
-                    }
-
-                    // P9: replaced GeometryReader with scaleEffect — no layout thrash
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: AppRadius.xs)
-                            .fill(AppColors.secondaryBackground)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 8)
-
-                        RoundedRectangle(cornerRadius: AppRadius.xs)
-                            .fill(item.isOverBudget ? AppColors.destructive : item.color)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 8)
-                            .scaleEffect(x: min(item.percentage, 100) / 100, anchor: .leading)
-                    }
-
-                    HStack {
-                        FormattedAmountText(
-                            amount: item.spent,
-                            currency: currency,
-                            fontSize: AppTypography.caption,
-                            fontWeight: .regular,
-                            color: AppColors.textSecondary
-                        )
-                        Text("/")
-                            .font(AppTypography.caption)
-                            .foregroundStyle(AppColors.textTertiary)
-                        FormattedAmountText(
-                            amount: item.budgetAmount,
-                            currency: currency,
-                            fontSize: AppTypography.caption,
-                            fontWeight: .regular,
-                            color: AppColors.textSecondary
-                        )
-                        Spacer()
-                        if item.daysRemaining > 0 {
-                            Text(String(format: String(localized: "insights.daysLeft"), item.daysRemaining))
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.textTertiary)
-                        }
-                    }
-                }
-                .padding(AppSpacing.md)
-                .background(AppColors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.md))
+                BudgetProgressRow(item: item, currency: currency)
             }
         }
     }
@@ -220,9 +155,7 @@ struct InsightDetailView: View {
 
     private func categoryDetailList(_ items: [CategoryBreakdownItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text(String(localized: "insights.breakdown"))
-                .font(AppTypography.h3)
-                .foregroundStyle(AppColors.textPrimary)
+            SectionHeaderView(String(localized: "insights.breakdown"), style: .insights)
                 .screenPadding()
 
             ForEach(items) { item in
@@ -257,18 +190,11 @@ struct InsightDetailView: View {
             Spacer()
 
             HStack(spacing: AppSpacing.xs) {
-                VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                    FormattedAmountText(
-                        amount: item.amount,
-                        currency: currency,
-                        fontSize: AppTypography.body,
-                        fontWeight: .semibold,
-                        color: AppColors.textPrimary
-                    )
-                    Text(String(format: "%.1f%%", item.percentage))
-                        .font(AppTypography.caption)
-                        .foregroundStyle(AppColors.textSecondary)
-                }
+                AmountWithPercentage(
+                    amount: item.amount,
+                    currency: currency,
+                    percentage: item.percentage
+                )
                 // P9: chevron only when drill-down closure is provided
                 if onCategoryTap != nil {
                     Image(systemName: "chevron.right")
@@ -293,9 +219,7 @@ struct InsightDetailView: View {
 
     private func recurringDetailList(_ items: [RecurringInsightItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text(String(localized: "insights.breakdown"))
-                .font(AppTypography.h3)
-                .foregroundStyle(AppColors.textPrimary)
+            SectionHeaderView(String(localized: "insights.breakdown"), style: .insights)
                 .screenPadding()
 
             ForEach(items) { item in
@@ -341,58 +265,24 @@ struct InsightDetailView: View {
     // P10: Single unified function replacing monthlyDetailList + periodDetailList.
     private func periodBreakdownList(_ points: [BreakdownPoint]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text(String(localized: "insights.monthlyBreakdown"))
-                .font(AppTypography.h3)
-                .foregroundStyle(AppColors.textPrimary)
+            SectionHeaderView(String(localized: "insights.monthlyBreakdown"), style: .insights)
                 .screenPadding()
 
             ForEach(points.reversed(), id: \.label) { point in
-                HStack {
-                    Text(point.label)
-                        .font(AppTypography.body)
-                        .foregroundStyle(AppColors.textPrimary)
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                        FormattedAmountText(
-                            amount: point.netFlow,
-                            currency: currency,
-                            fontSize: AppTypography.body,
-                            fontWeight: .semibold,
-                            color: point.netFlow >= 0 ? AppColors.success : AppColors.destructive
-                        )
-                        HStack(spacing: AppSpacing.xs) {
-                            FormattedAmountText(
-                                amount: point.income,
-                                currency: currency,
-                                prefix: "+",
-                                fontSize: AppTypography.caption,
-                                fontWeight: .regular,
-                                color: AppColors.success
-                            )
-                            FormattedAmountText(
-                                amount: point.expenses,
-                                currency: currency,
-                                prefix: "-",
-                                fontSize: AppTypography.caption,
-                                fontWeight: .regular,
-                                color: AppColors.destructive
-                            )
-                        }
-                    }
-                }
-                .padding(.vertical, AppSpacing.sm)
-                .screenPadding()
+                PeriodBreakdownRow(
+                    label: point.label,
+                    income: point.income,
+                    expenses: point.expenses,
+                    netFlow: point.netFlow,
+                    currency: currency
+                )
             }
         }
     }
 
     private func accountDetailList(_ accounts: [AccountInsightItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text(String(localized: "insights.wealth.accounts"))
-                .font(AppTypography.h3)
-                .foregroundStyle(AppColors.textPrimary)
+            SectionHeaderView(String(localized: "insights.wealth.accounts"), style: .insights)
                 .screenPadding()
 
             ForEach(accounts) { account in

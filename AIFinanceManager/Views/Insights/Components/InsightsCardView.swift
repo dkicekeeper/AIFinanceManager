@@ -66,7 +66,7 @@ struct InsightsCardView<BottomChart: View>: View {
 
                 // Trend indicator
                 if let trend = insight.trend {
-                    trendBadge(trend)
+                    InsightTrendBadge(trend: trend, style: .pill)
                 }
                 if let unit = insight.metric.unit {
                     Text(unit)
@@ -82,26 +82,6 @@ struct InsightsCardView<BottomChart: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCardStyle(radius: AppRadius.pill)
-    }
-
-    // MARK: - Trend Badge
-
-    private func trendBadge(_ trend: InsightTrend) -> some View {
-        HStack(spacing: AppSpacing.xxs) {
-            Image(systemName: trend.trendIcon)
-                .font(AppTypography.caption2.weight(.bold))
-
-            if let percent = trend.changePercent {
-                Text(String(format: "%+.1f%%", percent))
-                    .font(AppTypography.caption2)
-                    .fontWeight(.semibold)
-            }
-        }
-        .foregroundStyle(trend.trendColor)
-        .padding(.horizontal, AppSpacing.sm)
-        .padding(.vertical, AppSpacing.xxs)
-        .background(trend.trendColor.opacity(0.12))
-        .clipShape(Capsule())
     }
 
     // MARK: - Mini Chart
@@ -146,20 +126,13 @@ struct InsightsCardView<BottomChart: View>: View {
         }
     }
 
-    // P9 (card): scaleEffect replaces GeometryReader — no layout thrash
     private func budgetProgressBar(_ item: BudgetInsightItem) -> some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: AppRadius.xs)
-                .fill(AppColors.secondaryBackground)
-                .frame(maxWidth: .infinity)
-                .frame(height: 6)
-
-            RoundedRectangle(cornerRadius: AppRadius.xs)
-                .fill(item.isOverBudget ? AppColors.destructive : item.color)
-                .frame(maxWidth: .infinity)
-                .frame(height: 6)
-                .scaleEffect(x: min(item.percentage, 100) / 100, anchor: .leading)
-        }
+        BudgetProgressBar(
+            percentage: item.percentage,
+            isOverBudget: item.isOverBudget,
+            color: item.color,
+            height: 6
+        )
     }
 }
 

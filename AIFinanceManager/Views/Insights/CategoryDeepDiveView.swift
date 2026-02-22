@@ -81,9 +81,7 @@ struct CategoryDeepDiveView: View {
 
     private var trendSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            Text(String(localized: "insights.spendingTrend"))
-                .font(AppTypography.h3)
-                .foregroundStyle(AppColors.textPrimary)
+            SectionHeaderView(String(localized: "insights.spendingTrend"), style: .insights)
                 .padding([.horizontal, .top], AppSpacing.lg)
 
             Chart(monthlyTrend) { point in
@@ -110,9 +108,7 @@ struct CategoryDeepDiveView: View {
 
     private var subcategorySection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            Text(String(localized: "insights.subcategories"))
-                .font(AppTypography.h3)
-                .foregroundStyle(AppColors.textPrimary)
+            SectionHeaderView(String(localized: "insights.subcategories"), style: .insights)
                 .screenPadding()
 
             // Donut chart — uses precomputed index map (P16 fix, was O(n²))
@@ -141,18 +137,11 @@ struct CategoryDeepDiveView: View {
 
                     Spacer()
 
-                    VStack(alignment: .trailing) {
-                        FormattedAmountText(
-                            amount: item.amount,
-                            currency: currency,
-                            fontSize: AppTypography.body,
-                            fontWeight: .semibold,
-                            color: AppColors.textPrimary
-                        )
-                        Text(String(format: "%.1f%%", item.percentage))
-                            .font(AppTypography.caption)
-                            .foregroundStyle(AppColors.textSecondary)
-                    }
+                    AmountWithPercentage(
+                        amount: item.amount,
+                        currency: currency,
+                        percentage: item.percentage
+                    )
                 }
                 .padding(.vertical, AppSpacing.xs)
                 .screenPadding()
@@ -164,57 +153,20 @@ struct CategoryDeepDiveView: View {
 
     private var comparisonSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            Text(String(localized: "insights.periodComparison"))
-                .font(AppTypography.h3)
-                .foregroundStyle(AppColors.textPrimary)
+            SectionHeaderView(String(localized: "insights.periodComparison"), style: .insights)
 
             if let current = monthlyTrend.last, monthlyTrend.count >= 2 {
                 let previous = monthlyTrend[monthlyTrend.count - 2]
-                let change = previous.expenses > 0 ? ((current.expenses - previous.expenses) / previous.expenses) * 100 : 0
-                let direction: TrendDirection = change > 2 ? .up : (change < -2 ? .down : .flat)
-
-                HStack {
-                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                        Text(current.label)
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(AppColors.textSecondary)
-                        FormattedAmountText(
-                            amount: current.expenses,
-                            currency: currency,
-                            fontSize: AppTypography.h3,
-                            fontWeight: .bold,
-                            color: AppColors.textPrimary
-                        )
-                    }
-
-                    Spacer()
-
-                    VStack(spacing: AppSpacing.xxs) {
-                        Image(systemName: direction == .up ? "arrow.up.right" : (direction == .down ? "arrow.down.right" : "arrow.right"))
-                            .foregroundStyle(direction == .up ? AppColors.destructive : (direction == .down ? AppColors.success : AppColors.textSecondary))
-                        Text(String(format: "%+.1f%%", change))
-                            .font(AppTypography.captionEmphasis)
-                            .foregroundStyle(direction == .up ? AppColors.destructive : (direction == .down ? AppColors.success : AppColors.textSecondary))
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                        Text(previous.label)
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(AppColors.textSecondary)
-                        FormattedAmountText(
-                            amount: previous.expenses,
-                            currency: currency,
-                            fontSize: AppTypography.h3,
-                            fontWeight: .semibold,
-                            color: AppColors.textSecondary
-                        )
-                    }
-                }
+                PeriodComparisonCard(
+                    currentLabel: current.label,
+                    currentAmount: current.expenses,
+                    previousLabel: previous.label,
+                    previousAmount: previous.expenses,
+                    currency: currency,
+                    isExpenseContext: true
+                )
             }
         }
-        .glassCardStyle(radius: AppRadius.pill)
         .screenPadding()
     }
 

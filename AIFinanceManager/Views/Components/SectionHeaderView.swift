@@ -25,6 +25,9 @@ struct SectionHeaderView: View {
 
         /// Compact picker category header (small, uppercase)
         case compact
+
+        /// Insights detail section title (h3, primary color)
+        case insights
     }
 
     init(_ title: String, style: Style = .default) {
@@ -40,6 +43,8 @@ struct SectionHeaderView: View {
             emphasizedStyle
         case .compact:
             compactStyle
+        case .insights:
+            insightsStyle
         }
     }
 
@@ -63,6 +68,12 @@ struct SectionHeaderView: View {
             .font(AppTypography.caption)
             .foregroundStyle(AppColors.textSecondary)
             .textCase(.uppercase)
+    }
+
+    private var insightsStyle: some View {
+        Text(title)
+            .font(AppTypography.h3)
+            .foregroundStyle(AppColors.textPrimary)
     }
 }
 

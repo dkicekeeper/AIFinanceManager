@@ -23,33 +23,16 @@ struct InsightsSummaryHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
-            HStack(spacing: AppSpacing.lg) {
-                summaryItem(
-                    title: String(localized: "insights.income"),
-                    amount: totalIncome,
-                    color: AppColors.success
-                )
-
-                Spacer()
-
-                summaryItem(
-                    title: String(localized: "insights.expenses"),
-                    amount: totalExpenses,
-                    color: AppColors.destructive
-                )
-
-                Spacer()
-
-                summaryItem(
-                    title: String(localized: "insights.netFlow"),
-                    amount: netFlow,
-                    color: netFlow >= 0 ? AppColors.success : AppColors.destructive
-                )
-            }
+            InsightsTotalsRow(
+                income: totalIncome,
+                expenses: totalExpenses,
+                netFlow: netFlow,
+                currency: currency
+            )
 
             // Phase 24 — Health score badge (shown only when score is available)
             if let hs = healthScore {
-                healthScoreBadge(hs)
+                HealthScoreBadge(score: hs)
             }
 
             // Mini trend chart.
@@ -69,48 +52,6 @@ struct InsightsSummaryHeader: View {
         }
     }
 
-    @ViewBuilder
-    private func healthScoreBadge(_ hs: FinancialHealthScore) -> some View {
-        HStack(spacing: AppSpacing.sm) {
-            Image(systemName: "heart.text.square.fill")
-                .foregroundStyle(hs.gradeColor)
-                .font(AppTypography.body)
-
-            Text(String(localized: "insights.healthScore"))
-                .font(AppTypography.caption)
-                .foregroundStyle(AppColors.textSecondary)
-
-            Spacer()
-
-            Text("\(hs.score)")
-                .font(AppTypography.body.bold())
-                .foregroundStyle(hs.gradeColor)
-
-            Text(hs.grade)
-                .font(AppTypography.caption)
-                .foregroundStyle(hs.gradeColor)
-                .padding(.horizontal, AppSpacing.xs)
-                .padding(.vertical, 2)
-                .background(hs.gradeColor.opacity(0.12))
-                .clipShape(Capsule())
-        }
-    }
-
-    private func summaryItem(title: String, amount: Double, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-            Text(title)
-                .font(AppTypography.caption)
-                .foregroundStyle(AppColors.textSecondary)
-
-            FormattedAmountText(
-                amount: amount,
-                currency: currency,
-                fontSize: AppTypography.bodySmall,
-                fontWeight: .semibold,
-                color: color
-            )
-        }
-    }
 }
 
 // MARK: - Previews
