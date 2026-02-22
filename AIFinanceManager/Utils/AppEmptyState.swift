@@ -74,12 +74,12 @@ struct EmptyStateView: View {
                 Button(action: action) {
                     Text(actionTitle)
                 }
-                .tertiaryButton()
+                .secondaryButton()
                 .padding(.top, AppSpacing.sm)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(AppSpacing.xxl)
+        .padding(AppSpacing.xxxl)
     }
 
     private var compactBody: some View {

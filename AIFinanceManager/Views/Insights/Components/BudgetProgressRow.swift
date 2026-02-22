@@ -23,11 +23,11 @@ struct BudgetProgressRow: View {
                 }
                 Text(item.categoryName)
                     .font(AppTypography.body)
+                    .fontWeight(.semibold)
                     .foregroundStyle(AppColors.textPrimary)
                 Spacer()
                 Text(String(format: "%.0f%%", item.percentage))
-                    .font(AppTypography.bodySmall)
-                    .fontWeight(.semibold)
+                    .font(AppTypography.body)
                     .foregroundStyle(item.isOverBudget ? AppColors.destructive : AppColors.textPrimary)
             }
 
@@ -65,8 +65,20 @@ struct BudgetProgressRow: View {
                 }
             }
         }
-        .padding(AppSpacing.md)
-        .background(AppColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: AppRadius.md))
+        .glassCardStyle(radius: AppRadius.pill)
+    }
+}
+
+// MARK: - Previews
+
+#Preview {
+    ScrollView {
+        VStack(spacing: AppSpacing.md) {
+            ForEach(BudgetInsightItem.mockItems()) { item in
+                BudgetProgressRow(item: item, currency: "KZT")
+            }
+        }
+        .screenPadding()
+        .padding(.vertical, AppSpacing.md)
     }
 }

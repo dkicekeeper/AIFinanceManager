@@ -53,7 +53,7 @@ struct InsightsCardView<BottomChart: View>: View {
             }
 
             Text(insight.subtitle)
-                .font(AppTypography.h4)
+                .font(AppTypography.bodyLarge)
                 .foregroundStyle(AppColors.textPrimary)
                 .lineLimit(1)
 
@@ -80,7 +80,7 @@ struct InsightsCardView<BottomChart: View>: View {
                 bottomChartContent()
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+//        .frame(maxWidth: .infinity, alignment: .leading)
         .glassCardStyle(radius: AppRadius.pill)
     }
 
@@ -110,14 +110,26 @@ struct InsightsCardView<BottomChart: View>: View {
         case .accountComparison:
             EmptyView()
         case .periodTrend(let points):
-            // Phase 18 — mini period cash flow chart
-            PeriodCashFlowChart(
-                dataPoints: points,
-                currency: insight.metric.currency ?? "KZT",
-                granularity: points.first?.granularity ?? .month,
-                mode: .compact
-            )
-            .frame(height: 60)
+            // Phase 18 — mini period chart.
+            // Wealth category uses cumulative balance → WealthChart (accent colour).
+            // Other categories use PeriodCashFlowChart (net flow colouring).
+            if insight.category == .wealth {
+                WealthChart(
+                    dataPoints: points,
+                    currency: insight.metric.currency ?? "KZT",
+                    granularity: points.first?.granularity ?? .month,
+                    mode: .compact
+                )
+                .frame(height: 60)
+            } else {
+                PeriodCashFlowChart(
+                    dataPoints: points,
+                    currency: insight.metric.currency ?? "KZT",
+                    granularity: points.first?.granularity ?? .month,
+                    mode: .compact
+                )
+                .frame(height: 60)
+            }
         case .wealthBreakdown:
             // No mini chart for wealth breakdown (account list)
             EmptyView()
@@ -167,6 +179,42 @@ struct InsightsCardView<BottomChart: View>: View {
         VStack(spacing: AppSpacing.md) {
             InsightsCardView(insight: .mockBudgetOver())
             InsightsCardView(insight: .mockRecurring())
+        }
+        .screenPadding()
+        .padding(.vertical, AppSpacing.md)
+    }
+}
+
+#Preview("Savings & Forecasting (Phase 24)") {
+    ScrollView {
+        VStack(spacing: AppSpacing.md) {
+            InsightsCardView(insight: .mockSavingsRate())
+            InsightsCardView(insight: .mockForecasting())
+            InsightsCardView(insight: .mockWealthBreakdown())
+        }
+        .screenPadding()
+        .padding(.vertical, AppSpacing.md)
+    }
+}
+
+#Preview("With Embedded Chart") {
+    ScrollView {
+        VStack(spacing: AppSpacing.md) {
+            InsightsCardView(insight: .mockCashFlow()) {
+                CashFlowChart(
+                    dataPoints: MonthlyDataPoint.mockTrend(),
+                    currency: "KZT",
+                    mode: .full
+                )
+            }
+            InsightsCardView(insight: .mockPeriodTrend()) {
+                PeriodCashFlowChart(
+                    dataPoints: PeriodDataPoint.mockMonthly(),
+                    currency: "KZT",
+                    granularity: .month,
+                    mode: .full
+                )
+            }
         }
         .screenPadding()
         .padding(.vertical, AppSpacing.md)

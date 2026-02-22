@@ -285,7 +285,9 @@ final class InsightsService {
         timeFilter: TimeFilter,
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
-        currencyService: TransactionCurrencyService
+        currencyService: TransactionCurrencyService,
+        granularity: InsightGranularity? = nil,
+        periodPoints: [PeriodDataPoint] = []
     ) -> [Insight] {
         var insights: [Insight] = []
         let expenses = filterService.filterByType(filtered, type: .expense)
@@ -295,11 +297,30 @@ final class InsightsService {
         }
 
         // 1. Top spending category
+        // Phase 31: Narrow to the current granularity bucket when available so the breakdown
+        // reflects only the current week / month / quarter / year — not the full window.
+        let currentBucketPoint = granularity.flatMap { gran in
+            periodPoints.first(where: { $0.key == gran.currentPeriodKey })
+        }
+
+        // Date range and expenses scoped to the current bucket (or full window as fallback)
+        let topRange: (start: Date, end: Date)
+        let topExpenses: [Transaction]
+        let topTotalExpenses: Double
+
+        if let cp = currentBucketPoint {
+            topRange = (cp.periodStart, cp.periodEnd)
+            topExpenses = filterService.filterByTimeRange(expenses, start: cp.periodStart, end: cp.periodEnd)
+            topTotalExpenses = cp.expenses
+        } else {
+            topRange = timeFilter.dateRange()
+            topExpenses = expenses
+            topTotalExpenses = periodSummary.totalExpenses
+        }
+
         // Phase 22: Try fast path — read category totals from CategoryAggregateService (O(M) fetch)
-        // This replaces the O(N) grouping + reduce over filtered expense transactions.
-        let range = timeFilter.dateRange()
         let aggCategories = transactionStore.categoryAggregateService.fetchRange(
-            from: range.start, to: range.end, currency: baseCurrency
+            from: topRange.start, to: topRange.end, currency: baseCurrency
         )
 
         // Build sortedCategories from aggregates when available; fall back to transaction scan
@@ -308,9 +329,9 @@ final class InsightsService {
             Self.logger.debug("⚡️ [Insights] Category spending FAST PATH — \(aggCategories.count) categories from CoreData")
             sortedCategories = aggCategories.map { (key: $0.categoryName, total: $0.totalExpenses) }
         } else {
-            // Slow path: group expenses by category and sum (O(N))
-            let categoryGroups = Dictionary(grouping: expenses, by: { $0.category })
-            sortedCategories = categoryGroups
+            // Slow path: group current-bucket expenses by category and sum (O(N))
+            let bucketGroups = Dictionary(grouping: topExpenses, by: { $0.category })
+            sortedCategories = bucketGroups
                 .map { key, txns in
                     let total = txns.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
                     return (key: key, total: total)
@@ -318,29 +339,26 @@ final class InsightsService {
                 .sorted { $0.total > $1.total }
         }
 
-        // For subcategory breakdown we still need the expense transactions (already filtered above)
-        // so we build a lookup map once for the top 5 categories only
-        let categoryGroups = Dictionary(grouping: expenses, by: { $0.category })
+        // For subcategory breakdown, build a lookup from current-bucket expenses
+        let categoryGroups = Dictionary(grouping: topExpenses, by: { $0.category })
 
         let topCategoryName = sortedCategories.first?.key ?? "—"
         let topCategoryAmount = sortedCategories.first?.total ?? 0
-        PerformanceLogger.InsightsMetrics.logSpendingStart(expenseCount: expenses.count, categoryCount: sortedCategories.count)
-        Self.logger.debug("🛒 [Insights] Spending — expenses=\(expenses.count), categories=\(sortedCategories.count), top='\(topCategoryName, privacy: .public)' (\(String(format: "%.0f", topCategoryAmount), privacy: .public) \(baseCurrency, privacy: .public))")
+        PerformanceLogger.InsightsMetrics.logSpendingStart(expenseCount: topExpenses.count, categoryCount: sortedCategories.count)
+        Self.logger.debug("🛒 [Insights] Spending — bucket_expenses=\(topExpenses.count), categories=\(sortedCategories.count), top='\(topCategoryName, privacy: .public)' (\(String(format: "%.0f", topCategoryAmount), privacy: .public) \(baseCurrency, privacy: .public))")
         for cat in sortedCategories.prefix(5) {
-            let pct = periodSummary.totalExpenses > 0 ? (cat.total / periodSummary.totalExpenses) * 100 : 0
+            let pct = topTotalExpenses > 0 ? (cat.total / topTotalExpenses) * 100 : 0
             Self.logger.debug("   🛒 \(cat.key, privacy: .public): \(String(format: "%.0f", cat.total), privacy: .public) (\(String(format: "%.1f%%", pct), privacy: .public))")
         }
 
         if let top = sortedCategories.first {
-            let percentage = periodSummary.totalExpenses > 0
-                ? (top.total / periodSummary.totalExpenses) * 100
+            let percentage = topTotalExpenses > 0
+                ? (top.total / topTotalExpenses) * 100
                 : 0
 
-            // Bug 2 fix: build subcategory breakdown only for top 5 categories.
-            // Building it for all 18+ categories was the main source of 422ms lag
-            // (subcategory grouping + sorting runs per category).
-            let breakdownItems: [CategoryBreakdownItem] = sortedCategories.prefix(5).map { item in
-                let pct = periodSummary.totalExpenses > 0 ? (item.total / periodSummary.totalExpenses) * 100 : 0
+            // Phase 30: show ALL categories (computation is in background Task.detached, no UI lag).
+            let breakdownItems: [CategoryBreakdownItem] = sortedCategories.map { item in
+                let pct = topTotalExpenses > 0 ? (item.total / topTotalExpenses) * 100 : 0
                 let cat = transactionStore.categories.first { $0.name == item.key }
                 let catColor = cat.map { Color(hex: $0.colorHex) } ?? AppColors.accent
                 let txns = categoryGroups[item.key] ?? []
@@ -392,96 +410,155 @@ final class InsightsService {
             ))
         }
 
-        // 2. Month-over-month spending change
-        // Bug 4 fix: use momReferenceDate instead of Date() so that historical
-        // filters (Last Year, etc.) compare the last *complete* month of the
-        // filter range against the month before it, rather than comparing
-        // the current partial February against January.
-        // Cap thisMonthEnd to refDate: for "Last Month" refDate = Jan 31, so we
-        // should not pull transactions from Feb 1+ into the "this month" bucket.
-        let calendar = Calendar.current
-        let refDate = momReferenceDate(for: timeFilter)
-        let thisMonthStart = startOfMonth(calendar, for: refDate)
-        // Use min(fullMonthEnd, refDate+1day) so historical filters stay within range
-        let fullMonthEnd = calendar.date(byAdding: .month, value: 1, to: thisMonthStart) ?? refDate
-        let refDatePlusOneDay = calendar.date(byAdding: .day, value: 1, to: refDate) ?? fullMonthEnd
-        let thisMonthEnd = min(fullMonthEnd, refDatePlusOneDay)
+        // 2. Period-over-period spending change.
+        // Phase 30: use granularity bucket lookup (currentPeriodKey / previousPeriodKey) when
+        // periodPoints are available; fall back to legacy calendar-month O(N) scan otherwise.
+        // Skip for .allTime — there is no meaningful "previous all-time period" to compare against,
+        // and previousPeriodKey == currentPeriodKey for allTime which would produce a two-point
+        // chart with duplicate labels (→ fatal crash in axisLabelMap).
+        if let gran = granularity, !periodPoints.isEmpty, gran != .allTime {
+            let currentPoint = periodPoints.first(where: { $0.key == gran.currentPeriodKey })
+            let prevPoint    = periodPoints.first(where: { $0.key == gran.previousPeriodKey })
+            let thisTotal    = currentPoint?.expenses ?? 0
+            let prevTotal    = prevPoint?.expenses ?? 0
 
-        if let prevMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart),
-           let prevMonthEnd = calendar.date(byAdding: .month, value: 1, to: prevMonthStart) {
+            Self.logger.debug("🔄 [Insights] MoP spending (granularity) — this=\(String(format: "%.0f", thisTotal), privacy: .public), prev=\(String(format: "%.0f", prevTotal), privacy: .public)")
 
-            // Performance fix: single pass over allTransactions to build both MoM buckets.
-            // Previously this called filterByType (O(n)) then filterByTimeRange (O(n)) twice,
-            // scanning 18k transactions 4× total. Now we do it in one O(n) pass.
-            var thisMonthTotal: Double = 0
-            var prevMonthTotal: Double = 0
-            let dateFormatter = DateFormatters.dateFormatter
-            for tx in allTransactions where tx.type == .expense {
-                guard let txDate = dateFormatter.date(from: tx.date) else { continue }
-                let amount = resolveAmount(tx, baseCurrency: baseCurrency)
-                if txDate >= thisMonthStart && txDate < thisMonthEnd {
-                    thisMonthTotal += amount
-                } else if txDate >= prevMonthStart && txDate < prevMonthEnd {
-                    prevMonthTotal += amount
-                }
-            }
-
-            Self.logger.debug("🔄 [Insights] MoM spending — this=\(String(format: "%.0f", thisMonthTotal), privacy: .public), prev=\(String(format: "%.0f", prevMonthTotal), privacy: .public)")
-
-            if prevMonthTotal > 0 {
-                let changePercent = ((thisMonthTotal - prevMonthTotal) / prevMonthTotal) * 100
+            if let prevPoint, prevTotal > 0 {
+                let changePercent = ((thisTotal - prevTotal) / prevTotal) * 100
                 let direction: TrendDirection = changePercent > 2 ? .up : (changePercent < -2 ? .down : .flat)
                 let severity: InsightSeverity = changePercent > 20 ? .warning : (changePercent < -10 ? .positive : .neutral)
-
-                Self.logger.debug("🔄 [Insights] MoM spending change=\(String(format: "%+.1f%%", changePercent), privacy: .public), direction=\(String(describing: direction), privacy: .public), severity=\(String(describing: severity), privacy: .public)")
 
                 insights.append(Insight(
                     id: "mom_spending",
                     type: .monthOverMonthChange,
-                    title: String(localized: "insights.monthOverMonth"),
-                    subtitle: String(localized: "insights.vsPreviousPeriod"),
+                    title: gran.monthOverMonthTitle,
+                    subtitle: gran.comparisonPeriodName,
                     metric: InsightMetric(
-                        value: thisMonthTotal,
-                        formattedValue: Formatting.formatCurrencySmart(thisMonthTotal, currency: baseCurrency),
+                        value: thisTotal,
+                        formattedValue: Formatting.formatCurrencySmart(thisTotal, currency: baseCurrency),
                         currency: baseCurrency,
                         unit: nil
                     ),
                     trend: InsightTrend(
                         direction: direction,
                         changePercent: changePercent,
-                        changeAbsolute: thisMonthTotal - prevMonthTotal,
-                        comparisonPeriod: String(localized: "insights.vsPreviousPeriod")
+                        changeAbsolute: thisTotal - prevTotal,
+                        comparisonPeriod: gran.comparisonPeriodName
                     ),
                     severity: severity,
                     category: .spending,
-                    detailData: nil
+                    detailData: .periodTrend([prevPoint, currentPoint].compactMap { $0 })
                 ))
+            }
+        } else {
+            // Legacy path: calendar-month O(N) scan (used when called from old timeFilter API).
+            let calendar = Calendar.current
+            let refDate = momReferenceDate(for: timeFilter)
+            let thisMonthStart = startOfMonth(calendar, for: refDate)
+            let fullMonthEnd = calendar.date(byAdding: .month, value: 1, to: thisMonthStart) ?? refDate
+            let refDatePlusOneDay = calendar.date(byAdding: .day, value: 1, to: refDate) ?? fullMonthEnd
+            let thisMonthEnd = min(fullMonthEnd, refDatePlusOneDay)
+
+            if let prevMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart),
+               let prevMonthEnd = calendar.date(byAdding: .month, value: 1, to: prevMonthStart) {
+                var thisMonthTotal: Double = 0
+                var prevMonthTotal: Double = 0
+                let dateFormatter = DateFormatters.dateFormatter
+                for tx in allTransactions where tx.type == .expense {
+                    guard let txDate = dateFormatter.date(from: tx.date) else { continue }
+                    let amount = resolveAmount(tx, baseCurrency: baseCurrency)
+                    if txDate >= thisMonthStart && txDate < thisMonthEnd { thisMonthTotal += amount }
+                    else if txDate >= prevMonthStart && txDate < prevMonthEnd { prevMonthTotal += amount }
+                }
+                if prevMonthTotal > 0 {
+                    let changePercent = ((thisMonthTotal - prevMonthTotal) / prevMonthTotal) * 100
+                    let direction: TrendDirection = changePercent > 2 ? .up : (changePercent < -2 ? .down : .flat)
+                    let severity: InsightSeverity = changePercent > 20 ? .warning : (changePercent < -10 ? .positive : .neutral)
+                    insights.append(Insight(
+                        id: "mom_spending",
+                        type: .monthOverMonthChange,
+                        title: String(localized: "insights.monthOverMonth"),
+                        subtitle: String(localized: "insights.vsPreviousPeriod"),
+                        metric: InsightMetric(
+                            value: thisMonthTotal,
+                            formattedValue: Formatting.formatCurrencySmart(thisMonthTotal, currency: baseCurrency),
+                            currency: baseCurrency, unit: nil
+                        ),
+                        trend: InsightTrend(
+                            direction: direction, changePercent: changePercent,
+                            changeAbsolute: thisMonthTotal - prevMonthTotal,
+                            comparisonPeriod: String(localized: "insights.vsPreviousPeriod")
+                        ),
+                        severity: severity, category: .spending, detailData: nil
+                    ))
+                }
             }
         }
 
-        // 3. Average daily spending (uses already-computed periodSummary)
-        let periodRange = timeFilter.dateRange()
-        let days = max(1, calendar.dateComponents([.day], from: periodRange.start, to: min(periodRange.end, refDate)).day ?? 1)
-        let avgDaily = periodSummary.totalExpenses / Double(days)
+        // 3. Average daily spending.
+        // Phase 30: compute from current/previous granularity bucket when available;
+        // fall back to period-range day-count otherwise.
+        if let gran = granularity, !periodPoints.isEmpty {
+            let currentPoint = periodPoints.first(where: { $0.key == gran.currentPeriodKey })
+            let prevPoint    = periodPoints.first(where: { $0.key == gran.previousPeriodKey })
+            let cal = Calendar.current
+            let currentDays = currentPoint.map { max(1, cal.dateComponents([.day], from: $0.periodStart, to: $0.periodEnd).day ?? 1) } ?? 1
+            let prevDays    = prevPoint.map    { max(1, cal.dateComponents([.day], from: $0.periodStart, to: $0.periodEnd).day ?? 1) } ?? 1
+            let currentAvgDaily = (currentPoint?.expenses ?? 0) / Double(currentDays)
+            let prevAvgDaily    = (prevPoint?.expenses ?? 0)    / Double(prevDays)
+            let changePercent   = prevAvgDaily > 0 ? ((currentAvgDaily - prevAvgDaily) / prevAvgDaily) * 100 : 0.0
+            let direction: TrendDirection = changePercent > 2 ? .up : (changePercent < -2 ? .down : .flat)
 
-        Self.logger.debug("📆 [Insights] Avg daily — totalExpenses=\(String(format: "%.0f", periodSummary.totalExpenses), privacy: .public), days=\(days), avg=\(String(format: "%.0f", avgDaily), privacy: .public) \(baseCurrency, privacy: .public)")
+            Self.logger.debug("📆 [Insights] Avg daily (granularity) — current=\(String(format: "%.0f", currentAvgDaily), privacy: .public), prev=\(String(format: "%.0f", prevAvgDaily), privacy: .public), change=\(String(format: "%+.1f%%", changePercent), privacy: .public)")
 
-        insights.append(Insight(
-            id: "avg_daily",
-            type: .averageDailySpending,
-            title: String(localized: "insights.avgDailySpending"),
-            subtitle: "\(days) " + String(localized: "insights.days"),
-            metric: InsightMetric(
-                value: avgDaily,
-                formattedValue: Formatting.formatCurrencySmart(avgDaily, currency: baseCurrency),
-                currency: baseCurrency,
-                unit: nil
-            ),
-            trend: nil,
-            severity: .neutral,
-            category: .spending,
-            detailData: nil
-        ))
+            insights.append(Insight(
+                id: "avg_daily",
+                type: .averageDailySpending,
+                title: String(localized: "insights.avgDailySpending"),
+                subtitle: currentPoint?.label ?? "",
+                metric: InsightMetric(
+                    value: currentAvgDaily,
+                    formattedValue: Formatting.formatCurrencySmart(currentAvgDaily, currency: baseCurrency),
+                    currency: baseCurrency,
+                    unit: nil
+                ),
+                trend: prevAvgDaily > 0 ? InsightTrend(
+                    direction: direction,
+                    changePercent: changePercent,
+                    changeAbsolute: currentAvgDaily - prevAvgDaily,
+                    comparisonPeriod: gran.comparisonPeriodName
+                ) : nil,
+                severity: .neutral,
+                category: .spending,
+                detailData: .periodTrend([prevPoint, currentPoint].compactMap { $0 })
+            ))
+        } else {
+            let calendar = Calendar.current
+            let refDate = momReferenceDate(for: timeFilter)
+            let periodRange = timeFilter.dateRange()
+            let days = max(1, calendar.dateComponents([.day], from: periodRange.start, to: min(periodRange.end, refDate)).day ?? 1)
+            let avgDaily = periodSummary.totalExpenses / Double(days)
+
+            Self.logger.debug("📆 [Insights] Avg daily — totalExpenses=\(String(format: "%.0f", periodSummary.totalExpenses), privacy: .public), days=\(days), avg=\(String(format: "%.0f", avgDaily), privacy: .public) \(baseCurrency, privacy: .public)")
+
+            insights.append(Insight(
+                id: "avg_daily",
+                type: .averageDailySpending,
+                title: String(localized: "insights.avgDailySpending"),
+                subtitle: "\(days) " + String(localized: "insights.days"),
+                metric: InsightMetric(
+                    value: avgDaily,
+                    formattedValue: Formatting.formatCurrencySmart(avgDaily, currency: baseCurrency),
+                    currency: baseCurrency,
+                    unit: nil
+                ),
+                trend: nil,
+                severity: .neutral,
+                category: .spending,
+                detailData: nil
+            ))
+        }
 
         PerformanceLogger.InsightsMetrics.logSpendingEnd(
             insightCount: insights.count,
@@ -500,7 +577,9 @@ final class InsightsService {
         timeFilter: TimeFilter,
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
-        currencyService: TransactionCurrencyService
+        currencyService: TransactionCurrencyService,
+        granularity: InsightGranularity? = nil,
+        periodPoints: [PeriodDataPoint] = []
     ) -> [Insight] {
         var insights: [Insight] = []
         let incomeTransactions = filterService.filterByType(filtered, type: .income)
@@ -512,48 +591,27 @@ final class InsightsService {
         PerformanceLogger.InsightsMetrics.logIncomeStart(incomeCount: incomeTransactions.count)
         Self.logger.debug("💵 [Insights] Income START — incomeTransactions=\(incomeTransactions.count)")
 
-        // 1. Income growth (this month vs last month)
-        // Bug 4 fix: same anchor as spending MoM — use filter range end for
-        // historical filters so comparison isn't skewed by a partial current month.
-        // Cap thisMonthEnd to refDate for the same reason as spending MoM.
-        let calendar = Calendar.current
-        let refDate = momReferenceDate(for: timeFilter)
-        let thisMonthStart = startOfMonth(calendar, for: refDate)
-        let fullMonthEnd = calendar.date(byAdding: .month, value: 1, to: thisMonthStart) ?? refDate
-        let refDatePlusOneDay = calendar.date(byAdding: .day, value: 1, to: refDate) ?? fullMonthEnd
-        let thisMonthEnd = min(fullMonthEnd, refDatePlusOneDay)
+        // 1. Income growth (period-over-period).
+        // Phase 30: use granularity bucket lookup when periodPoints available; fall back to legacy scan.
+        // Skip .allTime — same reason as spending MoM: previousPeriodKey == currentPeriodKey → duplicate labels.
+        if let gran = granularity, !periodPoints.isEmpty, gran != .allTime {
+            let currentPoint = periodPoints.first(where: { $0.key == gran.currentPeriodKey })
+            let prevPoint    = periodPoints.first(where: { $0.key == gran.previousPeriodKey })
+            let thisTotal    = currentPoint?.income ?? 0
+            let prevTotal    = prevPoint?.income ?? 0
 
-        if let prevMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart),
-           let prevMonthEnd = calendar.date(byAdding: .month, value: 1, to: prevMonthStart) {
+            Self.logger.debug("💵 [Insights] Income growth (granularity) — this=\(String(format: "%.0f", thisTotal), privacy: .public), prev=\(String(format: "%.0f", prevTotal), privacy: .public)")
 
-            // Performance fix: single pass (same approach as spending MoM above)
-            var thisTotal: Double = 0
-            var prevTotal: Double = 0
-            let dateFormatter = DateFormatters.dateFormatter
-            for tx in allTransactions where tx.type == .income {
-                guard let txDate = dateFormatter.date(from: tx.date) else { continue }
-                let amount = resolveAmount(tx, baseCurrency: baseCurrency)
-                if txDate >= thisMonthStart && txDate < thisMonthEnd {
-                    thisTotal += amount
-                } else if txDate >= prevMonthStart && txDate < prevMonthEnd {
-                    prevTotal += amount
-                }
-            }
-
-            Self.logger.debug("💵 [Insights] Income MoM — this=\(String(format: "%.0f", thisTotal), privacy: .public), prev=\(String(format: "%.0f", prevTotal), privacy: .public)")
-
-            if prevTotal > 0 {
+            if let prevPoint, prevTotal > 0 {
                 let changePercent = ((thisTotal - prevTotal) / prevTotal) * 100
                 let direction: TrendDirection = changePercent > 2 ? .up : (changePercent < -2 ? .down : .flat)
                 let severity: InsightSeverity = changePercent > 10 ? .positive : (changePercent < -10 ? .warning : .neutral)
-
-                Self.logger.debug("💵 [Insights] Income growth=\(String(format: "%+.1f%%", changePercent), privacy: .public), severity=\(String(describing: severity), privacy: .public)")
 
                 insights.append(Insight(
                     id: "income_growth",
                     type: .incomeGrowth,
                     title: String(localized: "insights.incomeGrowth"),
-                    subtitle: String(localized: "insights.vsPreviousPeriod"),
+                    subtitle: gran.comparisonPeriodName,
                     metric: InsightMetric(
                         value: thisTotal,
                         formattedValue: Formatting.formatCurrencySmart(thisTotal, currency: baseCurrency),
@@ -564,12 +622,50 @@ final class InsightsService {
                         direction: direction,
                         changePercent: changePercent,
                         changeAbsolute: thisTotal - prevTotal,
-                        comparisonPeriod: String(localized: "insights.vsPreviousPeriod")
+                        comparisonPeriod: gran.comparisonPeriodName
                     ),
                     severity: severity,
                     category: .income,
-                    detailData: nil
+                    detailData: .periodTrend([prevPoint, currentPoint].compactMap { $0 })
                 ))
+            }
+        } else {
+            // Legacy path: calendar-month O(N) scan.
+            let calendar = Calendar.current
+            let refDate = momReferenceDate(for: timeFilter)
+            let thisMonthStart = startOfMonth(calendar, for: refDate)
+            let fullMonthEnd = calendar.date(byAdding: .month, value: 1, to: thisMonthStart) ?? refDate
+            let refDatePlusOneDay = calendar.date(byAdding: .day, value: 1, to: refDate) ?? fullMonthEnd
+            let thisMonthEnd = min(fullMonthEnd, refDatePlusOneDay)
+
+            if let prevMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart),
+               let prevMonthEnd = calendar.date(byAdding: .month, value: 1, to: prevMonthStart) {
+                var thisTotal: Double = 0
+                var prevTotal: Double = 0
+                let dateFormatter = DateFormatters.dateFormatter
+                for tx in allTransactions where tx.type == .income {
+                    guard let txDate = dateFormatter.date(from: tx.date) else { continue }
+                    let amount = resolveAmount(tx, baseCurrency: baseCurrency)
+                    if txDate >= thisMonthStart && txDate < thisMonthEnd { thisTotal += amount }
+                    else if txDate >= prevMonthStart && txDate < prevMonthEnd { prevTotal += amount }
+                }
+                if prevTotal > 0 {
+                    let changePercent = ((thisTotal - prevTotal) / prevTotal) * 100
+                    let direction: TrendDirection = changePercent > 2 ? .up : (changePercent < -2 ? .down : .flat)
+                    let severity: InsightSeverity = changePercent > 10 ? .positive : (changePercent < -10 ? .warning : .neutral)
+                    insights.append(Insight(
+                        id: "income_growth", type: .incomeGrowth,
+                        title: String(localized: "insights.incomeGrowth"),
+                        subtitle: String(localized: "insights.vsPreviousPeriod"),
+                        metric: InsightMetric(value: thisTotal,
+                            formattedValue: Formatting.formatCurrencySmart(thisTotal, currency: baseCurrency),
+                            currency: baseCurrency, unit: nil),
+                        trend: InsightTrend(direction: direction, changePercent: changePercent,
+                            changeAbsolute: thisTotal - prevTotal,
+                            comparisonPeriod: String(localized: "insights.vsPreviousPeriod")),
+                        severity: severity, category: .income, detailData: nil
+                    ))
+                }
             }
         }
 
@@ -598,7 +694,7 @@ final class InsightsService {
                 ),
                 severity: severity,
                 category: .income,
-                detailData: nil
+                detailData: periodPoints.isEmpty ? nil : .periodTrend(periodPoints)
             ))
         }
 
@@ -752,7 +848,7 @@ final class InsightsService {
 
     // MARK: - Recurring Insights
 
-    private func generateRecurringInsights(baseCurrency: String) -> [Insight] {
+    private func generateRecurringInsights(baseCurrency: String, granularity: InsightGranularity? = nil) -> [Insight] {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
         guard !activeSeries.isEmpty else {
             Self.logger.debug("🔁 [Insights] Recurring — SKIPPED (no active series)")
@@ -810,22 +906,41 @@ final class InsightsService {
 
         let totalMonthly = recurringItems.reduce(0.0) { $0 + $1.monthlyEquivalent }
 
+        // Phase 30: Scale to the selected granularity period (weekly/quarterly/yearly equivalent).
+        let periodMultiplier: Double
+        let periodUnit: String
+        switch granularity {
+        case .week:
+            periodMultiplier = 7.0 / 30.0
+            periodUnit       = String(localized: "insights.perWeek")
+        case .quarter:
+            periodMultiplier = 3.0
+            periodUnit       = String(localized: "insights.perQuarter")
+        case .year:
+            periodMultiplier = 12.0
+            periodUnit       = String(localized: "insights.perYear")
+        case .month, .allTime, nil:
+            periodMultiplier = 1.0
+            periodUnit       = String(localized: "insights.perMonth")
+        }
+        let periodTotal = totalMonthly * periodMultiplier
+
         PerformanceLogger.InsightsMetrics.logRecurringEnd(totalMonthly: totalMonthly, currency: baseCurrency)
-        Self.logger.debug("🔁 [Insights] Recurring END — totalMonthly=\(String(format: "%.0f", totalMonthly), privacy: .public) \(baseCurrency, privacy: .public)")
+        Self.logger.debug("🔁 [Insights] Recurring END — totalMonthly=\(String(format: "%.0f", totalMonthly), privacy: .public) → periodTotal=\(String(format: "%.0f", periodTotal), privacy: .public) ×\(String(format: "%.2f", periodMultiplier), privacy: .public) \(baseCurrency, privacy: .public)")
 
         return [Insight(
             id: "total_recurring",
             type: .totalRecurringCost,
-            title: String(localized: "insights.totalRecurring"),
+            title: granularity?.totalRecurringTitle ?? String(localized: "insights.totalRecurring"),
             subtitle: String(format: String(localized: "insights.activeRecurring"), activeSeries.count),
             metric: InsightMetric(
-                value: totalMonthly,
-                formattedValue: Formatting.formatCurrencySmart(totalMonthly, currency: baseCurrency),
+                value: periodTotal,
+                formattedValue: Formatting.formatCurrencySmart(periodTotal, currency: baseCurrency),
                 currency: baseCurrency,
-                unit: String(localized: "insights.perMonth")
+                unit: periodUnit
             ),
             trend: nil,
-            severity: totalMonthly > 0 ? .neutral : .positive,
+            severity: periodTotal > 0 ? .neutral : .positive,
             category: .recurring,
             detailData: .recurringList(recurringItems.sorted { $0.monthlyEquivalent > $1.monthlyEquivalent })
         )]
@@ -1000,11 +1115,12 @@ final class InsightsService {
         categoryName: String,
         allTransactions: [Transaction],
         timeFilter: TimeFilter,
+        comparisonFilter: TimeFilter? = nil,
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService
-    ) -> (subcategories: [SubcategoryBreakdownItem], monthlyTrend: [MonthlyDataPoint]) {
-        // All category transactions ever (used for the 6-month rolling trend chart)
+    ) -> (subcategories: [SubcategoryBreakdownItem], monthlyTrend: [MonthlyDataPoint], prevBucketTotal: Double) {
+        // All category expense transactions (used for prev-bucket comparison)
         let allCategoryTransactions = allTransactions.filter { $0.category == categoryName && $0.type == .expense }
 
         // Period-scoped transactions for the subcategory breakdown (respects the selected filter)
@@ -1026,40 +1142,16 @@ final class InsightsService {
             }
             .sorted { $0.amount > $1.amount }
 
-        // Monthly trend always uses the last 6 months anchored to the filter end
-        // (same logic as generateCashFlowInsights — use inclusive anchor)
-        let calendar = Calendar.current
-        let filterEndExclusive = timeFilter.dateRange().end
-        let anchor: Date
-        if Calendar.current.isDateInToday(filterEndExclusive) || filterEndExclusive > Date() {
-            anchor = Date()
-        } else {
-            anchor = calendar.date(byAdding: .second, value: -1, to: filterEndExclusive) ?? filterEndExclusive
-        }
-        var monthlyTrend: [MonthlyDataPoint] = []
-        monthlyTrend.reserveCapacity(6)
-
-        for i in (0..<6).reversed() {
-            guard
-                let monthStart = calendar.date(byAdding: .month, value: -i, to: startOfMonth(calendar, for: anchor)),
-                let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart)
-            else { continue }
-
-            let monthTotal = filterService
-                .filterByTimeRange(allCategoryTransactions, start: monthStart, end: monthEnd)
+        // Previous-bucket total for period comparison card (Phase 31)
+        var prevBucketTotal: Double = 0
+        if let cf = comparisonFilter {
+            let cfRange = cf.dateRange()
+            prevBucketTotal = filterService
+                .filterByTimeRange(allCategoryTransactions, start: cfRange.start, end: cfRange.end)
                 .reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
-
-            monthlyTrend.append(MonthlyDataPoint(
-                id: Self.yearMonthFormatter.string(from: monthStart),
-                month: monthStart,
-                income: 0,
-                expenses: monthTotal,
-                netFlow: -monthTotal,
-                label: Self.monthAbbrevFormatter.string(from: monthStart)
-            ))
         }
 
-        return (subcategories, monthlyTrend)
+        return (subcategories, [], prevBucketTotal)
     }
 
     // MARK: - Granularity-based API (Phase 18, updated Phase 23)
@@ -1074,54 +1166,38 @@ final class InsightsService {
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
         balanceFor: (String) -> Double
-    ) -> [Insight] {
-        // For period summary: compute all-time income/expense totals
-        let (allIncome, allExpenses) = calculateMonthlySummary(
-            transactions: allTransactions,
+    ) -> (insights: [Insight], periodPoints: [PeriodDataPoint]) {
+        // Determine the date window for this granularity.
+        // For .week: last 52 weeks. For .month/.quarter/.year/.allTime: first tx → now (covers all).
+        let firstDate = allTransactions
+            .compactMap { DateFormatters.dateFormatter.date(from: $0.date) }
+            .min()
+        let (windowStart, windowEnd) = granularity.dateRange(firstTransactionDate: firstDate)
+
+        // Filter transactions to the granularity window so spending / income / budget / savings
+        // all respect the selected period. For non-week granularities the window covers every
+        // transaction, so this filter is a no-op and performance is unaffected.
+        let windowedTransactions = filterService.filterByTimeRange(allTransactions, start: windowStart, end: windowEnd)
+
+        // TimeFilter wrapping the window — passed to generators that use aggregate fetch ranges
+        // and the MoM reference date helper.
+        let granularityTimeFilter = TimeFilter(preset: .custom, startDate: windowStart, endDate: windowEnd)
+
+        // Period summary scoped to the granularity window
+        let (windowedIncome, windowedExpenses) = calculateMonthlySummary(
+            transactions: windowedTransactions,
             baseCurrency: baseCurrency,
             currencyService: currencyService
         )
         let periodSummary = PeriodSummary(
-            totalIncome: allIncome,
-            totalExpenses: allExpenses,
-            netFlow: allIncome - allExpenses
+            totalIncome: windowedIncome,
+            totalExpenses: windowedExpenses,
+            netFlow: windowedIncome - windowedExpenses
         )
 
-        let firstDate = allTransactions
-            .compactMap { DateFormatters.dateFormatter.date(from: $0.date) }
-            .min()
-        let allTimeFilter = TimeFilter(preset: .allTime)
-
-        var insights: [Insight] = []
-
-        insights.append(contentsOf: generateSpendingInsights(
-            filtered: allTransactions,
-            allTransactions: allTransactions,
-            periodSummary: periodSummary,
-            timeFilter: allTimeFilter,
-            baseCurrency: baseCurrency,
-            cacheManager: cacheManager,
-            currencyService: currencyService
-        ))
-
-        insights.append(contentsOf: generateIncomeInsights(
-            filtered: allTransactions,
-            allTransactions: allTransactions,
-            periodSummary: periodSummary,
-            timeFilter: allTimeFilter,
-            baseCurrency: baseCurrency,
-            cacheManager: cacheManager,
-            currencyService: currencyService
-        ))
-
-        insights.append(contentsOf: generateBudgetInsights(
-            transactions: allTransactions,
-            timeFilter: allTimeFilter,
-            baseCurrency: baseCurrency
-        ))
-
-        insights.append(contentsOf: generateRecurringInsights(baseCurrency: baseCurrency))
-
+        // Phase 30: Compute period data points BEFORE generators so spending/income can use
+        // granularity-aware bucket comparisons (currentPeriodKey / previousPeriodKey) without
+        // duplicate O(N) scans.
         let periodPoints = computePeriodDataPoints(
             transactions: allTransactions,
             granularity: granularity,
@@ -1129,6 +1205,41 @@ final class InsightsService {
             currencyService: currencyService,
             firstTransactionDate: firstDate
         )
+
+        var insights: [Insight] = []
+
+        insights.append(contentsOf: generateSpendingInsights(
+            filtered: windowedTransactions,
+            allTransactions: allTransactions,
+            periodSummary: periodSummary,
+            timeFilter: granularityTimeFilter,
+            baseCurrency: baseCurrency,
+            cacheManager: cacheManager,
+            currencyService: currencyService,
+            granularity: granularity,
+            periodPoints: periodPoints
+        ))
+
+        insights.append(contentsOf: generateIncomeInsights(
+            filtered: windowedTransactions,
+            allTransactions: allTransactions,
+            periodSummary: periodSummary,
+            timeFilter: granularityTimeFilter,
+            baseCurrency: baseCurrency,
+            cacheManager: cacheManager,
+            currencyService: currencyService,
+            granularity: granularity,
+            periodPoints: periodPoints
+        ))
+
+        insights.append(contentsOf: generateBudgetInsights(
+            transactions: windowedTransactions,
+            timeFilter: granularityTimeFilter,
+            baseCurrency: baseCurrency
+        ))
+
+        insights.append(contentsOf: generateRecurringInsights(baseCurrency: baseCurrency, granularity: granularity))
+
         insights.append(contentsOf: generateCashFlowInsightsFromPeriodPoints(
             periodPoints: periodPoints,
             allTransactions: allTransactions,
@@ -1159,19 +1270,31 @@ final class InsightsService {
             insights.append(growth)
         }
 
-        // Phase 24 — Savings category
+        // Phase 24 — Savings category (uses windowed income/expenses to respect granularity)
         insights.append(contentsOf: generateSavingsInsights(
-            allIncome: allIncome,
-            allExpenses: allExpenses,
+            allIncome: windowedIncome,
+            allExpenses: windowedExpenses,
             baseCurrency: baseCurrency,
             balanceFor: balanceFor
         ))
+
+        // Phase 31: Narrow incomeSourceBreakdown to current granularity bucket only.
+        // This ensures income sources reflect what was earned in the current period, not the full window.
+        let currentBucketForForecasting: [Transaction]
+        if let cp = periodPoints.first(where: { $0.key == granularity.currentPeriodKey }) {
+            currentBucketForForecasting = filterService.filterByTimeRange(
+                allTransactions, start: cp.periodStart, end: cp.periodEnd
+            )
+        } else {
+            currentBucketForForecasting = windowedTransactions
+        }
 
         // Phase 24 — Forecasting category
         insights.append(contentsOf: generateForecastingInsights(
             allTransactions: allTransactions,
             baseCurrency: baseCurrency,
-            balanceFor: balanceFor
+            balanceFor: balanceFor,
+            filteredTransactions: currentBucketForForecasting
         ))
 
         // Phase 24 — Behavioral (appended to relevant existing categories)
@@ -1182,7 +1305,7 @@ final class InsightsService {
             insights.append(dormancy)
         }
 
-        return insights
+        return (insights, periodPoints)
     }
 
     // MARK: - Period Data Points (Phase 18)
@@ -1313,7 +1436,7 @@ final class InsightsService {
             insights.append(Insight(
                 id: "best_month",
                 type: .bestMonth,
-                title: String(localized: "insights.bestMonth"),
+                title: granularity.bestPeriodTitle,
                 subtitle: best.label,
                 metric: InsightMetric(
                     value: best.netFlow,
@@ -1335,7 +1458,7 @@ final class InsightsService {
             insights.append(Insight(
                 id: "worst_month",
                 type: .worstMonth,
-                title: String(localized: "insights.worstMonth"),
+                title: granularity.worstPeriodTitle,
                 subtitle: worst.label,
                 metric: InsightMetric(
                     value: worst.netFlow,
@@ -1350,29 +1473,49 @@ final class InsightsService {
             ))
         }
 
-        // 4. Projected balance (recurring delta)
+        // 4. Projected balance (recurring delta scaled to granularity period).
+        // Phase 30: multiply monthlyRecurringNet by period factor so the card shows
+        // the meaningful recurring impact for the selected granularity.
         let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         let monthlyRecurringNet = self.monthlyRecurringNet(baseCurrency: baseCurrency)
-        let projectedBalance = currentBalance + monthlyRecurringNet
-        let projectedMetricFormatted = monthlyRecurringNet >= 0
-            ? "+" + Formatting.formatCurrencySmart(monthlyRecurringNet, currency: baseCurrency)
-            : Formatting.formatCurrencySmart(monthlyRecurringNet, currency: baseCurrency)
+
+        let projectedPeriodMultiplier: Double
+        let projectedPeriodUnit: String
+        switch granularity {
+        case .week:
+            projectedPeriodMultiplier = 7.0 / 30.0
+            projectedPeriodUnit       = String(localized: "insights.perWeek")
+        case .quarter:
+            projectedPeriodMultiplier = 3.0
+            projectedPeriodUnit       = String(localized: "insights.perQuarter")
+        case .year:
+            projectedPeriodMultiplier = 12.0
+            projectedPeriodUnit       = String(localized: "insights.perYear")
+        case .month, .allTime:
+            projectedPeriodMultiplier = 1.0
+            projectedPeriodUnit       = String(localized: "insights.perMonth")
+        }
+        let periodRecurringNet  = monthlyRecurringNet * projectedPeriodMultiplier
+        let projectedBalance    = currentBalance + periodRecurringNet
+        let projectedMetricFormatted = periodRecurringNet >= 0
+            ? "+" + Formatting.formatCurrencySmart(periodRecurringNet, currency: baseCurrency)
+            : Formatting.formatCurrencySmart(periodRecurringNet, currency: baseCurrency)
 
         insights.append(Insight(
             id: "projected_balance",
             type: .projectedBalance,
             title: String(localized: "insights.projectedBalance"),
-            subtitle: String(localized: "insights.in30Days"),
+            subtitle: projectedPeriodUnit,
             metric: InsightMetric(
-                value: monthlyRecurringNet,
+                value: periodRecurringNet,
                 formattedValue: projectedMetricFormatted,
                 currency: baseCurrency,
-                unit: String(localized: "insights.perMonth")
+                unit: projectedPeriodUnit
             ),
             trend: InsightTrend(
-                direction: monthlyRecurringNet >= 0 ? .up : .down,
-                changePercent: currentBalance > 0 ? (monthlyRecurringNet / currentBalance) * 100 : nil,
-                changeAbsolute: monthlyRecurringNet,
+                direction: periodRecurringNet >= 0 ? .up : .down,
+                changePercent: currentBalance > 0 ? (periodRecurringNet / currentBalance) * 100 : nil,
+                changeAbsolute: periodRecurringNet,
                 comparisonPeriod: String(localized: "insights.currentBalance") + ": "
                     + Formatting.formatCurrencySmart(currentBalance, currency: baseCurrency)
             ),
@@ -1804,7 +1947,8 @@ final class InsightsService {
     func generateForecastingInsights(
         allTransactions: [Transaction],
         baseCurrency: String,
-        balanceFor: (String) -> Double
+        balanceFor: (String) -> Double,
+        filteredTransactions: [Transaction]? = nil
     ) -> [Insight] {
         var insights: [Insight] = []
 
@@ -1823,7 +1967,10 @@ final class InsightsService {
         if let velocity = generateSpendingVelocity(baseCurrency: baseCurrency) {
             insights.append(velocity)
         }
-        if let breakdown = generateIncomeSourceBreakdown(allTransactions: allTransactions, baseCurrency: baseCurrency) {
+        // Phase 30: use filteredTransactions (windowed) when available so incomeSourceBreakdown
+        // respects the selected granularity period.
+        let sourceTransactions = filteredTransactions ?? allTransactions
+        if let breakdown = generateIncomeSourceBreakdown(allTransactions: sourceTransactions, baseCurrency: baseCurrency) {
             insights.append(breakdown)
         }
         return insights

@@ -65,19 +65,7 @@ private struct GranularityChip: View {
     }
 }
 
-// MARK: - InsightGranularity + UI helpers
-
-private extension InsightGranularity {
-    var icon: String {
-        switch self {
-        case .week:    return "calendar.badge.clock"
-        case .month:   return "calendar"
-        case .quarter: return "calendar.badge.plus"
-        case .year:    return "chart.line.uptrend.xyaxis"
-        case .allTime: return "infinity"
-        }
-    }
-}
+// icon is now defined in InsightGranularity.swift (internal extension)
 
 // MARK: - Preview
 

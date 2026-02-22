@@ -28,7 +28,7 @@ struct AmountWithPercentage: View {
                 color: amountColor
             )
             Text(String(format: "%.1f%%", percentage))
-                .font(AppTypography.caption)
+                .font(AppTypography.bodySmall)
                 .foregroundStyle(AppColors.textSecondary)
         }
     }

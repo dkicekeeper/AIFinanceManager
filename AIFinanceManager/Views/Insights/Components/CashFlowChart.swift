@@ -10,6 +10,17 @@
 //
 //  Phase 23-C: Replaced UIScreen.main.bounds with containerRelativeFrame — no UIKit dependency.
 //
+//  Phase 27:
+//  - Y-axis moved to leading overlay (always visible while scrolling)
+//  - Default horizontal scroll position: trailing (most recent data)
+//  - X-axis: same compact date formatting as IncomeExpenseChart
+//  - Legacy charts: formatAxisDate applied to CashFlowChart
+//
+//  Phase 28:
+//  - Removed local formatCompact / formatAxisDate / axisMonthFormatter → ChartAxisHelpers
+//  - Removed local axisLabelMap / compactPeriodLabel → ChartAxisHelpers (PeriodCashFlowChart, WealthChart)
+//  - CashFlowChart: scrollable branch refactored to ZStack Y-axis overlay
+//
 
 import SwiftUI
 import Charts
@@ -28,7 +39,58 @@ struct CashFlowChart: View {
         (dataPoints.last?.netFlow ?? 0) >= 0 ? AppColors.success : AppColors.destructive
     }
 
-    private var chartContent: some View {
+    // MARK: Body
+
+    var body: some View {
+        if scrollable && !isCompact && dataPoints.count > 6 {
+            GeometryReader { proxy in
+                let container = proxy.size.width
+                let yAxisWidth: CGFloat = 50
+                let scrollWidth = max(container, CGFloat(dataPoints.count) * 50)
+                ZStack(alignment: .topLeading) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        chartContent(showYAxis: false)
+                            .frame(width: scrollWidth, height: 200)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .defaultScrollAnchor(.trailing)
+
+                    // Y-axis overlay — always visible, doesn't scroll with chart
+                    yAxisReferenceChart
+                        .frame(width: yAxisWidth, height: 200)
+                        .allowsHitTesting(false)
+                }
+            }
+            .frame(height: 200)
+            .padding(.top, AppSpacing.sm)
+        } else {
+            chartContent(showYAxis: !isCompact)
+        }
+    }
+
+    // MARK: - Y-axis reference chart (overlay for scrollable mode)
+
+    private var yAxisReferenceChart: some View {
+        Chart(dataPoints) { point in
+            LineMark(x: .value("Month", point.month), y: .value("v", point.netFlow))
+                .opacity(0)
+        }
+        .chartXAxis { AxisMarks { _ in } }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisValueLabel {
+                    if let amount = value.as(Double.self) {
+                        Text(ChartAxisHelpers.formatCompact(amount))
+                            .font(AppTypography.caption2)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Chart content
+
+    private func chartContent(showYAxis: Bool) -> some View {
         Chart(dataPoints) { point in
             AreaMark(
                 x: .value("Month", point.month),
@@ -71,58 +133,46 @@ struct CashFlowChart: View {
             if isCompact {
                 AxisMarks { _ in }
             } else {
-                AxisMarks(values: .stride(by: .month)) { _ in
-                    AxisValueLabel(format: .dateTime.month(.abbreviated))
-                }
-            }
-        }
-        .chartYAxis {
-            if isCompact {
-                AxisMarks { _ in }
-            } else {
-                AxisMarks { value in
-                    AxisGridLine()
+                AxisMarks(values: .stride(by: .month)) { value in
                     AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text(formatCompact(amount))
+                        if let date = value.as(Date.self) {
+                            Text(ChartAxisHelpers.formatAxisDate(date))
                                 .font(AppTypography.caption2)
                         }
                     }
                 }
             }
         }
-        .frame(height: isCompact ? 60 : 200)
-    }
-
-    var body: some View {
-        if scrollable && !isCompact && dataPoints.count > 6 {
-            // containerRelativeFrame gives the available width without UIScreen dependency
-            GeometryReader { proxy in
-                let minWidth = proxy.size.width
-                let chartWidth = max(minWidth, CGFloat(dataPoints.count) * 50)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    chartContent
-                        .frame(width: chartWidth)
+        .chartYAxis {
+            if isCompact {
+                AxisMarks { _ in }
+            } else if showYAxis {
+                AxisMarks(position: .leading) { value in
+                    AxisGridLine()
+                    AxisValueLabel {
+                        if let amount = value.as(Double.self) {
+                            Text(ChartAxisHelpers.formatCompact(amount))
+                                .font(AppTypography.caption2)
+                        }
+                    }
                 }
-                .scrollBounceBehavior(.basedOnSize)
+            } else {
+                // Grid lines only — Y labels handled by yAxisReferenceChart overlay
+                AxisMarks { _ in
+                    AxisGridLine()
+                    AxisValueLabel { EmptyView() }
+                }
             }
-            .frame(height: 200)
-        } else {
-            chartContent
         }
-    }
-
-    private func formatCompact(_ value: Double) -> String {
-        let abs = Swift.abs(value)
-        if abs >= 1_000_000 { return String(format: "%.1fM", value / 1_000_000) }
-        if abs >= 1_000     { return String(format: "%.0fK", value / 1_000) }
-        return String(format: "%.0f", value)
+        .frame(height: isCompact ? 60 : 200)
     }
 }
 
 // MARK: - PeriodCashFlowChart (PeriodDataPoint — Phase 18)
 
 /// Granularity-aware cash flow area/line chart.
+/// Y-axis is pinned to the left (always visible) while content scrolls right.
+/// Default scroll position: trailing (most recent data visible on load).
 struct PeriodCashFlowChart: View {
     let dataPoints: [PeriodDataPoint]
     let currency: String
@@ -133,39 +183,86 @@ struct PeriodCashFlowChart: View {
     private var pointWidth: CGFloat { isCompact ? 30 : granularity.pointWidth }
     private var chartHeight: CGFloat { isCompact ? 60 : 200 }
 
-    private func chartWidth(containerWidth: CGFloat) -> CGFloat {
-        max(containerWidth, CGFloat(dataPoints.count) * pointWidth)
-    }
-
     private var lineColor: Color {
         (dataPoints.last?.netFlow ?? 0) >= 0 ? AppColors.success : AppColors.destructive
     }
 
+    /// Y-scale domain computed from data — ensures Y-axis and main chart are in sync.
+    private var yDomain: ClosedRange<Double> {
+        let values = dataPoints.map { $0.netFlow }
+        let minVal = Swift.min(values.min() ?? 0, 0)
+        let maxVal = Swift.max(values.max() ?? 0, 1)
+        return minVal...maxVal
+    }
+
+    // MARK: Body
+
     var body: some View {
         GeometryReader { proxy in
             let container = proxy.size.width
-            ScrollView(.horizontal, showsIndicators: false) {
-                chartContent
-                    .frame(width: isCompact ? container : chartWidth(containerWidth: container),
-                           height: chartHeight)
+            let yAxisWidth: CGFloat = 50
+
+            if isCompact {
+                mainChart
+                    .frame(width: container, height: chartHeight)
+            } else {
+                let scrollWidth = max(
+                    container,
+                    CGFloat(dataPoints.count) * pointWidth
+                )
+                ZStack(alignment: .topLeading) {
+                    // Scrollable chart content
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        mainChart
+                            .frame(width: scrollWidth, height: chartHeight)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .defaultScrollAnchor(.trailing)
+
+                    // Y-axis overlay — always visible, doesn't scroll with chart
+                    yAxisReferenceChart
+                        .frame(width: yAxisWidth, height: chartHeight)
+                        .allowsHitTesting(false)
+                }
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .frame(height: chartHeight)
+        .padding(.top, isCompact ? 0 : AppSpacing.sm)
     }
 
-    private var chartContent: some View {
+    // MARK: - Y-axis reference chart
+
+    private var yAxisReferenceChart: some View {
         Chart(dataPoints) { point in
+            LineMark(x: .value("p", point.label), y: .value("v", point.netFlow))
+                .opacity(0)
+        }
+        .chartYScale(domain: yDomain)
+        .chartXAxis { AxisMarks { _ in } }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisValueLabel {
+                    if let amount = value.as(Double.self) {
+                        Text(ChartAxisHelpers.formatCompact(amount))
+                            .font(AppTypography.caption2)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Main chart
+
+    private var mainChart: some View {
+        let labelMap = ChartAxisHelpers.axisLabelMap(for: dataPoints)
+        return Chart(dataPoints) { point in
             AreaMark(
                 x: .value("Period", point.label),
                 y: .value("Net Flow", point.netFlow)
             )
             .foregroundStyle(
                 LinearGradient(
-                    colors: [
-                        lineColor.opacity(0.3),
-                        lineColor.opacity(0.05)
-                    ],
+                    colors: [lineColor.opacity(0.3), lineColor.opacity(0.05)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -193,6 +290,7 @@ struct PeriodCashFlowChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
             }
         }
+        .chartYScale(domain: yDomain)
         .chartXAxis {
             if isCompact {
                 AxisMarks { _ in }
@@ -200,7 +298,7 @@ struct PeriodCashFlowChart: View {
                 AxisMarks { value in
                     AxisValueLabel {
                         if let label = value.as(String.self) {
-                            Text(label)
+                            Text(labelMap[label] ?? label)
                                 .font(AppTypography.caption2)
                                 .lineLimit(1)
                         }
@@ -209,34 +307,23 @@ struct PeriodCashFlowChart: View {
             }
         }
         .chartYAxis {
+            // Grid lines only — labels handled by yAxisReferenceChart
             if isCompact {
                 AxisMarks { _ in }
             } else {
-                AxisMarks { value in
+                AxisMarks { _ in
                     AxisGridLine()
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text(formatCompact(amount))
-                                .font(AppTypography.caption2)
-                        }
-                    }
                 }
             }
         }
-    }
-
-    private func formatCompact(_ value: Double) -> String {
-        let abs = Swift.abs(value)
-        if abs >= 1_000_000 { return String(format: "%.1fM", value / 1_000_000) }
-        if abs >= 1_000     { return String(format: "%.0fK", value / 1_000) }
-        return String(format: "%.0f", value)
     }
 }
 
 // MARK: - WealthChart (cumulative balance — Phase 18)
 
 /// Line chart showing cumulative account balance over time.
-/// Uses `cumulativeBalance` from PeriodDataPoint.
+/// Y-axis is pinned to the left (always visible) while content scrolls right.
+/// Default scroll position: trailing (most recent data visible on load).
 struct WealthChart: View {
     let dataPoints: [PeriodDataPoint]
     let currency: String
@@ -246,28 +333,77 @@ struct WealthChart: View {
 
     private var pointWidth: CGFloat { isCompact ? 30 : granularity.pointWidth }
     private var chartHeight: CGFloat { isCompact ? 60 : 200 }
+    private var lineColor: Color { AppColors.accent }
 
-    private func chartWidth(containerWidth: CGFloat) -> CGFloat {
-        max(containerWidth, CGFloat(dataPoints.count) * pointWidth)
+    private var yDomain: ClosedRange<Double> {
+        let values = dataPoints.map { $0.cumulativeBalance ?? $0.netFlow }
+        let minVal = Swift.min(values.min() ?? 0, 0)
+        let maxVal = Swift.max(values.max() ?? 0, 1)
+        return minVal...maxVal
     }
 
-    private var lineColor: Color { AppColors.accent }
+    // MARK: Body
 
     var body: some View {
         GeometryReader { proxy in
             let container = proxy.size.width
-            ScrollView(.horizontal, showsIndicators: false) {
-                chartContent
-                    .frame(width: isCompact ? container : chartWidth(containerWidth: container),
-                           height: chartHeight)
+            let yAxisWidth: CGFloat = 50
+
+            if isCompact {
+                mainChart
+                    .frame(width: container, height: chartHeight)
+            } else {
+                let scrollWidth = max(
+                    container,
+                    CGFloat(dataPoints.count) * pointWidth
+                )
+                ZStack(alignment: .topLeading) {
+                    // Scrollable chart content
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        mainChart
+                            .frame(width: scrollWidth, height: chartHeight)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .defaultScrollAnchor(.trailing)
+
+                    // Y-axis overlay — always visible, doesn't scroll with chart
+                    yAxisReferenceChart
+                        .frame(width: yAxisWidth, height: chartHeight)
+                        .allowsHitTesting(false)
+                }
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .frame(height: chartHeight)
+        .padding(.top, isCompact ? 0 : AppSpacing.sm)
     }
 
-    private var chartContent: some View {
+    // MARK: - Y-axis reference chart
+
+    private var yAxisReferenceChart: some View {
         Chart(dataPoints) { point in
+            let balance = point.cumulativeBalance ?? point.netFlow
+            LineMark(x: .value("p", point.label), y: .value("v", balance))
+                .opacity(0)
+        }
+        .chartYScale(domain: yDomain)
+        .chartXAxis { AxisMarks { _ in } }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisValueLabel {
+                    if let amount = value.as(Double.self) {
+                        Text(ChartAxisHelpers.formatCompact(amount))
+                            .font(AppTypography.caption2)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Main chart
+
+    private var mainChart: some View {
+        let labelMap = ChartAxisHelpers.axisLabelMap(for: dataPoints)
+        return Chart(dataPoints) { point in
             let balance = point.cumulativeBalance ?? point.netFlow
 
             AreaMark(
@@ -300,6 +436,7 @@ struct WealthChart: View {
                 .symbolSize(25)
             }
         }
+        .chartYScale(domain: yDomain)
         .chartXAxis {
             if isCompact {
                 AxisMarks { _ in }
@@ -307,7 +444,7 @@ struct WealthChart: View {
                 AxisMarks { value in
                     AxisValueLabel {
                         if let label = value.as(String.self) {
-                            Text(label)
+                            Text(labelMap[label] ?? label)
                                 .font(AppTypography.caption2)
                                 .lineLimit(1)
                         }
@@ -319,24 +456,11 @@ struct WealthChart: View {
             if isCompact {
                 AxisMarks { _ in }
             } else {
-                AxisMarks { value in
+                AxisMarks { _ in
                     AxisGridLine()
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            Text(formatCompact(amount))
-                                .font(AppTypography.caption2)
-                        }
-                    }
                 }
             }
         }
-    }
-
-    private func formatCompact(_ value: Double) -> String {
-        let abs = Swift.abs(value)
-        if abs >= 1_000_000 { return String(format: "%.1fM", value / 1_000_000) }
-        if abs >= 1_000     { return String(format: "%.0fK", value / 1_000) }
-        return String(format: "%.0f", value)
     }
 }
 
@@ -363,6 +487,16 @@ struct WealthChart: View {
 
 #Preview("PeriodCashFlowChart — Monthly") {
     PeriodCashFlowChart(
+        dataPoints: PeriodDataPoint.mockMonthly(),
+        currency: "KZT",
+        granularity: .month
+    )
+    .screenPadding()
+    .padding(.vertical, AppSpacing.md)
+}
+
+#Preview("WealthChart — Monthly") {
+    WealthChart(
         dataPoints: PeriodDataPoint.mockMonthly(),
         currency: "KZT",
         granularity: .month

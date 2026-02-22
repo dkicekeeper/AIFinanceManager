@@ -3,9 +3,9 @@
 //  AIFinanceManager
 //
 //  Phase 23: Insights Performance & UI fixes
-//  - P6: removed duplicate onChange(of: selectedGranularity) — picker's onSelect callback suffices
 //  - P7: InsightsSummaryHeader now receives PeriodDataPoint directly (no per-render conversion)
 //  - Loading / empty state kept; sections unchanged
+//  Phase 27: Granularity picker moved to toolbar (top-left Menu)
 //
 
 import SwiftUI
@@ -52,11 +52,6 @@ struct InsightsView: View {
                     }
                     .buttonStyle(.plain)
 
-                    // Granularity picker (replaces TimeFilter sheet)
-                    InsightsGranularityPicker(selected: $selectedGranularity) { granularity in
-                        insightsViewModel.switchGranularity(granularity)
-                    }
-
                     // Category filter
                     categoryFilterCarousel
 
@@ -68,11 +63,31 @@ struct InsightsView: View {
         }
         .navigationTitle(String(localized: "insights.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Picker("", selection: $selectedGranularity) {
+                        ForEach(InsightGranularity.allCases) { g in
+                            Label(g.displayName, systemImage: g.icon)
+                                .tag(g)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label(selectedGranularity.shortName, systemImage: selectedGranularity.icon)
+                }
+            }
+        }
+        .onChange(of: selectedGranularity) { _, new in
+            HapticManager.light()
+            insightsViewModel.switchGranularity(new)
+        }
         .onAppear {
+            // Sync picker to ViewModel state — handles the case where the user returns
+            // to the tab after the ViewModel already has a different granularity selected.
+            selectedGranularity = insightsViewModel.currentGranularity
             insightsViewModel.onAppear()
         }
-        // P6: onChange removed — InsightsGranularityPicker.onSelect already calls switchGranularity.
-        // Keeping both caused double switchGranularity call on every picker tap.
     }
 
     // MARK: - Category Filter Carousel
@@ -128,6 +143,7 @@ struct InsightsView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.top, AppSpacing.xxxl)
+            
         } else if insightsViewModel.selectedCategory == nil {
             // Show all sections
             InsightsSectionView(
@@ -144,74 +160,67 @@ struct InsightsView: View {
                             viewModel: insightsViewModel
                         )
                     )
-                }
+                },
+                granularity: insightsViewModel.currentGranularity
             )
+            .screenPadding()
 
             InsightsSectionView(
                 category: .income,
                 insights: insightsViewModel.incomeInsights,
-                currency: insightsViewModel.baseCurrency
+                currency: insightsViewModel.baseCurrency,
+                granularity: insightsViewModel.currentGranularity
             )
+            .screenPadding()
 
             InsightsSectionView(
                 category: .budget,
                 insights: insightsViewModel.budgetInsights,
-                currency: insightsViewModel.baseCurrency
+                currency: insightsViewModel.baseCurrency,
+                granularity: insightsViewModel.currentGranularity
             )
+            .screenPadding()
 
             InsightsSectionView(
                 category: .recurring,
                 insights: insightsViewModel.recurringInsights,
-                currency: insightsViewModel.baseCurrency
+                currency: insightsViewModel.baseCurrency,
+                granularity: insightsViewModel.currentGranularity
             )
+            .screenPadding()
 
             InsightsSectionView(
                 category: .cashFlow,
                 insights: insightsViewModel.cashFlowInsights,
                 currency: insightsViewModel.baseCurrency,
-                periodDataPoints: insightsViewModel.periodDataPoints,
                 granularity: insightsViewModel.currentGranularity
-            ) {
-                PeriodCashFlowChart(
-                    dataPoints: insightsViewModel.periodDataPoints,
-                    currency: insightsViewModel.baseCurrency,
-                    granularity: insightsViewModel.currentGranularity,
-                    mode: .full
-                )
-            }
+            )
+            .screenPadding()
 
             InsightsSectionView(
                 category: .wealth,
                 insights: insightsViewModel.wealthInsights,
                 currency: insightsViewModel.baseCurrency,
-                periodDataPoints: insightsViewModel.periodDataPoints,
                 granularity: insightsViewModel.currentGranularity
-            ) {
-                WealthChart(
-                    dataPoints: insightsViewModel.periodDataPoints,
-                    currency: insightsViewModel.baseCurrency,
-                    granularity: insightsViewModel.currentGranularity,
-                    mode: .full
-                )
-            }
+            )
+            .screenPadding()
 
-            // Phase 24 — Savings section
-            if !insightsViewModel.savingsInsights.isEmpty {
-                InsightsSectionView(
-                    category: .savings,
-                    insights: insightsViewModel.savingsInsights,
-                    currency: insightsViewModel.baseCurrency
-                )
-            }
+            InsightsSectionView(
+                category: .savings,
+                insights: insightsViewModel.savingsInsights,
+                currency: insightsViewModel.baseCurrency,
+                granularity: insightsViewModel.currentGranularity
+            )
+            .screenPadding()
 
-            // Phase 24 — Forecasting section (populated in Phase 2)
-            if !insightsViewModel.forecastingInsights.isEmpty {
-                InsightsSectionView(
-                    category: .forecasting,
-                    insights: insightsViewModel.forecastingInsights,
-                    currency: insightsViewModel.baseCurrency
-                )
-            }
+            InsightsSectionView(
+                category: .forecasting,
+                insights: insightsViewModel.forecastingInsights,
+                currency: insightsViewModel.baseCurrency,
+                granularity: insightsViewModel.currentGranularity
+            )
+            .screenPadding()
+            
         } else {
             // Show filtered insights without section headers
             ForEach(filtered) { insight in
@@ -219,8 +228,8 @@ struct InsightsView: View {
                     InsightsCardView(insight: insight)
                 }
                 .buttonStyle(.plain)
-                .screenPadding()
             }
+            .screenPadding()
         }
     }
 

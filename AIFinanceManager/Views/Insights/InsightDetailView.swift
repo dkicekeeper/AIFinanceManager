@@ -84,13 +84,22 @@ struct InsightDetailView: View {
             case .monthlyTrend(let points):
                 CashFlowChart(dataPoints: points, currency: currency, mode: .full)
             case .periodTrend(let points):
-                // Phase 18 — granularity-aware chart
-                PeriodCashFlowChart(
-                    dataPoints: points,
-                    currency: currency,
-                    granularity: points.first?.granularity ?? .month,
-                    mode: .full
-                )
+                // Phase 18 — granularity-aware chart.
+                // Phase 30 — different chart type per insight.type:
+                //   • Wealth category              → WealthChart (cumulative balance)
+                //   • bestMonth / worstMonth /
+                //     incomeGrowth / incomeVsExpenseRatio
+                //                                  → PeriodIncomeExpenseChart (income vs expense bars)
+                //   • All others                   → PeriodCashFlowChart (net-flow, ±)
+                let gran = points.first?.granularity ?? .month
+                if insight.category == .wealth {
+                    WealthChart(dataPoints: points, currency: currency, granularity: gran, mode: .full)
+                } else if insight.type == .bestMonth || insight.type == .worstMonth
+                            || insight.type == .incomeGrowth || insight.type == .incomeVsExpenseRatio {
+                    PeriodIncomeExpenseChart(dataPoints: points, currency: currency, granularity: gran, mode: .full)
+                } else {
+                    PeriodCashFlowChart(dataPoints: points, currency: currency, granularity: gran, mode: .full)
+                }
             case .budgetProgressList(let items):
                 budgetChartSection(items)
             case .recurringList:
@@ -140,6 +149,9 @@ struct InsightDetailView: View {
             periodBreakdownList(points.map { BreakdownPoint(label: $0.label, income: $0.income, expenses: $0.expenses, netFlow: $0.netFlow) })
         case .wealthBreakdown(let accounts):
             accountDetailList(accounts)
+        case .accountComparison(let accounts):
+            // Phase 30: show dormant accounts in detail view (was falling through to EmptyView)
+            dormantAccountDetailList(accounts)
         default:
             EmptyView()
         }
@@ -320,6 +332,49 @@ struct InsightDetailView: View {
         }
     }
 
+    /// Phase 30: Dormant accounts detail list — shows each account with last activity date and balance.
+    private func dormantAccountDetailList(_ accounts: [AccountInsightItem]) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            SectionHeaderView(String(localized: "insights.dormant.accounts"), style: .insights)
+                .screenPadding()
+
+            ForEach(accounts) { account in
+                HStack(spacing: AppSpacing.md) {
+                    if let iconSource = account.iconSource {
+                        IconView(source: iconSource, size: AppIconSize.lg)
+                    } else {
+                        Image(systemName: "building.columns")
+                            .font(.system(size: AppIconSize.md))
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                        Text(account.accountName)
+                            .font(AppTypography.body)
+                            .foregroundStyle(AppColors.textPrimary)
+                        if let lastActivity = account.lastActivityDate {
+                            Text(lastActivity, style: .relative)
+                                .font(AppTypography.caption)
+                                .foregroundStyle(AppColors.textTertiary)
+                        }
+                    }
+
+                    Spacer()
+
+                    FormattedAmountText(
+                        amount: account.balance,
+                        currency: currency,
+                        fontSize: AppTypography.body,
+                        fontWeight: .semibold,
+                        color: AppColors.textSecondary
+                    )
+                }
+                .padding(.vertical, AppSpacing.sm)
+                .screenPadding()
+            }
+        }
+    }
+
 }
 
 // MARK: - Previews
@@ -351,5 +406,32 @@ struct InsightDetailView: View {
 #Preview("Income Growth") {
     NavigationStack {
         InsightDetailView(insight: .mockIncomeGrowth(), currency: "KZT")
+    }
+}
+
+#Preview("Period Trend") {
+    NavigationStack {
+        InsightDetailView(insight: .mockPeriodTrend(), currency: "KZT")
+    }
+}
+
+#Preview("Wealth Breakdown") {
+    NavigationStack {
+        InsightDetailView(insight: .mockWealthBreakdown(), currency: "KZT")
+    }
+}
+
+#Preview("Category — Drill Down") {
+    NavigationStack {
+        InsightDetailView(
+            insight: .mockTopSpending(),
+            currency: "KZT",
+            onCategoryTap: { item in
+                AnyView(
+                    Text("Deep dive: \(item.categoryName)")
+                        .padding()
+                )
+            }
+        )
     }
 }

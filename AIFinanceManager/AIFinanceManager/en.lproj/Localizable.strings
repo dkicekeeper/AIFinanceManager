@@ -710,6 +710,10 @@
 "insights.ofTotal" = "of total spending";
 "insights.spendingSpike" = "Unusual Spending Detected";
 "insights.monthOverMonth" = "Monthly Spending Change";
+"insights.monthOverMonth.week" = "Weekly Spending";
+"insights.monthOverMonth.month" = "Monthly Spending Change";
+"insights.monthOverMonth.quarter" = "Quarterly Spending";
+"insights.monthOverMonth.year" = "Yearly Spending";
 "insights.avgDailySpending" = "Average Daily Spending";
 "insights.days" = "days";
 "insights.incomeGrowth" = "Income Trend";
@@ -724,11 +728,28 @@
 "insights.categoriesUnderBudget" = "%d categories on track";
 "insights.categoriesUnit" = "categories";
 "insights.totalRecurring" = "Monthly Recurring Costs";
+"insights.totalRecurring.week" = "Weekly Recurring";
+"insights.totalRecurring.month" = "Monthly Recurring Costs";
+"insights.totalRecurring.quarter" = "Quarterly Recurring";
+"insights.totalRecurring.year" = "Yearly Recurring";
 "insights.activeRecurring" = "%d active recurring";
 "insights.perMonth" = "per month";
+"insights.perWeek" = "per week";
+"insights.perQuarter" = "per quarter";
+"insights.perYear" = "per year";
 "insights.netCashFlow" = "Net Cash Flow";
 "insights.bestMonth" = "Best Month";
+"insights.bestPeriod.week" = "Best Week";
+"insights.bestPeriod.month" = "Best Month";
+"insights.bestPeriod.quarter" = "Best Quarter";
+"insights.bestPeriod.year" = "Best Year";
+"insights.bestPeriod.allTime" = "Best Period";
 "insights.worstMonth" = "Worst Month";
+"insights.worstPeriod.week" = "Worst Week";
+"insights.worstPeriod.month" = "Worst Month";
+"insights.worstPeriod.quarter" = "Worst Quarter";
+"insights.worstPeriod.year" = "Worst Year";
+"insights.worstPeriod.allTime" = "Worst Period";
 "insights.projectedBalance" = "Projected Balance";
 "insights.in30Days" = "in 30 days";
 "insights.projected" = "projected change";
@@ -801,6 +822,7 @@
 "insights.duplicateSubscriptions.subtitle" = "potential duplicates detected";
 "insights.accountDormancy.title" = "Idle Account Detected";
 "insights.accountDormancy.subtitle" = "accounts idle 30+ days";
+"insights.dormant.accounts" = "Idle Accounts";
 
 // MARK: - Tab Bar
 "tab.home" = "Home";

@@ -110,9 +110,9 @@ struct InsightsSummaryDetailView: View {
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
 
-#Preview {
+#Preview("Monthly") {
     NavigationStack {
         InsightsSummaryDetailView(
             totalIncome: 5_450_387,
@@ -121,6 +121,32 @@ struct InsightsSummaryDetailView: View {
             currency: "KZT",
             periodDataPoints: PeriodDataPoint.mockMonthly(),
             granularity: .month
+        )
+    }
+}
+
+#Preview("Weekly") {
+    NavigationStack {
+        InsightsSummaryDetailView(
+            totalIncome: 1_200_000,
+            totalExpenses: 840_000,
+            netFlow: 360_000,
+            currency: "KZT",
+            periodDataPoints: PeriodDataPoint.mockWeekly(),
+            granularity: .week
+        )
+    }
+}
+
+#Preview("Quarterly") {
+    NavigationStack {
+        InsightsSummaryDetailView(
+            totalIncome: 5_450_387,
+            totalExpenses: 1_904_618,
+            netFlow: 3_545_769,
+            currency: "KZT",
+            periodDataPoints: PeriodDataPoint.mockQuarterly(),
+            granularity: .quarter
         )
     }
 }

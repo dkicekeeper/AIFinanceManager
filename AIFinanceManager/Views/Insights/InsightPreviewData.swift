@@ -201,4 +201,190 @@ extension Insight {
             detailData: nil
         )
     }
+
+    // Period trend — granularity-aware cash flow (Phase 18)
+    static func mockPeriodTrend() -> Insight {
+        Insight(
+            id: "preview_period_trend",
+            type: .netCashFlow,
+            title: "Денежный поток",
+            subtitle: "По месяцам",
+            metric: InsightMetric(value: 210_000, formattedValue: "210 000 ₸", currency: "KZT", unit: nil),
+            trend: InsightTrend(direction: .up, changePercent: 12.5, changeAbsolute: 23_500, comparisonPeriod: "vs прошлый месяц"),
+            severity: .positive,
+            category: .cashFlow,
+            detailData: .periodTrend(PeriodDataPoint.mockMonthly())
+        )
+    }
+
+    // Wealth breakdown — per-account balances (Phase 18)
+    static func mockWealthBreakdown() -> Insight {
+        Insight(
+            id: "preview_wealth",
+            type: .totalWealth,
+            title: "Общий капитал",
+            subtitle: "3 счёта",
+            metric: InsightMetric(value: 2_420_000, formattedValue: "2 420 000 ₸", currency: "KZT", unit: nil),
+            trend: InsightTrend(direction: .up, changePercent: 8.4, changeAbsolute: 188_000, comparisonPeriod: "vs прошлый месяц"),
+            severity: .positive,
+            category: .wealth,
+            detailData: .wealthBreakdown(AccountInsightItem.mockItems())
+        )
+    }
+
+    // Savings rate (Phase 24)
+    static func mockSavingsRate() -> Insight {
+        Insight(
+            id: "preview_savings_rate",
+            type: .savingsRate,
+            title: "Норма сбережений",
+            subtitle: "Текущий месяц",
+            metric: InsightMetric(value: 39.6, formattedValue: "39.6%", currency: nil, unit: nil),
+            trend: InsightTrend(direction: .up, changePercent: 5.2, changeAbsolute: nil, comparisonPeriod: "vs прошлый месяц"),
+            severity: .positive,
+            category: .savings,
+            detailData: nil
+        )
+    }
+
+    // Spending forecast (Phase 24)
+    static func mockForecasting() -> Insight {
+        Insight(
+            id: "preview_forecast",
+            type: .spendingForecast,
+            title: "Прогноз расходов",
+            subtitle: "Следующие 30 дней",
+            metric: InsightMetric(value: 295_000, formattedValue: "295 000 ₸", currency: "KZT", unit: nil),
+            trend: InsightTrend(direction: .up, changePercent: 7.8, changeAbsolute: 21_400, comparisonPeriod: "vs текущий темп"),
+            severity: .warning,
+            category: .forecasting,
+            detailData: nil
+        )
+    }
+}
+
+// MARK: - Mock Period Data Points (additional granularities)
+
+extension PeriodDataPoint {
+    /// 12 weekly data points (rolling ~3 months).
+    static func mockWeekly() -> [PeriodDataPoint] {
+        let calendar = Calendar.current
+        let now = Date()
+        let incomes:  [Double] = [80_000, 120_000, 95_000, 110_000, 85_000, 130_000, 70_000, 105_000, 90_000, 115_000, 100_000, 125_000]
+        let expenses: [Double] = [60_000,  90_000, 70_000,  80_000, 65_000,  95_000, 50_000,  75_000, 68_000,  85_000,  72_000,  88_000]
+        var result: [PeriodDataPoint] = []
+        for idx in 0..<12 {
+            let offset = 11 - idx
+            guard let date = calendar.date(byAdding: .weekOfYear, value: -offset, to: now) else { continue }
+            let key = InsightGranularity.week.groupingKey(for: date)
+            result.append(PeriodDataPoint(
+                id: key,
+                granularity: .week,
+                key: key,
+                periodStart: date,
+                periodEnd: calendar.date(byAdding: .weekOfYear, value: 1, to: date) ?? date,
+                label: InsightGranularity.week.periodLabel(for: key),
+                income: incomes[idx],
+                expenses: expenses[idx],
+                cumulativeBalance: nil
+            ))
+        }
+        return result
+    }
+
+    /// 6 quarterly data points (~1.5 years).
+    static func mockQuarterly() -> [PeriodDataPoint] {
+        let calendar = Calendar.current
+        let now = Date()
+        let incomes:  [Double] = [1_200_000, 980_000, 1_450_000, 1_100_000, 1_300_000, 1_590_000]
+        let expenses: [Double] = [  850_000, 920_000, 1_050_000,   800_000,   950_000,   960_000]
+        var result: [PeriodDataPoint] = []
+        for idx in 0..<6 {
+            let offset = 5 - idx
+            guard let date = calendar.date(byAdding: .month, value: -offset * 3, to: now) else { continue }
+            let key = InsightGranularity.quarter.groupingKey(for: date)
+            result.append(PeriodDataPoint(
+                id: key,
+                granularity: .quarter,
+                key: key,
+                periodStart: date,
+                periodEnd: calendar.date(byAdding: .month, value: 3, to: date) ?? date,
+                label: InsightGranularity.quarter.periodLabel(for: key),
+                income: incomes[idx],
+                expenses: expenses[idx],
+                cumulativeBalance: nil
+            ))
+        }
+        return result
+    }
+
+    /// 6 monthly data points with a running `cumulativeBalance` (for wealth charts).
+    static func mockMonthlyWealth() -> [PeriodDataPoint] {
+        let calendar = Calendar.current
+        let now = Date()
+        let incomes:  [Double] = [420_000, 385_000, 510_000, 470_000, 495_000, 530_000]
+        let expenses: [Double] = [310_000, 340_000, 290_000, 360_000, 280_000, 320_000]
+        var cumulative: Double = 800_000
+        var result: [PeriodDataPoint] = []
+        for idx in 0..<6 {
+            let offset = 5 - idx
+            guard let date = calendar.date(byAdding: .month, value: -offset, to: now) else { continue }
+            let key = InsightGranularity.month.groupingKey(for: date)
+            cumulative += incomes[idx] - expenses[idx]
+            result.append(PeriodDataPoint(
+                id: key,
+                granularity: .month,
+                key: key,
+                periodStart: date,
+                periodEnd: calendar.date(byAdding: .month, value: 1, to: date) ?? date,
+                label: InsightGranularity.month.periodLabel(for: key),
+                income: incomes[idx],
+                expenses: expenses[idx],
+                cumulativeBalance: cumulative
+            ))
+        }
+        return result
+    }
+}
+
+// MARK: - Mock FinancialHealthScore
+
+extension FinancialHealthScore {
+    static func mockGood() -> FinancialHealthScore {
+        FinancialHealthScore(
+            score: 72,
+            grade: "Good",
+            gradeColor: AppColors.success,
+            savingsRateScore: 75,
+            budgetAdherenceScore: 80,
+            recurringRatioScore: 65,
+            emergencyFundScore: 60,
+            cashflowScore: 100
+        )
+    }
+
+    static func mockNeedsAttention() -> FinancialHealthScore {
+        FinancialHealthScore(
+            score: 38,
+            grade: "Needs Attention",
+            gradeColor: AppColors.destructive,
+            savingsRateScore: 20,
+            budgetAdherenceScore: 40,
+            recurringRatioScore: 50,
+            emergencyFundScore: 30,
+            cashflowScore: 0
+        )
+    }
+}
+
+// MARK: - Mock Account Items
+
+extension AccountInsightItem {
+    static func mockItems() -> [AccountInsightItem] {
+        [
+            AccountInsightItem(id: "kaspi",  accountName: "Kaspi Gold",    currency: "KZT", balance: 1_250_000, transactionCount: 48, lastActivityDate: Date(),  iconSource: .sfSymbol("creditcard.fill")),
+            AccountInsightItem(id: "halyk",  accountName: "Halyk Bank",    currency: "KZT", balance: 320_000,   transactionCount: 12, lastActivityDate: Date(),  iconSource: .sfSymbol("building.columns.fill")),
+            AccountInsightItem(id: "crypto", accountName: "Crypto Wallet", currency: "USD", balance: 850,       transactionCount: 5,  lastActivityDate: nil,     iconSource: .sfSymbol("bitcoinsign.circle.fill"))
+        ]
+    }
 }

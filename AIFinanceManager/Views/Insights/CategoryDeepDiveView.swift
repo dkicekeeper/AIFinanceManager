@@ -18,7 +18,8 @@ struct CategoryDeepDiveView: View {
     let viewModel: InsightsViewModel
 
     @State private var subcategories: [SubcategoryBreakdownItem] = []
-    @State private var monthlyTrend: [MonthlyDataPoint] = []
+    /// Phase 31: previous-bucket total for the comparison card (trend chart removed).
+    @State private var prevBucketAmount: Double = 0
     /// Phase 23-C P16: precomputed index map — eliminates O(n²) firstIndex(where:) in ForEach.
     @State private var subcategoryIndexMap: [String: Int] = [:]
 
@@ -29,19 +30,15 @@ struct CategoryDeepDiveView: View {
             VStack(alignment: .leading, spacing: AppSpacing.xl) {
                 headerSection
 
-                if !monthlyTrend.isEmpty {
-                    trendSection
+                if !subcategories.isEmpty {
+                    comparisonSection
+                    
                 }
 
                 if !subcategories.isEmpty {
                     subcategorySection
                 }
-
-                if monthlyTrend.count >= 2 {
-                    comparisonSection
-                }
             }
-            .padding(.vertical, AppSpacing.md)
         }
         .navigationTitle(categoryName)
         .navigationBarTitleDisplayMode(.inline)
@@ -66,7 +63,7 @@ struct CategoryDeepDiveView: View {
                 FormattedAmountText(
                     amount: totalAmount,
                     currency: currency,
-                    fontSize: AppTypography.h3,
+                    fontSize: AppTypography.h4,
                     fontWeight: .semibold,
                     color: color
                 )
@@ -74,33 +71,6 @@ struct CategoryDeepDiveView: View {
 
             Spacer()
         }
-        .screenPadding()
-    }
-
-    // MARK: - Trend
-
-    private var trendSection: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
-            SectionHeaderView(String(localized: "insights.spendingTrend"), style: .insights)
-                .padding([.horizontal, .top], AppSpacing.lg)
-
-            Chart(monthlyTrend) { point in
-                BarMark(
-                    x: .value("Month", point.month),
-                    y: .value("Amount", point.expenses)
-                )
-                .foregroundStyle(color.opacity(0.7))
-                .cornerRadius(AppRadius.xs)
-            }
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .month)) { value in
-                    AxisValueLabel(format: .dateTime.month(.abbreviated))
-                }
-            }
-            .frame(height: 180)
-            .padding([.horizontal, .bottom], AppSpacing.lg)
-        }
-        .cardBackground(radius: AppRadius.pill)
         .screenPadding()
     }
 
@@ -120,7 +90,7 @@ struct CategoryDeepDiveView: View {
                 )
                 .foregroundStyle(color.opacity(Double(subcategoryIndexMap[item.id] ?? 0) * 0.15 + 0.3))
             }
-            .frame(height: 160)
+            .frame(height: 200)
             .chartLegend(.hidden)
             .screenPadding()
 
@@ -152,47 +122,46 @@ struct CategoryDeepDiveView: View {
     // MARK: - Comparison
 
     private var comparisonSection: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
+        let gran = viewModel.currentGranularity
+        let currentLabel  = gran.periodLabel(for: gran.currentPeriodKey)
+        let previousLabel = gran.periodLabel(for: gran.previousPeriodKey)
+        let currentAmount = subcategories.reduce(0.0) { $0 + $1.amount }
+        return VStack(alignment: .leading, spacing: AppSpacing.md) {
             SectionHeaderView(String(localized: "insights.periodComparison"), style: .insights)
-
-            if let current = monthlyTrend.last, monthlyTrend.count >= 2 {
-                let previous = monthlyTrend[monthlyTrend.count - 2]
-                PeriodComparisonCard(
-                    currentLabel: current.label,
-                    currentAmount: current.expenses,
-                    previousLabel: previous.label,
-                    previousAmount: previous.expenses,
-                    currency: currency,
-                    isExpenseContext: true
-                )
-            }
+            PeriodComparisonCard(
+                currentLabel: currentLabel,
+                currentAmount: currentAmount,
+                previousLabel: previousLabel,
+                previousAmount: prevBucketAmount,
+                currency: currency,
+                isExpenseContext: true
+            )
         }
         .screenPadding()
     }
 
     // MARK: - Data Loading
 
-    /// Phase 23-A P5: async — viewModel.categoryDeepDive is CPU-heavy (filter + grouping + 6-month loop).
+    /// Phase 23-A P5: async — viewModel.categoryDeepDive is CPU-heavy (filter + grouping).
     /// .task cancels automatically on view disappear.
-    /// categoryDeepDive is @MainActor-isolated, so we call it directly (await hops to MainActor),
-    /// then offload only the pure index-map build to a detached task if needed.
+    /// categoryDeepDive is @MainActor-isolated, so we call it directly (await hops to MainActor).
     @MainActor
     private func loadDataAsync() async {
-        Self.logger.debug("🔍 [CategoryDeepDive] OPEN — category='\(categoryName, privacy: .public)'")
+        Self.logger.debug("🔍 [CategoryDeepDive] OPEN — category='\(categoryName, privacy: .public)' gran='\(viewModel.currentGranularity.rawValue, privacy: .public)'")
 
         // categoryDeepDive is @MainActor — call directly; Swift hops actors automatically.
         let result = viewModel.categoryDeepDive(categoryName: categoryName)
 
         // Write results (already on MainActor)
-        subcategories = result.subcategories
-        monthlyTrend  = result.monthlyTrend
+        subcategories    = result.subcategories
+        prevBucketAmount = result.prevBucketTotal
         // Build index map once to avoid O(n²) firstIndex(where:) in body (P16 fix)
         subcategoryIndexMap = Dictionary(
             uniqueKeysWithValues: subcategories.enumerated().map { ($1.id, $0) }
         )
 
         let totalAmount = subcategories.reduce(0.0) { $0 + $1.amount }
-        Self.logger.debug("🔍 [CategoryDeepDive] LOADED — subcategories=\(subcategories.count), months=\(monthlyTrend.count), total=\(String(format: "%.0f", totalAmount), privacy: .public)")
+        Self.logger.debug("🔍 [CategoryDeepDive] LOADED — subcategories=\(subcategories.count), prevBucket=\(String(format: "%.0f", prevBucketAmount), privacy: .public), total=\(String(format: "%.0f", totalAmount), privacy: .public)")
     }
 }
 
@@ -205,10 +174,8 @@ private struct CategoryDeepDivePreview: View {
         SubcategoryBreakdownItem(id: "groceries",   name: "Groceries",   amount: 28_000, percentage: 33),
         SubcategoryBreakdownItem(id: "delivery",    name: "Delivery",    amount: 15_000, percentage: 18)
     ]
-    @State private var monthlyTrend: [MonthlyDataPoint] = MonthlyDataPoint.mockTrend()
 
     var body: some View {
-        // Render sections directly (bypassing loadData) using a read-only version of the view
         ScrollView {
             VStack(alignment: .leading, spacing: AppSpacing.xl) {
                 // Header
@@ -229,18 +196,6 @@ private struct CategoryDeepDivePreview: View {
                     }
                     Spacer()
                 }
-                .screenPadding()
-
-                // Trend chart
-                VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    Text(String(localized: "insights.spendingTrend"))
-                        .font(AppTypography.h3)
-                        .foregroundStyle(AppColors.textPrimary)
-                        .padding([.horizontal, .top], AppSpacing.lg)
-                    SpendingTrendChart(dataPoints: monthlyTrend, currency: "KZT", mode: .full)
-                        .padding([.horizontal, .bottom], AppSpacing.lg)
-                }
-                .cardBackground(radius: AppRadius.pill)
                 .screenPadding()
 
                 // Subcategory list
@@ -270,6 +225,20 @@ private struct CategoryDeepDivePreview: View {
                         .screenPadding()
                     }
                 }
+
+                // Comparison card (mock: current Feb vs Jan)
+                VStack(alignment: .leading, spacing: AppSpacing.md) {
+                    SectionHeaderView(String(localized: "insights.periodComparison"), style: .insights)
+                    PeriodComparisonCard(
+                        currentLabel: "Feb 2026",
+                        currentAmount: subcategories.reduce(0.0) { $0 + $1.amount },
+                        previousLabel: "Jan 2026",
+                        previousAmount: 78_000,
+                        currency: "KZT",
+                        isExpenseContext: true
+                    )
+                }
+                .screenPadding()
             }
             .padding(.vertical, AppSpacing.md)
         }

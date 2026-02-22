@@ -13,127 +13,103 @@
 //      InsightsSectionView(category: .spending, insights: insights, currency: currency,
 //                          onCategoryTap: { item in AnyView(CategoryDeepDiveView(...)) })
 //
-//  Usage — section with embedded chart (CashFlow, Wealth):
-//      InsightsSectionView(
-//          category: .cashFlow, insights: insights, currency: currency,
-//          periodDataPoints: points, granularity: .month
-//      ) {
-//          PeriodCashFlowChart(dataPoints: points, currency: currency,
-//                              granularity: .month, mode: .full)
-//      }
+//  Phase 29 (revised): Full chart removed from section view.
+//  All sections show compact mini-chart cards on the main Insights screen.
+//  Full charts appear in InsightDetailView when tapping individual insight cards.
 //
 
 import SwiftUI
 
-struct InsightsSectionView<FirstChart: View>: View {
+struct InsightsSectionView: View {
 
     // MARK: - Properties
 
     let category: InsightCategory
     let insights: [Insight]
     let currency: String
-    let periodDataPoints: [PeriodDataPoint]
-    let granularity: InsightGranularity
     var onCategoryTap: ((CategoryBreakdownItem) -> AnyView)? = nil
-    @ViewBuilder private let firstCardChart: () -> FirstChart
-
-    // MARK: - Init (simple — no embedded chart)
-    //
-    // Covers: .income, .budget, .recurring, .spending (via onCategoryTap)
-
-    init(
-        category: InsightCategory,
-        insights: [Insight],
-        currency: String,
-        onCategoryTap: ((CategoryBreakdownItem) -> AnyView)? = nil
-    ) where FirstChart == EmptyView {
-        self.category = category
-        self.insights = insights
-        self.currency = currency
-        self.periodDataPoints = []
-        self.granularity = .month
-        self.onCategoryTap = onCategoryTap
-        self.firstCardChart = { EmptyView() }
-    }
-
-    // MARK: - Init (with embedded chart in the first card)
-    //
-    // Covers: .cashFlow (PeriodCashFlowChart), .wealth (WealthChart)
-
-    init(
-        category: InsightCategory,
-        insights: [Insight],
-        currency: String,
-        periodDataPoints: [PeriodDataPoint],
-        granularity: InsightGranularity,
-        @ViewBuilder firstCardChart: @escaping () -> FirstChart
-    ) {
-        self.category = category
-        self.insights = insights
-        self.currency = currency
-        self.periodDataPoints = periodDataPoints
-        self.granularity = granularity
-        self.onCategoryTap = nil
-        self.firstCardChart = firstCardChart
-    }
-
-    // MARK: - Computed
-
-    /// `true` when `FirstChart` is not `EmptyView` — a chart was injected via init.
-    private var hasChart: Bool {
-        FirstChart.self != EmptyView.self
-    }
+    var granularity: InsightGranularity? = nil
 
     // MARK: - Body
 
     var body: some View {
         if !insights.isEmpty {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
-                InsightsSectionHeader(category: category)
+                SectionHeaderView(category.displayName, systemImage: category.icon, style: .insights)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .screenPadding()
 
-                if hasChart, let firstInsight = insights.first, periodDataPoints.count >= 2 {
-                    // First card — injected chart embedded inside InsightsCardView
+                // ALL cards use compact mini-charts
+                ForEach(insights) { insight in
                     NavigationLink(
                         destination: InsightDetailView(
-                            insight: firstInsight,
-                            currency: currency
+                            insight: insight,
+                            currency: currency,
+                            onCategoryTap: onCategoryTap
                         )
                     ) {
-                        InsightsCardView(insight: firstInsight) {
-                            firstCardChart()
-                        }
+                        InsightsCardView(insight: insight)
                     }
                     .buttonStyle(.plain)
-
-                    // Remaining cards — standard (mini-chart overlay preserved)
-                    ForEach(insights.dropFirst()) { insight in
-                        NavigationLink(
-                            destination: InsightDetailView(
-                                insight: insight,
-                                currency: currency,
-                                onCategoryTap: onCategoryTap
-                            )
-                        ) {
-                            InsightsCardView(insight: insight)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } else {
-                    // No period data or no chart injected — all cards standard
-                    ForEach(insights) { insight in
-                        NavigationLink(
-                            destination: InsightDetailView(
-                                insight: insight,
-                                currency: currency,
-                                onCategoryTap: onCategoryTap
-                            )
-                        ) {
-                            InsightsCardView(insight: insight)
-                        }
-                        .buttonStyle(.plain)
-                    }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Simple — Income") {
+    NavigationStack {
+        ScrollView {
+            InsightsSectionView(
+                category: .income,
+                insights: [.mockIncomeGrowth()],
+                currency: "KZT"
+            )
+            .padding(.vertical, AppSpacing.md)
+        }
+    }
+}
+
+#Preview("Spending — with drill-down") {
+    NavigationStack {
+        ScrollView {
+            InsightsSectionView(
+                category: .spending,
+                insights: [.mockTopSpending(), .mockMoM(), .mockAvgDaily()],
+                currency: "KZT",
+                onCategoryTap: { item in
+                    AnyView(Text("Deep dive: \(item.categoryName)").padding())
+                }
+            )
+            .padding(.vertical, AppSpacing.md)
+        }
+    }
+}
+
+#Preview("Cash Flow — compact cards only") {
+    NavigationStack {
+        ScrollView {
+            InsightsSectionView(
+                category: .cashFlow,
+                insights: [.mockCashFlow(), .mockProjectedBalance()],
+                currency: "KZT"
+            )
+            .padding(.vertical, AppSpacing.md)
+        }
+    }
+}
+
+#Preview("Wealth — compact cards only") {
+    NavigationStack {
+        ScrollView {
+            InsightsSectionView(
+                category: .wealth,
+                insights: [.mockWealthBreakdown()],
+                currency: "KZT"
+            )
+            .padding(.vertical, AppSpacing.md)
         }
     }
 }

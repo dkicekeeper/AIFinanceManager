@@ -10,6 +10,19 @@
 //
 //  Phase 23-C: Replaced UIScreen.main.bounds with GeometryReader — no UIKit dependency.
 //
+//  Phase 27:
+//  - Compact mode: glow shadow removed from bars
+//  - All bars: AppRadius.sm corner radius (not pill)
+//  - Full mode: Y-axis moved to leading overlay (always visible while scrolling)
+//  - Default horizontal scroll position: trailing (most recent data)
+//  - Bar width: .automatic for full mode (prevents overlap)
+//
+//  Phase 28:
+//  - Removed local formatCompact / formatAxisDate / axisMonthFormatter → ChartAxisHelpers
+//  - Removed local axisLabelMap / compactPeriodLabel → ChartAxisHelpers
+//  - IncomeExpenseChart: scrollable branch refactored to ZStack Y-axis overlay
+//  - PeriodIncomeExpenseChart: chartHeight 220 → 200 (visual parity with other charts)
+//
 
 import SwiftUI
 import Charts
@@ -24,16 +37,69 @@ struct IncomeExpenseChart: View {
     /// When true, wraps in a horizontal ScrollView (Phase 18)
     var scrollable: Bool = false
 
-    private var chartContent: some View {
+    // MARK: Body
+
+    var body: some View {
+        if scrollable && !isCompact && dataPoints.count > 6 {
+            let pointWidth: CGFloat = 50
+            GeometryReader { proxy in
+                let container = proxy.size.width
+                let yAxisWidth: CGFloat = 50
+                let scrollWidth = max(container, CGFloat(dataPoints.count) * pointWidth)
+                ZStack(alignment: .topLeading) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        chartContent(showYAxis: false)
+                            .frame(width: scrollWidth, height: 200)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .defaultScrollAnchor(.trailing)
+
+                    // Y-axis overlay — always visible, doesn't scroll with chart
+                    yAxisReferenceChart
+                        .frame(width: yAxisWidth, height: 200)
+                        .allowsHitTesting(false)
+                }
+            }
+            .frame(height: 200)
+            .padding(.top, AppSpacing.sm)
+        } else {
+            chartContent(showYAxis: !isCompact)
+        }
+    }
+
+    // MARK: - Y-axis reference chart (overlay for scrollable mode)
+
+    private var yAxisReferenceChart: some View {
+        Chart(dataPoints) { point in
+            BarMark(x: .value("Month", point.month), y: .value("Amount", point.income))
+                .opacity(0)
+            BarMark(x: .value("Month", point.month), y: .value("Amount", point.expenses))
+                .opacity(0)
+        }
+        .chartXAxis { AxisMarks { _ in } }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisValueLabel {
+                    if let amount = value.as(Double.self) {
+                        Text(ChartAxisHelpers.formatCompact(amount))
+                            .font(AppTypography.caption2)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Chart content
+
+    private func chartContent(showYAxis: Bool) -> some View {
         Chart(dataPoints) { point in
             BarMark(
                 x: .value("Month", point.month),
                 y: .value("Amount", point.income),
                 width: isCompact ? 6 : 12
             )
-            .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
+            .cornerRadius(AppRadius.xs)
             .foregroundStyle(AppColors.success.opacity(0.85))
-            .shadow(color: AppColors.success.opacity(0.5), radius: 8, x: 0, y: 0)
             .position(by: .value("Type", "Income"))
 
             BarMark(
@@ -41,9 +107,8 @@ struct IncomeExpenseChart: View {
                 y: .value("Amount", point.expenses),
                 width: isCompact ? 6 : 12
             )
-            .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
+            .cornerRadius(AppRadius.xs)
             .foregroundStyle(AppColors.destructive.opacity(0.85))
-            .shadow(color: AppColors.destructive.opacity(0.5), radius: 8, x: 0, y: 0)
             .position(by: .value("Type", "Expenses"))
         }
         .chartXAxis {
@@ -53,7 +118,7 @@ struct IncomeExpenseChart: View {
                 AxisMarks(values: .stride(by: .month)) { value in
                     AxisValueLabel {
                         if let date = value.as(Date.self) {
-                            Text(formatAxisDate(date))
+                            Text(ChartAxisHelpers.formatAxisDate(date))
                                 .font(AppTypography.caption2)
                         }
                     }
@@ -63,15 +128,21 @@ struct IncomeExpenseChart: View {
         .chartYAxis {
             if isCompact {
                 AxisMarks { _ in }
-            } else {
-                AxisMarks { value in
+            } else if showYAxis {
+                AxisMarks(position: .leading) { value in
                     AxisGridLine()
                     AxisValueLabel {
                         if let amount = value.as(Double.self) {
-                            Text(formatCompact(amount))
+                            Text(ChartAxisHelpers.formatCompact(amount))
                                 .font(AppTypography.caption2)
                         }
                     }
+                }
+            } else {
+                // Grid lines only — Y labels handled by yAxisReferenceChart overlay
+                AxisMarks { _ in
+                    AxisGridLine()
+                    AxisValueLabel { EmptyView() }
                 }
             }
         }
@@ -80,65 +151,7 @@ struct IncomeExpenseChart: View {
             "Expenses": AppColors.destructive
         ])
         .chartLegend(isCompact ? .hidden : .automatic)
-        .chartPlotStyle { content in
-            if isCompact {
-                content
-            } else {
-                content.padding(.trailing, AppSpacing.md)
-            }
-        }
         .frame(height: isCompact ? 60 : 200)
-    }
-
-    var body: some View {
-        if scrollable && !isCompact && dataPoints.count > 6 {
-            let pointWidth: CGFloat = 50
-            GeometryReader { proxy in
-                let chartWidth = max(proxy.size.width, CGFloat(dataPoints.count) * pointWidth)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    chartContent
-                        .frame(width: chartWidth)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-            }
-            .frame(height: 200)
-        } else {
-            chartContent
-        }
-    }
-
-    /// Cached formatter for X-axis month labels. Locale captured at first use.
-    /// Re-assigning `locale` is a reference assignment (cheap); no re-allocation.
-    private static let axisMonthFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "MMM"
-        return f
-    }()
-
-    private func formatCompact(_ value: Double) -> String {
-        if value >= 1_000_000 {
-            return String(format: "%.1fM", value / 1_000_000)
-        } else if value >= 1_000 {
-            return String(format: "%.0fK", value / 1_000)
-        }
-        return String(format: "%.0f", value)
-    }
-
-    /// Форматирует дату для X-оси: 3 chars uppercase + год если не текущий.
-    /// Пример: "ЯНВ" (текущий год), "ЯНВ'24" (другой год). Локаль-зависимо.
-    private func formatAxisDate(_ date: Date) -> String {
-        let calendar = Calendar.current
-        let currentYear = calendar.component(.year, from: Date())
-        let dateYear = calendar.component(.year, from: date)
-
-        Self.axisMonthFormatter.locale = .current
-        let month = String(Self.axisMonthFormatter.string(from: date).uppercased().prefix(3))
-
-        if dateYear == currentYear {
-            return month
-        } else {
-            return "\(month)'\(String(format: "%02d", dateYear % 100))"
-        }
     }
 }
 
@@ -146,7 +159,8 @@ struct IncomeExpenseChart: View {
 
 /// Granularity-aware income/expense bar chart.
 /// X-axis shows period labels (week/month/quarter/year) instead of raw Date.
-/// Always wraps in a horizontal ScrollView when point count exceeds screen width.
+/// Y-axis is pinned to the left (always visible) while content scrolls right.
+/// Default scroll position: trailing (most recent data visible on load).
 struct PeriodIncomeExpenseChart: View {
     let dataPoints: [PeriodDataPoint]
     let currency: String
@@ -155,56 +169,113 @@ struct PeriodIncomeExpenseChart: View {
     private var isCompact: Bool { mode == .compact }
 
     private var pointWidth: CGFloat { isCompact ? 30 : granularity.pointWidth }
-    private var chartHeight: CGFloat { isCompact ? 60 : 220 }
+    private var chartHeight: CGFloat { isCompact ? 60 : 200 }
 
-    private func chartWidth(containerWidth: CGFloat) -> CGFloat {
-        max(containerWidth, CGFloat(dataPoints.count) * pointWidth)
+    /// Maximum Y value across all data points — used to sync Y-axis scale.
+    private var yMax: Double {
+        dataPoints.flatMap { [$0.income, $0.expenses] }.max() ?? 1
     }
+
+    // MARK: Body
 
     var body: some View {
         GeometryReader { proxy in
             let container = proxy.size.width
-            ScrollView(.horizontal, showsIndicators: false) {
-                chartContent
-                    .frame(width: isCompact ? container : chartWidth(containerWidth: container),
-                           height: chartHeight)
+            let yAxisWidth: CGFloat = 50
+
+            if isCompact {
+                // Compact: single chart, no Y-axis, no scroll
+                mainChart(showYAxis: false)
+                    .frame(width: container, height: chartHeight)
+            } else {
+                let scrollWidth = max(
+                    container,
+                    CGFloat(dataPoints.count) * pointWidth
+                )
+                ZStack(alignment: .topLeading) {
+                    // Scrollable bars (Y-axis hidden)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        mainChart(showYAxis: false)
+                            .frame(width: scrollWidth, height: chartHeight)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .defaultScrollAnchor(.trailing)
+
+                    // Y-axis overlay — always visible, doesn't scroll with chart
+                    yAxisReferenceChart
+                        .frame(width: yAxisWidth, height: chartHeight)
+                        .allowsHitTesting(false)
+                }
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .frame(height: chartHeight)
+        .padding(.top, isCompact ? 0 : AppSpacing.sm)
     }
 
-    private var chartContent: some View {
+    // MARK: - Y-axis reference chart (left panel, always visible)
+
+    /// Invisible chart used solely to render the Y-axis labels with correct scale.
+    private var yAxisReferenceChart: some View {
+        Chart(dataPoints) { point in
+            BarMark(x: .value("p", point.label), y: .value("v", point.income))
+                .opacity(0)
+            BarMark(x: .value("p", point.label), y: .value("v", point.expenses))
+                .opacity(0)
+        }
+        .chartYScale(domain: 0...yMax)
+        .chartXAxis { AxisMarks { _ in } }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisValueLabel {
+                    if let amount = value.as(Double.self) {
+                        Text(ChartAxisHelpers.formatCompact(amount))
+                            .font(AppTypography.caption2)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Main chart (bars + X-axis, optionally no Y-axis)
+
+    private func mainChart(showYAxis: Bool) -> some View {
         Chart(dataPoints) { point in
             BarMark(
                 x: .value("Period", point.label),
                 y: .value("Income", point.income),
-                width: .fixed(isCompact ? 6 : max(8, pointWidth * 0.38))
+                width: isCompact ? .fixed(6) : .automatic
             )
-            .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
+            .cornerRadius(AppRadius.sm)
             .foregroundStyle(AppColors.success.opacity(0.85))
-            .shadow(color: AppColors.success.opacity(0.35), radius: 4, x: 0, y: 2)
+            .shadow(
+                color: isCompact ? .clear : AppColors.success.opacity(0.35),
+                radius: isCompact ? 0 : 4, x: 0, y: 2
+            )
             .position(by: .value("Type", "Income"))
 
             BarMark(
                 x: .value("Period", point.label),
                 y: .value("Expenses", point.expenses),
-                width: .fixed(isCompact ? 6 : max(8, pointWidth * 0.38))
+                width: isCompact ? .fixed(6) : .automatic
             )
-            .cornerRadius(AppRadius.circle) // pill/capsule bars — intentional .infinity
+            .cornerRadius(AppRadius.sm)
             .foregroundStyle(AppColors.destructive.opacity(0.85))
-            .shadow(color: AppColors.destructive.opacity(0.35), radius: 4, x: 0, y: 2)
+            .shadow(
+                color: isCompact ? .clear : AppColors.destructive.opacity(0.35),
+                radius: isCompact ? 0 : 4, x: 0, y: 2
+            )
             .position(by: .value("Type", "Expenses"))
         }
-
+        .chartYScale(domain: 0...yMax)
         .chartXAxis {
             if isCompact {
                 AxisMarks { _ in }
             } else {
+                let labelMap = ChartAxisHelpers.axisLabelMap(for: dataPoints)
                 AxisMarks { value in
                     AxisValueLabel {
                         if let label = value.as(String.self) {
-                            Text(axisLabelMap[label] ?? label)
+                            Text(labelMap[label] ?? label)
                                 .font(AppTypography.caption2)
                                 .lineLimit(1)
                         }
@@ -212,103 +283,30 @@ struct PeriodIncomeExpenseChart: View {
                 }
             }
         }
-
         .chartYAxis {
-            if isCompact {
-                AxisMarks { _ in }
-            } else {
-                AxisMarks { value in
+            if showYAxis {
+                AxisMarks(position: .leading) { value in
                     AxisGridLine()
                     AxisValueLabel {
                         if let amount = value.as(Double.self) {
-                            Text(formatCompact(amount))
+                            Text(ChartAxisHelpers.formatCompact(amount))
                                 .font(AppTypography.caption2)
                         }
                     }
                 }
+            } else {
+                // Grid lines only — Y labels handled by yAxisReferenceChart
+                AxisMarks { _ in
+                    AxisGridLine()
+                    AxisValueLabel { EmptyView() }
+                }
             }
         }
-
         .chartForegroundStyleScale([
             "Income": AppColors.success,
             "Expenses": AppColors.destructive
         ])
         .chartLegend(isCompact ? .hidden : .automatic)
-        .chartPlotStyle { content in
-            if isCompact {
-                content
-            } else {
-                content.padding(.trailing, AppSpacing.md)
-            }
-        }
-    }
-
-    private func formatCompact(_ value: Double) -> String {
-        if abs(value) >= 1_000_000 {
-            return String(format: "%.1fM", value / 1_000_000)
-        } else if abs(value) >= 1_000 {
-            return String(format: "%.0fK", value / 1_000)
-        }
-        return String(format: "%.0f", value)
-    }
-
-    /// Маппинг полный label → компактный label для X-оси.
-    /// Строится из dataPoints при каждом создании View (несущественные затраты для ≤52 точек).
-    private var axisLabelMap: [String: String] {
-        let calendar = Calendar.current
-        let currentYear = calendar.component(.year, from: Date())
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.dateFormat = "MMM"
-        return Dictionary(
-            uniqueKeysWithValues: dataPoints.map { point in
-                (point.label, compactPeriodLabel(
-                    point: point,
-                    calendar: calendar,
-                    currentYear: currentYear,
-                    formatter: formatter
-                ))
-            }
-        )
-    }
-
-    /// Возвращает компактный лейбл для X-оси по гранулярности.
-    /// .month   → "ЯНВ" / "ЯНВ'25"
-    /// .week    → "W07" / "W07'25"
-    /// .quarter → "Q1" / "Q1'25"
-    /// .year    → "2025" (полный год)
-    /// .allTime → оригинальный лейбл
-    private func compactPeriodLabel(
-        point: PeriodDataPoint,
-        calendar: Calendar,
-        currentYear: Int,
-        formatter: DateFormatter
-    ) -> String {
-        let pointYear = calendar.component(.year, from: point.periodStart)
-        let shortYear = String(format: "%02d", pointYear % 100)
-
-        switch point.granularity {
-        case .month:
-            let month = String(formatter.string(from: point.periodStart).uppercased().prefix(3))
-            return pointYear == currentYear ? month : "\(month)'\(shortYear)"
-
-        case .week:
-            let weekNum = calendar.component(.weekOfYear, from: point.periodStart)
-            return pointYear == currentYear
-                ? String(format: "W%02d", weekNum)
-                : String(format: "W%02d'\(shortYear)", weekNum)
-
-        case .quarter:
-            let month = calendar.component(.month, from: point.periodStart)
-            let quarter = (month - 1) / 3 + 1
-            return pointYear == currentYear ? "Q\(quarter)" : "Q\(quarter)'\(shortYear)"
-
-        case .year:
-            return "\(pointYear)"
-
-        case .allTime:
-            return point.label
-        }
     }
 }
 

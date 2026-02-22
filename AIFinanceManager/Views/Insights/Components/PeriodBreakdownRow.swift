@@ -23,11 +23,11 @@ struct PeriodBreakdownRow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(alignment: .top) {
                 Text(label)
                     .font(AppTypography.body)
                     .foregroundStyle(AppColors.textPrimary)
-                    .frame(minWidth: labelMinWidth, alignment: .leading)
+//                    .frame(minWidth: labelMinWidth, alignment: .leading)
 
                 Spacer()
 
@@ -37,9 +37,9 @@ struct PeriodBreakdownRow: View {
                         currency: currency,
                         fontSize: AppTypography.body,
                         fontWeight: .semibold,
-                        color: netFlow >= 0 ? AppColors.success : AppColors.destructive
+                        color: netFlow >= 0 ? AppColors.textPrimary : AppColors.destructive
                     )
-                    HStack(spacing: AppSpacing.xs) {
+                    HStack(spacing: AppSpacing.md) {
                         FormattedAmountText(
                             amount: income,
                             currency: currency,
@@ -59,12 +59,12 @@ struct PeriodBreakdownRow: View {
                     }
                 }
             }
-            .padding(.vertical, AppSpacing.sm)
+            .padding(.vertical, AppSpacing.md)
             .screenPadding()
 
             if showDivider {
                 Divider()
-                    .padding(.leading, AppSpacing.lg)
+                    .padding(.horizontal, AppSpacing.lg)
             }
         }
     }

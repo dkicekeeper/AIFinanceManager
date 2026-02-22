@@ -14,6 +14,9 @@ import SwiftUI
 /// - `.compact`: Picker categories (small, uppercase, secondary color)
 struct SectionHeaderView: View {
     let title: String
+    /// Optional SF Symbol name shown to the left of the title (accent color).
+    /// Currently used only with `.insights` style.
+    var systemImage: String? = nil
     let style: Style
 
     enum Style {
@@ -26,12 +29,13 @@ struct SectionHeaderView: View {
         /// Compact picker category header (small, uppercase)
         case compact
 
-        /// Insights detail section title (h3, primary color)
+        /// Insights section title (h3, primary color, optional icon)
         case insights
     }
 
-    init(_ title: String, style: Style = .default) {
+    init(_ title: String, systemImage: String? = nil, style: Style = .default) {
         self.title = title
+        self.systemImage = systemImage
         self.style = style
     }
 
@@ -71,9 +75,15 @@ struct SectionHeaderView: View {
     }
 
     private var insightsStyle: some View {
-        Text(title)
-            .font(AppTypography.h3)
-            .foregroundStyle(AppColors.textPrimary)
+        HStack(spacing: AppSpacing.md) {
+            if let icon = systemImage {
+                Image(systemName: icon)
+                    .foregroundStyle(AppColors.accent)
+            }
+            Text(title)
+                .font(AppTypography.h3)
+                .foregroundStyle(AppColors.textPrimary)
+        }
     }
 }
 

@@ -38,45 +38,10 @@ struct PeriodComparisonCard: View {
         }
     }
 
-    private var arrowIcon: String {
-        switch direction {
-        case .up: return "arrow.up.right"
-        case .down: return "arrow.down.right"
-        case .flat: return "arrow.right"
-        }
-    }
-
     var body: some View {
         HStack {
-            // Current period
-            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                Text(currentLabel)
-                    .font(AppTypography.bodySmall)
-                    .foregroundStyle(AppColors.textSecondary)
-                FormattedAmountText(
-                    amount: currentAmount,
-                    currency: currency,
-                    fontSize: AppTypography.h3,
-                    fontWeight: .bold,
-                    color: AppColors.textPrimary
-                )
-            }
-
-            Spacer()
-
-            // Change indicator
-            VStack(spacing: AppSpacing.xxs) {
-                Image(systemName: arrowIcon)
-                    .foregroundStyle(changeColor)
-                Text(String(format: "%+.1f%%", change))
-                    .font(AppTypography.captionEmphasis)
-                    .foregroundStyle(changeColor)
-            }
-
-            Spacer()
-
             // Previous period
-            VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                 Text(previousLabel)
                     .font(AppTypography.bodySmall)
                     .foregroundStyle(AppColors.textSecondary)
@@ -86,6 +51,36 @@ struct PeriodComparisonCard: View {
                     fontSize: AppTypography.h3,
                     fontWeight: .semibold,
                     color: AppColors.textSecondary
+                )
+            }
+
+            Spacer()
+
+            // Change indicator
+            InsightTrendBadge(
+                trend: InsightTrend(
+                    direction: direction,
+                    changePercent: change,
+                    changeAbsolute: nil,
+                    comparisonPeriod: ""
+                ),
+                style: .changeIndicator,
+                colorOverride: changeColor
+            )
+
+            Spacer()
+
+            // Current period
+            VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
+                Text(currentLabel)
+                    .font(AppTypography.bodySmall)
+                    .foregroundStyle(AppColors.textSecondary)
+                FormattedAmountText(
+                    amount: currentAmount,
+                    currency: currency,
+                    fontSize: AppTypography.h3,
+                    fontWeight: .bold,
+                    color: AppColors.textPrimary
                 )
             }
         }

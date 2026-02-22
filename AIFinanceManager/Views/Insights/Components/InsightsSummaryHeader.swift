@@ -37,14 +37,14 @@ struct InsightsSummaryHeader: View {
 
             // Mini trend chart.
             // Using cardBackground (not glassCardStyle) so clipShape doesn't cut Charts layers.
-            if periodDataPoints.count >= 2 {
-                PeriodIncomeExpenseChart(
-                    dataPoints: periodDataPoints,
-                    currency: currency,
-                    granularity: periodDataPoints.first?.granularity ?? .month,
-                    mode: .compact
-                )
-            }
+//            if periodDataPoints.count >= 2 {
+//                PeriodIncomeExpenseChart(
+//                    dataPoints: periodDataPoints,
+//                    currency: currency,
+//                    granularity: periodDataPoints.first?.granularity ?? .month,
+//                    mode: .compact
+//                )
+//            }
         }
         .glassCardStyle(radius: AppRadius.pill)
         .onAppear {
@@ -87,6 +87,19 @@ struct InsightsSummaryHeader: View {
         netFlow: 140_000,
         currency: "USD",
         periodDataPoints: []
+    )
+    .screenPadding()
+    .padding(.vertical, AppSpacing.md)
+}
+
+#Preview("With health score") {
+    InsightsSummaryHeader(
+        totalIncome: 530_000,
+        totalExpenses: 320_000,
+        netFlow: 210_000,
+        currency: "KZT",
+        periodDataPoints: PeriodDataPoint.mockMonthly(),
+        healthScore: .mockGood()
     )
     .screenPadding()
     .padding(.vertical, AppSpacing.md)

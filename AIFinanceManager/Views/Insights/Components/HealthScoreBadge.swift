@@ -39,3 +39,15 @@ struct HealthScoreBadge: View {
         }
     }
 }
+
+// MARK: - Previews
+
+#Preview("Good / Needs Attention") {
+    VStack(spacing: AppSpacing.md) {
+        HealthScoreBadge(score: .mockGood())
+        HealthScoreBadge(score: .mockNeedsAttention())
+    }
+    .glassCardStyle(radius: AppRadius.pill)
+    .screenPadding()
+    .padding(.vertical)
+}

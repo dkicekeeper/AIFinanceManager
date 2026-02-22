@@ -161,11 +161,26 @@ final class InsightsViewModel {
 
     func categoryDeepDive(
         categoryName: String
-    ) -> (subcategories: [SubcategoryBreakdownItem], monthlyTrend: [MonthlyDataPoint]) {
-        insightsService.generateCategoryDeepDive(
+    ) -> (subcategories: [SubcategoryBreakdownItem], monthlyTrend: [MonthlyDataPoint], prevBucketTotal: Double) {
+        let allTransactions = Array(transactionStore.transactions)
+
+        // Phase 31: Use current granularity bucket only (not the full window).
+        let currentKey   = currentGranularity.currentPeriodKey
+        let currentStart = currentGranularity.periodStart(for: currentKey)
+        let currentEnd   = currentGranularity.periodEnd(for: currentKey)
+        let currentFilter = TimeFilter(preset: .custom, startDate: currentStart, endDate: currentEnd)
+
+        // Previous bucket — for the comparison card in CategoryDeepDiveView.
+        let prevKey   = currentGranularity.previousPeriodKey
+        let prevStart = currentGranularity.periodStart(for: prevKey)
+        let prevEnd   = currentStart   // prev bucket ends where current bucket begins
+        let prevFilter = TimeFilter(preset: .custom, startDate: prevStart, endDate: prevEnd)
+
+        return insightsService.generateCategoryDeepDive(
             categoryName: categoryName,
-            allTransactions: Array(transactionStore.transactions),
-            timeFilter: currentTimeFilter,
+            allTransactions: allTransactions,
+            timeFilter: currentFilter,
+            comparisonFilter: prevFilter,
             baseCurrency: baseCurrency,
             cacheManager: transactionsViewModel.cacheManager,
             currencyService: transactionsViewModel.currencyService
@@ -207,8 +222,10 @@ final class InsightsViewModel {
             for gran in InsightGranularity.allCases {
                 guard !Task.isCancelled else { break }
 
-                // generateAllInsights now accepts pre-built transactions (P3 fix)
-                let computedInsights = await service.generateAllInsights(
+                // Phase 30: generateAllInsights returns (insights, periodPoints) tuple —
+                // periodPoints are computed INSIDE the call (before generators), so no
+                // separate computePeriodDataPoints call is needed here.
+                let result = await service.generateAllInsights(
                     granularity: gran,
                     transactions: allTransactions,
                     baseCurrency: currency,
@@ -217,21 +234,14 @@ final class InsightsViewModel {
                     balanceFor: { balanceSnapshot[$0] ?? 0 }
                 )
 
-                let points = await service.computePeriodDataPoints(
-                    transactions: allTransactions,
-                    granularity: gran,
-                    baseCurrency: currency,
-                    currencyService: currencyService,
-                    firstTransactionDate: firstDate
-                )
-
+                let points = result.periodPoints
                 var income: Double = 0; var expenses: Double = 0
                 for p in points { income += p.income; expenses += p.expenses }
 
-                newInsights[gran] = computedInsights
+                newInsights[gran] = result.insights
                 newPoints[gran]   = points
                 newTotals[gran]   = PeriodTotals(income: income, expenses: expenses, netFlow: income - expenses)
-                Self.logger.debug("🔧 [InsightsVM] Gran .\(gran.rawValue, privacy: .public) — \(computedInsights.count) insights, \(points.count) pts")
+                Self.logger.debug("🔧 [InsightsVM] Gran .\(gran.rawValue, privacy: .public) — \(result.insights.count) insights, \(points.count) pts")
             }
 
             guard !Task.isCancelled else { return }
@@ -248,15 +258,17 @@ final class InsightsViewModel {
                 balanceFor: { balanceSnapshot[$0] ?? 0 }
             )
 
-            // Hop back to MainActor only for the UI write
+            // Hop back to MainActor only for the UI write.
+            // Use self.currentGranularity (not the captured `granularity`) so that if the user
+            // switched granularity while the background task was running, we show the correct data.
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.precomputedInsights    = newInsights
                 self.precomputedPeriodPoints = newPoints
                 self.precomputedTotals      = newTotals
                 self.healthScore            = computedHealthScore
-                self.applyPrecomputed(for: granularity)
-                Self.logger.debug("🔧 [InsightsVM] Background recompute END — UI updated")
+                self.applyPrecomputed(for: self.currentGranularity)
+                Self.logger.debug("🔧 [InsightsVM] Background recompute END — UI updated for .\(self.currentGranularity.rawValue, privacy: .public)")
             }
         }
     }

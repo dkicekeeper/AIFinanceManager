@@ -710,6 +710,10 @@
 "insights.ofTotal" = "от общих расходов";
 "insights.spendingSpike" = "Обнаружены необычные траты";
 "insights.monthOverMonth" = "Расходы за месяц";
+"insights.monthOverMonth.week" = "Расходы за неделю";
+"insights.monthOverMonth.month" = "Расходы за месяц";
+"insights.monthOverMonth.quarter" = "Расходы за квартал";
+"insights.monthOverMonth.year" = "Расходы за год";
 "insights.avgDailySpending" = "Среднедневные расходы";
 "insights.days" = "дней";
 "insights.incomeGrowth" = "Тренд доходов";
@@ -724,11 +728,28 @@
 "insights.categoriesUnderBudget" = "%d категорий в норме";
 "insights.categoriesUnit" = "категорий";
 "insights.totalRecurring" = "Ежемесячные регулярные расходы";
+"insights.totalRecurring.week" = "Регулярные за неделю";
+"insights.totalRecurring.month" = "Ежемесячные регулярные";
+"insights.totalRecurring.quarter" = "Регулярные за квартал";
+"insights.totalRecurring.year" = "Регулярные за год";
 "insights.activeRecurring" = "%d активных подписок";
 "insights.perMonth" = "в месяц";
+"insights.perWeek" = "в неделю";
+"insights.perQuarter" = "в квартал";
+"insights.perYear" = "в год";
 "insights.netCashFlow" = "Чистый денежный поток";
 "insights.bestMonth" = "Лучший месяц";
+"insights.bestPeriod.week" = "Лучшая неделя";
+"insights.bestPeriod.month" = "Лучший месяц";
+"insights.bestPeriod.quarter" = "Лучший квартал";
+"insights.bestPeriod.year" = "Лучший год";
+"insights.bestPeriod.allTime" = "Лучший период";
 "insights.worstMonth" = "Худший месяц";
+"insights.worstPeriod.week" = "Худшая неделя";
+"insights.worstPeriod.month" = "Худший месяц";
+"insights.worstPeriod.quarter" = "Худший квартал";
+"insights.worstPeriod.year" = "Худший год";
+"insights.worstPeriod.allTime" = "Худший период";
 "insights.projectedBalance" = "Прогноз баланса";
 "insights.in30Days" = "через 30 дней";
 "insights.projected" = "прогнозируемое изменение";
@@ -801,6 +822,7 @@
 "insights.duplicateSubscriptions.subtitle" = "возможных дубликата";
 "insights.accountDormancy.title" = "Обнаружен неактивный счёт";
 "insights.accountDormancy.subtitle" = "счёта без активности 30+ дней";
+"insights.dormant.accounts" = "Неактивные счета";
 
 // MARK: - Tab Bar
 "tab.home" = "Главная";

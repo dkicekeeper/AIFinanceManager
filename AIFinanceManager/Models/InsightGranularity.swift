@@ -203,11 +203,18 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
         let calendar = Calendar.current
         switch self {
         case .week:
-            // "3 Jan" (start of week)
+            // "3 Jan" (current year) or "3 Jan'25" (other year)
+            // Year suffix is required to keep labels unique across the 52-week window which
+            // spans two calendar years, e.g. Jan 2025 and Jan 2026 overlap.
             let df = DateFormatter()
             df.locale = locale
             df.dateFormat = DateFormatter.dateFormat(fromTemplate: "dMMM", options: 0, locale: locale)
-            return df.string(from: date)
+            let weekYear = calendar.component(.yearForWeekOfYear, from: date)
+            let currentYear = calendar.component(.yearForWeekOfYear, from: Date())
+            let dayMonth = df.string(from: date)
+            return weekYear == currentYear
+                ? dayMonth
+                : "\(dayMonth)'\(String(format: "%02d", weekYear % 100))"
 
         case .month:
             // "Jan 2024"
@@ -230,6 +237,82 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
 
         case .allTime:
             return String(localized: "insights.granularity.allTime")
+        }
+    }
+
+    // MARK: - SF Symbol icon
+
+    /// SF Symbol name representing this granularity in pickers and menus.
+    var icon: String {
+        switch self {
+        case .week:    return "calendar.badge.clock"
+        case .month:   return "calendar"
+        case .quarter: return "calendar.badge.plus"
+        case .year:    return "chart.line.uptrend.xyaxis"
+        case .allTime: return "infinity"
+        }
+    }
+
+    // MARK: - Granularity-Aware Insight Titles
+
+    /// Card title for the period-over-period spending change insight.
+    /// "Monthly Spending Change" for month, "Weekly Spending" for week, etc.
+    var monthOverMonthTitle: String {
+        switch self {
+        case .week:    return String(localized: "insights.monthOverMonth.week")
+        case .month:   return String(localized: "insights.monthOverMonth.month")
+        case .quarter: return String(localized: "insights.monthOverMonth.quarter")
+        case .year:    return String(localized: "insights.monthOverMonth.year")
+        case .allTime: return String(localized: "insights.monthOverMonth.month")
+        }
+    }
+
+    /// Card title for the best-period cashflow insight.
+    var bestPeriodTitle: String {
+        switch self {
+        case .week:    return String(localized: "insights.bestPeriod.week")
+        case .month:   return String(localized: "insights.bestPeriod.month")
+        case .quarter: return String(localized: "insights.bestPeriod.quarter")
+        case .year:    return String(localized: "insights.bestPeriod.year")
+        case .allTime: return String(localized: "insights.bestPeriod.allTime")
+        }
+    }
+
+    /// Card title for the worst-period cashflow insight.
+    var worstPeriodTitle: String {
+        switch self {
+        case .week:    return String(localized: "insights.worstPeriod.week")
+        case .month:   return String(localized: "insights.worstPeriod.month")
+        case .quarter: return String(localized: "insights.worstPeriod.quarter")
+        case .year:    return String(localized: "insights.worstPeriod.year")
+        case .allTime: return String(localized: "insights.worstPeriod.allTime")
+        }
+    }
+
+    /// Card title for the total recurring cost insight.
+    var totalRecurringTitle: String {
+        switch self {
+        case .week:    return String(localized: "insights.totalRecurring.week")
+        case .month:   return String(localized: "insights.totalRecurring.month")
+        case .quarter: return String(localized: "insights.totalRecurring.quarter")
+        case .year:    return String(localized: "insights.totalRecurring.year")
+        case .allTime: return String(localized: "insights.totalRecurring.month")
+        }
+    }
+
+    // MARK: - Period End Date for a Key
+
+    /// Returns the exclusive end `Date` for the period identified by `key`.
+    /// Exclusive end is the first instant after the period completes (same convention as `dateRange()`).
+    func periodEnd(for key: String) -> Date {
+        let start = periodStart(for: key)
+        let calendar = Calendar.current
+        switch self {
+        case .week:    return calendar.date(byAdding: .weekOfYear, value: 1, to: start) ?? start
+        case .month:   return calendar.date(byAdding: .month,      value: 1, to: start) ?? start
+        case .quarter: return calendar.date(byAdding: .month,      value: 3, to: start) ?? start
+        case .year:    return calendar.date(byAdding: .year,       value: 1, to: start) ?? start
+        case .allTime: return Date()
         }
     }
 
