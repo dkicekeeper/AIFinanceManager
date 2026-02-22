@@ -1315,6 +1315,32 @@ final class InsightsService {
         return (insights, periodPoints)
     }
 
+    /// Computes all insight granularities in a single @MainActor call.
+    /// Called once from InsightsViewModel.loadInsightsBackground() to replace
+    /// the 5-iteration for-loop that caused 5 separate main actor hops.
+    func computeAllGranularities(
+        transactions allTransactions: [Transaction],
+        baseCurrency: String,
+        cacheManager: TransactionCacheManager,
+        currencyService: TransactionCurrencyService,
+        balanceFor: (String) -> Double,
+        firstTransactionDate: Date?
+    ) -> [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])] {
+        var results: [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])] = [:]
+        for gran in InsightGranularity.allCases {
+            results[gran] = generateAllInsights(
+                granularity: gran,
+                transactions: allTransactions,
+                baseCurrency: baseCurrency,
+                cacheManager: cacheManager,
+                currencyService: currencyService,
+                balanceFor: balanceFor,
+                firstTransactionDate: firstTransactionDate
+            )
+        }
+        return results
+    }
+
     // MARK: - Period Data Points (Phase 18)
 
     /// Groups all transactions into PeriodDataPoint buckets according to granularity.

@@ -219,26 +219,23 @@ final class InsightsViewModel {
             var newPoints   = [InsightGranularity: [PeriodDataPoint]]()
             var newTotals   = [InsightGranularity: PeriodTotals]()
 
+            guard !Task.isCancelled else { return }
+
+            // Single @MainActor hop for all 5 granularities — replaces 5 separate await calls
+            let allGranResults = await service.computeAllGranularities(
+                transactions: allTransactions,
+                baseCurrency: currency,
+                cacheManager: cacheManager,
+                currencyService: currencyService,
+                balanceFor: { balanceSnapshot[$0] ?? 0 },
+                firstTransactionDate: firstDate
+            )
+
             for gran in InsightGranularity.allCases {
-                guard !Task.isCancelled else { break }
-
-                // Phase 30: generateAllInsights returns (insights, periodPoints) tuple —
-                // periodPoints are computed INSIDE the call (before generators), so no
-                // separate computePeriodDataPoints call is needed here.
-                let result = await service.generateAllInsights(
-                    granularity: gran,
-                    transactions: allTransactions,
-                    baseCurrency: currency,
-                    cacheManager: cacheManager,
-                    currencyService: currencyService,
-                    balanceFor: { balanceSnapshot[$0] ?? 0 },
-                    firstTransactionDate: firstDate   // pre-computed once before loop — avoids 5× O(N) re-scan
-                )
-
+                guard let result = allGranResults[gran] else { continue }
                 let points = result.periodPoints
                 var income: Double = 0; var expenses: Double = 0
                 for p in points { income += p.income; expenses += p.expenses }
-
                 newInsights[gran] = result.insights
                 newPoints[gran]   = points
                 newTotals[gran]   = PeriodTotals(income: income, expenses: expenses, netFlow: income - expenses)
