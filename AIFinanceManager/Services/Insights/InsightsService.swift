@@ -1165,13 +1165,20 @@ final class InsightsService {
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
-        balanceFor: (String) -> Double
+        balanceFor: (String) -> Double,
+        firstTransactionDate: Date? = nil          // hoisted by caller to avoid 5× O(N) re-scan
     ) -> (insights: [Insight], periodPoints: [PeriodDataPoint]) {
         // Determine the date window for this granularity.
         // For .week: last 52 weeks. For .month/.quarter/.year/.allTime: first tx → now (covers all).
-        let firstDate = allTransactions
-            .compactMap { DateFormatters.dateFormatter.date(from: $0.date) }
-            .min()
+        // Use the pre-computed value when provided; fall back to local scan if called standalone.
+        let firstDate: Date?
+        if let provided = firstTransactionDate {
+            firstDate = provided
+        } else {
+            firstDate = allTransactions
+                .compactMap { DateFormatters.dateFormatter.date(from: $0.date) }
+                .min()
+        }
         let (windowStart, windowEnd) = granularity.dateRange(firstTransactionDate: firstDate)
 
         // Filter transactions to the granularity window so spending / income / budget / savings

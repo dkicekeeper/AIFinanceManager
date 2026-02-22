@@ -231,7 +231,8 @@ final class InsightsViewModel {
                     baseCurrency: currency,
                     cacheManager: cacheManager,
                     currencyService: currencyService,
-                    balanceFor: { balanceSnapshot[$0] ?? 0 }
+                    balanceFor: { balanceSnapshot[$0] ?? 0 },
+                    firstTransactionDate: firstDate   // pre-computed once before loop — avoids 5× O(N) re-scan
                 )
 
                 let points = result.periodPoints
