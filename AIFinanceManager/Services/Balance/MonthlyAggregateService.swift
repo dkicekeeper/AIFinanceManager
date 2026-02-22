@@ -130,102 +130,70 @@ final class MonthlyAggregateService: @unchecked Sendable {
     // MARK: - Public API: Reads
 
     /// Fetch monthly aggregates for the last N months ending at `anchor` date.
-    /// Returns an array of `months` elements, one per month, sorted chronologically.
-    /// Missing months return zero-value entries (no transactions that month).
+    /// Returns results sorted chronologically. Missing months return zero-value entries.
     func fetchLast(
         _ months: Int,
         anchor: Date = Date(),
         currency: String
     ) -> [MonthlyFinancialAggregate] {
         let calendar = Calendar.current
-        // Build list of (year, month) pairs
         let anchorStart = startOfMonth(calendar, for: anchor)
-        var yearMonths: [(year: Int, month: Int, start: Date)] = []
-        for i in (0..<months).reversed() {
-            guard let date = calendar.date(byAdding: .month, value: -i, to: anchorStart) else { continue }
-            let comps = calendar.dateComponents([.year, .month], from: date)
-            if let y = comps.year, let m = comps.month {
-                yearMonths.append((y, m, date))
-            }
-        }
-        return fetchFor(yearMonths: yearMonths, currency: currency)
+        guard let startDate = calendar.date(byAdding: .month, value: -(months - 1), to: anchorStart) else { return [] }
+        return fetchRange(from: startDate, to: anchor, currency: currency)
     }
 
     /// Fetch monthly aggregates between startDate and endDate (inclusive).
+    /// Uses a single range predicate to avoid SQLite expression-tree limits on large windows.
     func fetchRange(
         from startDate: Date,
         to endDate: Date,
         currency: String
     ) -> [MonthlyFinancialAggregate] {
         let calendar = Calendar.current
-        var yearMonths: [(year: Int, month: Int, start: Date)] = []
-        var current = startOfMonth(calendar, for: startDate)
-        while current <= endDate {
-            let comps = calendar.dateComponents([.year, .month], from: current)
-            if let y = comps.year, let m = comps.month {
-                yearMonths.append((y, m, current))
-            }
-            guard let next = calendar.date(byAdding: .month, value: 1, to: current) else { break }
-            current = next
-        }
-        return fetchFor(yearMonths: yearMonths, currency: currency)
-    }
+        let startComps = calendar.dateComponents([.year, .month], from: startDate)
+        let endComps   = calendar.dateComponents([.year, .month], from: endDate)
+        guard let startYear = startComps.year, let startMonth = startComps.month,
+              let endYear   = endComps.year,   let endMonth   = endComps.month else { return [] }
 
-    // MARK: - Private: Fetch Helper
-
-    private func fetchFor(
-        yearMonths: [(year: Int, month: Int, start: Date)],
-        currency: String
-    ) -> [MonthlyFinancialAggregate] {
-        guard !yearMonths.isEmpty else { return [] }
+        // Guard: empty range
+        guard endYear * 100 + endMonth >= startYear * 100 + startMonth else { return [] }
 
         let context = stack.viewContext
         let request = MonthlyAggregateEntity.fetchRequest()
-        let subPredicates: [NSPredicate] = yearMonths.map { ym in
-            NSPredicate(
-                format: "year == %d AND month == %d AND currency == %@",
-                Int16(ym.year), Int16(ym.month), currency
-            )
-        }
-        request.predicate = NSCompoundPredicate(orPredicateWithSubpredicates: subPredicates)
 
-        var entityMap: [String: MonthlyAggregateEntity] = [:]
+        // Single range predicate — no OR fan-out regardless of window size
+        request.predicate = NSPredicate(
+            format: """
+                currency == %@ AND year > 0 AND month > 0
+                AND (year > %d OR (year == %d AND month >= %d))
+                AND (year < %d OR (year == %d AND month <= %d))
+            """,
+            currency,
+            startYear, startYear, startMonth,
+            endYear,   endYear,   endMonth
+        )
+        request.sortDescriptors = [
+            NSSortDescriptor(key: "year",  ascending: true),
+            NSSortDescriptor(key: "month", ascending: true)
+        ]
+
         do {
             let entities = try context.fetch(request)
-            for e in entities {
-                let key = "\(e.year)-\(e.month)"
-                entityMap[key] = e
-            }
-        } catch {
-            Self.logger.error("❌ [MonthlyAgg] fetchFor failed: \(error.localizedDescription, privacy: .public)")
-        }
-
-        // Map each (year, month) to result, inserting zeros for missing months
-        return yearMonths.map { ym in
-            let key = "\(ym.year)-\(ym.month)"
-            if let e = entityMap[key] {
-                return MonthlyFinancialAggregate(
+            return entities.map { e in
+                MonthlyFinancialAggregate(
                     year: Int(e.year),
                     month: Int(e.month),
                     totalIncome: e.totalIncome,
                     totalExpenses: e.totalExpenses,
-                    netFlow: e.netFlow,
+                    netFlow: e.totalIncome - e.totalExpenses,
                     transactionCount: Int(e.transactionCount),
                     currency: e.currency ?? currency,
                     lastUpdated: e.lastUpdated ?? Date()
                 )
-            } else {
-                return MonthlyFinancialAggregate(
-                    year: ym.year,
-                    month: ym.month,
-                    totalIncome: 0,
-                    totalExpenses: 0,
-                    netFlow: 0,
-                    transactionCount: 0,
-                    currency: currency,
-                    lastUpdated: Date()
-                )
             }
+        } catch {
+            Self.logger.error("❌ [MonthlyAgg] fetchRange failed: \(error.localizedDescription, privacy: .public)")
+            return []
         }
     }
 
