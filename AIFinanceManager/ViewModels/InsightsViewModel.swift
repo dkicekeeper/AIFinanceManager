@@ -189,9 +189,10 @@ final class InsightsViewModel {
 
     // MARK: - Private: Background Loading
 
-    /// Phase 23-A: Offloads ALL computation to a detached background task.
-    /// Values needed for computation are captured on MainActor before the hop.
-    /// Only the final UI write returns to MainActor via await MainActor.run { }.
+    /// Phase 26: Two-phase progressive loading.
+    /// Phase 1 — computes only the current (priority) granularity and writes to UI immediately.
+    ///            User sees real data after ~1/5 of total computation time instead of zeros.
+    /// Phase 2 — computes the remaining 4 granularities + health score, then does a final UI update.
     private func loadInsightsBackground() {
         isLoading = true
         recomputeTask?.cancel()
@@ -201,15 +202,13 @@ final class InsightsViewModel {
         let cacheManager = transactionsViewModel.cacheManager
         let currencyService = transactionsViewModel.currencyService
         let service = insightsService
-        // Single Array copy for the entire recompute — not per-granularity (P4 fix)
         let allTransactions = Array(transactionStore.transactions)
-        // Balance snapshot: captures account balances safely before leaving MainActor
         let balanceSnapshot = makeBalanceSnapshot()
-        let granularity = currentGranularity
+        let priorityGranularity = currentGranularity  // show this one first
 
         recomputeTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self, !Task.isCancelled else { return }
-            Self.logger.debug("🔧 [InsightsVM] Background recompute START (detached) — \(InsightGranularity.allCases.count) granularities")
+            Self.logger.debug("🔧 [InsightsVM] Background recompute START (detached) — 5 granularities")
 
             let firstDate = allTransactions
                 .compactMap { DateFormatters.dateFormatter.date(from: $0.date) }
@@ -219,10 +218,11 @@ final class InsightsViewModel {
             var newPoints   = [InsightGranularity: [PeriodDataPoint]]()
             var newTotals   = [InsightGranularity: PeriodTotals]()
 
+            // ── Phase 1: priority granularity → early UI update ──────────────
             guard !Task.isCancelled else { return }
 
-            // Single @MainActor hop for all 5 granularities — replaces 5 separate await calls
-            let allGranResults = await service.computeAllGranularities(
+            let phase1 = await service.computeGranularities(
+                [priorityGranularity],
                 transactions: allTransactions,
                 baseCurrency: currency,
                 cacheManager: cacheManager,
@@ -231,22 +231,59 @@ final class InsightsViewModel {
                 firstTransactionDate: firstDate
             )
 
-            for gran in InsightGranularity.allCases {
-                guard let result = allGranResults[gran] else { continue }
-                let points = result.periodPoints
+            for gran in [priorityGranularity] {
+                guard let result = phase1[gran] else { continue }
+                let pts = result.periodPoints
                 var income: Double = 0; var expenses: Double = 0
-                for p in points { income += p.income; expenses += p.expenses }
+                for p in pts { income += p.income; expenses += p.expenses }
                 newInsights[gran] = result.insights
-                newPoints[gran]   = points
+                newPoints[gran]   = pts
                 newTotals[gran]   = PeriodTotals(income: income, expenses: expenses, netFlow: income - expenses)
-                Self.logger.debug("🔧 [InsightsVM] Gran .\(gran.rawValue, privacy: .public) — \(result.insights.count) insights, \(points.count) pts")
+                Self.logger.debug("🔧 [InsightsVM] Gran .\(gran.rawValue, privacy: .public) — \(result.insights.count) insights, \(pts.count) pts")
             }
 
             guard !Task.isCancelled else { return }
 
-            // Phase 24: Compute health score once using .month granularity totals + period data
-            let monthTotals  = newTotals[.month]
-            let monthPoints  = newPoints[.month] ?? []
+            // Show the current granularity immediately — user sees real data, not zeros
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.precomputedInsights     = newInsights
+                self.precomputedPeriodPoints = newPoints
+                self.precomputedTotals       = newTotals
+                self.applyPrecomputed(for: self.currentGranularity)
+                Self.logger.debug("🔧 [InsightsVM] Phase 1 done — .\(priorityGranularity.rawValue, privacy: .public) shown early")
+            }
+
+            // ── Phase 2: remaining granularities ─────────────────────────────
+            let remainingGrans = InsightGranularity.allCases.filter { $0 != priorityGranularity }
+            guard !Task.isCancelled else { return }
+
+            let phase2 = await service.computeGranularities(
+                remainingGrans,
+                transactions: allTransactions,
+                baseCurrency: currency,
+                cacheManager: cacheManager,
+                currencyService: currencyService,
+                balanceFor: { balanceSnapshot[$0] ?? 0 },
+                firstTransactionDate: firstDate
+            )
+
+            for (gran, result) in phase2 {
+                let pts = result.periodPoints
+                var income: Double = 0; var expenses: Double = 0
+                for p in pts { income += p.income; expenses += p.expenses }
+                newInsights[gran] = result.insights
+                newPoints[gran]   = pts
+                newTotals[gran]   = PeriodTotals(income: income, expenses: expenses, netFlow: income - expenses)
+                Self.logger.debug("🔧 [InsightsVM] Gran .\(gran.rawValue, privacy: .public) — \(result.insights.count) insights, \(pts.count) pts")
+            }
+
+            guard !Task.isCancelled else { return }
+
+            // Health score uses .month data (available after phase 2 if priority wasn't .month,
+            // or from phase 1 if priority was .month)
+            let monthTotals   = newTotals[.month]
+            let monthPoints   = newPoints[.month] ?? []
             let latestNetFlow = monthPoints.last?.netFlow ?? 0
             let computedHealthScore = await service.computeHealthScore(
                 totalIncome: monthTotals?.income   ?? 0,
@@ -256,15 +293,15 @@ final class InsightsViewModel {
                 balanceFor: { balanceSnapshot[$0] ?? 0 }
             )
 
-            // Hop back to MainActor only for the UI write.
-            // Use self.currentGranularity (not the captured `granularity`) so that if the user
-            // switched granularity while the background task was running, we show the correct data.
+            // Hop back to MainActor for the final UI write.
+            // Use self.currentGranularity (not the captured `priorityGranularity`) so that if the
+            // user switched granularity while the background task was running, we show the right data.
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                self.precomputedInsights    = newInsights
+                self.precomputedInsights     = newInsights
                 self.precomputedPeriodPoints = newPoints
-                self.precomputedTotals      = newTotals
-                self.healthScore            = computedHealthScore
+                self.precomputedTotals       = newTotals
+                self.healthScore             = computedHealthScore
                 self.applyPrecomputed(for: self.currentGranularity)
                 Self.logger.debug("🔧 [InsightsVM] Background recompute END — UI updated for .\(self.currentGranularity.rawValue, privacy: .public)")
             }

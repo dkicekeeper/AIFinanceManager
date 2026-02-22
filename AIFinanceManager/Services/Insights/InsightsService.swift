@@ -1315,10 +1315,10 @@ final class InsightsService {
         return (insights, periodPoints)
     }
 
-    /// Computes all insight granularities in a single @MainActor call.
-    /// Called once from InsightsViewModel.loadInsightsBackground() to replace
-    /// the 5-iteration for-loop that caused 5 separate main actor hops.
-    func computeAllGranularities(
+    /// Computes a specific subset of granularities. Used by progressive loading in InsightsViewModel:
+    /// Phase 1 computes the priority granularity for immediate display; Phase 2 computes the rest.
+    func computeGranularities(
+        _ granularities: [InsightGranularity],
         transactions allTransactions: [Transaction],
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
@@ -1327,7 +1327,7 @@ final class InsightsService {
         firstTransactionDate: Date?
     ) -> [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])] {
         var results: [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])] = [:]
-        for gran in InsightGranularity.allCases {
+        for gran in granularities {
             results[gran] = generateAllInsights(
                 granularity: gran,
                 transactions: allTransactions,
@@ -1339,6 +1339,28 @@ final class InsightsService {
             )
         }
         return results
+    }
+
+    /// Computes all insight granularities in a single @MainActor call.
+    /// Called once from InsightsViewModel.loadInsightsBackground() to replace
+    /// the 5-iteration for-loop that caused 5 separate main actor hops.
+    func computeAllGranularities(
+        transactions allTransactions: [Transaction],
+        baseCurrency: String,
+        cacheManager: TransactionCacheManager,
+        currencyService: TransactionCurrencyService,
+        balanceFor: (String) -> Double,
+        firstTransactionDate: Date?
+    ) -> [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])] {
+        return computeGranularities(
+            InsightGranularity.allCases,
+            transactions: allTransactions,
+            baseCurrency: baseCurrency,
+            cacheManager: cacheManager,
+            currencyService: currencyService,
+            balanceFor: balanceFor,
+            firstTransactionDate: firstTransactionDate
+        )
     }
 
     // MARK: - Period Data Points (Phase 18)
