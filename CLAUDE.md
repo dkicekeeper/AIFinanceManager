@@ -133,6 +133,13 @@ AIFinanceManager/
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
 
+**Phase 27** (2026-02-23): Insights Performance — SQLite Crash Fix + Progressive Loading
+- **Root cause fixed**: `CategoryAggregateService.fetchRange()` and `MonthlyAggregateService.fetchRange()` were building `NSCompoundPredicate(orPredicateWithSubpredicates:)` with one subpredicate per calendar month — exceeds SQLite expression tree depth limit (1000) for ranges > ~80 months. Fixed with a constant 7-condition range predicate.
+- **InsightsService batching**: `computeGranularities(_ granularities: [InsightGranularity], ...)` added — computes any subset of granularities in one call; `computeAllGranularities` delegates to it. Reduces 5 `@MainActor` hops → 1 from `Task.detached`.
+- **firstDate hoisted**: O(N) date-parse scan for earliest transaction moved out of per-granularity loop into `loadInsightsBackground()`, passed as `firstTransactionDate` parameter.
+- **Two-phase progressive loading**: Phase 1 computes only `currentGranularity` → writes to UI immediately (user sees real data after ~1/5 of total time). Phase 2 computes remaining 4 granularities + health score → final UI write.
+- Design doc: `docs/plans/2026-02-22-insights-performance-optimization.md`
+
 **Phase 24** (2026-02-22): Full Intelligence Suite — New Insights
 - Added 10 new `InsightType` cases and 2 new `InsightCategory` cases (`.savings`, `.forecasting`)
 - **Savings category** (3 insights): savingsRate, emergencyFund, savingsMomentum
@@ -378,6 +385,7 @@ func saveAccountsInternal(...) throws {
 - CoreDataRepository acts as facade, delegating to specialized repos
 - Fetch requests should be optimized with predicates
 - Use background contexts for heavy operations
+- **⚠️ OR-per-month predicate crash**: Never build `NSCompoundPredicate(orPredicateWithSubpredicates:)` with one subpredicate per calendar month. For ranges > ~80 months SQLite raises `Expression tree too large (maximum depth 1000)`. Use a constant 7-condition range predicate instead: `year > 0 AND month > 0 AND (year > startYear OR (year == startYear AND month >= startMonth)) AND (year < endYear OR (year == endYear AND month <= endMonth))`. See `CategoryAggregateService.fetchRange()` for reference implementation.
 
 ### File Organization Rules ("Where Should I Put This File?")
 
@@ -984,7 +992,7 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 
 ---
 
-**Last Updated**: 2026-02-20
-**Project Status**: Active development - Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates
+**Last Updated**: 2026-02-23
+**Project Status**: Active development - Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates, Progressive Insights loading
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`
