@@ -48,6 +48,7 @@ class AppCoordinator {
     // MARK: - Private Properties
 
     private var isInitialized = false
+    private var isFastPathStarted = false
 
     // MARK: - Initialization
 
@@ -201,13 +202,16 @@ class AppCoordinator {
 
     // MARK: - Public Methods
 
-    /// Fast-path startup: loads only accounts (<50ms).
+    /// Fast-path startup: loads accounts + categories + settings (<50ms combined).
     /// Call this first so the UI can appear. Full initialization continues via initialize().
     func initializeFastPath() async {
-        guard !isInitialized else { return }
+        guard !isInitialized, !isFastPathStarted else { return }
+        isFastPathStarted = true
         // Load accounts and categories only (small datasets, needed for first frame)
         try? await transactionStore.loadAccountsOnly()
-        // Register accounts with coordinator so balance cards show persisted balances immediately
+        // NOTE: Calling without transactions causes shouldCalculateFromTransactions accounts
+        // to briefly show 0 until initialize() provides the full transaction set.
+        // This is a known transient flash — Task 4 (Phase 28-D) will fix it via two-phase registration.
         await balanceCoordinator.registerAccounts(transactionStore.accounts)
         // Load settings (UserDefaults read — instant)
         await settingsViewModel.loadInitialData()
@@ -248,8 +252,10 @@ class AppCoordinator {
             }
         }
 
-        // 5. Load settings
-        await settingsViewModel.loadInitialData()
+        // 5. Load settings (only if fast path hasn't already loaded them)
+        if !isFastPathStarted {
+            await settingsViewModel.loadInitialData()
+        }
 
         // Phase 22: Rebuild persistent aggregates if CoreData is missing them.
         // Runs in background — doesn't block startup. On subsequent launches the
