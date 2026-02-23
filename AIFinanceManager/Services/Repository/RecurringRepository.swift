@@ -94,21 +94,35 @@ final class RecurringRepository: RecurringRepositoryProtocol {
 
                     var keptIds = Set<String>()
 
+                    // Pre-fetch all needed accounts in one query (fixes N+1)
+                    let neededAccountIds = series.compactMap { $0.accountId }.filter { !$0.isEmpty }
+                    var accountDict: [String: AccountEntity] = [:]
+                    if !neededAccountIds.isEmpty {
+                        let accountRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
+                        accountRequest.predicate = NSPredicate(format: "id IN %@", neededAccountIds)
+                        accountRequest.fetchBatchSize = 50
+                        if let fetchedAccounts = try? context.fetch(accountRequest) {
+                            for account in fetchedAccounts {
+                                if let accountId = account.id {
+                                    accountDict[accountId] = account
+                                }
+                            }
+                        }
+                    }
+
                     // Update or create recurring series
                     for item in series {
                         keptIds.insert(item.id)
 
                         if let existing = existingDict[item.id] {
                             // Update existing
-                            self.updateRecurringSeriesEntity(existing, from: item, context: context)
+                            self.updateRecurringSeriesEntity(existing, from: item, accountDict: accountDict, context: context)
                         } else {
                             // Create new
                             let entity = RecurringSeriesEntity.from(item, context: context)
 
                             // Set account relationship if needed
-                            if let accountId = item.accountId {
-                                entity.account = self.fetchAccountSync(id: accountId, context: context)
-                            }
+                            entity.account = accountDict[item.accountId ?? ""]
                         }
                     }
 
@@ -233,6 +247,7 @@ final class RecurringRepository: RecurringRepositoryProtocol {
     private nonisolated func updateRecurringSeriesEntity(
         _ entity: RecurringSeriesEntity,
         from item: RecurringSeries,
+        accountDict: [String: AccountEntity],
         context: NSManagedObjectContext
     ) {
         // Caller is already inside context.perform — direct mutations are safe
@@ -266,18 +281,8 @@ final class RecurringRepository: RecurringRepositoryProtocol {
         }
         entity.status = item.status?.rawValue
 
-        // Update account relationship if needed
-        if let accountId = item.accountId {
-            entity.account = fetchAccountSync(id: accountId, context: context)
-        }
-    }
-
-    private nonisolated func fetchAccountSync(id: String, context: NSManagedObjectContext) -> AccountEntity? {
-        let request = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
-        request.predicate = NSPredicate(format: "id == %@", id)
-        request.fetchLimit = 1
-
-        return try? context.fetch(request).first
+        // Update account relationship using pre-fetched dictionary (O(1) lookup)
+        entity.account = accountDict[item.accountId ?? ""]
     }
 
     private nonisolated func fetchRecurringSeriesSync(id: String, context: NSManagedObjectContext) -> RecurringSeriesEntity? {
