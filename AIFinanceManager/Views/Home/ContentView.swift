@@ -80,6 +80,8 @@ struct ContentView: View {
                     }
                 historyNavigationLink
                     .skeletonLoading(isLoading: !coordinator.isFullyInitialized) {
+                        // .screenPadding() mirrors the one inside historyNavigationLink —
+                        // SkeletonLoadingModifier shows skeleton XOR real content, never both.
                         SectionCardSkeleton()
                             .screenPadding()
                     }
@@ -353,6 +355,7 @@ private struct AccountsCarouselSkeleton: View {
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.xs)
         }
+        .accessibilityHidden(true)
     }
 }
 
@@ -372,6 +375,7 @@ private struct SectionCardSkeleton: View {
         .frame(maxWidth: .infinity, minHeight: 72)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(.rect(cornerRadius: AppRadius.md))
+        .accessibilityHidden(true)
     }
 }
 
