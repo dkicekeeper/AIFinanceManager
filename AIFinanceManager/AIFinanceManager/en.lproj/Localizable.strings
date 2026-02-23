@@ -57,6 +57,7 @@
 "button.import" = "Import";
 "button.export" = "Export";
 "button.copy" = "Copy";
+"button.paste" = "Paste";
 "button.add" = "Add";
 "button.edit" = "Edit";
 "button.done" = "Done";

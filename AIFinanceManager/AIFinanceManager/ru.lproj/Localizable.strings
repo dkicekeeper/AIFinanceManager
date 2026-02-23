@@ -57,6 +57,7 @@
 "button.import" = "Импорт";
 "button.export" = "Экспорт";
 "button.copy" = "Копировать";
+"button.paste" = "Вставить";
 "button.add" = "Добавить";
 "button.edit" = "Редактировать";
 "button.done" = "Готово";
