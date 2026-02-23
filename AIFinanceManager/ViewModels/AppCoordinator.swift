@@ -229,7 +229,7 @@ class AppCoordinator {
         )
 
         // 4. Generate recurring transactions in background (non-blocking)
-        Task.detached(priority: .background) { [weak self] in
+        Task(priority: .background) { [weak self] in
             guard let self else { return }
             await MainActor.run {
                 self.transactionsViewModel.generateRecurringTransactions()
