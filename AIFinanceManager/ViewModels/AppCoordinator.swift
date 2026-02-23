@@ -209,9 +209,9 @@ class AppCoordinator {
         isFastPathStarted = true
         // Load accounts and categories only (small datasets, needed for first frame)
         try? await transactionStore.loadAccountsOnly()
-        // NOTE: Calling without transactions causes shouldCalculateFromTransactions accounts
-        // to briefly show 0 until initialize() provides the full transaction set.
-        // This is a known transient flash — Task 4 (Phase 28-D) will fix it via two-phase registration.
+        // NOTE: Calling without transactions so that shouldCalculateFromTransactions accounts
+        // briefly show their persisted balance (Phase A). initialize() will pass the full
+        // transaction set for Phase B background recalculation.
         await balanceCoordinator.registerAccounts(transactionStore.accounts)
         // Load settings (UserDefaults read — instant)
         await settingsViewModel.loadInitialData()
