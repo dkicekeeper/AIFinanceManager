@@ -39,23 +39,30 @@ final class RecurringRepository: RecurringRepositoryProtocol {
     func loadRecurringSeries() -> [RecurringSeries] {
         PerformanceProfiler.start("RecurringRepository.loadRecurringSeries")
 
-        let context = stack.viewContext
-        let request = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
-        request.sortDescriptors = [NSSortDescriptor(key: "startDate", ascending: false)]
+        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        let bgContext = stack.newBackgroundContext()
+        var series: [RecurringSeries] = []
+        var loadError: Error? = nil
 
-        do {
-            let entities = try context.fetch(request)
-            let series = entities.map { $0.toRecurringSeries() }
+        bgContext.performAndWait {
+            let request = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
+            request.sortDescriptors = [NSSortDescriptor(key: "startDate", ascending: false)]
 
-            PerformanceProfiler.end("RecurringRepository.loadRecurringSeries")
+            do {
+                let entities = try bgContext.fetch(request)
+                series = entities.map { $0.toRecurringSeries() }
+            } catch {
+                loadError = error
+            }
+        }
 
-            return series
-        } catch {
-            PerformanceProfiler.end("RecurringRepository.loadRecurringSeries")
+        PerformanceProfiler.end("RecurringRepository.loadRecurringSeries")
 
-            // Fallback to UserDefaults if Core Data fails
+        if loadError != nil {
+            // Fallback to UserDefaults if Core Data fetch failed
             return userDefaultsRepository.loadRecurringSeries()
         }
+        return series
     }
 
     func saveRecurringSeries(_ series: [RecurringSeries]) {
@@ -128,18 +135,28 @@ final class RecurringRepository: RecurringRepositoryProtocol {
     // MARK: - Recurring Occurrences
 
     func loadRecurringOccurrences() -> [RecurringOccurrence] {
-        let context = stack.viewContext
-        let request = NSFetchRequest<RecurringOccurrenceEntity>(entityName: "RecurringOccurrenceEntity")
-        request.sortDescriptors = [NSSortDescriptor(key: "occurrenceDate", ascending: false)]
+        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        let bgContext = stack.newBackgroundContext()
+        var occurrences: [RecurringOccurrence] = []
+        var loadError: Error? = nil
 
-        do {
-            let entities = try context.fetch(request)
-            let occurrences = entities.map { $0.toRecurringOccurrence() }
-            return occurrences
-        } catch {
-            // Fallback to UserDefaults if Core Data fails
+        bgContext.performAndWait {
+            let request = NSFetchRequest<RecurringOccurrenceEntity>(entityName: "RecurringOccurrenceEntity")
+            request.sortDescriptors = [NSSortDescriptor(key: "occurrenceDate", ascending: false)]
+
+            do {
+                let entities = try bgContext.fetch(request)
+                occurrences = entities.map { $0.toRecurringOccurrence() }
+            } catch {
+                loadError = error
+            }
+        }
+
+        if loadError != nil {
+            // Fallback to UserDefaults if Core Data fetch failed
             return userDefaultsRepository.loadRecurringOccurrences()
         }
+        return occurrences
     }
 
     func saveRecurringOccurrences(_ occurrences: [RecurringOccurrence]) {

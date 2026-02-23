@@ -16,29 +16,27 @@ final class CoreDataRepository: DataRepositoryProtocol {
 
     // MARK: - Properties
 
-    private let stack = CoreDataStack.shared
-    private let saveCoordinator = CoreDataSaveCoordinator()
+    private let stack: CoreDataStack
+    private let saveCoordinator: CoreDataSaveCoordinator
 
-    // Specialized repositories
-    private lazy var transactionRepository: TransactionRepositoryProtocol = {
-        TransactionRepository(stack: stack, saveCoordinator: saveCoordinator)
-    }()
-
-    private lazy var accountRepository: AccountRepositoryProtocol = {
-        AccountRepository(stack: stack, saveCoordinator: saveCoordinator)
-    }()
-
-    private lazy var categoryRepository: CategoryRepositoryProtocol = {
-        CategoryRepository(stack: stack, saveCoordinator: saveCoordinator)
-    }()
-
-    private lazy var recurringRepository: RecurringRepositoryProtocol = {
-        RecurringRepository(stack: stack, saveCoordinator: saveCoordinator)
-    }()
+    // Specialized repositories — `let` (not `lazy var`) for thread-safety: lazy var is not
+    // thread-safe in Swift and would violate Sendable requirements when called from Task.detached.
+    private let transactionRepository: TransactionRepositoryProtocol
+    private let accountRepository: AccountRepositoryProtocol
+    private let categoryRepository: CategoryRepositoryProtocol
+    private let recurringRepository: RecurringRepositoryProtocol
 
     // MARK: - Initialization
 
     init() {
+        let stack = CoreDataStack.shared
+        let saveCoordinator = CoreDataSaveCoordinator()
+        self.stack = stack
+        self.saveCoordinator = saveCoordinator
+        self.transactionRepository = TransactionRepository(stack: stack, saveCoordinator: saveCoordinator)
+        self.accountRepository = AccountRepository(stack: stack, saveCoordinator: saveCoordinator)
+        self.categoryRepository = CategoryRepository(stack: stack, saveCoordinator: saveCoordinator)
+        self.recurringRepository = RecurringRepository(stack: stack, saveCoordinator: saveCoordinator)
     }
 
     // MARK: - Transactions (Delegated to TransactionRepository)

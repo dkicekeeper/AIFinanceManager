@@ -44,8 +44,13 @@ final class TransactionRepository: TransactionRepositoryProtocol {
 
         // PERFORMANCE Phase 28-B: Use background context — never block the main thread for 19k entities.
         // performAndWait is synchronous but runs on the context's own serial queue (background thread).
+        // Note: relationshipKeyPathsForPrefetching ["account", "targetAccount"] was removed.
+        // toTransaction() uses string column fallbacks (accountId, accountName, etc.) for all
+        // critical fields, so relationship faults are only triggered for legacy data.
+        // Faults fire safely inside the performAndWait block; no batch prefetch needed.
         let bgContext = stack.newBackgroundContext()
         var transactions: [Transaction] = []
+        var loadError: Error? = nil
 
         bgContext.performAndWait {
             let request = TransactionEntity.fetchRequest()
@@ -65,13 +70,13 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 let entities = try bgContext.fetch(request)
                 transactions = entities.map { $0.toTransaction() }
             } catch {
-                // leave transactions empty, fallback handled below
+                loadError = error
             }
         }
 
         PerformanceProfiler.end("TransactionRepository.loadTransactions")
 
-        if transactions.isEmpty {
+        if loadError != nil {
             return userDefaultsRepository.loadTransactions(dateRange: dateRange)
         }
         return transactions

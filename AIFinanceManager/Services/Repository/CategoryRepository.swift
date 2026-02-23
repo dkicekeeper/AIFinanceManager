@@ -51,23 +51,30 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     func loadCategories() -> [CustomCategory] {
         PerformanceProfiler.start("CategoryRepository.loadCategories")
 
-        let context = stack.viewContext
-        let request = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
-        request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        let bgContext = stack.newBackgroundContext()
+        var categories: [CustomCategory] = []
+        var loadError: Error? = nil
 
-        do {
-            let entities = try context.fetch(request)
-            let categories = entities.map { $0.toCustomCategory() }
+        bgContext.performAndWait {
+            let request = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
+            request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
 
-            PerformanceProfiler.end("CategoryRepository.loadCategories")
+            do {
+                let entities = try bgContext.fetch(request)
+                categories = entities.map { $0.toCustomCategory() }
+            } catch {
+                loadError = error
+            }
+        }
 
-            return categories
-        } catch {
-            PerformanceProfiler.end("CategoryRepository.loadCategories")
+        PerformanceProfiler.end("CategoryRepository.loadCategories")
 
-            // Fallback to UserDefaults if Core Data fails
+        if loadError != nil {
+            // Fallback to UserDefaults if Core Data fetch failed
             return userDefaultsRepository.loadCategories()
         }
+        return categories
     }
 
     func saveCategories(_ categories: [CustomCategory]) {
@@ -152,17 +159,27 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     // MARK: - Subcategories
 
     func loadSubcategories() -> [Subcategory] {
-        let context = stack.viewContext
-        let request = NSFetchRequest<SubcategoryEntity>(entityName: "SubcategoryEntity")
-        request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        let bgContext = stack.newBackgroundContext()
+        var subcategories: [Subcategory] = []
+        var loadError: Error? = nil
 
-        do {
-            let entities = try context.fetch(request)
-            let subcategories = entities.map { $0.toSubcategory() }
-            return subcategories
-        } catch {
+        bgContext.performAndWait {
+            let request = NSFetchRequest<SubcategoryEntity>(entityName: "SubcategoryEntity")
+            request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+
+            do {
+                let entities = try bgContext.fetch(request)
+                subcategories = entities.map { $0.toSubcategory() }
+            } catch {
+                loadError = error
+            }
+        }
+
+        if loadError != nil {
             return userDefaultsRepository.loadSubcategories()
         }
+        return subcategories
     }
 
     func saveSubcategories(_ subcategories: [Subcategory]) {
@@ -208,17 +225,27 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     // MARK: - Category-Subcategory Links
 
     func loadCategorySubcategoryLinks() -> [CategorySubcategoryLink] {
-        let context = stack.viewContext
-        let request = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
-        request.sortDescriptors = [NSSortDescriptor(key: "categoryId", ascending: true)]
+        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        let bgContext = stack.newBackgroundContext()
+        var links: [CategorySubcategoryLink] = []
+        var loadError: Error? = nil
 
-        do {
-            let entities = try context.fetch(request)
-            let links = entities.map { $0.toCategorySubcategoryLink() }
-            return links
-        } catch {
+        bgContext.performAndWait {
+            let request = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
+            request.sortDescriptors = [NSSortDescriptor(key: "categoryId", ascending: true)]
+
+            do {
+                let entities = try bgContext.fetch(request)
+                links = entities.map { $0.toCategorySubcategoryLink() }
+            } catch {
+                loadError = error
+            }
+        }
+
+        if loadError != nil {
             return userDefaultsRepository.loadCategorySubcategoryLinks()
         }
+        return links
     }
 
     func saveCategorySubcategoryLinks(_ links: [CategorySubcategoryLink]) {
@@ -266,17 +293,27 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     // MARK: - Transaction-Subcategory Links
 
     func loadTransactionSubcategoryLinks() -> [TransactionSubcategoryLink] {
-        let context = stack.viewContext
-        let request = NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
-        request.sortDescriptors = [NSSortDescriptor(key: "transactionId", ascending: true)]
+        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        let bgContext = stack.newBackgroundContext()
+        var links: [TransactionSubcategoryLink] = []
+        var loadError: Error? = nil
 
-        do {
-            let entities = try context.fetch(request)
-            let links = entities.map { $0.toTransactionSubcategoryLink() }
-            return links
-        } catch {
+        bgContext.performAndWait {
+            let request = NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
+            request.sortDescriptors = [NSSortDescriptor(key: "transactionId", ascending: true)]
+
+            do {
+                let entities = try bgContext.fetch(request)
+                links = entities.map { $0.toTransactionSubcategoryLink() }
+            } catch {
+                loadError = error
+            }
+        }
+
+        if loadError != nil {
             return userDefaultsRepository.loadTransactionSubcategoryLinks()
         }
+        return links
     }
 
     func saveTransactionSubcategoryLinks(_ links: [TransactionSubcategoryLink]) {

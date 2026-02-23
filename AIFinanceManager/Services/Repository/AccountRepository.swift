@@ -43,23 +43,30 @@ final class AccountRepository: AccountRepositoryProtocol {
     func loadAccounts() -> [Account] {
         PerformanceProfiler.start("AccountRepository.loadAccounts")
 
-        let context = stack.viewContext
-        let request = AccountEntity.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
+        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        let bgContext = stack.newBackgroundContext()
+        var accounts: [Account] = []
+        var loadError: Error? = nil
 
-        do {
-            let entities = try context.fetch(request)
-            let accounts = entities.map { $0.toAccount() }
+        bgContext.performAndWait {
+            let request = AccountEntity.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
 
-            PerformanceProfiler.end("AccountRepository.loadAccounts")
+            do {
+                let entities = try bgContext.fetch(request)
+                accounts = entities.map { $0.toAccount() }
+            } catch {
+                loadError = error
+            }
+        }
 
-            return accounts
-        } catch {
-            PerformanceProfiler.end("AccountRepository.loadAccounts")
+        PerformanceProfiler.end("AccountRepository.loadAccounts")
 
-            // Fallback to UserDefaults if Core Data fails
+        if loadError != nil {
+            // Fallback to UserDefaults if Core Data fetch failed
             return userDefaultsRepository.loadAccounts()
         }
+        return accounts
     }
 
     func loadAllAccountBalances() -> [String: Double] {
