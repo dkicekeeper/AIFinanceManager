@@ -14,11 +14,6 @@ struct SkeletonLoadingModifier<S: View>: ViewModifier {
     let isLoading: Bool
     @ViewBuilder let skeleton: () -> S
 
-    init(isLoading: Bool, @ViewBuilder skeleton: @escaping () -> S) {
-        self.isLoading = isLoading
-        self.skeleton = skeleton
-    }
-
     func body(content: Content) -> some View {
         Group {
             if isLoading {
@@ -38,8 +33,36 @@ extension View {
     /// Transitions smoothly to real content once loading completes.
     func skeletonLoading<S: View>(
         isLoading: Bool,
-        @ViewBuilder skeleton: @escaping () -> S
+        @ViewBuilder skeleton: () -> S
     ) -> some View {
         modifier(SkeletonLoadingModifier(isLoading: isLoading, skeleton: skeleton))
     }
+}
+
+// MARK: - Preview
+
+#Preview("SkeletonLoading transitions") {
+    VStack(spacing: AppSpacing.lg) {
+        Text("isLoading: true → skeleton shown")
+            .font(AppTypography.caption)
+            .foregroundStyle(AppColors.textSecondary)
+        SkeletonView(height: 20)
+            .skeletonLoading(isLoading: true) {
+                SkeletonView(height: 20)
+            }
+
+        Text("isLoading: false → content shown")
+            .font(AppTypography.caption)
+            .foregroundStyle(AppColors.textSecondary)
+        Text("Real content here")
+            .padding(AppSpacing.md)
+            .frame(maxWidth: .infinity)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(.rect(cornerRadius: AppRadius.sm))
+            .skeletonLoading(isLoading: false) {
+                SkeletonView(height: 44)
+            }
+    }
+    .padding(AppSpacing.lg)
+    .background(Color(.systemGroupedBackground))
 }
