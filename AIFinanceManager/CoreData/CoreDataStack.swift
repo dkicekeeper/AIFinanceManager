@@ -200,11 +200,14 @@ final class CoreDataStack: @unchecked Sendable {
             byAdding: .day, value: -days, to: Date()
         ) else { return }
         let purgeRequest = NSPersistentHistoryChangeRequest.deleteHistory(before: cutoff)
-        do {
-            try viewContext.execute(purgeRequest)
-            CoreDataStack.logger.info("Purged persistent history older than \(days) days")
-        } catch {
-            CoreDataStack.logger.error("Failed to purge persistent history: \(error.localizedDescription)")
+        // viewContext is main-thread affined — must use perform for thread safety.
+        viewContext.perform {
+            do {
+                try self.viewContext.execute(purgeRequest)
+                CoreDataStack.logger.info("Purged persistent history older than \(days) days")
+            } catch {
+                CoreDataStack.logger.error("Failed to purge persistent history: \(error.localizedDescription)")
+            }
         }
     }
 
