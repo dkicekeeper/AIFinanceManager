@@ -51,8 +51,8 @@ class AppCoordinator {
     private var isFastPathStarted = false
 
     // Observable loading stage outputs — views bind to these for per-element skeletons
-    private(set) var fastPathDone = false      // accounts + categories ready (~50ms)
-    private(set) var fullyInitialized = false  // transactions + all data ready (~1-3s)
+    private(set) var isFastPathDone = false       // accounts + categories ready (~50ms)
+    private(set) var isFullyInitialized = false   // transactions + all data ready (~1-3s)
 
     // MARK: - Initialization
 
@@ -219,7 +219,7 @@ class AppCoordinator {
         await balanceCoordinator.registerAccounts(transactionStore.accounts)
         // Load settings (UserDefaults read — instant)
         await settingsViewModel.loadInitialData()
-        fastPathDone = true
+        isFastPathDone = true
     }
 
     /// Initialize all ViewModels asynchronously
@@ -248,7 +248,7 @@ class AppCoordinator {
             transactionStore.accounts,
             transactions: transactionStore.transactions
         )
-        fullyInitialized = true
+        isFullyInitialized = true
 
         // 4. Generate recurring transactions in background (non-blocking)
         Task(priority: .background) { [weak self] in
