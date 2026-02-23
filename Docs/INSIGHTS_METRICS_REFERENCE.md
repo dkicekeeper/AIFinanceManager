@@ -1,16 +1,16 @@
 # Insights Metrics Reference
 
-**Last Updated:** 2026-02-22
-**Phase coverage:** Phase 17–24 (all metrics)
+**Last Updated:** 2026-02-23
+**Phase coverage:** Phase 17–27 (all metrics)
 
 ## Легенда
 
 | Символ | Значение |
 |--------|----------|
-| ✅ | Полностью подчиняется выбранной гранулярности |
-| ⚠️ | Частично (MoM-сравнение привязано к calendar-месяцам, не к окну) |
+| ✅ | Полностью подчиняется выбранной гранулярности; бакет-сравнение через `currentPeriodKey/previousPeriodKey` |
+| ⚠️ | Значение текущее (non-windowed), только trend arrow следует гранулярности |
 | 🔒 | Фиксированный lookback (3 мес, 6 мес, 5 лет — по дизайну) |
-| ❌ | Не зависит от времени (текущее состояние или active subscriptions) |
+| ❌ | Не зависит от времени (текущее состояние или all-time) |
 
 Гранулярность применяется через `InsightGranularity.dateRange(firstTransactionDate:)`:
 - `.week` → последние 52 недели (rolling)
@@ -21,17 +21,18 @@
 ## SPENDING
 
 ### `topSpendingCategory`
-- **Что считает:** категория расходов с наибольшей суммой за период
-- **Данные:** `windowedTransactions` — расходы, отфильтрованные по окну гранулярности
+- **Что считает:** категория расходов с наибольшей суммой за **текущий** период гранулярности
+- **Данные:** `currentBucketPoint` — текущий бакет из `periodPoints` (Phase 31); при отсутствии — fallback на `windowedTransactions`
 - **Детализация:** `categoryBreakdown` — топ-5 категорий с подкатегориями
-- **Fast path:** `CategoryAggregateService.fetchRange(from: windowStart, to: windowEnd)` → O(M) вместо O(N)
-- **Гранулярность:** ✅
+- **Fast path:** `CategoryAggregateService.fetchRange(from: cp.periodStart, to: cp.periodEnd)` → O(M) вместо O(N)
+- **Гранулярность:** ✅ — данные скоупированы по **текущему бакету** (не по всему окну)
 
 ### `monthOverMonthChange`
-- **Что считает:** расходы текущего calendar-месяца vs предыдущего
-- **Данные:** `allTransactions` — single O(N) pass, фильтрует по `thisMonthStart/End` и `prevMonthStart/End`
-- **Anchor:** `momReferenceDate(for: granularityTimeFilter)` — для `.week` = `Date()`, для исторических = конец окна −1 сек
-- **Гранулярность:** ⚠️ — якорная дата корректна, но само сравнение всегда calendar-месяц vs calendar-месяц; бакет гранулярности (неделя/квартал/год) не меняет логику
+- **Что считает:** расходы текущего бакета гранулярности vs предыдущего
+- **Данные (Phase 30, основной путь):** `periodPoints` — `currentPeriodKey` vs `previousPeriodKey`; title и comparisonPeriod берутся из `granularity.monthOverMonthTitle / comparisonPeriodName`
+- **Fallback (legacy path):** `allTransactions` O(N) scan по calendar-месяцам — используется только если `periodPoints` пустые или `granularity == .allTime`
+- **Пропускается для `.allTime`:** `previousPeriodKey == currentPeriodKey` → осмысленного сравнения нет
+- **Гранулярность:** ✅ для `.week/.month/.quarter/.year`; не генерируется для `.allTime`
 
 ### `averageDailySpending`
 - **Что считает:** суммарные расходы за период ÷ количество дней
@@ -56,9 +57,11 @@
 ## INCOME
 
 ### `incomeGrowth`
-- **Что считает:** MoM изменение доходов (текущий calendar-месяц vs предыдущий)
-- **Данные:** `allTransactions` — то же single-pass, что и `monthOverMonthChange`, но для `.income`
-- **Гранулярность:** ⚠️ — то же, что у `monthOverMonthChange`
+- **Что считает:** изменение доходов текущего бакета гранулярности vs предыдущего
+- **Данные (Phase 30, основной путь):** `periodPoints` — `currentPeriodKey` vs `previousPeriodKey` (analogично `monthOverMonthChange`, но по `.income`)
+- **Fallback (legacy path):** `allTransactions` O(N) scan по calendar-месяцам — только при пустых `periodPoints` или `.allTime`
+- **Пропускается для `.allTime`:** аналогично `monthOverMonthChange`
+- **Гранулярность:** ✅ для `.week/.month/.quarter/.year`; не генерируется для `.allTime`
 
 ### `incomeVsExpenseRatio`
 - **Что считает:** `income / (income + expenses) × 100` — доля дохода в общем потоке
@@ -66,11 +69,11 @@
 - **Severity:** Positive ≥1.5×, Neutral ≥1.0×, Critical <1.0× (тратим больше дохода)
 - **Гранулярность:** ✅
 
-### `incomeSourceBreakdown` *(Phase 24)*
-- **Что считает:** группировка всех доходных транзакций по категории за всё время
-- **Данные:** `allTransactions` (NOT windowed) — весь lifetime
+### `incomeSourceBreakdown` *(Phase 24, Phase 31)*
+- **Что считает:** группировка доходных транзакций по категории за **текущий бакет** гранулярности
+- **Данные (Phase 31):** `currentBucketForForecasting` — `filterByTimeRange(allTransactions, start: cp.periodStart, end: cp.periodEnd)` для текущего бакета; fallback на `windowedTransactions`
 - **Условия:** ≥2 категории дохода, totalIncome > 0
-- **Гранулярность:** ❌ — всегда all-time
+- **Гранулярность:** ✅ — скоупирован по текущему периоду (до Phase 31 был ❌ all-time)
 
 ---
 
@@ -230,14 +233,14 @@
 
 | Метрика | Категория | Гранулярность | Источник данных |
 |---------|-----------|:---:|---|
-| `topSpendingCategory` | spending | ✅ | CategoryAggregateService (fast) / O(N) fallback |
-| `monthOverMonthChange` | spending | ⚠️ | allTransactions O(N) single pass |
+| `topSpendingCategory` | spending | ✅ current bucket | CategoryAggregateService (current bucket) / O(N) fallback |
+| `monthOverMonthChange` | spending | ✅ (skip allTime) | periodPoints currentPeriodKey/previousPeriodKey |
 | `averageDailySpending` | spending | ✅ | periodSummary (windowed) |
 | `spendingSpike` | spending | 🔒 3mo | CategoryAggregateService |
 | `categoryTrend` | spending | 🔒 6mo | CategoryAggregateService |
-| `incomeGrowth` | income | ⚠️ | allTransactions O(N) single pass |
+| `incomeGrowth` | income | ✅ (skip allTime) | periodPoints currentPeriodKey/previousPeriodKey |
 | `incomeVsExpenseRatio` | income | ✅ | periodSummary (windowed) |
-| `incomeSourceBreakdown` | income | ❌ all-time | allTransactions |
+| `incomeSourceBreakdown` | income | ✅ current bucket | filteredTransactions (current bucket) |
 | `budgetOverspend` | budget | ✅ | BudgetSpendingCacheService O(1) |
 | `budgetUnderutilized` | budget | ✅ | BudgetSpendingCacheService O(1) |
 | `projectedOverspend` | budget | ✅ | windowedTransactions + day calc |
@@ -264,24 +267,41 @@
 
 ## Итоговые группы
 
-### ✅ Полностью следуют гранулярности (12 метрик)
-`topSpendingCategory`, `averageDailySpending`, `incomeVsExpenseRatio`, `budgetOverspend`, `budgetUnderutilized`, `projectedOverspend`, `netCashFlow`, `bestMonth`, `worstMonth`, `wealthGrowth`, `savingsRate`
+### ✅ Полностью следуют гранулярности (15 метрик)
+`topSpendingCategory` (current bucket), `monthOverMonthChange` (skip allTime), `averageDailySpending`, `incomeGrowth` (skip allTime), `incomeVsExpenseRatio`, `incomeSourceBreakdown` (current bucket), `budgetOverspend`, `budgetUnderutilized`, `projectedOverspend`, `netCashFlow`, `bestMonth`, `worstMonth`, `wealthGrowth`, `savingsRate`
 
-### ⚠️ Частично — anchor от гранулярности, логика calendar-месячная (2 метрики)
-`monthOverMonthChange`, `incomeGrowth`
+### ⚠️ Значение текущее, trend arrow window-aware (1 метрика)
+`totalWealth` — баланс счетов всегда текущий; trend направление вычисляется из `currentPeriodKey vs previousPeriodKey`
 
-### 🔒 Фиксированный lookback по дизайну (11 метрик)
+### 🔒 Фиксированный lookback по дизайну (10 метрик)
 `spendingSpike` (3mo), `categoryTrend` (6mo), `subscriptionGrowth` (3mo), `emergencyFund` (3mo), `savingsMomentum` (4mo), `spendingForecast` (30d+current month), `balanceRunway` (3mo), `yearOverYear` (calendar), `incomeSeasonality` (5yr), `spendingVelocity` (2mo)
 
-### ❌ Не привязаны ко времени — текущее состояние (6 метрик)
-`incomeSourceBreakdown` (all-time), `totalRecurringCost`, `duplicateSubscriptions`, `projectedBalance`, `totalWealth` (current balance), `accountDormancy` (30 дней от сегодня)
+### ❌ Не привязаны ко времени — текущее состояние (4 метрики)
+`totalRecurringCost`, `duplicateSubscriptions`, `projectedBalance`, `accountDormancy` (30 дней от сегодня)
 
 ---
 
 ## Архитектурные детали
 
-### MoM-сравнения (метрики ⚠️)
-Используют `allTransactions` для O(N) scan. Сравнивают calendar-месяцы безотносительно бакета гранулярности. `momReferenceDate(for: granularityTimeFilter)` — для `.week` возвращает `Date()`, для исторических фильтров = конец окна −1 сек (чтобы не вылезти за пределы периода).
+### Period-over-period сравнения (Phase 30)
+`monthOverMonthChange` и `incomeGrowth` используют **двухпутевую** логику:
+
+**Основной путь (granularity + periodPoints):**
+```swift
+if let gran = granularity, !periodPoints.isEmpty, gran != .allTime {
+    let thisTotal = periodPoints.first { $0.key == gran.currentPeriodKey }?.expenses ?? 0
+    let prevTotal = periodPoints.first { $0.key == gran.previousPeriodKey }?.expenses ?? 0
+    // бакет-сравнение: неделя/месяц/квартал/год vs предыдущий
+}
+```
+Выдаёт инсайт с заголовком из `gran.monthOverMonthTitle` и периодом из `gran.comparisonPeriodName`.
+
+**Legacy fallback (calendar-month scan):**
+- Используется если `periodPoints` пустые или `granularity == .allTime`
+- Выполняет O(N) scan по `allTransactions` с фильтрацией по calendar-месяцу
+- `momReferenceDate(for: granularityTimeFilter)` — для `.week` = `Date()`, для исторических = конец окна −1 сек
+
+**Инсайт не генерируется для `.allTime`:** `previousPeriodKey == currentPeriodKey` → деление на ноль + дублирующиеся метки в chart.
 
 ### Windowing в `generateAllInsights(granularity:)`
 ```
@@ -300,6 +320,46 @@ allTransactions
 - `MonthlyAggregateService` — O(M) по месяцам; `fetchLast(N)` и `fetchRange()`
 - `BudgetSpendingCacheService` — O(1) per category; инвалидируется при мутации транзакций
 - Fallback: O(N) transaction scan при первом запуске (aggregates ещё не построены)
+
+### SQLite predicate crash fix (Phase 27)
+**Проблема:** `fetchRange()` и `fetchLast()` в `CategoryAggregateService` и `MonthlyAggregateService` строили `NSCompoundPredicate(orPredicateWithSubpredicates:)` с одним subpredicate на каждый calendar-месяц. При окне > ~80 месяцев SQLite бросает `Expression tree too large (maximum depth 1000)`.
+
+**Решение:** заменить OR-fan-out на константный предикат из 7 условий:
+```
+currency == %@ AND year > 0 AND month > 0
+AND (year > startYear  OR  (year == startYear  AND month >= startMonth))
+AND (year < endYear    OR  (year == endYear    AND month <= endMonth))
+```
+Размер предиката не зависит от длины окна. `fetchLast(N)` теперь вычисляет `startDate` и делегирует `fetchRange()`.
+
+### `firstTransactionDate` hoisting (Phase 27)
+`generateAllInsights(granularity:..., firstTransactionDate:)` принимает опциональный параметр `firstTransactionDate`. Если передан — используется напрямую; если `nil` — выполняется локальный O(N) scan.
+
+В `InsightsViewModel.loadInsightsBackground()` дата вычисляется один раз перед вызовами и передаётся во все granularity-вызовы — устраняет 5× дублирующийся O(N) scan.
+
+### computeGranularities / computeAllGranularities API (Phase 27)
+```swift
+// Вычислить произвольный набор granularities за один вызов
+insightsService.computeGranularities(
+    [.week, .month],
+    transactions:, baseCurrency:, cacheManager:, currencyService:, balanceFor:,
+    firstTransactionDate:
+) -> [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])]
+
+// Сахар — вычислить все 5 granularities
+insightsService.computeAllGranularities(...)
+```
+Делегируют в `generateAllInsights()` в цикле. Используются `InsightsViewModel` для двухфазной загрузки.
+
+### Двухфазная прогрессивная загрузка (Phase 27)
+`loadInsightsBackground()` делится на два этапа внутри одного `Task.detached`:
+
+| Фаза | Действие | UI-update |
+|------|----------|-----------|
+| 1 | `computeGranularities([priorityGranularity])` — только текущая вкладка | `MainActor.run` — пользователь видит данные уже после ~1/5 полного времени |
+| 2 | `computeGranularities(remaining 4)` + `computeHealthScore` | `MainActor.run` — финальное обновление всех вкладок + health score |
+
+Если пользователь переключил гранулярность пока шёл background task, финальный `applyPrecomputed(for: self.currentGranularity)` использует актуальное значение `currentGranularity` (не захваченное `priorityGranularity`).
 
 ### Forecasting/Savings с fixed lookback — почему так
 Эти метрики читают из `MonthlyAggregateService` напрямую, минуя window-логику `generateAllInsights`. **По дизайну:** прогноз на конец месяца и аварийный фонд должны отражать текущую недавнюю реальность, а не выбранный бакет графика. Пользователь меняет гранулярность для изучения исторических трендов, но `emergencyFund` должен всегда показывать «сколько месяцев я продержусь прямо сейчас».
