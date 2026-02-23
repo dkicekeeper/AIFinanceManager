@@ -299,7 +299,10 @@ final class TransactionRepository: TransactionRepositoryProtocol {
 
     func updateTransactionFields(_ transaction: Transaction) {
         let bgContext = stack.newBackgroundContext()
-        bgContext.perform {
+        // performAndWait (synchronous) — same reasoning as insertTransaction:
+        // ensures the update completes before any subsequent deleteTransactionImmediately
+        // on the same entity, preventing a race that leaves a stale CoreData record.
+        bgContext.performAndWait {
             let req = TransactionEntity.fetchRequest()
             req.predicate = NSPredicate(format: "id == %@", transaction.id)
             req.fetchLimit = 1
