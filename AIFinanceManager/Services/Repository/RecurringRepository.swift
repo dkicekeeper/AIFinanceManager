@@ -193,15 +193,13 @@ final class RecurringRepository: RecurringRepositoryProtocol {
                         keptIds.insert(occurrence.id)
 
                         if let existing = existingDict[occurrence.id] {
-                            // Update existing
-                            context.perform {
-                                existing.seriesId = occurrence.seriesId
-                                existing.occurrenceDate = occurrence.occurrenceDate
-                                existing.transactionId = occurrence.transactionId
+                            // Direct mutations — caller is already inside context.perform
+                            existing.seriesId = occurrence.seriesId
+                            existing.occurrenceDate = occurrence.occurrenceDate
+                            existing.transactionId = occurrence.transactionId
 
-                                // Update series relationship if needed
-                                existing.series = self.fetchRecurringSeriesSync(id: occurrence.seriesId, context: context)
-                            }
+                            // Update series relationship if needed
+                            existing.series = self.fetchRecurringSeriesSync(id: occurrence.seriesId, context: context)
                         } else {
                             // Create new
                             let entity = RecurringOccurrenceEntity.from(occurrence, context: context)
@@ -237,41 +235,40 @@ final class RecurringRepository: RecurringRepositoryProtocol {
         from item: RecurringSeries,
         context: NSManagedObjectContext
     ) {
-        context.perform {
-            entity.isActive = item.isActive
-            entity.amount = NSDecimalNumber(decimal: item.amount)
-            entity.currency = item.currency
-            entity.category = item.category
-            entity.subcategory = item.subcategory
-            entity.descriptionText = item.description
-            entity.frequency = item.frequency.rawValue
-            entity.startDate = DateFormatters.dateFormatter.date(from: item.startDate)
-            entity.lastGeneratedDate = item.lastGeneratedDate.flatMap { DateFormatters.dateFormatter.date(from: $0) }
-            entity.kind = item.kind.rawValue
+        // Caller is already inside context.perform — direct mutations are safe
+        entity.isActive = item.isActive
+        entity.amount = NSDecimalNumber(decimal: item.amount)
+        entity.currency = item.currency
+        entity.category = item.category
+        entity.subcategory = item.subcategory
+        entity.descriptionText = item.description
+        entity.frequency = item.frequency.rawValue
+        entity.startDate = DateFormatters.dateFormatter.date(from: item.startDate)
+        entity.lastGeneratedDate = item.lastGeneratedDate.flatMap { DateFormatters.dateFormatter.date(from: $0) }
+        entity.kind = item.kind.rawValue
 
-            // Save iconSource as brandLogo/brandId strings (backward compatible)
-            if let iconSource = item.iconSource {
-                switch iconSource {
-                case .bankLogo(let bankLogo):
-                    entity.brandLogo = bankLogo.rawValue
-                    entity.brandId = nil
-                case .brandService(let brandId):
-                    entity.brandLogo = nil
-                    entity.brandId = brandId
-                case .sfSymbol:
-                    entity.brandLogo = nil
-                    entity.brandId = nil
-                }
-            } else {
+        // Save iconSource as brandLogo/brandId strings (backward compatible)
+        if let iconSource = item.iconSource {
+            switch iconSource {
+            case .bankLogo(let bankLogo):
+                entity.brandLogo = bankLogo.rawValue
+                entity.brandId = nil
+            case .brandService(let brandId):
+                entity.brandLogo = nil
+                entity.brandId = brandId
+            case .sfSymbol:
                 entity.brandLogo = nil
                 entity.brandId = nil
             }
-            entity.status = item.status?.rawValue
+        } else {
+            entity.brandLogo = nil
+            entity.brandId = nil
+        }
+        entity.status = item.status?.rawValue
 
-            // Update account relationship if needed
-            if let accountId = item.accountId {
-                entity.account = self.fetchAccountSync(id: accountId, context: context)
-            }
+        // Update account relationship if needed
+        if let accountId = item.accountId {
+            entity.account = fetchAccountSync(id: accountId, context: context)
         }
     }
 
