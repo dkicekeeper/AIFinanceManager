@@ -218,7 +218,7 @@ struct HistoryView: View {
         }
 
         PerformanceProfiler.end("HistoryView.applyFiltersToController")
-        PerformanceLogger.shared.end("HistoryView.applyFiltersToController")
+        PerformanceLogger.shared.end("HistoryView.updateTransactions")
     }
 
     private func resetFilters() {

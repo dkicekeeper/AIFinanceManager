@@ -107,10 +107,11 @@ struct HistoryTransactionsList: View {
         ScrollViewReader { proxy in
             List {
                 ForEach(sections) { section in
-                    let displayKey = displayDateKey(from: section.date)
+                    let displayLabel = displayDateKey(from: section.date)
                     Section(
                         header: dateHeader(
-                            dateKey: displayKey,
+                            isoDate: section.date,
+                            displayLabel: displayLabel,
                             transactions: section.transactions
                         )
                     ) {
@@ -145,16 +146,16 @@ struct HistoryTransactionsList: View {
 
     // MARK: - Date Header
 
-    private func dateHeader(dateKey: String, transactions: [Transaction]) -> some View {
+    private func dateHeader(isoDate: String, displayLabel: String, transactions: [Transaction]) -> some View {
         let dayExpenses = expensesCache.getExpenses(
-            for: dateKey,
+            for: isoDate,
             transactions: transactions,
             baseCurrency: baseCurrency,
             viewModel: transactionsViewModel
         )
 
         return DateSectionHeaderView(
-            dateKey: dateKey,
+            dateKey: displayLabel,
             amount: dayExpenses > 0 ? dayExpenses : nil,
             currency: baseCurrency
         )

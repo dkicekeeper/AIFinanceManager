@@ -42,14 +42,8 @@ class HistoryFilterCoordinator {
     /// Task for debouncing search input
     private var searchTask: Task<Void, Never>?
 
-    /// Task for debouncing filter changes
-    private var filterTask: Task<Void, Never>?
-
     /// Search debounce delay in nanoseconds (300ms)
     private let searchDebounceDelay: UInt64 = 300_000_000
-
-    /// Filter debounce delay in nanoseconds (150ms)
-    private let filterDebounceDelay: UInt64 = 150_000_000
 
     // MARK: - Initialization
 
@@ -85,45 +79,20 @@ class HistoryFilterCoordinator {
         }
     }
 
-    /// Apply account filter with debouncing
+    /// Apply account filter change.
+    /// Filter forwarding is handled synchronously by HistoryView's onChange handler
+    /// via `applyFiltersToController()` — no debounce task needed here.
     /// - Parameter accountId: Account ID to filter by (nil for all accounts)
     func applyAccountFilter(_ accountId: String?) {
         selectedAccountFilter = accountId
         HapticManager.selection()
-
-        // Cancel previous filter task
-        filterTask?.cancel()
-
-        // Debounce filter - update after 150ms
-        filterTask = Task { [weak self] in
-            guard let self = self else { return }
-
-            try? await Task.sleep(nanoseconds: self.filterDebounceDelay)
-            guard !Task.isCancelled else { return }
-
-            #if DEBUG
-            #endif
-        }
     }
 
-    /// Apply category filter change with debouncing
-    /// Called when category selection changes
+    /// Apply category filter change.
+    /// Filter forwarding is handled synchronously by HistoryView's onChange handler
+    /// via `applyFiltersToController()` — no debounce task needed here.
     func applyCategoryFilterChange() {
         HapticManager.selection()
-
-        // Cancel previous filter task
-        filterTask?.cancel()
-
-        // Debounce filter - update after 150ms
-        filterTask = Task { [weak self] in
-            guard let self = self else { return }
-
-            try? await Task.sleep(nanoseconds: self.filterDebounceDelay)
-            guard !Task.isCancelled else { return }
-
-            #if DEBUG
-            #endif
-        }
     }
 
     /// Reset all filters to default state
@@ -136,7 +105,6 @@ class HistoryFilterCoordinator {
 
         // Cancel pending tasks
         searchTask?.cancel()
-        filterTask?.cancel()
 
         #if DEBUG
         #endif
@@ -163,7 +131,6 @@ class HistoryFilterCoordinator {
     /// Cancel all pending debounce tasks
     func cancelPendingTasks() {
         searchTask?.cancel()
-        filterTask?.cancel()
     }
 
     // MARK: - Debug Helpers
