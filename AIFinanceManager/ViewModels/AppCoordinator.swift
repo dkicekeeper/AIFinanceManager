@@ -259,6 +259,11 @@ class AppCoordinator {
         )
         isFullyInitialized = true
 
+        // Task 9 / v3 migration: ensure all TransactionEntity records have dateSectionKey
+        // populated before the FRC performs its first fetch.  Fast-path (<5ms) when the
+        // column is already populated; one-time ~300ms background pass on first v3 launch.
+        await backfillDateSectionKeysIfNeeded()
+
         // Task 9: Start FRC after full data is loaded so the initial fetch sees all transactions.
         transactionPaginationController.setup()
 
@@ -307,6 +312,57 @@ class AppCoordinator {
 
     /// REMOVED: setupViewModelObservers() - not needed with @Observable
     /// @Observable automatically notifies SwiftUI of changes, no manual propagation needed
+
+    // MARK: - CoreData v3 Migration Backfill
+
+    /// One-time backfill: populates `dateSectionKey` for all TransactionEntity records
+    /// whose value is nil or empty (first launch after upgrading to CoreData model v3,
+    /// where `dateSectionKey` became a stored attribute instead of transient).
+    ///
+    /// Fast-path: exits in <5ms when every record is already populated.
+    /// Slow-path (one-time): ~200–400ms on a background context for 19k records.
+    ///
+    /// Must complete before `transactionPaginationController.setup()` so the FRC
+    /// sees correct section keys on its very first `performFetch()`.
+    private func backfillDateSectionKeysIfNeeded() async {
+        let stack = CoreDataStack.shared
+        let context = stack.newBackgroundContext()
+
+        await context.perform {
+            // Quick check: are there any records without a section key?
+            let countRequest = NSFetchRequest<NSNumber>(entityName: "TransactionEntity")
+            countRequest.resultType = .countResultType
+            countRequest.predicate = NSPredicate(
+                format: "dateSectionKey == nil OR dateSectionKey == ''"
+            )
+            guard let needsBackfill = try? context.count(for: countRequest),
+                  needsBackfill > 0 else {
+                // All records already have dateSectionKey — nothing to do.
+                return
+            }
+
+            // Fetch entities that need backfilling in large batches.
+            // returnsObjectsAsFaults = false prefaults the batch so `date` is
+            // immediately available without an extra SQL round-trip per object.
+            let fetchRequest = TransactionEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(
+                format: "dateSectionKey == nil OR dateSectionKey == ''"
+            )
+            fetchRequest.fetchBatchSize = 500
+            fetchRequest.returnsObjectsAsFaults = false
+
+            guard let entities = try? context.fetch(fetchRequest) else { return }
+
+            for entity in entities {
+                let key = entity.date.map {
+                    TransactionSectionKeyFormatter.string(from: $0)
+                } ?? "0000-00-00"
+                entity.dateSectionKey = key
+            }
+
+            try? context.save()
+        }
+    }
 
     /// Phase 16: Lightweight sync — no array copies needed
     /// With computed properties, ViewModels read directly from TransactionStore.

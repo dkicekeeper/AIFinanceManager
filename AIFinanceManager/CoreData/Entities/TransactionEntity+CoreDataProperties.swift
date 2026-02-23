@@ -18,6 +18,9 @@ extension TransactionEntity {
         return NSFetchRequest<TransactionEntity>(entityName: "TransactionEntity")
     }
 
+    /// Stored "YYYY-MM-DD" key used by NSFetchedResultsController for SQL-level section grouping.
+    /// Set automatically via willSave() in TransactionEntity+SectionKey.swift.
+    @NSManaged public var dateSectionKey: String?
     @NSManaged public var accountId: String?
     @NSManaged public var amount: Double
     @NSManaged public var category: String?
