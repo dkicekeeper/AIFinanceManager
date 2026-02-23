@@ -60,6 +60,7 @@ struct InsightsView: View {
                 }
             }
             .padding(.vertical, AppSpacing.md)
+            .animation(.spring(response: 0.4), value: insightsViewModel.isLoading)
         }
         .navigationTitle(String(localized: "insights.title"))
         .navigationBarTitleDisplayMode(.inline)
@@ -236,15 +237,8 @@ struct InsightsView: View {
     // MARK: - Loading View
 
     private var loadingView: some View {
-        VStack(spacing: AppSpacing.lg) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text(String(localized: "insights.loading"))
-                .font(AppTypography.body)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, AppSpacing.xxxl)
+        InsightsSkeleton()
+            .transition(.opacity.combined(with: .scale(0.98, anchor: .center)))
     }
 
     // MARK: - Empty State
