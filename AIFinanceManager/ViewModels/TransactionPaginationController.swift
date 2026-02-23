@@ -172,7 +172,6 @@ final class TransactionPaginationController: NSObject {
         dateRange: (start: Date, end: Date)?? = nil
     ) {
         isBatchUpdating = true
-        defer { isBatchUpdating = false }
 
         if let q = searchQuery { self.searchQuery = q }
         if let a = selectedAccountId { self.selectedAccountId = a }
@@ -180,6 +179,9 @@ final class TransactionPaginationController: NSObject {
         if let t = selectedType { self.selectedType = t }
         if let d = dateRange { self.dateRange = d }
 
+        // Must set to false BEFORE calling scheduleFilterUpdate so the
+        // guard !isBatchUpdating check inside passes.
+        isBatchUpdating = false
         // Single fetch + rebuild after all filter changes are applied.
         scheduleFilterUpdate()
     }
