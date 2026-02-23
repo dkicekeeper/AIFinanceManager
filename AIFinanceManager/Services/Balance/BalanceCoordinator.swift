@@ -74,17 +74,24 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
     // MARK: - Account Management
 
-    /// Register accounts and compute initial balances.
-    /// - Parameters:
-    ///   - accounts: All accounts to register.
-    ///   - transactions: All transactions (used to recalculate balances for
-    ///     `shouldCalculateFromTransactions = true` accounts on startup).
+    /// Register accounts and compute initial balances using a two-phase approach.
+    ///
+    /// - Phase A (instant): Use persisted `account.balance` for all accounts → zero-delay UI display.
+    ///   The `account.balance` field in CoreData is updated synchronously by `persistBalance()` on
+    ///   every mutation, so it is always accurate between launches.
+    ///
+    /// - Phase B (background, only when transactions provided): Recalculate
+    ///   `shouldCalculateFromTransactions` accounts from the full transaction history → updates
+    ///   balances when ready. This is a safety verification pass; Phase A values are already correct
+    ///   in most cases.
     func registerAccounts(_ accounts: [Account], transactions: [Transaction] = []) async {
 
-        // Build AccountBalance objects
+        // ── Phase A: instant balance display ─────────────────────────────────────────────────────
         var accountBalances: [AccountBalance] = []
+        var phase1Balances: [String: Double] = [:]
+
         for account in accounts {
-            let accountBalance = AccountBalance(
+            let ab = AccountBalance(
                 accountId: account.id,
                 currentBalance: account.initialBalance ?? 0,
                 initialBalance: account.initialBalance,
@@ -92,39 +99,62 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
                 currency: account.currency,
                 isDeposit: account.isDeposit
             )
-            accountBalances.append(accountBalance)
+            accountBalances.append(ab)
+            // Use persisted `account.balance` — updated synchronously by persistBalance() on
+            // every mutation, so it is always accurate between launches.
+            phase1Balances[account.id] = account.balance
         }
 
         store.registerAccounts(accountBalances)
+        store.updateBalances(phase1Balances, source: .manual)
+        cache.setBalances(phase1Balances)
 
-        var finalBalances: [String: Double] = [:]
+        // Publish immediately — UI shows balances with zero startup delay.
+        // Merge into existing balances to preserve any already-loaded accounts.
+        var merged = self.balances
+        for (id, bal) in phase1Balances { merged[id] = bal }
+        self.balances = merged
 
-        for account in accounts {
-            if account.shouldCalculateFromTransactions {
-                // DYNAMIC: entity.balance is unreliable (async persist may not complete before
-                // app is killed). Always recalculate from scratch: initialBalance(0) + Σtransactions.
-                guard let ab = accountBalances.first(where: { $0.accountId == account.id }) else { continue }
-                let calculated = engine.calculateBalance(account: ab, transactions: transactions, mode: .fromInitialBalance)
-                finalBalances[account.id] = calculated
-            } else {
-                // MANUAL: entity.balance is the reliable current balance — updated synchronously
-                // by persistBalance() on every transaction add/remove/update.
-                // initialBalance is stored separately and never overwritten after account creation.
-                finalBalances[account.id] = account.balance
+        // ── Phase B: accurate recalculation for shouldCalculateFromTransactions accounts ─────────
+        // Only runs when full transaction list is provided (i.e. from initialize(), not
+        // initializeFastPath()). If no dynamic accounts exist, skip entirely.
+        let dynamicAccounts = accounts.filter { $0.shouldCalculateFromTransactions }
+        guard !dynamicAccounts.isEmpty, !transactions.isEmpty else { return }
+
+        // Snapshot only the AccountBalance value types needed for background computation.
+        // BalanceStore is @MainActor so we cannot pass it to Task.detached directly.
+        // BalanceCalculationEngine is a struct (value type) and is safe to capture.
+        let snapshotBalances: [String: AccountBalance] = dynamicAccounts.reduce(into: [:]) { dict, account in
+            if let ab = accountBalances.first(where: { $0.accountId == account.id }) {
+                dict[account.id] = ab
             }
         }
+        let capturedTransactions = transactions
+        let capturedEngine = self.engine
 
-        store.updateBalances(finalBalances, source: .manual)
-        cache.setBalances(finalBalances)
+        Task(priority: .utility) { [weak self] in
+            guard let self else { return }
 
-        // Merge into existing balances — don't replace the whole dictionary.
-        // If registerAccounts is called for a single new account (e.g. after addAccount),
-        // we must preserve all other accounts' current balances already in self.balances.
-        var merged = self.balances
-        for (id, balance) in finalBalances {
-            merged[id] = balance
+            // Calculate on a background thread — pure computation over value types only.
+            let results: [String: Double] = await Task.detached(priority: .utility) {
+                var phase2: [String: Double] = [:]
+                for (accountId, ab) in snapshotBalances {
+                    let calc = capturedEngine.calculateBalance(
+                        account: ab,
+                        transactions: capturedTransactions,
+                        mode: .fromInitialBalance
+                    )
+                    phase2[accountId] = calc
+                }
+                return phase2
+            }.value
+
+            // Back on MainActor — update only the recalculated accounts.
+            self.store.updateBalances(results, source: .recalculation)
+            var updatedBalances = self.balances
+            for (id, bal) in results { updatedBalances[id] = bal }
+            self.balances = updatedBalances
         }
-        self.balances = merged
     }
 
     func removeAccount(_ accountId: String) async {
