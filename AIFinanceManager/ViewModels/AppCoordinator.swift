@@ -283,6 +283,11 @@ class AppCoordinator {
         // Phase 19: Removed transactionsViewModel.loadDataAsync() — was duplicating TransactionStore work
         // (generateRecurringAsync + loadAggregateCacheAsync which was a no-op)
 
+        // Purge persistent history older than 7 days — prevents unbounded DB growth
+        Task(priority: .background) {
+            CoreDataStack.shared.purgeHistory(olderThan: 7)
+        }
+
         PerformanceProfiler.end("AppCoordinator.initialize")
     }
     

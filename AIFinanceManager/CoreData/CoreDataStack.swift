@@ -191,8 +191,25 @@ final class CoreDataStack: @unchecked Sendable {
         NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
     }
 
+    // MARK: - Persistent History
+
+    /// Purge persistent history older than `days` days.
+    /// Called once per launch from a background task to prevent unbounded DB growth.
+    func purgeHistory(olderThan days: Int = 7) {
+        guard let cutoff = Calendar.current.date(
+            byAdding: .day, value: -days, to: Date()
+        ) else { return }
+        let purgeRequest = NSPersistentHistoryChangeRequest.deleteHistory(before: cutoff)
+        do {
+            try viewContext.execute(purgeRequest)
+            CoreDataStack.logger.info("Purged persistent history older than \(days) days")
+        } catch {
+            CoreDataStack.logger.error("Failed to purge persistent history: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Reset
-    
+
     /// Delete all data from persistent store (use for testing/debugging)
     func resetAllData() throws {
         let coordinator = persistentContainer.persistentStoreCoordinator
