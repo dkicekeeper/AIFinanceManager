@@ -133,6 +133,15 @@ AIFinanceManager/
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
 
+**Phase 29** (2026-02-23): Skeleton Loading — ContentView & InsightsView
+- **SkeletonShimmerModifier**: `ViewModifier` with `@State phase: CGFloat` animation — `LinearGradient` blick sweeps left-to-right in 1.4s, `easeInOut`, `repeatForever`. `.blendMode(.screen)` for Liquid Glass character. `.clipped()` prevents overdraw.
+- **SkeletonView**: Base block — `RoundedRectangle` with `AppColors.secondaryBackground` + `.skeletonShimmer()`. `width: nil` fills available space via `maxWidth: .infinity`. Default `cornerRadius: AppRadius.sm`.
+- **ContentViewSkeleton**: Mirrors home screen — filter chip (110×32) + 3 account cards carousel (200×120) + 3 section cards (icon circle + 2 text lines). Replaces capsule `ProgressView` in `loadingOverlay` (ContentView.swift). Full-screen overlay with `.ignoresSafeArea()`.
+- **InsightsSkeleton**: Mirrors analytics screen — summary header (3 metric columns + health score row) + filter carousel (4 chips) + section label + 3 insight cards with trailing chart rects. Replaces `loadingView` property (InsightsView.swift). Uses plain `VStack` body (not `ScrollView`) to self-size inside InsightsView's outer `ScrollView`.
+- Transition: `.opacity.combined(with: .scale(0.98))` — subtle zoom-out on content appear. Animation driven by `.animation(.spring(response: 0.4), value: isLoading)`.
+- New files: `ContentViewSkeleton.swift`, `InsightsSkeleton.swift`. Rewritten: `SkeletonView.swift`.
+- Design doc: `docs/plans/2026-02-23-skeleton-loading-design.md`
+
 **Phase 28** (2026-02-23): Instant Launch — Startup Performance
 - **Progressive UI**: `initializeFastPath()` loads accounts+categories only (<50ms) → UI visible instantly; full 19k-transaction load runs in background via `initialize()`
 - **Background CoreData fetch**: All 8 `load*()` repository methods moved from `viewContext` (main thread) to `newBackgroundContext() + performAndWait` — unblocks MainActor during 19k entity materialization. `loadData()` wrapped in `Task.detached` in TransactionStore.
