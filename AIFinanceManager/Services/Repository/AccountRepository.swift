@@ -70,24 +70,21 @@ final class AccountRepository: AccountRepositoryProtocol {
     }
 
     func loadAllAccountBalances() -> [String: Double] {
-        let context = stack.viewContext
-        let request = AccountEntity.fetchRequest()
-
-        do {
-            let entities = try context.fetch(request)
-            var balances: [String: Double] = [:]
-
-            for entity in entities {
-                if let accountId = entity.id {
-                    balances[accountId] = entity.balance
+        let bgContext = stack.newBackgroundContext()
+        var balances: [String: Double] = [:]
+        bgContext.performAndWait {
+            let request = NSFetchRequest<NSDictionary>(entityName: "AccountEntity")
+            request.resultType = .dictionaryResultType
+            request.propertiesToFetch = ["id", "balance"]
+            guard let dicts = try? bgContext.fetch(request) else { return }
+            for dict in dicts {
+                if let id = dict["id"] as? String,
+                   let bal = dict["balance"] as? Double {
+                    balances[id] = bal
                 }
             }
-
-
-            return balances
-        } catch {
-            return [:]
         }
+        return balances
     }
 
     // MARK: - Save Operations

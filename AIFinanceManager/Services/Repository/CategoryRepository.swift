@@ -110,17 +110,20 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     // MARK: - Category Rules
 
     func loadCategoryRules() -> [CategoryRule] {
-        let context = stack.viewContext
-        let request = NSFetchRequest<CategoryRuleEntity>(entityName: "CategoryRuleEntity")
-        request.predicate = NSPredicate(format: "isEnabled == YES")
-
-        do {
-            let entities = try context.fetch(request)
-            let rules = entities.map { $0.toCategoryRule() }
-            return rules
-        } catch {
+        let bgContext = stack.newBackgroundContext()
+        var rules: [CategoryRule] = []
+        bgContext.performAndWait {
+            let request = NSFetchRequest<CategoryRuleEntity>(entityName: "CategoryRuleEntity")
+            request.predicate = NSPredicate(format: "isEnabled == YES")
+            request.fetchBatchSize = 100
+            if let entities = try? bgContext.fetch(request) {
+                rules = entities.map { $0.toCategoryRule() }
+            }
+        }
+        if rules.isEmpty {
             return userDefaultsRepository.loadCategoryRules()
         }
+        return rules
     }
 
     func saveCategoryRules(_ rules: [CategoryRule]) {
