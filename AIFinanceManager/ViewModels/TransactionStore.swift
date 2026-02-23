@@ -12,6 +12,7 @@
 
 import Foundation
 import Combine
+import CoreData
 import Observation
 
 /// Errors that can occur during transaction operations
@@ -207,6 +208,19 @@ final class TransactionStore {
 
         // Note: baseCurrency will be set via updateBaseCurrency() from AppCoordinator
 
+    }
+
+    /// Lightweight startup load: only accounts + categories (fast-path for instant UI).
+    /// Full data is loaded by loadData() called afterwards in the background.
+    func loadAccountsOnly() async throws {
+        let bgContext = CoreDataStack.shared.newBackgroundContext()
+        let (accs, cats) = try await bgContext.perform {
+            let accs = try bgContext.fetch(AccountEntity.fetchRequest()).map { $0.toAccount() }
+            let cats = try bgContext.fetch(CustomCategoryEntity.fetchRequest()).map { $0.toCustomCategory() }
+            return (accs, cats)
+        }
+        accounts = AccountOrderManager.shared.applyOrders(to: accs)
+        categories = CategoryOrderManager.shared.applyOrders(to: cats)
     }
 
     /// Update base currency (for currency conversions)

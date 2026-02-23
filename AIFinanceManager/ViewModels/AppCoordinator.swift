@@ -201,6 +201,18 @@ class AppCoordinator {
 
     // MARK: - Public Methods
 
+    /// Fast-path startup: loads only accounts (<50ms).
+    /// Call this first so the UI can appear. Full initialization continues via initialize().
+    func initializeFastPath() async {
+        guard !isInitialized else { return }
+        // Load accounts and categories only (small datasets, needed for first frame)
+        try? await transactionStore.loadAccountsOnly()
+        // Register accounts with coordinator so balance cards show persisted balances immediately
+        await balanceCoordinator.registerAccounts(transactionStore.accounts)
+        // Load settings (UserDefaults read — instant)
+        await settingsViewModel.loadInitialData()
+    }
+
     /// Initialize all ViewModels asynchronously
     /// Should be called once after AppCoordinator is created
     func initialize() async {

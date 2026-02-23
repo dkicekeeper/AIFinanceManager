@@ -84,7 +84,7 @@ struct ContentView: View {
             }
             .padding(.vertical, AppSpacing.md)
         }
-        .opacity(isInitializing ? 0 : 1)
+        // No opacity modifier — content visible immediately
     }
 
     // MARK: - Sections
@@ -173,14 +173,21 @@ struct ContentView: View {
     @ViewBuilder
     private var loadingOverlay: some View {
         if isInitializing {
-            VStack(spacing: AppSpacing.lg) {
-                ProgressView()
-                    .scaleEffect(1.5)
-                Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
-                    .font(AppTypography.body)
-                    .foregroundStyle(.secondary)
+            VStack {
+                HStack(spacing: AppSpacing.sm) {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
+                        .font(AppTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.vertical, AppSpacing.xs)
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(.top, AppSpacing.sm)
+                Spacer()
             }
-            .transition(.opacity)
+            .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
 
@@ -273,10 +280,13 @@ struct ContentView: View {
 
     private func initializeIfNeeded() async {
         guard isInitializing else { return }
-        await coordinator.initialize()
-        withAnimation {
+        // Phase 28-A: Fast path — show UI with account cards immediately (~50ms)
+        await coordinator.initializeFastPath()
+        withAnimation(.easeOut(duration: 0.2)) {
             isInitializing = false
         }
+        // Full load continues in background — @Observable updates UI when ready
+        await coordinator.initialize()
     }
 
     private func setupOnAppear() {
