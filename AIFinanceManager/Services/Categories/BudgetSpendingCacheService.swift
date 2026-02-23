@@ -106,11 +106,14 @@ final class BudgetSpendingCacheService: @unchecked Sendable {
                 request.predicate = NSPredicate(format: "name == %@", categoryName)
                 request.fetchLimit = 1
                 guard let entity = try? context.fetch(request).first else { return }
-                context.perform {
-                    entity.cachedSpentUpdatedAt = nil
-                    entity.cachedSpentAmount = 0
+                // Direct mutation — safe inside outer await context.perform { }
+                entity.cachedSpentUpdatedAt = nil
+                entity.cachedSpentAmount = 0
+                do {
+                    if context.hasChanges { try context.save() }
+                } catch {
+                    Self.logger.error("BudgetSpendingCacheService.invalidate save failed: \(error.localizedDescription)")
                 }
-                try? context.save()
             }
         }
     }
@@ -134,7 +137,7 @@ final class BudgetSpendingCacheService: @unchecked Sendable {
 
     /// Read the cached spent amount for a category.
     /// Returns nil if cache is invalid (not yet computed, or currency mismatch).
-    func cachedSpent(for categoryName: String, currency: String) -> Double? {
+    @MainActor func cachedSpent(for categoryName: String, currency: String) -> Double? {
         let context = stack.viewContext
         let request = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
         request.predicate = NSPredicate(format: "name == %@", categoryName)
@@ -164,15 +167,14 @@ final class BudgetSpendingCacheService: @unchecked Sendable {
 
             guard let entity = try? context.fetch(request).first else { return }
 
-            context.perform {
-                // Invalidate cache if currency changes
-                if entity.cachedSpentCurrency != currency {
-                    entity.cachedSpentAmount = 0
-                }
-                entity.cachedSpentAmount = max(0, entity.cachedSpentAmount + delta)
-                entity.cachedSpentCurrency = currency
-                entity.cachedSpentUpdatedAt = Date()
+            // Direct mutations — safe inside outer await context.perform { }
+            // Invalidate cache if currency changes
+            if entity.cachedSpentCurrency != currency {
+                entity.cachedSpentAmount = 0
             }
+            entity.cachedSpentAmount = max(0, entity.cachedSpentAmount + delta)
+            entity.cachedSpentCurrency = currency
+            entity.cachedSpentUpdatedAt = Date()
 
             do {
                 if context.hasChanges { try context.save() }
@@ -208,11 +210,10 @@ final class BudgetSpendingCacheService: @unchecked Sendable {
                 request.fetchLimit = 1
 
                 guard let entity = try? context.fetch(request).first else { continue }
-                context.perform {
-                    entity.cachedSpentAmount = spent
-                    entity.cachedSpentCurrency = baseCurrency
-                    entity.cachedSpentUpdatedAt = Date()
-                }
+                // Direct mutations — safe inside outer await context.perform { }
+                entity.cachedSpentAmount = spent
+                entity.cachedSpentCurrency = baseCurrency
+                entity.cachedSpentUpdatedAt = Date()
             }
 
             do {
