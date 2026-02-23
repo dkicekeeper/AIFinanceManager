@@ -186,6 +186,9 @@ struct HistoryView: View {
     /// Forwards current filter state to the FRC-based pagination controller.
     /// The FRC handles predicate updates and triggers `controllerDidChangeContent`
     /// which rebuilds `sections` — no manual grouping/sorting needed.
+    ///
+    /// Uses batchUpdateFilters() to apply all four filter values atomically,
+    /// preventing 4× redundant rebuildSections() calls.
     private func applyFiltersToController() {
         PerformanceProfiler.start("HistoryView.applyFiltersToController")
 
@@ -197,25 +200,25 @@ struct HistoryView: View {
             hasFilters: hasFilters
         )
 
-        // Forward search query
-        paginationController.searchQuery = filterCoordinator.debouncedSearchText
-
-        // Forward account filter
-        paginationController.selectedAccountId = filterCoordinator.selectedAccountFilter
-
-        // Forward category filter (first element from the set, matching FRC predicate)
-        paginationController.selectedCategoryId = transactionsViewModel.selectedCategories?.first
-
-        // Forward time filter as a date range
+        // Resolve date range — allTime maps to a sentinel range that is functionally
+        // equivalent to no predicate (nil), so we pass nil in that case.
         let timeFilter = timeFilterManager.currentFilter
-        let range = timeFilter.dateRange()
-        // allTime maps to a sentinel range; avoid sending the 100-year sentinel range
-        // because it is functionally equivalent to no predicate (nil).
+        let resolvedDateRange: (start: Date, end: Date)?
         if timeFilter.preset == .allTime {
-            paginationController.dateRange = nil
+            resolvedDateRange = nil
         } else {
-            paginationController.dateRange = (start: range.start, end: range.end)
+            let range = timeFilter.dateRange()
+            resolvedDateRange = (start: range.start, end: range.end)
         }
+
+        // Single atomic update — triggers exactly one performFetch + rebuildSections
+        // instead of four (one per property assignment).
+        paginationController.batchUpdateFilters(
+            searchQuery: filterCoordinator.debouncedSearchText,
+            selectedAccountId: .some(filterCoordinator.selectedAccountFilter),
+            selectedCategoryId: .some(transactionsViewModel.selectedCategories?.first),
+            dateRange: .some(resolvedDateRange)
+        )
 
         PerformanceProfiler.end("HistoryView.applyFiltersToController")
         PerformanceLogger.shared.end("HistoryView.updateTransactions")
@@ -224,11 +227,14 @@ struct HistoryView: View {
     private func resetFilters() {
         filterCoordinator.reset()
         transactionsViewModel.selectedCategories = nil
-        // Clear all FRC filters so the controller is clean for next appearance
-        paginationController.searchQuery = ""
-        paginationController.selectedAccountId = nil
-        paginationController.selectedCategoryId = nil
-        paginationController.dateRange = nil
+        // Clear all FRC filters atomically so the controller is clean for next appearance.
+        paginationController.batchUpdateFilters(
+            searchQuery: "",
+            selectedAccountId: .some(nil),
+            selectedCategoryId: .some(nil),
+            selectedType: .some(nil),
+            dateRange: .some(nil)
+        )
     }
 }
 

@@ -26,13 +26,20 @@ struct TransactionSection: Identifiable {
     let id: String
     /// Human-readable date string (same value as id; views may format it further).
     let date: String
-    let transactions: [Transaction]
+    /// Pre-computed count from the FRC section — O(1), no entity materialization.
+    let numberOfObjects: Int
 
-    init(date: String, transactions: [Transaction]) {
-        self.id = date
-        self.date = date
-        self.transactions = transactions
+    /// Lazily convert section objects to Transaction value types.
+    /// Only called when SwiftUI renders this section's rows — defers O(N) work
+    /// to scroll time instead of blocking the main thread during rebuildSections().
+    var transactions: [Transaction] {
+        (sectionInfo.objects as? [TransactionEntity] ?? [])
+            .compactMap { $0.toTransaction() }
     }
+
+    // Internal: NSFetchedResultsSectionInfo is a class, so this is a reference —
+    // no copy overhead despite TransactionSection being a value type.
+    fileprivate let sectionInfo: any NSFetchedResultsSectionInfo
 }
 
 // MARK: - TransactionPaginationController
@@ -95,6 +102,9 @@ final class TransactionPaginationController: NSObject {
         subsystem: "AIFinanceManager",
         category: "TransactionPaginationController"
     )
+    /// When true, individual filter property didSet observers skip scheduleFilterUpdate.
+    /// batchUpdateFilters() sets this flag, applies all changes, then calls scheduleFilterUpdate once.
+    @ObservationIgnored private var isBatchUpdating = false
 
     // MARK: - Init
 
@@ -133,10 +143,45 @@ final class TransactionPaginationController: NSObject {
 
     private func scheduleFilterUpdate() {
         guard frc != nil else { return }
+        // Skip intermediate rebuilds while a batch filter update is in progress.
+        // batchUpdateFilters() will call scheduleFilterUpdate() once after all changes.
+        guard !isBatchUpdating else { return }
         // Must delete named cache before changing fetchRequest.predicate;
         // otherwise NSFetchedResultsController re-uses stale section metadata.
         NSFetchedResultsController<TransactionEntity>.deleteCache(withName: "transactions-main")
         applyCurrentFilters()
+    }
+
+    // MARK: - Batch Filter Update
+
+    /// Apply multiple filter changes atomically — triggers only one performFetch + rebuildSections.
+    ///
+    /// Each parameter uses a double-optional convention:
+    /// - `nil`         → don't touch this filter (leave it as-is)
+    /// - `.some(nil)`  → clear this filter (set it to nil)
+    /// - `.some(value)` → set this filter to value
+    ///
+    /// Using this method instead of setting individual properties prevents the 4×
+    /// redundant rebuildSections() calls that occur when applyFiltersToController()
+    /// assigns searchQuery, selectedAccountId, selectedCategoryId, and dateRange sequentially.
+    func batchUpdateFilters(
+        searchQuery: String? = nil,
+        selectedAccountId: String?? = nil,
+        selectedCategoryId: String?? = nil,
+        selectedType: TransactionType?? = nil,
+        dateRange: (start: Date, end: Date)?? = nil
+    ) {
+        isBatchUpdating = true
+        defer { isBatchUpdating = false }
+
+        if let q = searchQuery { self.searchQuery = q }
+        if let a = selectedAccountId { self.selectedAccountId = a }
+        if let c = selectedCategoryId { self.selectedCategoryId = c }
+        if let t = selectedType { self.selectedType = t }
+        if let d = dateRange { self.dateRange = d }
+
+        // Single fetch + rebuild after all filter changes are applied.
+        scheduleFilterUpdate()
     }
 
     private func applyCurrentFilters() {
@@ -197,12 +242,15 @@ final class TransactionPaginationController: NSObject {
             return
         }
 
+        // O(M) — only stores section metadata + a reference to the NSFetchedResultsSectionInfo.
+        // toTransaction() is deferred to TransactionSection.transactions (computed property),
+        // which SwiftUI calls lazily only for the sections currently rendered on screen.
         sections = frcSections.map { section in
-            let transactions = (section.objects as? [TransactionEntity] ?? [])
-                .compactMap { $0.toTransaction() }
-            return TransactionSection(
+            TransactionSection(
+                id: section.name,
                 date: section.name,
-                transactions: transactions
+                numberOfObjects: section.numberOfObjects,
+                sectionInfo: section
             )
         }
         totalCount = frc?.fetchedObjects?.count ?? 0
