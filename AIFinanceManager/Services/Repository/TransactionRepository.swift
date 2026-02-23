@@ -242,7 +242,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
     // MARK: - Delete Operations
 
     func deleteTransactionImmediately(id: String) {
-        print("🔴 [TransactionRepository.deleteTransactionImmediately] called for id=\(id)")
+        Self.logger.debug("🔵 [TransactionRepository] deleteTransactionImmediately called for id: \(id, privacy: .public)")
         let context = stack.newBackgroundContext()
         context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         context.performAndWait {
@@ -250,12 +250,12 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             request.predicate = NSPredicate(format: "id == %@", id)
             request.fetchLimit = 1
             guard let entity = try? context.fetch(request).first else {
-                print("🔴 [TransactionRepository.deleteTransactionImmediately] entity NOT FOUND for id=\(id) (may not be persisted yet)")
+                Self.logger.warning("⚠️ [TransactionRepository] deleteTransactionImmediately: entity NOT FOUND for id: \(id, privacy: .public) (may not be persisted yet)")
                 return
             }
             context.delete(entity)
             try? context.save()
-            print("🔴 [TransactionRepository.deleteTransactionImmediately] deleted and saved for id=\(id)")
+            Self.logger.debug("✅ [TransactionRepository] deleteTransactionImmediately: deleted and saved for id: \(id, privacy: .public)")
         }
     }
 
@@ -263,7 +263,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
 
     func insertTransaction(_ transaction: Transaction) {
         let bgContext = stack.newBackgroundContext()
-        bgContext.perform {
+        bgContext.performAndWait {
             // Create entity from Transaction model
             let entity = TransactionEntity.from(transaction, context: bgContext)
 

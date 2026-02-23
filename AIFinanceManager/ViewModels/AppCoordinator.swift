@@ -205,7 +205,7 @@ class AppCoordinator {
     /// Fast-path startup: loads accounts + categories + settings (<50ms combined).
     /// Call this first so the UI can appear. Full initialization continues via initialize().
     func initializeFastPath() async {
-        guard !isInitialized, !isFastPathStarted else { return }
+        guard !isFastPathStarted else { return }
         isFastPathStarted = true
         // Load accounts and categories only (small datasets, needed for first frame)
         try? await transactionStore.loadAccountsOnly()
@@ -247,9 +247,7 @@ class AppCoordinator {
         // 4. Generate recurring transactions in background (non-blocking)
         Task(priority: .background) { [weak self] in
             guard let self else { return }
-            await MainActor.run {
-                self.transactionsViewModel.generateRecurringTransactions()
-            }
+            await self.transactionsViewModel.generateRecurringTransactions()
         }
 
         // 5. Load settings (only if fast path hasn't already loaded them)
