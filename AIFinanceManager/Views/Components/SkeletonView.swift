@@ -8,7 +8,7 @@ import SwiftUI
 
 // MARK: - Shimmer Modifier
 
-/// Overlays a left-to-right shimmer blick on any view — Liquid Glass style.
+/// Overlays a left-to-right shimmer effect on any view — Liquid Glass style.
 struct SkeletonShimmerModifier: ViewModifier {
     @State private var phase: CGFloat = -1.0
 
@@ -24,7 +24,7 @@ struct SkeletonShimmerModifier: ViewModifier {
                     startPoint: UnitPoint(x: phase, y: 0.5),
                     endPoint: UnitPoint(x: phase + 1, y: 0.5)
                 )
-                .blendMode(.plusLighter)
+                .blendMode(.screen)
             }
             .clipped()
             .onAppear {
@@ -50,12 +50,13 @@ extension View {
 struct SkeletonView: View {
     var width: CGFloat? = nil
     var height: CGFloat
-    var cornerRadius: CGFloat = 8
+    var cornerRadius: CGFloat = AppRadius.sm
 
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(Color(.systemFill))
+            .fill(AppColors.secondaryBackground)
             .frame(width: width, height: height)
+            .frame(maxWidth: width == nil ? .infinity : nil)
             .skeletonShimmer()
     }
 }
