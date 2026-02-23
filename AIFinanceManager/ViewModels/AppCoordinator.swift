@@ -228,8 +228,13 @@ class AppCoordinator {
             transactions: transactionStore.transactions
         )
 
-        // 4. Generate recurring transactions (needs loaded data)
-        transactionsViewModel.generateRecurringTransactions()
+        // 4. Generate recurring transactions in background (non-blocking)
+        Task.detached(priority: .background) { [weak self] in
+            guard let self else { return }
+            await MainActor.run {
+                self.transactionsViewModel.generateRecurringTransactions()
+            }
+        }
 
         // 5. Load settings
         await settingsViewModel.loadInitialData()
