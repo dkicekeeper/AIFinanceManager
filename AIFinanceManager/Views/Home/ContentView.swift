@@ -173,21 +173,10 @@ struct ContentView: View {
     @ViewBuilder
     private var loadingOverlay: some View {
         if isInitializing {
-            VStack {
-                HStack(spacing: AppSpacing.sm) {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text(String(localized: "progress.loadingData", defaultValue: "Loading data..."))
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, AppSpacing.md)
-                .padding(.vertical, AppSpacing.xs)
-                .background(.ultraThinMaterial, in: Capsule())
-                .padding(.top, AppSpacing.sm)
-                Spacer()
-            }
-            .transition(.opacity.combined(with: .move(edge: .top)))
+            ContentViewSkeleton()
+                .background(Color(.systemGroupedBackground))
+                .transition(.opacity.combined(with: .scale(0.98, anchor: .center)))
+                .ignoresSafeArea()
         }
     }
 
