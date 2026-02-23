@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreData
+import os
 
 /// Protocol for category repository operations
 protocol CategoryRepositoryProtocol {
@@ -31,6 +32,8 @@ protocol CategoryRepositoryProtocol {
 
 /// CoreData implementation of CategoryRepositoryProtocol
 final class CategoryRepository: CategoryRepositoryProtocol {
+
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CategoryRepository")
 
     private let stack: CoreDataStack
     private let saveCoordinator: CoreDataSaveCoordinator
@@ -127,33 +130,40 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     }
 
     func saveCategoryRules(_ rules: [CategoryRule]) {
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
+            let bgContext = self.stack.newBackgroundContext()
+            bgContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
 
-        Task.detached(priority: .utility) { @MainActor [weak self] in
-            guard let self = self else { return }
-
-            let context = self.stack.newBackgroundContext()
-
-            await context.perform {
+            await bgContext.perform {
                 do {
-                    // Fetch all existing rules
-                    let fetchRequest = NSFetchRequest<CategoryRuleEntity>(entityName: "CategoryRuleEntity")
-                    let existingEntities = try context.fetch(fetchRequest)
-
-                    // Delete all existing rules
-                    for entity in existingEntities {
-                        context.delete(entity)
+                    // 1. Batch delete all existing rules
+                    let deleteRequest = NSBatchDeleteRequest(
+                        fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: "CategoryRuleEntity")
+                    )
+                    deleteRequest.resultType = .resultTypeObjectIDs
+                    let deleteResult = try bgContext.execute(deleteRequest) as? NSBatchDeleteResult
+                    let deletedIDs = deleteResult?.result as? [NSManagedObjectID] ?? []
+                    if !deletedIDs.isEmpty {
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self else { return }
+                            NSManagedObjectContext.mergeChanges(
+                                fromRemoteContextSave: [NSDeletedObjectsKey: deletedIDs],
+                                into: [self.stack.viewContext]
+                            )
+                        }
                     }
+                    bgContext.reset()
 
-                    // Create new rules
+                    // 2. Create new rules
                     for rule in rules {
-                        _ = CategoryRuleEntity.from(rule, context: context)
+                        _ = CategoryRuleEntity.from(rule, context: bgContext)
                     }
-
-                    // Save if there are changes
-                    if context.hasChanges {
-                        try context.save()
+                    if bgContext.hasChanges {
+                        try bgContext.save()
                     }
                 } catch {
+                    Self.logger.error("saveCategoryRules failed: \(error.localizedDescription)")
                 }
             }
         }
