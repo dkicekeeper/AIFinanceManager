@@ -25,6 +25,20 @@ import Foundation
     func saveTransactions(_ transactions: [Transaction])
     func deleteTransactionImmediately(id: String)
 
+    /// Insert a single new transaction into CoreData. O(1) — does NOT fetch existing records.
+    /// Use for .added events in TransactionStore.apply(). Prerequisite: transaction.id must be non-empty.
+    func insertTransaction(_ transaction: Transaction)
+
+    /// Update fields of a single existing transaction by ID. O(1) — fetches by PK only.
+    /// Use for .updated events in TransactionStore.apply().
+    func updateTransactionFields(_ transaction: Transaction)
+
+    /// Batch-insert multiple new transactions using NSBatchInsertRequest. O(N) but fast.
+    /// Bypasses NSManagedObject lifecycle — ideal for CSV import of 1k+ records.
+    /// Note: Does NOT set CoreData relationships (account/recurringSeries).
+    /// accountId/targetAccountId String columns are used as fallbacks by toTransaction().
+    func batchInsertTransactions(_ transactions: [Transaction])
+
     // MARK: - Accounts
     func loadAccounts() -> [Account]
     func saveAccounts(_ accounts: [Account])

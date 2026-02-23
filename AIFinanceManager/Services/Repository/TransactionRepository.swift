@@ -18,6 +18,12 @@ protocol TransactionRepositoryProtocol {
     /// Use this for user-initiated deletions to guarantee the delete is persisted
     /// even if the app is killed shortly after.
     func deleteTransactionImmediately(id: String)
+    /// Insert a single new transaction. O(1) — does NOT fetch existing records.
+    func insertTransaction(_ transaction: Transaction)
+    /// Update fields of an existing transaction by ID. O(1) — fetches by PK only.
+    func updateTransactionFields(_ transaction: Transaction)
+    /// Batch-insert using NSBatchInsertRequest. O(N) — ideal for CSV import.
+    func batchInsertTransactions(_ transactions: [Transaction])
 }
 
 /// CoreData implementation of TransactionRepositoryProtocol
@@ -247,6 +253,103 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             context.delete(entity)
             try? context.save()
             print("🔴 [TransactionRepository.deleteTransactionImmediately] deleted and saved for id=\(id)")
+        }
+    }
+
+    // MARK: - Targeted Persist Methods (Phase 28-C)
+
+    func insertTransaction(_ transaction: Transaction) {
+        let bgContext = stack.newBackgroundContext()
+        bgContext.perform {
+            // Create entity from Transaction model
+            let entity = TransactionEntity.from(transaction, context: bgContext)
+
+            // Resolve account relationship (best-effort; accountId String is the fallback)
+            if let accountId = transaction.accountId, !accountId.isEmpty {
+                let req = AccountEntity.fetchRequest()
+                req.predicate = NSPredicate(format: "id == %@", accountId)
+                req.fetchLimit = 1
+                entity.account = try? bgContext.fetch(req).first
+            }
+
+            if let targetId = transaction.targetAccountId, !targetId.isEmpty {
+                let req = AccountEntity.fetchRequest()
+                req.predicate = NSPredicate(format: "id == %@", targetId)
+                req.fetchLimit = 1
+                entity.targetAccount = try? bgContext.fetch(req).first
+            }
+
+            if let seriesId = transaction.recurringSeriesId, !seriesId.isEmpty {
+                let req = RecurringSeriesEntity.fetchRequest()
+                req.predicate = NSPredicate(format: "id == %@", seriesId)
+                req.fetchLimit = 1
+                entity.recurringSeries = try? bgContext.fetch(req).first
+            }
+
+            try? bgContext.save()
+        }
+    }
+
+    func updateTransactionFields(_ transaction: Transaction) {
+        let bgContext = stack.newBackgroundContext()
+        bgContext.perform {
+            let req = TransactionEntity.fetchRequest()
+            req.predicate = NSPredicate(format: "id == %@", transaction.id)
+            req.fetchLimit = 1
+            guard let entity = (try? bgContext.fetch(req))?.first else { return }
+
+            entity.date             = DateFormatters.dateFormatter.date(from: transaction.date) ?? Date()
+            entity.descriptionText  = transaction.description
+            entity.amount           = transaction.amount
+            entity.currency         = transaction.currency
+            entity.convertedAmount  = transaction.convertedAmount ?? 0
+            entity.type             = transaction.type.rawValue
+            entity.category         = transaction.category
+            entity.subcategory      = transaction.subcategory
+            entity.targetAmount     = transaction.targetAmount ?? 0
+            entity.targetCurrency   = transaction.targetCurrency
+            entity.accountId        = transaction.accountId
+            entity.targetAccountId  = transaction.targetAccountId
+            entity.accountName      = transaction.accountName
+            entity.targetAccountName = transaction.targetAccountName
+
+            try? bgContext.save()
+        }
+    }
+
+    func batchInsertTransactions(_ transactions: [Transaction]) {
+        guard !transactions.isEmpty else { return }
+        let bgContext = stack.newBackgroundContext()
+        bgContext.perform {
+            // NSBatchInsertRequest (iOS 14+): inserts directly into SQLite,
+            // bypassing NSManagedObject lifecycle — ideal for CSV import of 1k+ records.
+            // Relationships are NOT set; toTransaction() uses accountId/targetAccountId String columns.
+            let dicts: [[String: Any]] = transactions.map { tx in
+                var dict: [String: Any] = [:]
+                dict["id"]               = tx.id
+                dict["date"]             = DateFormatters.dateFormatter.date(from: tx.date) ?? Date()
+                dict["descriptionText"]  = tx.description
+                dict["amount"]           = tx.amount
+                dict["currency"]         = tx.currency
+                dict["convertedAmount"]  = tx.convertedAmount ?? 0.0
+                dict["type"]             = tx.type.rawValue
+                dict["category"]         = tx.category
+                dict["subcategory"]      = tx.subcategory ?? ""
+                dict["targetAmount"]     = tx.targetAmount ?? 0.0
+                dict["targetCurrency"]   = tx.targetCurrency ?? ""
+                dict["accountId"]        = tx.accountId ?? ""
+                dict["targetAccountId"]  = tx.targetAccountId ?? ""
+                dict["accountName"]      = tx.accountName ?? ""
+                dict["targetAccountName"] = tx.targetAccountName ?? ""
+                dict["createdAt"]        = Date(timeIntervalSince1970: tx.createdAt)
+                return dict
+            }
+
+            let insertRequest = NSBatchInsertRequest(entityName: "TransactionEntity", objects: dicts)
+            insertRequest.resultType = .objectIDs  // needed for viewContext merge in Task 7
+            _ = try? bgContext.execute(insertRequest)
+
+            // NOTE: viewContext merge is handled by the caller (Task 7 wires this up)
         }
     }
 

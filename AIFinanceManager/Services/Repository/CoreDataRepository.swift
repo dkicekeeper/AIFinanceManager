@@ -58,6 +58,18 @@ final class CoreDataRepository: DataRepositoryProtocol {
         transactionRepository.deleteTransactionImmediately(id: id)
     }
 
+    func insertTransaction(_ transaction: Transaction) {
+        transactionRepository.insertTransaction(transaction)
+    }
+
+    func updateTransactionFields(_ transaction: Transaction) {
+        transactionRepository.updateTransactionFields(transaction)
+    }
+
+    func batchInsertTransactions(_ transactions: [Transaction]) {
+        transactionRepository.batchInsertTransactions(transactions)
+    }
+
     // MARK: - Accounts (Delegated to AccountRepository)
 
     func loadAccounts() -> [Account] {

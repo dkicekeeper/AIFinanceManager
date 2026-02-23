@@ -77,6 +77,18 @@ nonisolated final class UserDefaultsRepository: DataRepositoryProtocol {
         // Deletions are handled by the next full saveTransactions() call.
     }
 
+    func insertTransaction(_ transaction: Transaction) {
+        // UserDefaults fallback: no-op. Targeted insert only applies to CoreData.
+    }
+
+    func updateTransactionFields(_ transaction: Transaction) {
+        // UserDefaults fallback: no-op. Targeted update only applies to CoreData.
+    }
+
+    func batchInsertTransactions(_ transactions: [Transaction]) {
+        // UserDefaults fallback: no-op. NSBatchInsertRequest only applies to CoreData.
+    }
+
     // MARK: - Accounts
     
     func loadAccounts() -> [Account] {
