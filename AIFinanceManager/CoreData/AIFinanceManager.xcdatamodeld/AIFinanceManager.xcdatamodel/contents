@@ -24,7 +24,7 @@
     <entity name="CategoryAggregateEntity" representedClassName=".CategoryAggregateEntity" syncable="YES">
         <attribute name="categoryName" attributeType="String"/>
         <attribute name="currency" attributeType="String"/>
-        <attribute name="day" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES" spotlightIndexingEnabled="YES"/>
+        <attribute name="day" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="id" attributeType="String"/>
         <attribute name="lastTransactionDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="lastUpdated" attributeType="Date" usesScalarValueType="NO"/>
