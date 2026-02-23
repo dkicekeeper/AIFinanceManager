@@ -140,6 +140,7 @@
         </uniquenessConstraints>
     </entity>
     <entity name="TransactionEntity" representedClassName=".TransactionEntity" syncable="YES">
+        <attribute name="dateSectionKey" optional="YES" attributeType="String" transient="YES"/>
         <attribute name="accountId" optional="YES" attributeType="String"/>
         <attribute name="accountName" optional="YES" attributeType="String"/>
         <attribute name="amount" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>

@@ -75,7 +75,16 @@ final class TransactionPaginationController: NSObject {
     }
 
     var dateRange: (start: Date, end: Date)? {
-        didSet { scheduleFilterUpdate() }
+        didSet {
+            let changed: Bool
+            switch (oldValue, dateRange) {
+            case (.none, .none): changed = false
+            case (.some(let old), .some(let new)):
+                changed = old.start != new.start || old.end != new.end
+            default: changed = true
+            }
+            if changed { scheduleFilterUpdate() }
+        }
     }
 
     // MARK: - Private
@@ -123,6 +132,7 @@ final class TransactionPaginationController: NSObject {
     // MARK: - Filter Application
 
     private func scheduleFilterUpdate() {
+        guard frc != nil else { return }
         // Must delete named cache before changing fetchRequest.predicate;
         // otherwise NSFetchedResultsController re-uses stale section metadata.
         NSFetchedResultsController<TransactionEntity>.deleteCache(withName: "transactions-main")
