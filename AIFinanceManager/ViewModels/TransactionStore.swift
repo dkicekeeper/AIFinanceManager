@@ -136,6 +136,49 @@ final class TransactionStore {
     /// Used by InsightsService for O(M) chart data instead of O(N×M) scans.
     @ObservationIgnored let monthlyAggregateService: MonthlyAggregateService
 
+    // MARK: - Task 11: Transaction Windowing Strategy
+
+    /// How many calendar months of transactions to load into the in-memory store for
+    /// real-time business logic (balance delta, recurring checks, current-period insights).
+    ///
+    /// Set to 0 (disabled) until the three blockers below are resolved:
+    ///
+    /// BLOCKER 1 — BalanceCoordinator.registerAccounts(_:transactions:)
+    ///   AppCoordinator passes `transactionStore.transactions` to BalanceCoordinator at startup
+    ///   (AppCoordinator.initialize, ~line 256) so that `shouldCalculateFromTransactions` accounts
+    ///   can be recalculated from their full transaction history.  With a 3-month window, this
+    ///   calculation would see only the most recent 3 months — producing an incorrect running
+    ///   balance for credit/debit accounts.
+    ///   FIX REQUIRED: BalanceCoordinator must read the persisted `account.balance` field
+    ///   (already done for deposit accounts in Phase 28B) instead of summing raw transactions,
+    ///   OR AppCoordinator must call `repository.loadTransactions(dateRange: nil)` separately
+    ///   for the balance-recalc path without storing those transactions in the windowed store.
+    ///
+    /// BLOCKER 2 — InsightsService reads transactionStore.transactions directly
+    ///   InsightsService.generateAllInsights() captures `Array(transactionStore.transactions)`
+    ///   at line 85 and passes it as `allTransactions` to generators including:
+    ///   - accountDormancy (needs all-time transaction dates per account)
+    ///   - spendingVelocity (needs multi-month trend window)
+    ///   - incomeSourceBreakdown (needs the selected period's transactions)
+    ///   - computePeriodDataPoints (for .allTime / .year granularities spanning years)
+    ///   These generators would silently produce partial/incorrect data with a 3-month window.
+    ///   FIX REQUIRED: each of these generators must be migrated to read from
+    ///   CategoryAggregateService / MonthlyAggregateService (Phase 22 aggregate services).
+    ///
+    /// BLOCKER 3 — AppCoordinator aggregate rebuild reads transactionStore.transactions
+    ///   AppCoordinator.initialize (~line 283) rebuilds Phase 22 aggregates by passing
+    ///   `allTx = await self.transactionStore.transactions` to aggregate service rebuild().
+    ///   With windowing active, only 3 months of data would be used — making the aggregate
+    ///   records incomplete (all older months would be missing or zeroed).
+    ///   FIX REQUIRED: the rebuild path must call
+    ///   `repository.loadTransactions(dateRange: nil)` on a background context independently,
+    ///   bypassing the in-memory windowed store entirely.
+    ///
+    /// Once all three blockers are resolved, change this value to 3 to enable the window.
+    /// UI history is served by TransactionPaginationController (NSFetchedResultsController)
+    /// and is not affected by this constant — it always queries CoreData directly.
+    private let windowMonths: Int = 0  // disabled — see blockers above
+
     // MARK: - Initialization
 
     init(
@@ -182,16 +225,31 @@ final class TransactionStore {
     /// Load initial data from repository.
     /// Phase 28-B: All CoreData fetches run on a background thread via Task.detached.
     /// MainActor is NOT blocked — it awaits the background result.
+    ///
+    /// Task 11: When windowMonths > 0, only transactions within the rolling window are loaded
+    /// into memory.  The window is computed here on @MainActor and passed to the background
+    /// fetch as a DateInterval predicate.  Currently windowMonths == 0 (all transactions loaded)
+    /// — see the windowMonths declaration for the three blockers that must be fixed first.
     func loadData() async throws {
         // Capture repository before leaving @MainActor — it's a constant (@ObservationIgnored let).
         let repo = self.repository
+
+        // Task 11: Build optional date window. nil means "load all" (current behaviour).
+        let txDateRange: DateInterval? = windowMonths > 0
+            ? {
+                let windowStart = Calendar.current.date(
+                    byAdding: .month, value: -windowMonths, to: Date()
+                ) ?? Date.distantPast
+                return DateInterval(start: windowStart, end: Date())
+            }()
+            : nil
 
         // Run ALL repository reads on a background thread.
         // Each repository method uses bgContext.performAndWait internally (Change 1),
         // so they are safe to call from any thread.
         let (txs, accs, cats, subs, catLinks, txLinks, series, occurrences) =
             try await Task.detached(priority: .userInitiated) {
-                let txs        = repo.loadTransactions(dateRange: nil)
+                let txs        = repo.loadTransactions(dateRange: txDateRange)
                 let accs       = repo.loadAccounts()
                 let cats       = repo.loadCategories()
                 let subs       = repo.loadSubcategories()
