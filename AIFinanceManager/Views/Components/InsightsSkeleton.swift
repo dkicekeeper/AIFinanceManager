@@ -12,38 +12,35 @@ import SwiftUI
 /// summary header → filter carousel → section label → 3 insight cards.
 struct InsightsSkeleton: View {
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
 
-                // MARK: Summary header card
-                InsightsSummaryHeaderSkeleton()
-                    .padding(.horizontal, AppSpacing.lg)
+            // MARK: Summary header card
+            InsightsSummaryHeaderSkeleton()
+                .padding(.horizontal, AppSpacing.lg)
 
-                // MARK: Filter carousel
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: AppSpacing.sm) {
-                        ForEach(0..<4, id: \.self) { _ in
-                            SkeletonView(width: 70, height: 30, cornerRadius: AppRadius.pill)
-                        }
-                    }
-                    .padding(.horizontal, AppSpacing.lg)
-                }
-
-                // MARK: Section header label
-                SkeletonView(width: 100, height: 16)
-                    .padding(.horizontal, AppSpacing.lg)
-
-                // MARK: Insight cards
-                VStack(spacing: AppSpacing.md) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        InsightCardSkeleton()
+            // MARK: Filter carousel
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppSpacing.sm) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        SkeletonView(width: 70, height: 30, cornerRadius: AppRadius.pill)
                     }
                 }
                 .padding(.horizontal, AppSpacing.lg)
             }
-            .padding(.vertical, AppSpacing.md)
+
+            // MARK: Section header label
+            SkeletonView(width: 100, height: 16)
+                .padding(.horizontal, AppSpacing.lg)
+
+            // MARK: Insight cards
+            VStack(spacing: AppSpacing.md) {
+                ForEach(0..<3, id: \.self) { _ in
+                    InsightCardSkeleton()
+                }
+            }
+            .padding(.horizontal, AppSpacing.lg)
         }
-        .scrollDisabled(true)
+        .padding(.vertical, AppSpacing.md)
     }
 }
 
