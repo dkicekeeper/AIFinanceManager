@@ -1,56 +1,19 @@
 //
-//  InsightsSkeleton.swift
+//  InsightsSkeletonComponents.swift
 //  AIFinanceManager
 //
-//  Skeleton loading screen for InsightsView — mirrors analytics layout (Phase 29)
+//  Per-element skeleton components for InsightsView (Phase 30)
+//  Replaces InsightsSkeleton.swift — components are now used independently via .skeletonLoading
 
 import SwiftUI
 
-// MARK: - InsightsSkeleton
-
-/// Full-body skeleton that mirrors the analytics tab layout:
-/// summary header → filter carousel → section label → 3 insight cards.
-struct InsightsSkeleton: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.lg) {
-
-            // MARK: Summary header card
-            InsightsSummaryHeaderSkeleton()
-                .padding(.horizontal, AppSpacing.lg)
-
-            // MARK: Filter carousel
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AppSpacing.sm) {
-                    ForEach(0..<4, id: \.self) { _ in
-                        SkeletonView(width: 70, height: 30, cornerRadius: AppRadius.pill)
-                    }
-                }
-                .padding(.horizontal, AppSpacing.lg)
-            }
-
-            // MARK: Section header label
-            SkeletonView(width: 100, height: 16)
-                .padding(.horizontal, AppSpacing.lg)
-
-            // MARK: Insight cards
-            VStack(spacing: AppSpacing.md) {
-                ForEach(0..<3, id: \.self) { _ in
-                    InsightCardSkeleton()
-                }
-            }
-            .padding(.horizontal, AppSpacing.lg)
-        }
-        .padding(.vertical, AppSpacing.md)
-    }
-}
-
 // MARK: - InsightsSummaryHeaderSkeleton
 
-/// Summary header card: 3 metric columns + health score row.
-private struct InsightsSummaryHeaderSkeleton: View {
+/// Summary header skeleton: 3 metric columns + health score row.
+struct InsightsSummaryHeaderSkeleton: View {
     var body: some View {
         VStack(spacing: AppSpacing.md) {
-            // 3 metric columns (Доходы / Расходы / Чистый поток)
+            // 3 metric columns (Income / Expenses / Net Flow)
             HStack(spacing: AppSpacing.md) {
                 ForEach(0..<3, id: \.self) { _ in
                     VStack(spacing: AppSpacing.xs) {
@@ -74,13 +37,31 @@ private struct InsightsSummaryHeaderSkeleton: View {
         .padding(AppSpacing.md)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(.rect(cornerRadius: AppRadius.md))
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - InsightsFilterCarouselSkeleton
+
+/// Filter carousel skeleton: 4 chip placeholders.
+struct InsightsFilterCarouselSkeleton: View {
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AppSpacing.sm) {
+                ForEach(0..<4, id: \.self) { _ in
+                    SkeletonView(width: 70, height: 30, cornerRadius: AppRadius.pill)
+                }
+            }
+            .padding(.horizontal, AppSpacing.lg)
+        }
+        .accessibilityHidden(true)
     }
 }
 
 // MARK: - InsightCardSkeleton
 
-/// Single insight card: icon circle + 3 text lines + trailing chart rect.
-private struct InsightCardSkeleton: View {
+/// Single insight card skeleton: icon circle + 3 text lines + trailing chart rect.
+struct InsightCardSkeleton: View {
     var body: some View {
         HStack(spacing: AppSpacing.md) {
             // Icon circle
@@ -101,12 +82,18 @@ private struct InsightCardSkeleton: View {
         .padding(AppSpacing.md)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(.rect(cornerRadius: AppRadius.md))
+        .accessibilityHidden(true)
     }
 }
 
 // MARK: - Preview
 
-#Preview {
-    InsightsSkeleton()
-        .background(Color(.systemGroupedBackground))
+#Preview("Insights Skeleton Components") {
+    VStack(spacing: AppSpacing.lg) {
+        InsightsSummaryHeaderSkeleton()
+        InsightsFilterCarouselSkeleton()
+        InsightCardSkeleton()
+    }
+    .padding()
+    .background(Color(.systemGroupedBackground))
 }
