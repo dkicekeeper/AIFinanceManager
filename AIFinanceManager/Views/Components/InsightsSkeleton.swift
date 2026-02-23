@@ -23,7 +23,7 @@ struct InsightsSkeleton: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: AppSpacing.sm) {
                         ForEach(0..<4, id: \.self) { _ in
-                            SkeletonView(width: 70, height: 30, cornerRadius: 15)
+                            SkeletonView(width: 70, height: 30, cornerRadius: AppRadius.pill)
                         }
                     }
                     .padding(.horizontal, AppSpacing.lg)
@@ -57,8 +57,8 @@ private struct InsightsSummaryHeaderSkeleton: View {
             HStack(spacing: AppSpacing.md) {
                 ForEach(0..<3, id: \.self) { _ in
                     VStack(spacing: AppSpacing.xs) {
-                        SkeletonView(height: 11, cornerRadius: 5)
-                        SkeletonView(height: 20, cornerRadius: 7)
+                        SkeletonView(height: 11, cornerRadius: AppRadius.xs)
+                        SkeletonView(height: 20)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -69,9 +69,9 @@ private struct InsightsSummaryHeaderSkeleton: View {
 
             // Health score row
             HStack {
-                SkeletonView(width: 150, height: 13, cornerRadius: 6)
+                SkeletonView(width: 150, height: 13, cornerRadius: AppRadius.compact)
                 Spacer()
-                SkeletonView(width: 64, height: 22, cornerRadius: 11)
+                SkeletonView(width: 64, height: 22, cornerRadius: AppRadius.md)
             }
         }
         .padding(AppSpacing.md)
@@ -87,19 +87,19 @@ private struct InsightCardSkeleton: View {
     var body: some View {
         HStack(spacing: AppSpacing.md) {
             // Icon circle
-            SkeletonView(width: 40, height: 40, cornerRadius: 20)
+            SkeletonView(width: 40, height: 40, cornerRadius: AppRadius.circle)
 
             // Text content
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 SkeletonView(width: 160, height: 13)
-                SkeletonView(width: 100, height: 11, cornerRadius: 5)
+                SkeletonView(width: 100, height: 11, cornerRadius: AppRadius.xs)
                 SkeletonView(width: 120, height: 19, cornerRadius: AppRadius.sm)
             }
 
             Spacer()
 
             // Chart placeholder
-            SkeletonView(width: 72, height: 48, cornerRadius: AppRadius.sm)
+            SkeletonView(width: AppIconSize.budgetRing, height: AppIconSize.xxxl, cornerRadius: AppRadius.sm)
         }
         .padding(AppSpacing.md)
         .background(Color(.secondarySystemGroupedBackground))
