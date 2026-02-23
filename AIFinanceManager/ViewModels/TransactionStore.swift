@@ -237,10 +237,15 @@ final class TransactionStore {
         // Task 11: Build optional date window. nil means "load all" (current behaviour).
         let txDateRange: DateInterval? = windowMonths > 0
             ? {
-                let windowStart = Calendar.current.date(
-                    byAdding: .month, value: -windowMonths, to: Date()
-                ) ?? Date.distantPast
-                return DateInterval(start: windowStart, end: Date())
+                let now = Date()
+                let windowStart: Date
+                if let computed = Calendar.current.date(byAdding: .month, value: -windowMonths, to: now) {
+                    windowStart = computed
+                } else {
+                    assertionFailure("Calendar overflow computing transaction window — windowMonths=\(windowMonths)")
+                    windowStart = Date.distantPast
+                }
+                return DateInterval(start: windowStart, end: now)
             }()
             : nil
 
