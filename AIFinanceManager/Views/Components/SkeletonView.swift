@@ -2,7 +2,7 @@
 //  SkeletonView.swift
 //  AIFinanceManager
 //
-//  Skeleton loading base component with shimmer animation (Phase 29)
+//  Skeleton loading base component with shimmer animation (Phase 29, shimmer fixed Phase 30)
 
 import SwiftUI
 
