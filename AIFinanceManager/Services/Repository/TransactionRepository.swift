@@ -42,38 +42,39 @@ final class TransactionRepository: TransactionRepositoryProtocol {
     func loadTransactions(dateRange: DateInterval? = nil) -> [Transaction] {
         PerformanceProfiler.start("TransactionRepository.loadTransactions")
 
-        let context = stack.viewContext
-        let request = TransactionEntity.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+        // PERFORMANCE Phase 28-B: Use background context — never block the main thread for 19k entities.
+        // performAndWait is synchronous but runs on the context's own serial queue (background thread).
+        let bgContext = stack.newBackgroundContext()
+        var transactions: [Transaction] = []
 
-        // PERFORMANCE: Batch size для ленивой загрузки объектов
-        request.fetchBatchSize = 100
+        bgContext.performAndWait {
+            let request = TransactionEntity.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+            // fetchBatchSize is meaningful here: CoreData loads entity data in batches of 500.
+            request.fetchBatchSize = 500
 
-        // PERFORMANCE: Prefetch relationships чтобы избежать N+1 проблемы
-        request.relationshipKeyPathsForPrefetching = ["account", "targetAccount"]
+            if let dateRange = dateRange {
+                request.predicate = NSPredicate(
+                    format: "date >= %@ AND date <= %@",
+                    dateRange.start as NSDate,
+                    dateRange.end as NSDate
+                )
+            }
 
-        // Apply date range filter if provided
-        if let dateRange = dateRange {
-            request.predicate = NSPredicate(
-                format: "date >= %@ AND date <= %@",
-                dateRange.start as NSDate,
-                dateRange.end as NSDate
-            )
+            do {
+                let entities = try bgContext.fetch(request)
+                transactions = entities.map { $0.toTransaction() }
+            } catch {
+                // leave transactions empty, fallback handled below
+            }
         }
 
-        do {
-            let entities = try context.fetch(request)
-            let transactions = entities.map { $0.toTransaction() }
+        PerformanceProfiler.end("TransactionRepository.loadTransactions")
 
-            PerformanceProfiler.end("TransactionRepository.loadTransactions")
-
-            return transactions
-        } catch {
-            PerformanceProfiler.end("TransactionRepository.loadTransactions")
-
-            // Fallback to UserDefaults if Core Data fails
+        if transactions.isEmpty {
             return userDefaultsRepository.loadTransactions(dateRange: dateRange)
         }
+        return transactions
     }
 
     // MARK: - Save Operations

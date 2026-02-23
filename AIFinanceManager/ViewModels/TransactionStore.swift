@@ -179,35 +179,40 @@ final class TransactionStore {
 
     // MARK: - Data Loading
 
-    /// Load initial data from repository
+    /// Load initial data from repository.
+    /// Phase 28-B: All CoreData fetches run on a background thread via Task.detached.
+    /// MainActor is NOT blocked — it awaits the background result.
     func loadData() async throws {
-        // Load accounts
-        accounts = repository.loadAccounts()
+        // Capture repository before leaving @MainActor — it's a constant (@ObservationIgnored let).
+        let repo = self.repository
 
-        // ✅ Apply stored order from UserDefaults (UI preference)
-        accounts = AccountOrderManager.shared.applyOrders(to: accounts)
+        // Run ALL repository reads on a background thread.
+        // Each repository method uses bgContext.performAndWait internally (Change 1),
+        // so they are safe to call from any thread.
+        let (txs, accs, cats, subs, catLinks, txLinks, series, occurrences) =
+            try await Task.detached(priority: .userInitiated) {
+                let txs        = repo.loadTransactions(dateRange: nil)
+                let accs       = repo.loadAccounts()
+                let cats       = repo.loadCategories()
+                let subs       = repo.loadSubcategories()
+                let catLinks   = repo.loadCategorySubcategoryLinks()
+                let txLinks    = repo.loadTransactionSubcategoryLinks()
+                let series     = repo.loadRecurringSeries()
+                let occ        = repo.loadRecurringOccurrences()
+                return (txs, accs, cats, subs, catLinks, txLinks, series, occ)
+            }.value
 
-        // Load transactions (no date filter - load all)
-        transactions = repository.loadTransactions(dateRange: nil)
-
-        // Load categories
-        categories = repository.loadCategories()
-
-        // ✅ Apply stored order from UserDefaults (UI preference)
-        categories = CategoryOrderManager.shared.applyOrders(to: categories)
-
-
-        // ✨ Phase 10: Load subcategory data
-        subcategories = repository.loadSubcategories()
-        categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
-        transactionSubcategoryLinks = repository.loadTransactionSubcategoryLinks()
-
-        // ✨ Phase 9: Load recurring data
-        recurringSeries = repository.loadRecurringSeries()
-        recurringOccurrences = repository.loadRecurringOccurrences()
+        // Back on @MainActor — single assignment cycle triggers one @Observable update.
+        accounts  = AccountOrderManager.shared.applyOrders(to: accs)
+        transactions = txs
+        categories = CategoryOrderManager.shared.applyOrders(to: cats)
+        subcategories = subs
+        categorySubcategoryLinks = catLinks
+        transactionSubcategoryLinks = txLinks
+        recurringSeries = series
+        recurringOccurrences = occurrences
 
         // Note: baseCurrency will be set via updateBaseCurrency() from AppCoordinator
-
     }
 
     /// Lightweight startup load: only accounts + categories (fast-path for instant UI).

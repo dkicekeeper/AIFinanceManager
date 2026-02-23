@@ -10,7 +10,11 @@ import Foundation
 
 /// Protocol for data repository operations
 /// Provides abstraction layer for data persistence
-protocol DataRepositoryProtocol {
+/// Sendable conformance allows capturing `any DataRepositoryProtocol` in Task.detached
+/// (all concrete implementations use CoreDataStack which is @unchecked Sendable).
+/// @preconcurrency suppresses actor-isolation inference warnings on conformers whose
+/// methods have no explicit isolation annotation (e.g., CoreDataRepository).
+@preconcurrency protocol DataRepositoryProtocol: Sendable {
     // MARK: - Transactions
     
     /// Load transactions with optional date range filter
