@@ -821,9 +821,9 @@ final class TransactionStore {
             updateAggregates(for: event)
         }
 
-        // 5. Persist to repository (unless in import mode)
+        // 5. Phase 28-C: Incremental persist — O(1) per event (no await needed)
         if !isImporting {
-            await persist()
+            persistIncremental(event)
         }
 
         // 6. Phase 17: Debounced sync — coalesces rapid mutations (e.g., batch adds)
@@ -1071,6 +1071,35 @@ final class TransactionStore {
     // TEMPORARILY REMOVED: Balance update methods
     // These will be reimplemented to work with BalanceCoordinator in Phase 7.1
     // See updateBalances(for:) method above for details
+
+    /// Phase 28-C: Incremental persist — O(1) per transaction event.
+    /// Replaces `saveTransactions([all transactions])` which was O(3N) = ~57,000 ops for 19k records.
+    /// - .added: insertTransaction — creates one CoreData entity (O(1))
+    /// - .deleted: no-op — deleteTransactionImmediately already called in invalidateCache(for:)
+    /// - .updated: updateTransactionFields — fetches by PK and updates fields (O(1))
+    /// - .bulkAdded: batchInsertTransactions — NSBatchInsertRequest (O(N) but fast)
+    /// - series events: keep full save (small datasets, infrequent)
+    private func persistIncremental(_ event: TransactionEvent) {
+        switch event {
+        case .added(let tx):
+            repository.insertTransaction(tx)
+
+        case .deleted:
+            // deleteTransactionImmediately already called in invalidateCache(for:) — no-op here
+            break
+
+        case .updated(_, let new):
+            repository.updateTransactionFields(new)
+
+        case .bulkAdded(let txs):
+            repository.batchInsertTransactions(txs)
+
+        case .seriesCreated, .seriesUpdated, .seriesStopped, .seriesDeleted:
+            // Recurring series are small datasets; use the existing full-save path
+            repository.saveRecurringSeries(recurringSeries)
+            repository.saveRecurringOccurrences(recurringOccurrences)
+        }
+    }
 
     /// Persist current state to repository
     /// Phase 1: Persistence for transactions only (accounts handled separately)
