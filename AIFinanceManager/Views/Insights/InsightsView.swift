@@ -33,7 +33,8 @@ struct InsightsView: View {
                 }
             }
             .padding(.vertical, AppSpacing.md)
-            .animation(.spring(response: 0.4), value: insightsViewModel.isLoading)
+            // Note: no outer animation needed — each section's SkeletonLoadingModifier
+            // owns its own spring animation, preventing compositing conflicts.
         }
         .navigationTitle(String(localized: "insights.title"))
         .navigationBarTitleDisplayMode(.inline)
@@ -100,7 +101,7 @@ struct InsightsView: View {
         }
     }
 
-    // MARK: - Per-Section Skeleton Sections
+    // MARK: - Summary Header Section
 
     private var insightsSummaryHeaderSection: some View {
         NavigationLink(destination: InsightsSummaryDetailView(
@@ -129,6 +130,8 @@ struct InsightsView: View {
         }
     }
 
+    // MARK: - Filter Section
+
     private var insightsFilterSection: some View {
         categoryFilterCarousel
             .skeletonLoading(isLoading: insightsViewModel.isLoading) {
@@ -136,9 +139,16 @@ struct InsightsView: View {
             }
     }
 
+    // MARK: - Content Sections
+
     private var insightsSectionsSection: some View {
+        // Note: insightSections is always evaluated (ViewModifier receives content regardless of
+        // isLoading). While loading, filteredInsights is empty, so insightSections resolves to
+        // the "no insights" empty view — this is discarded in favour of the skeleton. Accepted trade-off.
         insightSections
             .skeletonLoading(isLoading: insightsViewModel.isLoading) {
+                // 3 placeholder cards — intentionally fewer than the 8 actual section count
+                // to keep skeleton height compact and avoid jarring layout shift on reveal.
                 VStack(spacing: AppSpacing.md) {
                     ForEach(0..<3, id: \.self) { _ in
                         InsightCardSkeleton()
