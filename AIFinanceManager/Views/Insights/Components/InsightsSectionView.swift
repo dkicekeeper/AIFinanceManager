@@ -35,7 +35,7 @@ struct InsightsSectionView: View {
     var body: some View {
         if !insights.isEmpty {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
-                SectionHeaderView(category.displayName, systemImage: category.icon, style: .insights)
+                SectionHeaderView(category.displayName, style: .insights)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .screenPadding()
 
