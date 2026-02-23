@@ -18,7 +18,6 @@ struct ContentView: View {
     @Environment(TimeFilterManager.self) private var timeFilterManager
 
     // MARK: - State
-    @State private var isInitializing = true
     @State private var selectedAccount: Account?
     @State private var showingTimeFilter = false
     @State private var showingAddAccount = false
@@ -44,17 +43,17 @@ struct ContentView: View {
     // MARK: - Body
     var body: some View {
         NavigationStack {
-            ZStack {
-                mainContent
-                loadingOverlay
-            }
+            mainContent
             .navigationBarTitleDisplayMode(.inline)
             .background { wallpaperBackground }
             .toolbar { toolbarContent }
             .sheet(item: $selectedAccount) { accountSheet(for: $0) }
             .sheet(isPresented: $showingTimeFilter) { timeFilterSheet }
             .sheet(isPresented: $showingAddAccount) { addAccountSheet }
-            .task { await initializeIfNeeded() }
+            .task {
+                await coordinator.initializeFastPath()
+                await coordinator.initialize()
+            }
             .onAppear { setupOnAppear() }
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
                 loadWallpaperOnce()
@@ -76,14 +75,28 @@ struct ContentView: View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 accountsSection
+                    .skeletonLoading(isLoading: !coordinator.isFastPathDone) {
+                        AccountsCarouselSkeleton()
+                    }
                 historyNavigationLink
+                    .skeletonLoading(isLoading: !coordinator.isFullyInitialized) {
+                        SectionCardSkeleton()
+                            .screenPadding()
+                    }
                 subscriptionsNavigationLink
+                    .skeletonLoading(isLoading: !coordinator.isFullyInitialized) {
+                        SectionCardSkeleton()
+                            .screenPadding()
+                    }
                 categoriesSection
+                    .skeletonLoading(isLoading: !coordinator.isFastPathDone) {
+                        SectionCardSkeleton()
+                            .screenPadding()
+                    }
                 errorSection
             }
             .padding(.vertical, AppSpacing.md)
         }
-        // No opacity modifier — content visible immediately
     }
 
     // MARK: - Sections
@@ -168,16 +181,6 @@ struct ContentView: View {
     }
 
     // MARK: - Overlays & Backgrounds
-
-    @ViewBuilder
-    private var loadingOverlay: some View {
-        if isInitializing {
-            ContentViewSkeleton()
-                .background(Color(.systemGroupedBackground))
-                .transition(.opacity.combined(with: .scale(0.98, anchor: .center)))
-                .ignoresSafeArea()
-        }
-    }
 
     @ViewBuilder
     private var wallpaperBackground: some View {
@@ -266,17 +269,6 @@ struct ContentView: View {
 
     // MARK: - Lifecycle Methods
 
-    private func initializeIfNeeded() async {
-        guard isInitializing else { return }
-        // Phase 28-A: Fast path — show UI with account cards immediately (~50ms)
-        await coordinator.initializeFastPath()
-        withAnimation(.easeOut(duration: 0.2)) {
-            isInitializing = false
-        }
-        // Full load continues in background — @Observable updates UI when ready
-        await coordinator.initialize()
-    }
-
     private func setupOnAppear() {
         PerformanceProfiler.start("ContentView.onAppear")
         loadWallpaperOnce()
@@ -344,6 +336,43 @@ struct ContentView: View {
     // MARK: - Observable Pattern
     // With @Observable, SwiftUI automatically tracks dependencies
     // We use onChange modifiers above to trigger updates when specific properties change
+}
+
+// MARK: - Skeleton Components
+
+/// Accounts carousel skeleton: 3 cards (200×120) in horizontal scroll.
+private struct AccountsCarouselSkeleton: View {
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AppSpacing.md) {
+                ForEach(0..<3, id: \.self) { _ in
+                    SkeletonView(height: 120, cornerRadius: AppRadius.md)
+                        .frame(width: 200)
+                }
+            }
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.vertical, AppSpacing.xs)
+        }
+    }
+}
+
+/// Generic section card skeleton: icon circle + 2 text lines.
+/// Used for TransactionsSummaryCard, SubscriptionsCard, and QuickAdd skeletons.
+private struct SectionCardSkeleton: View {
+    var body: some View {
+        HStack(spacing: AppSpacing.md) {
+            SkeletonView(width: 36, height: 36, cornerRadius: AppRadius.circle)
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                SkeletonView(width: 140, height: 14)
+                SkeletonView(width: 100, height: 12, cornerRadius: AppRadius.xs)
+            }
+            Spacer()
+        }
+        .padding(AppSpacing.md)
+        .frame(maxWidth: .infinity, minHeight: 72)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(.rect(cornerRadius: AppRadius.md))
+    }
 }
 
 // MARK: - Preview
