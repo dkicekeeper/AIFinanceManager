@@ -45,6 +45,12 @@ class AppCoordinator {
     /// Phase 1-4: Foundation completed - Store, Engine, Queue, Cache, Coordinator
     @ObservationIgnored let balanceCoordinator: BalanceCoordinator
 
+    // MARK: - Pagination (Task 9)
+
+    /// Read-optimised paginated view over TransactionEntity via NSFetchedResultsController.
+    /// TransactionStore remains SSOT for mutations; this controller is presentation-only.
+    @ObservationIgnored private(set) var transactionPaginationController: TransactionPaginationController
+
     // MARK: - Private Properties
 
     private var isInitialized = false
@@ -58,6 +64,9 @@ class AppCoordinator {
 
     init(repository: DataRepositoryProtocol? = nil) {
         self.repository = repository ?? CoreDataRepository()
+
+        // Task 9: Pagination controller — uses CoreDataStack.shared viewContext for FRC.
+        self.transactionPaginationController = TransactionPaginationController(stack: CoreDataStack.shared)
 
         // Initialize ViewModels in dependency order
         // 1. Accounts (no dependencies)
@@ -249,6 +258,9 @@ class AppCoordinator {
             transactions: transactionStore.transactions
         )
         isFullyInitialized = true
+
+        // Task 9: Start FRC after full data is loaded so the initial fetch sees all transactions.
+        transactionPaginationController.setup()
 
         // 4. Generate recurring transactions in background (non-blocking)
         Task(priority: .background) { [weak self] in
