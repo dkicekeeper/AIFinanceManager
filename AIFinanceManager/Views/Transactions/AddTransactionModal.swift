@@ -16,6 +16,7 @@ struct AddTransactionModal: View {
 
     // MARK: - Environment
 
+    @Environment(AppCoordinator.self) private var appCoordinator
     @Environment(TimeFilterManager.self) private var timeFilterManager
 
     // MARK: - State
@@ -209,6 +210,7 @@ struct AddTransactionModal: View {
                 transactionsViewModel: coordinator.transactionsViewModel,
                 accountsViewModel: coordinator.accountsViewModel,
                 categoriesViewModel: coordinator.categoriesViewModel,
+                paginationController: appCoordinator.transactionPaginationController,
                 initialCategory: coordinator.formData.category
             )
             .environment(timeFilterManager)

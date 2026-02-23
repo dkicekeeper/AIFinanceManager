@@ -169,6 +169,7 @@ struct ContentView: View {
             transactionsViewModel: viewModel,
             accountsViewModel: accountsViewModel,
             categoriesViewModel: categoriesViewModel,
+            paginationController: coordinator.transactionPaginationController,
             initialCategory: nil
         )
         .environment(timeFilterManager)

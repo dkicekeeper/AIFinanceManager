@@ -12,6 +12,7 @@ struct DepositDetailView: View {
     let transactionsViewModel: TransactionsViewModel
     let balanceCoordinator: BalanceCoordinator
     @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
+    @Environment(AppCoordinator.self) private var appCoordinator
     let accountId: String
     @Environment(TimeFilterManager.self) private var timeFilterManager
     @State private var showingEditView = false
@@ -106,6 +107,7 @@ struct DepositDetailView: View {
                         transactionsViewModel: transactionsViewModel,
                         accountsViewModel: depositsViewModel.accountsViewModel,
                         categoriesViewModel: CategoriesViewModel(repository: depositsViewModel.repository),
+                        paginationController: appCoordinator.transactionPaginationController,
                         initialAccountId: account.id
                     )
                         .environment(timeFilterManager)

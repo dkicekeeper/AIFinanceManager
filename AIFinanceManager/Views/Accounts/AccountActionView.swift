@@ -11,6 +11,7 @@ struct AccountActionView: View {
     let transactionsViewModel: TransactionsViewModel
     let accountsViewModel: AccountsViewModel
     @Environment(TransactionStore.self) private var transactionStore // Phase 7.4: TransactionStore integration
+    @Environment(AppCoordinator.self) private var appCoordinator
     let account: Account
     @Environment(\.dismiss) var dismiss
     @Environment(TimeFilterManager.self) private var timeFilterManager
@@ -135,6 +136,7 @@ struct AccountActionView: View {
                         transactionsViewModel: transactionsViewModel,
                         accountsViewModel: accountsViewModel,
                         categoriesViewModel: CategoriesViewModel(repository: transactionsViewModel.repository),
+                        paginationController: appCoordinator.transactionPaginationController,
                         initialAccountId: account.id
                     )
                         .environment(timeFilterManager)

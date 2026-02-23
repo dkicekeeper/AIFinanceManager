@@ -4,6 +4,7 @@
 //
 //  Created on 2024
 //  Optimized on 2026-01-27 (Phase 2: Decomposition)
+//  Task 10 (2026-02-23): Wired to TransactionPaginationController (FRC-based)
 //
 
 import SwiftUI
@@ -14,12 +15,13 @@ struct HistoryView: View {
     let transactionsViewModel: TransactionsViewModel
     let accountsViewModel: AccountsViewModel
     let categoriesViewModel: CategoriesViewModel
+    /// FRC-based pagination controller (read-only, set from AppCoordinator).
+    let paginationController: TransactionPaginationController
     @Environment(TimeFilterManager.self) private var timeFilterManager
 
     // MARK: - Managers
 
     @State private var filterCoordinator = HistoryFilterCoordinator()
-    @State private var paginationManager = TransactionPaginationManager()
     @State private var expensesCache = DateSectionExpensesCache()
 
     // MARK: - State
@@ -47,12 +49,14 @@ struct HistoryView: View {
         transactionsViewModel: TransactionsViewModel,
         accountsViewModel: AccountsViewModel,
         categoriesViewModel: CategoriesViewModel,
+        paginationController: TransactionPaginationController,
         initialCategory: String? = nil,
         initialAccountId: String? = nil
     ) {
         self.transactionsViewModel = transactionsViewModel
         self.accountsViewModel = accountsViewModel
         self.categoriesViewModel = categoriesViewModel
+        self.paginationController = paginationController
         self.initialCategory = initialCategory
         self.initialAccountId = initialAccountId
     }
@@ -61,7 +65,7 @@ struct HistoryView: View {
 
     var body: some View {
         HistoryTransactionsList(
-            paginationManager: paginationManager,
+            paginationController: paginationController,
             expensesCache: expensesCache,
             transactionsViewModel: transactionsViewModel,
             categoriesViewModel: categoriesViewModel,
@@ -103,33 +107,27 @@ struct HistoryView: View {
         }
         .onChange(of: timeFilterManager.currentFilter) { _, _ in
             HapticManager.selection()
-            updateTransactions()
+            applyFiltersToController()
         }
         .onChange(of: filterCoordinator.selectedAccountFilter) { _, newValue in
             filterCoordinator.applyAccountFilter(newValue)
-            updateTransactions()
+            applyFiltersToController()
         }
         .onChange(of: filterCoordinator.searchText) { _, newValue in
             filterCoordinator.applySearch(newValue)
         }
         .onChange(of: filterCoordinator.debouncedSearchText) { _, _ in
-            updateTransactions()
+            applyFiltersToController()
         }
         .onChange(of: transactionsViewModel.accounts) { _, _ in
-            updateTransactions()
+            applyFiltersToController()
         }
         .onChange(of: transactionsViewModel.selectedCategories) { _, _ in
             filterCoordinator.applyCategoryFilterChange()
-            updateTransactions()
+            applyFiltersToController()
         }
         .onChange(of: transactionsViewModel.allTransactions) { _, _ in
             expensesCache.invalidate()
-            // Debounce update to avoid excessive recalculations during rapid changes
-            // (e.g., when deleting/updating multiple transactions)
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms delay
-                updateTransactions()
-            }
         }
         .onChange(of: transactionsViewModel.appSettings.baseCurrency) { _, _ in
             expensesCache.invalidate()
@@ -167,10 +165,7 @@ struct HistoryView: View {
     }
 
     private func handleOnAppear() {
-        // OLD profiler
         PerformanceProfiler.start("HistoryView.onAppear")
-
-        // NEW detailed profiler
         PerformanceLogger.HistoryMetrics.logOnAppear(
             transactionCount: transactionsViewModel.allTransactions.count
         )
@@ -181,18 +176,19 @@ struct HistoryView: View {
         // Sync debounced search with current search
         filterCoordinator.debouncedSearchText = filterCoordinator.searchText
 
-        // Load transactions
-        updateTransactions()
+        // Apply current filters to the FRC controller
+        applyFiltersToController()
 
         PerformanceProfiler.end("HistoryView.onAppear")
         PerformanceLogger.shared.end("HistoryView.onAppear")
     }
 
-    private func updateTransactions() {
-        // OLD profiler
-        PerformanceProfiler.start("HistoryView.updateTransactions")
+    /// Forwards current filter state to the FRC-based pagination controller.
+    /// The FRC handles predicate updates and triggers `controllerDidChangeContent`
+    /// which rebuilds `sections` — no manual grouping/sorting needed.
+    private func applyFiltersToController() {
+        PerformanceProfiler.start("HistoryView.applyFiltersToController")
 
-        // NEW detailed profiler
         let hasFilters = filterCoordinator.selectedAccountFilter != nil ||
                         !filterCoordinator.debouncedSearchText.isEmpty ||
                         transactionsViewModel.selectedCategories != nil
@@ -201,53 +197,38 @@ struct HistoryView: View {
             hasFilters: hasFilters
         )
 
-        // Filter transactions
-        PerformanceLogger.HistoryMetrics.logFilterTransactions(
-            inputCount: transactionsViewModel.allTransactions.count,
-            outputCount: 0, // will be updated after filtering
-            accountFilter: filterCoordinator.selectedAccountFilter != nil,
-            searchText: filterCoordinator.debouncedSearchText
-        )
+        // Forward search query
+        paginationController.searchQuery = filterCoordinator.debouncedSearchText
 
-        let filtered = transactionsViewModel.filterTransactionsForHistory(
-            timeFilterManager: timeFilterManager,
-            accountId: filterCoordinator.selectedAccountFilter,
-            searchText: filterCoordinator.debouncedSearchText
-        )
+        // Forward account filter
+        paginationController.selectedAccountId = filterCoordinator.selectedAccountFilter
 
-        PerformanceLogger.shared.end("TransactionFilter.filterForHistory", additionalMetadata: [
-            "outputCount": filtered.count
-        ])
+        // Forward category filter (first element from the set, matching FRC predicate)
+        paginationController.selectedCategoryId = transactionsViewModel.selectedCategories?.first
 
-        // Group and sort
-        PerformanceLogger.HistoryMetrics.logGroupTransactions(
-            transactionCount: filtered.count,
-            sectionCount: 0 // will be updated after grouping
-        )
+        // Forward time filter as a date range
+        let timeFilter = timeFilterManager.currentFilter
+        let range = timeFilter.dateRange()
+        // allTime maps to a sentinel range; avoid sending the 100-year sentinel range
+        // because it is functionally equivalent to no predicate (nil).
+        if timeFilter.preset == .allTime {
+            paginationController.dateRange = nil
+        } else {
+            paginationController.dateRange = (start: range.start, end: range.end)
+        }
 
-        let result = transactionsViewModel.groupAndSortTransactionsByDate(filtered)
-
-        PerformanceLogger.shared.end("TransactionGrouping.groupByDate", additionalMetadata: [
-            "sectionCount": result.sortedKeys.count
-        ])
-
-        // Initialize pagination with new data (single source of truth)
-        PerformanceLogger.HistoryMetrics.logPagination(
-            totalSections: result.sortedKeys.count,
-            visibleSections: min(10, result.sortedKeys.count)
-        )
-
-        paginationManager.initialize(grouped: result.grouped, sortedKeys: result.sortedKeys)
-
-        PerformanceLogger.shared.end("Pagination.initialize")
-
-        PerformanceProfiler.end("HistoryView.updateTransactions")
-        PerformanceLogger.shared.end("HistoryView.updateTransactions")
+        PerformanceProfiler.end("HistoryView.applyFiltersToController")
+        PerformanceLogger.shared.end("HistoryView.applyFiltersToController")
     }
 
     private func resetFilters() {
         filterCoordinator.reset()
         transactionsViewModel.selectedCategories = nil
+        // Clear all FRC filters so the controller is clean for next appearance
+        paginationController.searchQuery = ""
+        paginationController.selectedAccountId = nil
+        paginationController.selectedCategoryId = nil
+        paginationController.dateRange = nil
     }
 }
 
@@ -259,7 +240,8 @@ struct HistoryView: View {
         HistoryView(
             transactionsViewModel: coordinator.transactionsViewModel,
             accountsViewModel: coordinator.accountsViewModel,
-            categoriesViewModel: coordinator.categoriesViewModel
+            categoriesViewModel: coordinator.categoriesViewModel,
+            paginationController: coordinator.transactionPaginationController
         )
         .environment(TimeFilterManager())
     }
