@@ -10,7 +10,7 @@ import SwiftUI
 
 /// Overlays a left-to-right shimmer effect on any view — Liquid Glass style.
 struct SkeletonShimmerModifier: ViewModifier {
-    @State private var phase: CGFloat = -1.0
+    @State private var phase: CGFloat = -0.5
 
     func body(content: Content) -> some View {
         content
@@ -18,20 +18,19 @@ struct SkeletonShimmerModifier: ViewModifier {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .white.opacity(0.3), location: 0.5),
+                        .init(color: .white.opacity(0.5), location: 0.5),
                         .init(color: .clear, location: 1),
                     ],
                     startPoint: UnitPoint(x: phase, y: 0.5),
                     endPoint: UnitPoint(x: phase + 1, y: 0.5)
                 )
-                .blendMode(.screen)
             }
             .clipped()
             .onAppear {
                 withAnimation(
                     .easeInOut(duration: 1.4).repeatForever(autoreverses: false)
                 ) {
-                    phase = 2.0
+                    phase = 1.5
                 }
             }
     }
