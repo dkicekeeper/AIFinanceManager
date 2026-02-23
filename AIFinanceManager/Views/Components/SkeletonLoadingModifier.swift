@@ -33,7 +33,7 @@ extension View {
     /// Transitions smoothly to real content once loading completes.
     func skeletonLoading<S: View>(
         isLoading: Bool,
-        @ViewBuilder skeleton: () -> S
+        @ViewBuilder skeleton: @escaping () -> S
     ) -> some View {
         modifier(SkeletonLoadingModifier(isLoading: isLoading, skeleton: skeleton))
     }
