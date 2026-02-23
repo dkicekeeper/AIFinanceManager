@@ -51,6 +51,7 @@ final class AccountRepository: AccountRepositoryProtocol {
         bgContext.performAndWait {
             let request = AccountEntity.fetchRequest()
             request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
+            request.fetchBatchSize = 50
 
             do {
                 let entities = try bgContext.fetch(request)

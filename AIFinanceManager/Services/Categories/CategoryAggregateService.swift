@@ -117,6 +117,7 @@ final class CategoryAggregateService: @unchecked Sendable {
             Int16(year), Int16(month), currency
         )
         request.sortDescriptors = [NSSortDescriptor(key: "totalAmount", ascending: false)]
+        request.fetchBatchSize = 200
         do {
             let entities = try context.fetch(request)
             return entities.map { entity in
@@ -145,6 +146,7 @@ final class CategoryAggregateService: @unchecked Sendable {
             currency
         )
         request.sortDescriptors = [NSSortDescriptor(key: "totalAmount", ascending: false)]
+        request.fetchBatchSize = 200
         do {
             let entities = try context.fetch(request)
             return entities.map { entity in
@@ -204,6 +206,7 @@ final class CategoryAggregateService: @unchecked Sendable {
         let request = CategoryAggregateEntity.fetchRequest()
         request.predicate = predicate
         request.sortDescriptors = [NSSortDescriptor(key: "categoryName", ascending: true)]
+        request.fetchBatchSize = 200
 
         do {
             let entities = try context.fetch(request)

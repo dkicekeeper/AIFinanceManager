@@ -62,6 +62,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         bgContext.performAndWait {
             let request = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
             request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+            request.fetchBatchSize = 100
 
             do {
                 let entities = try bgContext.fetch(request)
@@ -180,6 +181,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         bgContext.performAndWait {
             let request = NSFetchRequest<SubcategoryEntity>(entityName: "SubcategoryEntity")
             request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+            request.fetchBatchSize = 200
 
             do {
                 let entities = try bgContext.fetch(request)
@@ -246,6 +248,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         bgContext.performAndWait {
             let request = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
             request.sortDescriptors = [NSSortDescriptor(key: "categoryId", ascending: true)]
+            request.fetchBatchSize = 200
 
             do {
                 let entities = try bgContext.fetch(request)
@@ -314,6 +317,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         bgContext.performAndWait {
             let request = NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
             request.sortDescriptors = [NSSortDescriptor(key: "transactionId", ascending: true)]
+            request.fetchBatchSize = 500
 
             do {
                 let entities = try bgContext.fetch(request)
@@ -399,6 +403,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         request.sortDescriptors = [
             NSSortDescriptor(key: "lastUpdated", ascending: false)
         ]
+        request.fetchBatchSize = 200
 
         if let limit = limit {
             request.fetchLimit = limit

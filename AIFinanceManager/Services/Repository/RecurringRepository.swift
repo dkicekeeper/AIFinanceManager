@@ -47,6 +47,7 @@ final class RecurringRepository: RecurringRepositoryProtocol {
         bgContext.performAndWait {
             let request = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
             request.sortDescriptors = [NSSortDescriptor(key: "startDate", ascending: false)]
+            request.fetchBatchSize = 100
 
             do {
                 let entities = try bgContext.fetch(request)
@@ -157,6 +158,7 @@ final class RecurringRepository: RecurringRepositoryProtocol {
         bgContext.performAndWait {
             let request = NSFetchRequest<RecurringOccurrenceEntity>(entityName: "RecurringOccurrenceEntity")
             request.sortDescriptors = [NSSortDescriptor(key: "occurrenceDate", ascending: false)]
+            request.fetchBatchSize = 200
 
             do {
                 let entities = try bgContext.fetch(request)

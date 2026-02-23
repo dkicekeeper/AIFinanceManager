@@ -176,6 +176,7 @@ final class MonthlyAggregateService: @unchecked Sendable {
             NSSortDescriptor(key: "year",  ascending: true),
             NSSortDescriptor(key: "month", ascending: true)
         ]
+        request.fetchBatchSize = 200
 
         do {
             let entities = try context.fetch(request)
