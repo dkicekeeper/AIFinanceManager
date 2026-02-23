@@ -24,39 +24,12 @@ struct InsightsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: AppSpacing.xl) {
-                if insightsViewModel.isLoading {
-                    loadingView
-                } else if !insightsViewModel.hasData {
+                if !insightsViewModel.isLoading && !insightsViewModel.hasData {
                     emptyState
                 } else {
-                    // Summary header — tappable, navigates to full period breakdown
-                    // P7: pass PeriodDataPoint directly — no per-render .map { asMonthlyDataPoint() }
-                    NavigationLink(destination: InsightsSummaryDetailView(
-                        totalIncome: insightsViewModel.totalIncome,
-                        totalExpenses: insightsViewModel.totalExpenses,
-                        netFlow: insightsViewModel.netFlow,
-                        currency: insightsViewModel.baseCurrency,
-                        periodDataPoints: insightsViewModel.periodDataPoints,
-                        granularity: insightsViewModel.currentGranularity
-                    )) {
-                        InsightsSummaryHeader(
-                            totalIncome: insightsViewModel.totalIncome,
-                            totalExpenses: insightsViewModel.totalExpenses,
-                            netFlow: insightsViewModel.netFlow,
-                            currency: insightsViewModel.baseCurrency,
-                            periodDataPoints: insightsViewModel.periodDataPoints,
-                            healthScore: insightsViewModel.healthScore
-                        )
-                        .screenPadding()
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-
-                    // Category filter
-                    categoryFilterCarousel
-
-                    // Insight sections
-                    insightSections
+                    insightsSummaryHeaderSection
+                    insightsFilterSection
+                    insightsSectionsSection
                 }
             }
             .padding(.vertical, AppSpacing.md)
@@ -125,6 +98,54 @@ struct InsightsView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Per-Section Skeleton Sections
+
+    private var insightsSummaryHeaderSection: some View {
+        NavigationLink(destination: InsightsSummaryDetailView(
+            totalIncome: insightsViewModel.totalIncome,
+            totalExpenses: insightsViewModel.totalExpenses,
+            netFlow: insightsViewModel.netFlow,
+            currency: insightsViewModel.baseCurrency,
+            periodDataPoints: insightsViewModel.periodDataPoints,
+            granularity: insightsViewModel.currentGranularity
+        )) {
+            InsightsSummaryHeader(
+                totalIncome: insightsViewModel.totalIncome,
+                totalExpenses: insightsViewModel.totalExpenses,
+                netFlow: insightsViewModel.netFlow,
+                currency: insightsViewModel.baseCurrency,
+                periodDataPoints: insightsViewModel.periodDataPoints,
+                healthScore: insightsViewModel.healthScore
+            )
+            .screenPadding()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .skeletonLoading(isLoading: insightsViewModel.isLoading) {
+            InsightsSummaryHeaderSkeleton()
+                .padding(.horizontal, AppSpacing.lg)
+        }
+    }
+
+    private var insightsFilterSection: some View {
+        categoryFilterCarousel
+            .skeletonLoading(isLoading: insightsViewModel.isLoading) {
+                InsightsFilterCarouselSkeleton()
+            }
+    }
+
+    private var insightsSectionsSection: some View {
+        insightSections
+            .skeletonLoading(isLoading: insightsViewModel.isLoading) {
+                VStack(spacing: AppSpacing.md) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        InsightCardSkeleton()
+                    }
+                }
+                .padding(.horizontal, AppSpacing.lg)
+            }
     }
 
     // MARK: - Insight Sections
@@ -232,13 +253,6 @@ struct InsightsView: View {
             }
             .screenPadding()
         }
-    }
-
-    // MARK: - Loading View
-
-    private var loadingView: some View {
-        InsightsSkeleton()
-            .transition(.opacity.combined(with: .scale(0.98, anchor: .center)))
     }
 
     // MARK: - Empty State
