@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreData
+import os
 
 /// Protocol for transaction repository operations
 protocol TransactionRepositoryProtocol {
@@ -28,6 +29,8 @@ protocol TransactionRepositoryProtocol {
 
 /// CoreData implementation of TransactionRepositoryProtocol
 final class TransactionRepository: TransactionRepositoryProtocol {
+
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "TransactionRepository")
 
     private let stack: CoreDataStack
     private let saveCoordinator: CoreDataSaveCoordinator
@@ -286,7 +289,11 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 entity.recurringSeries = try? bgContext.fetch(req).first
             }
 
-            try? bgContext.save()
+            do {
+                try bgContext.save()
+            } catch {
+                Self.logger.error("⚠️ [TransactionRepository] insertTransaction save failed: \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -312,8 +319,23 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             entity.targetAccountId  = transaction.targetAccountId
             entity.accountName      = transaction.accountName
             entity.targetAccountName = transaction.targetAccountName
+            entity.createdAt        = Date(timeIntervalSince1970: transaction.createdAt)
 
-            try? bgContext.save()
+            // Sync recurringSeries relationship
+            if let seriesId = transaction.recurringSeriesId, !seriesId.isEmpty {
+                let seriesReq = RecurringSeriesEntity.fetchRequest()
+                seriesReq.predicate = NSPredicate(format: "id == %@", seriesId)
+                seriesReq.fetchLimit = 1
+                entity.recurringSeries = (try? bgContext.fetch(seriesReq))?.first
+            } else {
+                entity.recurringSeries = nil
+            }
+
+            do {
+                try bgContext.save()
+            } catch {
+                Self.logger.error("⚠️ [TransactionRepository] updateTransactionFields save failed: \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -347,7 +369,15 @@ final class TransactionRepository: TransactionRepositoryProtocol {
 
             let insertRequest = NSBatchInsertRequest(entityName: "TransactionEntity", objects: dicts)
             insertRequest.resultType = .objectIDs  // needed for viewContext merge in Task 7
-            _ = try? bgContext.execute(insertRequest)
+
+            // NOTE: recurringSeries relationships are intentionally omitted here. NSBatchInsertRequest
+            // bypasses NSManagedObject lifecycle and cannot resolve managed-object relationships.
+            // toTransaction() uses the recurringSeriesId String column as a fallback, which is sufficient.
+            do {
+                _ = try bgContext.execute(insertRequest)
+            } catch {
+                Self.logger.error("⚠️ [TransactionRepository] batchInsertTransactions failed: \(error.localizedDescription, privacy: .public)")
+            }
 
             // NOTE: viewContext merge is handled by the caller (Task 7 wires this up)
         }
