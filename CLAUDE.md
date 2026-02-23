@@ -133,6 +133,17 @@ AIFinanceManager/
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
 
+**Phase 30** (2026-02-23): Per-Element Skeleton Loading
+- **Root cause fixed**: Phase 29 skeleton had 3 bugs — skeleton had no opaque background (transparent), shimmer dismissed after ~50ms (fast-path < shimmer duration), `.blendMode(.screen)` on light gray imperceptible (~0.03 luminance delta)
+- **SkeletonLoadingModifier**: New `Views/Components/SkeletonLoadingModifier.swift` — `View.skeletonLoading(isLoading:skeleton:)` universal per-element modifier. `Group { if isLoading { skeleton() } else { content } }` with `.spring(response: 0.4)` animation per section
+- **SkeletonView shimmer fixes**: phase `-1.0→-0.5` (immediate visibility on appear), end `2.0→1.5`, opacity `0.3→0.5`, removed `.blendMode(.screen)`
+- **AppCoordinator**: `private(set) var isFastPathDone = false` (set after `initializeFastPath`) + `private(set) var isFullyInitialized = false` (set after balance registration in `initialize`). Observable outputs for UI binding — separate from internal `isFastPathStarted`/`isInitialized` reentrancy guards
+- **ContentView**: Removed `isInitializing`/`loadingOverlay`/`initializeIfNeeded`. 4 sections use `.skeletonLoading`: `accountsSection`(`!isFastPathDone`) + `historyNavigationLink`(`!isFullyInitialized`) + `subscriptionsNavigationLink`(`!isFullyInitialized`) + `categoriesSection`(`!isFastPathDone`). Private `AccountsCarouselSkeleton` + `SectionCardSkeleton` structs. Both skeleton structs have `.accessibilityHidden(true)`.
+- **ContentViewSkeleton.swift**: Deleted (full-screen approach replaced)
+- **InsightsView**: Restructured `if isLoading { loadingView } / else if !hasData { emptyState } / else { content }` → `if !isLoading && !hasData { emptyState } else { insightsSummaryHeaderSection + insightsFilterSection + insightsSectionsSection }`. Each section uses `.skeletonLoading(isLoading: insightsViewModel.isLoading)`. Removed redundant outer `.animation` (SkeletonLoadingModifier owns animation per section).
+- **InsightsSkeleton.swift → InsightsSkeletonComponents.swift**: Renamed; `InsightsSkeleton` full-screen struct deleted; `InsightsSummaryHeaderSkeleton`/`InsightCardSkeleton` made internal; new `InsightsFilterCarouselSkeleton` extracted; all three have `.accessibilityHidden(true)`
+- Design docs: `docs/plans/2026-02-23-per-element-skeleton-design.md`, `docs/plans/2026-02-23-per-element-skeleton-implementation.md`
+
 **Phase 29** (2026-02-23): Skeleton Loading — ContentView & InsightsView
 - **SkeletonShimmerModifier**: `ViewModifier` with `@State phase: CGFloat` animation — `LinearGradient` blick sweeps left-to-right in 1.4s, `easeInOut`, `repeatForever`. `.blendMode(.screen)` for Liquid Glass character. `.clipped()` prevents overdraw.
 - **SkeletonView**: Base block — `RoundedRectangle` with `AppColors.secondaryBackground` + `.skeletonShimmer()`. `width: nil` fills available space via `maxWidth: .infinity`. Default `cornerRadius: AppRadius.sm`.
@@ -1019,6 +1030,6 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 ---
 
 **Last Updated**: 2026-02-23
-**Project Status**: Active development - Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates, Progressive Insights loading
+**Project Status**: Active development - Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates, Progressive Insights loading
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`
