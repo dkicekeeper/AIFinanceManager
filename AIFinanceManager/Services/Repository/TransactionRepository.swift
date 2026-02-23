@@ -374,12 +374,16 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             // bypasses NSManagedObject lifecycle and cannot resolve managed-object relationships.
             // toTransaction() uses the recurringSeriesId String column as a fallback, which is sufficient.
             do {
-                _ = try bgContext.execute(insertRequest)
+                let result = try bgContext.execute(insertRequest) as? NSBatchInsertResult
+                // Merge inserted object IDs into viewContext so @Observable picks them up.
+                // Must be dispatched to main queue because viewContext is main-thread-only.
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.stack.mergeBatchInsertResult(result)
+                }
             } catch {
                 Self.logger.error("⚠️ [TransactionRepository] batchInsertTransactions failed: \(error.localizedDescription, privacy: .public)")
             }
-
-            // NOTE: viewContext merge is handled by the caller (Task 7 wires this up)
         }
     }
 

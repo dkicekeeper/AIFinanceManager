@@ -171,15 +171,26 @@ final class CoreDataStack: @unchecked Sendable {
     /// - Parameter batchUpdate: The batch update request
     func batchUpdate(_ batchUpdate: NSBatchUpdateRequest) throws {
         batchUpdate.resultType = .updatedObjectIDsResultType
-        
+
         let result = try viewContext.execute(batchUpdate) as? NSBatchUpdateResult
         let objectIDArray = result?.result as? [NSManagedObjectID] ?? []
-        
+
         // Merge changes to view context
         let changes = [NSUpdatedObjectsKey: objectIDArray]
         NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
     }
-    
+
+    /// Merge inserted object IDs from an NSBatchInsertRequest result into viewContext.
+    /// Must be called after executing NSBatchInsertRequest to keep viewContext in sync.
+    /// NSBatchInsertRequest writes directly to SQLite and bypasses the managed object
+    /// lifecycle, so automaticallyMergesChangesFromParent does NOT propagate the changes.
+    func mergeBatchInsertResult(_ result: NSBatchInsertResult?) {
+        guard let objectIDs = result?.result as? [NSManagedObjectID],
+              !objectIDs.isEmpty else { return }
+        let changes = [NSInsertedObjectIDsKey: objectIDs]
+        NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
+    }
+
     // MARK: - Reset
     
     /// Delete all data from persistent store (use for testing/debugging)
