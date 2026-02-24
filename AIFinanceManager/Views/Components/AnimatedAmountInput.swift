@@ -30,12 +30,10 @@ struct AnimatedAmountInput: View {
 
     @FocusState private var isFocused: Bool
     @State private var displayAmount: String = "0"
-    @State private var previousRawAmount: String = "0"
-    @State private var animatedCharacters: [AnimatedChar] = []
     @State private var currentFontSize: CGFloat = 48
     @State private var containerWidth: CGFloat = 0
 
-    private let formatter: NumberFormatter = {
+    private static let formatter: NumberFormatter = {
         let f = NumberFormatter()
         f.numberStyle = .decimal
         f.minimumFractionDigits = 0
@@ -46,34 +44,45 @@ struct AnimatedAmountInput: View {
         return f
     }()
 
+    private static let largeNumberFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.groupingSeparator = " "
+        f.usesGroupingSeparator = true
+        f.maximumFractionDigits = 2
+        return f
+    }()
+
+    private static let measureFont: UIFont =
+        UIFont(name: "Inter", size: 56) ?? UIFont.systemFont(ofSize: 56, weight: .bold)
+    private static let measureAttributes: [NSAttributedString.Key: Any] = [.font: measureFont]
+
     var body: some View {
         VStack(spacing: 0) {
-            // Animated display + blinking cursor
-            HStack(spacing: 0) {
-                Spacer()
-                HStack(spacing: spacingForFontSize(currentFontSize)) {
-                    ForEach(animatedCharacters) { charState in
-                        AnimatedDigit(
-                            character: charState.character,
-                            isNew: charState.isNew,
-                            fontSize: currentFontSize,
-                            color: isPlaceholder ? AppColors.textTertiary : color
-                        )
-                        .id("\(charState.id)-\(charState.character)")
-                    }
-                    if isFocused {
-                        BlinkingCursor(height: cursorHeight)
-                    }
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.3)
-                Spacer()
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
+            // Amount display — tap to focus
+            Button {
                 HapticManager.light()
                 isFocused = true
+            } label: {
+                HStack(spacing: 0) {
+                    Spacer()
+                    HStack(spacing: AppSpacing.xs) {
+                        Text(displayAmount)
+                            .font(.custom("Inter", size: currentFontSize).weight(.bold))
+                            .contentTransition(.numericText())
+                            .foregroundStyle(isPlaceholder ? AppColors.textTertiary : color)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: displayAmount)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.3)
+
+                        if isFocused {
+                            BlinkingCursor(height: cursorHeight)
+                        }
+                    }
+                    Spacer()
+                }
             }
+            .buttonStyle(.plain)
 
             // Hidden TextField — actual input source
             TextField("", text: $amount)
@@ -85,17 +94,12 @@ struct AnimatedAmountInput: View {
                     updateDisplayAmount(newValue)
                 }
         }
-        .background(
-            GeometryReader { geometry in
-                Color.clear
-                    .preference(key: ContainerWidthKey.self, value: geometry.size.width)
-            }
-        )
-        .onPreferenceChange(ContainerWidthKey.self) { width in
-            if containerWidth != width {
-                containerWidth = width
-                updateFontSize(for: width)
-            }
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            guard containerWidth != newWidth else { return }
+            containerWidth = newWidth
+            updateFontSize(for: newWidth)
         }
         .onChange(of: displayAmount) { _, _ in
             if containerWidth > 0 {
@@ -105,10 +109,6 @@ struct AnimatedAmountInput: View {
         .onAppear {
             currentFontSize = baseFontSize
             updateDisplayAmount(amount)
-            previousRawAmount = cleanedRaw(amount)
-            animatedCharacters = Array(displayAmount).map { char in
-                AnimatedChar(id: UUID(), character: char, isNew: false)
-            }
         }
     }
 
@@ -142,7 +142,7 @@ struct AnimatedAmountInput: View {
             let number = NSDecimalNumber(decimal: decimal)
             if number.compare(NSDecimalNumber.zero) == .orderedSame {
                 newDisplay = "0"
-            } else if let formatted = formatter.string(from: number) {
+            } else if let formatted = Self.formatter.string(from: number) {
                 newDisplay = formatted
             } else {
                 newDisplay = formatLargeNumber(decimal)
@@ -151,18 +151,11 @@ struct AnimatedAmountInput: View {
             newDisplay = cleaned
         }
 
-        updateAnimatedCharacters(newDisplay: newDisplay, rawAmount: cleaned)
         displayAmount = newDisplay
     }
 
     private func formatLargeNumber(_ decimal: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.groupingSeparator = " "
-        f.usesGroupingSeparator = true
-        f.maximumFractionDigits = 2
-        if let s = f.string(from: NSDecimalNumber(decimal: decimal)) { return s }
-
+        if let s = Self.largeNumberFormatter.string(from: NSDecimalNumber(decimal: decimal)) { return s }
         let string = String(describing: decimal)
         guard string.contains(".") else { return groupDigits(string) }
         let parts = string.components(separatedBy: ".")
@@ -180,10 +173,6 @@ struct AnimatedAmountInput: View {
 
     // MARK: - Font Sizing
 
-    private func spacingForFontSize(_ size: CGFloat) -> CGFloat {
-        max(0.5, (size / 56) * 2)
-    }
-
     private func updateFontSize(for width: CGFloat) {
         guard width > 0 else { return }
         if displayAmount == "0" {
@@ -192,13 +181,8 @@ struct AnimatedAmountInput: View {
         }
 
         let maxWidth = width - (AppSpacing.lg * 2) - 20
-        let charCount = displayAmount.count
-        let baseSpacing = spacingForFontSize(baseFontSize)
-        let totalSpacing = CGFloat(max(0, charCount - 1)) * baseSpacing
-        let testFont = UIFont(name: "Overpass-Bold", size: baseFontSize)
-            ?? UIFont.systemFont(ofSize: baseFontSize, weight: .bold)
-        let textSize = (displayAmount as NSString).size(withAttributes: [.font: testFont])
-        let totalWidth = textSize.width + totalSpacing
+        let textSize = (displayAmount as NSString).size(withAttributes: Self.measureAttributes)
+        let totalWidth = textSize.width
 
         let newSize: CGFloat
         if totalWidth > maxWidth && maxWidth > 0 {
@@ -213,52 +197,6 @@ struct AnimatedAmountInput: View {
         }
     }
 
-    // MARK: - Animation Tracking
-
-    private func updateAnimatedCharacters(newDisplay: String, rawAmount: String) {
-        let newRaw = Array(rawAmount)
-        let prevRaw = Array(previousRawAmount)
-
-        var changedPositions = Set<Int>()
-        let maxLen = max(newRaw.count, prevRaw.count)
-        for i in 0..<maxLen {
-            if i >= prevRaw.count || i >= newRaw.count || newRaw[i] != prevRaw[i] {
-                if i < newRaw.count { changedPositions.insert(i) }
-            }
-        }
-
-        let formatted = Array(newDisplay)
-        var updated: [AnimatedChar] = []
-        var rawIndex = 0
-
-        for (formIdx, char) in formatted.enumerated() {
-            if char == " " {
-                let id = formIdx < animatedCharacters.count ? animatedCharacters[formIdx].id : UUID()
-                updated.append(AnimatedChar(id: id, character: char, isNew: false))
-                continue
-            }
-
-            let isNew: Bool
-            let charId: UUID
-            if rawIndex < newRaw.count {
-                isNew = changedPositions.contains(rawIndex)
-                if !isNew && formIdx < animatedCharacters.count && animatedCharacters[formIdx].character == char {
-                    charId = animatedCharacters[formIdx].id
-                } else {
-                    charId = isNew ? UUID() : UUID()
-                }
-                rawIndex += 1
-            } else {
-                isNew = false
-                charId = UUID()
-            }
-
-            updated.append(AnimatedChar(id: charId, character: char, isNew: isNew))
-        }
-
-        animatedCharacters = updated
-        previousRawAmount = rawAmount
-    }
 }
 
 // MARK: - AnimatedTitleInput
