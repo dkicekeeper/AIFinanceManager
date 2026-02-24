@@ -6,10 +6,9 @@
 //
 //  Shared building blocks for animated text/amount input:
 //  - AnimatedChar: character data model with animation state tracking
-//  - AnimatedDigit: individual character view with spring + wobble animation
-//  - AnimatedTitleChar: softer character animation for title text
+//  - CharAnimState: keyframe animation value type
+//  - AnimatedTitleChar: spring + wobble character animation (keyframeAnimator)
 //  - BlinkingCursor: blinking insertion point indicator
-//  - ContainerWidthKey: PreferenceKey for adaptive font sizing
 //
 
 import SwiftUI
@@ -23,145 +22,65 @@ struct AnimatedChar: Identifiable {
     var isNew: Bool
 }
 
-// MARK: - AnimatedDigit
+// MARK: - CharAnimState
 
-/// Renders a single digit/character with spring entrance + wobble effect.
-/// Used for numeric amount input.
-struct AnimatedDigit: View {
-    let character: Character
-    let isNew: Bool
-    let fontSize: CGFloat
-    let color: Color
-
-    @State private var offset: CGFloat = 20
-    @State private var scale: CGFloat = 0.5
-    @State private var rotation: Double = 0
-    @State private var previousCharacter: Character?
-
-    var body: some View {
-        Text(String(character))
-            .font(.custom("Overpass-Bold", size: fontSize))
-            .foregroundStyle(color)
-            .offset(y: offset)
-            .scaleEffect(scale)
-            .rotationEffect(.degrees(rotation))
-            .onAppear {
-                if isNew {
-                    animateAppearance()
-                } else {
-                    offset = 0
-                    scale = 1.0
-                    rotation = 0
-                }
-                previousCharacter = character
-            }
-            .onChange(of: isNew) { oldValue, newValue in
-                if newValue && !oldValue {
-                    animateAppearance()
-                }
-            }
-            .onChange(of: character) { oldValue, newValue in
-                if oldValue != newValue {
-                    animateAppearance()
-                }
-                previousCharacter = newValue
-            }
-    }
-
-    private func animateAppearance() {
-        offset = 20
-        scale = 0.5
-        rotation = 0
-
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-            offset = 0
-            scale = 1.0
-        }
-
-        // Wobble sequence
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.3)) { rotation = 8 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.3)) { rotation = -8 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.3)) { rotation = 4 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.3)) { rotation = 0 }
-        }
-    }
+/// Keyframe animation state for AnimatedTitleChar.
+struct CharAnimState {
+    var offsetY: CGFloat = 0
+    var scale: CGFloat = 1.0
+    var rotation: Double = 0
 }
 
 // MARK: - AnimatedTitleChar
 
 /// Renders a single text character with spring entrance + wobble effect.
-/// Matches AnimatedDigit behaviour — same spring params, same wobble sequence.
+/// Uses keyframeAnimator (iOS 17+) instead of DispatchQueue.asyncAfter.
 struct AnimatedTitleChar: View {
     let character: Character
     let isNew: Bool
     let font: Font
     let color: Color
 
-    @State private var offset: CGFloat = 20
-    @State private var scale: CGFloat = 0.5
-    @State private var rotation: Double = 0
-    @State private var previousCharacter: Character?
+    @State private var animTrigger = false
 
     var body: some View {
         Text(String(character))
             .font(font)
             .foregroundStyle(color)
-            .offset(y: offset)
-            .scaleEffect(scale)
-            .rotationEffect(.degrees(rotation))
+            .keyframeAnimator(
+                initialValue: CharAnimState(),
+                trigger: animTrigger
+            ) { content, value in
+                content
+                    .offset(y: value.offsetY)
+                    .scaleEffect(value.scale)
+                    .rotationEffect(.degrees(value.rotation))
+            } keyframes: { _ in
+                KeyframeTrack(\.offsetY) {
+                    LinearKeyframe(20, duration: 0)
+                    SpringKeyframe(0, duration: 0.4, spring: .init(response: 0.4, dampingRatio: 0.6))
+                }
+                KeyframeTrack(\.scale) {
+                    LinearKeyframe(0.5, duration: 0)
+                    SpringKeyframe(1.0, duration: 0.4, spring: .init(response: 0.4, dampingRatio: 0.6))
+                }
+                KeyframeTrack(\.rotation) {
+                    LinearKeyframe(0, duration: 0.1)
+                    SpringKeyframe(8,  duration: 0.15, spring: .init(response: 0.15, dampingRatio: 0.3))
+                    SpringKeyframe(-8, duration: 0.15, spring: .init(response: 0.15, dampingRatio: 0.3))
+                    SpringKeyframe(4,  duration: 0.15, spring: .init(response: 0.15, dampingRatio: 0.3))
+                    SpringKeyframe(0,  duration: 0.15, spring: .init(response: 0.15, dampingRatio: 0.3))
+                }
+            }
             .onAppear {
-                if isNew {
-                    animateAppearance()
-                } else {
-                    offset = 0
-                    scale = 1.0
-                    rotation = 0
-                }
-                previousCharacter = character
+                if isNew { animTrigger.toggle() }
             }
-            .onChange(of: isNew) { oldValue, newValue in
-                if newValue && !oldValue {
-                    animateAppearance()
-                }
+            .onChange(of: isNew) { _, new in
+                if new { animTrigger.toggle() }
             }
-            .onChange(of: character) { oldValue, newValue in
-                if oldValue != newValue {
-                    animateAppearance()
-                }
-                previousCharacter = newValue
+            .onChange(of: character) { _, _ in
+                animTrigger.toggle()
             }
-    }
-
-    private func animateAppearance() {
-        offset = 20
-        scale = 0.5
-        rotation = 0
-
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-            offset = 0
-            scale = 1.0
-        }
-
-        // Wobble sequence — идентична AnimatedDigit
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.3)) { rotation = 8 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.3)) { rotation = -8 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.3)) { rotation = 4 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.3)) { rotation = 0 }
-        }
     }
 }
 
@@ -186,15 +105,5 @@ struct BlinkingCursor: View {
             .onDisappear {
                 opacity = 1.0
             }
-    }
-}
-
-// MARK: - ContainerWidthKey
-
-/// PreferenceKey for passing container width to parent for adaptive font sizing.
-struct ContainerWidthKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
