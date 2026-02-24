@@ -6,6 +6,9 @@
 //
 
 import Foundation
+import os
+
+private let perfLogger = Logger(subsystem: "AIFinanceManager", category: "Performance")
 
 /// Простой профилировщик производительности для debug режима
 #if DEBUG
@@ -31,8 +34,11 @@ class PerformanceProfiler {
             let duration = Date().timeIntervalSince(startTime)
             measurements[name] = duration
 
-            // Выводим результат только если время превышает порог (100ms)
             if duration > 0.1 {
+                // Threshold exceeded — warn so it appears in Console.app filtered by category "Performance"
+                perfLogger.warning("⚠️ [Perf] \(name): \(String(format: "%.0f", duration * 1000))ms — exceeds 100ms threshold")
+            } else if duration > 0.016 {
+                perfLogger.debug("🕐 [Perf] \(name): \(String(format: "%.0f", duration * 1000))ms")
             }
 
             startTimes.removeValue(forKey: name)

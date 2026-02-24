@@ -32,6 +32,8 @@ struct ContentView: View {
     /// appearance. Re-appearances (back-nav from History, Accounts, etc.) skip it because
     /// transactions.count onChange already keeps cachedSummary up-to-date.
     @State private var hasAppearedOnce = false
+    /// Debounce task for summary recalculation — prevents double-fire during initialization.
+    @State private var summaryUpdateTask: Task<Void, Never>?
 
     // MARK: - Computed ViewModels (from coordinator)
     private var viewModel: TransactionsViewModel {
@@ -64,7 +66,7 @@ struct ContentView: View {
             }
             .onAppear { setupOnAppear() }
             .onChange(of: viewModel.appSettings.wallpaperImageName) { _, _ in
-                loadWallpaperOnce()
+                reloadWallpaper()
             }
             // Phase 17: Only track time filter changes explicitly
             // Transaction data changes are tracked automatically via @Observable
@@ -74,20 +76,29 @@ struct ContentView: View {
                 updateSummary()
             }
             .onChange(of: transactionStore.transactions.count) { oldCount, newCount in
-                let t0 = CACurrentMediaTime()
-                cvLogger.debug("🔢 [ContentView] transactions.count: \(oldCount)→\(newCount) — calling updateSummary()")
-                updateSummary()
-                cvLogger.debug("🔢 [ContentView] updateSummary() after count change: \(String(format: "%.0f", (CACurrentMediaTime()-t0)*1000))ms")
+                // Debounce: coalesce rapid count changes (e.g. batch loads) into a single
+                // updateSummary(). 80ms is long enough to absorb a burst of CoreData saves
+                // yet short enough to be imperceptible to the user.
+                summaryUpdateTask?.cancel()
+                summaryUpdateTask = Task {
+                    try? await Task.sleep(for: .milliseconds(80))
+                    guard !Task.isCancelled else { return }
+                    let t0 = CACurrentMediaTime()
+                    cvLogger.debug("🔢 [ContentView] tx count \(oldCount)→\(newCount) — updateSummary (debounced)")
+                    updateSummary()
+                    cvLogger.debug("🔢 [ContentView] updateSummary() done in \(String(format: "%.0f", (CACurrentMediaTime()-t0)*1000))ms")
+                }
             }
             .onChange(of: coordinator.isFastPathDone) { _, isDone in
                 cvLogger.debug("⚡️ [ContentView] isFastPathDone → \(isDone)")
             }
             .onChange(of: coordinator.isFullyInitialized) { _, isInit in
                 cvLogger.debug("✅ [ContentView] isFullyInitialized → \(isInit) — skeleton removal triggered")
-                // Do NOT call updateSummary() here.
-                // onChange(of: transactionStore.transactions.count) fires milliseconds before
-                // this handler and already ran the 275ms summary calculation.
-                // Calling it again here would double-block the main thread for no benefit.
+                guard isInit else { return }
+                // Cancel any pending debounce and run summary immediately so
+                // TransactionsSummaryCard has real data the moment the skeleton lifts.
+                summaryUpdateTask?.cancel()
+                updateSummary()
             }
         }
     }
@@ -324,15 +335,29 @@ struct ContentView: View {
         PerformanceProfiler.end("ContentView.updateSummary")
     }
 
+    /// Start a wallpaper load. If a load is already in progress, does nothing.
+    /// Call `reloadWallpaper()` instead when you need to force a reload (e.g. onChange).
     private func loadWallpaperOnce() {
         guard wallpaperLoadingTask == nil else { return }
+        startWallpaperLoad()
+    }
 
+    /// Cancel any in-progress load and start a fresh one.
+    /// Use this from onChange handlers where the wallpaper name has actually changed.
+    private func reloadWallpaper() {
+        wallpaperLoadingTask?.cancel()
+        wallpaperLoadingTask = nil
+        startWallpaperLoad()
+    }
+
+    private func startWallpaperLoad() {
         wallpaperLoadingTask = Task.detached(priority: .userInitiated) {
             guard let wallpaperName = await MainActor.run(body: {
                 viewModel.appSettings.wallpaperImageName
             }) else {
                 await MainActor.run {
                     wallpaperImage = nil
+                    wallpaperLoadingTask = nil  // ← allow future loads
                 }
                 return
             }
@@ -347,12 +372,14 @@ struct ContentView: View {
                   let image = UIImage(contentsOfFile: fileURL.path) else {
                 await MainActor.run {
                     wallpaperImage = nil
+                    wallpaperLoadingTask = nil  // ← allow future loads
                 }
                 return
             }
 
             await MainActor.run {
                 wallpaperImage = image
+                wallpaperLoadingTask = nil  // ← allow future loads
             }
         }
     }
