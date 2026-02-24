@@ -334,16 +334,54 @@ struct ContentView: View {
         let currency = viewModel.appSettings.baseCurrency
         let txCount = snapshot.count
 
+        // Out-of-window fast path (Phase 31 windowing fix):
+        // When the time filter extends beyond the 3-month in-memory window (e.g. "All Time",
+        // "Last Year"), the snapshot only contains recent transactions and would produce wrong
+        // totals. In that case, use MonthlyAggregateService (O(M) CoreData fetch) instead.
+        // This call is on MainActor (synchronous, < 1ms for typical ranges), so we capture the
+        // result as a plain value tuple before entering the detached task.
+        let windowStart = transactionStore.windowStartDate
+        let aggregateTotals: (income: Double, expenses: Double)?
+        if let windowStart, filterStart < windowStart {
+            aggregateTotals = transactionStore.fetchAggregateSummary(
+                from: filterStart, to: filterEnd, currency: currency
+            )
+        } else {
+            aggregateTotals = nil
+        }
+
         summaryUpdateTask?.cancel()
         summaryUpdateTask = Task.detached(priority: .userInitiated) {
             let t0 = CACurrentMediaTime()
             PerformanceProfiler.start("ContentView.updateSummary")
-            let summary = SummaryCalculator.compute(
-                transactions: snapshot,
-                filterStart: filterStart,
-                filterEnd: filterEnd,
-                baseCurrency: currency
-            )
+            let summary: Summary
+            if let (income, expenses) = aggregateTotals {
+                // Out-of-window: build Summary from pre-computed monthly aggregates.
+                // internalTransfers and plannedAmount are omitted (not tracked in aggregates;
+                // negligible for historical periods spanning years).
+                let df = DateFormatter()
+                df.dateFormat = "yyyy-MM-dd"
+                df.locale = Locale(identifier: "en_US_POSIX")
+                df.timeZone = TimeZone.current
+                summary = Summary(
+                    totalIncome: income,
+                    totalExpenses: expenses,
+                    totalInternalTransfers: 0,
+                    netFlow: income - expenses,
+                    currency: currency,
+                    startDate: df.string(from: filterStart),
+                    endDate: df.string(from: filterEnd),
+                    plannedAmount: 0
+                )
+            } else {
+                // In-window: compute from the in-memory snapshot (fast path, no CoreData I/O).
+                summary = SummaryCalculator.compute(
+                    transactions: snapshot,
+                    filterStart: filterStart,
+                    filterEnd: filterEnd,
+                    baseCurrency: currency
+                )
+            }
             let dt = CACurrentMediaTime() - t0
             guard !Task.isCancelled else { return }
             await MainActor.run {

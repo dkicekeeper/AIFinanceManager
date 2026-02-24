@@ -169,6 +169,25 @@ final class TransactionStore {
     /// and is not affected by this constant — it always queries CoreData directly.
     private let windowMonths: Int = 3  // Phase 31: enabled — all blockers resolved
 
+    /// The start of the in-memory transaction window, or nil if all transactions are loaded.
+    /// ContentView uses this to decide whether to fall back to MonthlyAggregateService for
+    /// filters that extend beyond the window (e.g. "All Time", "Last Year").
+    var windowStartDate: Date? {
+        guard windowMonths > 0 else { return nil }
+        return Calendar.current.date(byAdding: .month, value: -windowMonths, to: Date())
+    }
+
+    /// Returns (totalIncome, totalExpenses) for the given period using MonthlyAggregateService.
+    /// O(M) CoreData fetch where M = number of calendar months in [startDate, endDate].
+    /// Called by ContentView when the time filter extends beyond the in-memory window.
+    func fetchAggregateSummary(from startDate: Date, to endDate: Date, currency: String) -> (income: Double, expenses: Double) {
+        let records = monthlyAggregateService.fetchRange(from: startDate, to: endDate, currency: currency)
+        return (
+            income:   records.reduce(0.0) { $0 + $1.totalIncome },
+            expenses: records.reduce(0.0) { $0 + $1.totalExpenses }
+        )
+    }
+
     // MARK: - Initialization
 
     init(
@@ -216,10 +235,11 @@ final class TransactionStore {
     /// Phase 28-B: All CoreData fetches run on a background thread via Task.detached.
     /// MainActor is NOT blocked — it awaits the background result.
     ///
-    /// Task 11: When windowMonths > 0, only transactions within the rolling window are loaded
-    /// into memory.  The window is computed here on @MainActor and passed to the background
-    /// fetch as a DateInterval predicate.  Currently windowMonths == 0 (all transactions loaded)
-    /// — see the windowMonths declaration for the three blockers that must be fixed first.
+    /// Task 11 / Phase 31: When windowMonths > 0 (currently 3), only transactions within the
+    /// rolling window are loaded into memory.  The window is computed here on @MainActor and
+    /// passed to the background fetch as a DateInterval predicate.  Filters that extend beyond
+    /// the window (e.g. "All Time", "Last Year") use MonthlyAggregateService via
+    /// fetchAggregateSummary(from:to:currency:) — see ContentView.updateSummary().
     func loadData() async throws {
         // Capture repository before leaving @MainActor — it's a constant (@ObservationIgnored let).
         let repo = self.repository
