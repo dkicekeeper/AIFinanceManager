@@ -47,13 +47,9 @@ struct HistoryView: View {
 
     // MARK: - Localized Keys
 
-    private var todayKey: String {
-        String(localized: "date.today")
-    }
-
-    private var yesterdayKey: String {
-        String(localized: "date.yesterday")
-    }
+    private let todayKey = String(localized: "date.today")
+    private let yesterdayKey = String(localized: "date.yesterday")
+    private let searchPrompt = String(localized: "search.placeholder")
 
     // MARK: - Initialization
 
@@ -100,20 +96,17 @@ struct HistoryView: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            VStack(spacing: 0) {
-                HistoryFilterSection(
-                    timeFilterDisplayName: timeFilterManager.currentFilter.displayName,
-                    accounts: accountsViewModel.accounts,
-                    selectedCategories: transactionsViewModel.selectedCategories,
-                    customCategories: categoriesViewModel.customCategories,
-                    incomeCategories: transactionsViewModel.incomeCategories,
-                    selectedAccountFilter: $filterCoordinator.selectedAccountFilter,
-                    showingCategoryFilter: $filterCoordinator.showingCategoryFilter,
-                    onTimeFilterTap: { showingTimeFilter = true },
-                    balanceCoordinator: accountsViewModel.balanceCoordinator!
-                )
-            }
-            .background(Color(.clear))
+            HistoryFilterSection(
+                timeFilterDisplayName: timeFilterManager.currentFilter.displayName,
+                accounts: accountsViewModel.accounts,
+                selectedCategories: transactionsViewModel.selectedCategories,
+                customCategories: categoriesViewModel.customCategories,
+                incomeCategories: transactionsViewModel.incomeCategories,
+                selectedAccountFilter: $filterCoordinator.selectedAccountFilter,
+                showingCategoryFilter: $filterCoordinator.showingCategoryFilter,
+                onTimeFilterTap: { showingTimeFilter = true },
+                balanceCoordinator: accountsViewModel.balanceCoordinator
+            )
         }
         .navigationTitle(String(localized: "navigation.history"))
         .navigationBarTitleDisplayMode(.large)
@@ -121,11 +114,8 @@ struct HistoryView: View {
         .searchable(
             text: $filterCoordinator.searchText,
             isPresented: $filterCoordinator.isSearchActive,
-            prompt: String(localized: "search.placeholder")
+            prompt: searchPrompt
         )
-        .task {
-            setupInitialFilters()
-        }
         .onAppear {
             handleOnAppear()
         }
@@ -194,6 +184,7 @@ struct HistoryView: View {
     }
 
     private func handleOnAppear() {
+        setupInitialFilters()
         let t0 = CACurrentMediaTime()
         let sectionCount = paginationController.sections.count
         let totalCount = paginationController.totalCount
@@ -311,6 +302,34 @@ struct HistoryView: View {
             accountsViewModel: coordinator.accountsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             paginationController: coordinator.transactionPaginationController
+        )
+        .environment(TimeFilterManager())
+    }
+}
+
+#Preview("Deep Link — Category") {
+    let coordinator = AppCoordinator()
+    NavigationStack {
+        HistoryView(
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            paginationController: coordinator.transactionPaginationController,
+            initialCategory: coordinator.categoriesViewModel.customCategories.first?.name
+        )
+        .environment(TimeFilterManager())
+    }
+}
+
+#Preview("Deep Link — Account") {
+    let coordinator = AppCoordinator()
+    NavigationStack {
+        HistoryView(
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            paginationController: coordinator.transactionPaginationController,
+            initialAccountId: coordinator.accountsViewModel.accounts.first?.id
         )
         .environment(TimeFilterManager())
     }

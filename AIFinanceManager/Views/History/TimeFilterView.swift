@@ -29,10 +29,8 @@ struct TimeFilterView: View {
                     ForEach(TimeFilterPreset.allCases.filter { $0 != .custom }, id: \.self) { preset in
                         Button(action: {
                             selectedPreset = preset
-                            if preset != .custom {
-                                filterManager.setPreset(preset)
-                                dismiss()
-                            }
+                            filterManager.setPreset(preset)
+                            dismiss()
                         }) {
                             HStack {
                                 Text(preset.localizedName)
@@ -71,10 +69,8 @@ struct TimeFilterView: View {
                             .datePickerStyle(.compact)
 
                         Button(action: {
-                            if customEndDate >= customStartDate {
-                                filterManager.setCustomRange(start: customStartDate, end: customEndDate)
-                                dismiss()
-                            }
+                            filterManager.setCustomRange(start: customStartDate, end: customEndDate)
+                            dismiss()
                         }) {
                             Text(String(localized: "button.apply", defaultValue: "Применить"))
                                 .frame(maxWidth: .infinity)
@@ -90,7 +86,7 @@ struct TimeFilterView: View {
             .navigationTitle(String(localized: "timeFilter.title", defaultValue: "Фильтр по времени"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button {
                         dismiss()
                     } label: {
@@ -102,8 +98,19 @@ struct TimeFilterView: View {
     }
 }
 
-#Preview {
+#Preview("Default") {
     NavigationStack {
         TimeFilterView(filterManager: TimeFilterManager())
+    }
+}
+
+#Preview("Custom Range") {
+    let manager = TimeFilterManager()
+    manager.setCustomRange(
+        start: Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date(),
+        end: Date()
+    )
+    return NavigationStack {
+        TimeFilterView(filterManager: manager)
     }
 }

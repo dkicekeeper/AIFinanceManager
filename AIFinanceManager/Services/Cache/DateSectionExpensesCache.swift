@@ -25,7 +25,7 @@ class DateSectionExpensesCache {
     private var cache: [String: Double] = [:]
 
     /// Timestamp of last cache invalidation for debugging
-    private var lastInvalidation: Date = Date()
+    @ObservationIgnored private var lastInvalidation: Date = Date()
 
     // MARK: - Public Methods
 
@@ -44,8 +44,6 @@ class DateSectionExpensesCache {
     ) -> Double {
         // Check cache first
         if let cached = cache[dateKey] {
-            #if DEBUG
-            #endif
             return cached
         }
 
@@ -73,31 +71,14 @@ class DateSectionExpensesCache {
     /// Invalidate all cached expenses
     /// Call this when transactions change or currency settings update
     func invalidate() {
-        let _ = cache.count
         cache.removeAll()
         lastInvalidation = Date()
-
-        #if DEBUG
-        #endif
     }
 
     /// Invalidate specific date section
     /// - Parameter dateKey: The date key to invalidate
     func invalidate(dateKey: String) {
         cache.removeValue(forKey: dateKey)
-
-        #if DEBUG
-        #endif
-    }
-
-    /// Get cache statistics for debugging
-    /// - Returns: Dictionary with cache stats
-    func getStats() -> [String: Any] {
-        return [
-            "cachedSections": cache.count,
-            "lastInvalidation": lastInvalidation,
-            "cacheKeys": Array(cache.keys)
-        ]
     }
 
     // MARK: - Private Methods
@@ -124,4 +105,16 @@ class DateSectionExpensesCache {
                 return total + amountInBaseCurrency
             }
     }
+
+    #if DEBUG
+    /// Get cache statistics for debugging
+    /// - Returns: Dictionary with cache stats
+    func getStats() -> [String: Any] {
+        return [
+            "cachedSections": cache.count,
+            "lastInvalidation": lastInvalidation,
+            "cacheKeys": Array(cache.keys)
+        ]
+    }
+    #endif
 }

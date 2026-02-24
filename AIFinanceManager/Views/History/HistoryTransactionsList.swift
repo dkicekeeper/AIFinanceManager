@@ -71,6 +71,7 @@ struct HistoryTransactionsList: View {
     /// Resets to 100 on every History open because NavigationStack recreates the view.
     @State private var visibleSectionLimit = 100
     private let sectionLoadIncrement = 100
+    @State private var displayLabelCache: [String: String] = [:]
 
     // MARK: - Computed Properties
 
@@ -82,10 +83,6 @@ struct HistoryTransactionsList: View {
 
     var body: some View {
         let sections = paginationController.sections
-        // ⚠️  This log fires BEFORE onAppear. Compare timestamp t: with the onAppear t:
-        // to measure how long SwiftUI spent rendering the initial List.
-        // If sections=3530 here and sections=361 in onAppear, the freeze is the gap.
-        let _ = listLogger.debug("📝 [HistoryList] body — \(sections.count) sections, \(paginationController.totalCount) total t:\(String(format: "%.3f", CACurrentMediaTime()))")
 
         if sections.isEmpty {
             emptyStateView
@@ -126,11 +123,10 @@ struct HistoryTransactionsList: View {
         // The ProgressView row at the bottom auto-loads more sections as the user scrolls.
         let displaySections = Array(sections.prefix(visibleSectionLimit))
         let hasMore = displaySections.count < sections.count
-        let _ = listLogger.debug("📋 [HistoryList] transactionsListView — showing \(displaySections.count)/\(sections.count) sections (limit:\(visibleSectionLimit))")
         return ScrollViewReader { proxy in
             List {
                 ForEach(displaySections) { section in
-                    let displayLabel = displayDateKey(from: section.date)
+                    let displayLabel = displayLabelCache[section.date] ?? displayDateKey(from: section.date)
                     Section(
                         header: dateHeader(
                             isoDate: section.date,
@@ -163,21 +159,24 @@ struct HistoryTransactionsList: View {
                 // "Умная подгрузка" — when the spinner scrolls into view, expand the
                 // visible window by `sectionLoadIncrement` more sections.
                 if hasMore {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                            .padding(AppSpacing.md)
-                        Spacer()
-                    }
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .onAppear {
-                        listLogger.debug("⬇️ [HistoryList] loadMore — \(visibleSectionLimit) → \(visibleSectionLimit + sectionLoadIncrement) of \(sections.count)")
-                        visibleSectionLimit += sectionLoadIncrement
-                    }
+                    ProgressView()
+                        .padding(AppSpacing.md)
+                        .frame(maxWidth: .infinity)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .onAppear {
+                            listLogger.debug("⬇️ [HistoryList] loadMore — \(visibleSectionLimit) → \(visibleSectionLimit + sectionLoadIncrement) of \(sections.count)")
+                            visibleSectionLimit += sectionLoadIncrement
+                        }
                 }
             }
-            .listStyle(PlainListStyle())
+            .listStyle(.plain)
+            .onChange(of: paginationController.sections.count) { _, _ in
+                rebuildDisplayLabelCache()
+            }
+            .task {
+                rebuildDisplayLabelCache()
+            }
             .task {
                 await performAutoScroll(proxy: proxy, sections: displaySections)
             }
@@ -204,8 +203,10 @@ struct HistoryTransactionsList: View {
     // MARK: - Auto Scroll
 
     private func performAutoScroll(proxy: ScrollViewProxy, sections: [TransactionSection]) async {
-        let delay = HistoryScrollBehavior.calculateScrollDelay(sectionCount: sections.count)
-        try? await Task.sleep(nanoseconds: delay)
+        // Base 150ms + 10ms per 100 sections (max +50ms) — larger datasets need more render time
+        let baseDelay: UInt64 = 150_000_000
+        let additionalDelay = min(UInt64(sections.count / 100) * 10_000_000, 50_000_000)
+        try? await Task.sleep(nanoseconds: baseDelay + additionalDelay)
 
         // Find the most recent non-future section (sections are sorted newest-first by FRC).
         // The FRC sorts descending by date, so the first section whose date is <= today is
@@ -247,6 +248,15 @@ struct HistoryTransactionsList: View {
 
     // MARK: - Date Display Conversion
 
+    private func rebuildDisplayLabelCache() {
+        let sections = paginationController.sections
+        var cache: [String: String] = [:]
+        for section in sections {
+            cache[section.date] = displayDateKey(from: section.date)
+        }
+        displayLabelCache = cache
+    }
+
     /// Converts a "YYYY-MM-DD" FRC section key to a human-readable display string.
     /// Returns "Today", "Yesterday", a short date ("15 Feb"), or a long date ("15 Feb 2023").
     private func displayDateKey(from isoDate: String) -> String {
@@ -287,6 +297,58 @@ struct HistoryTransactionsList: View {
         accountsViewModel: coordinator.accountsViewModel,
         debouncedSearchText: "",
         selectedAccountFilter: nil,
+        todayKey: String(localized: "date.today"),
+        yesterdayKey: String(localized: "date.yesterday")
+    )
+}
+
+#Preview("Empty State — No Transactions") {
+    let coordinator = AppCoordinator()
+    // Fresh controller without setup() → sections stays empty
+    let emptyController = TransactionPaginationController(stack: CoreDataStack.shared)
+
+    HistoryTransactionsList(
+        paginationController: emptyController,
+        expensesCache: DateSectionExpensesCache(),
+        transactionsViewModel: coordinator.transactionsViewModel,
+        categoriesViewModel: coordinator.categoriesViewModel,
+        accountsViewModel: coordinator.accountsViewModel,
+        debouncedSearchText: "",
+        selectedAccountFilter: nil,
+        todayKey: String(localized: "date.today"),
+        yesterdayKey: String(localized: "date.yesterday")
+    )
+}
+
+#Preview("Empty State — Search") {
+    let coordinator = AppCoordinator()
+    let emptyController = TransactionPaginationController(stack: CoreDataStack.shared)
+
+    HistoryTransactionsList(
+        paginationController: emptyController,
+        expensesCache: DateSectionExpensesCache(),
+        transactionsViewModel: coordinator.transactionsViewModel,
+        categoriesViewModel: coordinator.categoriesViewModel,
+        accountsViewModel: coordinator.accountsViewModel,
+        debouncedSearchText: "кофе",
+        selectedAccountFilter: nil,
+        todayKey: String(localized: "date.today"),
+        yesterdayKey: String(localized: "date.yesterday")
+    )
+}
+
+#Preview("Empty State — Filters Active") {
+    let coordinator = AppCoordinator()
+    let emptyController = TransactionPaginationController(stack: CoreDataStack.shared)
+
+    HistoryTransactionsList(
+        paginationController: emptyController,
+        expensesCache: DateSectionExpensesCache(),
+        transactionsViewModel: coordinator.transactionsViewModel,
+        categoriesViewModel: coordinator.categoriesViewModel,
+        accountsViewModel: coordinator.accountsViewModel,
+        debouncedSearchText: "",
+        selectedAccountFilter: coordinator.accountsViewModel.accounts.first?.id,
         todayKey: String(localized: "date.today"),
         yesterdayKey: String(localized: "date.yesterday")
     )

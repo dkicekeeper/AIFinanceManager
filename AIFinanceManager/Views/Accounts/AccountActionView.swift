@@ -28,8 +28,7 @@ struct AccountActionView: View {
     @State private var errorMessage = ""
     @FocusState private var isAmountFocused: Bool
     
-    let transferDirection: DepositTransferDirection? // nil для обычных счетов, .toDeposit для пополнения, .fromDeposit для вывода
-    
+    let transferDirection: DepositTransferDirection?
     init(
         transactionsViewModel: TransactionsViewModel,
         accountsViewModel: AccountsViewModel,

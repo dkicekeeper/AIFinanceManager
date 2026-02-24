@@ -47,9 +47,7 @@ class HistoryFilterCoordinator {
 
     // MARK: - Initialization
 
-    init() {
-        setupObservers()
-    }
+    init() {}
 
     // MARK: - Public Methods
 
@@ -70,11 +68,7 @@ class HistoryFilterCoordinator {
 
             // Verify text hasn't changed during debounce
             if self.searchText == text {
-                await MainActor.run {
-                    self.debouncedSearchText = text
-                    #if DEBUG
-                    #endif
-                }
+                self.debouncedSearchText = text
             }
         }
     }
@@ -105,9 +99,6 @@ class HistoryFilterCoordinator {
 
         // Cancel pending tasks
         searchTask?.cancel()
-
-        #if DEBUG
-        #endif
     }
 
     /// Set initial account filter (from navigation)
@@ -115,18 +106,10 @@ class HistoryFilterCoordinator {
     func setInitialAccountFilter(_ accountId: String?) {
         if let accountId = accountId, selectedAccountFilter != accountId {
             selectedAccountFilter = accountId
-            #if DEBUG
-            #endif
         }
     }
 
-    // MARK: - Private Methods
-
-    /// Setup internal observers for automatic debouncing
-    private func setupObservers() {
-        // This method can be extended in future for additional logic
-        // Currently, debouncing is handled explicitly in apply methods
-    }
+    // MARK: - Public Methods
 
     /// Cancel all pending debounce tasks
     func cancelPendingTasks() {
