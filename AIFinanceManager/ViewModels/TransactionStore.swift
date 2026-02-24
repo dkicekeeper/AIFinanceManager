@@ -188,6 +188,38 @@ final class TransactionStore {
         )
     }
 
+    /// Returns [categoryName: CategoryExpense] for the given period using CategoryAggregateService.
+    /// O(1) for allTime (pre-summed year==0 records), O(M) for date ranges (monthly records summed per category).
+    /// Called by TransactionsViewModel when the time filter extends beyond the in-memory window.
+    ///
+    /// - Parameters:
+    ///   - preset: The filter preset — `.allTime` uses the year==0 all-time totals, others use fetchRange.
+    ///   - startDate / endDate: The filter bounds.
+    ///   - currency: Base currency string.
+    ///   - validCategoryNames: Optional allowlist — only categories in this set are returned.
+    func fetchCategoryExpenses(
+        preset: TimeFilterPreset,
+        from startDate: Date,
+        to endDate: Date,
+        currency: String,
+        validCategoryNames: Set<String>? = nil
+    ) -> [String: CategoryExpense] {
+        // allTime → use the pre-summed year==0/month==0 records (O(categories), most accurate).
+        // Any other out-of-window filter → sum monthly rows for the date range (O(M)).
+        let aggregates: [CategoryMonthlyAggregate]
+        if preset == .allTime {
+            aggregates = categoryAggregateService.fetchAllTime(currency: currency)
+        } else {
+            aggregates = categoryAggregateService.fetchRange(from: startDate, to: endDate, currency: currency)
+        }
+
+        return aggregates.reduce(into: [String: CategoryExpense]()) { result, agg in
+            guard !agg.categoryName.isEmpty else { return }
+            if let validNames = validCategoryNames, !validNames.contains(agg.categoryName) { return }
+            result[agg.categoryName] = CategoryExpense(total: agg.totalExpenses, subcategories: [:])
+        }
+    }
+
     // MARK: - Initialization
 
     init(
