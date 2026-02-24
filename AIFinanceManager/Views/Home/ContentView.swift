@@ -12,6 +12,13 @@ import QuartzCore
 
 private let cvLogger = Logger(subsystem: "AIFinanceManager", category: "ContentView")
 
+// MARK: - HomeDestination
+
+enum HomeDestination: Hashable {
+    case history
+    case subscriptions
+}
+
 // MARK: - ContentView (Home Screen)
 
 /// Main home screen displaying accounts, analytics, subscriptions, and quick actions
@@ -22,6 +29,7 @@ struct ContentView: View {
     @Environment(TimeFilterManager.self) private var timeFilterManager
 
     // MARK: - State
+    @State private var navigationPath = NavigationPath()
     @State private var selectedAccount: Account?
     @State private var showingTimeFilter = false
     @State private var showingAddAccount = false
@@ -52,9 +60,17 @@ struct ContentView: View {
 
     // MARK: - Body
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             mainContent
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: HomeDestination.self) { dest in
+                switch dest {
+                case .history:
+                    historyDestination
+                case .subscriptions:
+                    subscriptionsDestination
+                }
+            }
             .background { wallpaperBackground }
             .toolbar { toolbarContent }
             .sheet(item: $selectedAccount) { accountSheet(for: $0) }
@@ -155,7 +171,7 @@ struct ContentView: View {
     }
 
     private var historyNavigationLink: some View {
-        NavigationLink(destination: historyDestination) {
+        NavigationLink(value: HomeDestination.history) {
             TransactionsSummaryCard(
                 summary: cachedSummary,
                 currency: viewModel.appSettings.baseCurrency,
@@ -167,7 +183,7 @@ struct ContentView: View {
     }
 
     private var subscriptionsNavigationLink: some View {
-        NavigationLink(destination: subscriptionsDestination) {
+        NavigationLink(value: HomeDestination.subscriptions) {
             SubscriptionsCardView(
                 transactionStore: transactionStore,
                 transactionsViewModel: viewModel
