@@ -12,6 +12,7 @@ struct SubscriptionsListView: View {
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
     @Environment(TimeFilterManager.self) private var timeFilterManager
+    @Namespace private var subscriptionNamespace
     private enum SubscriptionSheetItem: Identifiable {
         case new
         case edit(RecurringSeries)
@@ -47,6 +48,15 @@ struct SubscriptionsListView: View {
         }
         .navigationTitle(String(localized: "subscriptions.title"))
         .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(for: RecurringSeries.self) { subscription in
+            SubscriptionDetailView(
+                transactionStore: transactionStore,
+                transactionsViewModel: transactionsViewModel,
+                subscription: subscription
+            )
+            .environment(timeFilterManager)
+            .navigationTransition(.zoom(sourceID: subscription.id, in: subscriptionNamespace))
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -91,16 +101,12 @@ struct SubscriptionsListView: View {
             ForEach(transactionStore.subscriptions) { subscription in
                 let nextChargeDate = transactionStore.nextChargeDate(for: subscription.id)
 
-                NavigationLink(destination: SubscriptionDetailView(
-                    transactionStore: transactionStore,
-                    transactionsViewModel: transactionsViewModel,
-                    subscription: subscription
-                )
-                    .environment(timeFilterManager)) {
+                NavigationLink(value: subscription) {
                     SubscriptionCard(
                         subscription: subscription,
                         nextChargeDate: nextChargeDate
                     )
+                    .matchedTransitionSource(id: subscription.id, in: subscriptionNamespace)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
