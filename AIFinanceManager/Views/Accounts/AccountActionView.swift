@@ -505,7 +505,7 @@ struct AccountActionView: View {
 // CategoryRadioButton is now replaced by CategoryChip
 
 #Preview {
-    @Namespace var ns
+    @Previewable @Namespace var ns
     let coordinator = AppCoordinator()
     return NavigationStack {
         AccountActionView(
