@@ -148,30 +148,26 @@ final class TransactionStore {
     ///   `account.balance` field (kept accurate by persistIncremental() on every mutation).
     ///   No transaction list is passed; windowing does not affect balance correctness.
     ///
-    /// BLOCKER 2 — InsightsService reads transactionStore.transactions directly
+    /// BLOCKER 2 — InsightsService reads transactionStore.transactions directly  [RESOLVED — Phase 31 Task 6]
     ///   InsightsService.generateAllInsights() captures `Array(transactionStore.transactions)`
     ///   at line 85 and passes it as `allTransactions` to generators including:
     ///   - accountDormancy (needs all-time transaction dates per account)
     ///   - spendingVelocity (needs multi-month trend window)
     ///   - incomeSourceBreakdown (needs the selected period's transactions)
     ///   - computePeriodDataPoints (for .allTime / .year granularities spanning years)
-    ///   These generators would silently produce partial/incorrect data with a 3-month window.
-    ///   FIX REQUIRED: each of these generators must be migrated to read from
-    ///   CategoryAggregateService / MonthlyAggregateService (Phase 22 aggregate services).
+    ///   All four generators now read from CategoryAggregateService / MonthlyAggregateService
+    ///   (Phase 22 aggregate services). Windowing does not affect insight correctness.
     ///
-    /// BLOCKER 3 — AppCoordinator aggregate rebuild reads transactionStore.transactions
-    ///   AppCoordinator.initialize (~line 283) rebuilds Phase 22 aggregates by passing
-    ///   `allTx = await self.transactionStore.transactions` to aggregate service rebuild().
-    ///   With windowing active, only 3 months of data would be used — making the aggregate
-    ///   records incomplete (all older months would be missing or zeroed).
-    ///   FIX REQUIRED: the rebuild path must call
+    /// BLOCKER 3 — AppCoordinator aggregate rebuild reads transactionStore.transactions  [RESOLVED — Phase 31 Task 4]
+    ///   AppCoordinator.initialize aggregate rebuild now calls
     ///   `repository.loadTransactions(dateRange: nil)` on a background context independently,
-    ///   bypassing the in-memory windowed store entirely.
+    ///   bypassing the in-memory windowed store entirely. Aggregate records are always built
+    ///   from the full transaction history regardless of the window setting.
     ///
-    /// Once all three blockers are resolved, change this value to 3 to enable the window.
+    /// All three blockers resolved in Phase 31 (Tasks 4, 5, 6). Window is now active.
     /// UI history is served by TransactionPaginationController (NSFetchedResultsController)
     /// and is not affected by this constant — it always queries CoreData directly.
-    private let windowMonths: Int = 0  // disabled — see blockers above
+    private let windowMonths: Int = 3  // Phase 31: enabled — all blockers resolved
 
     // MARK: - Initialization
 
