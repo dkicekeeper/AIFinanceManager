@@ -217,8 +217,6 @@ struct AnimatedTitleInput: View {
     var alignment: TextAlignment = .center
 
     @FocusState private var isFocused: Bool
-    @State private var animatedCharacters: [AnimatedChar] = []
-    @State private var previousText: String = ""
 
     // Placeholder скрывается когда есть текст ИЛИ поле сфокусировано
     private var showPlaceholder: Bool {
@@ -232,7 +230,7 @@ struct AnimatedTitleInput: View {
 
     var body: some View {
         ZStack {
-            // Placeholder — скрывается при фокусе
+            // Placeholder — hidden when focused or text is present
             if showPlaceholder {
                 Text(placeholder)
                     .font(font)
@@ -242,19 +240,16 @@ struct AnimatedTitleInput: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.97)))
             }
 
-            // Animated characters + cursor
+            // Animated text + cursor
             HStack(spacing: 0) {
                 if alignment == .center { Spacer() }
                 HStack(spacing: 1) {
-                    ForEach(animatedCharacters) { charState in
-                        AnimatedTitleChar(
-                            character: charState.character,
-                            isNew: charState.isNew,
-                            font: font,
-                            color: color
-                        )
-                        .id("\(charState.id)-\(charState.character)")
-                    }
+                    Text(text.isEmpty ? "" : text)
+                        .font(font)
+                        .foregroundStyle(color)
+                        .contentTransition(.interpolate)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: text)
+
                     if showCursor {
                         BlinkingCursor(height: AppSize.cursorHeightLarge)
                             .transition(.opacity)
@@ -272,9 +267,6 @@ struct AnimatedTitleInput: View {
                 .foregroundStyle(.clear)
                 .tint(.clear)
                 .submitLabel(.done)
-                .onChange(of: text) { _, newValue in
-                    updateAnimatedCharacters(newText: newValue)
-                }
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -284,35 +276,8 @@ struct AnimatedTitleInput: View {
         .animation(.easeInOut(duration: 0.15), value: showPlaceholder)
         .animation(.easeInOut(duration: 0.15), value: showCursor)
         .onAppear {
-            previousText = text
-            animatedCharacters = Array(text).map { char in
-                AnimatedChar(id: UUID(), character: char, isNew: false)
-            }
+            // No character tracking needed anymore
         }
-    }
-
-    // MARK: - Animation Tracking
-
-    private func updateAnimatedCharacters(newText: String) {
-        let newChars = Array(newText)
-        let prevChars = Array(previousText)
-
-        var updated: [AnimatedChar] = []
-
-        for (i, char) in newChars.enumerated() {
-            // Символ новый если добавлен в конец или изменён
-            let isNew = i >= prevChars.count || prevChars[i] != char
-            let charId: UUID
-            if !isNew && i < animatedCharacters.count && animatedCharacters[i].character == char {
-                charId = animatedCharacters[i].id
-            } else {
-                charId = UUID()
-            }
-            updated.append(AnimatedChar(id: charId, character: char, isNew: isNew))
-        }
-
-        animatedCharacters = updated
-        previousText = newText
     }
 }
 
