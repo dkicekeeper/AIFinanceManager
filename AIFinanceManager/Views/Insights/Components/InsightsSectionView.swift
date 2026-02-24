@@ -7,15 +7,17 @@
 //            SpendingInsightsSection, CashFlowInsightsSection, WealthInsightsSection.
 //
 //  Usage — simple section (Income, Budget, Recurring):
-//      InsightsSectionView(category: .income, insights: insights, currency: currency)
+//      InsightsSectionView(category: .income, insights: insights, currency: currency, namespace: ns)
 //
 //  Usage — section with drill-down (Spending):
-//      InsightsSectionView(category: .spending, insights: insights, currency: currency,
-//                          onCategoryTap: { item in AnyView(CategoryDeepDiveView(...)) })
+//      InsightsSectionView(category: .spending, insights: insights, currency: currency, namespace: ns)
+//      onCategoryTap is handled centrally via navigationDestination in InsightsView.
 //
 //  Phase 29 (revised): Full chart removed from section view.
 //  All sections show compact mini-chart cards on the main Insights screen.
 //  Full charts appear in InsightDetailView when tapping individual insight cards.
+//
+//  Task 2: value-based NavigationLink + zoom transition via matchedTransitionSource.
 //
 
 import SwiftUI
@@ -27,7 +29,7 @@ struct InsightsSectionView: View {
     let category: InsightCategory
     let insights: [Insight]
     let currency: String
-    var onCategoryTap: ((CategoryBreakdownItem) -> AnyView)? = nil
+    var namespace: Namespace.ID
     var granularity: InsightGranularity? = nil
 
     // MARK: - Body
@@ -41,14 +43,9 @@ struct InsightsSectionView: View {
 
                 // ALL cards use compact mini-charts
                 ForEach(insights) { insight in
-                    NavigationLink(
-                        destination: InsightDetailView(
-                            insight: insight,
-                            currency: currency,
-                            onCategoryTap: onCategoryTap
-                        )
-                    ) {
+                    NavigationLink(value: insight) {
                         InsightsCardView(insight: insight)
+                            .matchedTransitionSource(id: insight.id, in: namespace)
                     }
                     .buttonStyle(.plain)
                 }
@@ -60,12 +57,14 @@ struct InsightsSectionView: View {
 // MARK: - Previews
 
 #Preview("Simple — Income") {
-    NavigationStack {
+    @Namespace var ns
+    return NavigationStack {
         ScrollView {
             InsightsSectionView(
                 category: .income,
                 insights: [.mockIncomeGrowth()],
-                currency: "KZT"
+                currency: "KZT",
+                namespace: ns
             )
             .padding(.vertical, AppSpacing.md)
         }
@@ -73,15 +72,14 @@ struct InsightsSectionView: View {
 }
 
 #Preview("Spending — with drill-down") {
-    NavigationStack {
+    @Namespace var ns
+    return NavigationStack {
         ScrollView {
             InsightsSectionView(
                 category: .spending,
                 insights: [.mockTopSpending(), .mockMoM(), .mockAvgDaily()],
                 currency: "KZT",
-                onCategoryTap: { item in
-                    AnyView(Text("Deep dive: \(item.categoryName)").padding())
-                }
+                namespace: ns
             )
             .padding(.vertical, AppSpacing.md)
         }
@@ -89,12 +87,14 @@ struct InsightsSectionView: View {
 }
 
 #Preview("Cash Flow — compact cards only") {
-    NavigationStack {
+    @Namespace var ns
+    return NavigationStack {
         ScrollView {
             InsightsSectionView(
                 category: .cashFlow,
                 insights: [.mockCashFlow(), .mockProjectedBalance()],
-                currency: "KZT"
+                currency: "KZT",
+                namespace: ns
             )
             .padding(.vertical, AppSpacing.md)
         }
@@ -102,12 +102,14 @@ struct InsightsSectionView: View {
 }
 
 #Preview("Wealth — compact cards only") {
-    NavigationStack {
+    @Namespace var ns
+    return NavigationStack {
         ScrollView {
             InsightsSectionView(
                 category: .wealth,
                 insights: [.mockWealthBreakdown()],
-                currency: "KZT"
+                currency: "KZT",
+                namespace: ns
             )
             .padding(.vertical, AppSpacing.md)
         }

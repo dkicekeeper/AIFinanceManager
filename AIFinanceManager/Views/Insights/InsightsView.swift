@@ -6,6 +6,7 @@
 //  - P7: InsightsSummaryHeader now receives PeriodDataPoint directly (no per-render conversion)
 //  - Loading / empty state kept; sections unchanged
 //  Phase 27: Granularity picker moved to toolbar (top-left Menu)
+//  Task 2: value-based NavigationLink(value:) + zoom transition via navigationDestination(for: Insight.self)
 //
 
 import SwiftUI
@@ -18,6 +19,7 @@ struct InsightsView: View {
     // MARK: - State
 
     @State private var selectedGranularity: InsightGranularity = .month
+    @Namespace private var insightNamespace
 
     // MARK: - Body
 
@@ -38,6 +40,14 @@ struct InsightsView: View {
         }
         .navigationTitle(String(localized: "insights.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: Insight.self) { insight in
+            InsightDetailView(
+                insight: insight,
+                currency: insightsViewModel.baseCurrency,
+                onCategoryTap: insight.category == .spending ? spendingCategoryTap : nil
+            )
+            .navigationTransition(.zoom(sourceID: insight.id, in: insightNamespace))
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
@@ -175,24 +185,14 @@ struct InsightsView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.top, AppSpacing.xxxl)
-            
+
         } else if insightsViewModel.selectedCategory == nil {
             // Show all sections
             InsightsSectionView(
                 category: .spending,
                 insights: insightsViewModel.spendingInsights,
                 currency: insightsViewModel.baseCurrency,
-                onCategoryTap: { [insightsViewModel] item in
-                    AnyView(
-                        CategoryDeepDiveView(
-                            categoryName: item.categoryName,
-                            color: item.color,
-                            iconSource: item.iconSource,
-                            currency: insightsViewModel.baseCurrency,
-                            viewModel: insightsViewModel
-                        )
-                    )
-                },
+                namespace: insightNamespace,
                 granularity: insightsViewModel.currentGranularity
             )
             .screenPadding()
@@ -201,6 +201,7 @@ struct InsightsView: View {
                 category: .income,
                 insights: insightsViewModel.incomeInsights,
                 currency: insightsViewModel.baseCurrency,
+                namespace: insightNamespace,
                 granularity: insightsViewModel.currentGranularity
             )
             .screenPadding()
@@ -209,6 +210,7 @@ struct InsightsView: View {
                 category: .budget,
                 insights: insightsViewModel.budgetInsights,
                 currency: insightsViewModel.baseCurrency,
+                namespace: insightNamespace,
                 granularity: insightsViewModel.currentGranularity
             )
             .screenPadding()
@@ -217,6 +219,7 @@ struct InsightsView: View {
                 category: .recurring,
                 insights: insightsViewModel.recurringInsights,
                 currency: insightsViewModel.baseCurrency,
+                namespace: insightNamespace,
                 granularity: insightsViewModel.currentGranularity
             )
             .screenPadding()
@@ -225,6 +228,7 @@ struct InsightsView: View {
                 category: .cashFlow,
                 insights: insightsViewModel.cashFlowInsights,
                 currency: insightsViewModel.baseCurrency,
+                namespace: insightNamespace,
                 granularity: insightsViewModel.currentGranularity
             )
             .screenPadding()
@@ -233,6 +237,7 @@ struct InsightsView: View {
                 category: .wealth,
                 insights: insightsViewModel.wealthInsights,
                 currency: insightsViewModel.baseCurrency,
+                namespace: insightNamespace,
                 granularity: insightsViewModel.currentGranularity
             )
             .screenPadding()
@@ -241,6 +246,7 @@ struct InsightsView: View {
                 category: .savings,
                 insights: insightsViewModel.savingsInsights,
                 currency: insightsViewModel.baseCurrency,
+                namespace: insightNamespace,
                 granularity: insightsViewModel.currentGranularity
             )
             .screenPadding()
@@ -249,15 +255,16 @@ struct InsightsView: View {
                 category: .forecasting,
                 insights: insightsViewModel.forecastingInsights,
                 currency: insightsViewModel.baseCurrency,
+                namespace: insightNamespace,
                 granularity: insightsViewModel.currentGranularity
             )
             .screenPadding()
-            
+
         } else {
-            // Show filtered insights without section headers
             ForEach(filtered) { insight in
-                NavigationLink(destination: InsightDetailView(insight: insight, currency: insightsViewModel.baseCurrency)) {
+                NavigationLink(value: insight) {
                     InsightsCardView(insight: insight)
+                        .matchedTransitionSource(id: insight.id, in: insightNamespace)
                 }
                 .buttonStyle(.plain)
             }
@@ -285,5 +292,21 @@ struct InsightsView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, AppSpacing.xxxl)
         .screenPadding()
+    }
+
+    // MARK: - Category Tap Handler
+
+    private var spendingCategoryTap: (CategoryBreakdownItem) -> AnyView {
+        { [insightsViewModel] item in
+            AnyView(
+                CategoryDeepDiveView(
+                    categoryName: item.categoryName,
+                    color: item.color,
+                    iconSource: item.iconSource,
+                    currency: insightsViewModel.baseCurrency,
+                    viewModel: insightsViewModel
+                )
+            )
+        }
     }
 }
