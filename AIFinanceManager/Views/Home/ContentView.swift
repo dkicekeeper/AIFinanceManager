@@ -28,7 +28,6 @@ struct ContentView: View {
     @State private var wallpaperImage: UIImage? = nil
     @State private var cachedSummary: Summary? = nil
     @State private var wallpaperLoadingTask: Task<Void, Never>? = nil
-    @State private var summaryUpdateTask: Task<Void, Never>? = nil
     /// Guards setupOnAppear so the expensive updateSummary() runs only once on first
     /// appearance. Re-appearances (back-nav from History, Accounts, etc.) skip it because
     /// transactions.count onChange already keeps cachedSummary up-to-date.
