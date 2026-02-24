@@ -17,18 +17,20 @@ struct AmountInputView: View {
 
     @FocusState private var isFocused: Bool
     @State private var displayAmount: String = "0"
-    @State private var previousAmount: String = ""
-    @State private var previousRawAmount: String = ""
-    @State private var animatedCharacters: [AnimatedChar] = []
     @State private var currentFontSize: CGFloat = 56
     @State private var containerWidth: CGFloat = 0
 
     // MARK: - Currency Conversion
+
+    private struct ConversionKey: Equatable {
+        let amount: String
+        let currency: String
+    }
+
     @State private var convertedAmount: Double?
-    @State private var conversionTask: Task<Void, Never>?
 
     // Shared formatters — created once, reused on every call
-    private let displayFormatter: NumberFormatter = {
+    private static let displayFormatter: NumberFormatter = {
         let f = NumberFormatter()
         f.numberStyle = .decimal
         f.minimumFractionDigits = 0
@@ -49,6 +51,12 @@ struct AmountInputView: View {
         return f
     }()
 
+    // Static UIFont for text-width measurement in updateFontSize.
+    // Falls back to system bold if "Inter" PostScript name doesn't match.
+    private static let measureFont: UIFont =
+        UIFont(name: "Inter", size: 56) ?? UIFont.systemFont(ofSize: 56, weight: .bold)
+    private static let measureAttributes: [NSAttributedString.Key: Any] = [.font: measureFont]
+
     var body: some View {
         VStack(spacing: AppSpacing.md) {
             // Amount display — tap to focus, long-press for copy/paste
@@ -57,23 +65,19 @@ struct AmountInputView: View {
             } label: {
                 HStack(spacing: 0) {
                     Spacer()
-                    HStack(spacing: spacingForFontSize(currentFontSize)) {
-                        ForEach(animatedCharacters) { charState in
-                            AnimatedDigit(
-                                character: charState.character,
-                                isNew: charState.isNew,
-                                fontSize: currentFontSize,
-                                color: errorMessage != nil ? .red : .primary
-                            )
-                            .id("\(charState.id)-\(charState.character)")
-                        }
+                    HStack(spacing: AppSpacing.xs) {
+                        Text(displayAmount)
+                            .font(.custom("Inter", size: currentFontSize).weight(.bold))
+                            .contentTransition(.numericText())
+                            .foregroundStyle(errorMessage != nil ? AppColors.destructive : AppColors.textPrimary)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: displayAmount)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.3)
 
                         if isFocused {
                             BlinkingCursor()
                         }
                     }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.3)
                     Spacer()
                 }
             }
@@ -96,6 +100,7 @@ struct AmountInputView: View {
 
             // Converted amount in base currency
             convertedAmountView
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: shouldShowConversion)
 
             // Hidden TextField captures keyboard input
             TextField("", text: $amount)
@@ -106,14 +111,16 @@ struct AmountInputView: View {
                 .onChange(of: amount) { _, newValue in
                     updateDisplayAmount(newValue)
                     onAmountChange?(newValue)
-                    updateConvertedAmountDebounced()
+                }
+                // Debounced currency conversion — auto-cancels when amount or currency changes
+                .task(id: ConversionKey(amount: amount, currency: selectedCurrency)) {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled else { return }
+                    await updateConvertedAmount()
                 }
 
             // Currency selector (centred)
             CurrencySelectorView(selectedCurrency: $selectedCurrency)
-                .onChange(of: selectedCurrency) { _, _ in
-                    Task { await updateConvertedAmount() }
-                }
 
             // Validation error
             if let error = errorMessage {
@@ -124,17 +131,12 @@ struct AmountInputView: View {
             }
         }
         .padding(AppSpacing.lg)
-        .background(
-            GeometryReader { geometry in
-                Color.clear
-                    .preference(key: ContainerWidthKey.self, value: geometry.size.width)
-            }
-        )
-        .onPreferenceChange(ContainerWidthKey.self) { width in
-            if containerWidth != width {
-                containerWidth = width
-                updateFontSize(for: width)
-            }
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            guard containerWidth != newWidth else { return }
+            containerWidth = newWidth
+            updateFontSize(for: newWidth)
         }
         .onChange(of: displayAmount) { _, _ in
             if containerWidth > 0 {
@@ -143,12 +145,6 @@ struct AmountInputView: View {
         }
         .onAppear {
             updateDisplayAmount(amount)
-            previousAmount = displayAmount
-            let cleaned = Self.cleanAmountString(amount)
-            previousRawAmount = cleaned.isEmpty ? "0" : cleaned
-            animatedCharacters = displayAmount.map { char in
-                AnimatedChar(id: UUID(), character: char, isNew: false)
-            }
             Task {
                 try? await Task.sleep(for: .milliseconds(100))
                 isFocused = true
@@ -202,15 +198,6 @@ struct AmountInputView: View {
 
     private func formatConvertedAmount(_ value: Double) -> String {
         Self.convertedAmountFormatter.string(from: NSNumber(value: value)) ?? "0"
-    }
-
-    private func updateConvertedAmountDebounced() {
-        conversionTask?.cancel()
-        conversionTask = Task {
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
-            await updateConvertedAmount()
-        }
     }
 
     @MainActor
@@ -278,7 +265,7 @@ struct AmountInputView: View {
             let number = NSDecimalNumber(decimal: decimal)
             if number.compare(NSDecimalNumber.zero) == .orderedSame {
                 newDisplayAmount = "0"
-            } else if let formatted = displayFormatter.string(from: number) {
+            } else if let formatted = Self.displayFormatter.string(from: number) {
                 newDisplayAmount = formatted
             } else {
                 newDisplayAmount = formatLargeNumber(decimal)
@@ -287,7 +274,6 @@ struct AmountInputView: View {
             newDisplayAmount = cleaned
         }
 
-        updateAnimatedCharacters(newAmount: newDisplayAmount, rawAmount: cleaned)
         displayAmount = newDisplayAmount
     }
 
@@ -299,14 +285,14 @@ struct AmountInputView: View {
         let string = String(describing: decimal)
         if string.contains(".") {
             let parts = string.components(separatedBy: ".")
-            let intPart = groupDigits(parts[0])
+            let intPart = groupDigitsInternal(parts[0])
             let fracPart = parts.count > 1 ? String(parts[1].prefix(2)) : ""
             return fracPart.isEmpty ? intPart : "\(intPart).\(fracPart)"
         }
-        return groupDigits(string)
+        return groupDigitsInternal(string)
     }
 
-    private func groupDigits(_ integerString: String) -> String {
+    private func groupDigitsInternal(_ integerString: String) -> String {
         var result = ""
         var count = 0
         for char in integerString.reversed() {
@@ -315,10 +301,6 @@ struct AmountInputView: View {
             count += 1
         }
         return result
-    }
-
-    private func spacingForFontSize(_ size: CGFloat) -> CGFloat {
-        max(0.5, (size / 56) * 2)
     }
 
     private func updateFontSize(for width: CGFloat) {
@@ -333,12 +315,8 @@ struct AmountInputView: View {
         let maxWidth = width - (AppSpacing.lg * 2) - 20
         let baseSize: CGFloat = 56
 
-        let charCount = testText.count
-        let totalSpacing = CGFloat(max(0, charCount - 1)) * spacingForFontSize(baseSize)
-        let testFont = UIFont(name: "Overpass-Bold", size: baseSize)
-            ?? UIFont.systemFont(ofSize: baseSize, weight: .bold)
-        let textSize = (testText as NSString).size(withAttributes: [.font: testFont])
-        let totalWidth = textSize.width + totalSpacing
+        let textSize = (testText as NSString).size(withAttributes: Self.measureAttributes)
+        let totalWidth = textSize.width
 
         let newFontSize: CGFloat
         if totalWidth > maxWidth && maxWidth > 0 {
@@ -352,63 +330,9 @@ struct AmountInputView: View {
             currentFontSize = newFontSize
         }
     }
-
-    private func updateAnimatedCharacters(newAmount: String, rawAmount: String) {
-        let newRawChars = Array(rawAmount)
-        let previousRawChars = Array(previousRawAmount)
-
-        var changedRawPositions: Set<Int> = []
-        let maxLength = max(newRawChars.count, previousRawChars.count)
-        for i in 0..<maxLength {
-            guard i < newRawChars.count else { continue }
-            if i >= previousRawChars.count || newRawChars[i] != previousRawChars[i] {
-                changedRawPositions.insert(i)
-            }
-        }
-
-        let formattedChars = Array(newAmount)
-        var updated: [AnimatedChar] = []
-        var rawIndex = 0
-
-        for (formattedIndex, formattedChar) in formattedChars.enumerated() {
-            if formattedChar == " " {
-                let charId = formattedIndex < animatedCharacters.count
-                    ? animatedCharacters[formattedIndex].id
-                    : UUID()
-                updated.append(AnimatedChar(id: charId, character: formattedChar, isNew: false))
-                continue
-            }
-
-            let isNew: Bool
-            let charId: UUID
-            if rawIndex < newRawChars.count {
-                if changedRawPositions.contains(rawIndex) {
-                    isNew = true
-                    charId = UUID()
-                } else {
-                    isNew = false
-                    charId = (formattedIndex < animatedCharacters.count
-                        && animatedCharacters[formattedIndex].character == formattedChar)
-                        ? animatedCharacters[formattedIndex].id
-                        : UUID()
-                }
-                rawIndex += 1
-            } else {
-                isNew = false
-                charId = UUID()
-            }
-
-            updated.append(AnimatedChar(id: charId, character: formattedChar, isNew: isNew))
-        }
-
-        animatedCharacters = updated
-        previousAmount = newAmount
-        previousRawAmount = rawAmount
-    }
 }
 
-// AnimatedChar, AnimatedDigit, BlinkingCursor, ContainerWidthKey
-// are defined in Views/Components/AnimatedInputComponents.swift
+// BlinkingCursor is defined in Views/Components/AnimatedInputComponents.swift
 
 #Preview("Amount Input - Empty") {
     @Previewable @State var amount = ""
