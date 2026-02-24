@@ -17,7 +17,7 @@ struct DateSectionHeader: View {
             Text(dateKey)
                 .font(AppTypography.bodySmall)
                 .fontWeight(.semibold)
-                .foregroundStyle(.primary)
+                .foregroundStyle(AppColors.textPrimary)
 
             Spacer()
 
@@ -28,7 +28,7 @@ struct DateSectionHeader: View {
                     prefix: "-",
                     fontSize: AppTypography.bodySmall,
                     fontWeight: .semibold,
-                    color: .gray
+                    color: AppColors.textSecondary
                 )
             }
         }

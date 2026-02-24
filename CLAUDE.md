@@ -426,6 +426,7 @@ func saveAccountsInternal(...) throws {
 - Fetch requests should be optimized with predicates
 - Use background contexts for heavy operations
 - **⚠️ OR-per-month predicate crash**: Never build `NSCompoundPredicate(orPredicateWithSubpredicates:)` with one subpredicate per calendar month. For ranges > ~80 months SQLite raises `Expression tree too large (maximum depth 1000)`. Use a constant 7-condition range predicate instead: `year > 0 AND month > 0 AND (year > startYear OR (year == startYear AND month >= startMonth)) AND (year < endYear OR (year == endYear AND month <= endMonth))`. See `CategoryAggregateService.fetchRange()` for reference implementation.
+- **`NSDecimalNumber.compare()` gotcha**: `number.compare(.zero)` **не компилируется** — Swift не выводит тип из `NSNumber`; всегда пиши `number.compare(NSDecimalNumber.zero)`
 - **`performFetch()` + `rebuildSections()` are synchronous on MainActor** — sections fully updated before the next line. Gates like `isHistoryListReady` only protect UI if the section count is already bounded before the flag turns `true`; an unbounded allTime FRC (3,530 sections) will still freeze even with the gate.
 
 ### File Organization Rules ("Where Should I Put This File?")
@@ -881,6 +882,20 @@ Current branch: `main`
 - **Services/Voice/**: Voice input parsing and services
 - **Services/Import/**: PDF and statement text parsing
 - **Services/Cache/**: Caching coordinators and managers
+
+### Utils — Amount Formatting (three formatters, разные назначения)
+| File | Purpose | Decimal places |
+|------|---------|----------------|
+| `AmountFormatter.swift` | Хранимые значения: format/parse/validate; `minimumFractionDigits=2` | Always 2 ("1 234.50") |
+| `AmountDisplayConfiguration.swift` | Глобальная конфигурация форматтера. **Hot path: `AmountDisplayConfiguration.formatter`** (кэширован). `makeNumberFormatter()` создаёт новый объект — не вызывать в `List`/`ForEach` | Configurable (default 2) |
+| `AmountInputFormatting.swift` | Механика input-компонентов: `cleanAmountString`, `displayAmount(for:)`, `calculateFontSize`. Используется в `AmountInputView` и `AnimatedAmountInput` | 0–2 (no trailing zeros) |
+
+- **`AmountDisplayConfiguration` cache invalidation**: `static var shared = Config() { didSet { _cache = nil } }` — мутация свойства `shared.prop = x` тоже тригерит `didSet` (Swift копирует struct и присваивает обратно)
+
+### AnimatedInputComponents.swift (Phase 30+)
+- Содержит **только `BlinkingCursor`** — все AnimatedDigit/AnimatedChar/CharAnimState удалены
+- `AmountInputView` + `AnimatedAmountInput` используют `contentTransition(.numericText())` для чисел
+- `AnimatedTitleInput` использует `contentTransition(.interpolate)` для текста — намеренно разные
 
 ## AI Assistant Instructions
 

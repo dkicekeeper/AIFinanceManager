@@ -5,18 +5,19 @@
 //  Created: Phase 16 - AnimatedHeroInput
 //
 //  Animated input components for EditableHeroSection:
-//  - AnimatedAmountInput: hero-style balance input with per-digit spring animations
-//  - AnimatedTitleInput: hero-style name input with soft character animations
+//  - AnimatedAmountInput: hero-style balance input with contentTransition numericText animation
+//  - AnimatedTitleInput: hero-style name input with contentTransition interpolate animation
 //
-//  Intentionally excludes currency conversion (AmountInputView handles that).
+//  Formatting and font-sizing mechanics are shared via AmountInputFormatting
+//  (same as AmountInputView). Intentionally excludes currency conversion.
 //
 
 import SwiftUI
 
 // MARK: - AnimatedAmountInput
 
-/// Hero-style balance input with per-digit spring + wobble animations.
-/// Displays formatted number with animated characters; no currency conversion.
+/// Hero-style balance input using the same mechanics as AmountInputView.
+/// Displays a formatted number with numericText transition; no currency conversion.
 ///
 /// Usage:
 /// ```swift
@@ -32,30 +33,6 @@ struct AnimatedAmountInput: View {
     @State private var displayAmount: String = "0"
     @State private var currentFontSize: CGFloat = 48
     @State private var containerWidth: CGFloat = 0
-
-    private static let formatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = 0
-        f.maximumFractionDigits = 2
-        f.groupingSeparator = " "
-        f.usesGroupingSeparator = true
-        f.decimalSeparator = "."
-        return f
-    }()
-
-    private static let largeNumberFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.groupingSeparator = " "
-        f.usesGroupingSeparator = true
-        f.maximumFractionDigits = 2
-        return f
-    }()
-
-    private static let measureFont: UIFont =
-        UIFont(name: "Inter", size: 56) ?? UIFont.systemFont(ofSize: 56, weight: .bold)
-    private static let measureAttributes: [NSAttributedString.Key: Any] = [.font: measureFont]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -123,80 +100,24 @@ struct AnimatedAmountInput: View {
         AppSize.cursorHeight * (currentFontSize / 36)
     }
 
-    // MARK: - Formatting
-
-    private func cleanedRaw(_ text: String) -> String {
-        text
-            .replacingOccurrences(of: ",", with: ".")
-            .replacingOccurrences(of: " ", with: "")
-            .trimmingCharacters(in: .whitespaces)
-    }
+    // MARK: - Display Amount
 
     private func updateDisplayAmount(_ text: String) {
-        let cleaned = cleanedRaw(text)
-
-        let newDisplay: String
-        if cleaned.isEmpty {
-            newDisplay = "0"
-        } else if let decimal = Decimal(string: cleaned) {
-            let number = NSDecimalNumber(decimal: decimal)
-            if number.compare(NSDecimalNumber.zero) == .orderedSame {
-                newDisplay = "0"
-            } else if let formatted = Self.formatter.string(from: number) {
-                newDisplay = formatted
-            } else {
-                newDisplay = formatLargeNumber(decimal)
-            }
-        } else {
-            newDisplay = cleaned
-        }
-
-        displayAmount = newDisplay
-    }
-
-    private func formatLargeNumber(_ decimal: Decimal) -> String {
-        if let s = Self.largeNumberFormatter.string(from: NSDecimalNumber(decimal: decimal)) { return s }
-        let string = String(describing: decimal)
-        guard string.contains(".") else { return groupDigits(string) }
-        let parts = string.components(separatedBy: ".")
-        return "\(groupDigits(parts[0])).\(parts[1].prefix(2))"
-    }
-
-    private func groupDigits(_ s: String) -> String {
-        var result = ""
-        for (i, char) in s.reversed().enumerated() {
-            if i > 0 && i % 3 == 0 { result = " " + result }
-            result = String(char) + result
-        }
-        return result
+        displayAmount = AmountInputFormatting.displayAmount(for: text)
     }
 
     // MARK: - Font Sizing
 
     private func updateFontSize(for width: CGFloat) {
-        guard width > 0 else { return }
-        if displayAmount == "0" {
-            currentFontSize = baseFontSize
-            return
-        }
-
-        let maxWidth = width - (AppSpacing.lg * 2) - 20
-        let textSize = (displayAmount as NSString).size(withAttributes: Self.measureAttributes)
-        let totalWidth = textSize.width
-
-        let newSize: CGFloat
-        if totalWidth > maxWidth && maxWidth > 0 {
-            let scale = maxWidth / totalWidth
-            newSize = max(24, min(baseFontSize, baseFontSize * scale))
-        } else {
-            newSize = baseFontSize
-        }
-
+        let newSize = AmountInputFormatting.calculateFontSize(
+            for: displayAmount,
+            containerWidth: width,
+            baseFontSize: baseFontSize
+        )
         if abs(currentFontSize - newSize) > 0.5 {
             currentFontSize = newSize
         }
     }
-
 }
 
 // MARK: - AnimatedTitleInput
@@ -275,9 +196,6 @@ struct AnimatedTitleInput: View {
         }
         .animation(.easeInOut(duration: 0.15), value: showPlaceholder)
         .animation(.easeInOut(duration: 0.15), value: showCursor)
-        .onAppear {
-            // No character tracking needed anymore
-        }
     }
 }
 

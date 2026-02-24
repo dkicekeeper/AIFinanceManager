@@ -30,18 +30,40 @@ struct AmountDisplayConfiguration {
     /// Максимальное количество знаков после запятой
     var maximumFractionDigits: Int = 2
 
-    /// Глобальный экземпляр конфигурации
-    static var shared = AmountDisplayConfiguration()
+    // MARK: - Shared Instance
 
-    /// Создает NumberFormatter на основе текущей конфигурации
+    /// Глобальный экземпляр конфигурации.
+    /// Замена всего экземпляра или изменение любого свойства
+    /// автоматически инвалидирует кэшированный форматтер.
+    static var shared = AmountDisplayConfiguration() {
+        didSet { _cachedFormatter = nil }
+    }
+
+    // MARK: - Cached Formatter
+
+    /// Кэшированный форматтер — пересоздаётся только при изменении `shared`.
+    /// Используй в hot path (List, ForEach и т.п.).
+    private static var _cachedFormatter: NumberFormatter?
+
+    static var formatter: NumberFormatter {
+        if let cached = _cachedFormatter { return cached }
+        let f = shared.makeNumberFormatter()
+        _cachedFormatter = f
+        return f
+    }
+
+    // MARK: - Factory
+
+    /// Создаёт новый `NumberFormatter` на основе текущих настроек.
+    /// В hot path используй `AmountDisplayConfiguration.formatter` — он кэширован.
     func makeNumberFormatter() -> NumberFormatter {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = thousandsSeparator
-        formatter.decimalSeparator = decimalSeparator
-        formatter.minimumFractionDigits = minimumFractionDigits
-        formatter.maximumFractionDigits = maximumFractionDigits
-        formatter.usesGroupingSeparator = true
-        return formatter
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.groupingSeparator = thousandsSeparator
+        f.decimalSeparator = decimalSeparator
+        f.minimumFractionDigits = minimumFractionDigits
+        f.maximumFractionDigits = maximumFractionDigits
+        f.usesGroupingSeparator = true
+        return f
     }
 }

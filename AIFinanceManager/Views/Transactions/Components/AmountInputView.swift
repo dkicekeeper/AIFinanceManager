@@ -29,34 +29,6 @@ struct AmountInputView: View {
 
     @State private var convertedAmount: Double?
 
-    // Shared formatters — created once, reused on every call
-    private static let displayFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = 0
-        f.maximumFractionDigits = 2
-        f.groupingSeparator = " "
-        f.usesGroupingSeparator = true
-        f.decimalSeparator = "."
-        return f
-    }()
-
-    private static let convertedAmountFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.groupingSeparator = " "
-        f.usesGroupingSeparator = true
-        f.maximumFractionDigits = 2
-        f.minimumFractionDigits = 0
-        return f
-    }()
-
-    // Static UIFont for text-width measurement in updateFontSize.
-    // Falls back to system bold if "Inter" PostScript name doesn't match.
-    private static let measureFont: UIFont =
-        UIFont(name: "Inter", size: 56) ?? UIFont.systemFont(ofSize: 56, weight: .bold)
-    private static let measureAttributes: [NSAttributedString.Key: Any] = [.font: measureFont]
-
     var body: some View {
         VStack(spacing: AppSpacing.md) {
             // Amount display — tap to focus, long-press for copy/paste
@@ -193,11 +165,11 @@ struct AmountInputView: View {
     }
 
     private func parseAmount(_ text: String) -> Double? {
-        Double(Self.cleanAmountString(text))
+        Double(AmountInputFormatting.cleanAmountString(text))
     }
 
     private func formatConvertedAmount(_ value: Double) -> String {
-        Self.convertedAmountFormatter.string(from: NSNumber(value: value)) ?? "0"
+        AmountInputFormatting.displayFormatter.string(from: NSNumber(value: value)) ?? "0"
     }
 
     @MainActor
@@ -240,94 +212,27 @@ struct AmountInputView: View {
 
     private func pasteAmount() {
         guard let clipboardText = UIPasteboard.general.string else { return }
-        let cleaned = Self.cleanAmountString(clipboardText)
+        let cleaned = AmountInputFormatting.cleanAmountString(clipboardText)
         guard !cleaned.isEmpty, Double(cleaned) != nil else { return }
         amount = cleaned
     }
 
-    // MARK: - Display Amount Helpers
-
-    /// Normalises decimal separator and strips all non-numeric characters.
-    /// Single source of truth — replaces three previously duplicated blocks.
-    private static func cleanAmountString(_ text: String) -> String {
-        text
-            .replacingOccurrences(of: ",", with: ".")
-            .filter { $0.isNumber || $0 == "." }
-    }
+    // MARK: - Display Amount
 
     private func updateDisplayAmount(_ text: String) {
-        let cleaned = Self.cleanAmountString(text)
-
-        let newDisplayAmount: String
-        if cleaned.isEmpty {
-            newDisplayAmount = "0"
-        } else if let decimal = Decimal(string: cleaned) {
-            let number = NSDecimalNumber(decimal: decimal)
-            if number.compare(NSDecimalNumber.zero) == .orderedSame {
-                newDisplayAmount = "0"
-            } else if let formatted = Self.displayFormatter.string(from: number) {
-                newDisplayAmount = formatted
-            } else {
-                newDisplayAmount = formatLargeNumber(decimal)
-            }
-        } else {
-            newDisplayAmount = cleaned
-        }
-
-        displayAmount = newDisplayAmount
+        displayAmount = AmountInputFormatting.displayAmount(for: text)
     }
 
-    private func formatLargeNumber(_ decimal: Decimal) -> String {
-        if let formatted = Self.convertedAmountFormatter.string(from: NSDecimalNumber(decimal: decimal)) {
-            return formatted
-        }
-
-        let string = String(describing: decimal)
-        if string.contains(".") {
-            let parts = string.components(separatedBy: ".")
-            let intPart = groupDigitsInternal(parts[0])
-            let fracPart = parts.count > 1 ? String(parts[1].prefix(2)) : ""
-            return fracPart.isEmpty ? intPart : "\(intPart).\(fracPart)"
-        }
-        return groupDigitsInternal(string)
-    }
-
-    private func groupDigitsInternal(_ integerString: String) -> String {
-        var result = ""
-        var count = 0
-        for char in integerString.reversed() {
-            if count > 0 && count % 3 == 0 { result = " " + result }
-            result = String(char) + result
-            count += 1
-        }
-        return result
-    }
+    // MARK: - Font Sizing
 
     private func updateFontSize(for width: CGFloat) {
-        if displayAmount == "0" {
-            currentFontSize = 56
-            return
-        }
-
-        guard width > 0 else { return }
-
-        let testText = displayAmount.isEmpty ? "0" : displayAmount
-        let maxWidth = width - (AppSpacing.lg * 2) - 20
-        let baseSize: CGFloat = 56
-
-        let textSize = (testText as NSString).size(withAttributes: Self.measureAttributes)
-        let totalWidth = textSize.width
-
-        let newFontSize: CGFloat
-        if totalWidth > maxWidth && maxWidth > 0 {
-            let scaleFactor = maxWidth / totalWidth
-            newFontSize = max(24, min(baseSize, baseSize * scaleFactor))
-        } else {
-            newFontSize = baseSize
-        }
-
-        if abs(currentFontSize - newFontSize) > 0.5 {
-            currentFontSize = newFontSize
+        let newSize = AmountInputFormatting.calculateFontSize(
+            for: displayAmount,
+            containerWidth: width,
+            baseFontSize: 56
+        )
+        if abs(currentFontSize - newSize) > 0.5 {
+            currentFontSize = newSize
         }
     }
 }
