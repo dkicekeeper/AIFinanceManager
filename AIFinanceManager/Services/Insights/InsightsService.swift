@@ -2491,14 +2491,13 @@ final class InsightsService: @unchecked Sendable {
     @MainActor
     private func fetchIncomeByCategoryFromCoreData(baseCurrency: String) -> [String: Double] {
         let context = CoreDataStack.shared.viewContext
-        let request = TransactionEntity.fetchRequest()
+        let request = NSFetchRequest<NSDictionary>(entityName: "TransactionEntity")
         request.predicate = NSPredicate(
             format: "type == %@ AND category != nil AND category != %@",
             "income", ""
         )
         request.propertiesToFetch = ["category", "amount", "convertedAmount", "currency"]
         request.resultType = .dictionaryResultType
-        request.returnsObjectsAsFaults = false
 
         var result: [String: Double] = [:]
         do {
@@ -2810,11 +2809,10 @@ final class InsightsService: @unchecked Sendable {
     @MainActor
     private func fetchLastTransactionDates() -> [String: Date] {
         let context = CoreDataStack.shared.viewContext
-        let request = TransactionEntity.fetchRequest()
+        let request = NSFetchRequest<NSDictionary>(entityName: "TransactionEntity")
         // Fetch only the fields we need: accountId and date (the actual Date field, not string)
         request.propertiesToFetch = ["accountId", "date"]
         request.resultType = .dictionaryResultType
-        request.returnsObjectsAsFaults = false
         // Exclude transfers and internal-only entries
         request.predicate = NSPredicate(format: "accountId != nil AND date != nil")
 
