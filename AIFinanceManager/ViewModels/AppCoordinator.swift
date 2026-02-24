@@ -310,9 +310,12 @@ class AppCoordinator {
         // aggregates are already built and maintained incrementally via apply().
         Task.detached(priority: .background) { [weak self] in
             guard let self = self else { return }
-            let txCount = await self.transactionStore.transactions.count
+            // Phase 31 Task 4: Load from repo with dateRange: nil (full history) so that
+            // CategoryAggregateEntity and MonthlyAggregateEntity always reflect complete
+            // transaction history — not just the in-memory windowed store.
+            let allTx = self.repository.loadTransactions(dateRange: nil)
+            let txCount = allTx.count
             let currency = await self.transactionStore.baseCurrency
-            let allTx = await self.transactionStore.transactions
 
             // Check if aggregates exist; rebuild only if CoreData is empty
             let existingMonthly = await self.transactionStore.monthlyAggregateService.fetchLast(
