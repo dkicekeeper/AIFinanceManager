@@ -8,6 +8,12 @@
 import SwiftUI
 import UIKit
 
+private enum CSVMappingDestination: Hashable {
+    case account(String)
+    case incomeCategory(String)
+    case expenseCategory(String)
+}
+
 struct CSVEntityMappingView: View {
     let csvFile: CSVFile
     let mapping: CSVColumnMapping
@@ -34,19 +40,7 @@ struct CSVEntityMappingView: View {
                 if !uniqueAccounts.isEmpty {
                     Section(header: Text("Сопоставление счетов")) {
                         ForEach(uniqueAccounts, id: \.self) { accountValue in
-                            NavigationLink(destination: AccountMappingDetailView(
-                                csvValue: accountValue,
-                                accounts: accountsViewModel.accounts,
-                                selectedAccountId: Binding(
-                                    get: { accountMappings[accountValue] },
-                                    set: { accountMappings[accountValue] = $0 }
-                                ),
-                                onCreateNew: {
-                                    Task {
-                                        await createAccount(name: accountValue)
-                                    }
-                                }
-                            )) {
+                            NavigationLink(value: CSVMappingDestination.account(accountValue)) {
                                 HStack {
                                     Text(accountValue)
                                     Spacer()
@@ -67,18 +61,7 @@ struct CSVEntityMappingView: View {
                 if mapping.categoryColumn != nil, !uniqueCategories.isEmpty {
                     Section(header: Text("Сопоставление категорий")) {
                         ForEach(uniqueCategories, id: \.self) { categoryValue in
-                            NavigationLink(destination: CategoryMappingDetailView(
-                                csvValue: categoryValue,
-                                categories: categoriesViewModel.customCategories.filter { $0.type == .expense },
-                                categoryType: .expense,
-                                selectedCategoryName: Binding(
-                                    get: { categoryMappings[categoryValue] },
-                                    set: { categoryMappings[categoryValue] = $0 }
-                                ),
-                                onCreateNew: {
-                                    createCategory(name: categoryValue, type: .expense)
-                                }
-                            )) {
+                            NavigationLink(value: CSVMappingDestination.expenseCategory(categoryValue)) {
                                 HStack {
                                     Text(categoryValue)
                                     Spacer()
@@ -98,18 +81,7 @@ struct CSVEntityMappingView: View {
                 if !uniqueIncomeCategories.isEmpty {
                     Section(header: Text("Сопоставление категорий доходов")) {
                         ForEach(uniqueIncomeCategories, id: \.self) { categoryValue in
-                            NavigationLink(destination: CategoryMappingDetailView(
-                                csvValue: categoryValue,
-                                categories: categoriesViewModel.customCategories.filter { $0.type == .income },
-                                categoryType: .income,
-                                selectedCategoryName: Binding(
-                                    get: { categoryMappings[categoryValue] },
-                                    set: { categoryMappings[categoryValue] = $0 }
-                                ),
-                                onCreateNew: {
-                                    createCategory(name: categoryValue, type: .income)
-                                }
-                            )) {
+                            NavigationLink(value: CSVMappingDestination.incomeCategory(categoryValue)) {
                                 HStack {
                                     Text(categoryValue)
                                     Spacer()
@@ -124,6 +96,48 @@ struct CSVEntityMappingView: View {
                             }
                         }
                     }
+                }
+            }
+            .navigationDestination(for: CSVMappingDestination.self) { dest in
+                switch dest {
+                case .account(let csvValue):
+                    AccountMappingDetailView(
+                        csvValue: csvValue,
+                        accounts: accountsViewModel.accounts,
+                        selectedAccountId: Binding(
+                            get: { accountMappings[csvValue] },
+                            set: { accountMappings[csvValue] = $0 }
+                        ),
+                        onCreateNew: {
+                            Task { await createAccount(name: csvValue) }
+                        }
+                    )
+                case .expenseCategory(let csvValue):
+                    CategoryMappingDetailView(
+                        csvValue: csvValue,
+                        categories: categoriesViewModel.customCategories.filter { $0.type == .expense },
+                        categoryType: .expense,
+                        selectedCategoryName: Binding(
+                            get: { categoryMappings[csvValue] },
+                            set: { categoryMappings[csvValue] = $0 }
+                        ),
+                        onCreateNew: {
+                            createCategory(name: csvValue, type: .expense)
+                        }
+                    )
+                case .incomeCategory(let csvValue):
+                    CategoryMappingDetailView(
+                        csvValue: csvValue,
+                        categories: categoriesViewModel.customCategories.filter { $0.type == .income },
+                        categoryType: .income,
+                        selectedCategoryName: Binding(
+                            get: { categoryMappings[csvValue] },
+                            set: { categoryMappings[csvValue] = $0 }
+                        ),
+                        onCreateNew: {
+                            createCategory(name: csvValue, type: .income)
+                        }
+                    )
                 }
             }
             .navigationTitle("Сопоставление сущностей")
