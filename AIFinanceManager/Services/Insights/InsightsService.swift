@@ -15,8 +15,7 @@ import Foundation
 import SwiftUI
 import os
 
-@MainActor
-final class InsightsService {
+final class InsightsService: @unchecked Sendable {
 
     // MARK: - Logger
 
@@ -69,6 +68,7 @@ final class InsightsService {
 
     // MARK: - Public API
 
+    @MainActor
     func generateAllInsights(
         timeFilter: TimeFilter,
         baseCurrency: String,
@@ -163,6 +163,7 @@ final class InsightsService {
     /// instead of scanning all transactions (O(M) lookups vs the previous O(N×M) passes).
     /// Falls back to the original transaction-scan path if aggregates are unavailable
     /// (e.g. on first launch before a full rebuild).
+    @MainActor
     func computeMonthlyDataPoints(
         transactions: [Transaction],
         months: Int,
@@ -278,6 +279,7 @@ final class InsightsService {
         return Calendar.current.date(byAdding: .second, value: -1, to: end) ?? end
     }
 
+    @MainActor
     private func generateSpendingInsights(
         filtered: [Transaction],
         allTransactions: [Transaction],
@@ -708,6 +710,7 @@ final class InsightsService {
 
     // MARK: - Budget Insights
 
+    @MainActor
     private func generateBudgetInsights(
         transactions: [Transaction],
         timeFilter: TimeFilter,
@@ -848,6 +851,7 @@ final class InsightsService {
 
     // MARK: - Recurring Insights
 
+    @MainActor
     private func generateRecurringInsights(baseCurrency: String, granularity: InsightGranularity? = nil) -> [Insight] {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
         guard !activeSeries.isEmpty else {
@@ -948,6 +952,7 @@ final class InsightsService {
 
     // MARK: - Cash Flow Insights
 
+    @MainActor
     private func generateCashFlowInsights(
         allTransactions: [Transaction],
         timeFilter: TimeFilter,
@@ -1111,6 +1116,7 @@ final class InsightsService {
 
     // MARK: - Category Deep Dive
 
+    @MainActor
     func generateCategoryDeepDive(
         categoryName: String,
         allTransactions: [Transaction],
@@ -1447,6 +1453,7 @@ final class InsightsService {
 
     // MARK: - Cash Flow from Period Points (Phase 18)
 
+    @MainActor
     private func generateCashFlowInsightsFromPeriodPoints(
         periodPoints: [PeriodDataPoint],
         allTransactions: [Transaction],
@@ -1584,6 +1591,7 @@ final class InsightsService {
 
     // MARK: - Wealth Insights (Phase 18)
 
+    @MainActor
     func generateWealthInsights(
         periodPoints: [PeriodDataPoint],
         allTransactions: [Transaction],
@@ -1697,6 +1705,7 @@ final class InsightsService {
     // MARK: - Spending Spike (Phase 24)
 
     /// Detects a category whose current-month spending exceeds 1.5× its 3-month historical average.
+    @MainActor
     private func generateSpendingSpike(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -1763,6 +1772,7 @@ final class InsightsService {
     // MARK: - Category Trend (Phase 24)
 
     /// Finds the expense category that has been rising for the most consecutive months (min 2).
+    @MainActor
     private func generateCategoryTrend(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -1829,6 +1839,7 @@ final class InsightsService {
     // MARK: - Subscription Growth (Phase 24)
 
     /// Compares current monthly recurring total with the total 3 months ago.
+    @MainActor
     private func generateSubscriptionGrowth(baseCurrency: String) -> Insight? {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
         guard activeSeries.count >= 2 else { return nil }
@@ -1922,6 +1933,7 @@ final class InsightsService {
         )
     }
 
+    @MainActor
     private func generateEmergencyFund(baseCurrency: String, balanceFor: (String) -> Double) -> Insight? {
         let totalBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         guard totalBalance > 0 else { return nil }
@@ -1954,6 +1966,7 @@ final class InsightsService {
         )
     }
 
+    @MainActor
     private func generateSavingsMomentum(baseCurrency: String) -> Insight? {
         let aggregates = transactionStore.monthlyAggregateService.fetchLast(4, currency: baseCurrency)
         guard aggregates.count >= 2 else { return nil }
@@ -2032,6 +2045,7 @@ final class InsightsService {
     }
 
     /// Projects month-end spend = avg daily rate × remaining days + pending recurring.
+    @MainActor
     private func generateSpendingForecast(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -2100,6 +2114,7 @@ final class InsightsService {
     }
 
     /// How many months the current balance will last at the current net-burn rate.
+    @MainActor
     private func generateBalanceRunway(baseCurrency: String, balanceFor: (String) -> Double) -> Insight? {
         let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         guard currentBalance > 0 else { return nil }
@@ -2151,6 +2166,7 @@ final class InsightsService {
     }
 
     /// Compares this month's expenses against the same month last year.
+    @MainActor
     private func generateYearOverYear(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -2199,6 +2215,7 @@ final class InsightsService {
     }
 
     /// Identifies which calendar month historically generates the highest income.
+    @MainActor
     private func generateIncomeSeasonality(baseCurrency: String) -> Insight? {
         // Fetch all-time monthly aggregates
         let calendar = Calendar.current
@@ -2254,6 +2271,7 @@ final class InsightsService {
     }
 
     /// Compares current daily spending rate vs last month's daily rate.
+    @MainActor
     private func generateSpendingVelocity(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -2305,6 +2323,7 @@ final class InsightsService {
     }
 
     /// Groups income transactions by category to show income source distribution.
+    @MainActor
     private func generateIncomeSourceBreakdown(allTransactions: [Transaction], baseCurrency: String) -> Insight? {
         let incomeCategories = transactionStore.categories.filter { $0.type == .income }
         guard incomeCategories.count >= 2 else { return nil }
@@ -2434,6 +2453,7 @@ final class InsightsService {
 
     /// Computes a composite 0-100 financial health score from five weighted components.
     /// Call after `generateAllInsights` once totals and period data points are available.
+    @MainActor
     func computeHealthScore(
         totalIncome: Double,
         totalExpenses: Double,
@@ -2518,6 +2538,7 @@ final class InsightsService {
 
     /// Detects possible duplicate subscriptions — active series with the same category
     /// OR monthly cost within 15% of each other.
+    @MainActor
     private func generateDuplicateSubscriptions(baseCurrency: String) -> Insight? {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive && $0.kind == .subscription }
         guard activeSeries.count >= 2 else { return nil }
@@ -2575,6 +2596,7 @@ final class InsightsService {
     }
 
     /// Flags accounts that have been idle for 30+ days but still hold a positive balance.
+    @MainActor
     private func generateAccountDormancy(allTransactions: [Transaction], balanceFor: (String) -> Double) -> Insight? {
         let dateFormatter = DateFormatters.dateFormatter
         let now = Date()
@@ -2620,6 +2642,7 @@ final class InsightsService {
 
     /// Phase 23-C P12: shared monthly recurring net calculation.
     /// Was duplicated verbatim in generateCashFlowInsights and generateCashFlowInsightsFromPeriodPoints.
+    @MainActor
     private func monthlyRecurringNet(baseCurrency: String) -> Double {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
         return activeSeries.reduce(0.0) { total, series in

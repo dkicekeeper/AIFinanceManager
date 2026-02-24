@@ -5,6 +5,9 @@
 //  Phase 17: Financial Insights Feature
 //  In-memory LRU cache with TTL for computed insights.
 //
+//  Phase 31: Removed @MainActor isolation. Protected by NSLock so the cache
+//  can be read/written from InsightsService running on any thread.
+//
 //  Design:
 //  - Maximum `capacity` entries (default 20) to bound memory usage
 //  - TTL (default 5 min) expiry — stale entries are lazily removed on read
@@ -15,8 +18,8 @@
 
 import Foundation
 
-@MainActor
-final class InsightsCache {
+/// Thread-safe LRU insights cache. @unchecked Sendable — internal state protected by NSLock.
+final class InsightsCache: @unchecked Sendable {
     // MARK: - Types
 
     private struct CacheEntry {
@@ -31,6 +34,7 @@ final class InsightsCache {
     private var lruKeys: [String] = []
     private let ttl: TimeInterval
     private let capacity: Int
+    private let lock = NSLock()
 
     // MARK: - Init
 
@@ -42,28 +46,32 @@ final class InsightsCache {
     // MARK: - Public API
 
     func get(key: String) -> [Insight]? {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard let entry = cache[key] else { return nil }
 
         // TTL check — lazy eviction on read
         if Date().timeIntervalSince(entry.timestamp) > ttl {
-            evict(key: key)
+            evictLocked(key: key)
             return nil
         }
 
         // Promote to most-recently-used
-        promote(key: key)
+        promoteLocked(key: key)
         return entry.insights
     }
 
     func set(key: String, insights: [Insight]) {
+        lock.lock()
+        defer { lock.unlock() }
+
         if cache[key] != nil {
-            // Overwrite existing — promote it
             cache[key] = CacheEntry(insights: insights, timestamp: Date())
-            promote(key: key)
+            promoteLocked(key: key)
         } else {
-            // New entry — evict LRU if at capacity
             if cache.count >= capacity, let oldest = lruKeys.first {
-                evict(key: oldest)
+                evictLocked(key: oldest)
             }
             cache[key] = CacheEntry(insights: insights, timestamp: Date())
             lruKeys.append(key)
@@ -71,13 +79,17 @@ final class InsightsCache {
     }
 
     func invalidateAll() {
+        lock.lock()
+        defer { lock.unlock() }
         cache.removeAll()
         lruKeys.removeAll()
     }
 
     func invalidate(category: InsightCategory) {
+        lock.lock()
+        defer { lock.unlock() }
         let keysToRemove = cache.keys.filter { $0.contains(category.rawValue) }
-        for key in keysToRemove { evict(key: key) }
+        for key in keysToRemove { evictLocked(key: key) }
     }
 
     // MARK: - Cache Key
@@ -86,16 +98,16 @@ final class InsightsCache {
         "\(timeFilter.preset.rawValue)_\(baseCurrency)_\(timeFilter.startDate.timeIntervalSince1970)"
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Private Helpers (call only while lock is held)
 
-    private func promote(key: String) {
+    private func promoteLocked(key: String) {
         if let idx = lruKeys.firstIndex(of: key) {
             lruKeys.remove(at: idx)
             lruKeys.append(key)
         }
     }
 
-    private func evict(key: String) {
+    private func evictLocked(key: String) {
         cache.removeValue(forKey: key)
         lruKeys.removeAll { $0 == key }
     }
