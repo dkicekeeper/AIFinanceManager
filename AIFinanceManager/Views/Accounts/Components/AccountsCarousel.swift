@@ -12,8 +12,8 @@ import SwiftUI
 struct AccountsCarousel: View {
     // MARK: - Properties
     let accounts: [Account]
-    let onAccountTap: (Account) -> Void
     let balanceCoordinator: BalanceCoordinator
+    var namespace: Namespace.ID
 
     // MARK: - Body
     var body: some View {
@@ -21,11 +21,8 @@ struct AccountsCarousel: View {
             ForEach(accounts.sortedByOrder()) { account in
                 AccountCard(
                     account: account,
-                    onTap: {
-                        HapticManager.light()
-                        onAccountTap(account)
-                    },
-                    balanceCoordinator: balanceCoordinator
+                    balanceCoordinator: balanceCoordinator,
+                    namespace: namespace
                 )
                 // Use balance from coordinator for proper identity tracking
                 .id("\(account.id)-\(balanceCoordinator.balances[account.id] ?? 0)")
@@ -37,28 +34,31 @@ struct AccountsCarousel: View {
 
 // MARK: - Preview
 #Preview {
+    @Namespace var ns
     let coordinator = AppCoordinator()
 
-    return AccountsCarousel(
-        accounts: [
-            Account(
-                id: "1",
-                name: "Kaspi Bank",
-                currency: "KZT",
-                iconSource: .bankLogo(.kaspi),
-                depositInfo: nil,
-                initialBalance: 150000
-            ),
-            Account(
-                id: "2",
-                name: "Halyk Bank",
-                currency: "KZT",
-                iconSource: .bankLogo(.halykBank),
-                depositInfo: nil,
-                initialBalance: 250000
-            )
-        ],
-        onAccountTap: { _ in },
-        balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
-    )
+    return NavigationStack {
+        AccountsCarousel(
+            accounts: [
+                Account(
+                    id: "1",
+                    name: "Kaspi Bank",
+                    currency: "KZT",
+                    iconSource: .bankLogo(.kaspi),
+                    depositInfo: nil,
+                    initialBalance: 150000
+                ),
+                Account(
+                    id: "2",
+                    name: "Halyk Bank",
+                    currency: "KZT",
+                    iconSource: .bankLogo(.halykBank),
+                    depositInfo: nil,
+                    initialBalance: 250000
+                )
+            ],
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
+            namespace: ns
+        )
+    }
 }

@@ -22,6 +22,7 @@ struct DepositDetailView: View {
     @State private var showingDeleteConfirmation = false
     @State private var showingHistory = false
     @Environment(\.dismiss) var dismiss
+    @Namespace private var depositActionNamespace
     
     private var account: Account? {
         depositsViewModel.getDeposit(by: accountId)
@@ -134,24 +135,30 @@ struct DepositDetailView: View {
         }
         .sheet(isPresented: $showingTransferTo) {
             if let account = account {
-                AccountActionView(
-                    transactionsViewModel: transactionsViewModel,
-                    accountsViewModel: depositsViewModel.accountsViewModel,
-                    account: account,
-                    transferDirection: .toDeposit
-                )
+                NavigationStack {
+                    AccountActionView(
+                        transactionsViewModel: transactionsViewModel,
+                        accountsViewModel: depositsViewModel.accountsViewModel,
+                        account: account,
+                        namespace: depositActionNamespace,
+                        transferDirection: .toDeposit
+                    )
                     .environment(timeFilterManager)
+                }
             }
         }
         .sheet(isPresented: $showingTransferFrom) {
             if let account = account {
-                AccountActionView(
-                    transactionsViewModel: transactionsViewModel,
-                    accountsViewModel: depositsViewModel.accountsViewModel,
-                    account: account,
-                    transferDirection: .fromDeposit
-                )
+                NavigationStack {
+                    AccountActionView(
+                        transactionsViewModel: transactionsViewModel,
+                        accountsViewModel: depositsViewModel.accountsViewModel,
+                        account: account,
+                        namespace: depositActionNamespace,
+                        transferDirection: .fromDeposit
+                    )
                     .environment(timeFilterManager)
+                }
             }
         }
         .sheet(isPresented: $showingRateChange) {

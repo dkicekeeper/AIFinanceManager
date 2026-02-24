@@ -30,7 +30,7 @@ struct ContentView: View {
 
     // MARK: - State
     @State private var navigationPath = NavigationPath()
-    @State private var selectedAccount: Account?
+    @Namespace private var accountNamespace
     @State private var showingTimeFilter = false
     @State private var showingAddAccount = false
     @State private var wallpaperImage: UIImage? = nil
@@ -71,9 +71,18 @@ struct ContentView: View {
                     subscriptionsDestination
                 }
             }
+            .navigationDestination(for: Account.self) { account in
+                AccountActionView(
+                    transactionsViewModel: viewModel,
+                    accountsViewModel: accountsViewModel,
+                    account: account,
+                    namespace: accountNamespace
+                )
+                .environment(timeFilterManager)
+                .navigationTransition(.zoom(sourceID: account.id, in: accountNamespace))
+            }
             .background { wallpaperBackground }
             .toolbar { toolbarContent }
-            .sheet(item: $selectedAccount) { accountSheet(for: $0) }
             .sheet(isPresented: $showingTimeFilter) { timeFilterSheet }
             .sheet(isPresented: $showingAddAccount) { addAccountSheet }
             .task {
@@ -161,10 +170,8 @@ struct ContentView: View {
             } else {
                 AccountsCarousel(
                     accounts: accountsViewModel.accounts,
-                    onAccountTap: { account in
-                        selectedAccount = account
-                    },
-                    balanceCoordinator: accountsViewModel.balanceCoordinator!
+                    balanceCoordinator: accountsViewModel.balanceCoordinator!,
+                    namespace: accountNamespace
                 )
             }
         }
@@ -270,36 +277,6 @@ struct ContentView: View {
     }
 
     // MARK: - Sheets
-
-    @ViewBuilder
-    private func accountSheet(for account: Account) -> some View {
-        if account.isDeposit {
-            depositDetailSheet(for: account)
-        } else {
-            accountActionSheet(for: account)
-        }
-    }
-
-    private func depositDetailSheet(for account: Account) -> some View {
-        NavigationStack {
-            DepositDetailView(
-                depositsViewModel: coordinator.depositsViewModel,
-                transactionsViewModel: viewModel,
-                balanceCoordinator: accountsViewModel.balanceCoordinator!,
-                accountId: account.id
-            )
-            .environment(timeFilterManager)
-        }
-    }
-
-    private func accountActionSheet(for account: Account) -> some View {
-        AccountActionView(
-            transactionsViewModel: viewModel,
-            accountsViewModel: accountsViewModel,
-            account: account
-        )
-        .environment(timeFilterManager)
-    }
 
     private var timeFilterSheet: some View {
         TimeFilterView(filterManager: timeFilterManager)

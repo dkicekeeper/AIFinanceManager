@@ -13,6 +13,7 @@ struct AccountActionView: View {
     @Environment(TransactionStore.self) private var transactionStore // Phase 7.4: TransactionStore integration
     @Environment(AppCoordinator.self) private var appCoordinator
     let account: Account
+    var namespace: Namespace.ID
     @Environment(\.dismiss) var dismiss
     @Environment(TimeFilterManager.self) private var timeFilterManager
     @State private var selectedAction: ActionType = .transfer
@@ -33,11 +34,13 @@ struct AccountActionView: View {
         transactionsViewModel: TransactionsViewModel,
         accountsViewModel: AccountsViewModel,
         account: Account,
+        namespace: Namespace.ID,
         transferDirection: DepositTransferDirection? = nil
     ) {
         self.transactionsViewModel = transactionsViewModel
         self.accountsViewModel = accountsViewModel
         self.account = account
+        self.namespace = namespace
         self.transferDirection = transferDirection
         _selectedCurrency = State(initialValue: account.currency)
         // Для депозитов всегда используем перевод
@@ -50,11 +53,14 @@ struct AccountActionView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: AppSpacing.lg) {
-                    // 1. Picker типа действия (если есть)
-                    if !account.isDeposit {
+        ScrollView {
+            VStack(spacing: AppSpacing.lg) {
+                Color.clear
+                    .frame(height: 0)
+                    .glassEffectID("account-card-\(account.id)", in: namespace) // glass morph anchor
+
+                // 1. Picker типа действия (если есть)
+                if !account.isDeposit {
                         SegmentedPickerView(
                             title: String(localized: "common.type"),
                             selection: $selectedAction,
@@ -150,7 +156,6 @@ struct AccountActionView: View {
             } message: {
                 Text(errorMessage)
             }
-        }
     }
     
     private var incomeCategories: [String] {
@@ -500,10 +505,14 @@ struct AccountActionView: View {
 // CategoryRadioButton is now replaced by CategoryChip
 
 #Preview {
+    @Namespace var ns
     let coordinator = AppCoordinator()
-    AccountActionView(
-        transactionsViewModel: coordinator.transactionsViewModel,
-        accountsViewModel: coordinator.accountsViewModel,
-        account: Account(name: "Main", currency: "USD", iconSource: nil, initialBalance: 1000)
-    )
+    return NavigationStack {
+        AccountActionView(
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            account: Account(name: "Main", currency: "USD", iconSource: nil, initialBalance: 1000),
+            namespace: ns
+        )
+    }
 }
