@@ -349,10 +349,19 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             // NSBatchInsertRequest (iOS 14+): inserts directly into SQLite,
             // bypassing NSManagedObject lifecycle — ideal for CSV import of 1k+ records.
             // Relationships are NOT set; toTransaction() uses accountId/targetAccountId String columns.
+            //
+            // IMPORTANT: willSave() is NOT called for NSBatchInsertRequest, so dateSectionKey
+            // must be set explicitly here. Without it every batch-imported record has nil
+            // dateSectionKey, causing AppCoordinator.backfillDateSectionKeysIfNeeded() to run
+            // on every subsequent launch (~700ms per launch for 18k transactions).
             let dicts: [[String: Any]] = transactions.map { tx in
                 var dict: [String: Any] = [:]
                 dict["id"]               = tx.id
-                dict["date"]             = DateFormatters.dateFormatter.date(from: tx.date) ?? Date()
+                let dateValue            = DateFormatters.dateFormatter.date(from: tx.date) ?? Date()
+                dict["date"]             = dateValue
+                // Set dateSectionKey explicitly — NSBatchInsertRequest bypasses willSave(),
+                // so the automatic TransactionEntity+SectionKey.swift override never fires.
+                dict["dateSectionKey"]   = TransactionSectionKeyFormatter.string(from: dateValue)
                 dict["descriptionText"]  = tx.description
                 dict["amount"]           = tx.amount
                 dict["currency"]         = tx.currency

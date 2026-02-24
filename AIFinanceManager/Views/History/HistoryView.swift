@@ -8,6 +8,9 @@
 //
 
 import SwiftUI
+import os
+
+private let historyLogger = Logger(subsystem: "AIFinanceManager", category: "HistoryView")
 
 struct HistoryView: View {
     // MARK: - Dependencies
@@ -27,6 +30,15 @@ struct HistoryView: View {
     // MARK: - State
 
     @State private var showingTimeFilter = false
+
+    /// Guards the HistoryTransactionsList from rendering until onAppear has applied the
+    /// current time-filter to the FRC.  Without this guard SwiftUI would construct the
+    /// List with all 3,530 unfiltered sections, causing a 10-12 second UI freeze before
+    /// the filtered 361-section view could be shown.
+    ///
+    /// The flag resets automatically because NavigationStack creates a new HistoryView
+    /// instance on each push — @State properties start fresh on every navigation.
+    @State private var isHistoryListReady = false
 
     // MARK: - Initial Filters
 
@@ -64,17 +76,29 @@ struct HistoryView: View {
     // MARK: - Body
 
     var body: some View {
-        HistoryTransactionsList(
-            paginationController: paginationController,
-            expensesCache: expensesCache,
-            transactionsViewModel: transactionsViewModel,
-            categoriesViewModel: categoriesViewModel,
-            accountsViewModel: accountsViewModel,
-            debouncedSearchText: filterCoordinator.debouncedSearchText,
-            selectedAccountFilter: filterCoordinator.selectedAccountFilter,
-            todayKey: todayKey,
-            yesterdayKey: yesterdayKey
-        )
+        Group {
+            if isHistoryListReady {
+                HistoryTransactionsList(
+                    paginationController: paginationController,
+                    expensesCache: expensesCache,
+                    transactionsViewModel: transactionsViewModel,
+                    categoriesViewModel: categoriesViewModel,
+                    accountsViewModel: accountsViewModel,
+                    debouncedSearchText: filterCoordinator.debouncedSearchText,
+                    selectedAccountFilter: filterCoordinator.selectedAccountFilter,
+                    todayKey: todayKey,
+                    yesterdayKey: yesterdayKey
+                )
+            } else {
+                // Placeholder shown for ≤1 frame while onAppear applies the time filter.
+                // This prevents SwiftUI from constructing the List with 3,530 unfiltered
+                // sections (which causes a 10-12 s freeze). After applyFiltersToController()
+                // reduces sections to ~361, isHistoryListReady is set to true and the real
+                // List is rendered instantly.
+                Color(UIColor.systemGroupedBackground)
+                    .ignoresSafeArea()
+            }
+        }
         .safeAreaInset(edge: .top) {
             VStack(spacing: 0) {
                 HistoryFilterSection(
@@ -132,6 +156,9 @@ struct HistoryView: View {
         .onChange(of: transactionsViewModel.appSettings.baseCurrency) { _, _ in
             expensesCache.invalidate()
         }
+        .onChange(of: paginationController.sections.count) { oldCount, newCount in
+            historyLogger.debug("🔄 [History] sections.count: \(oldCount)→\(newCount) (totalCount:\(self.paginationController.totalCount))")
+        }
         .onDisappear {
             resetFilters()
         }
@@ -158,13 +185,28 @@ struct HistoryView: View {
 
     private func setupInitialFilters() {
         if let category = initialCategory {
+            historyLogger.debug("🎯 [History] setupInitialFilters — setting category: \(category)")
             transactionsViewModel.selectedCategories = [category]
         } else {
+            historyLogger.debug("🎯 [History] setupInitialFilters — clearing categories (initialCategory is nil)")
             transactionsViewModel.selectedCategories = nil
         }
     }
 
     private func handleOnAppear() {
+        let t0 = CACurrentMediaTime()
+        let sectionCount = paginationController.sections.count
+        let totalCount = paginationController.totalCount
+        // 📌 KEY: The gap between [HistoryList] body log and this onAppear log
+        //    = time SwiftUI spent constructing/rendering the initial List.
+        //    If sections.count here != sections.count in [HistoryList] body, the
+        //    filter was applied mid-render (unusual). If it matches, the freeze
+        //    is the time from body-log to this log.
+        historyLogger.debug("👁️  [History] onAppear — FRC sections:\(sectionCount) totalCount:\(totalCount) allTx:\(self.transactionsViewModel.allTransactions.count) t:\(String(format: "%.3f", t0))")
+        if sectionCount == 0 {
+            historyLogger.debug("⚠️  [History] onAppear — paginationController has NO sections yet (FRC not ready or empty db)")
+        }
+
         PerformanceProfiler.start("HistoryView.onAppear")
         PerformanceLogger.HistoryMetrics.logOnAppear(
             transactionCount: transactionsViewModel.allTransactions.count
@@ -179,6 +221,14 @@ struct HistoryView: View {
         // Apply current filters to the FRC controller
         applyFiltersToController()
 
+        // Filter is now applied (e.g., 361 sections for "This Year").
+        // Setting this flag tells the body to swap Color.clear for HistoryTransactionsList.
+        // SwiftUI will render the filtered list on the very next frame — no 3,530-section freeze.
+        isHistoryListReady = true
+
+        let t1 = CACurrentMediaTime()
+        historyLogger.debug("👁️  [History] onAppear DONE in \(String(format: "%.0f", (t1-t0)*1000))ms — sections now:\(self.paginationController.sections.count) isReady:true")
+
         PerformanceProfiler.end("HistoryView.onAppear")
         PerformanceLogger.shared.end("HistoryView.onAppear")
     }
@@ -190,11 +240,13 @@ struct HistoryView: View {
     /// Uses batchUpdateFilters() to apply all four filter values atomically,
     /// preventing 4× redundant rebuildSections() calls.
     private func applyFiltersToController() {
+        let t0 = CACurrentMediaTime()
         PerformanceProfiler.start("HistoryView.applyFiltersToController")
 
         let hasFilters = filterCoordinator.selectedAccountFilter != nil ||
                         !filterCoordinator.debouncedSearchText.isEmpty ||
                         transactionsViewModel.selectedCategories != nil
+        historyLogger.debug("🔎 [History] applyFiltersToController — hasFilters:\(hasFilters) search:'\(self.filterCoordinator.debouncedSearchText)' account:\(self.filterCoordinator.selectedAccountFilter ?? "nil") category:\(self.transactionsViewModel.selectedCategories?.first ?? "nil")")
         PerformanceLogger.HistoryMetrics.logUpdateTransactions(
             transactionCount: transactionsViewModel.allTransactions.count,
             hasFilters: hasFilters
@@ -210,6 +262,7 @@ struct HistoryView: View {
             let range = timeFilter.dateRange()
             resolvedDateRange = (start: range.start, end: range.end)
         }
+        historyLogger.debug("🔎 [History] timeFilter=.\(timeFilter.preset.rawValue) resolvedDateRange=\(resolvedDateRange != nil ? "set" : "nil→allTime(no predicate)")")
 
         // Single atomic update — triggers exactly one performFetch + rebuildSections
         // instead of four (one per property assignment).
@@ -220,20 +273,30 @@ struct HistoryView: View {
             dateRange: .some(resolvedDateRange)
         )
 
+        let t1 = CACurrentMediaTime()
+        historyLogger.debug("🔎 [History] applyFiltersToController DONE in \(String(format: "%.0f", (t1-t0)*1000))ms — sections:\(self.paginationController.sections.count)")
+
         PerformanceProfiler.end("HistoryView.applyFiltersToController")
         PerformanceLogger.shared.end("HistoryView.updateTransactions")
     }
 
     private func resetFilters() {
+        historyLogger.debug("🔁 [History] resetFilters() (onDisappear) — clearing user filters (keeping dateRange)")
         filterCoordinator.reset()
         transactionsViewModel.selectedCategories = nil
-        // Clear all FRC filters atomically so the controller is clean for next appearance.
+        // Clear user-driven filters (search, account, category, type) but NOT dateRange.
+        // dateRange is always re-derived from timeFilterManager.currentFilter in the
+        // next handleOnAppear() → applyFiltersToController().  Keeping it here means:
+        //   • FRC retains the filtered set (~361 sections) instead of resetting to 18k/3530
+        //   • The 17ms full-table re-fetch on every disappear is eliminated
+        //   • On the next open the predicate deduplication guard skips the fetch entirely
+        //     (if the time filter hasn't changed), so History opens in 0ms additional work
         paginationController.batchUpdateFilters(
             searchQuery: "",
             selectedAccountId: .some(nil),
             selectedCategoryId: .some(nil),
-            selectedType: .some(nil),
-            dateRange: .some(nil)
+            selectedType: .some(nil)
+            // dateRange: intentionally NOT reset — see comment above
         )
     }
 }

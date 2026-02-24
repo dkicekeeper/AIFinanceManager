@@ -7,6 +7,10 @@
 //
 
 import SwiftUI
+import os
+import QuartzCore
+
+private let cvLogger = Logger(subsystem: "AIFinanceManager", category: "ContentView")
 
 // MARK: - ContentView (Home Screen)
 
@@ -24,6 +28,10 @@ struct ContentView: View {
     @State private var wallpaperImage: UIImage? = nil
     @State private var cachedSummary: Summary? = nil
     @State private var wallpaperLoadingTask: Task<Void, Never>? = nil
+    /// Guards setupOnAppear so the expensive updateSummary() runs only once on first
+    /// appearance. Re-appearances (back-nav from History, Accounts, etc.) skip it because
+    /// transactions.count onChange already keeps cachedSummary up-to-date.
+    @State private var hasAppearedOnce = false
 
     // MARK: - Computed ViewModels (from coordinator)
     private var viewModel: TransactionsViewModel {
@@ -61,11 +69,25 @@ struct ContentView: View {
             // Phase 17: Only track time filter changes explicitly
             // Transaction data changes are tracked automatically via @Observable
             // on transactionStore.transactions (accessed through computed properties)
-            .onChange(of: timeFilterManager.currentFilter) { _, _ in
+            .onChange(of: timeFilterManager.currentFilter) { oldFilter, newFilter in
+                cvLogger.debug("🕐 [ContentView] timeFilter: .\(oldFilter.preset.rawValue) → .\(newFilter.preset.rawValue)")
                 updateSummary()
             }
-            .onChange(of: transactionStore.transactions.count) { _, _ in
+            .onChange(of: transactionStore.transactions.count) { oldCount, newCount in
+                let t0 = CACurrentMediaTime()
+                cvLogger.debug("🔢 [ContentView] transactions.count: \(oldCount)→\(newCount) — calling updateSummary()")
                 updateSummary()
+                cvLogger.debug("🔢 [ContentView] updateSummary() after count change: \(String(format: "%.0f", (CACurrentMediaTime()-t0)*1000))ms")
+            }
+            .onChange(of: coordinator.isFastPathDone) { _, isDone in
+                cvLogger.debug("⚡️ [ContentView] isFastPathDone → \(isDone)")
+            }
+            .onChange(of: coordinator.isFullyInitialized) { _, isInit in
+                cvLogger.debug("✅ [ContentView] isFullyInitialized → \(isInit) — skeleton removal triggered")
+                // Do NOT call updateSummary() here.
+                // onChange(of: transactionStore.transactions.count) fires milliseconds before
+                // this handler and already ran the 275ms summary calculation.
+                // Calling it again here would double-block the main thread for no benefit.
             }
         }
     }
@@ -273,17 +295,32 @@ struct ContentView: View {
     // MARK: - Lifecycle Methods
 
     private func setupOnAppear() {
+        let t0 = CACurrentMediaTime()
+        cvLogger.debug("🏠 [ContentView] onAppear START — isFastPathDone:\(self.coordinator.isFastPathDone) isFullyInitialized:\(self.coordinator.isFullyInitialized) sections:\(self.coordinator.transactionPaginationController.sections.count) firstTime:\(!self.hasAppearedOnce)")
         PerformanceProfiler.start("ContentView.onAppear")
         loadWallpaperOnce()
-        updateSummary()
+
+        // Only run updateSummary() on first appearance. On back-navigation the
+        // cachedSummary is already current — transactions.count onChange keeps it fresh.
+        if !hasAppearedOnce {
+            hasAppearedOnce = true
+            updateSummary()
+        }
+
+        cvLogger.debug("🏠 [ContentView] onAppear DONE in \(String(format: "%.0f", (CACurrentMediaTime()-t0)*1000))ms")
         PerformanceProfiler.end("ContentView.onAppear")
     }
 
     // MARK: - State Updates
 
     private func updateSummary() {
+        let t0 = CACurrentMediaTime()
         PerformanceProfiler.start("ContentView.updateSummary")
         cachedSummary = viewModel.summary(timeFilterManager: timeFilterManager)
+        let dt = CACurrentMediaTime() - t0
+        if dt > 0.005 { // log if > 5ms
+            cvLogger.debug("📊 [ContentView] updateSummary() \(String(format: "%.0f", dt*1000))ms — allTx:\(self.viewModel.allTransactions.count)")
+        }
         PerformanceProfiler.end("ContentView.updateSummary")
     }
 

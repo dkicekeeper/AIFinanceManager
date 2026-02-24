@@ -12,6 +12,10 @@
 //
 
 import SwiftUI
+import os
+import QuartzCore
+
+private let listLogger = Logger(subsystem: "AIFinanceManager", category: "HistoryList")
 
 /// Displays FRC-backed list of transactions with date sections.
 /// Section keys from the FRC are "YYYY-MM-DD"; `displayDateKey(_:)` converts
@@ -60,6 +64,14 @@ struct HistoryTransactionsList: View {
         return f
     }()
 
+    // MARK: - Pagination State
+
+    /// Number of date-sections currently displayed. Starts at 100 (≈ last 100 days).
+    /// Increases by `sectionLoadIncrement` each time the bottom of the list is reached.
+    /// Resets to 100 on every History open because NavigationStack recreates the view.
+    @State private var visibleSectionLimit = 100
+    private let sectionLoadIncrement = 100
+
     // MARK: - Computed Properties
 
     private var baseCurrency: String {
@@ -70,6 +82,10 @@ struct HistoryTransactionsList: View {
 
     var body: some View {
         let sections = paginationController.sections
+        // ⚠️  This log fires BEFORE onAppear. Compare timestamp t: with the onAppear t:
+        // to measure how long SwiftUI spent rendering the initial List.
+        // If sections=3530 here and sections=361 in onAppear, the freeze is the gap.
+        let _ = listLogger.debug("📝 [HistoryList] body — \(sections.count) sections, \(paginationController.totalCount) total t:\(String(format: "%.3f", CACurrentMediaTime()))")
 
         if sections.isEmpty {
             emptyStateView
@@ -104,9 +120,16 @@ struct HistoryTransactionsList: View {
     // MARK: - Transactions List
 
     private func transactionsListView(sections: [TransactionSection]) -> some View {
-        ScrollViewReader { proxy in
+        // Slice sections to `visibleSectionLimit` so SwiftUI only renders a bounded
+        // number of section headers.  With 3530 sections (allTime), rendering all at
+        // once causes a 10–12 s freeze; with 100 the initial render is instant.
+        // The ProgressView row at the bottom auto-loads more sections as the user scrolls.
+        let displaySections = Array(sections.prefix(visibleSectionLimit))
+        let hasMore = displaySections.count < sections.count
+        let _ = listLogger.debug("📋 [HistoryList] transactionsListView — showing \(displaySections.count)/\(sections.count) sections (limit:\(visibleSectionLimit))")
+        return ScrollViewReader { proxy in
             List {
-                ForEach(sections) { section in
+                ForEach(displaySections) { section in
                     let displayLabel = displayDateKey(from: section.date)
                     Section(
                         header: dateHeader(
@@ -136,10 +159,27 @@ struct HistoryTransactionsList: View {
                     }
                     .id(section.id)
                 }
+
+                // "Умная подгрузка" — when the spinner scrolls into view, expand the
+                // visible window by `sectionLoadIncrement` more sections.
+                if hasMore {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .padding(AppSpacing.md)
+                        Spacer()
+                    }
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .onAppear {
+                        listLogger.debug("⬇️ [HistoryList] loadMore — \(visibleSectionLimit) → \(visibleSectionLimit + sectionLoadIncrement) of \(sections.count)")
+                        visibleSectionLimit += sectionLoadIncrement
+                    }
+                }
             }
             .listStyle(PlainListStyle())
             .task {
-                await performAutoScroll(proxy: proxy, sections: sections)
+                await performAutoScroll(proxy: proxy, sections: displaySections)
             }
         }
     }

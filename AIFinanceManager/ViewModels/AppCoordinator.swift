@@ -10,6 +10,7 @@ import Foundation
 import SwiftUI
 import CoreData
 import Observation
+import os
 
 /// Coordinator that manages all ViewModels and their dependencies
 /// Provides a single point of initialization and dependency injection
@@ -55,6 +56,8 @@ class AppCoordinator {
 
     private var isInitialized = false
     private var isFastPathStarted = false
+
+    @ObservationIgnored private let logger = Logger(subsystem: "AIFinanceManager", category: "AppCoordinator")
 
     // Observable loading stage outputs — views bind to these for per-element skeletons
     private(set) var isFastPathDone = false       // accounts + categories ready (~50ms)
@@ -242,12 +245,20 @@ class AppCoordinator {
         isInitialized = true
         PerformanceProfiler.start("AppCoordinator.initialize")
 
+        let t_init_start = CACurrentMediaTime()
+        logger.debug("🚀 [INIT] initialize() START — tx count before load: \(self.transactionStore.transactions.count)")
+
         // Phase 19: Streamlined startup — no duplicate loads
         // 1. Load all data into TransactionStore (single source of truth)
+        let t0 = CACurrentMediaTime()
         try? await transactionStore.loadData()
+        let t1 = CACurrentMediaTime()
+        logger.debug("📦 [INIT] loadData()            : \(String(format: "%.0f", (t1-t0)*1000))ms — tx:\(self.transactionStore.transactions.count) acc:\(self.transactionStore.accounts.count)")
 
         // 2. Sync subcategory data and invalidate caches (no array copies)
         syncTransactionStoreToViewModels(batchMode: true)
+        let t2 = CACurrentMediaTime()
+        logger.debug("🔄 [INIT] syncToViewModels()    : \(String(format: "%.0f", (t2-t1)*1000))ms")
 
         // 3. Register accounts with BalanceCoordinator.
         // Passing transactions so that shouldCalculateFromTransactions accounts
@@ -257,15 +268,31 @@ class AppCoordinator {
             transactionStore.accounts,
             transactions: transactionStore.transactions
         )
-        isFullyInitialized = true
-
-        // Task 9 / v3 migration: ensure all TransactionEntity records have dateSectionKey
-        // populated before the FRC performs its first fetch.  Fast-path (<5ms) when the
-        // column is already populated; one-time ~300ms background pass on first v3 launch.
-        await backfillDateSectionKeysIfNeeded()
+        let t3 = CACurrentMediaTime()
+        logger.debug("💰 [INIT] registerAccounts()    : \(String(format: "%.0f", (t3-t2)*1000))ms")
 
         // Task 9: Start FRC after full data is loaded so the initial fetch sees all transactions.
+        // Backfill runs concurrently in background — does NOT block History.
         transactionPaginationController.setup()
+        let t4 = CACurrentMediaTime()
+        logger.debug("📋 [INIT] paginationCtrl.setup(): \(String(format: "%.0f", (t4-t3)*1000))ms — sections:\(self.transactionPaginationController.sections.count) totalCount:\(self.transactionPaginationController.totalCount)")
+
+        // Mark fully initialized AFTER the FRC is ready — History is accessible instantly.
+        // Backfill runs in the background Task below; when it saves, the viewContext
+        // (automaticallyMergesChangesFromParent = true) receives the changes automatically
+        // and the FRC's controllerDidChangeContent fires → sections rebuild without any
+        // extra code on our part.
+        isFullyInitialized = true
+        let t5 = CACurrentMediaTime()
+        logger.debug("✅ [INIT] isFullyInitialized=true: total so far \(String(format: "%.0f", (t5-t_init_start)*1000))ms")
+
+        // Task 9 / v3 migration: populate dateSectionKey for records that were imported via
+        // NSBatchInsertRequest before 2026-02-24 (batch inserts bypass willSave()).
+        // Fire-and-forget — History is already open.  The FRC refreshes automatically once
+        // the background context saves (viewContext.automaticallyMergesChangesFromParent=true).
+        Task(priority: .background) { [weak self] in
+            await self?.backfillDateSectionKeysIfNeeded()
+        }
 
         // 4. Generate recurring transactions in background (non-blocking)
         Task(priority: .background) { [weak self] in
@@ -315,29 +342,55 @@ class AppCoordinator {
 
     // MARK: - CoreData v3 Migration Backfill
 
+    /// UserDefaults key that records whether the one-time dateSectionKey backfill has
+    /// completed for every record in the database.  Once set, `backfillDateSectionKeysIfNeeded`
+    /// returns in ~0ms without touching CoreData at all.
+    ///
+    /// Root-cause note: before batchInsertTransactions was fixed (2026-02-24),
+    /// NSBatchInsertRequest bypassed willSave() and left dateSectionKey = nil on every
+    /// CSV-imported transaction.  This caused the 747ms backfill to run on every launch.
+    /// With the batch-insert fix in place new records always have dateSectionKey set;
+    /// this flag lets existing databases skip the expensive COUNT query after the
+    /// one-time migration completes.
+    private static let backfillCompletedKey = "dateSectionKey_v3_backfill_complete"
+
     /// One-time backfill: populates `dateSectionKey` for all TransactionEntity records
     /// whose value is nil or empty (first launch after upgrading to CoreData model v3,
-    /// where `dateSectionKey` became a stored attribute instead of transient).
+    /// where `dateSectionKey` became a stored attribute instead of transient, AND for
+    /// records imported via NSBatchInsertRequest before the 2026-02-24 fix).
     ///
-    /// Fast-path: exits in <5ms when every record is already populated.
-    /// Slow-path (one-time): ~200–400ms on a background context for 19k records.
+    /// Fast-path (0ms): skipped entirely if the UserDefaults completion flag is set.
+    /// Medium-path (~5ms): flag not set, but COUNT query returns 0 → sets flag and returns.
+    /// Slow-path (one-time, ~700ms for 19k records): backfills all records, then sets flag.
     ///
-    /// Must complete before `transactionPaginationController.setup()` so the FRC
-    /// sees correct section keys on its very first `performFetch()`.
+    /// Runs in a background Task so it does NOT block `isFullyInitialized`.
+    /// When the background context saves, `viewContext.automaticallyMergesChangesFromParent`
+    /// merges the updated keys and the FRC's `controllerDidChangeContent` rebuilds sections.
     private func backfillDateSectionKeysIfNeeded() async {
+        // Zero-cost fast-path: skip the expensive background context creation entirely
+        // once we know every record in the database has a dateSectionKey.
+        if UserDefaults.standard.bool(forKey: Self.backfillCompletedKey) {
+            logger.debug("🗝️  [BACKFILL] skipped — completion flag set (0ms)")
+            return
+        }
+
         let stack = CoreDataStack.shared
         let context = stack.newBackgroundContext()
 
         await context.perform {
-            // Quick check: are there any records without a section key?
+            // Check: are there any records without a section key?
             let countRequest = NSFetchRequest<NSNumber>(entityName: "TransactionEntity")
             countRequest.resultType = .countResultType
             countRequest.predicate = NSPredicate(
                 format: "dateSectionKey == nil OR dateSectionKey == ''"
             )
-            guard let needsBackfill = try? context.count(for: countRequest),
-                  needsBackfill > 0 else {
-                // All records already have dateSectionKey — nothing to do.
+            guard let needsBackfill = try? context.count(for: countRequest) else { return }
+
+            guard needsBackfill > 0 else {
+                // All records already have dateSectionKey — set the flag so future
+                // launches skip this background-context round-trip entirely.
+                // UserDefaults.set() is thread-safe; no main-queue dispatch needed.
+                UserDefaults.standard.set(true, forKey: Self.backfillCompletedKey)
                 return
             }
 
@@ -360,7 +413,11 @@ class AppCoordinator {
                 entity.dateSectionKey = key
             }
 
-            try? context.save()
+            if (try? context.save()) != nil {
+                // Mark complete so the next launch skips this entirely.
+                // UserDefaults.set() is thread-safe; call directly on the background queue.
+                UserDefaults.standard.set(true, forKey: Self.backfillCompletedKey)
+            }
         }
     }
 

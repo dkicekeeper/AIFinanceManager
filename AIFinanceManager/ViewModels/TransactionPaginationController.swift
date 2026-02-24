@@ -23,6 +23,7 @@ import Foundation
 import CoreData
 import Observation
 import os
+import QuartzCore
 
 // MARK: - Supporting Types
 
@@ -123,6 +124,9 @@ final class TransactionPaginationController: NSObject {
     /// Configures the NSFetchedResultsController and performs the initial fetch.
     /// Must be called once after initialisation (called by AppCoordinator.initialize()).
     func setup() {
+        let t_setup = CACurrentMediaTime()
+        logger.debug("📋 [FRC] setup() START")
+
         let request = TransactionEntity.fetchRequest()
         // Sort descending by date so newest transactions appear first.
         request.sortDescriptors = [
@@ -142,7 +146,11 @@ final class TransactionPaginationController: NSObject {
         )
         frc?.delegate = self
 
+        let t_before_fetch = CACurrentMediaTime()
+        logger.debug("📋 [FRC] setup() — FRC created in \(String(format: "%.0f", (t_before_fetch-t_setup)*1000))ms, starting performFetch()...")
         performFetch()
+        let t_after_fetch = CACurrentMediaTime()
+        logger.debug("📋 [FRC] setup() DONE in \(String(format: "%.0f", (t_after_fetch-t_setup)*1000))ms — sections:\(self.sections.count) totalCount:\(self.totalCount)")
     }
 
     // MARK: - Filter Application
@@ -221,20 +229,41 @@ final class TransactionPaginationController: NSObject {
             ))
         }
 
-        frc?.fetchRequest.predicate = predicates.isEmpty
+        let newPredicate: NSPredicate? = predicates.isEmpty
             ? nil
             : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
 
+        // Skip the SQLite round-trip if the effective predicate hasn't changed.
+        // This avoids a redundant performFetch() each time HistoryView appears
+        // (handleOnAppear + setupInitialFilters both call applyFiltersToController
+        // with the same nil-predicate that setup() already established).
+        let newFormat = newPredicate?.predicateFormat
+        let currentFormat = frc?.fetchRequest.predicate?.predicateFormat
+        guard newFormat != currentFormat else { return }
+
+        frc?.fetchRequest.predicate = newPredicate
         performFetch()
     }
 
     // MARK: - Fetch Execution
 
     private func performFetch() {
-        guard let frc else { return }
+        guard let frc else {
+            logger.debug("⚠️  [FRC] performFetch() skipped — frc is nil (setup() not yet called)")
+            return
+        }
+        let t0 = CACurrentMediaTime()
+        let predDesc = frc.fetchRequest.predicate?.predicateFormat ?? "<no predicate>"
+        logger.debug("🔍 [FRC] performFetch() START — predicate: \(predDesc)")
         do {
             try frc.performFetch()
+            let t1 = CACurrentMediaTime()
+            let objectCount = frc.fetchedObjects?.count ?? 0
+            let sectionCount = frc.sections?.count ?? 0
+            logger.debug("🔍 [FRC] frc.performFetch() DONE in \(String(format: "%.0f", (t1-t0)*1000))ms — \(objectCount) objects, \(sectionCount) sections")
             rebuildSections()
+            let t2 = CACurrentMediaTime()
+            logger.debug("🔍 [FRC] performFetch()+rebuildSections() total: \(String(format: "%.0f", (t2-t0)*1000))ms")
         } catch {
             logger.error("FRC performFetch failed: \(error.localizedDescription)")
         }
@@ -247,6 +276,7 @@ final class TransactionPaginationController: NSObject {
             return
         }
 
+        let t0 = CACurrentMediaTime()
         // O(M) — only stores section metadata + a reference to the NSFetchedResultsSectionInfo.
         // toTransaction() is deferred to TransactionSection.transactions (computed property),
         // which SwiftUI calls lazily only for the sections currently rendered on screen.
@@ -259,6 +289,8 @@ final class TransactionPaginationController: NSObject {
             )
         }
         totalCount = frc?.fetchedObjects?.count ?? 0
+        let t1 = CACurrentMediaTime()
+        logger.debug("🗂️  [FRC] rebuildSections() DONE in \(String(format: "%.0f", (t1-t0)*1000))ms — \(self.sections.count) sections, \(self.totalCount) total")
     }
 }
 
@@ -269,8 +301,12 @@ extension TransactionPaginationController: NSFetchedResultsControllerDelegate {
     nonisolated func controllerDidChangeContent(
         _ controller: NSFetchedResultsController<NSFetchRequestResult>
     ) {
+        let t = CACurrentMediaTime()
         Task { @MainActor [weak self] in
-            self?.rebuildSections()
+            guard let self else { return }
+            let delay = CACurrentMediaTime() - t
+            self.logger.debug("🔔 [FRC] controllerDidChangeContent fired (MainActor delay: \(String(format: "%.0f", delay*1000))ms) — rebuilding sections")
+            self.rebuildSections()
         }
     }
 }
