@@ -261,13 +261,9 @@ class AppCoordinator {
         logger.debug("🔄 [INIT] syncToViewModels()    : \(String(format: "%.0f", (t2-t1)*1000))ms")
 
         // 3. Register accounts with BalanceCoordinator.
-        // Passing transactions so that shouldCalculateFromTransactions accounts
-        // are recalculated from scratch (CoreData `balance` field is unreliable
-        // for these accounts since persistBalance() is async Task.detached).
-        await balanceCoordinator.registerAccounts(
-            transactionStore.accounts,
-            transactions: transactionStore.transactions
-        )
+        // account.balance is kept accurate by persistIncremental() on every mutation,
+        // so no transaction list is needed (Phase B removed in Phase 31).
+        await balanceCoordinator.registerAccounts(transactionStore.accounts)
         let t3 = CACurrentMediaTime()
         logger.debug("💰 [INIT] registerAccounts()    : \(String(format: "%.0f", (t3-t2)*1000))ms")
 
@@ -310,9 +306,12 @@ class AppCoordinator {
         // aggregates are already built and maintained incrementally via apply().
         Task.detached(priority: .background) { [weak self] in
             guard let self = self else { return }
-            let txCount = await self.transactionStore.transactions.count
+            // Phase 31 Task 4: Load from repo with dateRange: nil (full history) so that
+            // CategoryAggregateEntity and MonthlyAggregateEntity always reflect complete
+            // transaction history — not just the in-memory windowed store.
+            let allTx = self.repository.loadTransactions(dateRange: nil)
+            let txCount = allTx.count
             let currency = await self.transactionStore.baseCurrency
-            let allTx = await self.transactionStore.transactions
 
             // Check if aggregates exist; rebuild only if CoreData is empty
             let existingMonthly = await self.transactionStore.monthlyAggregateService.fetchLast(

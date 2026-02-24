@@ -74,6 +74,17 @@ final class CoreDataStack: @unchecked Sendable {
         }
     }
     
+    // MARK: - Pre-Warm
+
+    /// Touch persistentContainer on a background thread so loadPersistentStores()
+    /// runs off MainActor. Call from AppDelegate.didFinishLaunchingWithOptions —
+    /// before AppCoordinator is created.
+    func preWarm() {
+        Task.detached(priority: .userInitiated) {
+            _ = CoreDataStack.shared.persistentContainer
+        }
+    }
+
     // MARK: - Persistent Container
     
     lazy var persistentContainer: NSPersistentContainer = {

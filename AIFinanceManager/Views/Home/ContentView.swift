@@ -28,6 +28,7 @@ struct ContentView: View {
     @State private var wallpaperImage: UIImage? = nil
     @State private var cachedSummary: Summary? = nil
     @State private var wallpaperLoadingTask: Task<Void, Never>? = nil
+    @State private var summaryUpdateTask: Task<Void, Never>? = nil
     /// Guards setupOnAppear so the expensive updateSummary() runs only once on first
     /// appearance. Re-appearances (back-nav from History, Accounts, etc.) skip it because
     /// transactions.count onChange already keeps cachedSummary up-to-date.
@@ -325,14 +326,35 @@ struct ContentView: View {
     // MARK: - State Updates
 
     private func updateSummary() {
-        let t0 = CACurrentMediaTime()
-        PerformanceProfiler.start("ContentView.updateSummary")
-        cachedSummary = viewModel.summary(timeFilterManager: timeFilterManager)
-        let dt = CACurrentMediaTime() - t0
-        if dt > 0.005 { // log if > 5ms
-            cvLogger.debug("📊 [ContentView] updateSummary() \(String(format: "%.0f", dt*1000))ms — allTx:\(self.viewModel.allTransactions.count)")
+        // Phase 31 Fix B: Capture value-type snapshots on MainActor, then compute off-thread.
+        // This eliminates the ~275ms synchronous block that caused skeleton→content jank.
+        let snapshot = Array(transactionStore.transactions)
+        let filterRange = timeFilterManager.currentFilter.dateRange()
+        let filterStart = filterRange.start
+        let filterEnd = filterRange.end
+        let currency = viewModel.appSettings.baseCurrency
+        let txCount = snapshot.count
+
+        summaryUpdateTask?.cancel()
+        summaryUpdateTask = Task.detached(priority: .userInitiated) {
+            let t0 = CACurrentMediaTime()
+            PerformanceProfiler.start("ContentView.updateSummary")
+            let summary = SummaryCalculator.compute(
+                transactions: snapshot,
+                filterStart: filterStart,
+                filterEnd: filterEnd,
+                baseCurrency: currency
+            )
+            let dt = CACurrentMediaTime() - t0
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                cachedSummary = summary
+                if dt > 0.005 {
+                    cvLogger.debug("📊 [ContentView] updateSummary() \(String(format: "%.0f", dt*1000))ms — allTx:\(txCount)")
+                }
+            }
+            PerformanceProfiler.end("ContentView.updateSummary")
         }
-        PerformanceProfiler.end("ContentView.updateSummary")
     }
 
     /// Start a wallpaper load. If a load is already in progress, does nothing.

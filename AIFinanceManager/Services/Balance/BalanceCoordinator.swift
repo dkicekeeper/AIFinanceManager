@@ -73,19 +73,13 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
     // MARK: - Account Management
 
-    /// Register accounts and compute initial balances using a two-phase approach.
+    /// Register accounts and compute initial balances using persisted `account.balance`.
     ///
-    /// - Phase A (instant): Use persisted `account.balance` for all accounts → zero-delay UI display.
-    ///   The `account.balance` field in CoreData is updated synchronously by `persistBalance()` on
-    ///   every mutation, so it is always accurate between launches.
-    ///
-    /// - Phase B (background, only when transactions provided): Recalculate
-    ///   `shouldCalculateFromTransactions` accounts from the full transaction history → updates
-    ///   balances when ready. This is a safety verification pass; Phase A values are already correct
-    ///   in most cases.
-    func registerAccounts(_ accounts: [Account], transactions: [Transaction] = []) async {
+    /// `account.balance` in CoreData is updated synchronously by `persistIncremental(_:)` on
+    /// every mutation, so it is always accurate between launches. Phase B background recalculation
+    /// (removed in Phase 31) was redundant and would produce wrong results with a transaction window.
+    func registerAccounts(_ accounts: [Account]) async {
 
-        // ── Phase A: instant balance display ─────────────────────────────────────────────────────
         var accountBalancesByID: [String: AccountBalance] = [:]
         var phase1Balances: [String: Double] = [:]
 
@@ -99,8 +93,8 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
                 isDeposit: account.isDeposit
             )
             accountBalancesByID[account.id] = ab
-            // Use persisted `account.balance` — updated synchronously by persistBalance() on
-            // every mutation, so it is always accurate between launches.
+            // Use persisted `account.balance` — updated synchronously by persistIncremental()
+            // on every mutation, so it is always accurate between launches.
             phase1Balances[account.id] = account.balance
         }
 
@@ -113,55 +107,6 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
         var merged = self.balances
         for (id, bal) in phase1Balances { merged[id] = bal }
         self.balances = merged
-
-        // ── Phase B: accurate recalculation for shouldCalculateFromTransactions accounts ─────────
-        // Only runs when full transaction list is provided (i.e. from initialize(), not
-        // initializeFastPath()). If no dynamic accounts exist, skip entirely.
-        // Deposit accounts are excluded: they use calculateDepositBalance(depositInfo:) which
-        // ignores transactions. If depositInfo == nil the engine falls through to transaction-based
-        // calc and would overwrite the correct Phase A balance.
-        let dynamicAccounts = accounts.filter { $0.shouldCalculateFromTransactions && !$0.isDeposit }
-        guard !dynamicAccounts.isEmpty, !transactions.isEmpty else { return }
-
-        // Snapshot only the AccountBalance value types needed for background computation.
-        // BalanceStore is @MainActor so we cannot pass it to Task.detached directly.
-        // BalanceCalculationEngine is a struct (value type) and is safe to capture.
-        // O(1) dictionary lookup — accountBalancesByID was built in Phase A's loop above.
-        let snapshotBalances: [String: AccountBalance] = dynamicAccounts.reduce(into: [:]) { dict, account in
-            if let ab = accountBalancesByID[account.id] {
-                dict[account.id] = ab
-            }
-        }
-        let capturedTransactions = transactions
-        // Safe because `engine.cacheManager` is always nil (injected as nil in AppCoordinator.init).
-        // If cacheManager is ever non-nil, BalanceCalculationEngine must be declared Sendable.
-        let capturedEngine = self.engine
-
-        Task(priority: .utility) { [weak self] in
-            guard let self else { return }
-
-            // Calculate on a background thread — pure computation over value types only.
-            let results: [String: Double] = await Task.detached(priority: .utility) {
-                var phase2: [String: Double] = [:]
-                for (accountId, ab) in snapshotBalances {
-                    let calc = capturedEngine.calculateBalance(
-                        account: ab,
-                        transactions: capturedTransactions,
-                        mode: .fromInitialBalance
-                    )
-                    phase2[accountId] = calc
-                }
-                return phase2
-            }.value
-
-            // Back on MainActor — read the CURRENT balances snapshot only now, after the
-            // background computation finishes. Reading it before Task.detached would capture
-            // a stale snapshot that silently drops any concurrent registerAccounts updates.
-            self.store.updateBalances(results, source: .recalculation)
-            var updatedBalances = self.balances
-            for (id, bal) in results { updatedBalances[id] = bal }
-            self.balances = updatedBalances
-        }
     }
 
     func removeAccount(_ accountId: String) async {

@@ -11,12 +11,12 @@
 //  - resolveAmount delegates to convertedAmount (already cached by TransactionCurrencyService)
 //
 
+import CoreData
 import Foundation
 import SwiftUI
 import os
 
-@MainActor
-final class InsightsService {
+final class InsightsService: @unchecked Sendable {
 
     // MARK: - Logger
 
@@ -69,6 +69,7 @@ final class InsightsService {
 
     // MARK: - Public API
 
+    @MainActor
     func generateAllInsights(
         timeFilter: TimeFilter,
         baseCurrency: String,
@@ -163,6 +164,7 @@ final class InsightsService {
     /// instead of scanning all transactions (O(M) lookups vs the previous O(N×M) passes).
     /// Falls back to the original transaction-scan path if aggregates are unavailable
     /// (e.g. on first launch before a full rebuild).
+    @MainActor
     func computeMonthlyDataPoints(
         transactions: [Transaction],
         months: Int,
@@ -278,6 +280,7 @@ final class InsightsService {
         return Calendar.current.date(byAdding: .second, value: -1, to: end) ?? end
     }
 
+    @MainActor
     private func generateSpendingInsights(
         filtered: [Transaction],
         allTransactions: [Transaction],
@@ -708,6 +711,7 @@ final class InsightsService {
 
     // MARK: - Budget Insights
 
+    @MainActor
     private func generateBudgetInsights(
         transactions: [Transaction],
         timeFilter: TimeFilter,
@@ -848,6 +852,7 @@ final class InsightsService {
 
     // MARK: - Recurring Insights
 
+    @MainActor
     private func generateRecurringInsights(baseCurrency: String, granularity: InsightGranularity? = nil) -> [Insight] {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
         guard !activeSeries.isEmpty else {
@@ -948,6 +953,7 @@ final class InsightsService {
 
     // MARK: - Cash Flow Insights
 
+    @MainActor
     private func generateCashFlowInsights(
         allTransactions: [Transaction],
         timeFilter: TimeFilter,
@@ -1111,6 +1117,7 @@ final class InsightsService {
 
     // MARK: - Category Deep Dive
 
+    @MainActor
     func generateCategoryDeepDive(
         categoryName: String,
         allTransactions: [Transaction],
@@ -1373,8 +1380,6 @@ final class InsightsService {
         currencyService: TransactionCurrencyService,
         firstTransactionDate: Date? = nil
     ) -> [PeriodDataPoint] {
-        guard !transactions.isEmpty else { return [] }
-
         let dateFormatter = DateFormatters.dateFormatter
         let calendar = Calendar.current
 
@@ -1383,6 +1388,30 @@ final class InsightsService {
             ?? transactions.compactMap { dateFormatter.date(from: $0.date) }.min()
             ?? Date()
         let (windowStart, windowEnd) = granularity.dateRange(firstTransactionDate: firstDate)
+
+        // Phase 31: Fast path for .year and .allTime — these granularities span full history
+        // which may exceed the windowed transaction store (Task 7 windowMonths = 3).
+        // MonthlyAggregateService always holds full history regardless of windowing.
+        switch granularity {
+        case .year, .allTime:
+            let monthlyAggs = transactionStore.monthlyAggregateService.fetchRange(
+                from: windowStart, to: windowEnd, currency: baseCurrency
+            )
+            if !monthlyAggs.isEmpty {
+                Self.logger.debug("⚡️ [Insights] PeriodDataPoints FAST PATH (\(granularity.rawValue)) — \(monthlyAggs.count) monthly records from CoreData")
+                return computePeriodDataPointsFromAggregates(
+                    monthlyAggs,
+                    granularity: granularity,
+                    windowStart: windowStart,
+                    windowEnd: windowEnd,
+                    calendar: calendar
+                )
+            }
+            // Fallback to transaction scan if aggregates not ready (first launch)
+            guard !transactions.isEmpty else { return [] }
+        case .week, .month, .quarter:
+            guard !transactions.isEmpty else { return [] }
+        }
 
         // Build ordered list of all keys in this window
         var orderedKeys: [String] = []
@@ -1445,8 +1474,70 @@ final class InsightsService {
         }
     }
 
+    /// Phase 31: Build PeriodDataPoint array from MonthlyFinancialAggregate records.
+    /// Used for .year and .allTime granularities to avoid reading windowed transactions.
+    /// Groups monthly aggregate rows into the correct bucket (yearly or all-time).
+    private func computePeriodDataPointsFromAggregates(
+        _ aggregates: [MonthlyFinancialAggregate],
+        granularity: InsightGranularity,
+        windowStart: Date,
+        windowEnd: Date,
+        calendar: Calendar
+    ) -> [PeriodDataPoint] {
+        var incomeByKey = [String: Double]()
+        var expensesByKey = [String: Double]()
+
+        for agg in aggregates {
+            guard let monthDate = calendar.date(
+                from: DateComponents(year: agg.year, month: agg.month, day: 1)
+            ) else { continue }
+            let key = granularity.groupingKey(for: monthDate)
+            incomeByKey[key, default: 0] += agg.totalIncome
+            expensesByKey[key, default: 0] += agg.totalExpenses
+        }
+
+        // Determine canonical ordered keys from cursor walk (same as main path)
+        var orderedKeys: [String] = []
+        var keySet = Set<String>()
+        var cursor = windowStart
+        while cursor < windowEnd {
+            let key = granularity.groupingKey(for: cursor)
+            if !keySet.contains(key) {
+                orderedKeys.append(key)
+                keySet.insert(key)
+            }
+            switch granularity {
+            case .year:    cursor = calendar.date(byAdding: .year, value: 1, to: cursor) ?? windowEnd
+            case .allTime: cursor = windowEnd
+            default:       cursor = windowEnd
+            }
+        }
+
+        return orderedKeys.map { key in
+            let periodStart = granularity.periodStart(for: key)
+            let periodEnd: Date
+            switch granularity {
+            case .year:    periodEnd = calendar.date(byAdding: .year, value: 1, to: periodStart) ?? periodStart
+            case .allTime: periodEnd = windowEnd
+            default:       periodEnd = windowEnd
+            }
+            return PeriodDataPoint(
+                id: key,
+                granularity: granularity,
+                key: key,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
+                label: granularity.periodLabel(for: key),
+                income: incomeByKey[key] ?? 0,
+                expenses: expensesByKey[key] ?? 0,
+                cumulativeBalance: nil
+            )
+        }
+    }
+
     // MARK: - Cash Flow from Period Points (Phase 18)
 
+    @MainActor
     private func generateCashFlowInsightsFromPeriodPoints(
         periodPoints: [PeriodDataPoint],
         allTransactions: [Transaction],
@@ -1584,6 +1675,7 @@ final class InsightsService {
 
     // MARK: - Wealth Insights (Phase 18)
 
+    @MainActor
     func generateWealthInsights(
         periodPoints: [PeriodDataPoint],
         allTransactions: [Transaction],
@@ -1697,6 +1789,7 @@ final class InsightsService {
     // MARK: - Spending Spike (Phase 24)
 
     /// Detects a category whose current-month spending exceeds 1.5× its 3-month historical average.
+    @MainActor
     private func generateSpendingSpike(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -1763,6 +1856,7 @@ final class InsightsService {
     // MARK: - Category Trend (Phase 24)
 
     /// Finds the expense category that has been rising for the most consecutive months (min 2).
+    @MainActor
     private func generateCategoryTrend(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -1829,6 +1923,7 @@ final class InsightsService {
     // MARK: - Subscription Growth (Phase 24)
 
     /// Compares current monthly recurring total with the total 3 months ago.
+    @MainActor
     private func generateSubscriptionGrowth(baseCurrency: String) -> Insight? {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
         guard activeSeries.count >= 2 else { return nil }
@@ -1922,6 +2017,7 @@ final class InsightsService {
         )
     }
 
+    @MainActor
     private func generateEmergencyFund(baseCurrency: String, balanceFor: (String) -> Double) -> Insight? {
         let totalBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         guard totalBalance > 0 else { return nil }
@@ -1954,6 +2050,7 @@ final class InsightsService {
         )
     }
 
+    @MainActor
     private func generateSavingsMomentum(baseCurrency: String) -> Insight? {
         let aggregates = transactionStore.monthlyAggregateService.fetchLast(4, currency: baseCurrency)
         guard aggregates.count >= 2 else { return nil }
@@ -2032,6 +2129,7 @@ final class InsightsService {
     }
 
     /// Projects month-end spend = avg daily rate × remaining days + pending recurring.
+    @MainActor
     private func generateSpendingForecast(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -2100,6 +2198,7 @@ final class InsightsService {
     }
 
     /// How many months the current balance will last at the current net-burn rate.
+    @MainActor
     private func generateBalanceRunway(baseCurrency: String, balanceFor: (String) -> Double) -> Insight? {
         let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         guard currentBalance > 0 else { return nil }
@@ -2151,6 +2250,7 @@ final class InsightsService {
     }
 
     /// Compares this month's expenses against the same month last year.
+    @MainActor
     private func generateYearOverYear(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -2199,6 +2299,7 @@ final class InsightsService {
     }
 
     /// Identifies which calendar month historically generates the highest income.
+    @MainActor
     private func generateIncomeSeasonality(baseCurrency: String) -> Insight? {
         // Fetch all-time monthly aggregates
         let calendar = Calendar.current
@@ -2254,6 +2355,7 @@ final class InsightsService {
     }
 
     /// Compares current daily spending rate vs last month's daily rate.
+    @MainActor
     private func generateSpendingVelocity(baseCurrency: String) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
@@ -2305,33 +2407,61 @@ final class InsightsService {
     }
 
     /// Groups income transactions by category to show income source distribution.
+    /// Phase 31: Uses a CoreData fetch for the full-history income totals by category,
+    /// unaffected by the windowed transaction store (windowMonths = 3).
+    /// Falls back to the windowed `allTransactions` parameter when no CoreData rows exist.
+    @MainActor
     private func generateIncomeSourceBreakdown(allTransactions: [Transaction], baseCurrency: String) -> Insight? {
         let incomeCategories = transactionStore.categories.filter { $0.type == .income }
         guard incomeCategories.count >= 2 else { return nil }
 
-        let incomeTransactions = allTransactions.filter { $0.type == .income }
-        guard !incomeTransactions.isEmpty else { return nil }
+        // Phase 31 fast path: fetch income by category directly from CoreData (full history).
+        // CategoryAggregateService only stores expenses; we query TransactionEntity directly.
+        let cdIncomeByCategory = fetchIncomeByCategoryFromCoreData(baseCurrency: baseCurrency)
 
-        let totalIncome = incomeTransactions.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
-        guard totalIncome > 0 else { return nil }
-
-        let grouped = Dictionary(grouping: incomeTransactions, by: { $0.category })
-        let breakdownItems: [CategoryBreakdownItem] = grouped
-            .map { catName, txns -> CategoryBreakdownItem in
-                let amount = txns.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
-                let pct = (amount / totalIncome) * 100
-                let cat = transactionStore.categories.first { $0.name == catName }
-                return CategoryBreakdownItem(
-                    id: catName,
-                    categoryName: catName,
-                    amount: amount,
-                    percentage: pct,
-                    color: Color(hex: cat?.colorHex ?? "#5856D6"),
-                    iconSource: cat?.iconSource,
-                    subcategories: []
-                )
-            }
-            .sorted { $0.amount > $1.amount }
+        let breakdownItems: [CategoryBreakdownItem]
+        if !cdIncomeByCategory.isEmpty {
+            let totalIncome = cdIncomeByCategory.values.reduce(0.0, +)
+            guard totalIncome > 0 else { return nil }
+            breakdownItems = cdIncomeByCategory
+                .map { catName, amount -> CategoryBreakdownItem in
+                    let pct = (amount / totalIncome) * 100
+                    let cat = transactionStore.categories.first { $0.name == catName }
+                    return CategoryBreakdownItem(
+                        id: catName,
+                        categoryName: catName,
+                        amount: amount,
+                        percentage: pct,
+                        color: Color(hex: cat?.colorHex ?? "#5856D6"),
+                        iconSource: cat?.iconSource,
+                        subcategories: []
+                    )
+                }
+                .sorted { $0.amount > $1.amount }
+        } else {
+            // Fallback: windowed allTransactions (first launch or no CoreData rows)
+            let incomeTransactions = allTransactions.filter { $0.type == .income }
+            guard !incomeTransactions.isEmpty else { return nil }
+            let totalIncome = incomeTransactions.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
+            guard totalIncome > 0 else { return nil }
+            let grouped = Dictionary(grouping: incomeTransactions, by: { $0.category })
+            breakdownItems = grouped
+                .map { catName, txns -> CategoryBreakdownItem in
+                    let amount = txns.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
+                    let pct = (amount / totalIncome) * 100
+                    let cat = transactionStore.categories.first { $0.name == catName }
+                    return CategoryBreakdownItem(
+                        id: catName,
+                        categoryName: catName,
+                        amount: amount,
+                        percentage: pct,
+                        color: Color(hex: cat?.colorHex ?? "#5856D6"),
+                        iconSource: cat?.iconSource,
+                        subcategories: []
+                    )
+                }
+                .sorted { $0.amount > $1.amount }
+        }
 
         guard let top = breakdownItems.first else { return nil }
         let topPercent = top.percentage
@@ -2353,6 +2483,46 @@ final class InsightsService {
             category: .income,
             detailData: .categoryBreakdown(breakdownItems)
         )
+    }
+
+    /// Phase 31: Fetch total income amounts grouped by category from full CoreData store.
+    /// Unlike CategoryAggregateService (which only tracks expenses), this queries
+    /// TransactionEntity directly for type == income. Returns [categoryName: totalAmount].
+    @MainActor
+    private func fetchIncomeByCategoryFromCoreData(baseCurrency: String) -> [String: Double] {
+        let context = CoreDataStack.shared.viewContext
+        let request = TransactionEntity.fetchRequest()
+        request.predicate = NSPredicate(
+            format: "type == %@ AND category != nil AND category != %@",
+            "income", ""
+        )
+        request.propertiesToFetch = ["category", "amount", "convertedAmount", "currency"]
+        request.resultType = .dictionaryResultType
+        request.returnsObjectsAsFaults = false
+
+        var result: [String: Double] = [:]
+        do {
+            let rows = try context.fetch(request) as! [[String: Any]]
+            for row in rows {
+                guard let catName = row["category"] as? String, !catName.isEmpty else { continue }
+                let amount: Double
+                if let currency = row["currency"] as? String, currency == baseCurrency,
+                   let raw = row["amount"] as? Double {
+                    amount = raw
+                } else if let converted = row["convertedAmount"] as? Double, converted > 0 {
+                    amount = converted
+                } else if let raw = row["amount"] as? Double {
+                    amount = raw
+                } else {
+                    continue
+                }
+                guard amount > 0 else { continue }
+                result[catName, default: 0] += amount
+            }
+        } catch {
+            Self.logger.error("❌ [Insights] fetchIncomeByCategoryFromCoreData failed: \(error.localizedDescription, privacy: .public)")
+        }
+        return result
     }
 
     // MARK: - Private Helper: Monthly Equivalent
@@ -2434,6 +2604,7 @@ final class InsightsService {
 
     /// Computes a composite 0-100 financial health score from five weighted components.
     /// Call after `generateAllInsights` once totals and period data points are available.
+    @MainActor
     func computeHealthScore(
         totalIncome: Double,
         totalExpenses: Double,
@@ -2518,6 +2689,7 @@ final class InsightsService {
 
     /// Detects possible duplicate subscriptions — active series with the same category
     /// OR monthly cost within 15% of each other.
+    @MainActor
     private func generateDuplicateSubscriptions(baseCurrency: String) -> Insight? {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive && $0.kind == .subscription }
         guard activeSeries.count >= 2 else { return nil }
@@ -2575,18 +2747,31 @@ final class InsightsService {
     }
 
     /// Flags accounts that have been idle for 30+ days but still hold a positive balance.
+    @MainActor
     private func generateAccountDormancy(allTransactions: [Transaction], balanceFor: (String) -> Double) -> Insight? {
-        let dateFormatter = DateFormatters.dateFormatter
         let now = Date()
         guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now) else { return nil }
+
+        // Phase 31: Fetch last transaction dates from CoreData (full history, not windowed store).
+        // With windowMonths = 3, allTransactions only contains the last 3 months; an account
+        // dormant for 31-90 days would not appear and be silently missed.
+        let lastDates = fetchLastTransactionDates()
 
         let dormantAccounts: [AccountInsightItem] = transactionStore.accounts.compactMap { account in
             let balance = balanceFor(account.id)
             guard balance > 0 else { return nil }
-            let lastTx = allTransactions
-                .filter { $0.accountId == account.id }
-                .compactMap { dateFormatter.date(from: $0.date) }
-                .max()
+            // Prefer full-history CoreData date; fall back to windowed allTransactions for
+            // accounts not yet in CoreData (e.g. freshly added with no persisted transactions).
+            let lastTx: Date?
+            if let cdDate = lastDates[account.id] {
+                lastTx = cdDate
+            } else {
+                let dateFormatter = DateFormatters.dateFormatter
+                lastTx = allTransactions
+                    .filter { $0.accountId == account.id }
+                    .compactMap { dateFormatter.date(from: $0.date) }
+                    .max()
+            }
             guard let last = lastTx, last < thirtyDaysAgo else { return nil }
             return AccountInsightItem(
                 id: account.id,
@@ -2600,7 +2785,7 @@ final class InsightsService {
         }
         guard !dormantAccounts.isEmpty else { return nil }
 
-        let totalDormantBalance = dormantAccounts.reduce(0.0) { $0 + $1.balance }
+        _ = dormantAccounts.reduce(0.0) { $0 + $1.balance } // totalDormantBalance — reserved for future use
         return Insight(
             id: "accountDormancy",
             type: .accountDormancy,
@@ -2618,8 +2803,42 @@ final class InsightsService {
         )
     }
 
+    /// Phase 31: Fetch the most recent transaction date per accountId directly from CoreData.
+    /// This bypasses the windowed transactionStore.transactions, ensuring accounts dormant
+    /// longer than windowMonths are still detected correctly.
+    /// Returns [accountId: lastTransactionDate].
+    @MainActor
+    private func fetchLastTransactionDates() -> [String: Date] {
+        let context = CoreDataStack.shared.viewContext
+        let request = TransactionEntity.fetchRequest()
+        // Fetch only the fields we need: accountId and date (the actual Date field, not string)
+        request.propertiesToFetch = ["accountId", "date"]
+        request.resultType = .dictionaryResultType
+        request.returnsObjectsAsFaults = false
+        // Exclude transfers and internal-only entries
+        request.predicate = NSPredicate(format: "accountId != nil AND date != nil")
+
+        var result: [String: Date] = [:]
+        do {
+            let rows = try context.fetch(request) as! [[String: Any]]
+            for row in rows {
+                guard let accountId = row["accountId"] as? String,
+                      let date = row["date"] as? Date else { continue }
+                if let existing = result[accountId] {
+                    if date > existing { result[accountId] = date }
+                } else {
+                    result[accountId] = date
+                }
+            }
+        } catch {
+            Self.logger.error("❌ [Insights] fetchLastTransactionDates failed: \(error.localizedDescription, privacy: .public)")
+        }
+        return result
+    }
+
     /// Phase 23-C P12: shared monthly recurring net calculation.
     /// Was duplicated verbatim in generateCashFlowInsights and generateCashFlowInsightsFromPeriodPoints.
+    @MainActor
     private func monthlyRecurringNet(baseCurrency: String) -> Double {
         let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
         return activeSeries.reduce(0.0) { total, series in

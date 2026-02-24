@@ -12,6 +12,8 @@ import UserNotifications
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        CoreDataStack.shared.preWarm()
+
         // Set notification delegate
         UNUserNotificationCenter.current().delegate = self
 
