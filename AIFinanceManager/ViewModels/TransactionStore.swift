@@ -188,6 +188,26 @@ final class TransactionStore {
         )
     }
 
+    /// Fetches expense transactions for a specific category within [startDate, endDate] from CoreData.
+    /// Bypasses the in-memory window — used by InsightsViewModel.categoryDeepDive() when the
+    /// previous-bucket period falls outside the 3-month window.
+    func fetchCategoryTransactions(categoryName: String, from startDate: Date, to endDate: Date) -> [Transaction] {
+        let startString = DateFormatters.dateFormatter.string(from: startDate)
+        let endString   = DateFormatters.dateFormatter.string(from: endDate)
+        let context = CoreDataStack.shared.viewContext
+        let request = TransactionEntity.fetchRequest()
+        request.predicate = NSPredicate(
+            format: "category == %@ AND type == %@ AND date >= %@ AND date <= %@",
+            categoryName, "expense", startString, endString
+        )
+        request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+        do {
+            return try context.fetch(request).map { $0.toTransaction() }
+        } catch {
+            return []
+        }
+    }
+
     /// Returns [categoryName: CategoryExpense] for the given period using CategoryAggregateService.
     /// O(1) for allTime (pre-summed year==0 records), O(M) for date ranges (monthly records summed per category).
     /// Called by TransactionsViewModel when the time filter extends beyond the in-memory window.

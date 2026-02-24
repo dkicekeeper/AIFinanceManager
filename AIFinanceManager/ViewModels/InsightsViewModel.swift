@@ -162,8 +162,6 @@ final class InsightsViewModel {
     func categoryDeepDive(
         categoryName: String
     ) -> (subcategories: [SubcategoryBreakdownItem], monthlyTrend: [MonthlyDataPoint], prevBucketTotal: Double) {
-        let allTransactions = Array(transactionStore.transactions)
-
         // Phase 31: Use current granularity bucket only (not the full window).
         let currentKey   = currentGranularity.currentPeriodKey
         let currentStart = currentGranularity.periodStart(for: currentKey)
@@ -175,6 +173,21 @@ final class InsightsViewModel {
         let prevStart = currentGranularity.periodStart(for: prevKey)
         let prevEnd   = currentStart   // prev bucket ends where current bucket begins
         let prevFilter = TimeFilter(preset: .custom, startDate: prevStart, endDate: prevEnd)
+
+        // Phase 31 windowing fix: if either the current or previous bucket extends beyond the
+        // 3-month in-memory window, the windowed transactionStore.transactions would produce
+        // wrong subcategory breakdowns and a 0 prevBucketTotal. Fetch only the needed category
+        // transactions from CoreData for the combined [prevStart, currentEnd] span instead.
+        let allTransactions: [Transaction]
+        if let windowStart = transactionStore.windowStartDate, prevStart < windowStart {
+            allTransactions = transactionStore.fetchCategoryTransactions(
+                categoryName: categoryName,
+                from: prevStart,
+                to: currentEnd
+            )
+        } else {
+            allTransactions = Array(transactionStore.transactions)
+        }
 
         return insightsService.generateCategoryDeepDive(
             categoryName: categoryName,

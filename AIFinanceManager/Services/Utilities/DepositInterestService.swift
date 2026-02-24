@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreData
 
 enum DepositInterestService {
     
@@ -243,14 +244,21 @@ enum DepositInterestService {
         // Проверяем, есть ли уже транзакция начисления за этот месяц
         let monthStart = calendar.date(from: components)!
         let monthStartString = DateFormatters.dateFormatter.string(from: monthStart)
-        
-        let existingTransaction = allTransactions.first { transaction in
-            transaction.accountId == account.id &&
-            transaction.type == .depositInterestAccrual &&
-            transaction.date >= monthStartString
-        }
-        
-        if existingTransaction != nil {
+
+        // Phase 31 windowing fix: query CoreData directly instead of searching allTransactions.
+        // allTransactions is windowed to the last 3 months — any interest posting older than
+        // that would be invisible, causing a duplicate transaction to be created for the same month.
+        // CoreDataStack.viewContext holds ALL entities regardless of the in-memory window.
+        let context = CoreDataStack.shared.viewContext
+        let existsRequest = TransactionEntity.fetchRequest()
+        existsRequest.predicate = NSPredicate(
+            format: "accountId == %@ AND type == %@ AND date >= %@",
+            account.id, "depositInterestAccrual", monthStartString
+        )
+        existsRequest.fetchLimit = 1
+        existsRequest.includesPropertyValues = false   // existence check only — faster
+        let alreadyPosted = (try? context.fetch(existsRequest).isEmpty == false) ?? false
+        if alreadyPosted {
             // Транзакция уже существует - не создаем дубль
             return
         }
