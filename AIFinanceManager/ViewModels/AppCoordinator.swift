@@ -261,13 +261,9 @@ class AppCoordinator {
         logger.debug("🔄 [INIT] syncToViewModels()    : \(String(format: "%.0f", (t2-t1)*1000))ms")
 
         // 3. Register accounts with BalanceCoordinator.
-        // Passing transactions so that shouldCalculateFromTransactions accounts
-        // are recalculated from scratch (CoreData `balance` field is unreliable
-        // for these accounts since persistBalance() is async Task.detached).
-        await balanceCoordinator.registerAccounts(
-            transactionStore.accounts,
-            transactions: transactionStore.transactions
-        )
+        // account.balance is kept accurate by persistIncremental() on every mutation,
+        // so no transaction list is needed (Phase B removed in Phase 31).
+        await balanceCoordinator.registerAccounts(transactionStore.accounts)
         let t3 = CACurrentMediaTime()
         logger.debug("💰 [INIT] registerAccounts()    : \(String(format: "%.0f", (t3-t2)*1000))ms")
 

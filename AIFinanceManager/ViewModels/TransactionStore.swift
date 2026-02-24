@@ -143,16 +143,10 @@ final class TransactionStore {
     ///
     /// Set to 0 (disabled) until the three blockers below are resolved:
     ///
-    /// BLOCKER 1 — BalanceCoordinator.registerAccounts(_:transactions:)
-    ///   AppCoordinator passes `transactionStore.transactions` to BalanceCoordinator at startup
-    ///   (AppCoordinator.initialize, ~line 256) so that `shouldCalculateFromTransactions` accounts
-    ///   can be recalculated from their full transaction history.  With a 3-month window, this
-    ///   calculation would see only the most recent 3 months — producing an incorrect running
-    ///   balance for credit/debit accounts.
-    ///   FIX REQUIRED: BalanceCoordinator must read the persisted `account.balance` field
-    ///   (already done for deposit accounts in Phase 28B) instead of summing raw transactions,
-    ///   OR AppCoordinator must call `repository.loadTransactions(dateRange: nil)` separately
-    ///   for the balance-recalc path without storing those transactions in the windowed store.
+    /// BLOCKER 1 — BalanceCoordinator.registerAccounts(_:transactions:)  [RESOLVED — Phase 31 Task 5]
+    ///   Phase B background recalculation removed. registerAccounts now only reads the persisted
+    ///   `account.balance` field (kept accurate by persistIncremental() on every mutation).
+    ///   No transaction list is passed; windowing does not affect balance correctness.
     ///
     /// BLOCKER 2 — InsightsService reads transactionStore.transactions directly
     ///   InsightsService.generateAllInsights() captures `Array(transactionStore.transactions)`
