@@ -46,7 +46,7 @@ struct AccountCard: View {
 }
 
 #Preview("Account Card") {
-    @Namespace var ns
+    @Previewable @Namespace var ns
     let coordinator = AppCoordinator()
     return NavigationStack {
         AccountCard(

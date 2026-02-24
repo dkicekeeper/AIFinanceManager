@@ -57,7 +57,7 @@ struct InsightsSectionView: View {
 // MARK: - Previews
 
 #Preview("Simple — Income") {
-    @Namespace var ns
+    @Previewable @Namespace var ns
     return NavigationStack {
         ScrollView {
             InsightsSectionView(
@@ -72,7 +72,7 @@ struct InsightsSectionView: View {
 }
 
 #Preview("Spending — with drill-down") {
-    @Namespace var ns
+    @Previewable @Namespace var ns
     return NavigationStack {
         ScrollView {
             InsightsSectionView(
@@ -87,7 +87,7 @@ struct InsightsSectionView: View {
 }
 
 #Preview("Cash Flow — compact cards only") {
-    @Namespace var ns
+    @Previewable @Namespace var ns
     return NavigationStack {
         ScrollView {
             InsightsSectionView(
@@ -102,7 +102,7 @@ struct InsightsSectionView: View {
 }
 
 #Preview("Wealth — compact cards only") {
-    @Namespace var ns
+    @Previewable @Namespace var ns
     return NavigationStack {
         ScrollView {
             InsightsSectionView(

@@ -34,7 +34,7 @@ struct AccountsCarousel: View {
 
 // MARK: - Preview
 #Preview {
-    @Namespace var ns
+    @Previewable @Namespace var ns
     let coordinator = AppCoordinator()
 
     return NavigationStack {
