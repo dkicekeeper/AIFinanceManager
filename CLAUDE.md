@@ -9,13 +9,16 @@ open AIFinanceManager.xcodeproj
 # Build via CLI
 xcodebuild build \
   -scheme AIFinanceManager \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 
 # Run unit tests
 xcodebuild test \
   -scheme AIFinanceManager \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -only-testing:AIFinanceManagerTests
+
+# Available destinations (Xcode 26 beta): iPhone 17 Pro (iOS 26.2), iPhone Air, iPhone 16e
+# Physical device: name:Dkicekeeper 17
 ```
 
 ## Project Overview
@@ -423,6 +426,7 @@ func saveAccountsInternal(...) throws {
 - Fetch requests should be optimized with predicates
 - Use background contexts for heavy operations
 - **⚠️ OR-per-month predicate crash**: Never build `NSCompoundPredicate(orPredicateWithSubpredicates:)` with one subpredicate per calendar month. For ranges > ~80 months SQLite raises `Expression tree too large (maximum depth 1000)`. Use a constant 7-condition range predicate instead: `year > 0 AND month > 0 AND (year > startYear OR (year == startYear AND month >= startMonth)) AND (year < endYear OR (year == endYear AND month <= endMonth))`. See `CategoryAggregateService.fetchRange()` for reference implementation.
+- **`performFetch()` + `rebuildSections()` are synchronous on MainActor** — sections fully updated before the next line. Gates like `isHistoryListReady` only protect UI if the section count is already bounded before the flag turns `true`; an unbounded allTime FRC (3,530 sections) will still freeze even with the gate.
 
 ### File Organization Rules ("Where Should I Put This File?")
 
@@ -478,6 +482,8 @@ New file needed?
 - Use background tasks for expensive operations
 - Cache frequently accessed data (see BalanceCoordinator cache)
 - Optimize CoreData fetch requests with appropriate batch sizes
+- **⚠️ SwiftUI `List` + 500+ sections = hard freeze** — SwiftUI renders all `Section` headers eagerly; 3,530 sections causes 10-12s UI freeze. Always slice: `Array(sections.prefix(visibleSectionLimit))` with `@State var visibleSectionLimit = 100`. Add `ProgressView().onAppear { visibleSectionLimit += 100 }` as the last List row for infinite scroll ("умная подгрузка"). `@State` auto-resets to 100 on each `NavigationStack` push.
+- **⚠️ `ContentView.onAppear` fires on every back-navigation** — guard expensive ops (e.g. `updateSummary()` ~540ms) with `@State private var hasAppearedOnce = false`. Safe to skip on re-appearances: `onChange(of: transactionStore.transactions.count)` keeps `cachedSummary` current.
 
 ## Common Tasks
 
