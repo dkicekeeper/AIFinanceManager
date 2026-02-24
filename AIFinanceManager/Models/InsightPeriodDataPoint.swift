@@ -18,7 +18,7 @@ import Foundation
 
 /// A single bucketed data point for any InsightGranularity.
 /// `period` describes the exact date interval this bucket covers.
-struct PeriodDataPoint: Identifiable {
+struct PeriodDataPoint: Identifiable, Hashable {
     /// Stable identifier — same as `groupingKey` used to build the bucket.
     let id: String
 

@@ -7,18 +7,18 @@
 
 import Foundation
 
-enum RecurringSeriesKind: String, Codable {
+enum RecurringSeriesKind: String, Codable, Hashable {
     case generic = "generic"
     case subscription = "subscription"
 }
 
-enum SubscriptionStatus: String, Codable {
+enum SubscriptionStatus: String, Codable, Hashable {
     case active = "active"
     case paused = "paused"
     case archived = "archived"
 }
 
-struct RecurringSeries: Identifiable, Codable, Equatable {
+struct RecurringSeries: Identifiable, Codable, Equatable, Hashable {
     let id: String
     var isActive: Bool
     var amount: Decimal
@@ -191,7 +191,7 @@ struct RecurringSeries: Identifiable, Codable, Equatable {
     }
 }
 
-enum RecurringFrequency: String, Codable, CaseIterable {
+enum RecurringFrequency: String, Codable, CaseIterable, Hashable {
     case daily = "daily"
     case weekly = "weekly"
     case monthly = "monthly"

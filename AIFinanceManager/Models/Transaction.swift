@@ -171,7 +171,7 @@ struct Summary: Codable, Equatable, Hashable {
 
 // MARK: - Deposit Models
 
-struct RateChange: Codable, Equatable {
+struct RateChange: Codable, Equatable, Hashable {
     let effectiveFrom: String // YYYY-MM-DD
     let annualRate: Decimal
     let note: String?
@@ -183,7 +183,7 @@ struct RateChange: Codable, Equatable {
     }
 }
 
-struct DepositInfo: Codable, Equatable {
+struct DepositInfo: Codable, Equatable, Hashable {
     var bankName: String
     var principalBalance: Decimal // Тело депозита
     var capitalizationEnabled: Bool
@@ -235,7 +235,7 @@ struct DepositInfo: Codable, Equatable {
     }
 }
 
-struct Account: Identifiable, Codable, Equatable {
+struct Account: Identifiable, Codable, Equatable, Hashable {
     let id: String
     var name: String
     var currency: String

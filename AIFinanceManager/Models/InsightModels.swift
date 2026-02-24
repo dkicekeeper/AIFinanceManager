@@ -11,7 +11,7 @@ import SwiftUI
 // MARK: - Core Insight Model
 
 /// Represents a single actionable financial insight
-struct Insight: Identifiable {
+struct Insight: Identifiable, Hashable {
     let id: String
     let type: InsightType
     let title: String
@@ -21,11 +21,16 @@ struct Insight: Identifiable {
     let severity: InsightSeverity
     let category: InsightCategory
     let detailData: InsightDetailData?
+
+    // Custom Hashable/Equatable: hash and compare by id only.
+    // detailData contains Color values which are not Hashable.
+    static func == (lhs: Insight, rhs: Insight) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 // MARK: - Insight Type
 
-enum InsightType: String {
+enum InsightType: String, Hashable {
     case topSpendingCategory
     case spendingSpike
     case monthOverMonthChange
@@ -68,7 +73,7 @@ enum InsightType: String {
 
 // MARK: - Insight Metric
 
-struct InsightMetric {
+struct InsightMetric: Hashable {
     let value: Double
     let formattedValue: String
     let currency: String?
@@ -77,7 +82,7 @@ struct InsightMetric {
 
 // MARK: - Insight Trend
 
-struct InsightTrend {
+struct InsightTrend: Hashable {
     let direction: TrendDirection
     let changePercent: Double?
     let changeAbsolute: Double?
@@ -100,13 +105,13 @@ struct InsightTrend {
     }
 }
 
-enum TrendDirection {
+enum TrendDirection: Hashable {
     case up, down, flat
 }
 
 // MARK: - Insight Severity
 
-enum InsightSeverity: String {
+enum InsightSeverity: String, Hashable {
     case positive
     case neutral
     case warning
@@ -133,7 +138,7 @@ enum InsightSeverity: String {
 
 // MARK: - Insight Category
 
-enum InsightCategory: String, CaseIterable {
+enum InsightCategory: String, CaseIterable, Hashable {
     case spending
     case income
     case budget
@@ -172,7 +177,7 @@ enum InsightCategory: String, CaseIterable {
 
 // MARK: - Detail Data
 
-enum InsightDetailData {
+enum InsightDetailData: Hashable {
     case categoryBreakdown([CategoryBreakdownItem])
     case monthlyTrend([MonthlyDataPoint])
     case periodTrend([PeriodDataPoint])         // Phase 18 — granularity-aware trend
@@ -185,7 +190,7 @@ enum InsightDetailData {
 
 // MARK: - Category Breakdown
 
-struct CategoryBreakdownItem: Identifiable {
+struct CategoryBreakdownItem: Identifiable, Hashable {
     let id: String
     let categoryName: String
     let amount: Double
@@ -193,9 +198,20 @@ struct CategoryBreakdownItem: Identifiable {
     let color: Color
     let iconSource: IconSource?
     let subcategories: [SubcategoryBreakdownItem]
+
+    // Color is not Hashable; hash by id + numeric fields only.
+    static func == (lhs: CategoryBreakdownItem, rhs: CategoryBreakdownItem) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.categoryName == rhs.categoryName &&
+        lhs.amount == rhs.amount &&
+        lhs.percentage == rhs.percentage &&
+        lhs.iconSource == rhs.iconSource &&
+        lhs.subcategories == rhs.subcategories
+    }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-struct SubcategoryBreakdownItem: Identifiable {
+struct SubcategoryBreakdownItem: Identifiable, Hashable {
     let id: String
     let name: String
     let amount: Double
@@ -204,7 +220,7 @@ struct SubcategoryBreakdownItem: Identifiable {
 
 // MARK: - Trend Data Points
 
-struct MonthlyDataPoint: Identifiable {
+struct MonthlyDataPoint: Identifiable, Hashable {
     let id: String
     let month: Date
     let income: Double
@@ -213,7 +229,7 @@ struct MonthlyDataPoint: Identifiable {
     let label: String
 }
 
-struct DailyDataPoint: Identifiable {
+struct DailyDataPoint: Identifiable, Hashable {
     let id: String
     let date: Date
     let amount: Double
@@ -222,7 +238,7 @@ struct DailyDataPoint: Identifiable {
 
 // MARK: - Budget Insight Item
 
-struct BudgetInsightItem: Identifiable {
+struct BudgetInsightItem: Identifiable, Hashable {
     let id: String
     let categoryName: String
     let budgetAmount: Double
@@ -233,11 +249,25 @@ struct BudgetInsightItem: Identifiable {
     let daysRemaining: Int
     let projectedSpend: Double
     let iconSource: IconSource?
+
+    // Color is not Hashable; hash by id only.
+    static func == (lhs: BudgetInsightItem, rhs: BudgetInsightItem) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.categoryName == rhs.categoryName &&
+        lhs.budgetAmount == rhs.budgetAmount &&
+        lhs.spent == rhs.spent &&
+        lhs.percentage == rhs.percentage &&
+        lhs.isOverBudget == rhs.isOverBudget &&
+        lhs.daysRemaining == rhs.daysRemaining &&
+        lhs.projectedSpend == rhs.projectedSpend &&
+        lhs.iconSource == rhs.iconSource
+    }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 // MARK: - Recurring Insight Item
 
-struct RecurringInsightItem: Identifiable {
+struct RecurringInsightItem: Identifiable, Hashable {
     let id: String
     let name: String
     let amount: Decimal
@@ -251,7 +281,7 @@ struct RecurringInsightItem: Identifiable {
 
 // MARK: - Account Insight Item
 
-struct AccountInsightItem: Identifiable {
+struct AccountInsightItem: Identifiable, Hashable {
     let id: String
     let accountName: String
     let currency: String
