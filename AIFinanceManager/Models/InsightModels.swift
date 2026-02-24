@@ -199,14 +199,9 @@ struct CategoryBreakdownItem: Identifiable, Hashable {
     let iconSource: IconSource?
     let subcategories: [SubcategoryBreakdownItem]
 
-    // Color is not Hashable; hash by id + numeric fields only.
+    // Color is not Hashable; hash and compare by id only (consistent Hashable contract).
     static func == (lhs: CategoryBreakdownItem, rhs: CategoryBreakdownItem) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.categoryName == rhs.categoryName &&
-        lhs.amount == rhs.amount &&
-        lhs.percentage == rhs.percentage &&
-        lhs.iconSource == rhs.iconSource &&
-        lhs.subcategories == rhs.subcategories
+        lhs.id == rhs.id
     }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
@@ -250,17 +245,9 @@ struct BudgetInsightItem: Identifiable, Hashable {
     let projectedSpend: Double
     let iconSource: IconSource?
 
-    // Color is not Hashable; hash by id only.
+    // Color is not Hashable; hash and compare by id only (consistent Hashable contract).
     static func == (lhs: BudgetInsightItem, rhs: BudgetInsightItem) -> Bool {
-        lhs.id == rhs.id &&
-        lhs.categoryName == rhs.categoryName &&
-        lhs.budgetAmount == rhs.budgetAmount &&
-        lhs.spent == rhs.spent &&
-        lhs.percentage == rhs.percentage &&
-        lhs.isOverBudget == rhs.isOverBudget &&
-        lhs.daysRemaining == rhs.daysRemaining &&
-        lhs.projectedSpend == rhs.projectedSpend &&
-        lhs.iconSource == rhs.iconSource
+        lhs.id == rhs.id
     }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
