@@ -482,7 +482,7 @@
 "set_budget_for" = "Установить бюджет для";
 "save" = "Сохранить";
 "cancel" = "Отмена";
-"No budget set" = "Бюджет не установлен";
+"category.noBudgetSet" = "Бюджет не установлен";
 
 // MARK: - Calendar
 "calendar.upcomingPayments" = "Ближайшие платежи";

@@ -31,19 +31,20 @@ struct ExpenseIncomeProgressBar: View {
                 HStack(spacing: AppSpacing.xs) {
                     if expensePercent > 0 {
                         Rectangle()
-                            .foregroundStyle(Color.red)
+                            .foregroundStyle(AppColors.destructive)
                             .frame(width: geometry.size.width * expensePercent)
                             .clipShape(.rect(cornerRadius: AppRadius.sm))
-                            .shadow(color: Color.red.opacity(0.3), radius: 8)
+                            .shadow(color: AppColors.destructive.opacity(0.3), radius: 8)
                     }
                     if incomePercent > 0 {
                         Rectangle()
-                            .foregroundStyle(Color.green)
+                            .foregroundStyle(AppColors.income)
                             .frame(width: geometry.size.width * incomePercent)
                             .clipShape(.rect(cornerRadius: AppRadius.sm))
-                            .shadow(color: Color.green.opacity(0.3), radius: 8)
+                            .shadow(color: AppColors.income.opacity(0.3), radius: 8)
                     }
                 }
+                .clipped()
             }
             .frame(height: AppSpacing.md)
             

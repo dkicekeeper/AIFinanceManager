@@ -482,7 +482,7 @@
 "set_budget_for" = "Set Budget for";
 "save" = "Save";
 "cancel" = "Cancel";
-"No budget set" = "No budget set";
+"category.noBudgetSet" = "No budget set";
 
 // MARK: - Calendar
 "calendar.upcomingPayments" = "Upcoming Payments";

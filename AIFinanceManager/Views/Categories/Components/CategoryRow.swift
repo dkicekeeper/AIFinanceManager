@@ -82,7 +82,7 @@ struct CategoryRow: View {
                                     .foregroundStyle(.secondary)
                             }
                         } else if category.type == .expense {
-                            Text(String(localized: "No budget set"))
+                            Text(String(localized: "category.noBudgetSet"))
                                 .font(AppTypography.bodySmall)
                                 .foregroundStyle(.secondary)
                         }
