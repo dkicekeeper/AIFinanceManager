@@ -22,21 +22,22 @@ struct CategoryFilterView: View {
             Form {
                 // Опция "Все категории"
                 Section {
-                    HStack {
-                        Text(String(localized: "categoryFilter.allCategories"))
-                            .fontWeight(.medium)
-                        Spacer()
-                        if currentFilter == nil {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(.blue)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
+                    Button {
                         HapticManager.selection()
                         selectedExpenseCategories.removeAll()
                         selectedIncomeCategories.removeAll()
+                    } label: {
+                        HStack {
+                            Text(String(localized: "categoryFilter.allCategories"))
+                                .fontWeight(.medium)
+                            Spacer()
+                            if currentFilter == nil {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.blue)
+                            }
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
                 
                 // Категории расходов
@@ -46,23 +47,24 @@ struct CategoryFilterView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(expenseCategories, id: \.self) { category in
-                            HStack {
-                                Text(category)
-                                Spacer()
-                                if selectedExpenseCategories.contains(category) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.blue)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
+                            Button {
                                 HapticManager.selection()
                                 if selectedExpenseCategories.contains(category) {
                                     selectedExpenseCategories.remove(category)
                                 } else {
                                     selectedExpenseCategories.insert(category)
                                 }
+                            } label: {
+                                HStack {
+                                    Text(category)
+                                    Spacer()
+                                    if selectedExpenseCategories.contains(category) {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.blue)
+                                    }
+                                }
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -74,23 +76,24 @@ struct CategoryFilterView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(incomeCategories, id: \.self) { category in
-                            HStack {
-                                Text(category)
-                                Spacer()
-                                if selectedIncomeCategories.contains(category) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.blue)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
+                            Button {
                                 HapticManager.selection()
                                 if selectedIncomeCategories.contains(category) {
                                     selectedIncomeCategories.remove(category)
                                 } else {
                                     selectedIncomeCategories.insert(category)
                                 }
+                            } label: {
+                                HStack {
+                                    Text(category)
+                                    Spacer()
+                                    if selectedIncomeCategories.contains(category) {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.blue)
+                                    }
+                                }
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }

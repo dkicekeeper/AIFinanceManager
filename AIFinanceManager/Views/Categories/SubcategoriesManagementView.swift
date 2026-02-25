@@ -89,16 +89,17 @@ struct SubcategoryManagementRow: View {
     let onDelete: () -> Void
     
     var body: some View {
-        HStack {
-            Text(subcategory.name)
-                .font(AppTypography.body)
-            Spacer()
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
+        Button {
             HapticManager.selection()
             onEdit()
+        } label: {
+            HStack {
+                Text(subcategory.name)
+                    .font(AppTypography.body)
+                Spacer()
+            }
         }
+        .buttonStyle(.plain)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive, action: onDelete) {
                 Label(String(localized: "button.delete"), systemImage: "trash")
