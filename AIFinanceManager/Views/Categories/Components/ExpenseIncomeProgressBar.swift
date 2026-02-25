@@ -17,30 +17,32 @@ struct ExpenseIncomeProgressBar: View {
     }
     
     private var expensePercent: Double {
-        total > 0 ? (expenseAmount / total) : 0.0
+        total > 0 ? max(0, min(1, expenseAmount / total)) : 0.0
     }
-    
+
     private var incomePercent: Double {
-        total > 0 ? (incomeAmount / total) : 0.0
+        total > 0 ? max(0, min(1, incomeAmount / total)) : 0.0
     }
     
     var body: some View {
         VStack(spacing: AppSpacing.sm) {
             // Progress bar
-            HStack(spacing: AppSpacing.xs) {
-                if expensePercent > 0 {
-                    Rectangle()
-                        .foregroundStyle(Color.red)
-                        .clipShape(.rect(cornerRadius: AppRadius.sm))
-                        .shadow(color: Color.red.opacity(0.3), radius: 8)
-                        .containerRelativeFrame(.horizontal) { width, _ in width * expensePercent }
-                }
-                if incomePercent > 0 {
-                    Rectangle()
-                        .foregroundStyle(Color.green)
-                        .clipShape(.rect(cornerRadius: AppRadius.sm))
-                        .shadow(color: Color.green.opacity(0.3), radius: 8)
-                        .containerRelativeFrame(.horizontal) { width, _ in width * incomePercent }
+            GeometryReader { geometry in
+                HStack(spacing: AppSpacing.xs) {
+                    if expensePercent > 0 {
+                        Rectangle()
+                            .foregroundStyle(Color.red)
+                            .frame(width: geometry.size.width * expensePercent)
+                            .clipShape(.rect(cornerRadius: AppRadius.sm))
+                            .shadow(color: Color.red.opacity(0.3), radius: 8)
+                    }
+                    if incomePercent > 0 {
+                        Rectangle()
+                            .foregroundStyle(Color.green)
+                            .frame(width: geometry.size.width * incomePercent)
+                            .clipShape(.rect(cornerRadius: AppRadius.sm))
+                            .shadow(color: Color.green.opacity(0.3), radius: 8)
+                    }
                 }
             }
             .frame(height: AppSpacing.md)
