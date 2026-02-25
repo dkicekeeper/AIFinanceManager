@@ -21,8 +21,6 @@ struct AccountEditView: View {
     @State private var selectedIconSource: IconSource? = nil
     @State private var validationError: String? = nil
 
-    private let currencies = ["USD", "EUR", "KZT", "RUB", "GBP"]
-
     private var parsedBalance: Double {
         if balanceText.isEmpty { return 0.0 }
         return Double(balanceText.replacingOccurrences(of: ",", with: ".")) ?? 0.0
@@ -46,7 +44,7 @@ struct AccountEditView: View {
                         currency: $currency,
                         titlePlaceholder: String(localized: "account.namePlaceholder"),
                         config: .accountHero,
-                        currencies: currencies
+                        currencies: AppSettings.availableCurrencies
                     )
 
                     // Validation Error
@@ -65,7 +63,7 @@ struct AccountEditView: View {
                 name = account.name
                 // Use initialBalance for editing (for manual accounts)
                 let balanceValue = account.initialBalance ?? 0
-                balanceText = String(format: "%.2f", balanceValue)
+                balanceText = AmountFormatter.format(Decimal(balanceValue))
                 currency = account.currency
                 selectedIconSource = account.iconSource
             } else {
