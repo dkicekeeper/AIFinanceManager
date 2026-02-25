@@ -5,6 +5,7 @@
 //  Created on 2024
 //
 
+import OSLog
 import SwiftUI
 
 struct AccountsManagementView: View {
@@ -25,23 +26,11 @@ struct AccountsManagementView: View {
         transactionsViewModel.appSettings.baseCurrency
     }
 
+    private let logger = Logger(subsystem: "AIFinanceManager", category: "AccountsManagementView")
+
     // Filtered and sorted accounts
     private var sortedAccounts: [Account] {
-        return accountsViewModel.accounts.sorted { acc1, acc2 in
-            // If both have order, sort by order
-            if let order1 = acc1.order, let order2 = acc2.order {
-                return order1 < order2
-            }
-            // If only one has order, it goes first
-            if acc1.order != nil {
-                return true
-            }
-            if acc2.order != nil {
-                return false
-            }
-            // If neither has order, sort by name
-            return acc1.name < acc2.name
-        }
+        accountsViewModel.accounts.sortedByOrder()
     }
 
     // MARK: - Methods
@@ -75,7 +64,7 @@ struct AccountsManagementView: View {
                         showingAddAccount = true
                     }
                 )
-            } else {
+            } else if let coordinator = accountsViewModel.balanceCoordinator {
                 List {
                     ForEach(sortedAccounts) { account in
                         AccountRow(
@@ -86,7 +75,7 @@ struct AccountsManagementView: View {
                                 accountToDelete = account
                                 showingAccountDeleteDialog = true
                             },
-                            balanceCoordinator: accountsViewModel.balanceCoordinator!,
+                            balanceCoordinator: coordinator,
                             interestToday: account.depositInfo.flatMap {
                                 let val = DepositInterestService.calculateInterestToToday(depositInfo: $0)
                                 return val > 0 ? NSDecimalNumber(decimal: val).doubleValue : nil
@@ -112,6 +101,7 @@ struct AccountsManagementView: View {
                         do {
                             _ = try await transactionStore.add(transaction)
                         } catch {
+                            logger.error("Failed to add deposit transaction: \(error.localizedDescription)")
                         }
                     }
                 }
@@ -191,6 +181,7 @@ struct AccountsManagementView: View {
                                     do {
                                         _ = try await transactionStore.add(transaction)
                                     } catch {
+                                        logger.error("Failed to add deposit transaction: \(error.localizedDescription)")
                                     }
                                 }
                             }
@@ -356,16 +347,18 @@ struct AccountsManagementView: View {
     
     let coordinator = AppCoordinator()
 
-    return List {
-        ForEach(sampleAccounts) { account in
-            AccountRow(
-                account: account,
-                onEdit: {},
-                onDelete: {},
-                balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
-            )
+    if let balanceCoordinator = coordinator.accountsViewModel.balanceCoordinator {
+        List {
+            ForEach(sampleAccounts) { account in
+                AccountRow(
+                    account: account,
+                    onEdit: {},
+                    onDelete: {},
+                    balanceCoordinator: balanceCoordinator
+                )
+            }
         }
+        .listStyle(PlainListStyle())
     }
-    .listStyle(PlainListStyle())
 }
 
