@@ -10,10 +10,11 @@ import SwiftUI
 struct AccountActionView: View {
     let transactionsViewModel: TransactionsViewModel
     let accountsViewModel: AccountsViewModel
+    let categoriesViewModel: CategoriesViewModel
     @Environment(TransactionStore.self) private var transactionStore // Phase 7.4: TransactionStore integration
     @Environment(AppCoordinator.self) private var appCoordinator
     let account: Account
-    var namespace: Namespace.ID
+    let namespace: Namespace.ID
     @Environment(\.dismiss) var dismiss
     @Environment(TimeFilterManager.self) private var timeFilterManager
     @State private var selectedAction: ActionType = .transfer
@@ -34,16 +35,18 @@ struct AccountActionView: View {
         accountsViewModel: AccountsViewModel,
         account: Account,
         namespace: Namespace.ID,
+        categoriesViewModel: CategoriesViewModel,
         transferDirection: DepositTransferDirection? = nil
     ) {
         self.transactionsViewModel = transactionsViewModel
         self.accountsViewModel = accountsViewModel
         self.account = account
         self.namespace = namespace
+        self.categoriesViewModel = categoriesViewModel
         self.transferDirection = transferDirection
         _selectedCurrency = State(initialValue: account.currency)
         // Для депозитов всегда используем перевод
-        _selectedAction = State(initialValue: account.isDeposit ? .transfer : .transfer)
+        _selectedAction = State(initialValue: .transfer)
     }
     
     enum ActionType {
@@ -84,12 +87,14 @@ struct AccountActionView: View {
                         // Для пополнения счет не нужен
                         EmptyView()
                     } else {
-                        AccountSelectorView(
-                            accounts: availableAccounts,
-                            selectedAccountId: $selectedTargetAccountId,
-                            emptyStateMessage: String(localized: "transactionForm.noAccountsForTransfer"),
-                            balanceCoordinator: accountsViewModel.balanceCoordinator!
-                        )
+                        if let coordinator = accountsViewModel.balanceCoordinator {
+                            AccountSelectorView(
+                                accounts: availableAccounts,
+                                selectedAccountId: $selectedTargetAccountId,
+                                emptyStateMessage: String(localized: "transactionForm.noAccountsForTransfer"),
+                                balanceCoordinator: coordinator
+                            )
+                        }
                     }
                     
                     // 4. Категория (только для пополнения)
@@ -140,7 +145,7 @@ struct AccountActionView: View {
                     HistoryView(
                         transactionsViewModel: transactionsViewModel,
                         accountsViewModel: accountsViewModel,
-                        categoriesViewModel: CategoriesViewModel(repository: transactionsViewModel.repository),
+                        categoriesViewModel: categoriesViewModel,
                         paginationController: appCoordinator.transactionPaginationController,
                         initialAccountId: account.id
                     )
@@ -150,7 +155,7 @@ struct AccountActionView: View {
             .onAppear {
                 // Фокус теперь управляется внутри AmountInputView
             }
-            .alert(String(localized: "voice.error"), isPresented: $showingError) {
+            .alert(String(localized: "common.error"), isPresented: $showingError) {
                 Button(String(localized: "voice.ok"), role: .cancel) {}
             } message: {
                 Text(errorMessage)
@@ -216,7 +221,7 @@ struct AccountActionView: View {
                         to: account.currency
                     ) else {
                         await MainActor.run {
-                            errorMessage = "Ошибка конвертации валюты. Проверьте подключение к интернету."
+                            errorMessage = String(localized: "currency.error.conversionFailed")
                             showingError = true
                             HapticManager.error()
                         }
@@ -266,7 +271,7 @@ struct AccountActionView: View {
                         to: sourceCurrency
                     ) else {
                         await MainActor.run {
-                            errorMessage = "Ошибка конвертации валюты. Проверьте подключение к интернету."
+                            errorMessage = String(localized: "currency.error.conversionFailed")
                             showingError = true
                             HapticManager.error()
                         }
@@ -296,7 +301,7 @@ struct AccountActionView: View {
                         // Проверяем, что все необходимые курсы валют доступны
                         if !allRatesLoaded {
                             await MainActor.run {
-                                errorMessage = "Не удалось загрузить курсы валют. Проверьте подключение к интернету и попробуйте снова."
+                                errorMessage = String(localized: "currency.error.ratesUnavailable")
                                 showingError = true
                                 HapticManager.error()
                             }
@@ -312,7 +317,7 @@ struct AccountActionView: View {
                             )
                             if sourceConversion == nil {
                                 await MainActor.run {
-                                    errorMessage = "Не удалось конвертировать валюту для счета-источника. Проверьте подключение к интернету."
+                                    errorMessage = String(localized: "currency.error.sourceConversionFailed")
                                     showingError = true
                                     HapticManager.error()
                                 }
@@ -328,7 +333,7 @@ struct AccountActionView: View {
                             )
                             if targetConversion == nil {
                                 await MainActor.run {
-                                    errorMessage = "Не удалось конвертировать валюту для счета-получателя. Проверьте подключение к интернету."
+                                    errorMessage = String(localized: "currency.error.targetConversionFailed")
                                     showingError = true
                                     HapticManager.error()
                                 }
@@ -344,7 +349,7 @@ struct AccountActionView: View {
                             )
                             if crossConversion == nil {
                                 await MainActor.run {
-                                    errorMessage = "Не удалось конвертировать валюту между счетами. Проверьте подключение к интернету."
+                                    errorMessage = String(localized: "currency.error.crossConversionFailed")
                                     showingError = true
                                     HapticManager.error()
                                 }
@@ -511,7 +516,8 @@ struct AccountActionView: View {
             transactionsViewModel: coordinator.transactionsViewModel,
             accountsViewModel: coordinator.accountsViewModel,
             account: Account(name: "Main", currency: "USD", iconSource: nil, initialBalance: 1000),
-            namespace: ns
+            namespace: ns,
+            categoriesViewModel: coordinator.categoriesViewModel
         )
     }
 }

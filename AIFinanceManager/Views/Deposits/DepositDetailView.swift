@@ -141,6 +141,7 @@ struct DepositDetailView: View {
                         accountsViewModel: depositsViewModel.accountsViewModel,
                         account: account,
                         namespace: depositActionNamespace,
+                        categoriesViewModel: appCoordinator.categoriesViewModel,
                         transferDirection: .toDeposit
                     )
                     .environment(timeFilterManager)
@@ -155,6 +156,7 @@ struct DepositDetailView: View {
                         accountsViewModel: depositsViewModel.accountsViewModel,
                         account: account,
                         namespace: depositActionNamespace,
+                        categoriesViewModel: appCoordinator.categoriesViewModel,
                         transferDirection: .fromDeposit
                     )
                     .environment(timeFilterManager)

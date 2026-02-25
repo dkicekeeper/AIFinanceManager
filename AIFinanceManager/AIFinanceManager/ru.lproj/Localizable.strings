@@ -667,6 +667,11 @@
 
 // MARK: - Currency Conversion
 "currency.conversion.approximate" = "≈";
+"currency.error.conversionFailed" = "Ошибка конвертации валюты. Проверьте подключение к интернету.";
+"currency.error.ratesUnavailable" = "Не удалось загрузить курсы валют. Проверьте подключение к интернету и попробуйте снова.";
+"currency.error.sourceConversionFailed" = "Не удалось конвертировать валюту для счета-источника. Проверьте подключение к интернету.";
+"currency.error.targetConversionFailed" = "Не удалось конвертировать валюту для счета-получателя. Проверьте подключение к интернету.";
+"currency.error.crossConversionFailed" = "Не удалось конвертировать валюту между счетами. Проверьте подключение к интернету.";
 
 // MARK: - Icon Styles
 "iconStyle.shape.circle" = "Круг";

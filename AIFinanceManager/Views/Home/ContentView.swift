@@ -76,7 +76,8 @@ struct ContentView: View {
                     transactionsViewModel: viewModel,
                     accountsViewModel: accountsViewModel,
                     account: account,
-                    namespace: accountNamespace
+                    namespace: accountNamespace,
+                    categoriesViewModel: coordinator.categoriesViewModel
                 )
                 .environment(timeFilterManager)
                 .navigationTransition(.zoom(sourceID: account.id, in: accountNamespace))

@@ -667,6 +667,11 @@
 
 // MARK: - Currency Conversion
 "currency.conversion.approximate" = "≈";
+"currency.error.conversionFailed" = "Currency conversion failed. Please check your internet connection.";
+"currency.error.ratesUnavailable" = "Failed to load exchange rates. Check your internet connection and try again.";
+"currency.error.sourceConversionFailed" = "Failed to convert currency for source account. Check your internet connection.";
+"currency.error.targetConversionFailed" = "Failed to convert currency for target account. Check your internet connection.";
+"currency.error.crossConversionFailed" = "Failed to convert currency between accounts. Check your internet connection.";
 
 // MARK: - Icon Styles
 "iconStyle.shape.circle" = "Circle";
