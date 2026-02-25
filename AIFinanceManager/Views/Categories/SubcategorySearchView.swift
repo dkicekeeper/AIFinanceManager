@@ -86,16 +86,7 @@ struct SubcategorySearchView: View {
                 } else {
                     List {
                         ForEach(searchResults) { subcategory in
-                            HStack {
-                                Text(subcategory.name)
-                                Spacer()
-                                if selectionMode == .multiple && selectedSubcategoryIds.contains(subcategory.id) {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.blue)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
+                            Button {
                                 if selectionMode == .single {
                                     // Одиночный выбор - вызываем callback и закрываем
                                     onSingleSelect?(subcategory.id)
@@ -115,65 +106,53 @@ struct SubcategorySearchView: View {
                                         }
                                     }
                                 }
+                            } label: {
+                                HStack {
+                                    Text(subcategory.name)
+                                    Spacer()
+                                    if selectionMode == .multiple && selectedSubcategoryIds.contains(subcategory.id) {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.blue)
+                                    }
+                                }
                             }
-                            .onLongPressGesture {
-                                // Лонгтап для удаления привязки
-                                if !categoryId.isEmpty {
-                                    categoriesViewModel.unlinkSubcategoryFromCategory(
-                                        subcategoryId: subcategory.id,
-                                        categoryId: categoryId
-                                    )
+                            .buttonStyle(.plain)
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                if !categoryId.isEmpty && selectionMode == .multiple {
+                                    Button {
+                                        categoriesViewModel.unlinkSubcategoryFromCategory(
+                                            subcategoryId: subcategory.id,
+                                            categoryId: categoryId
+                                        )
+                                    } label: {
+                                        Label(String(localized: "subcategorySearch.unlink"), systemImage: "link.badge.minus")
+                                    }
+                                    .tint(.orange)
                                 }
                             }
                         }
                     }
                 }
             }
-            .navigationTitle(selectionMode == .single ? "Выберите подкатегорию" : "Поиск подкатегорий")
+            .navigationTitle(selectionMode == .single
+                ? String(localized: "subcategorySearch.titleSingle")
+                : String(localized: "subcategorySearch.titleMultiple"))
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, prompt: "Найти или создать подкатегорию")
+            .searchable(text: $searchText, prompt: String(localized: "subcategorySearch.searchPrompt"))
             .safeAreaInset(edge: .bottom) {
                 // Кнопка создания внизу над полем поиска
                 if canCreateFromSearch {
+                    let subcategoryName = searchText.trimmingCharacters(in: .whitespaces)
                     Group {
                         if #available(iOS 26, *) {
-                            VStack(spacing: 0) {
-                                Button(action: {
-                                    createSubcategoryFromSearch()
-                                }) {
-                                    HStack(spacing: AppSpacing.sm) {
-                                        Image(systemName: "plus.circle.fill")
-                                        let subcategoryName = searchText.trimmingCharacters(in: .whitespaces)
-                                        Text(String(format: String(localized: "transactionForm.createSubcategory"), subcategoryName))
-                                            .font(AppTypography.body)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(AppSpacing.lg)
-                                }
-                                .foregroundStyle(.primary)
-                            }
-                            .glassEffect(.regular)
-                            .padding(.horizontal, AppSpacing.lg)
+                            VStack(spacing: 0) { createButton(subcategoryName: subcategoryName) }
+                                .glassEffect(.regular)
                         } else {
-                            VStack(spacing: 0) {
-                                Button(action: {
-                                    createSubcategoryFromSearch()
-                                }) {
-                                    HStack(spacing: AppSpacing.sm) {
-                                        Image(systemName: "plus.circle.fill")
-                                        let subcategoryName = searchText.trimmingCharacters(in: .whitespaces)
-                                        Text(String(format: String(localized: "transactionForm.createSubcategory"), subcategoryName))
-                                            .font(AppTypography.body)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(AppSpacing.lg)
-                                }
-                                .foregroundStyle(.primary)
+                            VStack(spacing: 0) { createButton(subcategoryName: subcategoryName) }
                                 .background(.ultraThinMaterial)
-                            }
-                            .padding(.horizontal, AppSpacing.lg)
                         }
                     }
+                    .padding(.horizontal, AppSpacing.lg)
                 }
             }
             .toolbar {
@@ -194,6 +173,20 @@ struct SubcategorySearchView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func createButton(subcategoryName: String) -> some View {
+        Button(action: createSubcategoryFromSearch) {
+            HStack(spacing: AppSpacing.sm) {
+                Image(systemName: "plus.circle.fill")
+                Text(String(format: String(localized: "transactionForm.createSubcategory"), subcategoryName))
+                    .font(AppTypography.body)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(AppSpacing.lg)
+        }
+        .foregroundStyle(.primary)
     }
     
     private func createSubcategoryFromSearch() {

@@ -298,6 +298,12 @@
 "subcategory.new" = "New Subcategory";
 "subcategory.namePlaceholder" = "Subcategory name";
 
+// MARK: - Subcategory Search (2026-02-25)
+"subcategorySearch.titleSingle" = "Select Subcategory";
+"subcategorySearch.titleMultiple" = "Search Subcategories";
+"subcategorySearch.searchPrompt" = "Find or create a subcategory";
+"subcategorySearch.unlink" = "Unlink";
+
 // MARK: - Icon Picker
 "iconPicker.title" = "Select Image";
 "iconPicker.iconsTab" = "Icons";

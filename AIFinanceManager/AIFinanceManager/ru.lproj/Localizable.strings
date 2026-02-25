@@ -298,6 +298,12 @@
 "subcategory.new" = "Новая подкатегория";
 "subcategory.namePlaceholder" = "Название подкатегории";
 
+// MARK: - Subcategory Search (2026-02-25)
+"subcategorySearch.titleSingle" = "Выберите подкатегорию";
+"subcategorySearch.titleMultiple" = "Поиск подкатегорий";
+"subcategorySearch.searchPrompt" = "Найти или создать подкатегорию";
+"subcategorySearch.unlink" = "Отвязать";
+
 // MARK: - Icon Picker
 "iconPicker.title" = "Выбрать изображение";
 "iconPicker.iconsTab" = "Иконки";
