@@ -8,8 +8,6 @@
 
 import Foundation
 import SwiftUI
-import CoreData
-import Combine
 import Observation
 
 @Observable
@@ -35,8 +33,7 @@ class AccountsViewModel {
 
     // MARK: - Private Properties
 
-    private let repository: DataRepositoryProtocol
-    private var accountsSubscription: AnyCancellable?
+    @ObservationIgnored private let repository: DataRepositoryProtocol
 
     // MARK: - Initialization
 
@@ -44,15 +41,6 @@ class AccountsViewModel {
         self.repository = repository
         // PHASE 3: Don't load accounts here anymore - will be synced from TransactionStore
         // self.accounts = repository.loadAccounts()
-    }
-
-    /// Phase 16: No-ops — accounts is now a computed property from TransactionStore
-    func setupTransactionStoreObserver() {
-        // Phase 16: accounts is now a computed property — no setup needed
-    }
-
-    func syncAccountsFromStore() {
-        // Phase 16: accounts is now a computed property — no sync needed
     }
 
     /// Перезагружает все данные из хранилища (используется после импорта)
@@ -93,7 +81,6 @@ class AccountsViewModel {
             // This allows the account balance to be calculated from transactions
             if !shouldCalculateFromTransactions {
                 await coordinator.markAsManual(account.id)
-            } else {
             }
         }
     }
@@ -147,28 +134,6 @@ class AccountsViewModel {
                 await coordinator.setInitialBalance(balance, for: accountId)
             }
         }
-    }
-    
-    // MARK: - Transfer Operations
-    
-    func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {
-        guard
-            let sourceIndex = accounts.firstIndex(where: { $0.id == sourceId }),
-            let targetIndex = accounts.firstIndex(where: { $0.id == targetId }),
-            amount > 0
-        else { return }
-        
-        let sourceAccount = accounts[sourceIndex]
-        let _ = accounts[targetIndex]
-        
-        // Определяем валюту транзакции (используем валюту источника)
-        let _ = sourceAccount.currency
-        
-        // Создаем транзакцию перевода
-        // Note: Transaction creation should be handled by TransactionsViewModel
-        // This method is kept for backward compatibility but should be refactored
-
-        // PHASE 3: No need to save - TransactionStore handles persistence
     }
     
     // MARK: - Deposit Operations
@@ -260,7 +225,6 @@ class AccountsViewModel {
                 // Only mark as manual if shouldCalculateFromTransactions is false
                 if !account.shouldCalculateFromTransactions {
                     await coordinator.markAsManual(account.id)
-                } else {
                 }
             }
 
@@ -282,16 +246,6 @@ class AccountsViewModel {
         return accounts.filter { !$0.isDeposit }
     }
     
-    /// Сохранить все счета (используется после массового обновления балансов)
-    /// PHASE 3: Deprecated - TransactionStore handles persistence
-    func saveAllAccounts() {
-    }
-
-    /// Синхронно сохранить все счета (используется при импорте)
-    /// PHASE 3: Deprecated - TransactionStore handles persistence
-    func saveAllAccountsSync() {
-    }
-
     // MIGRATED: syncAccountBalances removed - now managed by BalanceCoordinator (Single Source of Truth)
     // Balances are no longer synced manually between ViewModels
     // All balance updates go through BalanceCoordinator.updateForTransaction()

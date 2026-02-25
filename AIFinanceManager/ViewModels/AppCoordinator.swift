@@ -205,7 +205,6 @@ class AppCoordinator {
 
         // PHASE 3: Setup initial sync from TransactionStore → ViewModels
         // With @Observable, we sync on-demand instead of using Combine subscriptions
-        accountsViewModel.setupTransactionStoreObserver()
         categoriesViewModel.setupTransactionStoreObserver()
 
         // Initial sync from TransactionStore to ViewModels
