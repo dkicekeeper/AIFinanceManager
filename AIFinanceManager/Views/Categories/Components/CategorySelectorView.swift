@@ -16,8 +16,7 @@ struct CategorySelectorView: View {
     let emptyStateMessage: String?
     let warningMessage: String?
     let budgetProgressMap: [String: BudgetProgress]?
-    let budgetAmountMap: [String: Double]?
-    
+
     init(
         categories: [String],
         type: TransactionType,
@@ -26,8 +25,7 @@ struct CategorySelectorView: View {
         onSelectionChange: ((String?) -> Void)? = nil,
         emptyStateMessage: String? = nil,
         warningMessage: String? = nil,
-        budgetProgressMap: [String: BudgetProgress]? = nil,
-        budgetAmountMap: [String: Double]? = nil
+        budgetProgressMap: [String: BudgetProgress]? = nil
     ) {
         self.categories = categories
         self.type = type
@@ -37,7 +35,6 @@ struct CategorySelectorView: View {
         self.emptyStateMessage = emptyStateMessage
         self.warningMessage = warningMessage
         self.budgetProgressMap = budgetProgressMap
-        self.budgetAmountMap = budgetAmountMap
     }
     
     var body: some View {
@@ -65,8 +62,7 @@ struct CategorySelectorView: View {
                                 selectedCategory = category
                                 onSelectionChange?(category)
                             },
-                            budgetProgress: budgetProgressMap?[category],
-                            budgetAmount: budgetAmountMap?[category]
+                            budgetProgress: budgetProgressMap?[category]
                         )
                         .frame(width: 80)
                         .id(category)

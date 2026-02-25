@@ -110,8 +110,7 @@ private struct CategoryGridItem: View {
                 customCategories: [], // Style info already in CategoryDisplayData
                 isSelected: false,
                 onTap: onTap,
-                budgetProgress: category.budgetProgress,
-                budgetAmount: category.budgetAmount
+                budgetProgress: category.budgetProgress
             )
 
             if let totalText = category.formattedTotal(currency: baseCurrency) {

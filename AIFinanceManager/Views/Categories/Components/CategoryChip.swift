@@ -16,9 +16,6 @@ struct CategoryChip: View {
     
     // Budget support
     let budgetProgress: BudgetProgress?
-    let budgetAmount: Double?
-    
-    @State private var isPressed = false
 
     // OPTIMIZATION: Use cached style data instead of recreating on every render
     private var styleData: CategoryStyleData {
@@ -57,7 +54,7 @@ struct CategoryChip: View {
                                     .foregroundStyle(.clear)
                                     .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                                     .glassEffect(.regular
-                                        .tint(isSelected ? styleData.coinColor : styleData.coinColor.opacity(1.0))
+                                        .tint(isSelected ? styleData.coinColor : Color.clear)
                                     )
                                     .allowsHitTesting(false)
 
@@ -103,28 +100,25 @@ struct CategoryChip: View {
             customCategories: [],
             isSelected: false,
             onTap: {},
-            budgetProgress: nil,
-            budgetAmount: nil
+            budgetProgress: nil
         )
-        
+
         CategoryChip(
             category: "Food",
             type: .expense,
             customCategories: [],
             isSelected: false,
             onTap: {},
-            budgetProgress: BudgetProgress(budgetAmount: 10000, spent: 5000),
-            budgetAmount: 10000
+            budgetProgress: BudgetProgress(budgetAmount: 10000, spent: 5000)
         )
-        
+
         CategoryChip(
             category: "Auto",
             type: .expense,
             customCategories: [],
             isSelected: false,
             onTap: {},
-            budgetProgress: BudgetProgress(budgetAmount: 10000, spent: 12000),
-            budgetAmount: 10000
+            budgetProgress: BudgetProgress(budgetAmount: 10000, spent: 12000)
         )
     }
     .padding()
