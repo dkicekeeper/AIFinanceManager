@@ -27,23 +27,20 @@ struct ExpenseIncomeProgressBar: View {
     var body: some View {
         VStack(spacing: AppSpacing.sm) {
             // Progress bar
-            GeometryReader { geometry in
-                HStack(spacing: AppSpacing.xs) {
-                    if expensePercent > 0 {
-                        Rectangle()
-                            .foregroundStyle(Color.red)
-                            .frame(width: geometry.size.width * expensePercent)
-                            .clipShape(.rect(cornerRadius: AppRadius.sm))
-                            .shadow(color: Color.red.opacity(0.3), radius: 8)
-                    }
-                    
-                    if incomePercent > 0 {
-                        Rectangle()
-                            .foregroundStyle(Color.green)
-                            .frame(width: geometry.size.width * incomePercent)
-                            .clipShape(.rect(cornerRadius: AppRadius.sm))
-                            .shadow(color: Color.green.opacity(0.3), radius: 8)
-                    }
+            HStack(spacing: AppSpacing.xs) {
+                if expensePercent > 0 {
+                    Rectangle()
+                        .foregroundStyle(Color.red)
+                        .clipShape(.rect(cornerRadius: AppRadius.sm))
+                        .shadow(color: Color.red.opacity(0.3), radius: 8)
+                        .containerRelativeFrame(.horizontal) { width, _ in width * expensePercent }
+                }
+                if incomePercent > 0 {
+                    Rectangle()
+                        .foregroundStyle(Color.green)
+                        .clipShape(.rect(cornerRadius: AppRadius.sm))
+                        .shadow(color: Color.green.opacity(0.3), radius: 8)
+                        .containerRelativeFrame(.horizontal) { width, _ in width * incomePercent }
                 }
             }
             .frame(height: AppSpacing.md)
