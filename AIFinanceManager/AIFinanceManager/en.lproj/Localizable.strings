@@ -503,6 +503,7 @@
 "transactionForm.selectCategoryIncome" = "Select income category";
 "transactionForm.cannotTransferToSame" = "Cannot transfer to the same account";
 "transactionForm.accountNotFound" = "Account not found";
+"transactionForm.selectTargetAccount" = "Please select a destination account";
 "transactionForm.depositTopUp" = "Top Up Deposit";
 "transactionForm.depositWithdrawal" = "Withdraw from Deposit";
 "transactionForm.accountTopUp" = "Top Up Account";

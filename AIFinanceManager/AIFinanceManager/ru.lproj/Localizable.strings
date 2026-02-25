@@ -503,6 +503,7 @@
 "transactionForm.selectCategoryIncome" = "Выберите категорию дохода";
 "transactionForm.cannotTransferToSame" = "Нельзя перевести средства на тот же счет";
 "transactionForm.accountNotFound" = "Счет не найден";
+"transactionForm.selectTargetAccount" = "Пожалуйста, выберите счет назначения";
 "transactionForm.depositTopUp" = "Пополнение депозита";
 "transactionForm.depositWithdrawal" = "Перевод с депозита";
 "transactionForm.accountTopUp" = "Пополнение счета";

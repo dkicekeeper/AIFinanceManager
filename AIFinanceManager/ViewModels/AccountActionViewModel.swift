@@ -95,7 +95,7 @@ final class AccountActionViewModel {
     /// `transactionStore` is passed from the View (via @Environment) to avoid storing it here.
     func saveTransaction(date: Date, transactionStore: TransactionStore) async {
         guard !amountText.isEmpty,
-              let amount = Double(amountText.replacingOccurrences(of: ",", with: ".")),
+              let amount = Double(AmountInputFormatting.cleanAmountString(amountText)),
               amount > 0 else {
             errorMessage = String(localized: "transactionForm.enterPositiveAmount")
             showingError = true
@@ -193,7 +193,7 @@ final class AccountActionViewModel {
     ) async {
         // Validate target account selection
         guard let targetAccountId = selectedTargetAccountId else {
-            errorMessage = headerForAccountSelection
+            errorMessage = String(localized: "transactionForm.selectTargetAccount")
             showingError = true
             HapticManager.warning()
             return

@@ -19,7 +19,6 @@ struct AccountActionView: View {
     @Environment(TimeFilterManager.self) private var timeFilterManager
     @State private var viewModel: AccountActionViewModel
     @State private var showingAccountHistory = false
-    @FocusState private var isAmountFocused: Bool
 
     init(
         transactionsViewModel: TransactionsViewModel,
@@ -140,9 +139,6 @@ struct AccountActionView: View {
                 )
                     .environment(timeFilterManager)
             }
-        }
-        .onAppear {
-            // Фокус теперь управляется внутри AmountInputView
         }
         .onChange(of: viewModel.shouldDismiss) { _, should in
             if should { dismiss() }
