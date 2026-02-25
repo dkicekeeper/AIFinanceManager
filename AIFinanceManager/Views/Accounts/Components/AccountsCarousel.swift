@@ -13,7 +13,7 @@ struct AccountsCarousel: View {
     // MARK: - Properties
     let accounts: [Account]
     let balanceCoordinator: BalanceCoordinator
-    var namespace: Namespace.ID
+    let namespace: Namespace.ID
 
     // MARK: - Body
     var body: some View {
@@ -24,8 +24,7 @@ struct AccountsCarousel: View {
                     balanceCoordinator: balanceCoordinator,
                     namespace: namespace
                 )
-                // Use balance from coordinator for proper identity tracking
-                .id("\(account.id)-\(balanceCoordinator.balances[account.id] ?? 0)")
+                .id(account.id)
             }
         }
         .screenPadding()
