@@ -34,6 +34,11 @@ struct CategoryEditView: View {
         return amount
     }
 
+    private var linkedSubcategories: [Subcategory] {
+        guard let category = category else { return [] }
+        return categoriesViewModel.getSubcategoriesForCategory(category.id)
+    }
+
     var body: some View {
         EditSheetContainer(
             title: category == nil ? String(localized: "modal.newCategory") : String(localized: "modal.editCategory"),
@@ -78,16 +83,13 @@ struct CategoryEditView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
                             VStack(spacing: AppSpacing.sm) {
-                                let categoryId = category.id
-                                let linkedSubcategories = categoriesViewModel.getSubcategoriesForCategory(categoryId)
-
                                 ForEach(linkedSubcategories) { subcategory in
                                     HStack {
                                         Text(subcategory.name)
                                         Spacer()
                                         Button(action: {
                                             HapticManager.light()
-                                            categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: categoryId)
+                                            categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: category.id)
                                         }) {
                                             Image(systemName: "xmark.circle.fill")
                                                 .foregroundStyle(.red)
