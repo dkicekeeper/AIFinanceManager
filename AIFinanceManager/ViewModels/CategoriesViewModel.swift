@@ -27,12 +27,6 @@ class CategoriesViewModel {
     var categorySubcategoryLinks: [CategorySubcategoryLink] = []
     var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
 
-    // MARK: - Publishers
-
-    /// REMOVED: categoriesPublisher - not needed with @Observable
-    /// With @Observable, other objects can directly observe customCategories property
-    /// SwiftUI automatically tracks dependencies
-
     // MARK: - Private Properties
 
     @ObservationIgnored private let repository: DataRepositoryProtocol
@@ -41,7 +35,9 @@ class CategoriesViewModel {
 
     /// PHASE 3: TransactionStore as Single Source of Truth for categories
     /// ViewModels observe this instead of owning data
-    weak var transactionStore: TransactionStore?
+    /// @ObservationIgnored: set once at init, not reassigned; SwiftUI tracks categories
+    /// directly on TransactionStore (same pattern as TransactionStore.coordinator)
+    @ObservationIgnored weak var transactionStore: TransactionStore?
 
     // MARK: - Services (initialized eagerly for @Observable compatibility)
 
@@ -313,21 +309,12 @@ class CategoriesViewModel {
 
 // MARK: - CategoryCRUDDelegate
 
-extension CategoriesViewModel: CategoryCRUDDelegate {
-    // customCategories already declared as @Published property
-    // scheduleSave already implemented above
-}
+extension CategoriesViewModel: CategoryCRUDDelegate {}
 
 // MARK: - CategorySubcategoryDelegate
 
-extension CategoriesViewModel: CategorySubcategoryDelegate {
-    // subcategories, categorySubcategoryLinks, transactionSubcategoryLinks
-    // already declared as @Published properties
-}
+extension CategoriesViewModel: CategorySubcategoryDelegate {}
 
 // MARK: - CategoryBudgetDelegate
 
-extension CategoriesViewModel: CategoryBudgetDelegate {
-    // customCategories already available
-    // updateCategory already implemented
-}
+extension CategoriesViewModel: CategoryBudgetDelegate {}
