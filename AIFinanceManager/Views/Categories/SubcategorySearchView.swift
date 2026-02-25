@@ -117,7 +117,7 @@ struct SubcategorySearchView: View {
                                 }
                             }
                             .buttonStyle(.plain)
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 if !categoryId.isEmpty && selectionMode == .multiple {
                                     Button {
                                         categoriesViewModel.unlinkSubcategoryFromCategory(
@@ -136,7 +136,7 @@ struct SubcategorySearchView: View {
             }
             .navigationTitle(selectionMode == .single
                 ? String(localized: "subcategorySearch.titleSingle")
-                : String(localized: "subcategorySearch.titleMultiple"))
+                : String(localized: "navigation.subcategorySearch"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: String(localized: "subcategorySearch.searchPrompt"))
             .safeAreaInset(edge: .bottom) {
@@ -175,7 +175,6 @@ struct SubcategorySearchView: View {
         }
     }
 
-    @ViewBuilder
     private func createButton(subcategoryName: String) -> some View {
         Button(action: createSubcategoryFromSearch) {
             HStack(spacing: AppSpacing.sm) {
