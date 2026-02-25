@@ -244,12 +244,14 @@ struct AccountsManagementView: View {
             Button(String(localized: "account.deleteAccountAndTransactions"), role: .destructive) {
                 HapticManager.warning()
 
-                accountsViewModel.deleteAccount(account, deleteTransactions: true)
-
-                // Удаляем все связанные транзакции
-                transactionsViewModel.allTransactions.removeAll {
-                    $0.accountId == account.id || $0.targetAccountId == account.id
+                // Route through SSOT: each deletion goes through apply(.deleted) so
+                // aggregates, cache, and CoreData persistence are all updated correctly.
+                Task {
+                    await transactionStore.deleteTransactions(forAccountId: account.id)
                 }
+
+                // Transactions already removed via TransactionStore above
+                accountsViewModel.deleteAccount(account, deleteTransactions: false)
 
                 // Очистить состояние удаленного счета ПЕРЕД пересчетом
                 transactionsViewModel.cleanupDeletedAccount(account.id)
@@ -257,8 +259,7 @@ struct AccountsManagementView: View {
                 // CRITICAL: Use new method to clear and rebuild aggregate cache
                 transactionsViewModel.clearAndRebuildAggregateCache()
 
-                // syncAccountsFrom уже вызывает recalculateAccountBalances, не дублируем
-                transactionsViewModel.syncAccountsFrom(accountsViewModel)
+                // syncAccountsFrom is a no-op (Phase 16) — removed
 
                 accountToDelete = nil
             }

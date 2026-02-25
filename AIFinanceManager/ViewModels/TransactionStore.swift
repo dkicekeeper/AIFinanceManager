@@ -669,6 +669,19 @@ final class TransactionStore {
 
     }
 
+    /// Deletes all transactions associated with an account (where accountId or targetAccountId matches).
+    /// Call this before deleteAccount when you want to remove an account with all its transactions.
+    /// Each deletion goes through apply(.deleted) so aggregates, cache, and persistence are all updated.
+    func deleteTransactions(forAccountId accountId: String) async {
+        let toDelete = transactions.filter {
+            $0.accountId == accountId || $0.targetAccountId == accountId
+        }
+        for transaction in toDelete {
+            let event = TransactionEvent.deleted(transaction)
+            try? await apply(event)
+        }
+    }
+
     // MARK: - Category CRUD Operations (Phase 3)
 
     /// Add a new category
