@@ -15,8 +15,8 @@ struct CategoryRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-            Button(action: onEdit) {
-                HStack(spacing: AppSpacing.md) {
+        Button(action: onEdit) {
+            HStack(spacing: AppSpacing.md) {
                     // Иконка с бюджетным прогрессом
                     ZStack {
                         // Budget progress stroke (if budget exists)
@@ -90,13 +90,12 @@ struct CategoryRow: View {
                     Spacer()
                 }
                 .padding(.vertical, AppSpacing.xs)
-            }
-            .buttonStyle(.plain)
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if !isDefault {
-                    Button(role: .destructive, action: onDelete) {
-                        Label(String(localized: "button.delete"), systemImage: "trash")
-                    }
+        }
+        .buttonStyle(.plain)
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if !isDefault {
+                Button(role: .destructive, action: onDelete) {
+                    Label(String(localized: "button.delete"), systemImage: "trash")
                 }
             }
         }

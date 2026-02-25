@@ -31,7 +31,7 @@ struct CategoryFilterView: View {
                             Text(String(localized: "categoryFilter.allCategories"))
                                 .fontWeight(.medium)
                             Spacer()
-                            if currentFilter == nil {
+                            if selectedExpenseCategories.isEmpty && selectedIncomeCategories.isEmpty {
                                 Image(systemName: "checkmark")
                                     .foregroundStyle(.blue)
                             }
