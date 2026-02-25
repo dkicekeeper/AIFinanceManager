@@ -22,10 +22,6 @@ struct CategoryChip: View {
         CategoryStyleHelper.cached(category: category, type: type, customCategories: customCategories)
     }
 
-    private var customCategory: CustomCategory? {
-        customCategories.first { $0.name.lowercased() == category.lowercased() && $0.type == type }
-    }
-    
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: AppSpacing.sm) {
@@ -88,7 +84,7 @@ struct CategoryChip: View {
         .buttonStyle(.plain) 
         .accessibilityLabel("\(category) category")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-        .accessibilityHint(budgetProgress != nil ? "Budget: \(Int(budgetProgress!.percentage))% spent" : "")
+        .accessibilityHint(budgetProgress.map { "Budget: \(Int($0.percentage))% spent" } ?? "")
     }
 }
 
