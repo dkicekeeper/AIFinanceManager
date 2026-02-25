@@ -27,7 +27,7 @@ struct CategoryChip: View {
             VStack(spacing: AppSpacing.sm) {
                 Text(category)
                     .font(AppTypography.bodyLarge)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(AppColors.textPrimary)
                     .lineLimit(1)
                 ZStack {
                     // Budget progress stroke (if budget exists and is expense)

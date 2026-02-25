@@ -96,11 +96,7 @@ struct AccountActionView: View {
                     )
                 }
 
-                // 5. Подкатегории (нет в AccountActionView)
-
-                // 6. Повтор операции (нет в AccountActionView)
-
-                // 7. Описание
+                // 5. Описание
                 DescriptionTextField(
                     text: $viewModel.descriptionText,
                     placeholder: String(localized: "transactionForm.descriptionPlaceholder")
@@ -110,13 +106,6 @@ struct AccountActionView: View {
         .navigationTitle(viewModel.navigationTitleText)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                }
-            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     showingAccountHistory = true
