@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+import os.log
+
+private let logger = Logger(subsystem: "AIFinanceManager", category: "CategoriesManagementView")
 
 struct CategoriesManagementView: View {
     let categoriesViewModel: CategoriesViewModel
@@ -206,21 +209,23 @@ struct CategoriesManagementView: View {
                 let categoryName = category.name
                 let categoryType = category.type
 
+                guard let store = transactionsViewModel.transactionStore else {
+                    logger.error("transactionStore nil — cannot delete transactions for '\(categoryName, privacy: .private)'")
+                    categoriesViewModel.deleteCategory(category, deleteTransactions: true)
+                    categoryToDelete = nil
+                    return
+                }
+
                 // Phase 16 SSOT fix: deleteTransactions goes through TransactionStore.apply()
                 // so aggregates, cache, and persistence are all updated correctly.
-                // allTransactions.removeAll was a no-op (computed getter / empty setter).
+                // deleteCategory runs AFTER await so CategoryAggregateService can still
+                // find the entity during per-transaction aggregate maintenance.
                 Task {
-                    await transactionsViewModel.transactionStore?.deleteTransactions(
-                        forCategoryName: categoryName,
-                        type: categoryType
-                    )
+                    await store.deleteTransactions(forCategoryName: categoryName, type: categoryType)
+                    categoriesViewModel.deleteCategory(category, deleteTransactions: true)
                     transactionsViewModel.recalculateAccountBalances()
                     transactionsViewModel.clearAndRebuildAggregateCache()
                 }
-
-                // Delete category (synchronous — runs before Task body, order is safe because
-                // deleteTransactions filters on the snapshot captured above)
-                categoriesViewModel.deleteCategory(category, deleteTransactions: true)
 
                 categoryToDelete = nil
             }
