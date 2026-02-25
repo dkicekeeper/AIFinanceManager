@@ -214,6 +214,7 @@
 // MARK: - Accounts Management
 "accounts.title" = "Счета";
 "account.interestToday" = "Проценты на сегодня: %@";
+"account.interestTodayPrefix" = "Проценты сегодня: ";
 "account.nextPosting" = "Начисление: %@";
 "account.selectLogo" = "Выбрать логотип";
 "account.popularBanks" = "Популярные банки";

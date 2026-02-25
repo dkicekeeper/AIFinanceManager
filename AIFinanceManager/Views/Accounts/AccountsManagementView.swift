@@ -80,7 +80,6 @@ struct AccountsManagementView: View {
                     ForEach(sortedAccounts) { account in
                         AccountRow(
                             account: account,
-                            currency: baseCurrency,
                             onEdit: { editingAccount = account },
                             onDelete: {
                                 HapticManager.warning()
@@ -361,7 +360,6 @@ struct AccountsManagementView: View {
         ForEach(sampleAccounts) { account in
             AccountRow(
                 account: account,
-                currency: account.currency,
                 onEdit: {},
                 onDelete: {},
                 balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!

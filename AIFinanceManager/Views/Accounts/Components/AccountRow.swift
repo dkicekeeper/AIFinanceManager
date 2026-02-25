@@ -9,7 +9,6 @@ import SwiftUI
 
 struct AccountRow: View {
     let account: Account
-    let currency: String
     let onEdit: () -> Void
     let onDelete: () -> Void
     let balanceCoordinator: BalanceCoordinator
@@ -23,56 +22,55 @@ struct AccountRow: View {
     }
 
     var body: some View {
-            HStack(spacing: AppSpacing.md) {
-                // Логотип банка
-                IconView(source: account.iconSource, size: AppIconSize.xl)
+            Button(action: onEdit) {
+                HStack(spacing: AppSpacing.md) {
+                    // Логотип банка
+                    IconView(source: account.iconSource, size: AppIconSize.xl)
 
-                VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                    Text(account.name)
-                        .font(AppTypography.h4)
+                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        Text(account.name)
+                            .font(AppTypography.h4)
 
-                    FormattedAmountText(
-                        amount: balance,
-                        currency: account.currency,
-                        fontSize: AppTypography.bodySmall,
-                        color: .secondary
-                    )
+                        FormattedAmountText(
+                            amount: balance,
+                            currency: account.currency,
+                            fontSize: AppTypography.bodySmall,
+                            color: .secondary
+                        )
 
-                    if let interest = interestToday, interest > 0 {
-                        HStack(spacing: 0) {
-                            Text(String(localized: "account.interestToday").replacingOccurrences(of: "%@", with: ""))
+                        if let interest = interestToday, interest > 0 {
+                            HStack(spacing: 0) {
+                                Text("account.interestTodayPrefix")
+                                    .font(AppTypography.caption)
+                                    .foregroundStyle(.secondary)
+
+                                FormattedAmountText(
+                                    amount: interest,
+                                    currency: account.currency,
+                                    fontSize: AppTypography.caption,
+                                    color: .secondary
+                                )
+                            }
+                        }
+
+                        if let posting = nextPostingDate {
+                            let dateString = DateFormatters.displayDateFormatter.string(from: posting)
+                            Text(String(format: String(localized: "account.nextPosting"), dateString))
                                 .font(AppTypography.caption)
                                 .foregroundStyle(.secondary)
-
-                            FormattedAmountText(
-                                amount: interest,
-                                currency: account.currency,
-                                fontSize: AppTypography.caption,
-                                color: .secondary
-                            )
                         }
                     }
 
-                    if let posting = nextPostingDate {
-                        let dateString = DateFormatters.displayDateFormatter.string(from: posting)
-                        Text(String(format: String(localized: "account.nextPosting"), dateString))
-                            .font(AppTypography.caption)
+                    Spacer()
+
+                    if account.isDeposit {
+                        Image(systemName: "banknote")
                             .foregroundStyle(.secondary)
+                            .font(.system(size: AppIconSize.sm))
                     }
                 }
-                
-                Spacer()
-                
-                if account.isDeposit {
-                    Image(systemName: "banknote")
-                        .foregroundStyle(.secondary)
-                        .font(.system(size: AppIconSize.sm))
-                }
             }
-            
-            .onTapGesture {
-                onEdit()
-            }
+            .buttonStyle(.plain)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button(role: .destructive, action: onDelete) {
                     Label(String(localized: "button.delete"), systemImage: "trash")
@@ -94,7 +92,6 @@ struct AccountRow: View {
     List {
         AccountRow(
             account: sampleAccount,
-            currency: "USD",
             onEdit: {},
             onDelete: {},
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!

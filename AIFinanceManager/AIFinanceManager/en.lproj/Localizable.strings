@@ -214,6 +214,7 @@
 // MARK: - Accounts Management
 "accounts.title" = "Accounts";
 "account.interestToday" = "Interest today: %@";
+"account.interestTodayPrefix" = "Interest today: ";
 "account.nextPosting" = "Next posting: %@";
 "account.selectLogo" = "Select Logo";
 "account.popularBanks" = "Popular Banks";
