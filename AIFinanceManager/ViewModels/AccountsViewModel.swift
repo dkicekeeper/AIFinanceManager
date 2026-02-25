@@ -100,10 +100,9 @@ class AccountsViewModel {
                     await coordinator.markAsManual(account.id)
                 }
             }
-        } else {
         }
     }
-    
+
     func deleteAccount(_ account: Account, deleteTransactions: Bool = false) {
         // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
         transactionStore?.deleteAccount(account.id)
