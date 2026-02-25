@@ -191,11 +191,6 @@ struct CategoriesManagementView: View {
                 // Delete category (transactions keep the category name as string)
                 categoriesViewModel.deleteCategory(category, deleteTransactions: false)
 
-                // ✅ CATEGORY REFACTORING: No manual sync needed!
-                // customCategories automatically synced via Combine publisher
-
-                // Phase 8: saveToStorage removed - persistence automatic via TransactionStore
-                // Phase 8: Cache rebuild removed - automatic via TransactionStore
 
                 // CRITICAL: Clear and rebuild aggregate cache to remove deleted category entity
                 // Even though transactions remain, we need to rebuild so the category disappears from UI

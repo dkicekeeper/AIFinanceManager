@@ -35,7 +35,7 @@ struct CategoryChip: View {
                         Circle()
                             .trim(from: 0, to: min(progress.percentage / 100, 1.0))
                             .stroke(
-                                progress.isOverBudget ? Color.red : Color.green,
+                                progress.isOverBudget ? AppColors.destructive : AppColors.success,
                                 style: StrokeStyle(lineWidth: 4, lineCap: .round)
                             )
                             .rotationEffect(.degrees(-90))
