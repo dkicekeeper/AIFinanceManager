@@ -9,7 +9,6 @@
 
 import Foundation
 import SwiftUI
-import Combine
 import Observation
 
 @Observable
@@ -36,31 +35,29 @@ class CategoriesViewModel {
 
     // MARK: - Private Properties
 
-    private let repository: DataRepositoryProtocol
-    private var currencyService: TransactionCurrencyService?
-    private var appSettings: AppSettings?
+    @ObservationIgnored private let repository: DataRepositoryProtocol
+    @ObservationIgnored private var currencyService: TransactionCurrencyService?
+    @ObservationIgnored private var appSettings: AppSettings?
 
     /// PHASE 3: TransactionStore as Single Source of Truth for categories
     /// ViewModels observe this instead of owning data
     weak var transactionStore: TransactionStore?
 
-    private var categoriesSubscription: AnyCancellable?
-
     // MARK: - Services (initialized eagerly for @Observable compatibility)
 
     /// CRUD service - handles category create/update/delete
-    private let crudService: CategoryCRUDServiceProtocol
+    @ObservationIgnored private let crudService: CategoryCRUDServiceProtocol
 
     /// Subcategory coordinator - handles subcategory and link management
-    private let subcategoryCoordinator: CategorySubcategoryCoordinatorProtocol
+    @ObservationIgnored private let subcategoryCoordinator: CategorySubcategoryCoordinatorProtocol
 
     /// Budget coordinator - handles budget calculations (NOT USED YET - for future)
     /// Note: Currently using old CategoryBudgetService for compatibility
-    private let budgetCoordinator: CategoryBudgetCoordinatorProtocol
+    @ObservationIgnored private let budgetCoordinator: CategoryBudgetCoordinatorProtocol
 
     /// Budget service for category budget management
     /// NOTE: Could be migrated to budgetCoordinator in future for better separation of concerns
-    private let budgetService: CategoryBudgetService
+    @ObservationIgnored private let budgetService: CategoryBudgetService
 
     // MARK: - Initialization
 
