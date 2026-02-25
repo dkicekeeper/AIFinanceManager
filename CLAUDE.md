@@ -217,6 +217,7 @@ AIFinanceManager/
 
 **Phase 16-21** (2026-02-19): Performance Refactoring
 - **Phase 16**: Eliminated `syncTransactionStoreToViewModels()` array copies — ViewModels now use computed properties reading directly from TransactionStore (SSOT). Removed 5 redundant array copies per mutation.
+- **⚠️ `allTransactions` setter is a Phase 16 no-op**: `TransactionsViewModel.allTransactions.removeAll { }` compiles silently but does nothing (empty setter for legacy compatibility). To delete transactions use `TransactionStore.deleteTransactions(for...)` which routes through `apply(.deleted)` events for proper aggregate/cache/persistence updates.
 - **Phase 17**: Added debounced sync (16ms coalesce) in `TransactionStore.apply()`. Fixed `addTransactions()` to use `addBatch()` instead of individual `add()` loop. Reduced ContentView onChange handlers from 3 to 2.
 - **Phase 18**: Made InsightsViewModel lazy — marks data as stale instead of eagerly recomputing all 5 granularities on every data change. Computation deferred until user opens Insights tab.
 - **Phase 19**: Streamlined startup — removed duplicate `transactionsViewModel.loadDataAsync()`, balance registration uses already-loaded TransactionStore data.
@@ -404,6 +405,8 @@ func saveAccountsInternal(...) throws {
 
 **Правило большого пальца**: если свойство не меняется после `init` или его изменение не должно триггерить UI — ставь `@ObservationIgnored`.
 
+**Важно**: `weak var` зависимости также обязаны иметь `@ObservationIgnored`, не только `let`. SwiftUI трекает доступы на уровне экземпляра — `transactionStore.property` всё равно отслеживается на TransactionStore напрямую.
+
 #### 2. Хранение VM во View
 | Ситуация | Правильный паттерн |
 |----------|--------------------|
@@ -485,6 +488,14 @@ New file needed?
 - Optimize CoreData fetch requests with appropriate batch sizes
 - **⚠️ SwiftUI `List` + 500+ sections = hard freeze** — SwiftUI renders all `Section` headers eagerly; 3,530 sections causes 10-12s UI freeze. Always slice: `Array(sections.prefix(visibleSectionLimit))` with `@State var visibleSectionLimit = 100`. Add `ProgressView().onAppear { visibleSectionLimit += 100 }` as the last List row for infinite scroll ("умная подгрузка"). `@State` auto-resets to 100 on each `NavigationStack` push.
 - **⚠️ `ContentView.onAppear` fires on every back-navigation** — guard expensive ops (e.g. `updateSummary()` ~540ms) with `@State private var hasAppearedOnce = false`. Safe to skip on re-appearances: `onChange(of: transactionStore.transactions.count)` keeps `cachedSummary` current.
+
+## SwiftUI Layout Gotchas
+
+- **`containerRelativeFrame` wrong container**: Plain `HStack`/`VStack` are NOT qualifying containers; the modifier walks up to the nearest `ScrollView`/`LazyHStack`/`LazyVGrid`. In a List row it resolves to the full screen width — use `GeometryReader` for proportional sizing inside non-lazy containers.
+- **`layoutPriority` is not proportional**: Two `frame(maxWidth: .infinity)` views with different `layoutPriority` values do NOT split space proportionally — higher priority takes all remaining space first.
+- **`Task.yield()` for focus timing**: Replace `Task.sleep(nanoseconds: 100_000_000)` focus hacks with `await Task.yield()` inside `.task {}` — suspends exactly one MainActor runloop tick, sufficient for SwiftUI layout before `@FocusState` activation.
+- **Missing struct `}` after Button wrap**: Wrapping a view's `HStack` body in `Button { }` can accidentally absorb the struct's closing brace — verify brace balance after this refactoring pattern (causes `expected '}'` build errors elsewhere in the file).
+- **`.task` vs `.onAppear { Task {} }`**: `.task` is automatically cancelled on view removal (sheet dismiss); unstructured `Task {}` created inside `.onAppear` is unowned and can fire after dismissal.
 
 ## Common Tasks
 
