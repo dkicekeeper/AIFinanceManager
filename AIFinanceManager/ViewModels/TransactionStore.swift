@@ -682,6 +682,19 @@ final class TransactionStore {
         }
     }
 
+    /// Deletes all transactions matching the given category name and type.
+    /// Call this before deleteCategory when you want to remove a category with all its transactions.
+    /// Each deletion goes through apply(.deleted) so aggregates, cache, and persistence are all updated.
+    func deleteTransactions(forCategoryName categoryName: String, type: TransactionType) async {
+        let toDelete = transactions.filter {
+            $0.category == categoryName && $0.type == type
+        }
+        for transaction in toDelete {
+            let event = TransactionEvent.deleted(transaction)
+            try? await apply(event)
+        }
+    }
+
     // MARK: - Category CRUD Operations (Phase 3)
 
     /// Add a new category

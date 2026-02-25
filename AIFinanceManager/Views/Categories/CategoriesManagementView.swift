@@ -18,6 +18,18 @@ struct CategoriesManagementView: View {
     @State private var showingDeleteDialog = false
     @State private var isReordering = false
     
+    // Precompute budget progress once per view update to avoid O(N) × O(rows) per-row computation
+    private var budgetProgressMap: [String: BudgetProgress] {
+        var map: [String: BudgetProgress] = [:]
+        let transactions = transactionsViewModel.allTransactions
+        for category in filteredCategories where category.type == .expense {
+            if let progress = categoriesViewModel.budgetProgress(for: category, transactions: transactions) {
+                map[category.id] = progress
+            }
+        }
+        return map
+    }
+
     // Кешируем отфильтрованные категории для оптимизации
     private var filteredCategories: [CustomCategory] {
         let filtered = categoriesViewModel.customCategories
@@ -78,7 +90,7 @@ struct CategoriesManagementView: View {
                         CategoryRow(
                             category: category,
                             isDefault: false,
-                            budgetProgress: category.type == .expense ? categoriesViewModel.budgetProgress(for: category, transactions: transactionsViewModel.allTransactions) : nil,
+                            budgetProgress: budgetProgressMap[category.id],
                             currency: transactionsViewModel.appSettings.baseCurrency,
                             onEdit: { editingCategory = category },
                             onDelete: {
@@ -191,28 +203,24 @@ struct CategoriesManagementView: View {
             Button(String(localized: "category.deleteCategoryAndTransactions"), role: .destructive) {
                 HapticManager.warning()
 
-                // Delete transactions with this category
-                transactionsViewModel.allTransactions.removeAll {
-                    $0.category == category.name && $0.type == category.type
+                let categoryName = category.name
+                let categoryType = category.type
+
+                // Phase 16 SSOT fix: deleteTransactions goes through TransactionStore.apply()
+                // so aggregates, cache, and persistence are all updated correctly.
+                // allTransactions.removeAll was a no-op (computed getter / empty setter).
+                Task {
+                    await transactionsViewModel.transactionStore?.deleteTransactions(
+                        forCategoryName: categoryName,
+                        type: categoryType
+                    )
+                    transactionsViewModel.recalculateAccountBalances()
+                    transactionsViewModel.clearAndRebuildAggregateCache()
                 }
 
-                // CRITICAL FIX: Invalidate ALL caches IMMEDIATELY after transaction deletion
-                // This prevents summary() from returning stale cached data
-                transactionsViewModel.invalidateCaches()
-
-                transactionsViewModel.recalculateAccountBalances()
-
-                // Delete category
+                // Delete category (synchronous — runs before Task body, order is safe because
+                // deleteTransactions filters on the snapshot captured above)
                 categoriesViewModel.deleteCategory(category, deleteTransactions: true)
-
-                // ✅ CATEGORY REFACTORING: No manual sync needed!
-                // customCategories automatically synced via Combine publisher
-
-                // Phase 8: saveToStorage removed - persistence automatic via TransactionStore
-                // Phase 8: Cache rebuild removed - automatic via TransactionStore
-
-                // CRITICAL: Clear and rebuild aggregate cache since transactions deleted
-                transactionsViewModel.clearAndRebuildAggregateCache()
 
                 categoryToDelete = nil
             }
