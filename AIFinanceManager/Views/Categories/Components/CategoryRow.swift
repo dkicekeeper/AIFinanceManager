@@ -101,6 +101,7 @@ struct CategoryRow: View {
             }
         }
     }
+}
 
 // formatAmount больше не нужен - используем FormattedAmountText
 
