@@ -79,6 +79,7 @@ struct CategoriesManagementView: View {
                             category: category,
                             isDefault: false,
                             budgetProgress: category.type == .expense ? categoriesViewModel.budgetProgress(for: category, transactions: transactionsViewModel.allTransactions) : nil,
+                            currency: transactionsViewModel.appSettings.baseCurrency,
                             onEdit: { editingCategory = category },
                             onDelete: {
                                 categoryToDelete = category
@@ -263,6 +264,7 @@ struct CategoriesManagementView: View {
             category: sampleCategory,
             isDefault: false,
             budgetProgress: nil,
+            currency: "KZT",
             onEdit: {},
             onDelete: {}
         )

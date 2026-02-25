@@ -11,6 +11,7 @@ struct CategoryRow: View {
     let category: CustomCategory
     let isDefault: Bool
     let budgetProgress: BudgetProgress?
+    let currency: String
     let onEdit: () -> Void
     let onDelete: () -> Void
 
@@ -61,7 +62,7 @@ struct CategoryRow: View {
                                 HStack(spacing: 0) {
                                     FormattedAmountText(
                                         amount: progress.spent,
-                                        currency: "₸",
+                                        currency: currency,
                                         fontSize: AppTypography.bodySmall,
                                         color: progress.isOverBudget ? .red : .secondary
                                     )
@@ -70,7 +71,7 @@ struct CategoryRow: View {
                                         .foregroundStyle(progress.isOverBudget ? .red : .secondary)
                                     FormattedAmountText(
                                         amount: progress.budgetAmount,
-                                        currency: "₸",
+                                        currency: currency,
                                         fontSize: AppTypography.bodySmall,
                                         color: progress.isOverBudget ? .red : .secondary
                                     )
@@ -117,6 +118,7 @@ struct CategoryRow: View {
             category: sampleCategory,
             isDefault: false,
             budgetProgress: nil,
+            currency: "KZT",
             onEdit: {},
             onDelete: {}
         )
