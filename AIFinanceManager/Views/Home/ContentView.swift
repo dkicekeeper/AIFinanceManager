@@ -8,7 +8,10 @@
 
 import SwiftUI
 import os
+import ImageIO
+#if DEBUG
 import QuartzCore
+#endif
 
 private let cvLogger = Logger(subsystem: "AIFinanceManager", category: "ContentView")
 
@@ -27,19 +30,18 @@ struct ContentView: View {
     // MARK: - Environment (Modern @Observable with @Environment)
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(TimeFilterManager.self) private var timeFilterManager
+    /// Persistent UI state injected from MainTabView — survives tab-bar reconstruction.
+    @Environment(HomePersistentState.self) private var homeState
 
     // MARK: - State
     @State private var navigationPath = NavigationPath()
     @Namespace private var accountNamespace
     @State private var showingTimeFilter = false
     @State private var showingAddAccount = false
-    @State private var wallpaperImage: UIImage? = nil
-    @State private var cachedSummary: Summary? = nil
+    /// In-progress wallpaper load handle — prevents duplicate concurrent loads.
+    /// Does NOT need to persist across ContentView recreation: if homeState.wallpaperImage
+    /// is already set, loadWallpaperOnce() returns early without starting a new load.
     @State private var wallpaperLoadingTask: Task<Void, Never>? = nil
-    /// Guards setupOnAppear so the expensive updateSummary() runs only once on first
-    /// appearance. Re-appearances (back-nav from History, Accounts, etc.) skip it because
-    /// transactions.count onChange already keeps cachedSummary up-to-date.
-    @State private var hasAppearedOnce = false
     /// Debounce task for summary recalculation — prevents double-fire during initialization.
     @State private var summaryUpdateTask: Task<Void, Never>?
 
@@ -97,8 +99,7 @@ struct ContentView: View {
             // Phase 17: Only track time filter changes explicitly
             // Transaction data changes are tracked automatically via @Observable
             // on transactionStore.transactions (accessed through computed properties)
-            .onChange(of: timeFilterManager.currentFilter) { oldFilter, newFilter in
-                cvLogger.debug("🕐 [ContentView] timeFilter: .\(oldFilter.preset.rawValue) → .\(newFilter.preset.rawValue)")
+            .onChange(of: timeFilterManager.currentFilter) { _, _ in
                 updateSummary()
             }
             .onChange(of: transactionStore.transactions.count) { oldCount, newCount in
@@ -109,17 +110,25 @@ struct ContentView: View {
                 summaryUpdateTask = Task {
                     try? await Task.sleep(for: .milliseconds(80))
                     guard !Task.isCancelled else { return }
+#if DEBUG
                     let t0 = CACurrentMediaTime()
                     cvLogger.debug("🔢 [ContentView] tx count \(oldCount)→\(newCount) — updateSummary (debounced)")
+#endif
                     updateSummary()
+#if DEBUG
                     cvLogger.debug("🔢 [ContentView] updateSummary() done in \(String(format: "%.0f", (CACurrentMediaTime()-t0)*1000))ms")
+#endif
                 }
             }
+#if DEBUG
             .onChange(of: coordinator.isFastPathDone) { _, isDone in
                 cvLogger.debug("⚡️ [ContentView] isFastPathDone → \(isDone)")
             }
+#endif
             .onChange(of: coordinator.isFullyInitialized) { _, isInit in
+#if DEBUG
                 cvLogger.debug("✅ [ContentView] isFullyInitialized → \(isInit) — skeleton removal triggered")
+#endif
                 guard isInit else { return }
                 // Cancel any pending debounce and run summary immediately so
                 // TransactionsSummaryCard has real data the moment the skeleton lifts.
@@ -169,9 +178,11 @@ struct ContentView: View {
                     showingAddAccount = true
                 })
             } else {
+                // Fix #1: use coordinator.balanceCoordinator (non-optional let)
+                // instead of accountsViewModel.balanceCoordinator! (force-unwrap).
                 AccountsCarousel(
                     accounts: accountsViewModel.accounts,
-                    balanceCoordinator: accountsViewModel.balanceCoordinator!,
+                    balanceCoordinator: coordinator.balanceCoordinator,
                     namespace: accountNamespace
                 )
             }
@@ -181,7 +192,7 @@ struct ContentView: View {
     private var historyNavigationLink: some View {
         NavigationLink(value: HomeDestination.history) {
             TransactionsSummaryCard(
-                summary: cachedSummary,
+                summary: homeState.cachedSummary,
                 currency: viewModel.appSettings.baseCurrency,
                 isEmpty: viewModel.allTransactions.isEmpty
             )
@@ -206,7 +217,8 @@ struct ContentView: View {
             transactionsViewModel: viewModel,
             categoriesViewModel: categoriesViewModel,
             accountsViewModel: accountsViewModel,
-            transactionStore: coordinator.transactionStore
+            transactionStore: coordinator.transactionStore,
+            timeFilterManager: timeFilterManager
         )
         .screenPadding()
     }
@@ -244,7 +256,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var wallpaperBackground: some View {
-        if let wallpaperImage = wallpaperImage {
+        if let wallpaperImage = homeState.wallpaperImage {
             Image(uiImage: wallpaperImage)
                 .resizable()
                 .scaledToFill()
@@ -300,20 +312,24 @@ struct ContentView: View {
     // MARK: - Lifecycle Methods
 
     private func setupOnAppear() {
+#if DEBUG
         let t0 = CACurrentMediaTime()
-        cvLogger.debug("🏠 [ContentView] onAppear START — isFastPathDone:\(self.coordinator.isFastPathDone) isFullyInitialized:\(self.coordinator.isFullyInitialized) sections:\(self.coordinator.transactionPaginationController.sections.count) firstTime:\(!self.hasAppearedOnce)")
+        cvLogger.debug("🏠 [ContentView] onAppear START — isFastPathDone:\(self.coordinator.isFastPathDone) isFullyInitialized:\(self.coordinator.isFullyInitialized) sections:\(self.coordinator.transactionPaginationController.sections.count) firstTime:\(!self.homeState.hasAppearedOnce)")
         PerformanceProfiler.start("ContentView.onAppear")
+#endif
         loadWallpaperOnce()
 
         // Only run updateSummary() on first appearance. On back-navigation the
         // cachedSummary is already current — transactions.count onChange keeps it fresh.
-        if !hasAppearedOnce {
-            hasAppearedOnce = true
+        if !homeState.hasAppearedOnce {
+            homeState.hasAppearedOnce = true
             updateSummary()
         }
 
+#if DEBUG
         cvLogger.debug("🏠 [ContentView] onAppear DONE in \(String(format: "%.0f", (CACurrentMediaTime()-t0)*1000))ms")
         PerformanceProfiler.end("ContentView.onAppear")
+#endif
     }
 
     // MARK: - State Updates
@@ -346,8 +362,10 @@ struct ContentView: View {
 
         summaryUpdateTask?.cancel()
         summaryUpdateTask = Task.detached(priority: .userInitiated) {
+#if DEBUG
             let t0 = CACurrentMediaTime()
             PerformanceProfiler.start("ContentView.updateSummary")
+#endif
             let summary: Summary
             if let (income, expenses) = aggregateTotals {
                 // Out-of-window: build Summary from pre-computed monthly aggregates.
@@ -376,22 +394,28 @@ struct ContentView: View {
                     baseCurrency: currency
                 )
             }
+#if DEBUG
             let dt = CACurrentMediaTime() - t0
+#endif
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                cachedSummary = summary
+                homeState.cachedSummary = summary
+#if DEBUG
                 if dt > 0.005 {
                     cvLogger.debug("📊 [ContentView] updateSummary() \(String(format: "%.0f", dt*1000))ms — allTx:\(txCount)")
                 }
+#endif
             }
+#if DEBUG
             PerformanceProfiler.end("ContentView.updateSummary")
+#endif
         }
     }
 
-    /// Start a wallpaper load. If a load is already in progress, does nothing.
-    /// Call `reloadWallpaper()` instead when you need to force a reload (e.g. onChange).
+    /// Start a wallpaper load. If a load is already in progress OR the image is already
+    /// set in homeState (survived tab recreation), does nothing.
     private func loadWallpaperOnce() {
-        guard wallpaperLoadingTask == nil else { return }
+        guard wallpaperLoadingTask == nil, homeState.wallpaperImage == nil else { return }
         startWallpaperLoad()
     }
 
@@ -400,17 +424,22 @@ struct ContentView: View {
     private func reloadWallpaper() {
         wallpaperLoadingTask?.cancel()
         wallpaperLoadingTask = nil
+        homeState.wallpaperImage = nil
         startWallpaperLoad()
     }
 
     private func startWallpaperLoad() {
+        // Capture screen size on MainActor for downsampling target.
+        let screenSize = UIScreen.main.bounds.size
+        let scale = UIScreen.main.scale
+
         wallpaperLoadingTask = Task.detached(priority: .userInitiated) {
             guard let wallpaperName = await MainActor.run(body: {
                 viewModel.appSettings.wallpaperImageName
             }) else {
                 await MainActor.run {
-                    wallpaperImage = nil
-                    wallpaperLoadingTask = nil  // ← allow future loads
+                    homeState.wallpaperImage = nil
+                    wallpaperLoadingTask = nil
                 }
                 return
             }
@@ -421,20 +450,52 @@ struct ContentView: View {
             )[0]
             let fileURL = documentsPath.appendingPathComponent(wallpaperName)
 
-            guard FileManager.default.fileExists(atPath: fileURL.path),
-                  let image = UIImage(contentsOfFile: fileURL.path) else {
+            guard FileManager.default.fileExists(atPath: fileURL.path) else {
                 await MainActor.run {
-                    wallpaperImage = nil
-                    wallpaperLoadingTask = nil  // ← allow future loads
+                    homeState.wallpaperImage = nil
+                    wallpaperLoadingTask = nil
                 }
                 return
             }
 
+            // Fix #6: Downsample to screen resolution via ImageIO.
+            // UIImage(contentsOfFile:) decodes the full raw image (up to 200 MB for 12 MP photos).
+            // CGImageSourceCreateThumbnailAtIndex reads metadata + decodes only a scaled copy,
+            // reducing memory use to ~screen_pixels × 4 bytes ≈ 8–12 MB on a 6× screen.
+            let image = ContentView.downsampleWallpaper(at: fileURL, screenSize: screenSize, scale: scale)
+
             await MainActor.run {
-                wallpaperImage = image
-                wallpaperLoadingTask = nil  // ← allow future loads
+                homeState.wallpaperImage = image
+                wallpaperLoadingTask = nil
             }
         }
+    }
+
+    /// Decodes `fileURL` into a UIImage downsampled to `screenSize × scale` pixels.
+    /// Returns nil if the file cannot be read or decoded.
+    private static func downsampleWallpaper(
+        at fileURL: URL,
+        screenSize: CGSize,
+        scale: CGFloat
+    ) -> UIImage? {
+        let sourceOptions: [CFString: Any] = [
+            kCGImageSourceShouldCache: false
+        ]
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, sourceOptions as CFDictionary) else {
+            return nil
+        }
+
+        let maxPixelDimension = max(screenSize.width, screenSize.height) * scale
+        let thumbnailOptions: [CFString: Any] = [
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelDimension,
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions as CFDictionary) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage)
     }
 
     // MARK: - Event Handlers
@@ -491,7 +552,8 @@ private struct SectionCardSkeleton: View {
         }
         .padding(AppSpacing.md)
         .frame(maxWidth: .infinity, minHeight: 72)
-        .background(Color(.secondarySystemGroupedBackground))
+        // Fix #10: use design token instead of raw Color(.secondarySystemGroupedBackground)
+        .background(AppColors.secondaryBackground)
         .clipShape(.rect(cornerRadius: AppRadius.md))
         .accessibilityHidden(true)
     }
@@ -503,4 +565,5 @@ private struct SectionCardSkeleton: View {
     ContentView()
         .environment(TimeFilterManager())
         .environment(AppCoordinator())
+        .environment(HomePersistentState())
 }

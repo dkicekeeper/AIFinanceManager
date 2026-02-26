@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import Combine
 import SwiftUI
 import Observation
 
@@ -36,10 +35,6 @@ final class QuickAddCoordinator {
     /// ✅ OPTIMIZATION: Batch mode for CSV imports and bulk operations
     /// When true, skips intermediate UI updates to prevent UI blocking
     var isBatchMode = false
-
-    // MARK: - Private State
-
-    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
@@ -125,14 +120,12 @@ final class QuickAddCoordinator {
         selectedCategory = nil
     }
 
-    /// Update time filter manager (needed when using @EnvironmentObject)
+    /// Update time filter manager.
+    /// Call this if the filter manager instance changes after initialization
+    /// (e.g., from external injection). No-ops when the same instance is passed.
     func setTimeFilterManager(_ manager: TimeFilterManager) {
         guard timeFilterManager !== manager else { return }
-
         timeFilterManager = manager
-
-        // ✅ OPTIMIZATION: Single update call - no setupBindings() needed with @Observable
-        cancellables.removeAll()
         updateCategories()
     }
 

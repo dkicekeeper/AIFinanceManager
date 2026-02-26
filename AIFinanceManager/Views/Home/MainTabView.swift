@@ -46,6 +46,11 @@ struct MainTabView: View {
     /// so we can restore it when the user taps [×].
     @State private var previousTab: AppTab = .home
 
+    /// Home screen UI state that must survive ContentView recreation.
+    /// ContentView is destroyed when tab-bar mode toggles (conditional Tab declarations).
+    /// Storing state here keeps it alive and passes it down via @Environment.
+    @State private var homeState = HomePersistentState()
+
     // MARK: Body
 
     var body: some View {
@@ -59,6 +64,7 @@ struct MainTabView: View {
                     value: AppTab.home
                 ) {
                     HomeTab()
+                        .environment(homeState)
                 }
 
                 Tab(

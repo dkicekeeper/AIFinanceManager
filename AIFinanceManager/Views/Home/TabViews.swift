@@ -63,24 +63,29 @@ struct VoiceTab: View {
     @State private var voiceService = VoiceInputService()
     @State private var parsedOperation: ParsedOperation? = nil
 
-    private var parser: VoiceInputParser {
-        VoiceInputParser(
-            categoriesViewModel: coordinator.categoriesViewModel,
-            accountsViewModel: coordinator.accountsViewModel,
-            transactionsViewModel: coordinator.transactionsViewModel
-        )
-    }
+    // Fix #5: stored as @State so a single VoiceInputParser instance is created for the
+    // VoiceTab lifetime and reused across body re-evaluations. The previous computed var
+    // created a new parser on every body call (potentially 60×/s during animations).
+    // Optional because @Environment is unavailable at @State init time; set once in .task.
+    @State private var parser: VoiceInputParser? = nil
 
     var body: some View {
         NavigationStack {
             VoiceInputView(
                 voiceService: voiceService,
                 onComplete: { transcribedText in
+                    guard let p = parser else { return }
                     let trimmed = transcribedText.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !trimmed.isEmpty else { return }
-                    parsedOperation = parser.parse(trimmed)
+                    parsedOperation = p.parse(trimmed)
                 },
-                parser: parser,
+                // Fallback creates a parser only on the first frame (before .task fires).
+                // From the second frame onward the stored @State parser is used instead.
+                parser: parser ?? VoiceInputParser(
+                    categoriesViewModel: coordinator.categoriesViewModel,
+                    accountsViewModel: coordinator.accountsViewModel,
+                    transactionsViewModel: coordinator.transactionsViewModel
+                ),
                 embeddedInTab: true
             )
             .navigationDestination(item: $parsedOperation) { parsed in
@@ -92,7 +97,14 @@ struct VoiceTab: View {
                     originalText: voiceService.getFinalText()
                 )
             }
-            .onAppear {
+            .task {
+                if parser == nil {
+                    parser = VoiceInputParser(
+                        categoriesViewModel: coordinator.categoriesViewModel,
+                        accountsViewModel: coordinator.accountsViewModel,
+                        transactionsViewModel: coordinator.transactionsViewModel
+                    )
+                }
                 voiceService.categoriesViewModel = coordinator.categoriesViewModel
                 voiceService.accountsViewModel = coordinator.accountsViewModel
             }
@@ -112,9 +124,9 @@ struct OCRTab: View {
             VStack(spacing: AppSpacing.xxl) {
                 Spacer()
 
-                // Icon
+                // Fix #11: AppIconSize.coin (64pt) instead of magic literal
                 Image(systemName: "doc.viewfinder")
-                    .font(.system(size: 64, weight: .light))
+                    .font(.system(size: AppIconSize.coin, weight: .light))
                     .foregroundStyle(AppColors.accent)
 
                 VStack(spacing: AppSpacing.sm) {

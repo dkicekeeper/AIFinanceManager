@@ -43,14 +43,19 @@ struct QuickAddTransactionView: View {
         transactionsViewModel: TransactionsViewModel,
         categoriesViewModel: CategoriesViewModel,
         accountsViewModel: AccountsViewModel,
-        transactionStore: TransactionStore
+        transactionStore: TransactionStore,
+        // Fix #4: accept the real TimeFilterManager so QuickAddCoordinator computes
+        // categories with the correct filter on the very first body evaluation.
+        // Previously a dummy TimeFilterManager() was used and replaced in onAppear,
+        // causing two category-computation passes with different filter values.
+        timeFilterManager: TimeFilterManager
     ) {
         _coordinator = State(initialValue: QuickAddCoordinator(
             transactionsViewModel: transactionsViewModel,
             categoriesViewModel: categoriesViewModel,
             accountsViewModel: accountsViewModel,
             transactionStore: transactionStore,
-            timeFilterManager: TimeFilterManager() // Will be replaced by @EnvironmentObject
+            timeFilterManager: timeFilterManager
         ))
     }
 
@@ -85,10 +90,6 @@ struct QuickAddTransactionView: View {
         }
         .sheet(isPresented: $coordinator.showingAddCategory) {
             categoryEditSheet
-        }
-        .onAppear {
-            // ✅ FIX: Update coordinator's timeFilterManager to use @EnvironmentObject
-            coordinator.setTimeFilterManager(timeFilterManager)
         }
         // ✅ OPTIMIZATION: Single debounced trigger instead of three separate onChange handlers
         // This prevents cascading updates during CSV imports and data loading
@@ -171,11 +172,13 @@ struct QuickAddTransactionView: View {
 
 #Preview {
     let coordinator = AppCoordinator()
+    let tfm = TimeFilterManager()
     QuickAddTransactionView(
         transactionsViewModel: coordinator.transactionsViewModel,
         categoriesViewModel: coordinator.categoriesViewModel,
         accountsViewModel: coordinator.accountsViewModel,
-        transactionStore: coordinator.transactionStore
+        transactionStore: coordinator.transactionStore,
+        timeFilterManager: tfm
     )
-    .environment(TimeFilterManager())
+    .environment(tfm)
 }

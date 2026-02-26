@@ -17,13 +17,25 @@ struct TransactionsSummaryCard: View {
 
     // MARK: - Body
     var body: some View {
-        if isEmpty {
-            emptyState
-        } else if let summary = summary {
-            loadedState(summary: summary)
-        } else {
-            loadingState
+        // Fix #14: ZStack + .transition(.opacity) + .animation gives a smooth fade
+        // between loading → loaded → empty states instead of abrupt view replacement.
+        ZStack {
+            if isEmpty {
+                emptyState
+                    .transition(.opacity)
+            } else if let summary {
+                // Fix #8: removed .id("summary-…") — it forced SwiftUI to throw away and
+                // recreate AnalyticsCard on every income/expense change, preventing smooth
+                // number transitions. @Observable's structural diffing handles updates correctly.
+                loadedState(summary: summary)
+                    .transition(.opacity)
+            } else {
+                loadingState
+                    .transition(.opacity)
+            }
         }
+        .animation(.spring(response: 0.4), value: isEmpty)
+        .animation(.spring(response: 0.4), value: summary != nil)
     }
 
     // MARK: - Empty State
@@ -50,7 +62,6 @@ struct TransactionsSummaryCard: View {
             summary: summary,
             currency: currency
         )
-        .id("summary-\(summary.totalIncome)-\(summary.totalExpenses)")
     }
 
     // MARK: - Loading State
