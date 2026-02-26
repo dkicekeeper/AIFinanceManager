@@ -47,24 +47,10 @@ struct SubscriptionCard: View {
         .glassCardStyle()
     }
     
+    @ViewBuilder
     private var statusIndicator: some View {
-        Group {
-            switch subscription.subscriptionStatus {
-            case .active:
-                Image(systemName: "checkmark.circle.fill")
-                    .font(AppTypography.h4)
-                    .foregroundStyle(.green)
-            case .paused:
-                Image(systemName: "pause.circle.fill")
-                    .font(AppTypography.h4)
-                    .foregroundStyle(.orange)
-            case .archived:
-                Image(systemName: "archive.circle.fill")
-                    .font(AppTypography.h4)
-                    .foregroundStyle(.gray)
-            case .none:
-                EmptyView()
-            }
+        if let entityStatus = subscription.entityStatus {
+            StatusIndicatorBadge(status: entityStatus, font: AppTypography.h4)
         }
     }
     

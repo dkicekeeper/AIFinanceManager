@@ -27,9 +27,9 @@ struct ImportTransactionPreviewView: View {
             VStack(spacing: 0) {
                 // Header
                 VStack(spacing: AppSpacing.sm) {
-                    Text(LocalizedRowKey.transactionPreviewFound.localized(with: transactions.count))
+                    Text(String(format: String(localized: "transactionPreview.found"), transactions.count))
                         .font(AppTypography.h4)
-                    Text(LocalizedRowKey.transactionPreviewSelectHint.localized)
+                    Text(String(localized: "transactionPreview.selectHint"))
                         .font(AppTypography.bodySecondary)
                         .foregroundStyle(AppColors.textSecondary)
                 }
@@ -78,14 +78,14 @@ struct ImportTransactionPreviewView: View {
                             }
                         }
                     } label: {
-                        Text(LocalizedRowKey.transactionPreviewSelectAll.localized)
+                        Text("transactionPreview.selectAll")
                             .frame(maxWidth: .infinity)
                             .padding(AppSpacing.md)
                             .background(AppColors.accent.opacity(0.1))
                             .foregroundStyle(AppColors.accent)
                             .clipShape(.rect(cornerRadius: AppRadius.button))
                     }
-                    .accessibilityLabel(LocalizedRowKey.transactionPreviewSelectAll.localized)
+                    .accessibilityLabel(String(localized: "transactionPreview.selectAll"))
 
                     Button {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
@@ -93,14 +93,14 @@ struct ImportTransactionPreviewView: View {
                             accountMapping.removeAll()
                         }
                     } label: {
-                        Text(LocalizedRowKey.transactionPreviewDeselectAll.localized)
+                        Text("transactionPreview.deselectAll")
                             .frame(maxWidth: .infinity)
                             .padding(AppSpacing.md)
                             .background(AppColors.secondaryBackground)
                             .foregroundStyle(AppColors.textSecondary)
                             .clipShape(.rect(cornerRadius: AppRadius.button))
                     }
-                    .accessibilityLabel(LocalizedRowKey.transactionPreviewDeselectAll.localized)
+                    .accessibilityLabel(String(localized: "transactionPreview.deselectAll"))
                 }
                 .cardContentPadding()
 
@@ -108,7 +108,7 @@ struct ImportTransactionPreviewView: View {
                 Button {
                     addSelectedTransactions()
                 } label: {
-                    Text(LocalizedRowKey.transactionPreviewAddSelected.localized(with: selectedTransactions.count))
+                    Text(String(format: String(localized: "transactionPreview.addSelected"), selectedTransactions.count))
                         .frame(maxWidth: .infinity)
                         .padding(AppSpacing.md)
                         .background(selectedTransactions.isEmpty ? AppColors.secondaryBackground : AppColors.accent)
@@ -119,10 +119,10 @@ struct ImportTransactionPreviewView: View {
                 .disabled(selectedTransactions.isEmpty)
                 .screenPadding()
                 .padding(.bottom, AppSpacing.md)
-                .accessibilityLabel(LocalizedRowKey.transactionPreviewAddSelected.localized(with: selectedTransactions.count))
+                .accessibilityLabel(String(format: String(localized: "transactionPreview.addSelected"), selectedTransactions.count))
                 .accessibilityAddTraits(selectedTransactions.isEmpty ? .isButton : [.isButton])
             }
-            .navigationTitle(LocalizedRowKey.transactionPreviewTitle.localized)
+            .navigationTitle(String(localized: "navigation.transactionPreview"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -202,7 +202,7 @@ struct ImportTransactionPreviewRow: View {
                 }
                 .accessibilityLabel(isSelected
                     ? String(localized: "button.select")
-                    : LocalizedRowKey.transactionPreviewSelectHint.localized
+                    : String(localized: "transactionPreview.selectHint")
                 )
                 .accessibilityAddTraits(.isButton)
 
@@ -242,11 +242,11 @@ struct ImportTransactionPreviewRow: View {
 
             // Account selector (visible only when selected)
             if isSelected && !availableAccounts.isEmpty {
-                Picker(LocalizedRowKey.transactionPreviewAccount.localized, selection: Binding(
+                Picker(String(localized: "transactionPreview.account"), selection: Binding(
                     get: { selectedAccountId ?? "" },
                     set: { onAccountSelect($0) }
                 )) {
-                    Text(LocalizedRowKey.transactionPreviewNoAccount.localized).tag("")
+                    Text("transactionPreview.noAccount").tag("")
                     ForEach(availableAccounts) { account in
                         Text("\(account.name) (\(Formatting.currencySymbol(for: account.currency)))").tag(account.id)
                     }

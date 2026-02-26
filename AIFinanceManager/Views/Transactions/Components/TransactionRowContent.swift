@@ -59,7 +59,7 @@ struct TransactionRowContent: View {
             if showIcon {
                 if isPlanned {
                     Image(systemName: "clock")
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(AppColors.planned)
                         .font(AppTypography.caption)
                 } else {
                     TransactionIconView(transaction: transaction, styleData: styleData)
@@ -81,7 +81,7 @@ struct TransactionRowContent: View {
                     }
                     Text(formatDate(transaction.date))
                         .font(AppTypography.bodySmall)
-                        .foregroundStyle(isPlanned ? .blue : .secondary)
+                        .foregroundStyle(isPlanned ? AppColors.planned : .secondary)
                 }
             }
 
@@ -113,7 +113,7 @@ struct TransactionRowContent: View {
                 }
             }
         }
-        .opacity(isFutureDate ? 0.5 : 1.0)
+        .futureTransactionStyle(isFuture: isFutureDate)
     }
 
     // MARK: - Transfer Amount View
@@ -144,7 +144,7 @@ struct TransactionRowContent: View {
                         amount: isIncoming ? targetAmount : sourceAmount,
                         currency: isIncoming ? targetCurrency : sourceCurrency,
                         prefix: isIncoming ? "+" : "-",
-                        color: isIncoming ? .green : .primary
+                        color: isIncoming ? AppColors.income : .primary
                     )
                 } else {
                     // For regular transfers: show both amounts
@@ -160,7 +160,7 @@ struct TransactionRowContent: View {
                             amount: targetAmount,
                             currency: targetCurrency,
                             prefix: "+",
-                            color: .green
+                            color: AppColors.income
                         )
                     }
                 }

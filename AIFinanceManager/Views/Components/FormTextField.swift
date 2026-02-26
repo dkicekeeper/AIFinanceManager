@@ -74,11 +74,11 @@ struct FormTextField: View {
                 Label {
                     Text(error)
                         .font(AppTypography.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppColors.destructive)
                 } icon: {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(AppTypography.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppColors.destructive)
                 }
             }
 
@@ -127,7 +127,7 @@ struct FormTextField: View {
 
     private var backgroundForState: Color {
         if errorMessage != nil {
-            return Color.red.opacity(0.05)
+            return AppColors.destructive.opacity(0.05)
         } else if isFocused {
             return AppColors.accent.opacity(0.05)
         } else {
@@ -137,7 +137,7 @@ struct FormTextField: View {
 
     private var borderForState: Color {
         if errorMessage != nil {
-            return .red.opacity(0.3)
+            return AppColors.destructive.opacity(0.3)
         } else {
             return .clear
         }

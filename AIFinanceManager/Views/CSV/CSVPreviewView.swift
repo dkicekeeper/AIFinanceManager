@@ -128,7 +128,7 @@ struct CSVPreviewView: View {
                             .font(AppTypography.caption2)
                             .foregroundStyle(AppColors.textSecondary)
                         Text(value.isEmpty
-                            ? LocalizedRowKey.csvEmptyCell.localized
+                            ? String(localized: "csv.emptyCell")
                             : value
                         )
                         .font(AppTypography.caption)

@@ -29,12 +29,12 @@ struct TransactionIconView: View {
                 )
             } else {
                 Circle()
-                    .fill(transaction.type == .internalTransfer ? Color.blue.opacity(0.2) : styleData.lightBackgroundColor)
+                    .fill(transaction.type == .internalTransfer ? AppColors.transfer.opacity(0.2) : styleData.lightBackgroundColor)
                     .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
                     .overlay(
                         Image(systemName: styleData.iconName)
                             .font(.system(size: AppIconSize.md))
-                            .foregroundStyle(transaction.type == .internalTransfer ? Color.blue : styleData.primaryColor)
+                            .foregroundStyle(transaction.type == .internalTransfer ? AppColors.transfer : styleData.primaryColor)
                     )
             }
 

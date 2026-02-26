@@ -98,7 +98,7 @@ struct AmountInputView: View {
             if let error = errorMessage {
                 Text(error)
                     .font(AppTypography.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(AppColors.destructive)
                     .multilineTextAlignment(.center)
             }
         }

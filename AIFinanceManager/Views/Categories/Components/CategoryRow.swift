@@ -20,17 +20,14 @@ struct CategoryRow: View {
             HStack(spacing: AppSpacing.md) {
                     // Иконка с бюджетным прогрессом
                     ZStack {
-                        // Budget progress stroke (if budget exists)
+                        // Budget progress ring (if budget exists)
                         if let progress = budgetProgress {
-                            Circle()
-                                .trim(from: 0, to: min(progress.percentage / 100, 1.0))
-                                .stroke(
-                                    progress.isOverBudget ? AppColors.destructive : AppColors.success,
-                                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                                )
-                                .rotationEffect(.degrees(-90))
-                                .frame(width: AppIconSize.categoryIcon, height: AppIconSize.categoryIcon)
-                                .animation(.easeInOut(duration: AppAnimation.standard), value: progress.percentage)
+                            BudgetProgressCircle(
+                                progress: progress.percentage / 100,
+                                size: AppIconSize.categoryIcon,
+                                lineWidth: 3,
+                                isOverBudget: progress.isOverBudget
+                            )
                         }
 
                         // Иконка

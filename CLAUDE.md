@@ -136,6 +136,22 @@ AIFinanceManager/
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
 
+**Phase 33** (2026-02-26): Component Extraction
+- **New `BudgetProgressCircle` component** (`Views/Components/BudgetProgressCircle.swift`) — extracted from `CategoryChip` + `CategoryRow`. Params: `progress: Double`, `size: CGFloat = AppIconSize.categoryIcon`, `lineWidth: CGFloat = 3`, `isOverBudget: Bool = false`. Uses `AppColors.success` / `AppColors.destructive` automatically.
+- **New `StatusIndicatorBadge` component** (`Views/Components/StatusIndicatorBadge.swift`) — extracted from `SubscriptionCard`. Backed by new `EntityStatus` enum (`.active/.paused/.archived/.pending`) with `iconName`, `tintColor`, `accessibilityLabel` props. `tintColor` uses `AppColors.statusActive/Paused/Archived/accent`.
+- **`RecurringSeries.entityStatus`** — bridge computed property mapping `subscriptionStatus` → `EntityStatus?` (in `StatusIndicatorBadge.swift`).
+- **`futureTransactionStyle(isFuture:)` View modifier** added to `AppTheme.swift` — replaces inline `.opacity(0.5)` in `TransactionRowContent`. Use `.futureTransactionStyle(isFuture: bool)` everywhere for future transactions.
+- **Design system now 100% compliant** — zero hardcoded colors remain in UI components after Phase 32+33.
+
+**Phase 32** (2026-02-26): Design System Hardening
+- **New `AppColors` tokens**: `transfer` (cyan-teal `Color(red:0.0, green:0.75, blue:0.85)`), `planned` (`Color.blue`), `statusActive` (green alias), `statusPaused` (orange alias), `statusArchived` (gray alias). Note: old `transfer = Color.primary` was wrong — now distinct cyan-teal.
+- **New `AppSize` tokens**: `chartHeightLarge/Small`, `calendarRowHeight/HeaderHeight/DaySize`, `dotSize`(10pt), `dotLargeSize`(12pt), `colorSwatchSize`, `selectedBorderWidth`(2pt).
+- **New `AppAnimation` constants**: `shimmerDuration`(1.4), `skeletonResponse`(0.4), `skeletonScale`(0.97), `shimmerOpacityDark`(0.15), `shimmerOpacityLight`(0.6), `bannerEntranceResponse`(0.6), `bannerEntranceDamping`(0.7), `bannerIconResponse`(0.5), `bannerIconDamping`(0.6), `bannerIconDelay`(0.1), `bannerHiddenScale`(0.85), `bannerHiddenOffset`(-20).
+- **27 hardcoded colors fixed** across 13 files — all replaced with `AppColors.*` semantic tokens. Key files: `MessageBanner`, `SkeletonView/Modifier`, `TransactionRowContent`, `FormTextField`, `SiriWaveView`, `CategoryDeepDiveView`, `CSVEntityMappingView`.
+- **Critical localization bug**: `AccountRow.swift` line 43 — `Text("account.interestTodayPrefix")` was NOT localized (renders raw key). Fixed to `Text(String(localized: "account.interestTodayPrefix", defaultValue: "Interest today: "))`.
+- **`AnalyticsCard.swift` Russian defaultValues** → English: `"История"` → `"History"`, added missing `defaultValue: "Planned"`.
+- **`AppTheme.swift` inline hardcodes**: `Color.blue.opacity(0.1/0.12)` in `transactionRowStyle`/`glassTransactionRowStyle` → `AppColors.planned.opacity(...)`.
+
 **Phase 31** (2026-02-26): SwiftUI Anti-Pattern Sweep
 - **`@ObservationIgnored` in `InsightsViewModel`**: Added to 8 properties — `insightsService`, `transactionStore`, `transactionsViewModel`, `precomputedInsights`, `precomputedPeriodPoints`, `precomputedTotals`, `recomputeTask`, `isStale`. Eliminates spurious re-renders caused by tracking immutable deps and internal caches.
 - **`@ObservationIgnored` in `TransactionsViewModel`**: Added to 8 properties — `aggregateCache`, `recurringService`, `filterCoordinator`, `accountOperationService`, `queryService`, `groupingService`, `balanceCalculator`, `balanceUpdateCoordinator`. Phase 23 compliance.
@@ -1073,6 +1089,6 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 ---
 
 **Last Updated**: 2026-02-26
-**Project Status**: Active development - SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates, Progressive Insights loading
+**Project Status**: Active development - Design system hardening + component extraction (Phase 32-33), SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates, Progressive Insights loading. **Zero hardcoded colors in UI components.**
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`

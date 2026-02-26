@@ -40,7 +40,7 @@ struct AccountRow: View {
 
                         if let interest = interestToday, interest > 0 {
                             HStack(spacing: 0) {
-                                Text("account.interestTodayPrefix")
+                                Text(String(localized: "account.interestTodayPrefix", defaultValue: "Interest today: "))
                                     .font(AppTypography.caption)
                                     .foregroundStyle(.secondary)
 

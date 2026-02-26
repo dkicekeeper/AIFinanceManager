@@ -19,8 +19,8 @@ struct NotificationPermissionView: View {
 
             // Icon
             Image(systemName: "bell.badge.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.blue)
+                .font(.system(size: AppIconSize.coin))
+                .foregroundStyle(AppColors.accent)
                 .padding(.bottom, AppSpacing.md)
 
             // Title
@@ -52,7 +52,7 @@ struct NotificationPermissionView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, AppSpacing.md)
-                        .background(.blue)
+                        .background(AppColors.accent)
                         .clipShape(.rect(cornerRadius: AppRadius.md))
                 }
 

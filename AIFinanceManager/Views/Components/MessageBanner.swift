@@ -34,10 +34,10 @@ struct MessageBanner: View {
 
         var tintColor: Color {
             switch self {
-            case .success: return .green
-            case .error: return .red
-            case .warning: return .orange
-            case .info: return .blue
+            case .success: return AppColors.success
+            case .error: return AppColors.destructive
+            case .warning: return AppColors.warning
+            case .info: return AppColors.accent
             }
         }
     }
@@ -59,15 +59,23 @@ struct MessageBanner: View {
             }
         }
         .shadow(color: type.tintColor.opacity(0.3), radius: 8, x: 0, y: 4)
-        .scaleEffect(isVisible ? 1 : 0.85)
+        .scaleEffect(isVisible ? 1 : AppAnimation.bannerHiddenScale)
         .opacity(isVisible ? 1 : 0)
-        .offset(y: isVisible ? 0 : -20)
+        .offset(y: isVisible ? 0 : AppAnimation.bannerHiddenOffset)
         .onAppear {
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7, blendDuration: 0)) {
+            withAnimation(.spring(
+                response: AppAnimation.bannerEntranceResponse,
+                dampingFraction: AppAnimation.bannerEntranceDamping,
+                blendDuration: 0
+            )) {
                 isVisible = true
             }
 
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6, blendDuration: 0).delay(0.1)) {
+            withAnimation(.spring(
+                response: AppAnimation.bannerIconResponse,
+                dampingFraction: AppAnimation.bannerIconDamping,
+                blendDuration: 0
+            ).delay(AppAnimation.bannerIconDelay)) {
                 iconScale = 1.0
             }
 
@@ -81,7 +89,11 @@ struct MessageBanner: View {
                 .font(.system(size: AppIconSize.md))
                 .foregroundStyle(type.tintColor)
                 .scaleEffect(iconScale)
-                .animation(.spring(response: 0.5, dampingFraction: 0.6, blendDuration: 0), value: iconScale)
+                .animation(.spring(
+                    response: AppAnimation.bannerIconResponse,
+                    dampingFraction: AppAnimation.bannerIconDamping,
+                    blendDuration: 0
+                ), value: iconScale)
 
             Text(message)
                 .font(AppTypography.body)

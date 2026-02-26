@@ -30,17 +30,14 @@ struct CategoryChip: View {
                     .foregroundStyle(AppColors.textPrimary)
                     .lineLimit(1)
                 ZStack {
-                    // Budget progress stroke (if budget exists and is expense)
+                    // Budget progress ring (expense categories only)
                     if let progress = budgetProgress, type == .expense {
-                        Circle()
-                            .trim(from: 0, to: min(progress.percentage / 100, 1.0))
-                            .stroke(
-                                progress.isOverBudget ? AppColors.destructive : AppColors.success,
-                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                            )
-                            .rotationEffect(.degrees(-90))
-                            .frame(width: AppIconSize.budgetRing, height: AppIconSize.budgetRing)
-                            .animation(.easeInOut(duration: 0.3), value: progress.percentage)
+                        BudgetProgressCircle(
+                            progress: progress.percentage / 100,
+                            size: AppIconSize.budgetRing,
+                            lineWidth: 4,
+                            isOverBudget: progress.isOverBudget
+                        )
                     }
                     
                     Group {

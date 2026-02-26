@@ -12,12 +12,12 @@ struct CategoryFilterHelper {
     /// Generate display text for category filter
     static func displayText(for selectedCategories: Set<String>?) -> String {
         guard let selectedCategories = selectedCategories else {
-            return LocalizedRowKey.allCategories.localized
+            return String(localized: "filter.allCategories")
         }
         if selectedCategories.count == 1 {
-            return selectedCategories.first ?? LocalizedRowKey.allCategories.localized
+            return selectedCategories.first ?? String(localized: "filter.allCategories")
         }
-        return LocalizedRowKey.categoriesCount.localized(with: selectedCategories.count)
+        return String(format: String(localized: "filter.categoriesCount"), selectedCategories.count)
     }
 
     /// Generate icon view for single selected category

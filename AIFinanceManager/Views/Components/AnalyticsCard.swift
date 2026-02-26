@@ -15,7 +15,7 @@ struct AnalyticsCard: View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
             // Header
             HStack {
-                Text(String(localized: "analytics.history", defaultValue: "История"))
+                Text(String(localized: "analytics.history", defaultValue: "History"))
                     .font(AppTypography.h3)
                     .foregroundStyle(AppColors.textPrimary)
                 Spacer()
@@ -31,7 +31,7 @@ struct AnalyticsCard: View {
             // Planned amount
             if summary.plannedAmount > 0 {
                 HStack {
-                    Text(String(localized: "analytics.planned"))
+                    Text(String(localized: "analytics.planned", defaultValue: "Planned"))
                         .font(AppTypography.body)
                         .foregroundStyle(AppColors.textPrimary)
                     Spacer()

@@ -26,7 +26,7 @@ struct HistoryFilterSection: View {
     }
 
     private var accountFilterTitle: String {
-        selectedAccountFilter == nil ? LocalizedRowKey.allAccounts.localized : (selectedAccount?.name ?? LocalizedRowKey.allAccounts.localized)
+        selectedAccountFilter == nil ? String(localized: "filter.allAccounts") : (selectedAccount?.name ?? String(localized: "filter.allAccounts"))
     }
 
     private var categoryFilterTitle: String {
@@ -60,7 +60,7 @@ struct HistoryFilterSection: View {
                 // "All accounts" option
                 Button(action: { selectedAccountFilter = nil }) {
                     HStack {
-                        Text(LocalizedRowKey.allAccounts.localized)
+                        Text("filter.allAccounts")
                         Spacer()
                         if selectedAccountFilter == nil {
                             Image(systemName: "checkmark")

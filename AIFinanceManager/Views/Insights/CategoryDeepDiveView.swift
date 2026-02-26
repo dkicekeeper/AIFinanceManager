@@ -191,7 +191,7 @@ private struct CategoryDeepDivePreview: View {
                             currency: "KZT",
                             fontSize: AppTypography.h3,
                             fontWeight: .semibold,
-                            color: .orange
+                            color: AppColors.warning
                         )
                     }
                     Spacer()
@@ -206,7 +206,7 @@ private struct CategoryDeepDivePreview: View {
                         .screenPadding()
                     ForEach(subcategories) { item in
                         HStack {
-                            Circle().fill(Color.orange.opacity(0.6)).frame(width: 10, height: 10)
+                            Circle().fill(AppColors.warning.opacity(0.6)).frame(width: AppSize.dotSize, height: AppSize.dotSize)
                             Text(item.name).font(AppTypography.body)
                             Spacer()
                             VStack(alignment: .trailing) {

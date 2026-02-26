@@ -92,7 +92,7 @@ struct CategoryEditView: View {
                                             categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: category.id)
                                         }) {
                                             Image(systemName: "xmark.circle.fill")
-                                                .foregroundStyle(.red)
+                                                .foregroundStyle(AppColors.destructive)
                                         }
                                     }
                                     .padding(AppSpacing.md)
@@ -108,7 +108,7 @@ struct CategoryEditView: View {
                                         Image(systemName: "plus.circle.fill")
                                         Text(String(localized: "category.addSubcategory"))
                                     }
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(AppColors.accent)
                                     .frame(maxWidth: .infinity)
                                     .padding(AppSpacing.md)
                                     .background(AppColors.surface)

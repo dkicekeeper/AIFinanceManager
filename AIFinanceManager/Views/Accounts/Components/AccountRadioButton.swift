@@ -39,7 +39,7 @@ struct AccountRadioButton: View {
             .glassCardStyle()
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.pill, style: .continuous)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                    .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: AppSize.selectedBorderWidth)
             )
         }
         .buttonStyle(.bounce)

@@ -30,7 +30,7 @@ struct SiriWaveView: View {
     init(
         amplitude: Double = 30,
         frequency: Double = 4,
-        color: Color = .blue,
+        color: Color = AppColors.accent,
         animationSpeed: Double = 1.5
     ) {
         self.amplitude = amplitude
@@ -104,7 +104,7 @@ struct SiriWaveRecordingView: View {
             SiriWaveView(
                 amplitude: 20,
                 frequency: 3,
-                color: .blue.opacity(0.3),
+                color: AppColors.accent.opacity(0.3),
                 animationSpeed: 2.0
             )
             .frame(height: 80)
@@ -113,7 +113,7 @@ struct SiriWaveRecordingView: View {
             SiriWaveView(
                 amplitude: 25,
                 frequency: 4,
-                color: .blue.opacity(0.6),
+                color: AppColors.accent.opacity(0.6),
                 animationSpeed: 1.5
             )
             .frame(height: 80)
@@ -122,7 +122,7 @@ struct SiriWaveRecordingView: View {
             SiriWaveView(
                 amplitude: 30,
                 frequency: 5,
-                color: .blue,
+                color: AppColors.accent,
                 animationSpeed: 1.2
             )
             .frame(height: 80)
@@ -132,7 +132,7 @@ struct SiriWaveRecordingView: View {
                 Spacer()
                 Text(String(localized: "voice.recording"))
                     .font(AppTypography.bodyLarge)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(AppColors.accent)
                     .opacity(isAnimating ? 0.5 : 1.0)
                     .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
             }

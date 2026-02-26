@@ -308,8 +308,22 @@ enum AppColors {
     /// Expense transactions
     static let expense = Color.primary
 
-    /// Transfer transactions
-    static let transfer = Color.primary
+    /// Transfer / internal transactions (distinct cyan-teal, not accent blue)
+    static let transfer = Color(red: 0.0, green: 0.75, blue: 0.85)
+
+    /// Planned / future / scheduled transactions
+    static let planned = Color.blue
+
+    // MARK: Status Colors (explicit aliases)
+
+    /// Active status (alias for success)
+    static let statusActive = success
+
+    /// Paused status (alias for warning)
+    static let statusPaused = warning
+
+    /// Archived / inactive status
+    static let statusArchived = Color(.systemGray)
 }
 
 // MARK: - View Modifiers для консистентного применения
@@ -444,6 +458,13 @@ extension View {
         self.padding(.horizontal, AppSpacing.pageHorizontal)
     }
 
+    /// Визуально приглушает view для будущих / запланированных транзакций.
+    /// Применяй вместо inline `opacity(0.5)` чтобы значение было единым по всему проекту.
+    /// - Parameter isFuture: Если `true` — применяет притлушённый opacity; иначе — без изменений.
+    func futureTransactionStyle(isFuture: Bool) -> some View {
+        self.opacity(isFuture ? 0.55 : 1.0)
+    }
+
     /// Стандартный vertical spacing для sections
     func sectionSpacing() -> some View {
         self.padding(.vertical, AppSpacing.sectionVertical)
@@ -491,8 +512,7 @@ extension View {
     /// Вычисляет фон для заданного варианта стилизации
     private func backgroundForVariant(isPlanned: Bool, variant: TransactionRowVariant) -> Color {
         if isPlanned {
-            // Для плановых транзакций всегда синий оттенок
-            return Color.blue.opacity(0.1)
+            return AppColors.planned.opacity(0.1)
         }
 
         switch variant {
@@ -521,7 +541,7 @@ extension View {
                 .clipShape(.rect(cornerRadius: radius))
                 .glassEffect(
                     isPlanned
-                        ? .regular.tint(.blue.opacity(0.12))
+                        ? .regular.tint(AppColors.planned.opacity(0.12))
                         : .regular,
                     in: .rect(cornerRadius: radius)
                 )
@@ -529,7 +549,7 @@ extension View {
             self
                 .padding(.vertical, AppSpacing.sm)
                 .background(
-                    isPlanned ? Color.blue.opacity(0.1) : AppColors.secondaryBackground,
+                    isPlanned ? AppColors.planned.opacity(0.1) : AppColors.secondaryBackground,
                     in: RoundedRectangle(cornerRadius: radius)
                 )
         }
@@ -604,12 +624,51 @@ enum AppSize {
 
     /// Cursor line height for large title input (h1)
     static let cursorHeightLarge: CGFloat = 44
+
+    // MARK: - Chart Heights
+
+    /// Large chart height (analytics / deep-dive charts)
+    static let chartHeightLarge: CGFloat = 200
+
+    /// Small chart height (compact / inline charts)
+    static let chartHeightSmall: CGFloat = 80
+
+    // MARK: - Calendar / Date Picker
+
+    /// Calendar row height (day rows in custom calendars)
+    static let calendarRowHeight: CGFloat = 60
+
+    /// Calendar header height (day-of-week labels)
+    static let calendarHeaderHeight: CGFloat = 20
+
+    /// Calendar day cell size (width & height)
+    static let calendarDaySize: CGFloat = 32
+
+    // MARK: - Indicator Dots
+
+    /// Small dot indicator size
+    static let dotSize: CGFloat = 10
+
+    /// Large dot indicator size
+    static let dotLargeSize: CGFloat = 12
+
+    // MARK: - Color Swatch
+
+    /// Color swatch size in color picker
+    static let colorSwatchSize: CGFloat = 30
+
+    // MARK: - Selection Border
+
+    /// Border line width for selected state (account radio, icon picker, etc.)
+    static let selectedBorderWidth: CGFloat = 2
 }
 
 // MARK: - Animation Durations
 
 /// Консистентные длительности анимаций
 enum AppAnimation {
+    // MARK: - Basic Durations
+
     /// Быстрая анимация (button press, selection)
     static let fast: Double = 0.1
 
@@ -621,6 +680,46 @@ enum AppAnimation {
 
     /// Spring animation для bounce эффекта (iOS 16+ style)
     static let spring = Animation.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0)
+
+    // MARK: - Skeleton Loading
+
+    /// Shimmer sweep duration (left-to-right single pass)
+    static let shimmerDuration: Double = 1.4
+
+    /// SkeletonLoadingModifier spring response (skeleton ↔ content transition)
+    static let skeletonResponse: Double = 0.4
+
+    /// Scale value for skeleton entrance/exit transition
+    static let skeletonScale: CGFloat = 0.97
+
+    /// Opacity of shimmer highlight in dark mode
+    static let shimmerOpacityDark: CGFloat = 0.15
+
+    /// Opacity of shimmer highlight in light mode
+    static let shimmerOpacityLight: CGFloat = 0.6
+
+    // MARK: - MessageBanner
+
+    /// Banner entrance spring response
+    static let bannerEntranceResponse: Double = 0.6
+
+    /// Banner entrance spring damping fraction
+    static let bannerEntranceDamping: Double = 0.7
+
+    /// Icon bounce spring response
+    static let bannerIconResponse: Double = 0.5
+
+    /// Icon bounce spring damping fraction
+    static let bannerIconDamping: Double = 0.6
+
+    /// Icon bounce animation delay (after banner entrance)
+    static let bannerIconDelay: Double = 0.1
+
+    /// Banner scale when hidden (entrance starts from this value)
+    static let bannerHiddenScale: CGFloat = 0.85
+
+    /// Banner Y-offset when hidden (slides in from above)
+    static let bannerHiddenOffset: CGFloat = -20
 }
 
 // MARK: - Interactive Button Styles

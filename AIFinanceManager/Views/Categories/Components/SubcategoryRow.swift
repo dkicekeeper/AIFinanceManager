@@ -30,7 +30,7 @@ struct SubcategoryRow: View {
         } trailing: {
             if isSelected {
                 Image(systemName: "checkmark")
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(AppColors.accent)
                     .font(AppTypography.bodyLarge)
             }
         }

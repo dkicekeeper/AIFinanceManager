@@ -50,7 +50,7 @@ struct CSVEntityMappingView: View {
                                             .foregroundStyle(.secondary)
                                     } else {
                                         Text("Не выбрано")
-                                            .foregroundStyle(.orange)
+                                            .foregroundStyle(AppColors.warning)
                                     }
                                 }
                             }
@@ -70,7 +70,7 @@ struct CSVEntityMappingView: View {
                                             .foregroundStyle(.secondary)
                                     } else {
                                         Text("Не выбрано")
-                                            .foregroundStyle(.orange)
+                                            .foregroundStyle(AppColors.warning)
                                     }
                                 }
                             }
@@ -90,7 +90,7 @@ struct CSVEntityMappingView: View {
                                             .foregroundStyle(.secondary)
                                     } else {
                                         Text("Не выбрано")
-                                            .foregroundStyle(.orange)
+                                            .foregroundStyle(AppColors.warning)
                                     }
                                 }
                             }
@@ -273,12 +273,12 @@ struct AccountMappingDetailView: View {
                         selectedAccountId = account.id
                     }) {
                         HStack {
-                            IconView(source: account.iconSource, size: 24)
+                            IconView(source: account.iconSource, size: AppIconSize.lg)
                             Text(account.name)
                             Spacer()
                             if selectedAccountId == account.id {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(AppColors.accent)
                             }
                         }
                     }
@@ -327,7 +327,7 @@ struct CategoryMappingDetailView: View {
                             Spacer()
                             if selectedCategoryName == category.name {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(AppColors.accent)
                             }
                         }
                     }

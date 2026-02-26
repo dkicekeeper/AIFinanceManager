@@ -19,7 +19,9 @@ struct SkeletonShimmerModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         // Shimmer highlight opacity: light mode needs stronger white; dark mode needs subtle tint
-        let highlightOpacity: CGFloat = colorScheme == .dark ? 0.15 : 0.6
+        let highlightOpacity: CGFloat = colorScheme == .dark
+            ? AppAnimation.shimmerOpacityDark
+            : AppAnimation.shimmerOpacityLight
 
         content
             .overlay {
@@ -39,7 +41,7 @@ struct SkeletonShimmerModifier: ViewModifier {
                 guard !isAnimating else { return }
                 isAnimating = true
                 withAnimation(
-                    .linear(duration: 1.4).repeatForever(autoreverses: false)
+                    .linear(duration: AppAnimation.shimmerDuration).repeatForever(autoreverses: false)
                 ) {
                     phase = 1.5
                 }
@@ -82,7 +84,7 @@ struct SkeletonView: View {
 // MARK: - Preview
 
 #Preview("Shimmer") {
-    VStack(spacing: 16) {
+    VStack(spacing: AppSpacing.md) {
         SkeletonView(height: 16)
         SkeletonView(width: 200, height: 16)
         SkeletonView(height: 80, cornerRadius: 20)

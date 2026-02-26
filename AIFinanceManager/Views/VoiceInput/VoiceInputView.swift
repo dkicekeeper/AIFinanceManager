@@ -228,16 +228,16 @@ struct RecordingIndicatorView: View {
     @State private var isAnimating = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppSpacing.sm) {
             Circle()
-                .fill(Color.red)
-                .frame(width: 12, height: 12)
+                .fill(AppColors.destructive)
+                .frame(width: AppSize.dotLargeSize, height: AppSize.dotLargeSize)
                 .opacity(isAnimating ? 0.3 : 1.0)
                 .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isAnimating)
 
             Text(String(localized: "voice.recording"))
                 .font(AppTypography.bodyLarge)
-                .foregroundStyle(.red)
+                .foregroundStyle(AppColors.destructive)
         }
         .onAppear {
             isAnimating = true

@@ -18,13 +18,13 @@ struct SkeletonLoadingModifier<S: View>: ViewModifier {
         Group {
             if isLoading {
                 skeleton()
-                    .transition(.opacity.combined(with: .scale(0.97, anchor: .center)))
+                    .transition(.opacity.combined(with: .scale(AppAnimation.skeletonScale, anchor: .center)))
             } else {
                 content
-                    .transition(.opacity.combined(with: .scale(0.97, anchor: .center)))
+                    .transition(.opacity.combined(with: .scale(AppAnimation.skeletonScale, anchor: .center)))
             }
         }
-        .animation(.spring(response: 0.4), value: isLoading)
+        .animation(.spring(response: AppAnimation.skeletonResponse), value: isLoading)
     }
 }
 
@@ -57,12 +57,12 @@ extension View {
         Text("Real content here")
             .padding(AppSpacing.md)
             .frame(maxWidth: .infinity)
-            .background(Color(.secondarySystemGroupedBackground))
+            .background(AppColors.surface)
             .clipShape(.rect(cornerRadius: AppRadius.sm))
             .skeletonLoading(isLoading: false) {
                 SkeletonView(height: 44)
             }
     }
     .padding(AppSpacing.lg)
-    .background(Color(.systemGroupedBackground))
+    .background(AppColors.backgroundPrimary)
 }
