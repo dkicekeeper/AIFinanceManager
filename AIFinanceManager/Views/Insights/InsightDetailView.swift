@@ -11,14 +11,25 @@
 import SwiftUI
 import os
 
-struct InsightDetailView: View {
+struct InsightDetailView<CategoryDestination: View>: View {
     let insight: Insight
     let currency: String
     /// P9: SRP — pass only what's needed for drill-down, not the entire ViewModel.
-    /// Nil = no drill-down chevron shown.
-    var onCategoryTap: ((CategoryBreakdownItem) -> AnyView)? = nil
+    /// Nil = no drill-down chevron shown. Generic over CategoryDestination avoids AnyView type erasure.
+    private let _onCategoryTap: ((CategoryBreakdownItem) -> CategoryDestination)?
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightDetailView")
+    private var logger: Logger { Logger(subsystem: "AIFinanceManager", category: "InsightDetailView") }
+
+    // MARK: - Init (with drill-down)
+    init(
+        insight: Insight,
+        currency: String,
+        @ViewBuilder onCategoryTap: @escaping (CategoryBreakdownItem) -> CategoryDestination
+    ) {
+        self.insight = insight
+        self.currency = currency
+        self._onCategoryTap = onCategoryTap
+    }
 
     var body: some View {
         ScrollView {
@@ -37,7 +48,7 @@ struct InsightDetailView: View {
         .navigationTitle(insight.title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            Self.logger.debug("📋 [InsightDetail] OPEN — type=\(String(describing: insight.type), privacy: .public), category=\(String(describing: insight.category), privacy: .public), metric=\(insight.metric.formattedValue, privacy: .public), drillDown=\(onCategoryTap != nil)")
+            logger.debug("📋 [InsightDetail] OPEN — type=\(String(describing: insight.type), privacy: .public), category=\(String(describing: insight.category), privacy: .public), metric=\(insight.metric.formattedValue, privacy: .public), drillDown=\(_onCategoryTap != nil)")
         }
     }
 
@@ -208,7 +219,7 @@ struct InsightDetailView: View {
                     percentage: item.percentage
                 )
                 // P9: chevron only when drill-down closure is provided
-                if onCategoryTap != nil {
+                if _onCategoryTap != nil {
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(AppColors.textTertiary)
@@ -218,9 +229,9 @@ struct InsightDetailView: View {
         .padding(.vertical, AppSpacing.sm)
         .screenPadding()
 
-        // P9: drill-down destination provided by caller via closure (AnyView)
-        if let destination = onCategoryTap?(item) {
-            NavigationLink(destination: destination) {
+        // P9: drill-down destination — generic CategoryDestination, no AnyView type erasure
+        if let tapHandler = _onCategoryTap {
+            NavigationLink(destination: tapHandler(item)) {
                 rowContent.contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -377,6 +388,17 @@ struct InsightDetailView: View {
 
 }
 
+// MARK: - Convenience init (no drill-down)
+
+extension InsightDetailView where CategoryDestination == Never {
+    /// Init without category drill-down. No chevron shown; category rows are non-tappable.
+    init(insight: Insight, currency: String) {
+        self.insight = insight
+        self.currency = currency
+        self._onCategoryTap = nil
+    }
+}
+
 // MARK: - Previews
 
 #Preview("Category Breakdown") {
@@ -423,15 +445,9 @@ struct InsightDetailView: View {
 
 #Preview("Category — Drill Down") {
     NavigationStack {
-        InsightDetailView(
-            insight: .mockTopSpending(),
-            currency: "KZT",
-            onCategoryTap: { item in
-                AnyView(
-                    Text("Deep dive: \(item.categoryName)")
-                        .padding()
-                )
-            }
-        )
+        InsightDetailView(insight: .mockTopSpending(), currency: "KZT") { item in
+            Text("Deep dive: \(item.categoryName)")
+                .padding()
+        }
     }
 }

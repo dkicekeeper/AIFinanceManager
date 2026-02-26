@@ -41,12 +41,8 @@ struct InsightsView: View {
         .navigationTitle(String(localized: "insights.title"))
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: Insight.self) { insight in
-            InsightDetailView(
-                insight: insight,
-                currency: insightsViewModel.baseCurrency,
-                onCategoryTap: insight.category == .spending ? spendingCategoryTap : nil
-            )
-            .navigationTransition(.zoom(sourceID: insight.id, in: insightNamespace))
+            insightDetailView(for: insight)
+                .navigationTransition(.zoom(sourceID: insight.id, in: insightNamespace))
         }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -294,11 +290,16 @@ struct InsightsView: View {
         .screenPadding()
     }
 
-    // MARK: - Category Tap Handler
+    // MARK: - Navigation Detail Builder
 
-    private var spendingCategoryTap: (CategoryBreakdownItem) -> AnyView {
-        { [insightsViewModel] item in
-            AnyView(
+    /// Builds the correct InsightDetailView variant depending on category.
+    /// Spending insights get category drill-down; all others are read-only.
+    /// @ViewBuilder enables conditional branches with different generic specialisations
+    /// (InsightDetailView<CategoryDeepDiveView> vs InsightDetailView<Never>) without AnyView.
+    @ViewBuilder
+    private func insightDetailView(for insight: Insight) -> some View {
+        if insight.category == .spending {
+            InsightDetailView(insight: insight, currency: insightsViewModel.baseCurrency) { item in
                 CategoryDeepDiveView(
                     categoryName: item.categoryName,
                     color: item.color,
@@ -306,7 +307,9 @@ struct InsightsView: View {
                     currency: insightsViewModel.baseCurrency,
                     viewModel: insightsViewModel
                 )
-            )
+            }
+        } else {
+            InsightDetailView(insight: insight, currency: insightsViewModel.baseCurrency)
         }
     }
 }

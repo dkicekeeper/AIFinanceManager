@@ -389,7 +389,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 let result = try bgContext.execute(insertRequest) as? NSBatchInsertResult
                 // Merge inserted object IDs into viewContext so @Observable picks them up.
                 // Must be dispatched to main queue because viewContext is main-thread-only.
-                DispatchQueue.main.async { [weak self] in
+                Task { @MainActor [weak self] in
                     guard let self else { return }
                     self.stack.mergeBatchInsertResult(result)
                 }

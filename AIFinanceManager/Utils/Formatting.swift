@@ -48,16 +48,18 @@ struct Formatting {
         showDecimalsWhenZero: Bool = AmountDisplayConfiguration.shared.showDecimalsWhenZero
     ) -> String {
         let symbol = currencySymbol(for: currency)
-        let config = AmountDisplayConfiguration.shared
-        let numberFormatter = config.makeNumberFormatter()
-
-        // Проверяем, нужно ли показывать дробную часть
         let hasDecimals = amount.truncatingRemainder(dividingBy: 1) != 0
 
+        // Hot path: use cached formatter; only allocate a new one for the no-decimals variant
+        // (can't mutate the shared cached instance)
+        let numberFormatter: NumberFormatter
         if !showDecimalsWhenZero && !hasDecimals {
-            // Убираем дробную часть для целых чисел
-            numberFormatter.minimumFractionDigits = 0
-            numberFormatter.maximumFractionDigits = 0
+            let f = AmountDisplayConfiguration.shared.makeNumberFormatter()
+            f.minimumFractionDigits = 0
+            f.maximumFractionDigits = 0
+            numberFormatter = f
+        } else {
+            numberFormatter = AmountDisplayConfiguration.formatter
         }
 
         guard let formattedAmount = numberFormatter.string(from: NSNumber(value: amount)) else {

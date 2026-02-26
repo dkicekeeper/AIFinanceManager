@@ -10,36 +10,55 @@ import SwiftUI
 
 /// Overlays a left-to-right shimmer effect on any view — Liquid Glass style.
 struct SkeletonShimmerModifier: ViewModifier {
+    /// Corner radius forwarded from SkeletonView so the gradient mask matches the shape exactly.
+    var cornerRadius: CGFloat = 0
+
+    @Environment(\.colorScheme) private var colorScheme
     @State private var phase: CGFloat = -0.5
+    @State private var isAnimating = false
 
     func body(content: Content) -> some View {
+        // Shimmer highlight opacity: light mode needs stronger white; dark mode needs subtle tint
+        let highlightOpacity: CGFloat = colorScheme == .dark ? 0.15 : 0.6
+
         content
             .overlay {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .white.opacity(0.5), location: 0.5),
+                        .init(color: .white.opacity(highlightOpacity), location: 0.5),
                         .init(color: .clear, location: 1),
                     ],
                     startPoint: UnitPoint(x: phase, y: 0.5),
                     endPoint: UnitPoint(x: phase + 1, y: 0.5)
                 )
             }
-            .clipped()
+            // Clip to the actual rounded shape — not just the bounding box rectangle
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             .onAppear {
+                guard !isAnimating else { return }
+                isAnimating = true
                 withAnimation(
-                    .easeInOut(duration: 1.4).repeatForever(autoreverses: false)
+                    .linear(duration: 1.4).repeatForever(autoreverses: false)
                 ) {
                     phase = 1.5
                 }
+            }
+            .onDisappear {
+                // Stop the repeatForever animation so it does not conflict
+                // with the SkeletonLoadingModifier exit transition (.spring(response: 0.4)).
+                // The view is leaving the hierarchy, so no visual reset is needed.
+                isAnimating = false
+                phase = -0.5
             }
     }
 }
 
 extension View {
     /// Adds a left-to-right shimmer animation (Liquid Glass style).
-    func skeletonShimmer() -> some View {
-        modifier(SkeletonShimmerModifier())
+    /// Pass the same `cornerRadius` as the shape so the gradient is clipped correctly.
+    func skeletonShimmer(cornerRadius: CGFloat = 0) -> some View {
+        modifier(SkeletonShimmerModifier(cornerRadius: cornerRadius))
     }
 }
 
@@ -56,7 +75,7 @@ struct SkeletonView: View {
             .fill(AppColors.secondaryBackground)
             .frame(width: width, height: height)
             .frame(maxWidth: width == nil ? .infinity : nil)
-            .skeletonShimmer()
+            .skeletonShimmer(cornerRadius: cornerRadius)
     }
 }
 

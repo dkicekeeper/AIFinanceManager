@@ -146,7 +146,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
                     let deleteResult = try bgContext.execute(deleteRequest) as? NSBatchDeleteResult
                     let deletedIDs = deleteResult?.result as? [NSManagedObjectID] ?? []
                     if !deletedIDs.isEmpty {
-                        DispatchQueue.main.async { [weak self] in
+                        Task { @MainActor [weak self] in
                             guard let self else { return }
                             NSManagedObjectContext.mergeChanges(
                                 fromRemoteContextSave: [NSDeletedObjectsKey: deletedIDs],

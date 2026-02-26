@@ -136,6 +136,17 @@ AIFinanceManager/
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
 
+**Phase 31** (2026-02-26): SwiftUI Anti-Pattern Sweep
+- **`@ObservationIgnored` in `InsightsViewModel`**: Added to 8 properties — `insightsService`, `transactionStore`, `transactionsViewModel`, `precomputedInsights`, `precomputedPeriodPoints`, `precomputedTotals`, `recomputeTask`, `isStale`. Eliminates spurious re-renders caused by tracking immutable deps and internal caches.
+- **`@ObservationIgnored` in `TransactionsViewModel`**: Added to 8 properties — `aggregateCache`, `recurringService`, `filterCoordinator`, `accountOperationService`, `queryService`, `groupingService`, `balanceCalculator`, `balanceUpdateCoordinator`. Phase 23 compliance.
+- **`makeNumberFormatter()` hot path**: `FormattedAmountText` now uses `AmountDisplayConfiguration.formatter` (cached) instead of `makeNumberFormatter()` per render. `Formatting.formatCurrencySmart` uses cached formatter for hot path, creates new only for rare no-decimals variant (which mutates digit counts).
+- **`AnyView` → `@ViewBuilder` in `AppTheme.swift`**: All 4 style modifiers (`filterChipStyle`, `glassCardStyle`, `cardBackground`, `glassTransactionRowStyle`) converted — type info preserved, SwiftUI diffing works correctly.
+- **`AnyView` → generic in `InsightDetailView`**: `InsightDetailView<CategoryDestination: View>` — `_onCategoryTap: ((CategoryBreakdownItem) -> CategoryDestination)?`; `@ViewBuilder` init with drill-down; `extension where CategoryDestination == Never` for no-tap init. `InsightsView` adds `@ViewBuilder insightDetailView(for:)` replacing `spendingCategoryTap: (CategoryBreakdownItem) -> AnyView`.
+- **`DispatchQueue.main.asyncAfter` → structured concurrency in Views**: `VoiceInputConfirmationView` uses `Task { @MainActor in; await Task.yield() }` for @Observable propagation; `CSVEntityMappingView` uses `Task { @MainActor in; try? await Task.sleep(for: .milliseconds(300)) }` for sheet dismiss timing.
+- **`DispatchQueue.main.async` → structured concurrency in repos**: `TransactionRepository.batchInsertTransactions` and `CategoryRepository` NSBatchDeleteRequest merge now use `Task { @MainActor [weak self] in }`.
+- **Symmetric scale in `SkeletonLoadingModifier`**: Both skeleton exit and content enter now use `.scale(0.97)` — eliminates subtle "pop" from asymmetric 0.98→1.02 values.
+- **Note on generic static properties**: `InsightDetailView<T>` cannot have `static let` (Swift limitation); logger is `private var logger: Logger { Logger(...) }` instance computed property — os.Logger handles are cached by OSLog framework internally so creation is cheap.
+
 **Phase 30** (2026-02-23): Per-Element Skeleton Loading
 - **Root cause fixed**: Phase 29 skeleton had 3 bugs — skeleton had no opaque background (transparent), shimmer dismissed after ~50ms (fast-path < shimmer duration), `.blendMode(.screen)` on light gray imperceptible (~0.03 luminance delta)
 - **SkeletonLoadingModifier**: New `Views/Components/SkeletonLoadingModifier.swift` — `View.skeletonLoading(isLoading:skeleton:)` universal per-element modifier. `Group { if isLoading { skeleton() } else { content } }` with `.spring(response: 0.4)` animation per section
@@ -1061,7 +1072,7 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 
 ---
 
-**Last Updated**: 2026-02-23
-**Project Status**: Active development - Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates, Progressive Insights loading
+**Last Updated**: 2026-02-26
+**Project Status**: Active development - SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates, Progressive Insights loading
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`

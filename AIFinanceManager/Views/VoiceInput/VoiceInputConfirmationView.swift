@@ -316,8 +316,9 @@ struct VoiceInputConfirmationView: View {
                 // Создаем категорию "Другое" если её нет
                 let otherCategory = CustomCategory(name: otherCategoryName, iconSource: .sfSymbol("banknote.fill"), colorHex: "#3b82f6", type: selectedType)
                 categoriesViewModel.addCategory(otherCategory)
-                // Ждем обновления списка категорий
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Ждем одного runloop-тика — достаточно для propagation @Observable update
+                Task { @MainActor in
+                    await Task.yield()
                     selectedCategoryName = otherCategoryName
                 }
             }

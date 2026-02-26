@@ -348,35 +348,32 @@ extension View {
     /// Применяет стандартный стиль для фильтров с glass effect (FilterChip, AccountFilterMenu, CategoryFilterButton)
     /// Использует iOS 26+ glass morphism API для современного вида с fallback для iOS 25 и ранее
     /// - Parameter isSelected: Если true, применяет выделенный стиль (accent tint + glass effect)
+    @ViewBuilder
     func filterChipStyle(isSelected: Bool = false) -> some View {
         if #available(iOS 26, *) {
-            return AnyView(
-                self
-                    .font(AppTypography.label)
-                    .foregroundStyle(AppColors.textPrimary)
-                    .padding(.horizontal, AppSpacing.lg)
-                    .padding(.vertical, AppSpacing.sm)
-                    .clipShape(.rect(cornerRadius: AppRadius.pill))
-                    .glassEffect(
-                        isSelected
-                        ? .regular.tint(AppColors.accent.opacity(0.2)).interactive()
-                        : .regular.interactive()
-                    )
-            )
+            self
+                .font(AppTypography.label)
+                .foregroundStyle(AppColors.textPrimary)
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.sm)
+                .clipShape(.rect(cornerRadius: AppRadius.pill))
+                .glassEffect(
+                    isSelected
+                    ? .regular.tint(AppColors.accent.opacity(0.2)).interactive()
+                    : .regular.interactive()
+                )
         } else {
-            return AnyView(
-                self
-                    .font(AppTypography.label)
-                    .foregroundStyle(AppColors.textPrimary)
-                    .padding(.horizontal, AppSpacing.lg)
-                    .padding(.vertical, AppSpacing.sm)
-                    .background(
-                        isSelected
-                        ? AppColors.accent.opacity(0.2)
-                        : AppColors.secondaryBackground,
-                        in: RoundedRectangle(cornerRadius: AppRadius.pill)
-                    )
-            )
+            self
+                .font(AppTypography.label)
+                .foregroundStyle(AppColors.textPrimary)
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.sm)
+                .background(
+                    isSelected
+                    ? AppColors.accent.opacity(0.2)
+                    : AppColors.secondaryBackground,
+                    in: RoundedRectangle(cornerRadius: AppRadius.pill)
+                )
         }
     }
 
@@ -388,24 +385,21 @@ extension View {
     /// Применяет glass effect с стандартным cornerRadius для карточек (iOS 26+)
     /// Автоматически добавляет padding и contentShape с fallback для iOS 25 и ранее
     /// - Parameter radius: Corner radius (по умолчанию .pill)
+    @ViewBuilder
     func glassCardStyle(radius: CGFloat = AppRadius.pill) -> some View {
         if #available(iOS 26, *) {
-            return AnyView(
-                self
-                    .padding(AppSpacing.lg)
-                    .contentShape(Rectangle())
-                    .clipShape(.rect(cornerRadius: radius))
-                    .glassEffect(.regular, in: .rect(cornerRadius: radius))
-            )
+            self
+                .padding(AppSpacing.lg)
+                .contentShape(Rectangle())
+                .clipShape(.rect(cornerRadius: radius))
+                .glassEffect(.regular, in: .rect(cornerRadius: radius))
         } else {
-            return AnyView(
-                self
-                    .padding(AppSpacing.lg)
-                    .background(
-                        .ultraThinMaterial,
-                        in: RoundedRectangle(cornerRadius: radius)
-                    )
-            )
+            self
+                .padding(AppSpacing.lg)
+                .background(
+                    .ultraThinMaterial,
+                    in: RoundedRectangle(cornerRadius: radius)
+                )
         }
     }
     
@@ -413,23 +407,20 @@ extension View {
     /// Используется для карточек с встроенными Swift Charts — clipShape обрезает Metal-слои Charts.
     /// На iOS 26+ glassEffect сам обрезает glass по форме, не затрагивая SwiftUI-контент.
     /// - Parameter radius: Corner radius (по умолчанию .pill)
+    @ViewBuilder
     func cardBackground(radius: CGFloat = AppRadius.pill) -> some View {
         if #available(iOS 26, *) {
             // ⚠️ Намеренно НЕ применяем clipShape — он обрезает Swift Charts слои.
             // glassEffect(in: .rect(cornerRadius:)) самостоятельно задаёт форму glass-слоя.
-            return AnyView(
-                self
-                    .glassEffect(.regular, in: .rect(cornerRadius: radius))
-            )
+            self
+                .glassEffect(.regular, in: .rect(cornerRadius: radius))
         } else {
-            return AnyView(
-                self
-                    .background(
-                        .ultraThinMaterial,
-                        in: RoundedRectangle(cornerRadius: radius)
-                    )
-                    .clipShape(.rect(cornerRadius: radius))
-            )
+            self
+                .background(
+                    .ultraThinMaterial,
+                    in: RoundedRectangle(cornerRadius: radius)
+                )
+                .clipShape(.rect(cornerRadius: radius))
         }
     }
 
@@ -519,31 +510,28 @@ extension View {
     /// - Parameters:
     ///   - isPlanned: Плановая транзакция (синий оттенок на обеих платформах)
     ///   - radius: Corner radius (по умолчанию .sm для строк)
+    @ViewBuilder
     func glassTransactionRowStyle(
         isPlanned: Bool = false,
         radius: CGFloat = AppRadius.sm
     ) -> some View {
         if #available(iOS 26, *) {
-            return AnyView(
-                self
-                    .padding(.vertical, AppSpacing.sm)
-                    .clipShape(.rect(cornerRadius: radius))
-                    .glassEffect(
-                        isPlanned
-                            ? .regular.tint(.blue.opacity(0.12))
-                            : .regular,
-                        in: .rect(cornerRadius: radius)
-                    )
-            )
+            self
+                .padding(.vertical, AppSpacing.sm)
+                .clipShape(.rect(cornerRadius: radius))
+                .glassEffect(
+                    isPlanned
+                        ? .regular.tint(.blue.opacity(0.12))
+                        : .regular,
+                    in: .rect(cornerRadius: radius)
+                )
         } else {
-            return AnyView(
-                self
-                    .padding(.vertical, AppSpacing.sm)
-                    .background(
-                        isPlanned ? Color.blue.opacity(0.1) : AppColors.secondaryBackground,
-                        in: RoundedRectangle(cornerRadius: radius)
-                    )
-            )
+            self
+                .padding(.vertical, AppSpacing.sm)
+                .background(
+                    isPlanned ? Color.blue.opacity(0.1) : AppColors.secondaryBackground,
+                    in: RoundedRectangle(cornerRadius: radius)
+                )
         }
     }
 }

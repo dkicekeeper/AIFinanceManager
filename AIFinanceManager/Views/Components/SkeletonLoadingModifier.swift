@@ -18,10 +18,10 @@ struct SkeletonLoadingModifier<S: View>: ViewModifier {
         Group {
             if isLoading {
                 skeleton()
-                    .transition(.opacity.combined(with: .scale(0.98, anchor: .center)))
+                    .transition(.opacity.combined(with: .scale(0.97, anchor: .center)))
             } else {
                 content
-                    .transition(.opacity.combined(with: .scale(1.02, anchor: .center)))
+                    .transition(.opacity.combined(with: .scale(0.97, anchor: .center)))
             }
         }
         .animation(.spring(response: 0.4), value: isLoading)

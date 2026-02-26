@@ -24,18 +24,18 @@ final class InsightsViewModel {
 
     // MARK: - Dependencies
 
-    private let insightsService: InsightsService
-    private let transactionStore: TransactionStore
-    private let transactionsViewModel: TransactionsViewModel
+    @ObservationIgnored private let insightsService: InsightsService
+    @ObservationIgnored private let transactionStore: TransactionStore
+    @ObservationIgnored private let transactionsViewModel: TransactionsViewModel
 
     // MARK: - Push-model cache
 
     /// Pre-computed insights keyed by granularity.
     /// Populated in background when data changes; read instantly on tab open.
-    private var precomputedInsights: [InsightGranularity: [Insight]] = [:]
+    @ObservationIgnored private var precomputedInsights: [InsightGranularity: [Insight]] = [:]
 
     /// Pre-computed period data points keyed by granularity.
-    private var precomputedPeriodPoints: [InsightGranularity: [PeriodDataPoint]] = [:]
+    @ObservationIgnored private var precomputedPeriodPoints: [InsightGranularity: [PeriodDataPoint]] = [:]
 
     /// Pre-computed period totals keyed by granularity.
     private struct PeriodTotals {
@@ -43,13 +43,13 @@ final class InsightsViewModel {
         let expenses: Double
         let netFlow: Double
     }
-    private var precomputedTotals: [InsightGranularity: PeriodTotals] = [:]
+    @ObservationIgnored private var precomputedTotals: [InsightGranularity: PeriodTotals] = [:]
 
     /// Background recompute task handle — cancelled and replaced on each data change.
-    private var recomputeTask: Task<Void, Never>?
+    @ObservationIgnored private var recomputeTask: Task<Void, Never>?
 
     /// Phase 18: Stale flag — when true, data needs recompute on next onAppear
-    private var isStale: Bool = true
+    @ObservationIgnored private var isStale: Bool = true
 
     // MARK: - Observable State
 

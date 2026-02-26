@@ -99,19 +99,19 @@ class TransactionsViewModel {
 
     /// Phase 8: Stub aggregate cache for backward compatibility
     /// Aggregate caching now handled by TransactionStore
-    private let aggregateCache: CategoryAggregateCacheProtocol = CategoryAggregateCacheStub()
+    @ObservationIgnored private let aggregateCache: CategoryAggregateCacheProtocol = CategoryAggregateCacheStub()
 
     // MARK: - Services (initialized eagerly for @Observable compatibility)
 
-    private let recurringService: RecurringTransactionServiceProtocol
-    private let filterCoordinator: TransactionFilterCoordinatorProtocol
-    private let accountOperationService: AccountOperationServiceProtocol
-    private let queryService: TransactionQueryServiceProtocol
-    private let groupingService: TransactionGroupingService
-    private let balanceCalculator: BalanceCalculator
+    @ObservationIgnored private let recurringService: RecurringTransactionServiceProtocol
+    @ObservationIgnored private let filterCoordinator: TransactionFilterCoordinatorProtocol
+    @ObservationIgnored private let accountOperationService: AccountOperationServiceProtocol
+    @ObservationIgnored private let queryService: TransactionQueryServiceProtocol
+    @ObservationIgnored private let groupingService: TransactionGroupingService
+    @ObservationIgnored private let balanceCalculator: BalanceCalculator
     @ObservationIgnored let recurringGenerator: RecurringTransactionGenerator
 
-    private let balanceUpdateCoordinator = BalanceUpdateCoordinatorWrapper()
+    @ObservationIgnored private let balanceUpdateCoordinator = BalanceUpdateCoordinatorWrapper()
 
     // MARK: - Batch Mode for Performance
 

@@ -47,7 +47,7 @@ struct FormattedAmountText: View {
 
     private var formattedParts: (integer: String, decimal: String, symbol: String) {
         let symbol = Formatting.currencySymbol(for: currency)
-        let numberFormatter = AmountDisplayConfiguration.shared.makeNumberFormatter()
+        let numberFormatter = AmountDisplayConfiguration.formatter
 
         let formatted = numberFormatter.string(from: NSNumber(value: amount)) ?? String(format: "%.2f", amount)
 

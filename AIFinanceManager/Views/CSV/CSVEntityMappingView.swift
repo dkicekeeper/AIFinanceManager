@@ -156,8 +156,9 @@ struct CSVEntityMappingView: View {
                         entityMapping.categoryMappings = categoryMappings
                         // Закрываем модалку сопоставления сущностей перед началом импорта
                         dismiss()
-                        // Запускаем импорт после небольшой задержки, чтобы модалка успела закрыться
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        // Запускаем импорт после sheet dismiss animation (~300ms)
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(300))
                             onComplete(entityMapping)
                         }
                     } label: {
