@@ -148,7 +148,6 @@ final class InsightsViewModel {
 
     func refreshInsights() {
         Self.logger.debug("🔄 [InsightsVM] refreshInsights — manual refresh")
-        PerformanceLogger.shared.reset()
         invalidateAndRecompute()
         loadInsightsBackground()
     }

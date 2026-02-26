@@ -99,103 +99,78 @@ struct UniversalCarousel<Content: View>: View {
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
 
-#if DEBUG
-struct UniversalCarousel_Previews: PreviewProvider {
-    struct PreviewItem: Identifiable {
-        let id = UUID()
-        let title: String
-        let color: Color
-    }
-
-    static let items = [
-        PreviewItem(title: "Item 1", color: .red),
-        PreviewItem(title: "Item 2", color: .blue),
-        PreviewItem(title: "Item 3", color: .green),
-        PreviewItem(title: "Item 4", color: .orange),
-        PreviewItem(title: "Item 5", color: .purple)
-    ]
-
-    static var previews: some View {
-        VStack(spacing: AppSpacing.xl) {
-            // Standard configuration
-            VStack(alignment: .leading) {
-                Text("Standard")
-                    .font(AppTypography.h4)
-                    .padding(.horizontal, AppSpacing.lg)
-
-                UniversalCarousel(config: .standard) {
-                    ForEach(items) { item in
-                        RoundedRectangle(cornerRadius: AppRadius.md)
-                            .fill(item.color)
-                            .frame(width: 120, height: 80)
-                            .overlay {
-                                Text(item.title)
-                                    .foregroundStyle(.white)
-                            }
-                    }
-                }
-            }
-
-            // Compact configuration
-            VStack(alignment: .leading) {
-                Text("Compact")
-                    .font(AppTypography.h4)
-                    .padding(.horizontal, AppSpacing.lg)
-
-                UniversalCarousel(config: .compact) {
-                    ForEach(items) { item in
-                        Circle()
-                            .fill(item.color)
-                            .frame(width: 50, height: 50)
-                    }
-                }
-            }
-
-            // Filter configuration
-            VStack(alignment: .leading) {
-                Text("Filter")
-                    .font(AppTypography.h4)
-                    .padding(.horizontal, AppSpacing.lg)
-
-                UniversalCarousel(config: .filter) {
-                    ForEach(items) { item in
-                        Text(item.title)
-                            .font(AppTypography.body)
-                            .padding(.horizontal, AppSpacing.md)
-                            .padding(.vertical, AppSpacing.sm)
-                            .background(item.color.opacity(0.2))
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-
-            // CSV Preview configuration
-            VStack(alignment: .leading) {
-                Text("CSV Preview (with indicators)")
-                    .font(AppTypography.h4)
-                    .padding(.horizontal, AppSpacing.lg)
-
-                UniversalCarousel(config: .csvPreview) {
-                    ForEach(items) { item in
-                        VStack {
-                            Text("Header")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(.secondary)
-                            Text(item.title)
-                                .font(AppTypography.body)
-                        }
-                        .padding(AppSpacing.sm)
-                        .background(AppColors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.xs))
-                    }
-                }
-            }
-
-            Spacer()
-        }
-        .padding(.top, AppSpacing.xl)
-    }
+private struct CarouselPreviewItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let color: Color
 }
-#endif
+
+private let carouselPreviewItems = [
+    CarouselPreviewItem(title: "Item 1", color: .red),
+    CarouselPreviewItem(title: "Item 2", color: .blue),
+    CarouselPreviewItem(title: "Item 3", color: .green),
+    CarouselPreviewItem(title: "Item 4", color: .orange),
+    CarouselPreviewItem(title: "Item 5", color: .purple)
+]
+
+#Preview("Standard & Compact") {
+    VStack(spacing: AppSpacing.xl) {
+        VStack(alignment: .leading) {
+            Text("Standard").font(AppTypography.h4).padding(.horizontal, AppSpacing.lg)
+            UniversalCarousel(config: .standard) {
+                ForEach(carouselPreviewItems) { item in
+                    RoundedRectangle(cornerRadius: AppRadius.md)
+                        .fill(item.color)
+                        .frame(width: 120, height: 80)
+                        .overlay { Text(item.title).foregroundStyle(.white) }
+                }
+            }
+        }
+
+        VStack(alignment: .leading) {
+            Text("Compact").font(AppTypography.h4).padding(.horizontal, AppSpacing.lg)
+            UniversalCarousel(config: .compact) {
+                ForEach(carouselPreviewItems) { item in
+                    Circle().fill(item.color).frame(width: 50, height: 50)
+                }
+            }
+        }
+    }
+    .padding(.top, AppSpacing.xl)
+}
+
+#Preview("Filter & CSV Preview") {
+    VStack(spacing: AppSpacing.xl) {
+        VStack(alignment: .leading) {
+            Text("Filter").font(AppTypography.h4).padding(.horizontal, AppSpacing.lg)
+            UniversalCarousel(config: .filter) {
+                ForEach(carouselPreviewItems) { item in
+                    Text(item.title)
+                        .font(AppTypography.body)
+                        .padding(.horizontal, AppSpacing.md)
+                        .padding(.vertical, AppSpacing.sm)
+                        .background(item.color.opacity(0.2))
+                        .clipShape(Capsule())
+                }
+            }
+        }
+
+        VStack(alignment: .leading) {
+            Text("CSV Preview (with indicators)").font(AppTypography.h4).padding(.horizontal, AppSpacing.lg)
+            UniversalCarousel(config: .csvPreview) {
+                ForEach(carouselPreviewItems) { item in
+                    VStack {
+                        Text("Header").font(AppTypography.caption).foregroundStyle(.secondary)
+                        Text(item.title).font(AppTypography.body)
+                    }
+                    .padding(AppSpacing.sm)
+                    .background(AppColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.xs))
+                }
+            }
+        }
+    }
+    .padding(.top, AppSpacing.xl)
+}

@@ -211,16 +211,18 @@ struct TransactionRowContent: View {
 }
 
 #Preview("Transaction Row - Regular") {
-    let coordinator = AppCoordinator()
+    let mockAccounts = [
+        Account(id: "acc-kaspi", name: "Kaspi Gold", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 150000)
+    ]
     let sampleTransaction = Transaction(
         id: "test-1",
         date: DateFormatters.dateFormatter.string(from: Date()),
-        description: "Test transaction",
-        amount: 1000,
+        description: "Обед в кафе",
+        amount: 3500,
         currency: "KZT",
         type: .expense,
         category: "Food",
-        accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
+        accountId: "acc-kaspi"
     )
 
     VStack(spacing: AppSpacing.md) {
@@ -231,8 +233,8 @@ struct TransactionRowContent: View {
         TransactionRowContent(
             transaction: sampleTransaction,
             currency: "KZT",
-            customCategories: coordinator.categoriesViewModel.customCategories,
-            accounts: coordinator.accountsViewModel.accounts
+            customCategories: [],
+            accounts: mockAccounts
         )
 
         Text("With Standard Style")
@@ -242,8 +244,8 @@ struct TransactionRowContent: View {
         TransactionRowContent(
             transaction: sampleTransaction,
             currency: "KZT",
-            customCategories: coordinator.categoriesViewModel.customCategories,
-            accounts: coordinator.accountsViewModel.accounts
+            customCategories: [],
+            accounts: mockAccounts
         )
         .transactionRowStyle()
     }
@@ -278,7 +280,13 @@ struct TransactionRowContent: View {
 }
 
 #Preview("Transaction Row - Deposit Style") {
-    let coordinator = AppCoordinator()
+    let mockAccounts = [
+        Account(id: "account-1", name: "Kaspi Gold", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 150000),
+        Account(id: "deposit-1", name: "Halyk Deposit", currency: "KZT", iconSource: .bankLogo(.halykBank),
+                depositInfo: DepositInfo(bankName: "Halyk Bank", principalBalance: 1_000_000,
+                                         capitalizationEnabled: true, interestRateAnnual: 12.5, interestPostingDay: 15),
+                initialBalance: 1_000_000)
+    ]
     let depositId = "deposit-1"
 
     VStack(spacing: AppSpacing.lg) {
@@ -290,7 +298,7 @@ struct TransactionRowContent: View {
             transaction: Transaction(
                 id: "test-3",
                 date: DateFormatters.dateFormatter.string(from: Date()),
-                description: "Interest accrual",
+                description: "Начисление процентов",
                 amount: 1250.50,
                 currency: "KZT",
                 type: .depositInterestAccrual,
@@ -298,7 +306,7 @@ struct TransactionRowContent: View {
                 accountId: depositId
             ),
             currency: "KZT",
-            accounts: coordinator.accountsViewModel.accounts,
+            accounts: mockAccounts,
             showDescription: false,
             depositAccountId: depositId
         )
@@ -309,7 +317,7 @@ struct TransactionRowContent: View {
             transaction: Transaction(
                 id: "test-4",
                 date: DateFormatters.dateFormatter.string(from: Date()),
-                description: "Deposit top-up",
+                description: "Пополнение депозита",
                 amount: 50000,
                 currency: "KZT",
                 type: .internalTransfer,
@@ -318,7 +326,7 @@ struct TransactionRowContent: View {
                 targetAccountId: depositId
             ),
             currency: "KZT",
-            accounts: coordinator.accountsViewModel.accounts,
+            accounts: mockAccounts,
             showDescription: false,
             depositAccountId: depositId
         )
@@ -329,7 +337,7 @@ struct TransactionRowContent: View {
             transaction: Transaction(
                 id: "planned-1",
                 date: DateFormatters.dateFormatter.string(from: Date().addingTimeInterval(7 * 24 * 60 * 60)),
-                description: "Future interest",
+                description: "Будущие проценты",
                 amount: 1250,
                 currency: "KZT",
                 type: .depositInterestAccrual,
@@ -337,7 +345,7 @@ struct TransactionRowContent: View {
                 accountId: depositId
             ),
             currency: "KZT",
-            accounts: coordinator.accountsViewModel.accounts,
+            accounts: mockAccounts,
             showDescription: false,
             depositAccountId: depositId,
             isPlanned: true
@@ -348,15 +356,18 @@ struct TransactionRowContent: View {
 }
 
 #Preview("Transaction Row - Variants") {
-    let coordinator = AppCoordinator()
+    let mockAccounts = [
+        Account(id: "acc-1", name: "Kaspi Gold", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 150000)
+    ]
     let sampleTransaction = Transaction(
         id: "test-5",
         date: DateFormatters.dateFormatter.string(from: Date()),
-        description: "Test transaction",
-        amount: 1000,
+        description: "Продукты в магазине",
+        amount: 8500,
         currency: "KZT",
         type: .expense,
-        category: "Food"
+        category: "Food",
+        accountId: "acc-1"
     )
 
     VStack(spacing: AppSpacing.lg) {
@@ -368,8 +379,8 @@ struct TransactionRowContent: View {
             TransactionRowContent(
                 transaction: sampleTransaction,
                 currency: "KZT",
-                customCategories: coordinator.categoriesViewModel.customCategories,
-                accounts: coordinator.accountsViewModel.accounts
+                customCategories: [],
+                accounts: mockAccounts
             )
             .transactionRowStyle(variant: .standard)
         }
@@ -382,8 +393,8 @@ struct TransactionRowContent: View {
             TransactionRowContent(
                 transaction: sampleTransaction,
                 currency: "KZT",
-                customCategories: coordinator.categoriesViewModel.customCategories,
-                accounts: coordinator.accountsViewModel.accounts
+                customCategories: [],
+                accounts: mockAccounts
             )
             .transactionRowStyle(variant: .transparent)
         }
@@ -396,8 +407,8 @@ struct TransactionRowContent: View {
             TransactionRowContent(
                 transaction: sampleTransaction,
                 currency: "KZT",
-                customCategories: coordinator.categoriesViewModel.customCategories,
-                accounts: coordinator.accountsViewModel.accounts
+                customCategories: [],
+                accounts: mockAccounts
             )
             .transactionRowStyle(variant: .card)
         }

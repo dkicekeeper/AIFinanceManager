@@ -143,19 +143,19 @@ final class TransactionRepository: TransactionRepositoryProtocol {
     func saveTransactionsSync(_ transactions: [Transaction]) throws {
         PerformanceProfiler.start("TransactionRepository.saveTransactionsSync")
 
-        // PERFORMANCE: Используем background context вместо viewContext
         let backgroundContext = stack.persistentContainer.newBackgroundContext()
         backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
 
-        // Выполняем все операции в background context синхронно
         try backgroundContext.performAndWait {
-            // PERFORMANCE: Batch size для fetch
+            // fetchBatchSize must be 0 here: intermediate saves within performAndWait
+            // invalidate batch-fault buffers, causing "persistent store is not reachable"
+            // when the delete loop accesses entities from a stale batch.
             let fetchRequest = NSFetchRequest<TransactionEntity>(entityName: "TransactionEntity")
-            fetchRequest.fetchBatchSize = 500
+            fetchRequest.fetchBatchSize = 0
 
             let existingEntities = try backgroundContext.fetch(fetchRequest)
 
-            // Build dictionary safely
+            // Build ID → entity map; delete any duplicate-ID entities upfront
             var existingDict: [String: TransactionEntity] = [:]
             for entity in existingEntities {
                 let id = entity.id ?? ""
@@ -166,7 +166,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 }
             }
 
-            // Fetch all existing accounts to establish relationships
+            // Fetch accounts and recurring series for relationship wiring
             let accountFetchRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
             let accountEntities = try backgroundContext.fetch(accountFetchRequest)
             var accountDict: [String: AccountEntity] = [:]
@@ -176,7 +176,6 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 }
             }
 
-            // Fetch all existing recurring series to establish relationships
             let seriesFetchRequest = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
             let seriesEntities = try backgroundContext.fetch(seriesFetchRequest)
             var seriesDict: [String: RecurringSeriesEntity] = [:]
@@ -186,18 +185,15 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 }
             }
 
-            var keptIds = Set<String>()
+            var keptIds = Set<String>(minimumCapacity: transactions.count)
 
-            // PERFORMANCE: Batch processing - сохраняем каждые 500 транзакций
-            let batchSize = 500
-            var processedCount = 0
-
-            // Update or create transactions
+            // Update existing entities or create new ones.
+            // No intermediate saves — intermediate saves with fetchBatchSize > 0 cause
+            // batch-fault invalidation and the "persistent store not reachable" crash.
             for transaction in transactions {
                 keptIds.insert(transaction.id)
 
                 if let existing = existingDict[transaction.id] {
-                    // Update existing
                     updateTransactionEntity(
                         existing,
                         from: transaction,
@@ -205,7 +201,6 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                         seriesDict: seriesDict
                     )
                 } else {
-                    // Create new
                     let newEntity = TransactionEntity.from(transaction, context: backgroundContext)
                     setTransactionRelationships(
                         newEntity,
@@ -214,23 +209,28 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                         seriesDict: seriesDict
                     )
                 }
+            }
 
-                processedCount += 1
-
-                // PERFORMANCE: Промежуточное сохранение каждые batchSize транзакций
-                if processedCount % batchSize == 0 && backgroundContext.hasChanges {
-                    try backgroundContext.save()
+            // Delete stale entities via NSBatchDeleteRequest to avoid iterating
+            // potentially-faulted existingEntities after the upsert loop.
+            let staleIds = existingDict.keys.filter { !keptIds.contains($0) }
+            if !staleIds.isEmpty {
+                let deleteRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "TransactionEntity")
+                deleteRequest.predicate = NSPredicate(format: "id IN %@", staleIds)
+                let batchDelete = NSBatchDeleteRequest(fetchRequest: deleteRequest)
+                batchDelete.resultType = .resultTypeObjectIDs
+                let result = try backgroundContext.execute(batchDelete) as? NSBatchDeleteResult
+                // Merge deletions into this context so subsequent save is consistent
+                let deleted = result?.result as? [NSManagedObjectID] ?? []
+                if !deleted.isEmpty {
+                    NSManagedObjectContext.mergeChanges(
+                        fromRemoteContextSave: [NSDeletedObjectsKey: deleted],
+                        into: [backgroundContext]
+                    )
                 }
             }
 
-            // Delete transactions that no longer exist
-            for entity in existingEntities {
-                if let id = entity.id, !keptIds.contains(id) {
-                    backgroundContext.delete(entity)
-                }
-            }
-
-            // Финальное сохранение
+            // Single atomic save — safe because no intermediate saves polluted batch buffers
             if backgroundContext.hasChanges {
                 try backgroundContext.save()
             }

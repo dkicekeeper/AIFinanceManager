@@ -454,7 +454,7 @@ struct VoiceInputConfirmationView: View {
     }
 }
 
-#Preview {
+#Preview("Expense Confirmation") {
     let coordinator = AppCoordinator()
     let parsedOperation = ParsedOperation(
         type: .expense,
@@ -462,7 +462,7 @@ struct VoiceInputConfirmationView: View {
         currencyCode: "KZT",
         date: Date(),
         categoryName: "Food",
-        note: "Test transaction"
+        note: "Обед в кафе"
     )
     NavigationStack {
         VoiceInputConfirmationView(
@@ -470,7 +470,30 @@ struct VoiceInputConfirmationView: View {
             accountsViewModel: coordinator.accountsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             parsedOperation: parsedOperation,
-            originalText: "Test"
+            originalText: "Потратил тысячу тенге на еду"
         )
     }
+    .environment(coordinator.transactionStore)
+}
+
+#Preview("Income Confirmation") {
+    let coordinator = AppCoordinator()
+    let parsedOperation = ParsedOperation(
+        type: .income,
+        amount: Decimal(150000),
+        currencyCode: "KZT",
+        date: Date(),
+        categoryName: "Salary",
+        note: "Зарплата"
+    )
+    NavigationStack {
+        VoiceInputConfirmationView(
+            transactionsViewModel: coordinator.transactionsViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            parsedOperation: parsedOperation,
+            originalText: "Получил зарплату 150 тысяч"
+        )
+    }
+    .environment(coordinator.transactionStore)
 }

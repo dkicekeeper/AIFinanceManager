@@ -95,3 +95,34 @@ struct EditSheetContainer<Content: View>: View {
         }
     }
 }
+
+// MARK: - Previews
+
+#Preview("Form variant") {
+    EditSheetContainer(
+        title: "Edit Account",
+        isSaveDisabled: false,
+        onSave: {},
+        onCancel: {}
+    ) {
+        Section("Name") {
+            TextField("Account name", text: .constant("Kaspi Gold"))
+        }
+        Section("Balance") {
+            TextField("Initial balance", text: .constant("150 000"))
+        }
+    }
+}
+
+#Preview("Save disabled") {
+    EditSheetContainer(
+        title: "New Category",
+        isSaveDisabled: true,
+        onSave: {},
+        onCancel: {}
+    ) {
+        Section("Name") {
+            TextField("Category name", text: .constant(""))
+        }
+    }
+}

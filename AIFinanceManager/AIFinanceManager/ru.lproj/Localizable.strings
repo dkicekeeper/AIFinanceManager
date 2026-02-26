@@ -280,6 +280,8 @@
 "deposit.capitalizationHint" = "При включенной капитализации проценты добавляются к основной сумме каждый месяц";
 "deposit.new" = "Новый депозит";
 "deposit.editTitle" = "Редактировать депозит";
+"deposit.interestAccrual.description" = "Начисление процентов";
+"deposit.interestAccrual.category" = "Начисление процентов";
 
 // MARK: - Categories Management
 "categories.expenseCategories" = "Категории расходов";

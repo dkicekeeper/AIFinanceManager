@@ -154,4 +154,7 @@ struct AccountActionView: View {
             categoriesViewModel: coordinator.categoriesViewModel
         )
     }
+    .environment(coordinator)
+    .environment(coordinator.transactionStore)
+    .environment(TimeFilterManager())
 }

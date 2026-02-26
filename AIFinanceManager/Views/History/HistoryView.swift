@@ -199,9 +199,6 @@ struct HistoryView: View {
         }
 
         PerformanceProfiler.start("HistoryView.onAppear")
-        PerformanceLogger.HistoryMetrics.logOnAppear(
-            transactionCount: transactionsViewModel.allTransactions.count
-        )
 
         // Set initial account filter
         filterCoordinator.setInitialAccountFilter(initialAccountId)
@@ -221,7 +218,6 @@ struct HistoryView: View {
         historyLogger.debug("👁️  [History] onAppear DONE in \(String(format: "%.0f", (t1-t0)*1000))ms — sections now:\(self.paginationController.sections.count) isReady:true")
 
         PerformanceProfiler.end("HistoryView.onAppear")
-        PerformanceLogger.shared.end("HistoryView.onAppear")
     }
 
     /// Forwards current filter state to the FRC-based pagination controller.
@@ -238,10 +234,6 @@ struct HistoryView: View {
                         !filterCoordinator.debouncedSearchText.isEmpty ||
                         transactionsViewModel.selectedCategories != nil
         historyLogger.debug("🔎 [History] applyFiltersToController — hasFilters:\(hasFilters) search:'\(self.filterCoordinator.debouncedSearchText)' account:\(self.filterCoordinator.selectedAccountFilter ?? "nil") category:\(self.transactionsViewModel.selectedCategories?.first ?? "nil")")
-        PerformanceLogger.HistoryMetrics.logUpdateTransactions(
-            transactionCount: transactionsViewModel.allTransactions.count,
-            hasFilters: hasFilters
-        )
 
         // Resolve date range — allTime maps to a sentinel range that is functionally
         // equivalent to no predicate (nil), so we pass nil in that case.
@@ -268,7 +260,6 @@ struct HistoryView: View {
         historyLogger.debug("🔎 [History] applyFiltersToController DONE in \(String(format: "%.0f", (t1-t0)*1000))ms — sections:\(self.paginationController.sections.count)")
 
         PerformanceProfiler.end("HistoryView.applyFiltersToController")
-        PerformanceLogger.shared.end("HistoryView.updateTransactions")
     }
 
     private func resetFilters() {

@@ -127,71 +127,41 @@ struct SubscriptionsListView: View {
     }
 }
 
-#Preview("Subscriptions List - With Data") {
-    let coordinator = AppCoordinator()
-    let transactionStore = coordinator.transactionStore
-    let transactionsViewModel = coordinator.transactionsViewModel
-
-    // Add sample subscriptions for preview
+#Preview("Subscriptions List - Cards") {
+    // Simulates the list body with real SubscriptionCard components
     let dateFormatter = DateFormatters.dateFormatter
     let today = dateFormatter.string(from: Date())
-
     let sampleSubscriptions = [
-        RecurringSeries(
-            id: "preview-1",
-            amount: Decimal(9.99),
-            currency: "USD",
-            category: "Entertainment",
-            description: "Netflix",
-            accountId: "preview-account",
-            frequency: .monthly,
-            startDate: today,
-            kind: .subscription,
-            iconSource: .brandService("Netflix"),
-            status: .active
-        ),
-        RecurringSeries(
-            id: "preview-2",
-            amount: Decimal(15.00),
-            currency: "USD",
-            category: "Entertainment",
-            description: "Spotify Premium",
-            accountId: "preview-account",
-            frequency: .monthly,
-            startDate: today,
-            kind: .subscription,
-            iconSource: .brandService("Spotify"),
-            status: .active
-        ),
-        RecurringSeries(
-            id: "preview-3",
-            amount: Decimal(99.00),
-            currency: "USD",
-            category: "Software",
-            description: "Adobe Creative Cloud",
-            accountId: "preview-account",
-            frequency: .monthly,
-            startDate: today,
-            kind: .subscription,
-            iconSource: .brandService("Adobe"),
-            status: .paused
-        )
+        RecurringSeries(id: "p1", amount: Decimal(9.99),  currency: "USD", category: "Развлечения",
+                        description: "Netflix",             accountId: "acc", frequency: .monthly,
+                        startDate: today, kind: .subscription, iconSource: .brandService("Netflix"),  status: .active),
+        RecurringSeries(id: "p2", amount: Decimal(4990),  currency: "KZT", category: "Музыка",
+                        description: "Spotify Premium",    accountId: "acc", frequency: .monthly,
+                        startDate: today, kind: .subscription, iconSource: .brandService("Spotify"),  status: .active),
+        RecurringSeries(id: "p3", amount: Decimal(2990),  currency: "KZT", category: "Облако",
+                        description: "iCloud 50 GB",       accountId: "acc", frequency: .monthly,
+                        startDate: today, kind: .subscription, iconSource: .sfSymbol("cloud.fill"),   status: .active),
+        RecurringSeries(id: "p4", amount: Decimal(15000), currency: "KZT", category: "Здоровье",
+                        description: "Фитнес зал",         accountId: "acc", frequency: .monthly,
+                        startDate: today, kind: .subscription, iconSource: .sfSymbol("dumbbell.fill"), status: .paused)
     ]
-
-    // Note: In real preview, subscriptions would be loaded from repository
-    // For now, preview shows empty state or you can add test data via repository
-
     NavigationStack {
-        SubscriptionsListView(
-            transactionStore: transactionStore,
-            transactionsViewModel: transactionsViewModel
-        )
-        .environment(TimeFilterManager())
+        List {
+            ForEach(sampleSubscriptions) { sub in
+                SubscriptionCard(
+                    subscription: sub,
+                    nextChargeDate: Date().addingTimeInterval(Double(Int.random(in: 1...28)) * 86400)
+                )
+            }
+        }
+        .listStyle(PlainListStyle())
+        .navigationTitle("Подписки")
+        .navigationBarTitleDisplayMode(.large)
     }
+    .environment(TimeFilterManager())
 }
 
 #Preview("Subscription Card") {
-    let coordinator = AppCoordinator()
     let dateFormatter = DateFormatters.dateFormatter
     let today = dateFormatter.string(from: Date())
 

@@ -346,23 +346,26 @@ struct TransactionCard: View {
 
 #Preview("Expense") {
     let coordinator = AppCoordinator()
+    let mockAccounts = [
+        Account(id: "acc-kaspi", name: "Kaspi Gold", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 150000)
+    ]
     let sampleTransaction = Transaction(
         id: "preview-expense",
         date: DateFormatters.dateFormatter.string(from: Date()),
-        description: "Coffee & Snacks",
+        description: "Кофе и перекус",
         amount: 2500,
         currency: "KZT",
         type: .expense,
         category: "Food",
-        accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
+        accountId: "acc-kaspi"
     )
 
     List {
         TransactionCard(
             transaction: sampleTransaction,
             currency: "KZT",
-            customCategories: coordinator.categoriesViewModel.customCategories,
-            accounts: coordinator.accountsViewModel.accounts,
+            customCategories: [],
+            accounts: mockAccounts,
             viewModel: coordinator.transactionsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             accountsViewModel: coordinator.accountsViewModel,
@@ -375,23 +378,26 @@ struct TransactionCard: View {
 
 #Preview("Income") {
     let coordinator = AppCoordinator()
+    let mockAccounts = [
+        Account(id: "acc-halyk", name: "Halyk Bank", currency: "KZT", iconSource: .bankLogo(.halykBank), initialBalance: 500000)
+    ]
     let sampleTransaction = Transaction(
         id: "preview-income",
         date: DateFormatters.dateFormatter.string(from: Date()),
-        description: "Salary",
+        description: "Зарплата",
         amount: 450000,
         currency: "KZT",
         type: .income,
         category: "Salary",
-        accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
+        accountId: "acc-halyk"
     )
 
     List {
         TransactionCard(
             transaction: sampleTransaction,
             currency: "KZT",
-            customCategories: coordinator.categoriesViewModel.customCategories,
-            accounts: coordinator.accountsViewModel.accounts,
+            customCategories: [],
+            accounts: mockAccounts,
             viewModel: coordinator.transactionsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             accountsViewModel: coordinator.accountsViewModel,
@@ -404,28 +410,29 @@ struct TransactionCard: View {
 
 #Preview("Transfer") {
     let coordinator = AppCoordinator()
-    let accounts = coordinator.accountsViewModel.accounts
-    let sourceId = accounts.first?.id ?? "src"
-    let targetId = accounts.dropFirst().first?.id ?? "tgt"
+    let mockAccounts = [
+        Account(id: "acc-src", name: "Kaspi Gold", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 150000),
+        Account(id: "acc-tgt", name: "Halyk Bank", currency: "KZT", iconSource: .bankLogo(.halykBank), initialBalance: 250000)
+    ]
 
     let sampleTransaction = Transaction(
         id: "preview-transfer",
         date: DateFormatters.dateFormatter.string(from: Date()),
-        description: "Between accounts",
+        description: "Перевод между счетами",
         amount: 50000,
         currency: "KZT",
         type: .internalTransfer,
         category: "Transfer",
-        accountId: sourceId,
-        targetAccountId: targetId
+        accountId: "acc-src",
+        targetAccountId: "acc-tgt"
     )
 
     List {
         TransactionCard(
             transaction: sampleTransaction,
             currency: "KZT",
-            customCategories: coordinator.categoriesViewModel.customCategories,
-            accounts: accounts,
+            customCategories: [],
+            accounts: mockAccounts,
             viewModel: coordinator.transactionsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             accountsViewModel: coordinator.accountsViewModel,
@@ -438,6 +445,9 @@ struct TransactionCard: View {
 
 #Preview("Recurring") {
     let coordinator = AppCoordinator()
+    let mockAccounts = [
+        Account(id: "acc-kaspi", name: "Kaspi Gold", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 150000)
+    ]
     let sampleTransaction = Transaction(
         id: "preview-recurring",
         date: DateFormatters.dateFormatter.string(from: Date()),
@@ -446,7 +456,7 @@ struct TransactionCard: View {
         currency: "KZT",
         type: .expense,
         category: "Subscriptions",
-        accountId: coordinator.accountsViewModel.accounts.first?.id ?? "",
+        accountId: "acc-kaspi",
         recurringSeriesId: "series-1"
     )
 
@@ -454,8 +464,8 @@ struct TransactionCard: View {
         TransactionCard(
             transaction: sampleTransaction,
             currency: "KZT",
-            customCategories: coordinator.categoriesViewModel.customCategories,
-            accounts: coordinator.accountsViewModel.accounts,
+            customCategories: [],
+            accounts: mockAccounts,
             viewModel: coordinator.transactionsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             accountsViewModel: coordinator.accountsViewModel,

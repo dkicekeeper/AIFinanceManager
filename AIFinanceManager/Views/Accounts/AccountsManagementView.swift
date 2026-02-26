@@ -76,13 +76,8 @@ struct AccountsManagementView: View {
                                 showingAccountDeleteDialog = true
                             },
                             balanceCoordinator: coordinator,
-                            interestToday: account.depositInfo.flatMap {
-                                let val = DepositInterestService.calculateInterestToToday(depositInfo: $0)
-                                return val > 0 ? NSDecimalNumber(decimal: val).doubleValue : nil
-                            },
-                            nextPostingDate: account.depositInfo.flatMap {
-                                DepositInterestService.nextPostingDate(depositInfo: $0)
-                            }
+                            interestToday: depositsViewModel.interestToday(for: account),
+                            nextPostingDate: depositsViewModel.nextPostingDate(for: account)
                         )
                     }
                     .onMove(perform: isReordering ? moveAccount : nil)
@@ -158,7 +153,6 @@ struct AccountsManagementView: View {
         .sheet(isPresented: $showingAddDeposit) {
             DepositEditView(
                 depositsViewModel: depositsViewModel,
-                transactionsViewModel: transactionsViewModel,
                 account: nil,
                 onSave: { account in
                     if let depositInfo = account.depositInfo {
@@ -173,7 +167,6 @@ struct AccountsManagementView: View {
                             interestPostingDay: depositInfo.interestPostingDay,
                             capitalizationEnabled: depositInfo.capitalizationEnabled
                         )
-                        // Phase 7.5: Reconcile deposits after adding with TransactionStore
                         depositsViewModel.reconcileAllDeposits(
                             allTransactions: transactionsViewModel.allTransactions,
                             onTransactionCreated: { transaction in
@@ -188,8 +181,7 @@ struct AccountsManagementView: View {
                         )
                     }
                     showingAddDeposit = false
-                },
-                onCancel: { showingAddDeposit = false }
+                }
             )
         }
         .sheet(item: $editingAccount) { account in
@@ -197,15 +189,13 @@ struct AccountsManagementView: View {
                 if account.isDeposit {
                     DepositEditView(
                         depositsViewModel: depositsViewModel,
-                        transactionsViewModel: transactionsViewModel,
                         account: account,
                         onSave: { updatedAccount in
                             HapticManager.success()
                             depositsViewModel.updateDeposit(updatedAccount)
                             transactionsViewModel.recalculateAccountBalances()
                             editingAccount = nil
-                        },
-                        onCancel: { editingAccount = nil }
+                        }
                     )
                 } else {
                     AccountEditView(
@@ -278,6 +268,7 @@ struct AccountsManagementView: View {
             transactionsViewModel: coordinator.transactionsViewModel
         )
     }
+    .environment(coordinator.transactionStore)
 }
 
 #Preview("Accounts Management - Empty") {
@@ -290,6 +281,7 @@ struct AccountsManagementView: View {
             transactionsViewModel: coordinator.transactionsViewModel
         )
     }
+    .environment(coordinator.transactionStore)
 }
 
 #Preview("Account Row") {

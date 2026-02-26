@@ -136,6 +136,13 @@ AIFinanceManager/
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
 
+**Phase 34** (2026-02-26): Utils Cleanup — Dead Code & Design System Split
+- **Deleted `PerformanceLogger.swift`** (390 LOC dead code) — все 18 call sites удалены из HistoryView, InsightsViewModel, InsightsService. Единственный активный профайлер: `PerformanceProfiler.swift` (#if DEBUG, 30+ call sites).
+- **`AppTheme.swift` (743 LOC) → 6 файлов**: `AppColors.swift`, `AppSpacing.swift`, `AppTypography.swift`, `AppShadow.swift`, `AppAnimation.swift`, `AppModifiers.swift` (все View extensions + TransactionRowVariant).
+- **Deleted `Colors.swift`** — `CategoryColors` struct (palette + hexColor) перенесён в `AppColors.swift`.
+- **`AmountFormatter.swift`**: убран мёртвый `import Combine`.
+- **`CategoryStyleCache.swift` НЕ удалён** — активно используется через `CategoryStyleHelper.cached()` в 4 view-файлах (TransactionCard, TransactionRowContent, CategoryChip, TransactionCardComponents). Не удалять.
+
 **Phase 33** (2026-02-26): Component Extraction
 - **New `BudgetProgressCircle` component** (`Views/Components/BudgetProgressCircle.swift`) — extracted from `CategoryChip` + `CategoryRow`. Params: `progress: Double`, `size: CGFloat = AppIconSize.categoryIcon`, `lineWidth: CGFloat = 3`, `isOverBudget: Bool = false`. Uses `AppColors.success` / `AppColors.destructive` automatically.
 - **New `StatusIndicatorBadge` component** (`Views/Components/StatusIndicatorBadge.swift`) — extracted from `SubscriptionCard`. Backed by new `EntityStatus` enum (`.active/.paused/.archived/.pending`) with `iconName`, `tintColor`, `accessibilityLabel` props. `tintColor` uses `AppColors.statusActive/Paused/Archived/accent`.
@@ -880,7 +887,12 @@ UniversalRow(
 - `Views/Components/UniversalRow.swift` - Main component
 - `Utils/LocalizedRowKeys.swift` - Centralized localization
 - `Views/Components/IconView.swift` - Icon rendering (referenced by IconConfig)
-- `Utils/AppTheme.swift` - Design System constants
+- `Utils/AppColors.swift` - Semantic colors + CategoryColors palette (бывший Colors.swift поглощён)
+- `Utils/AppSpacing.swift` - AppSpacing, AppRadius, AppIconSize, AppSize
+- `Utils/AppTypography.swift` - AppTypography (Inter variable font)
+- `Utils/AppShadow.swift` - AppShadow, Shadow struct
+- `Utils/AppAnimation.swift` - AppAnimation durations, BounceButtonStyle
+- `Utils/AppModifiers.swift` - All View style extensions (cardStyle, filterChipStyle, transactionRowStyle, futureTransactionStyle, etc.) + TransactionRowVariant
 
 ## Testing
 
@@ -1089,6 +1101,6 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 ---
 
 **Last Updated**: 2026-02-26
-**Project Status**: Active development - Design system hardening + component extraction (Phase 32-33), SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates, Progressive Insights loading. **Zero hardcoded colors in UI components.**
+**Project Status**: Active development - Utils cleanup + design system split (Phase 34). AppTheme.swift split into 6 focused files. Zero dead code in Utils. Zero hardcoded colors in UI components (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates.
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`

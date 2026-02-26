@@ -9,11 +9,11 @@ import SwiftUI
 
 struct DepositEditView: View {
     let depositsViewModel: DepositsViewModel
-    let transactionsViewModel: TransactionsViewModel
     let account: Account?
     let onSave: (Account) -> Void
-    let onCancel: () -> Void
-    
+
+    @Environment(\.dismiss) private var dismiss
+
     @State private var name: String = ""
     @State private var bankName: String = ""
     @State private var principalBalanceText: String = ""
@@ -24,9 +24,9 @@ struct DepositEditView: View {
     @State private var capitalizationEnabled: Bool = true
     @State private var showingIconPicker = false
     @FocusState private var isNameFocused: Bool
-    
+
     private let depositCurrencies = ["KZT", "USD", "EUR"]
-    
+
     var body: some View {
         EditSheetContainer(
             title: account == nil ? String(localized: "deposit.new") : String(localized: "deposit.editTitle"),
@@ -54,12 +54,12 @@ struct DepositEditView: View {
                     depositInfo: depositInfo,
                     shouldCalculateFromTransactions: false,
                     initialBalance: balance,
-                    order: account?.order  // Preserve existing order when editing
+                    order: account?.order
                 )
                 HapticManager.success()
                 onSave(newAccount)
             },
-            onCancel: onCancel
+            onCancel: { dismiss() }
         ) {
             Section(header: Text(String(localized: "deposit.name"))) {
                 TextField(String(localized: "deposit.namePlaceholder"), text: $name)
@@ -137,7 +137,6 @@ struct DepositEditView: View {
                 interestRateText = String(format: "%.2f", NSDecimalNumber(decimal: depositInfo.interestRateAnnual).doubleValue)
                 interestPostingDay = depositInfo.interestPostingDay
                 capitalizationEnabled = depositInfo.capitalizationEnabled
-                isNameFocused = false
             } else {
                 currency = "KZT"
                 selectedIconSource = nil
@@ -145,12 +144,13 @@ struct DepositEditView: View {
                 interestRateText = ""
                 interestPostingDay = 1
                 capitalizationEnabled = true
-                // Активируем поле названия при создании нового депозита
-                Task {
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
-                    isNameFocused = true
-                }
             }
+        }
+        .task {
+            // One MainActor tick is sufficient for @FocusState after layout
+            guard account == nil else { return }
+            await Task.yield()
+            isNameFocused = true
         }
         .sheet(isPresented: $showingIconPicker) {
             IconPickerView(selectedSource: $selectedIconSource)
@@ -165,10 +165,8 @@ struct DepositEditView: View {
     NavigationStack {
         DepositEditView(
             depositsViewModel: coordinator.depositsViewModel,
-            transactionsViewModel: coordinator.transactionsViewModel,
             account: nil,
-            onSave: { _ in },
-            onCancel: {}
+            onSave: { _ in }
         )
     }
 }
@@ -193,10 +191,8 @@ struct DepositEditView: View {
     NavigationStack {
         DepositEditView(
             depositsViewModel: coordinator.depositsViewModel,
-            transactionsViewModel: coordinator.transactionsViewModel,
             account: sampleAccount,
-            onSave: { _ in },
-            onCancel: {}
+            onSave: { _ in }
         )
     }
 }

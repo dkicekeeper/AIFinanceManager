@@ -10,13 +10,14 @@ import SwiftUI
 struct DepositRateChangeView: View {
     let account: Account
     let onRateChanged: (String, Decimal, String?) -> Void // (effectiveFrom, annualRate, note)
-    let onComplete: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
 
     @State private var rateText: String = ""
     @State private var effectiveFromDate: Date = Date()
     @State private var noteText: String = ""
     @FocusState private var isRateFocused: Bool
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -29,11 +30,11 @@ struct DepositRateChangeView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                
+
                 Section(header: Text(String(localized: "deposit.effectiveDate"))) {
                     DatePicker(String(localized: "deposit.date"), selection: $effectiveFromDate, displayedComponents: .date)
                 }
-                
+
                 Section(header: Text(String(localized: "deposit.note"))) {
                     TextField(String(localized: "deposit.note"), text: $noteText, axis: .vertical)
                         .lineLimit(3...6)
@@ -45,12 +46,11 @@ struct DepositRateChangeView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(String(localized: "button.cancel")) {
                         HapticManager.light()
-                        onComplete()
+                        dismiss()
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(String(localized: "button.save")) {
-                        HapticManager.success()
                         saveRateChange()
                     }
                     .disabled(rateText.isEmpty)
@@ -62,12 +62,12 @@ struct DepositRateChangeView: View {
                 }
             }
             .task {
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                await Task.yield()
                 isRateFocused = true
             }
         }
     }
-    
+
     private func saveRateChange() {
         guard let rate = AmountFormatter.parse(rateText) else { return }
 
@@ -75,8 +75,8 @@ struct DepositRateChangeView: View {
         let note = noteText.isEmpty ? nil : noteText
 
         onRateChanged(dateString, rate, note)
-
-        onComplete()
+        HapticManager.success()
+        dismiss()
     }
 }
 
@@ -98,8 +98,6 @@ struct DepositRateChangeView: View {
 
     DepositRateChangeView(
         account: sampleAccount,
-        onRateChanged: { date, rate, note in
-        },
-        onComplete: {}
+        onRateChanged: { _, _, _ in }
     )
 }

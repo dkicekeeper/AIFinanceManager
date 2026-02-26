@@ -189,18 +189,21 @@ struct EditTransactionView: View {
 
 // MARK: - Preview
 
-#Preview {
+#Preview("Edit Expense") {
     let coordinator = AppCoordinator()
-    let dateFormatter = DateFormatters.dateFormatter
+    let mockAccounts = [
+        Account(id: "acc-kaspi", name: "Kaspi Gold", currency: "KZT", iconSource: .bankLogo(.kaspi), initialBalance: 150000),
+        Account(id: "acc-halyk", name: "Halyk Bank", currency: "KZT", iconSource: .bankLogo(.halykBank), initialBalance: 80000)
+    ]
     let sampleTransaction = Transaction(
         id: "test",
-        date: dateFormatter.string(from: Date()),
-        description: "Test transaction",
-        amount: 1000,
+        date: DateFormatters.dateFormatter.string(from: Date()),
+        description: "Обед в кафе",
+        amount: 3500,
         currency: "KZT",
         type: .expense,
         category: "Food",
-        accountId: coordinator.accountsViewModel.accounts.first?.id ?? ""
+        accountId: "acc-kaspi"
     )
     return NavigationStack {
         EditTransactionView(
@@ -209,7 +212,37 @@ struct EditTransactionView: View {
             categoriesViewModel: coordinator.categoriesViewModel,
             accountsViewModel: coordinator.accountsViewModel,
             transactionStore: coordinator.transactionStore,
-            accounts: coordinator.accountsViewModel.accounts,
+            accounts: mockAccounts,
+            customCategories: coordinator.categoriesViewModel.customCategories,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+        )
+    }
+    .environment(coordinator.transactionStore)
+}
+
+#Preview("Edit Income") {
+    let coordinator = AppCoordinator()
+    let mockAccounts = [
+        Account(id: "acc-halyk", name: "Halyk Bank", currency: "KZT", iconSource: .bankLogo(.halykBank), initialBalance: 500000)
+    ]
+    let sampleTransaction = Transaction(
+        id: "test-income",
+        date: DateFormatters.dateFormatter.string(from: Date()),
+        description: "Зарплата",
+        amount: 450000,
+        currency: "KZT",
+        type: .income,
+        category: "Salary",
+        accountId: "acc-halyk"
+    )
+    return NavigationStack {
+        EditTransactionView(
+            transaction: sampleTransaction,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            transactionStore: coordinator.transactionStore,
+            accounts: mockAccounts,
             customCategories: coordinator.categoriesViewModel.customCategories,
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
         )

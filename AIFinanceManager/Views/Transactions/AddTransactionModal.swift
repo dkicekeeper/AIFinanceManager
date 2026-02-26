@@ -143,6 +143,7 @@ struct AddTransactionModal: View {
                 MenuPickerRow(
                     title: String(localized: "quickAdd.makeRecurring"),
                     selection: $bindableCoordinator.formData.recurring
+                        
                 )
 
                 DescriptionTextField(
@@ -258,6 +259,7 @@ struct AddTransactionModal: View {
         transactionStore: coordinator.transactionStore,
         onDismiss: {}
     )
+    .environment(coordinator)
     .environment(TimeFilterManager())
 }
 
@@ -274,5 +276,6 @@ struct AddTransactionModal: View {
         transactionStore: coordinator.transactionStore,
         onDismiss: {}
     )
+    .environment(coordinator)
     .environment(TimeFilterManager())
 }

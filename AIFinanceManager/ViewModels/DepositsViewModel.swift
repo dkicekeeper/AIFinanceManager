@@ -8,7 +8,6 @@
 
 import Foundation
 import SwiftUI
-import Combine
 import Observation
 
 @Observable
@@ -16,31 +15,28 @@ import Observation
 class DepositsViewModel {
     // MARK: - Observable Properties
 
-    var deposits: [Account] = []
+    /// Computed directly from accountsViewModel — always in sync (Phase 16 pattern)
+    var deposits: [Account] {
+        accountsViewModel.accounts.filter { $0.isDeposit }
+    }
 
     // MARK: - Dependencies
 
     @ObservationIgnored let repository: DataRepositoryProtocol
     @ObservationIgnored let accountsViewModel: AccountsViewModel
 
-    /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth
-    /// Injected by AppCoordinator
+    /// Injected by AppCoordinator after init (late injection — intentionally observable)
     var balanceCoordinator: BalanceCoordinator?
-    
+
     // MARK: - Initialization
-    
+
     init(repository: DataRepositoryProtocol, accountsViewModel: AccountsViewModel) {
         self.repository = repository
         self.accountsViewModel = accountsViewModel
-        updateDeposits()
     }
-    
+
     // MARK: - Deposit Management
-    
-    private func updateDeposits() {
-        deposits = accountsViewModel.accounts.filter { $0.isDeposit }
-    }
-    
+
     func addDeposit(
         name: String,
         currency: String,
@@ -61,44 +57,39 @@ class DepositsViewModel {
             interestRateAnnual: interestRateAnnual,
             interestPostingDay: interestPostingDay
         )
-        updateDeposits()
     }
-    
+
     func updateDeposit(_ account: Account) {
         guard account.isDeposit else { return }
         accountsViewModel.updateDeposit(account)
-        updateDeposits()
     }
-    
+
     func deleteDeposit(_ account: Account) {
         accountsViewModel.deleteDeposit(account)
-        updateDeposits()
     }
-    
+
     // MARK: - Interest Rate Management
-    
+
     func addDepositRateChange(accountId: String, effectiveFrom: String, annualRate: Decimal, note: String? = nil) {
         guard var account = accountsViewModel.getAccount(by: accountId),
               var depositInfo = account.depositInfo else {
             return
         }
-        
+
         DepositInterestService.addRateChange(
             depositInfo: &depositInfo,
             effectiveFrom: effectiveFrom,
             annualRate: annualRate,
             note: note
         )
-        
+
         account.depositInfo = depositInfo
         accountsViewModel.updateAccount(account)
-        updateDeposits()
     }
-    
+
     // MARK: - Interest Reconciliation
-    
+
     /// Reconcile interest for all deposits
-    /// Note: This requires access to allTransactions, which should be provided by TransactionsViewModel
     func reconcileAllDeposits(allTransactions: [Transaction], onTransactionCreated: @escaping (Transaction) -> Void) {
         for account in accountsViewModel.accounts where account.isDeposit {
             var updatedAccount = account
@@ -107,37 +98,46 @@ class DepositsViewModel {
                 allTransactions: allTransactions,
                 onTransactionCreated: onTransactionCreated
             )
-            // Use updateAccount to ensure proper saving
             accountsViewModel.updateAccount(updatedAccount)
         }
-        updateDeposits()
     }
-    
+
     /// Reconcile interest for a specific deposit
     func reconcileDepositInterest(for accountId: String, allTransactions: [Transaction], onTransactionCreated: @escaping (Transaction) -> Void) {
         guard var account = accountsViewModel.getAccount(by: accountId),
               account.isDeposit else {
             return
         }
-        
+
         DepositInterestService.reconcileDepositInterest(
             account: &account,
             allTransactions: allTransactions,
             onTransactionCreated: onTransactionCreated
         )
-        // Use updateAccount to ensure proper saving
         accountsViewModel.updateAccount(account)
-        updateDeposits()
     }
-    
+
     // MARK: - Helper Methods
-    
+
     /// Get deposit by ID
     func getDeposit(by id: String) -> Account? {
-        return deposits.first { $0.id == id }
+        deposits.first { $0.id == id }
     }
-    
-    /// Calculate interest to today for a deposit
+
+    /// Calculate interest to today for a deposit account (for use in list rows)
+    func interestToday(for account: Account) -> Double? {
+        guard let depositInfo = account.depositInfo else { return nil }
+        let val = DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
+        return val > 0 ? NSDecimalNumber(decimal: val).doubleValue : nil
+    }
+
+    /// Get next posting date for a deposit account (for use in list rows)
+    func nextPostingDate(for account: Account) -> Date? {
+        guard let depositInfo = account.depositInfo else { return nil }
+        return DepositInterestService.nextPostingDate(depositInfo: depositInfo)
+    }
+
+    /// Calculate interest to today for a deposit by ID
     func calculateInterestToToday(for accountId: String) -> Decimal? {
         guard let account = getDeposit(by: accountId),
               let depositInfo = account.depositInfo else {
@@ -145,8 +145,8 @@ class DepositsViewModel {
         }
         return DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
     }
-    
-    /// Get next posting date for a deposit
+
+    /// Get next posting date for a deposit by ID
     func nextPostingDate(for accountId: String) -> Date? {
         guard let account = getDeposit(by: accountId),
               let depositInfo = account.depositInfo else {

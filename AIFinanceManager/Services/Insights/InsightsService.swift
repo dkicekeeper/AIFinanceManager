@@ -88,7 +88,6 @@ final class InsightsService: @unchecked Sendable {
         let filtered = filterService.filterByTimeRange(allTransactions, start: range.start, end: range.end)
 
         Self.logger.debug("📊 [Insights] Generate START — filter=\(timeFilter.displayName, privacy: .public), currency=\(baseCurrency, privacy: .public), all=\(allTransactions.count), filtered=\(filtered.count)")
-        PerformanceLogger.InsightsMetrics.logGenerateStart(filteredCount: filtered.count, cacheHit: false)
 
         // Single summary calculation for the filtered period — reused by spending + income sections.
         // IMPORTANT: We bypass queryService.calculateSummary here because it uses a global
@@ -146,7 +145,6 @@ final class InsightsService: @unchecked Sendable {
         ))
 
         Self.logger.debug("✅ [Insights] Generate END — total insights=\(insights.count) (spending=\(insights.filter { $0.category == .spending }.count), income=\(insights.filter { $0.category == .income }.count), budget=\(insights.filter { $0.category == .budget }.count), recurring=\(insights.filter { $0.category == .recurring }.count), cashFlow=\(insights.filter { $0.category == .cashFlow }.count))")
-        PerformanceLogger.InsightsMetrics.logGenerateEnd(total: insights.count)
 
         cache.set(key: cacheKey, insights: insights)
         return insights
@@ -173,7 +171,6 @@ final class InsightsService: @unchecked Sendable {
         currencyService: TransactionCurrencyService,
         anchorDate: Date? = nil
     ) -> [MonthlyDataPoint] {
-        PerformanceLogger.InsightsMetrics.logMonthlyPointStart(months: months, transactionCount: transactions.count)
 
         let anchor = anchorDate ?? Date()
 
@@ -200,7 +197,6 @@ final class InsightsService: @unchecked Sendable {
                     label: Self.monthYearFormatter.string(from: monthDate)
                 )
             }
-            PerformanceLogger.InsightsMetrics.logMonthlyPointEnd(pointCount: dataPoints.count)
             Self.logger.debug("📅 [Insights] Monthly points END (fast) — \(dataPoints.count) points")
             return dataPoints
         }
@@ -253,7 +249,6 @@ final class InsightsService: @unchecked Sendable {
             ))
         }
 
-        PerformanceLogger.InsightsMetrics.logMonthlyPointEnd(pointCount: dataPoints.count)
         return dataPoints
     }
 
@@ -347,7 +342,6 @@ final class InsightsService: @unchecked Sendable {
 
         let topCategoryName = sortedCategories.first?.key ?? "—"
         let topCategoryAmount = sortedCategories.first?.total ?? 0
-        PerformanceLogger.InsightsMetrics.logSpendingStart(expenseCount: topExpenses.count, categoryCount: sortedCategories.count)
         Self.logger.debug("🛒 [Insights] Spending — bucket_expenses=\(topExpenses.count), categories=\(sortedCategories.count), top='\(topCategoryName, privacy: .public)' (\(String(format: "%.0f", topCategoryAmount), privacy: .public) \(baseCurrency, privacy: .public))")
         for cat in sortedCategories.prefix(5) {
             let pct = topTotalExpenses > 0 ? (cat.total / topTotalExpenses) * 100 : 0
@@ -563,11 +557,6 @@ final class InsightsService: @unchecked Sendable {
             ))
         }
 
-        PerformanceLogger.InsightsMetrics.logSpendingEnd(
-            insightCount: insights.count,
-            topCategory: topCategoryName,
-            topAmount: topCategoryAmount
-        )
         return insights
     }
 
@@ -591,7 +580,6 @@ final class InsightsService: @unchecked Sendable {
             return insights
         }
 
-        PerformanceLogger.InsightsMetrics.logIncomeStart(incomeCount: incomeTransactions.count)
         Self.logger.debug("💵 [Insights] Income START — incomeTransactions=\(incomeTransactions.count)")
 
         // 1. Income growth (period-over-period).
@@ -704,7 +692,6 @@ final class InsightsService: @unchecked Sendable {
         let incomeInsightCount = insights.count
         let thisIncome = insights.first(where: { $0.type == .incomeGrowth })?.metric.value ?? 0
         let prevIncome = thisIncome - (insights.first(where: { $0.type == .incomeGrowth })?.trend?.changeAbsolute ?? 0)
-        PerformanceLogger.InsightsMetrics.logIncomeEnd(insightCount: incomeInsightCount, thisMonth: thisIncome, prevMonth: prevIncome)
         Self.logger.debug("💵 [Insights] Income END — \(incomeInsightCount) insights")
         return insights
     }
@@ -724,7 +711,6 @@ final class InsightsService: @unchecked Sendable {
             return insights
         }
 
-        PerformanceLogger.InsightsMetrics.logBudgetStart(categoriesWithBudget: categoriesWithBudget.count)
         Self.logger.debug("💼 [Insights] Budget START — \(categoriesWithBudget.count) categories with budget")
 
         let calendar = Calendar.current
@@ -845,7 +831,6 @@ final class InsightsService: @unchecked Sendable {
 
         let projectedCount = projectedOverspendItems.count
         let underCount = underBudgetItems.count
-        PerformanceLogger.InsightsMetrics.logBudgetEnd(insightCount: insights.count, overBudget: overBudgetCount, atRisk: projectedCount, underBudget: underCount)
         Self.logger.debug("💼 [Insights] Budget END — \(insights.count) insights, over=\(overBudgetCount), atRisk=\(projectedCount), under=\(underCount)")
         return insights
     }
@@ -860,7 +845,6 @@ final class InsightsService: @unchecked Sendable {
             return []
         }
 
-        PerformanceLogger.InsightsMetrics.logRecurringStart(activeSeries: activeSeries.count)
         Self.logger.debug("🔁 [Insights] Recurring START — \(activeSeries.count) active series")
 
         let recurringItems: [RecurringInsightItem] = activeSeries.map { series in
@@ -930,7 +914,6 @@ final class InsightsService: @unchecked Sendable {
         }
         let periodTotal = totalMonthly * periodMultiplier
 
-        PerformanceLogger.InsightsMetrics.logRecurringEnd(totalMonthly: totalMonthly, currency: baseCurrency)
         Self.logger.debug("🔁 [Insights] Recurring END — totalMonthly=\(String(format: "%.0f", totalMonthly), privacy: .public) → periodTotal=\(String(format: "%.0f", periodTotal), privacy: .public) ×\(String(format: "%.2f", periodMultiplier), privacy: .public) \(baseCurrency, privacy: .public)")
 
         return [Insight(
@@ -972,7 +955,6 @@ final class InsightsService: @unchecked Sendable {
             trendMonths = 6
         }
 
-        PerformanceLogger.InsightsMetrics.logCashFlowStart(months: trendMonths)
         Self.logger.debug("💸 [Insights] CashFlow START — computing \(trendMonths)-month trend")
 
         // Bug 1 fix: use the filter's INCLUSIVE end as anchor so historical filters
@@ -1106,11 +1088,6 @@ final class InsightsService: @unchecked Sendable {
             detailData: nil
         ))
 
-        PerformanceLogger.InsightsMetrics.logCashFlowEnd(
-            insightCount: insights.count,
-            latestNetFlow: monthlyData.last?.netFlow ?? 0,
-            projectedBalance: projectedBalance
-        )
         Self.logger.debug("💸 [Insights] CashFlow END — \(insights.count) insights generated")
         return insights
     }

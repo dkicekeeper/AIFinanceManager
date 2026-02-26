@@ -280,6 +280,8 @@
 "deposit.capitalizationHint" = "When capitalization is enabled, interest is added to the principal amount each month";
 "deposit.new" = "New Deposit";
 "deposit.editTitle" = "Edit Deposit";
+"deposit.interestAccrual.description" = "Interest accrual";
+"deposit.interestAccrual.category" = "Interest accrual";
 
 // MARK: - Categories Management
 "categories.expenseCategories" = "Expense Categories";

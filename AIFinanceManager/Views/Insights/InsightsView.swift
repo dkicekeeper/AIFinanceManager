@@ -313,3 +313,25 @@ struct InsightsView: View {
         }
     }
 }
+
+// MARK: - Previews
+
+#Preview("Insights — Loading") {
+    let coordinator = AppCoordinator()
+    return NavigationStack {
+        InsightsView(insightsViewModel: coordinator.insightsViewModel)
+            .navigationTitle(String(localized: "insights.title"))
+            .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+#Preview("Insights — Empty State") {
+    // Empty InsightsViewModel with no data — shows empty state illustration
+    let coordinator = AppCoordinator()
+    let vm = coordinator.insightsViewModel
+    return NavigationStack {
+        InsightsView(insightsViewModel: vm)
+            .navigationTitle(String(localized: "insights.title"))
+            .navigationBarTitleDisplayMode(.large)
+    }
+}

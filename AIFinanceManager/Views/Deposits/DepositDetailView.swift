@@ -5,44 +5,62 @@
 //  Detail view for deposit accounts
 //
 
+import OSLog
 import SwiftUI
+
+// DepositTransferDirection is the shared enum for deposit transfer direction.
+// Defined here (primary consumer) and visible to AccountActionView via module scope.
+enum DepositTransferDirection: Identifiable {
+    case toDeposit
+    case fromDeposit
+
+    var id: Int { self == .toDeposit ? 0 : 1 }
+}
 
 struct DepositDetailView: View {
     let depositsViewModel: DepositsViewModel
     let transactionsViewModel: TransactionsViewModel
     let balanceCoordinator: BalanceCoordinator
-    @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
+    @Environment(TransactionStore.self) private var transactionStore
     @Environment(AppCoordinator.self) private var appCoordinator
     let accountId: String
     @Environment(TimeFilterManager.self) private var timeFilterManager
     @State private var showingEditView = false
-    @State private var showingTransferTo = false // Пополнение депозита
-    @State private var showingTransferFrom = false // Перевод с депозита на счет
+    @State private var activeTransferDirection: DepositTransferDirection? = nil
     @State private var showingRateChange = false
     @State private var showingDeleteConfirmation = false
     @State private var showingHistory = false
     @Environment(\.dismiss) var dismiss
     @Namespace private var depositActionNamespace
-    
+
+    private let logger = Logger(subsystem: "AIFinanceManager", category: "DepositDetailView")
+
     private var account: Account? {
         depositsViewModel.getDeposit(by: accountId)
     }
-    
+
     private var depositInfo: DepositInfo? {
         account?.depositInfo
     }
-    
+
+    // Computed once per body evaluation — avoids repeated service calls inside nested functions
+    private var interestToToday: Decimal {
+        depositInfo.map { DepositInterestService.calculateInterestToToday(depositInfo: $0) } ?? 0
+    }
+
+    private var nextPosting: Date? {
+        depositInfo.flatMap { DepositInterestService.nextPostingDate(depositInfo: $0) }
+    }
+
     var body: some View {
         Group {
             if let account = account {
                 ScrollView {
                     VStack(spacing: AppSpacing.lg) {
-                        // Info card
                         if let depositInfo = depositInfo {
                             depositInfoCard(depositInfo: depositInfo, account: account)
                                 .screenPadding()
-                            
-                            // Actions
+
                             actionsSection
                                 .screenPadding()
                         }
@@ -69,7 +87,7 @@ struct DepositDetailView: View {
                     Image(systemName: "clock.arrow.circlepath")
                 }
             }
-            
+
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Button {
@@ -78,16 +96,16 @@ struct DepositDetailView: View {
                     } label: {
                         Label(String(localized: "deposit.edit"), systemImage: "pencil")
                     }
-                    
+
                     Button {
                         HapticManager.selection()
                         showingRateChange = true
                     } label: {
                         Label(String(localized: "deposit.changeRate"), systemImage: "chart.line.uptrend.xyaxis")
                     }
-                    
+
                     Divider()
-                    
+
                     Button(role: .destructive) {
                         HapticManager.warning()
                         showingDeleteConfirmation = true
@@ -102,16 +120,14 @@ struct DepositDetailView: View {
         .sheet(isPresented: $showingHistory) {
             if let account = account {
                 NavigationStack {
-                    // Note: Need to pass CategoriesViewModel from coordinator
-                    // For now using transactionsViewModel directly
                     HistoryView(
                         transactionsViewModel: transactionsViewModel,
                         accountsViewModel: depositsViewModel.accountsViewModel,
-                        categoriesViewModel: CategoriesViewModel(repository: depositsViewModel.repository),
+                        categoriesViewModel: appCoordinator.categoriesViewModel,
                         paginationController: appCoordinator.transactionPaginationController,
                         initialAccountId: account.id
                     )
-                        .environment(timeFilterManager)
+                    .environment(timeFilterManager)
                 }
             }
         }
@@ -119,21 +135,18 @@ struct DepositDetailView: View {
             if let account = account {
                 DepositEditView(
                     depositsViewModel: depositsViewModel,
-                    transactionsViewModel: transactionsViewModel,
                     account: account,
                     onSave: { updatedAccount in
                         HapticManager.success()
                         depositsViewModel.updateDeposit(updatedAccount)
                         transactionsViewModel.recalculateAccountBalances()
                         showingEditView = false
-                    },
-                    onCancel: {
-                        showingEditView = false
                     }
                 )
             }
         }
-        .sheet(isPresented: $showingTransferTo) {
+        // Unified transfer sheet — replaces separate showingTransferTo / showingTransferFrom
+        .sheet(item: $activeTransferDirection) { direction in
             if let account = account {
                 NavigationStack {
                     AccountActionView(
@@ -142,22 +155,7 @@ struct DepositDetailView: View {
                         account: account,
                         namespace: depositActionNamespace,
                         categoriesViewModel: appCoordinator.categoriesViewModel,
-                        transferDirection: .toDeposit
-                    )
-                    .environment(timeFilterManager)
-                }
-            }
-        }
-        .sheet(isPresented: $showingTransferFrom) {
-            if let account = account {
-                NavigationStack {
-                    AccountActionView(
-                        transactionsViewModel: transactionsViewModel,
-                        accountsViewModel: depositsViewModel.accountsViewModel,
-                        account: account,
-                        namespace: depositActionNamespace,
-                        categoriesViewModel: appCoordinator.categoriesViewModel,
-                        transferDirection: .fromDeposit
+                        transferDirection: direction
                     )
                     .environment(timeFilterManager)
                 }
@@ -174,10 +172,6 @@ struct DepositDetailView: View {
                             annualRate: annualRate,
                             note: note
                         )
-                    },
-                    onComplete: {
-                        HapticManager.success()
-                        showingRateChange = false
                     }
                 )
             }
@@ -187,9 +181,9 @@ struct DepositDetailView: View {
                 if let account = account {
                     HapticManager.warning()
                     depositsViewModel.deleteDeposit(account)
-                    // Also delete related transactions
-                    transactionsViewModel.allTransactions.removeAll { 
-                        $0.accountId == account.id || $0.targetAccountId == account.id 
+                    // Route through SSOT so aggregates, cache, and CoreData stay consistent
+                    Task {
+                        await transactionStore.deleteTransactions(forAccountId: account.id)
                     }
                     transactionsViewModel.recalculateAccountBalances()
                 }
@@ -200,27 +194,25 @@ struct DepositDetailView: View {
             Text(String(localized: "deposit.deleteMessage"))
         }
         .task {
-            // Phase 7.5: Пересчитываем проценты при открытии с TransactionStore
-            depositsViewModel.reconcileAllDeposits(
+            // Reconcile only this deposit — not all deposits (targeted, not global)
+            depositsViewModel.reconcileDepositInterest(
+                for: accountId,
                 allTransactions: transactionsViewModel.allTransactions,
                 onTransactionCreated: { transaction in
                     Task {
                         do {
                             _ = try await transactionStore.add(transaction)
                         } catch {
+                            logger.error("Failed to add deposit interest transaction: \(error.localizedDescription)")
                         }
                     }
                 }
             )
         }
     }
-    
+
     private func depositInfoCard(depositInfo: DepositInfo, account: Account) -> some View {
-        // Кешируем вычисления для оптимизации
-        let interestToToday = DepositInterestService.calculateInterestToToday(depositInfo: depositInfo)
-        let nextPosting = DepositInterestService.nextPostingDate(depositInfo: depositInfo)
-        
-        return VStack(alignment: .leading, spacing: AppSpacing.md) {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
             // Header
             HStack {
                 IconView(source: account.iconSource, size: AppIconSize.xxl)
@@ -233,9 +225,9 @@ struct DepositDetailView: View {
                 }
                 Spacer()
             }
-            
+
             Divider()
-            
+
             // Balance
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 Text(String(localized: "deposit.balance"))
@@ -249,7 +241,7 @@ struct DepositDetailView: View {
                 )
             }
 
-            // Interest info
+            // Interest info — uses view-level computed property (computed once per body pass)
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 Text(String(localized: "deposit.interestToday"))
                     .font(AppTypography.bodySmall)
@@ -258,12 +250,12 @@ struct DepositDetailView: View {
                     amount: NSDecimalNumber(decimal: interestToToday).doubleValue,
                     currency: account.currency,
                     fontSize: AppTypography.h4,
-                    color: .blue
+                    color: AppColors.planned
                 )
             }
-            
+
             Divider()
-            
+
             // Details
             InfoRow(
                 icon: "percent",
@@ -291,21 +283,21 @@ struct DepositDetailView: View {
         }
         .glassCardStyle()
     }
-    
+
     private var actionsSection: some View {
         VStack(spacing: AppSpacing.sm) {
             Button {
                 HapticManager.light()
-                showingTransferTo = true
+                activeTransferDirection = .toDeposit
             } label: {
                 Label(String(localized: "deposit.topUp"), systemImage: "arrow.down.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .primaryButton()
-            
+
             Button {
                 HapticManager.light()
-                showingTransferFrom = true
+                activeTransferDirection = .fromDeposit
             } label: {
                 Label(String(localized: "deposit.transferToAccount"), systemImage: "arrow.up.circle.fill")
                     .frame(maxWidth: .infinity)
@@ -313,11 +305,11 @@ struct DepositDetailView: View {
             .buttonStyle(.bordered)
         }
     }
-    
+
     private func formatRate(_ rate: Decimal) -> String {
         String(format: "%.2f", NSDecimalNumber(decimal: rate).doubleValue)
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         DateFormatters.displayDateFormatter.string(from: date)
     }
@@ -336,6 +328,8 @@ struct DepositDetailView: View {
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
             accountId: coordinator.depositsViewModel.deposits.first?.id ?? "test"
         )
+        .environment(coordinator)
+        .environment(coordinator.transactionStore)
         .environment(TimeFilterManager())
     }
 }
@@ -350,6 +344,8 @@ struct DepositDetailView: View {
             balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
             accountId: "non-existent"
         )
+        .environment(coordinator)
+        .environment(coordinator.transactionStore)
         .environment(TimeFilterManager())
     }
 }

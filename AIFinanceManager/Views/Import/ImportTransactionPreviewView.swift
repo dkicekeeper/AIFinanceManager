@@ -282,7 +282,7 @@ struct ImportTransactionPreviewRow: View {
 
 #Preview("With Transactions") {
     let coordinator = AppCoordinator()
-    let accountId = coordinator.accountsViewModel.accounts.first?.id ?? ""
+    let mockAccountId = "acc-kaspi"
     let sampleTransactions: [Transaction] = [
         Transaction(
             id: "prev-1",
@@ -292,17 +292,17 @@ struct ImportTransactionPreviewRow: View {
             currency: "KZT",
             type: .expense,
             category: "Food",
-            accountId: accountId
+            accountId: mockAccountId
         ),
         Transaction(
             id: "prev-2",
             date: DateFormatters.dateFormatter.string(from: Date().addingTimeInterval(-86400)),
-            description: "Salary",
+            description: "Зарплата",
             amount: 450000,
             currency: "KZT",
             type: .income,
             category: "Salary",
-            accountId: accountId
+            accountId: mockAccountId
         ),
         Transaction(
             id: "prev-3",
@@ -312,7 +312,7 @@ struct ImportTransactionPreviewRow: View {
             currency: "KZT",
             type: .expense,
             category: "Subscriptions",
-            accountId: accountId
+            accountId: mockAccountId
         )
     ]
 
