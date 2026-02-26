@@ -466,6 +466,8 @@ final class TransactionStore {
 
     /// Finish import mode and persist all changes
     func finishImport() async throws {
+        let txCount = transactions.count
+        print("📥 [TransactionStore] finishImport START — tx:\(txCount) acc:\(accounts.count) cat:\(categories.count)")
         isImporting = false
 
         // CRITICAL: Use synchronous save to ensure data is persisted before returning
@@ -474,7 +476,9 @@ final class TransactionStore {
         do {
             if let coreDataRepo = repository as? CoreDataRepository {
                 // ✨ Phase 10: Save accounts BEFORE transactions (required for Core Data relationships)
+                print("📥 [TransactionStore] finishImport: saving accounts…")
                 try coreDataRepo.saveAccountsSync(accounts)
+                print("📥 [TransactionStore] finishImport: saving categories…")
                 try coreDataRepo.saveCategoriesSync(categories)
 
                 // ✨ Phase 10: Save subcategory data synchronously
@@ -482,7 +486,9 @@ final class TransactionStore {
                 try coreDataRepo.saveCategorySubcategoryLinksSync(categorySubcategoryLinks)
 
                 // ✨ Phase 10: Save transactions AFTER accounts (so account relationships can be established)
+                print("📥 [TransactionStore] finishImport: saving \(txCount) transactions via saveTransactionsSync…")
                 try coreDataRepo.saveTransactionsSync(transactions)
+                print("📥 [TransactionStore] finishImport: saveTransactionsSync DONE")
                 try coreDataRepo.saveTransactionSubcategoryLinksSync(transactionSubcategoryLinks)
             } else {
                 // Fallback to async save for non-CoreData repositories
@@ -502,8 +508,11 @@ final class TransactionStore {
             repository.saveRecurringOccurrences(recurringOccurrences)
 
         } catch {
+            print("❌ [TransactionStore] finishImport FAILED: \(error)")
             throw TransactionStoreError.persistenceFailed(error)
         }
+
+        print("✅ [TransactionStore] finishImport: all saves complete, rebuilding aggregates…")
 
         // Phase 22: After import, rebuild persistent aggregates from all imported transactions.
         // This is a single O(N) pass, much cheaper than per-view O(N×M) recomputes.
@@ -511,6 +520,8 @@ final class TransactionStore {
         let currency = baseCurrency
         categoryAggregateService.rebuild(from: allTx, baseCurrency: currency)
         monthlyAggregateService.rebuild(from: allTx, baseCurrency: currency)
+
+        print("✅ [TransactionStore] finishImport DONE")
     }
 
     /// Update an existing transaction

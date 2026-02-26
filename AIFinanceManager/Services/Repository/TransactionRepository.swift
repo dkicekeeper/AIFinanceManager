@@ -141,6 +141,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
     }
 
     func saveTransactionsSync(_ transactions: [Transaction]) throws {
+        Self.logger.debug("🔄 [TransactionRepository] saveTransactionsSync START — \(transactions.count, privacy: .public) transactions to save")
         PerformanceProfiler.start("TransactionRepository.saveTransactionsSync")
 
         let backgroundContext = stack.persistentContainer.newBackgroundContext()
@@ -150,10 +151,12 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             // fetchBatchSize must be 0 here: intermediate saves within performAndWait
             // invalidate batch-fault buffers, causing "persistent store is not reachable"
             // when the delete loop accesses entities from a stale batch.
+            // Also required for context.delete() on stale entities (see comment below).
             let fetchRequest = NSFetchRequest<TransactionEntity>(entityName: "TransactionEntity")
             fetchRequest.fetchBatchSize = 0
 
             let existingEntities = try backgroundContext.fetch(fetchRequest)
+            Self.logger.debug("📋 [TransactionRepository] saveTransactionsSync: found \(existingEntities.count, privacy: .public) existing entities in CoreData")
 
             // Build ID → entity map; delete any duplicate-ID entities upfront
             var existingDict: [String: TransactionEntity] = [:]
@@ -211,28 +214,41 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 }
             }
 
-            // Delete stale entities via NSBatchDeleteRequest to avoid iterating
-            // potentially-faulted existingEntities after the upsert loop.
+            // Delete stale entities using context.delete() — NOT NSBatchDeleteRequest.
+            //
+            // WHY NOT NSBatchDeleteRequest:
+            // NSBatchDeleteRequest bypasses NSManagedObject lifecycle (writes directly to SQLite).
+            // After executing it + calling mergeChanges(fromRemoteContextSave:into:backgroundContext),
+            // the deleted objects end up in backgroundContext.deletedObjects. When backgroundContext.save()
+            // runs, CoreData processes these deletedObjects and tries to nullify inverse relationships
+            // (e.g. AccountEntity.transactions → remove the deleted TransactionEntity from the set).
+            // To do this, CoreData needs to read the deleted entity's `account` relationship value
+            // from the persistent store — but the batch delete already removed that row from SQLite.
+            // Result: "Object TransactionEntity/pXXXX persistent store is not reachable" crash.
+            //
+            // WHY context.delete() IS SAFE HERE:
+            // fetchBatchSize=0 at the top of this block ensures ALL TransactionEntity records are
+            // materialized in memory before this point. The stale entities in existingDict are
+            // already fully faulted-in (their data is in the context's row cache). context.delete()
+            // marks them for deletion in the NSManagedObject lifecycle — CoreData reads their
+            // relationship data from memory (not the store) during save(), correctly nullifying
+            // inverse relationships without hitting the persistent store for already-live objects.
             let staleIds = existingDict.keys.filter { !keptIds.contains($0) }
             if !staleIds.isEmpty {
-                let deleteRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "TransactionEntity")
-                deleteRequest.predicate = NSPredicate(format: "id IN %@", staleIds)
-                let batchDelete = NSBatchDeleteRequest(fetchRequest: deleteRequest)
-                batchDelete.resultType = .resultTypeObjectIDs
-                let result = try backgroundContext.execute(batchDelete) as? NSBatchDeleteResult
-                // Merge deletions into this context so subsequent save is consistent
-                let deleted = result?.result as? [NSManagedObjectID] ?? []
-                if !deleted.isEmpty {
-                    NSManagedObjectContext.mergeChanges(
-                        fromRemoteContextSave: [NSDeletedObjectsKey: deleted],
-                        into: [backgroundContext]
-                    )
+                Self.logger.debug("🗑️ [TransactionRepository] saveTransactionsSync: deleting \(staleIds.count, privacy: .public) stale entities")
+                for staleId in staleIds {
+                    if let entity = existingDict[staleId] {
+                        backgroundContext.delete(entity)
+                    }
                 }
             }
+
+            Self.logger.debug("💾 [TransactionRepository] saveTransactionsSync: saving — inserted=\(backgroundContext.insertedObjects.count, privacy: .public) updated=\(backgroundContext.updatedObjects.count, privacy: .public) deleted=\(backgroundContext.deletedObjects.count, privacy: .public)")
 
             // Single atomic save — safe because no intermediate saves polluted batch buffers
             if backgroundContext.hasChanges {
                 try backgroundContext.save()
+                Self.logger.debug("✅ [TransactionRepository] saveTransactionsSync: save succeeded")
             }
         }
 
