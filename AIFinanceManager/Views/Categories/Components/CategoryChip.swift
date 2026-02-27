@@ -13,13 +13,30 @@ struct CategoryChip: View {
     let customCategories: [CustomCategory]
     let isSelected: Bool
     let onTap: () -> Void
-    
+
     // Budget support
     let budgetProgress: BudgetProgress?
 
-    // OPTIMIZATION: Use cached style data instead of recreating on every render
+    /// Optional icon/color override — when provided (e.g. from CategoryDisplayData),
+    /// bypasses CategoryStyleCache entirely so edits to icon/color are reflected immediately.
+    var iconName: String? = nil
+    var iconColor: Color? = nil
+
+    // OPTIMIZATION: Use cached style data instead of recreating on every render.
+    // If iconName/iconColor overrides are provided, build style data from them directly
+    // (bypasses cache which may have stale data when customCategories is []).
     private var styleData: CategoryStyleData {
-        CategoryStyleHelper.cached(category: category, type: type, customCategories: customCategories)
+        if let name = iconName, let color = iconColor {
+            return CategoryStyleData(
+                coinColor: color.opacity(0.3),
+                coinBorderColor: color.opacity(0.6),
+                iconColor: color,
+                primaryColor: color,
+                lightBackgroundColor: color.opacity(0.15),
+                iconName: name
+            )
+        }
+        return CategoryStyleHelper.cached(category: category, type: type, customCategories: customCategories)
     }
 
     var body: some View {

@@ -23,9 +23,11 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         let filterCacheKey: String
 
         init(customCategories: [CustomCategory], categoryExpenses: [String: CategoryExpense], type: TransactionType, baseCurrency: String, currentFilter: TimeFilter) {
-            // Create stable hash from categories (ID + order + budgetAmount)
+            // Create stable hash from categories (ID + order + budgetAmount + iconSource)
+            // ✅ FIX: Use displayIdentifier instead of String(describing:) for deterministic,
+            // unique strings that correctly change when icon or color is updated.
             self.categoriesHash = customCategories
-                .map { "\($0.id)_\($0.order ?? 0)_\(String(format: "%.2f", $0.budgetAmount ?? 0))_\($0.colorHex)_\(String(describing: $0.iconSource))" }
+                .map { "\($0.id)_\($0.order ?? 0)_\(String(format: "%.2f", $0.budgetAmount ?? 0))_\($0.colorHex)_\($0.iconSource.displayIdentifier)" }
                 .sorted()
                 .joined()
                 .hashValue

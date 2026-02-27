@@ -14,11 +14,10 @@ import SwiftUI
 struct InsightsView: View {
     // MARK: - Dependencies
 
-    let insightsViewModel: InsightsViewModel
+    @Bindable var insightsViewModel: InsightsViewModel
 
     // MARK: - State
 
-    @State private var selectedGranularity: InsightGranularity = .month
     @Namespace private var insightNamespace
 
     // MARK: - Body
@@ -47,7 +46,7 @@ struct InsightsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
-                    Picker("", selection: $selectedGranularity) {
+                    Picker("", selection: $insightsViewModel.currentGranularity) {
                         ForEach(InsightGranularity.allCases) { g in
                             Label(g.displayName, systemImage: g.icon)
                                 .tag(g)
@@ -55,18 +54,14 @@ struct InsightsView: View {
                     }
                     .pickerStyle(.inline)
                 } label: {
-                    Label(selectedGranularity.shortName, systemImage: selectedGranularity.icon)
+                    Label(insightsViewModel.currentGranularity.shortName, systemImage: insightsViewModel.currentGranularity.icon)
                 }
             }
         }
-        .onChange(of: selectedGranularity) { _, new in
+        .onChange(of: insightsViewModel.currentGranularity) { _, _ in
             HapticManager.light()
-            insightsViewModel.switchGranularity(new)
         }
-        .onAppear {
-            // Sync picker to ViewModel state — handles the case where the user returns
-            // to the tab after the ViewModel already has a different granularity selected.
-            selectedGranularity = insightsViewModel.currentGranularity
+        .task {
             insightsViewModel.onAppear()
         }
     }

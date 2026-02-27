@@ -29,14 +29,6 @@ struct QuickAddTransactionView: View {
 
     @Environment(TimeFilterManager.self) private var timeFilterManager
 
-    // MARK: - Performance Optimization State
-
-    /// ✅ OPTIMIZATION: Debounce task to prevent rapid consecutive updates
-    @State private var debounceTask: Task<Void, Never>?
-
-    /// ✅ OPTIMIZATION: Track last refresh trigger value to skip redundant updates
-    @State private var lastRefreshTrigger: Int = 0
-
     // MARK: - Initialization
 
     init(
@@ -91,60 +83,6 @@ struct QuickAddTransactionView: View {
         .sheet(isPresented: $coordinator.showingAddCategory) {
             categoryEditSheet
         }
-        // ✅ OPTIMIZATION: Single debounced trigger instead of three separate onChange handlers
-        // This prevents cascading updates during CSV imports and data loading
-        .onChange(of: refreshTrigger) { old, new in
-            // ✅ OPTIMIZATION: Skip if value didn't actually change (deduplication)
-            guard old != new else { return }
-
-            // ✅ OPTIMIZATION: Skip if same as last processed value
-            guard new != lastRefreshTrigger else { return }
-
-            // Cancel previous debounce task
-            debounceTask?.cancel()
-
-            // Create new debounced task
-            debounceTask = Task {
-                // Wait 150ms to batch multiple rapid changes
-                try? await Task.sleep(for: .milliseconds(150))
-
-                // Check if task was cancelled
-                guard !Task.isCancelled else { return }
-
-                // Perform update on main actor
-                await MainActor.run {
-                    lastRefreshTrigger = new
-                    coordinator.refreshData()
-                }
-            }
-        }
-    }
-
-    // MARK: - Computed Properties
-
-    /// ✅ OPTIMIZATION: Combined refresh trigger that watches all data sources
-    /// Prevents multiple .onChange handlers and enables debouncing
-    ///
-    /// Uses XOR of:
-    ///  - current time filter (changes when user switches filter)
-    ///  - category count (changes when category is added/removed)
-    ///  - transaction count (changes when a transaction is added/deleted)
-    ///  - category style hash (changes when icon or color is edited — O(N) over categories, N≈10-20)
-    ///
-    /// NOTE: expenseAmountHash (O(N) filter+reduce over all transactions) was removed.
-    /// Amount-only edits won't refresh the grid, but count/filter changes cover the
-    /// common cases and avoid blocking the main thread on every body evaluation.
-    private var refreshTrigger: Int {
-        let categories = coordinator.categoriesViewModel.customCategories
-        let budgetedCount = categories.filter { $0.budgetAmount != nil }.count
-        let categoryStyleHash = categories.reduce(0) { acc, cat in
-            acc ^ cat.iconSource.hashValue ^ cat.colorHex.hashValue
-        }
-        return timeFilterManager.currentFilter.hashValue
-            ^ categories.count
-            ^ coordinator.transactionsViewModel.allTransactions.count
-            ^ budgetedCount
-            ^ categoryStyleHash
     }
 
     // MARK: - Sheets

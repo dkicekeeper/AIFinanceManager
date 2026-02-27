@@ -107,10 +107,12 @@ private struct CategoryGridItem: View {
             CategoryChip(
                 category: category.name,
                 type: category.type,
-                customCategories: [], // Style info already in CategoryDisplayData
+                customCategories: [],
                 isSelected: false,
                 onTap: onTap,
-                budgetProgress: category.budgetProgress
+                budgetProgress: category.budgetProgress,
+                iconName: category.iconName,
+                iconColor: category.iconColor
             )
 
             if let totalText = category.formattedTotal(currency: baseCurrency) {

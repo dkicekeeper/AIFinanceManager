@@ -761,6 +761,11 @@ final class TransactionStore {
             CategoryOrderManager.shared.setOrder(order, for: category.id)
         }
 
+        // ✅ FIX: Invalidate style cache so icon/color changes reflect immediately.
+        // CategoryDisplayDataMapper reads icon data through CategoryStyleCache.
+        // Without this, the singleton cache may serve stale icon data until next restart.
+        CategoryStyleCache.shared.invalidateCache()
+
         // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
 
     }

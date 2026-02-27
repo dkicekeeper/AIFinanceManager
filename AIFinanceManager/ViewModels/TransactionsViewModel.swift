@@ -64,9 +64,6 @@ class TransactionsViewModel {
     var currencyConversionWarning: String? = nil
     var appSettings: AppSettings = AppSettings.load()
     var hasOlderTransactions: Bool = false
-    // Phase 21: dataRefreshTrigger removed — @Observable handles UI updates automatically
-    // Kept as computed property for backward compatibility with any remaining references
-    var dataRefreshTrigger: UUID { UUID() }
 
     // MIGRATED: initialAccountBalances moved to BalanceCoordinator
     // MIGRATED: accountsWithCalculatedInitialBalance moved to BalanceCoordinator (calculation modes)
@@ -857,12 +854,6 @@ class TransactionsViewModel {
 
 // MARK: - Helper Methods
 
-// Phase 21: notifyDataChanged no longer needed — @Observable handles UI updates
-extension TransactionsViewModel {
-    func notifyDataChanged() {
-        // Phase 21: No-op — @Observable on TransactionStore handles all UI updates
-    }
-}
 extension TransactionsViewModel: RecurringTransactionServiceDelegate {}
 
 // MARK: - Supporting Types

@@ -51,8 +51,10 @@ final class CategoryStyleCache {
         customCategories: [CustomCategory]
     ) -> CategoryStyleData {
         // ✅ OPTIMIZATION: Check if categories actually changed using Set comparison
-        // This avoids false invalidations from array reordering
-        let currentSnapshot = Set(customCategories.map { "\($0.id)_\($0.colorHex)_\(String(describing: $0.iconSource))" })
+        // This avoids false invalidations from array reordering.
+        // ✅ FIX: Use displayIdentifier instead of String(describing:) for deterministic
+        // strings — guaranteed to change when icon or color is updated.
+        let currentSnapshot = Set(customCategories.map { "\($0.id)_\($0.colorHex)_\($0.iconSource.displayIdentifier)" })
         if currentSnapshot != cachedCategoriesSnapshot {
             cache.removeAll()
             cachedCategoriesSnapshot = currentSnapshot

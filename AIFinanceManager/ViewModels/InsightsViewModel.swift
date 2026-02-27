@@ -66,7 +66,14 @@ final class InsightsViewModel {
 
     // MARK: - Granularity (replaces TimeFilter for Insights)
 
-    private(set) var currentGranularity: InsightGranularity = .month
+    /// Settable from View via @Bindable — didSet handles applyPrecomputed side-effect.
+    var currentGranularity: InsightGranularity = .month {
+        didSet {
+            guard oldValue != self.currentGranularity else { return }
+            Self.logger.debug("🧠 [InsightsVM] granularity → \(self.currentGranularity.rawValue, privacy: .public)")
+            self.applyPrecomputed(for: self.currentGranularity)
+        }
+    }
 
     /// Legacy: kept for CategoryDeepDive compatibility until it is migrated to granularity.
     private(set) var currentTimeFilter: TimeFilter = TimeFilter(preset: .allTime)
@@ -110,11 +117,9 @@ final class InsightsViewModel {
     // MARK: - Public Methods
 
     /// Called when the user switches granularity (instant — reads precomputed data).
+    /// didSet on currentGranularity handles applyPrecomputed; kept for legacy call sites.
     func switchGranularity(_ granularity: InsightGranularity) {
-        guard granularity != currentGranularity else { return }
-        currentGranularity = granularity
-        Self.logger.debug("🧠 [InsightsVM] switchGranularity → \(granularity.rawValue, privacy: .public)")
-        applyPrecomputed(for: granularity)
+        currentGranularity = granularity  // didSet handles guard + applyPrecomputed
     }
 
     /// Called when Insights tab appears — triggers computation if stale.

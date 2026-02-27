@@ -25,16 +25,9 @@ final class QuickAddCoordinator {
 
     // MARK: - Observable State
 
-    private(set) var categories: [CategoryDisplayData] = []
     var selectedCategory: String?
     var selectedType: TransactionType = .expense
     var showingAddCategory = false
-
-    // MARK: - Performance Optimization State
-
-    /// ✅ OPTIMIZATION: Batch mode for CSV imports and bulk operations
-    /// When true, skips intermediate UI updates to prevent UI blocking
-    var isBatchMode = false
 
     // MARK: - Initialization
 
@@ -52,48 +45,27 @@ final class QuickAddCoordinator {
         self.transactionStore = transactionStore
         self.timeFilterManager = timeFilterManager
         self.categoryMapper = categoryMapper ?? CategoryDisplayDataMapper()
-
-        // ✅ OPTIMIZATION: Single update call instead of double (setupBindings + explicit call)
-        // With @Observable, no Combine subscriptions needed
-        updateCategories()
     }
 
-    /// Call this method when transactions, categories, or filter changes
-    /// With @Observable, we refresh on-demand instead of using Combine subscriptions
-    func refreshData() {
-        updateCategories()
-    }
+    // MARK: - Reactive Computed Properties
 
-    // MARK: - Public Methods
-
-    /// Update categories with current data
-    func updateCategories() {
-        // ✅ OPTIMIZATION: Skip updates in batch mode to prevent UI blocking during imports
-        guard !isBatchMode else {
-            return
-        }
-
-        PerformanceProfiler.start("QuickAddCoordinator.updateCategories")
-
-        // Get category expenses from TransactionsViewModel
+    /// Categories derived automatically from current filter, transactions, and category data.
+    /// @Observable tracks all accessed properties — no manual refresh needed.
+    var categories: [CategoryDisplayData] {
         let categoryExpenses = transactionsViewModel.categoryExpenses(
             timeFilterManager: timeFilterManager,
             categoriesViewModel: categoriesViewModel
         )
-
-        // Map to display data
-        let newCategories = categoryMapper.mapCategories(
+        return categoryMapper.mapCategories(
             customCategories: categoriesViewModel.customCategories,
             categoryExpenses: categoryExpenses,
             type: .expense,
             baseCurrency: transactionsViewModel.appSettings.baseCurrency,
             currentFilter: timeFilterManager.currentFilter
         )
-
-        categories = newCategories
-
-        PerformanceProfiler.end("QuickAddCoordinator.updateCategories")
     }
+
+    // MARK: - Public Methods
 
     /// Handle category selection
     func handleCategorySelected(_ category: String, type: TransactionType) {
@@ -121,16 +93,7 @@ final class QuickAddCoordinator {
         selectedCategory = nil
     }
 
-    /// Update time filter manager.
-    /// Call this if the filter manager instance changes after initialization
-    /// (e.g., from external injection). No-ops when the same instance is passed.
-    func setTimeFilterManager(_ manager: TimeFilterManager) {
-        guard timeFilterManager !== manager else { return }
-        timeFilterManager = manager
-        updateCategories()
-    }
-
-    // MARK: - Computed Properties
+    // MARK: - Convenience Computed Properties
 
     /// Base currency for display
     var baseCurrency: String {
