@@ -136,6 +136,13 @@ AIFinanceManager/
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
 
+**Phase 35** (2026-02-27): CSV Import Crash Fix + Case-Sensitivity Fix
+- **FRC stale reference crash fixed**: `CoreDataStack.storeDidResetNotification` posted synchronously after `resetAllData()`. `TransactionPaginationController.handleStoreReset()` tears down old FRC and recreates on new store.
+- **FRC sync rebuild**: `controllerDidChangeContent` uses `MainActor.assumeIsolated { rebuildSections() }` instead of async `Task` — eliminates window for stale object access.
+- **Category case-sensitivity bug fixed**: `resolveCategoryByName` now uses case-insensitive comparison (like accounts/subcategories). Cache HIT returns stored name, not input name.
+- **addBatch fallback**: When batch validation fails, CSVImportCoordinator retries individual `add()` — salvages valid transactions instead of rejecting entire batch.
+- **Result**: CSV import of 19,444 rows: 18,444 → 19,444 (0 skipped). Zero crashes on store reset.
+
 **Phase 34** (2026-02-26): Utils Cleanup — Dead Code & Design System Split
 - **Deleted `PerformanceLogger.swift`** (390 LOC dead code) — все 18 call sites удалены из HistoryView, InsightsViewModel, InsightsService. Единственный активный профайлер: `PerformanceProfiler.swift` (#if DEBUG, 30+ call sites).
 - **`AppTheme.swift` (743 LOC) → 6 файлов**: `AppColors.swift`, `AppSpacing.swift`, `AppTypography.swift`, `AppShadow.swift`, `AppAnimation.swift`, `AppModifiers.swift` (все View extensions + TransactionRowVariant).
@@ -465,6 +472,10 @@ func saveAccountsInternal(...) throws {
 - **⚠️ OR-per-month predicate crash**: Never build `NSCompoundPredicate(orPredicateWithSubpredicates:)` with one subpredicate per calendar month. For ranges > ~80 months SQLite raises `Expression tree too large (maximum depth 1000)`. Use a constant 7-condition range predicate instead: `year > 0 AND month > 0 AND (year > startYear OR (year == startYear AND month >= startMonth)) AND (year < endYear OR (year == endYear AND month <= endMonth))`. See `CategoryAggregateService.fetchRange()` for reference implementation.
 - **`NSDecimalNumber.compare()` gotcha**: `number.compare(.zero)` **не компилируется** — Swift не выводит тип из `NSNumber`; всегда пиши `number.compare(NSDecimalNumber.zero)`
 - **`performFetch()` + `rebuildSections()` are synchronous on MainActor** — sections fully updated before the next line. Gates like `isHistoryListReady` only protect UI if the section count is already bounded before the flag turns `true`; an unbounded allTime FRC (3,530 sections) will still freeze even with the gate.
+- **`resetAllData()` invalidates FRC**: `CoreDataStack.resetAllData()` destroys/recreates the persistent store (new UUID). Any existing `NSFetchedResultsController` retains stale `NSManagedObject` references → crash on fault fire. Fix: `CoreDataStack` posts `storeDidResetNotification`; FRC holders observe it and call `setup()` to recreate on the new store. See `TransactionPaginationController.handleStoreReset()`.
+- **FRC delegate must rebuild synchronously**: `controllerDidChangeContent` runs on main thread (viewContext). Use `MainActor.assumeIsolated { rebuildSections() }` — NOT `Task { @MainActor in }` which creates async hop, allowing stale section access between save and rebuild.
+- **`addBatch` fallback pattern**: `TransactionStore.addBatch()` validates ALL transactions; one failure rejects the entire batch (500 rows). `CSVImportCoordinator` catches batch errors and retries individual `add()` calls — only truly invalid transactions are skipped.
+- **Entity resolution case-sensitivity**: `ImportCacheManager` stores keys as `lowercased()`, but `EntityMappingService.resolveCategoryByName` must ALSO use case-insensitive store lookup (`$0.name.lowercased() == nameLower`). When cache HITs on a case-variant, return the **stored** entity name (not the input name) — otherwise `validate()` fails because the transaction's category name doesn't match the store. Accounts and subcategories already used case-insensitive resolution; categories fixed in Phase 35.
 
 ### File Organization Rules ("Where Should I Put This File?")
 
@@ -1100,7 +1111,7 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 
 ---
 
-**Last Updated**: 2026-02-26
-**Project Status**: Active development - Utils cleanup + design system split (Phase 34). AppTheme.swift split into 6 focused files. Zero dead code in Utils. Zero hardcoded colors in UI components (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates.
+**Last Updated**: 2026-02-27
+**Project Status**: Active development - CSV import crash fix + case-sensitivity fix (Phase 35). FRC stale reference crash after resetAllData fixed. CSV import 19,444/19,444 (0 skipped). addBatch fallback pattern. Utils cleanup + design system split (Phase 34). Zero hardcoded colors in UI components (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates.
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`

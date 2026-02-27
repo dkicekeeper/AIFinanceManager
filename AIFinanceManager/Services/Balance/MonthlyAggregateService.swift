@@ -280,12 +280,25 @@ final class MonthlyAggregateService: @unchecked Sendable {
 
         await context.perform {
             // 1. Delete all existing monthly aggregates
+            // NOTE: Must use .resultTypeObjectIDs (not .resultTypeCount) and merge deleted IDs
+            // into viewContext. Using NSBatchDeleteRequest without merging leaves stale faults
+            // in viewContext. Calling context.reset() after NSBatchDeleteRequest on a fresh
+            // background context interferes with the persistent store coordinator's SQLite
+            // row cache while the FRC is concurrently firing faults — causing:
+            // "Object TransactionEntity/pXXXX persistent store is not reachable" crash.
             let deleteRequest = NSBatchDeleteRequest(
                 fetchRequest: NSFetchRequest<NSFetchRequestResult>(entityName: "MonthlyAggregateEntity")
             )
+            deleteRequest.resultType = .resultTypeObjectIDs
             do {
-                _ = try context.execute(deleteRequest)
-                context.reset()
+                let deleteResult = try context.execute(deleteRequest) as? NSBatchDeleteResult
+                let deletedIDs = deleteResult?.result as? [NSManagedObjectID] ?? []
+                if !deletedIDs.isEmpty {
+                    NSManagedObjectContext.mergeChanges(
+                        fromRemoteContextSave: [NSDeletedObjectsKey: deletedIDs],
+                        into: [self.stack.viewContext]
+                    )
+                }
             } catch {
                 Self.logger.error("❌ [MonthlyAgg] batch delete failed: \(error.localizedDescription, privacy: .public)")
             }

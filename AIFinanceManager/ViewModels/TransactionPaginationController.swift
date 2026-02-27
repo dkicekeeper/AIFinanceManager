@@ -41,7 +41,13 @@ struct TransactionSection: Identifiable {
     /// to scroll time instead of blocking the main thread during rebuildSections().
     var transactions: [Transaction] {
         (sectionInfo.objects as? [TransactionEntity] ?? [])
-            .compactMap { $0.toTransaction() }
+            .compactMap { entity -> Transaction? in
+                // Guard: skip objects that were deleted before sections could be rebuilt.
+                // isDeleted is safe to read without firing a CoreData fault — it checks
+                // the context's deletedObjects set, not the persistent store.
+                guard !entity.isDeleted else { return nil }
+                return entity.toTransaction()
+            }
     }
 
     // Internal: NSFetchedResultsSectionInfo is a class, so this is a reference —
@@ -113,10 +119,52 @@ final class TransactionPaginationController: NSObject {
     /// batchUpdateFilters() sets this flag, applies all changes, then calls scheduleFilterUpdate once.
     @ObservationIgnored private var isBatchUpdating = false
 
+    /// Observer token for CoreDataStack.storeDidResetNotification.
+    @ObservationIgnored private var storeResetObserver: NSObjectProtocol?
+
     // MARK: - Init
 
     init(stack: CoreDataStack) {
         self.stack = stack
+        super.init()
+        observeStoreReset()
+    }
+
+    deinit {
+        if let observer = storeResetObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    // MARK: - Store Reset Handling
+
+    /// Listen for persistent store replacement (resetAllData) so we can tear down
+    /// the old FRC — whose internal state references the destroyed store UUID —
+    /// and re-create it on the new store before any merge triggers the delegate.
+    private func observeStoreReset() {
+        storeResetObserver = NotificationCenter.default.addObserver(
+            forName: CoreDataStack.storeDidResetNotification,
+            object: stack,
+            queue: nil // synchronous on posting thread (main) — MUST run before any subsequent save+merge
+        ) { [weak self] _ in
+            // resetAllData() is always called from @MainActor context,
+            // so this closure runs on the main thread.
+            MainActor.assumeIsolated {
+                self?.handleStoreReset()
+            }
+        }
+    }
+
+    /// Tear down the old FRC and re-create it on the (new) persistent store.
+    /// Called synchronously from the storeDidReset notification handler.
+    private func handleStoreReset() {
+        guard frc != nil else { return } // setup() hasn't been called yet
+        logger.debug("🔄 [FRC] handleStoreReset — tearing down old FRC and recreating on new store")
+        frc?.delegate = nil
+        frc = nil
+        sections = []
+        totalCount = 0
+        setup()
     }
 
     // MARK: - Setup
@@ -138,19 +186,17 @@ final class TransactionPaginationController: NSObject {
         // Keep objects as faults until their properties are accessed.
         request.returnsObjectsAsFaults = true
 
+        let viewContext = stack.viewContext
         frc = NSFetchedResultsController(
             fetchRequest: request,
-            managedObjectContext: stack.viewContext,
+            managedObjectContext: viewContext,
             sectionNameKeyPath: "dateSectionKey",  // stored attribute → SQL GROUP BY, O(M)
             cacheName: nil  // no on-disk cache; stored column makes re-fetch cheap anyway
         )
         frc?.delegate = self
-
-        let t_before_fetch = CACurrentMediaTime()
-        logger.debug("📋 [FRC] setup() — FRC created in \(String(format: "%.0f", (t_before_fetch-t_setup)*1000))ms, starting performFetch()...")
         performFetch()
-        let t_after_fetch = CACurrentMediaTime()
-        logger.debug("📋 [FRC] setup() DONE in \(String(format: "%.0f", (t_after_fetch-t_setup)*1000))ms — sections:\(self.sections.count) totalCount:\(self.totalCount)")
+        let elapsed = CACurrentMediaTime() - t_setup
+        logger.debug("📋 [FRC] setup() DONE in \(String(format: "%.0f", elapsed*1000))ms — sections:\(self.sections.count) totalCount:\(self.totalCount)")
     }
 
     // MARK: - Filter Application
@@ -297,15 +343,28 @@ final class TransactionPaginationController: NSObject {
 // MARK: - NSFetchedResultsControllerDelegate
 
 extension TransactionPaginationController: NSFetchedResultsControllerDelegate {
-    /// Called on whatever thread the context uses — bridge back to MainActor for state mutation.
+    /// Called on the main thread (viewContext is a main-thread context, so
+    /// automaticallyMergesChangesFromParent fires the FRC delegate on the main thread).
+    ///
+    /// CRITICAL: rebuildSections() MUST be called synchronously here via
+    /// MainActor.assumeIsolated — NOT via Task { @MainActor in }.
+    ///
+    /// The async Task hop creates a window where a pending CADisplayLink frame
+    /// (SwiftUI render) runs BEFORE rebuildSections() updates `sections`. During
+    /// that window, SwiftUI renders with the OLD sections array, which may contain
+    /// sectionInfo objects referencing deleted TransactionEntity rows. Accessing
+    /// those rows fires a CoreData fault that crashes with
+    /// "persistent store is not reachable from this NSManagedObjectContext's coordinator".
     nonisolated func controllerDidChangeContent(
         _ controller: NSFetchedResultsController<NSFetchRequestResult>
     ) {
         let t = CACurrentMediaTime()
-        Task { @MainActor [weak self] in
+        // Safe: viewContext is main-thread affined, so this delegate is always called
+        // on the main thread. assumeIsolated is a zero-overhead runtime assertion.
+        MainActor.assumeIsolated { [weak self] in
             guard let self else { return }
             let delay = CACurrentMediaTime() - t
-            self.logger.debug("🔔 [FRC] controllerDidChangeContent fired (MainActor delay: \(String(format: "%.0f", delay*1000))ms) — rebuilding sections")
+            self.logger.debug("🔔 [FRC] controllerDidChangeContent fired (sync, delay: \(String(format: "%.0f", delay*1000))ms) — rebuilding sections")
             self.rebuildSections()
         }
     }

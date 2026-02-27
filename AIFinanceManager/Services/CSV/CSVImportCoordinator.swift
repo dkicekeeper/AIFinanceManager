@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import os
 
 /// Simplified coordinator for CSV import operations
 /// Works directly with TransactionStore - removed CSVStorageCoordinator layer
@@ -21,6 +22,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
     private let mapper: EntityMappingServiceProtocol
     private let converter: TransactionConverterServiceProtocol
     private let cache: ImportCacheManager
+    private let logger = Logger(subsystem: "AIFinanceManager", category: "CSVImportCoordinator")
 
     // MARK: - Initialization
 
@@ -60,6 +62,11 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
         let existingFingerprints = Set(
             transactionsViewModel.allTransactions.map { TransactionFingerprint(from: $0) }
         )
+        logger.debug("📊 [CSVImport] START — rows:\(csvFile.rowCount) existingFingerprints:\(existingFingerprints.count)")
+        var debugValidationSkips = 0
+        var debugDuplicateSkips = 0
+        var debugBatchSkips = 0
+        var debugFirstSkipDetails: [(Int, String)] = [] // (rowIndex, reason)
 
         // Begin import mode in TransactionStore (defers persistence)
         if let transactionStore = transactionsViewModel.transactionStore {
@@ -99,6 +106,10 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             guard case .success(let csvRow) = validationResult else {
                 if case .failure(let error) = validationResult {
                     stats.addError(error)
+                    debugValidationSkips += 1
+                    if debugFirstSkipDetails.count < 20 {
+                        debugFirstSkipDetails.append((rowIndex, "validation: \(error.code) col=\(error.column ?? "?") val=\(error.context)"))
+                    }
                 }
                 stats.incrementSkipped()
                 continue
@@ -199,6 +210,10 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             // Check duplicates
             let fingerprint = TransactionFingerprint(from: transaction)
             if existingFingerprints.contains(fingerprint) {
+                debugDuplicateSkips += 1
+                if debugFirstSkipDetails.count < 20 {
+                    debugFirstSkipDetails.append((rowIndex, "duplicate: date=\(transaction.date) amount=\(transaction.amount) type=\(transaction.type) cat=\(transaction.category)"))
+                }
                 stats.incrementDuplicates()
                 stats.incrementSkipped()
                 continue
@@ -219,6 +234,30 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
                     do {
                         try await transactionStore.addBatch(transactionsBatch)
                     } catch {
+                        // Batch-level validation failed for at least one transaction.
+                        // Fallback: try adding transactions individually to salvage valid ones.
+                        logger.warning("⚠️ [CSVImport] addBatch FAILED for \(transactionsBatch.count) rows: \(error.localizedDescription). Falling back to individual adds.")
+
+                        var batchSalvaged = 0
+                        var batchSkippedInFallback = 0
+                        for tx in transactionsBatch {
+                            do {
+                                _ = try await transactionStore.add(tx)
+                                batchSalvaged += 1
+                            } catch {
+                                batchSkippedInFallback += 1
+                                debugBatchSkips += 1
+                                if debugFirstSkipDetails.count < 20 {
+                                    debugFirstSkipDetails.append((-1, "batchValidation: \(error.localizedDescription) date=\(tx.date) type=\(tx.type) cat='\(tx.category)' acctId=\(tx.accountId ?? "nil") targetAcctId=\(tx.targetAccountId ?? "nil")"))
+                                }
+                            }
+                        }
+
+                        // Adjust stats: only count actually-skipped rows, not the whole batch
+                        stats.skippedCount += batchSkippedInFallback
+                        stats.importedCount -= batchSkippedInFallback
+
+                        logger.debug("📊 [CSVImport] batch fallback: salvaged \(batchSalvaged), skipped \(batchSkippedInFallback)")
                     }
 
                     // Batch link subcategories
@@ -248,6 +287,9 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             do {
                 try await transactionStore.finishImport()
             } catch {
+                // Capture persistence failure so the result screen can warn the user.
+                // Imported data is in-memory but may not have been written to CoreData.
+                stats.persistenceError = error.localizedDescription
             }
         }
 
@@ -290,6 +332,13 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
 
         // Build final statistics
         let duration = Date().timeIntervalSince(startTime)
+
+        // Diagnostic summary
+        logger.debug("📊 [CSVImport] DONE — imported:\(stats.importedCount) validationSkips:\(debugValidationSkips) duplicateSkips:\(debugDuplicateSkips) batchSkips:\(debugBatchSkips) totalSkipped:\(stats.skippedCount)")
+        for (idx, reason) in debugFirstSkipDetails {
+            logger.debug("📊 [CSVImport] skip row[\(idx)]: \(reason, privacy: .public)")
+        }
+
         return stats.build(duration: duration)
     }
 
@@ -318,6 +367,7 @@ private class ImportStatisticsBuilder {
     var createdCategories: Int = 0
     var createdSubcategories: Int = 0
     var errors: [CSVValidationError] = []
+    var persistenceError: String? = nil
 
     func incrementImported() { importedCount += 1 }
     func incrementSkipped() { skippedCount += 1 }
@@ -340,7 +390,8 @@ private class ImportStatisticsBuilder {
             createdSubcategories: createdSubcategories,
             duration: duration,
             rowsPerSecond: rowsPerSecond,
-            errors: errors
+            errors: errors,
+            persistenceError: persistenceError
         )
     }
 }

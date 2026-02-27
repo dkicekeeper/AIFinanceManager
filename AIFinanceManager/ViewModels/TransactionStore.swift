@@ -118,7 +118,7 @@ final class TransactionStore {
     internal var baseCurrency: String = "KZT"
 
     // Import mode flag - when true, persistence is deferred until finishImport()
-    private var isImporting: Bool = false
+    private(set) var isImporting: Bool = false
 
     // Phase 17: Debounce task for coalescing rapid mutations into single sync
     private var syncDebounceTask: Task<Void, Never>?
@@ -468,7 +468,6 @@ final class TransactionStore {
     func finishImport() async throws {
         let txCount = transactions.count
         print("📥 [TransactionStore] finishImport START — tx:\(txCount) acc:\(accounts.count) cat:\(categories.count)")
-        isImporting = false
 
         // CRITICAL: Use synchronous save to ensure data is persisted before returning
         // This prevents data loss if app is terminated immediately after import
@@ -511,6 +510,10 @@ final class TransactionStore {
             print("❌ [TransactionStore] finishImport FAILED: \(error)")
             throw TransactionStoreError.persistenceFailed(error)
         }
+
+        // Mark import done ONLY after all saves have succeeded.
+        // Setting this earlier would fire ContentView observers while CoreData writes are still in progress.
+        isImporting = false
 
         print("✅ [TransactionStore] finishImport: all saves complete, rebuilding aggregates…")
 
@@ -995,7 +998,8 @@ final class TransactionStore {
         syncDebounceTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 16_000_000) // ~1 frame (16ms)
             guard !Task.isCancelled else { return }
-            self?.coordinator?.syncTransactionStoreToViewModels()
+            // Pass batchMode=true during import so InsightsVM isn't invalidated on every batch.
+            self?.coordinator?.syncTransactionStoreToViewModels(batchMode: self?.isImporting ?? false)
         }
     }
 
@@ -1329,7 +1333,10 @@ final class TransactionStore {
         // This ensures that when refreshTrigger in QuickAddTransactionView fires
         // (triggered by allTransactions changing), the cacheManager is already stale
         // and categoryExpenses() will recompute from fresh transaction data.
-        coordinator?.transactionsViewModel.invalidateCaches()
+        // Skip during import — a single invalidation fires after finishImport().
+        if !isImporting {
+            coordinator?.transactionsViewModel.invalidateCaches()
+        }
 
         switch event {
         case .added(let tx):

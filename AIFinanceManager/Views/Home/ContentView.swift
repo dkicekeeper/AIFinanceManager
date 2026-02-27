@@ -102,7 +102,16 @@ struct ContentView: View {
             .onChange(of: timeFilterManager.currentFilter) { _, _ in
                 updateSummary()
             }
+            .onChange(of: transactionStore.isImporting) { _, isImporting in
+                // When import finishes (true→false), run a single summary update with complete data.
+                guard !isImporting else { return }
+                summaryUpdateTask?.cancel()
+                updateSummary()
+            }
             .onChange(of: transactionStore.transactions.count) { oldCount, newCount in
+                // Skip partial updates during CSV import — finishImport() triggers a single
+                // update via the isImporting onChange above.
+                guard !transactionStore.isImporting else { return }
                 // Debounce: coalesce rapid count changes (e.g. batch loads) into a single
                 // updateSummary(). 80ms is long enough to absorb a burst of CoreData saves
                 // yet short enough to be imperceptible to the user.

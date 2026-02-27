@@ -49,6 +49,10 @@ struct ImportStatistics {
     /// Array of validation errors encountered during import
     let errors: [CSVValidationError]
 
+    /// Non-nil when CoreData persistence failed at the end of import.
+    /// The user must be informed — imported data may not be saved.
+    let persistenceError: String?
+
     // MARK: - Computed Properties
 
     /// Success rate as a fraction from 0.0 to 1.0

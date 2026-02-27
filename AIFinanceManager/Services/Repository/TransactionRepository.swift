@@ -147,6 +147,28 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         let backgroundContext = stack.persistentContainer.newBackgroundContext()
         backgroundContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
 
+        // Capture the NSManagedObjectContextDidSave notification so we can merge it
+        // SYNCHRONOUSLY into the viewContext after performAndWait returns.
+        //
+        // WHY: automaticallyMergesChangesFromParent dispatches the merge to the main queue
+        // ASYNCHRONOUSLY. If saveTransactionsSync inserts objects that resolve uniqueness
+        // constraint violations (old rows replaced with new IDs), the old NSManagedObjectIDs
+        // in the FRC become stale. The async merge would fix this — but not before the main
+        // thread continues executing (e.g., setting isImporting=false, which triggers
+        // @Observable notifications and potential SwiftUI renders). Accessing a stale FRC
+        // object before the merge completes → "persistent store is not reachable" crash.
+        //
+        // By capturing the notification and merging immediately after performAndWait, we
+        // ensure the viewContext is up-to-date before any subsequent code can access stale objects.
+        var savedNotification: Notification?
+        let observer = NotificationCenter.default.addObserver(
+            forName: .NSManagedObjectContextDidSave,
+            object: backgroundContext,
+            queue: nil
+        ) { notification in
+            savedNotification = notification
+        }
+
         try backgroundContext.performAndWait {
             // fetchBatchSize must be 0 here: intermediate saves within performAndWait
             // invalidate batch-fault buffers, causing "persistent store is not reachable"
@@ -250,6 +272,18 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 try backgroundContext.save()
                 Self.logger.debug("✅ [TransactionRepository] saveTransactionsSync: save succeeded")
             }
+        }
+
+        NotificationCenter.default.removeObserver(observer)
+
+        // Merge the save SYNCHRONOUSLY into the viewContext on the main thread.
+        // We're back on the calling thread (MainActor for finishImport) after performAndWait.
+        // This ensures the viewContext (and its FRC) sees the new/updated/deleted objects
+        // BEFORE any subsequent code runs (e.g., isImporting=false, @Observable notifications).
+        // automaticallyMergesChangesFromParent will also process this later — double-merge is
+        // idempotent (refresh already-refreshed objects = no-op).
+        if let notification = savedNotification {
+            stack.viewContext.mergeChanges(fromContextDidSave: notification)
         }
 
         PerformanceProfiler.end("TransactionRepository.saveTransactionsSync")

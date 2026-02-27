@@ -27,6 +27,16 @@ final class CoreDataStack: @unchecked Sendable {
     /// Ошибка инициализации CoreData (для отображения пользователю)
     private(set) var initializationError: String? = nil
 
+    /// Lock protecting one-time initialization of _persistentContainer.
+    /// Swift `lazy var` is NOT thread-safe. preWarm() accesses persistentContainer from
+    /// Task.detached while the main thread accesses it via AppCoordinator.initialize().
+    /// Without this lock, two NSPersistentContainer instances can be created — each with
+    /// its own NSPersistentStoreCoordinator but pointing at the same SQLite file. Objects
+    /// registered in one coordinator become "not reachable" from the other, causing:
+    /// "persistent store is not reachable from this NSManagedObjectContext's coordinator".
+    private let containerLock = NSLock()
+    private var _persistentContainer: NSPersistentContainer?
+
     private init() {
         setupNotifications()
     }
@@ -86,19 +96,29 @@ final class CoreDataStack: @unchecked Sendable {
     }
 
     // MARK: - Persistent Container
-    
-    lazy var persistentContainer: NSPersistentContainer = {
+
+    /// Thread-safe accessor for the persistent container.
+    /// Uses NSLock to guarantee exactly ONE NSPersistentContainer is created, even when
+    /// preWarm() (background thread) and AppCoordinator.initialize() (main thread) race.
+    var persistentContainer: NSPersistentContainer {
+        containerLock.lock()
+        defer { containerLock.unlock() }
+
+        if let existing = _persistentContainer {
+            return existing
+        }
+
         let container = NSPersistentContainer(name: "AIFinanceManager")
-        
+
         // Configure container
         let description = container.persistentStoreDescriptions.first
         description?.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         description?.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
-        
+
         // Enable automatic lightweight migration
         description?.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
         description?.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
-        
+
         container.loadPersistentStores { [self] storeDescription, error in
             if let error = error as NSError? {
                 CoreDataStack.logger.critical("Persistent store failed to load: \(error), \(error.userInfo)")
@@ -109,20 +129,23 @@ final class CoreDataStack: @unchecked Sendable {
                 } else {
                     self.initializationError = String(localized: "error.coredata.initializationFailed")
                 }
+            } else {
+                CoreDataStack.logger.info("✅ [CoreDataStack] Persistent store loaded: \(storeDescription.url?.lastPathComponent ?? "unknown", privacy: .public)")
             }
         }
-        
+
         // Automatic merge from parent context
         container.viewContext.automaticallyMergesChangesFromParent = true
-        
+
         // Use constraint merge policy to handle unique constraint violations
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-        
+
         // Undo manager for view context (optional, can be disabled for performance)
         container.viewContext.undoManager = nil
-        
+
+        _persistentContainer = container
         return container
-    }()
+    }
     
     // MARK: - Contexts
     
@@ -224,6 +247,11 @@ final class CoreDataStack: @unchecked Sendable {
 
     // MARK: - Reset
 
+    /// Posted synchronously on the main thread after the persistent store has been
+    /// destroyed and recreated. Observers (e.g. NSFetchedResultsController holders)
+    /// must tear down stale references and re-fetch from the new store.
+    static let storeDidResetNotification = Notification.Name("CoreDataStack.storeDidReset")
+
     /// Delete all data from persistent store (use for testing/debugging)
     func resetAllData() throws {
         let coordinator = persistentContainer.persistentStoreCoordinator
@@ -234,6 +262,18 @@ final class CoreDataStack: @unchecked Sendable {
                 try coordinator.addPersistentStore(ofType: store.type, configurationName: nil, at: storeURL, options: nil)
             }
         }
+
+        // CRITICAL: destroyPersistentStore+addPersistentStore creates a new store with
+        // a different UUID. Existing NSManagedObject faults in viewContext (and any FRC
+        // backed by it) still reference the OLD store UUID. Any access to those faults
+        // crashes with "persistent store is not reachable from this coordinator".
+        // reset() evicts all registered objects so no zombie faults remain.
+        viewContext.reset()
+
+        // Notify FRC holders (TransactionPaginationController) to tear down and
+        // re-create their controllers on the new store. Must be synchronous so the
+        // FRC is rebuilt BEFORE any subsequent save+merge triggers its delegate.
+        NotificationCenter.default.post(name: Self.storeDidResetNotification, object: self)
     }
     
     // MARK: - Performance Monitoring

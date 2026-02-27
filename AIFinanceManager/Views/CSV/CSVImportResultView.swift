@@ -26,6 +26,11 @@ struct CSVImportResultView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: AppSpacing.xxl) {
+                // Persistence failure banner — shown above everything else
+                if let persistenceError = statistics.persistenceError {
+                    MessageBanner.error(String(localized: "csvImport.error.persistenceFailed") + " \(persistenceError)")
+                }
+
                 // Result icon
                 resultIcon
 

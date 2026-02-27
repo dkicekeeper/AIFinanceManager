@@ -112,17 +112,20 @@ class EntityMappingService: EntityMappingServiceProtocol {
         type: TransactionType
     ) async -> CategoryResolutionResult {
 
-        // Check cache
+        // Check cache (lowercased key — case-insensitive)
         if let cachedId = cache.getCategory(name: name, type: type) {
-            return .existing(id: cachedId, name: name)
+            // Return the STORED category name (may differ in case from input)
+            let storedName = transactionStore.categories.first(where: { $0.id == cachedId })?.name ?? name
+            return .existing(id: cachedId, name: storedName)
         }
 
-        // Check TransactionStore (Single Source of Truth)
+        // Check TransactionStore (Single Source of Truth) — case-insensitive like accounts/subcategories
+        let nameLower = name.lowercased()
         if let existing = transactionStore.categories.first(where: {
-            $0.name == name && $0.type == type
+            $0.name.lowercased() == nameLower && $0.type == type
         }) {
             cache.cacheCategory(name: name, type: type, id: existing.id)
-            return .existing(id: existing.id, name: name)
+            return .existing(id: existing.id, name: existing.name)
         }
 
         // Create new category directly in TransactionStore

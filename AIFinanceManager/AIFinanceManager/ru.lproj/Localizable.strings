@@ -545,6 +545,7 @@
 "csvImport.error.emptyFile" = "Файл пуст";
 "csvImport.error.noHeaders" = "В файле отсутствуют заголовки";
 "csvImport.error.invalidFormat" = "Неверный формат CSV";
+"csvImport.error.persistenceFailed" = "Данные импорта не удалось сохранить в базу данных.";
 "csvImport.progress.parsing" = "Парсинг CSV файла...";
 "csvImport.progress.validating" = "Валидация строк...";
 "csvImport.progress.importing" = "Импорт транзакций...";

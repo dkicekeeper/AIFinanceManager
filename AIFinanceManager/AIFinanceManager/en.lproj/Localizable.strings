@@ -545,6 +545,7 @@
 "csvImport.error.emptyFile" = "File is empty";
 "csvImport.error.noHeaders" = "No headers found in file";
 "csvImport.error.invalidFormat" = "Invalid CSV format";
+"csvImport.error.persistenceFailed" = "Import data could not be saved to the database.";
 "csvImport.progress.parsing" = "Parsing CSV file...";
 "csvImport.progress.validating" = "Validating rows...";
 "csvImport.progress.importing" = "Importing transactions...";
