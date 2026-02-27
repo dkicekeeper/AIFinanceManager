@@ -15,6 +15,7 @@ protocol CategoryDisplayDataMapperProtocol {
         customCategories: [CustomCategory],
         categoryExpenses: [String: CategoryExpense],
         type: TransactionType,
-        baseCurrency: String
+        baseCurrency: String,
+        currentFilter: TimeFilter
     ) -> [CategoryDisplayData]
 }

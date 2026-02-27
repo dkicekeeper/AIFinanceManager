@@ -20,11 +20,12 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         let expensesHash: Int
         let type: TransactionType
         let baseCurrency: String
+        let filterCacheKey: String
 
-        init(customCategories: [CustomCategory], categoryExpenses: [String: CategoryExpense], type: TransactionType, baseCurrency: String) {
+        init(customCategories: [CustomCategory], categoryExpenses: [String: CategoryExpense], type: TransactionType, baseCurrency: String, currentFilter: TimeFilter) {
             // Create stable hash from categories (ID + order + budgetAmount)
             self.categoriesHash = customCategories
-                .map { "\($0.id)_\($0.order ?? 0)_\(String(format: "%.2f", $0.budgetAmount ?? 0))" }
+                .map { "\($0.id)_\($0.order ?? 0)_\(String(format: "%.2f", $0.budgetAmount ?? 0))_\($0.colorHex)_\(String(describing: $0.iconSource))" }
                 .sorted()
                 .joined()
                 .hashValue
@@ -38,6 +39,7 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
 
             self.type = type
             self.baseCurrency = baseCurrency
+            self.filterCacheKey = currentFilter.stableCacheKey
         }
     }
 
@@ -50,14 +52,16 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         customCategories: [CustomCategory],
         categoryExpenses: [String: CategoryExpense],
         type: TransactionType,
-        baseCurrency: String
+        baseCurrency: String,
+        currentFilter: TimeFilter
     ) -> [CategoryDisplayData] {
         // ✅ OPTIMIZATION: Check cache first
         let cacheKey = CacheKey(
             customCategories: customCategories,
             categoryExpenses: categoryExpenses,
             type: type,
-            baseCurrency: baseCurrency
+            baseCurrency: baseCurrency,
+            currentFilter: currentFilter
         )
 
         if let cached = cache, cached.key == cacheKey {
@@ -92,7 +96,8 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
                 customCategories: filteredCategories,
                 categoryExpenses: categoryExpenses,
                 type: type,
-                baseCurrency: baseCurrency
+                baseCurrency: baseCurrency,
+                currentFilter: currentFilter
             )
         }
 
@@ -135,7 +140,8 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         customCategories: [CustomCategory],
         categoryExpenses: [String: CategoryExpense],
         type: TransactionType,
-        baseCurrency: String
+        baseCurrency: String,
+        currentFilter: TimeFilter
     ) -> CategoryDisplayData? {
         // Find custom category
         let customCategory = customCategories.first {
@@ -145,10 +151,12 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         // Get total from expenses
         let total = categoryExpenses[name]?.total ?? 0
 
-        // Get budget progress (pre-calculated)
+        // Get budget progress with filter-aware budget scaling
         let budgetProgress = customCategory.flatMap { category -> BudgetProgress? in
-            guard let budgetAmount = category.budgetAmount, budgetAmount > 0 else { return nil }
-            return BudgetProgress(budgetAmount: budgetAmount, spent: total)
+            guard let budgetAmount = category.budgetAmount, budgetAmount > 0,
+                  let scaled = scaledBudgetAmount(budgetAmount, period: category.budgetPeriod, filter: currentFilter)
+            else { return nil }
+            return BudgetProgress(budgetAmount: scaled, spent: total)
         }
 
         // ✅ CATEGORY REFACTORING: Use cached style data
@@ -165,8 +173,45 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             iconName: styleData.iconName,
             iconColor: styleData.iconColor,
             total: total,
-            budgetAmount: customCategory?.budgetAmount,
+            budgetAmount: budgetProgress?.budgetAmount,
             budgetProgress: budgetProgress
         )
+    }
+
+    // MARK: - Budget Scaling
+
+    /// Returns nil for filters where budget comparison is meaningless.
+    /// Returns the original amount for exact period matches (no rounding errors).
+    /// Otherwise scales proportionally via daily rate.
+    private func scaledBudgetAmount(
+        _ amount: Double,
+        period: CustomCategory.BudgetPeriod,
+        filter: TimeFilter
+    ) -> Double? {
+        // Never show budget for open-ended or rolling filters
+        guard filter.preset != .allTime, filter.preset != .last30Days else { return nil }
+
+        // Exact match: return original amount (avoids floating-point rounding)
+        switch (filter.preset, period) {
+        case (.thisMonth, .monthly), (.lastMonth, .monthly): return amount
+        case (.thisWeek, .weekly):                           return amount
+        case (.thisYear, .yearly), (.lastYear, .yearly):     return amount
+        default: break
+        }
+
+        // Scale proportionally: convert budget to daily rate × filter days
+        let calendar = Calendar.current
+        let filterDays = Double(
+            calendar.dateComponents([.day], from: filter.startDate, to: filter.endDate).day ?? 30
+        )
+        let periodDays: Double
+        switch period {
+        case .monthly: periodDays = 365.25 / 12   // 30.4375
+        case .weekly:  periodDays = 7
+        case .yearly:  periodDays = 365.25
+        @unknown default: periodDays = 365.25 / 12
+        }
+
+        return amount / periodDays * filterDays
     }
 }

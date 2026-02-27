@@ -129,17 +129,22 @@ struct QuickAddTransactionView: View {
     ///  - current time filter (changes when user switches filter)
     ///  - category count (changes when category is added/removed)
     ///  - transaction count (changes when a transaction is added/deleted)
+    ///  - category style hash (changes when icon or color is edited — O(N) over categories, N≈10-20)
     ///
     /// NOTE: expenseAmountHash (O(N) filter+reduce over all transactions) was removed.
     /// Amount-only edits won't refresh the grid, but count/filter changes cover the
     /// common cases and avoid blocking the main thread on every body evaluation.
     private var refreshTrigger: Int {
-        let budgetedCount = coordinator.categoriesViewModel.customCategories
-            .filter { $0.budgetAmount != nil }.count
+        let categories = coordinator.categoriesViewModel.customCategories
+        let budgetedCount = categories.filter { $0.budgetAmount != nil }.count
+        let categoryStyleHash = categories.reduce(0) { acc, cat in
+            acc ^ cat.iconSource.hashValue ^ cat.colorHex.hashValue
+        }
         return timeFilterManager.currentFilter.hashValue
-            ^ coordinator.categoriesViewModel.customCategories.count
+            ^ categories.count
             ^ coordinator.transactionsViewModel.allTransactions.count
             ^ budgetedCount
+            ^ categoryStyleHash
     }
 
     // MARK: - Sheets

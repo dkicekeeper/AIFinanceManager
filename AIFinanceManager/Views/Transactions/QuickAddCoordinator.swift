@@ -86,7 +86,8 @@ final class QuickAddCoordinator {
             customCategories: categoriesViewModel.customCategories,
             categoryExpenses: categoryExpenses,
             type: .expense,
-            baseCurrency: transactionsViewModel.appSettings.baseCurrency
+            baseCurrency: transactionsViewModel.appSettings.baseCurrency,
+            currentFilter: timeFilterManager.currentFilter
         )
 
         categories = newCategories

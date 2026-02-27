@@ -52,7 +52,7 @@ final class CategoryStyleCache {
     ) -> CategoryStyleData {
         // ✅ OPTIMIZATION: Check if categories actually changed using Set comparison
         // This avoids false invalidations from array reordering
-        let currentSnapshot = Set(customCategories.map { $0.id })
+        let currentSnapshot = Set(customCategories.map { "\($0.id)_\($0.colorHex)_\(String(describing: $0.iconSource))" })
         if currentSnapshot != cachedCategoriesSnapshot {
             cache.removeAll()
             cachedCategoriesSnapshot = currentSnapshot
