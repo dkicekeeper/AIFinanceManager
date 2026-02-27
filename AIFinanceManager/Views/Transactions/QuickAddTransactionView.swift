@@ -134,9 +134,12 @@ struct QuickAddTransactionView: View {
     /// Amount-only edits won't refresh the grid, but count/filter changes cover the
     /// common cases and avoid blocking the main thread on every body evaluation.
     private var refreshTrigger: Int {
-        timeFilterManager.currentFilter.hashValue
+        let budgetedCount = coordinator.categoriesViewModel.customCategories
+            .filter { $0.budgetAmount != nil }.count
+        return timeFilterManager.currentFilter.hashValue
             ^ coordinator.categoriesViewModel.customCategories.count
             ^ coordinator.transactionsViewModel.allTransactions.count
+            ^ budgetedCount
     }
 
     // MARK: - Sheets

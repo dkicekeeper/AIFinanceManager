@@ -22,9 +22,9 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
         let baseCurrency: String
 
         init(customCategories: [CustomCategory], categoryExpenses: [String: CategoryExpense], type: TransactionType, baseCurrency: String) {
-            // Create stable hash from categories (ID + order)
+            // Create stable hash from categories (ID + order + budgetAmount)
             self.categoriesHash = customCategories
-                .map { "\($0.id)_\($0.order ?? 0)" }
+                .map { "\($0.id)_\($0.order ?? 0)_\(String(format: "%.2f", $0.budgetAmount ?? 0))" }
                 .sorted()
                 .joined()
                 .hashValue

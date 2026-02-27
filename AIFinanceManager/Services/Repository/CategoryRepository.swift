@@ -459,8 +459,8 @@ final class CategoryRepository: CategoryRepositoryProtocol {
             keptIds.insert(category.id)
 
             if let existing = existingDict[category.id] {
-                // Update existing
-                context.perform {
+                // Update existing — performAndWait so mutations are applied before we return
+                context.performAndWait {
                     existing.name = category.name
                     existing.type = category.type.rawValue
                     if case .sfSymbol(let symbolName) = category.iconSource {

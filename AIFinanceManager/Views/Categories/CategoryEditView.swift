@@ -180,7 +180,8 @@ struct CategoryEditView: View {
             type: type,
             budgetAmount: parsedBudget,
             budgetPeriod: selectedPeriod,
-            budgetResetDay: resetDay
+            budgetResetDay: resetDay,
+            order: category?.order
         )
 
         HapticManager.success()

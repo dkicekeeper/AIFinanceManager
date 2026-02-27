@@ -40,40 +40,30 @@ struct CategoryChip: View {
                         )
                     }
                     
-                    Group {
-                        if #available(iOS 26, *) {
-                            ZStack {
-                                Circle()
-                                    .foregroundStyle(.clear)
-                                    .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                                    .glassEffect(.regular
-                                        .tint(isSelected ? styleData.coinColor : Color.clear)
-                                    )
-                                    .allowsHitTesting(false)
-
+                    if #available(iOS 26, *) {
+                        Image(systemName: styleData.iconName)
+                            .font(.title2)
+                            .foregroundStyle(styleData.iconColor)
+                            .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                            .glassEffect(
+                                isSelected
+                                    ? .regular.tint(styleData.coinColor).interactive()
+                                    : .regular.interactive(),
+                                in: .circle
+                            )
+                    } else {
+                        Circle()
+                            .fill(isSelected ? styleData.coinColor.opacity(0.2) : Color(.systemGray6))
+                            .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                            .overlay(
                                 Image(systemName: styleData.iconName)
                                     .font(.title2)
                                     .foregroundStyle(styleData.iconColor)
-
+                            )
+                            .overlay(
                                 Circle()
                                     .stroke(isSelected ? styleData.coinBorderColor : Color.clear, lineWidth: 3)
-                                    .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                                    .allowsHitTesting(false)
-                            }
-                        } else {
-                            Circle()
-                                .fill(isSelected ? styleData.coinColor.opacity(0.2) : Color(.systemGray6))
-                                .frame(width: AppIconSize.coin, height: AppIconSize.coin)
-                                .overlay(
-                                    Image(systemName: styleData.iconName)
-                                        .font(.title2)
-                                        .foregroundStyle(styleData.iconColor)
-                                )
-                                .overlay(
-                                    Circle()
-                                        .stroke(isSelected ? styleData.coinBorderColor : Color.clear, lineWidth: 3)
-                                )
-                        }
+                            )
                     }
                 }
             }
