@@ -48,8 +48,10 @@ final class InsightsViewModel {
     /// Background recompute task handle — cancelled and replaced on each data change.
     @ObservationIgnored private var recomputeTask: Task<Void, Never>?
 
-    /// Phase 18: Stale flag — when true, data needs recompute on next onAppear
-    @ObservationIgnored private var isStale: Bool = true
+    /// Phase 36: Stale flag — observable so InsightsView can react while tab is open.
+    /// When true, data needs recompute. Removed @ObservationIgnored so the View sees the change
+    /// and triggers reload even when Insights tab is already visible.
+    private(set) var isStale: Bool = true
 
     // MARK: - Observable State
 
@@ -94,8 +96,9 @@ final class InsightsViewModel {
     var savingsInsights: [Insight]      { insights.filter { $0.category == .savings } }     // Phase 24
     var forecastingInsights: [Insight]  { insights.filter { $0.category == .forecasting } } // Phase 24
 
+    /// Phase 36: Read directly from TransactionStore (one hop instead of two)
     var baseCurrency: String {
-        transactionsViewModel.appSettings.baseCurrency
+        transactionStore.baseCurrency
     }
 
     var hasData: Bool {

@@ -41,7 +41,6 @@ protocol TransactionQueryServiceProtocol {
         timeFilter: TimeFilter,
         baseCurrency: String,
         validCategoryNames: Set<String>?,
-        aggregateCache: CategoryAggregateCacheProtocol,
         cacheManager: TransactionCacheManager,
         transactions: [Transaction]?,
         currencyService: TransactionCurrencyService?

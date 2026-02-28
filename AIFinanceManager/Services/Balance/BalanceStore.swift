@@ -126,8 +126,9 @@ final class BalanceStore {
     private var calculationModes: [String: BalanceMode] = [:]
 
     /// History of balance updates (for debugging/auditing)
-    private var updateHistory: [BalanceStoreUpdate] = []
-    private let maxHistorySize: Int = 100
+    /// Phase 36: @ObservationIgnored — history mutations must not trigger UI re-renders
+    @ObservationIgnored private var updateHistory: [BalanceStoreUpdate] = []
+    @ObservationIgnored private let maxHistorySize: Int = 100
 
     // MARK: - Initialization
 

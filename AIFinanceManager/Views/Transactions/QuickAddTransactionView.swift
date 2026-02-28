@@ -8,15 +8,6 @@
 
 import SwiftUI
 
-// MARK: - Category Selection Model
-
-/// Helper struct to make category selection Identifiable for .sheet(item:)
-private struct CategorySelection: Identifiable {
-    let id = UUID()
-    let category: String
-    let type: TransactionType
-}
-
 // MARK: - QuickAddTransactionView
 
 struct QuickAddTransactionView: View {
@@ -63,21 +54,7 @@ struct QuickAddTransactionView: View {
             },
             emptyStateAction: coordinator.handleAddCategory
         )
-        // ✅ OPTIMIZATION: Removed .id(categoriesHash) - @Observable automatically tracks changes
-        // ✅ PERFORMANCE FIX: Use .sheet(item:) instead of custom Binding
-        // This is much faster - SwiftUI optimizes item-based sheets
-        .sheet(item: Binding(
-            get: {
-                // Convert String? to CategorySelection?
-                coordinator.selectedCategory.map { CategorySelection(category: $0, type: coordinator.selectedType) }
-            },
-            set: { newValue in
-                // Dismiss if nil
-                if newValue == nil {
-                    coordinator.dismissModal()
-                }
-            }
-        )) { selection in
+        .sheet(item: $coordinator.activeSelection) { selection in
             addTransactionSheet(for: selection.category, type: selection.type)
         }
         .sheet(isPresented: $coordinator.showingAddCategory) {

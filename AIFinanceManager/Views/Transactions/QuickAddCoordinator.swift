@@ -10,6 +10,13 @@ import Foundation
 import SwiftUI
 import Observation
 
+/// Stable identity for category selection — uses category name, not UUID.
+struct CategorySelection: Identifiable {
+    var id: String { "\(category)_\(type.rawValue)" }
+    let category: String
+    let type: TransactionType
+}
+
 @Observable
 @MainActor
 final class QuickAddCoordinator {
@@ -20,13 +27,12 @@ final class QuickAddCoordinator {
     @ObservationIgnored let categoriesViewModel: CategoriesViewModel
     @ObservationIgnored let accountsViewModel: AccountsViewModel
     @ObservationIgnored let transactionStore: TransactionStore
-    @ObservationIgnored private var timeFilterManager: TimeFilterManager
+    private var timeFilterManager: TimeFilterManager
     @ObservationIgnored private let categoryMapper: CategoryDisplayDataMapperProtocol
 
     // MARK: - Observable State
 
-    var selectedCategory: String?
-    var selectedType: TransactionType = .expense
+    var activeSelection: CategorySelection?
     var showingAddCategory = false
 
     // MARK: - Initialization
@@ -69,8 +75,7 @@ final class QuickAddCoordinator {
 
     /// Handle category selection
     func handleCategorySelected(_ category: String, type: TransactionType) {
-        selectedCategory = category
-        selectedType = type
+        activeSelection = CategorySelection(category: category, type: type)
         HapticManager.light()
     }
 
@@ -90,7 +95,7 @@ final class QuickAddCoordinator {
 
     /// Dismiss current modal
     func dismissModal() {
-        selectedCategory = nil
+        activeSelection = nil
     }
 
     // MARK: - Convenience Computed Properties

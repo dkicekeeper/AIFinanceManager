@@ -38,15 +38,26 @@ struct MonthlyFinancialAggregate: Equatable, Identifiable {
     let currency: String
     let lastUpdated: Date
 
+    // Phase 36: Cached DateFormatters — avoid allocation per computed property access
+    private static let labelFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM yyyy"
+        f.locale = .current
+        return f
+    }()
+    private static let shortLabelFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        f.locale = .current
+        return f
+    }()
+
     /// Label for chart display: "Jan 2026"
     var label: String {
         guard let date = Calendar.current.date(
             from: DateComponents(year: year, month: month, day: 1)
         ) else { return "\(month)/\(year)" }
-        let f = DateFormatter()
-        f.dateFormat = "MMM yyyy"
-        f.locale = .current
-        return f.string(from: date)
+        return Self.labelFormatter.string(from: date)
     }
 
     /// Short label for chart axis: "Jan"
@@ -54,10 +65,7 @@ struct MonthlyFinancialAggregate: Equatable, Identifiable {
         guard let date = Calendar.current.date(
             from: DateComponents(year: year, month: month, day: 1)
         ) else { return "\(month)" }
-        let f = DateFormatter()
-        f.dateFormat = "MMM"
-        f.locale = .current
-        return f.string(from: date)
+        return Self.shortLabelFormatter.string(from: date)
     }
 }
 

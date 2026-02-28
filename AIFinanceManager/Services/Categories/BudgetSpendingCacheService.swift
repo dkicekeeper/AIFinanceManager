@@ -136,8 +136,10 @@ final class BudgetSpendingCacheService: @unchecked Sendable {
     }
 
     /// Read the cached spent amount for a category.
-    /// Returns nil if cache is invalid (not yet computed, or currency mismatch).
-    @MainActor func cachedSpent(for categoryName: String, currency: String) -> Double? {
+    /// Returns nil if cache is invalid (not yet computed, currency mismatch, or stale period).
+    /// - Parameter budgetPeriodStart: Start of the current budget period. Cache is invalid if
+    ///   the last update was before this date (period rollover bug fix — Phase 36).
+    @MainActor func cachedSpent(for categoryName: String, currency: String, budgetPeriodStart: Date? = nil) -> Double? {
         let context = stack.viewContext
         let request = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
         request.predicate = NSPredicate(format: "name == %@", categoryName)
@@ -146,7 +148,12 @@ final class BudgetSpendingCacheService: @unchecked Sendable {
         guard let entity = try? context.fetch(request).first else { return nil }
         // Cache invalid if currency doesn't match or never set
         guard entity.cachedSpentCurrency == currency,
-              entity.cachedSpentUpdatedAt != nil else { return nil }
+              let updatedAt = entity.cachedSpentUpdatedAt else { return nil }
+        // Phase 36: Cache invalid if it was last updated before the current budget period
+        // (e.g., last month's spending cached but period rolled over to this month)
+        if let periodStart = budgetPeriodStart, updatedAt < periodStart {
+            return nil
+        }
         return max(0, entity.cachedSpentAmount)
     }
 

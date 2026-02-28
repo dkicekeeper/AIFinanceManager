@@ -8,7 +8,6 @@
 
 import Foundation
 import SwiftUI
-import Combine
 import Observation
 
 @Observable
@@ -94,10 +93,6 @@ class TransactionsViewModel {
     /// Write operations handled by TransactionStore + UnifiedTransactionCache
     @ObservationIgnored let cacheManager = TransactionCacheManager()
 
-    /// Phase 8: Stub aggregate cache for backward compatibility
-    /// Aggregate caching now handled by TransactionStore
-    @ObservationIgnored private let aggregateCache: CategoryAggregateCacheProtocol = CategoryAggregateCacheStub()
-
     // MARK: - Services (initialized eagerly for @Observable compatibility)
 
     @ObservationIgnored private let recurringService: RecurringTransactionServiceProtocol
@@ -107,8 +102,6 @@ class TransactionsViewModel {
     @ObservationIgnored private let groupingService: TransactionGroupingService
     @ObservationIgnored private let balanceCalculator: BalanceCalculator
     @ObservationIgnored let recurringGenerator: RecurringTransactionGenerator
-
-    @ObservationIgnored private let balanceUpdateCoordinator = BalanceUpdateCoordinatorWrapper()
 
     // MARK: - Batch Mode for Performance
 
@@ -120,11 +113,6 @@ class TransactionsViewModel {
 
     private var isProcessingRecurringNotification = false
     private var isDataLoaded = false
-
-    // MARK: - Combine Subscriptions
-
-    /// Subscription to CategoriesViewModel.categoriesPublisher (Single Source of Truth)
-    private var categoriesSubscription: AnyCancellable?
 
     // MARK: - Initialization
 
@@ -452,12 +440,11 @@ class TransactionsViewModel {
         }
 
         // In-window: calculate from the in-memory transaction snapshot.
-        // Phase 8: Stub aggregate cache - will fall back to transaction calculation.
+        // Phase 36: aggregateCache stub removed — calculates directly from transactions
         let result = queryService.getCategoryExpenses(
             timeFilter: filter,
             baseCurrency: appSettings.baseCurrency,
             validCategoryNames: validCategoryNames,
-            aggregateCache: aggregateCache,
             cacheManager: cacheManager,
             transactions: allTransactions,
             currencyService: currencyService

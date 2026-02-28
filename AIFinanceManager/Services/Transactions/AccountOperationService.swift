@@ -88,8 +88,7 @@ class AccountOperationService: AccountOperationServiceProtocol {
             Task { @MainActor in
                 await coordinator.updateForTransaction(
                     transferTx,
-                    operation: .add(transferTx),
-                    priority: .immediate
+                    operation: .add(transferTx)
                 )
             }
         }

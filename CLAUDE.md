@@ -19,6 +19,10 @@ xcodebuild test \
 
 # Available destinations (Xcode 26 beta): iPhone 17 Pro (iOS 26.2), iPhone Air, iPhone 16e
 # Physical device: name:Dkicekeeper 17
+
+# Quickly isolate build errors (skip swiftc log noise)
+xcodebuild build -scheme AIFinanceManager \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30
 ```
 
 ## Project Overview
@@ -135,6 +139,16 @@ AIFinanceManager/
 - `InsightsCardView` → `.compact`, all detail/section views → `.full` (explicit at every call site)
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
+
+**Phase 36** (2026-02-28): Reactivity Audit — Dead Code Removal, Cache Simplification, Instant UI Updates
+- **~800 LOC deleted**: `BalanceCacheManager.swift`, `BalanceUpdateQueue.swift`, `BalanceUpdateCoordinator.swift`, `CategoryAggregateCacheStub.swift`, `CategoryAggregateCacheProtocol.swift` — all were dead after Phase 22 aggregate caching
+- **Double-invalidation fixed**: Removed synchronous `invalidateCaches()` from `TransactionStore.invalidateCache(for:)` — only the debounced path now runs
+- **Category grid reactivity**: Removed `@ObservationIgnored` from `QuickAddCoordinator.timeFilterManager` — grid totals now update on filter change
+- **Sheet identity fixed**: `CategorySelection` uses stable `name`-based `id` instead of `UUID()` — no more spurious sheet dismiss/reopen
+- **ForEach identity fixed**: `CategoryDisplayDataMapper` uses `"\(name)_\(type.rawValue)"` fallback id instead of `UUID().uuidString`
+- **Insights staleness fixed**: `InsightsViewModel.isStale` is now observable (no `@ObservationIgnored`); `InsightsView` adds `.onChange(of: insightsViewModel.isStale)` to reload while tab is open
+- **Budget period rollover fixed**: `BudgetSpendingCacheService.cachedSpent(for:currency:budgetPeriodStart:)` returns `nil` if cached data predates the current budget period
+- **Minor**: `InsightsViewModel.baseCurrency` reads `transactionStore.baseCurrency` directly; `DateSectionExpensesCache` drops `@Observable`; `BalanceStore.updateHistory` → `@ObservationIgnored`; `DateFormatter` cached as static in `CategoryBudgetService`/`MonthlyAggregateService`
 
 **Phase 35** (2026-02-27): CSV Import Crash Fix + Case-Sensitivity Fix
 - **FRC stale reference crash fixed**: `CoreDataStack.storeDidResetNotification` posted synchronously after `resetAllData()`. `TransactionPaginationController.handleStoreReset()` tears down old FRC and recreates on new store.
@@ -533,6 +547,9 @@ New file needed?
 - Optimize CoreData fetch requests with appropriate batch sizes
 - **⚠️ SwiftUI `List` + 500+ sections = hard freeze** — SwiftUI renders all `Section` headers eagerly; 3,530 sections causes 10-12s UI freeze. Always slice: `Array(sections.prefix(visibleSectionLimit))` with `@State var visibleSectionLimit = 100`. Add `ProgressView().onAppear { visibleSectionLimit += 100 }` as the last List row for infinite scroll ("умная подгрузка"). `@State` auto-resets to 100 on each `NavigationStack` push.
 - **⚠️ `ContentView.onAppear` fires on every back-navigation** — guard expensive ops (e.g. `updateSummary()` ~540ms) with `@State private var hasAppearedOnce = false`. Safe to skip on re-appearances: `onChange(of: transactionStore.transactions.count)` keeps `cachedSummary` current.
+- **⚠️ Dead code deletion — orphaned call sites**: When deleting a class (e.g. `BalanceUpdateQueue`), grep all `.swift` sources for the class name AND all method names it implemented. Removed parameters silently survive at call sites and only surface at build time as "extra argument" errors. Example: after deleting `BalanceUpdateQueue`, `AccountOperationService` still passed `priority: .immediate` to `coordinator.updateForTransaction()`.
+- **`CompileAssetCatalogVariant` failure can be transient** — if the only failing build step is asset catalog compilation and `grep -E "error:"` returns nothing, just retry; it's a Xcode caching artifact, not a code issue.
+- **Making an `@Observable` property reactive**: remove `@ObservationIgnored`, change to `private(set) var`; in the observing View add `.onChange(of: vm.property) { ... }`. Used for `InsightsViewModel.isStale` → drives `InsightsView` reload while tab stays open.
 
 ## SwiftUI Layout Gotchas
 
@@ -1111,7 +1128,7 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 
 ---
 
-**Last Updated**: 2026-02-27
-**Project Status**: Active development - CSV import crash fix + case-sensitivity fix (Phase 35). FRC stale reference crash after resetAllData fixed. CSV import 19,444/19,444 (0 skipped). addBatch fallback pattern. Utils cleanup + design system split (Phase 34). Zero hardcoded colors in UI components (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates.
+**Last Updated**: 2026-02-28
+**Project Status**: Active development - Reactivity audit + dead code removal (Phase 36). ~800 LOC deleted, 7 reactivity bugs fixed (ForEach identity, sheet flicker, insights staleness, budget rollover, double-invalidation, category grid, isStale). CSV import crash fix (Phase 35). Utils cleanup + design system split (Phase 34). Zero hardcoded colors (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates.
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`

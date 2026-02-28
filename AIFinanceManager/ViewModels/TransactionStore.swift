@@ -1199,24 +1199,21 @@ final class TransactionStore {
                 // Apply transaction incrementally (O(1) instead of O(n))
                 await balanceCoordinator.updateForTransaction(
                     transaction,
-                    operation: .add(transaction),
-                    priority: .high
+                    operation: .add(transaction)
                 )
 
             case .deleted(let transaction):
                 // Revert transaction incrementally
                 await balanceCoordinator.updateForTransaction(
                     transaction,
-                    operation: .remove(transaction),
-                    priority: .high
+                    operation: .remove(transaction)
                 )
 
             case .updated(let old, let new):
                 // Update transaction (revert old, apply new)
                 await balanceCoordinator.updateForTransaction(
                     new,
-                    operation: .update(old: old, new: new),
-                    priority: .high
+                    operation: .update(old: old, new: new)
                 )
 
             case .bulkAdded(let transactions):
@@ -1224,8 +1221,7 @@ final class TransactionStore {
                 for transaction in transactions {
                     await balanceCoordinator.updateForTransaction(
                         transaction,
-                        operation: .add(transaction),
-                        priority: .normal
+                        operation: .add(transaction)
                     )
                 }
 
@@ -1333,15 +1329,11 @@ final class TransactionStore {
         // Category expenses always affected
         cache.remove(UnifiedTransactionCache.Key.categoryExpenses)
 
-        // Phase fix: Invalidate TransactionCacheManager immediately (synchronously),
-        // before the debounced syncTransactionStoreToViewModels fires.
-        // This ensures that when refreshTrigger in QuickAddTransactionView fires
-        // (triggered by allTransactions changing), the cacheManager is already stale
-        // and categoryExpenses() will recompute from fresh transaction data.
-        // Skip during import — a single invalidation fires after finishImport().
-        if !isImporting {
-            coordinator?.transactionsViewModel.invalidateCaches()
-        }
+        // Phase 36: Removed synchronous invalidateCaches() call — the debounced
+        // syncTransactionStoreToViewModels() handles invalidation. Calling it both
+        // here and in the debounced path caused double-invalidation on every mutation.
+        // @Observable tracking on `transactions` array ensures dependent computed
+        // properties in QuickAddCoordinator recompute automatically.
 
         switch event {
         case .added(let tx):

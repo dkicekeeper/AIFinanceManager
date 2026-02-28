@@ -58,8 +58,10 @@ struct CategoryBudgetService {
     func calculateSpent(for category: CustomCategory, transactions: [Transaction]) -> Double {
         let baseCurrency = appSettings?.baseCurrency ?? "KZT"
 
-        // Phase 22: Fast path — read from persistent cache in CustomCategoryEntity
-        if let cached = budgetCache?.cachedSpent(for: category.name, currency: baseCurrency) {
+        // Phase 22 + Phase 36: Fast path — read from persistent cache in CustomCategoryEntity.
+        // Pass budgetPeriodStart so the cache correctly invalidates on period rollover.
+        let periodStart = budgetPeriodStart(for: category)
+        if let cached = budgetCache?.cachedSpent(for: category.name, currency: baseCurrency, budgetPeriodStart: periodStart) {
             return cached
         }
 
@@ -72,8 +74,8 @@ struct CategoryBudgetService {
         let periodStart = budgetPeriodStart(for: category)
         let periodEnd = Date()
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
+        // Phase 36: Use cached DateFormatter instead of allocating a new one per call
+        let dateFormatter = DateFormatters.dateFormatter
 
         return transactions
             .filter { transaction in

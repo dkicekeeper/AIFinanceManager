@@ -4,20 +4,20 @@
 //
 //  Created on 2026-02-02
 //  Part of Balance Refactoring Phase 4
+//  Cleaned up in Phase 36: removed queue/cache/statistics infra
 //
 //  Protocol for balance coordination
 //  Single entry point for all balance operations
 //
 
 import Foundation
-import Combine
 
 // MARK: - Balance Coordinator Protocol
 
 /// Protocol for coordinating balance calculations and updates
 /// Provides a unified interface for balance management across the app
 @MainActor
-protocol BalanceCoordinatorProtocol: ObservableObject {
+protocol BalanceCoordinatorProtocol: AnyObject {
 
     // MARK: - Published State
 
@@ -42,22 +42,18 @@ protocol BalanceCoordinatorProtocol: ObservableObject {
     /// - Parameters:
     ///   - transaction: The transaction
     ///   - operation: Operation type (add/remove/update)
-    ///   - priority: Update priority
     func updateForTransaction(
         _ transaction: Transaction,
-        operation: TransactionUpdateOperation,
-        priority: BalanceQueueRequest.Priority
+        operation: TransactionUpdateOperation
     ) async
 
     /// Update balances for multiple transactions (batch)
     /// - Parameters:
     ///   - transactions: Array of transactions
     ///   - operation: Operation type
-    ///   - priority: Update priority
     func updateForTransactions(
         _ transactions: [Transaction],
-        operation: TransactionUpdateOperation,
-        priority: BalanceQueueRequest.Priority
+        operation: TransactionUpdateOperation
     ) async
 
     // MARK: - Account Updates
@@ -138,50 +134,4 @@ protocol BalanceCoordinatorProtocol: ObservableObject {
     /// - Parameter accountId: Account ID
     /// - Returns: Initial balance if set
     func getInitialBalance(for accountId: String) async -> Double?
-
-    // MARK: - Cache Management
-
-    /// Invalidate cache for specific accounts
-    /// - Parameter accountIds: Set of account IDs
-    func invalidateCache(for accountIds: Set<String>) async
-
-    /// Invalidate all caches
-    func invalidateAllCaches() async
-
-    // MARK: - Queue Management
-
-    /// Flush update queue (force immediate processing)
-    func flushQueue() async
-
-    /// Cancel all pending updates
-    func cancelPendingUpdates() async
-
-    // MARK: - Statistics
-
-    /// Get coordinator statistics
-    /// - Returns: Performance and cache statistics
-    func getStatistics() async -> BalanceCoordinatorStatistics
-}
-
-// MARK: - Balance Coordinator Statistics
-
-struct BalanceCoordinatorStatistics {
-    let cacheStatistics: CacheStatistics
-    let queueStatistics: QueueStatistics
-    let totalAccounts: Int
-    let lastUpdateTime: Date?
-}
-
-// MARK: - Default Implementations
-
-extension BalanceCoordinatorProtocol {
-    /// Update for transaction with default priority
-    func updateForTransaction(_ transaction: Transaction, operation: TransactionUpdateOperation) async {
-        await updateForTransaction(transaction, operation: operation, priority: .high)
-    }
-
-    /// Update for transactions with default priority
-    func updateForTransactions(_ transactions: [Transaction], operation: TransactionUpdateOperation) async {
-        await updateForTransactions(transactions, operation: operation, priority: .normal)
-    }
 }

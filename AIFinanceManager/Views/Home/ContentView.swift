@@ -518,7 +518,6 @@ struct ContentView: View {
                 currency: account.currency,
                 iconSource: account.iconSource
             )
-            viewModel.syncAccountsFrom(accountsViewModel)
             showingAddAccount = false
         }
     }

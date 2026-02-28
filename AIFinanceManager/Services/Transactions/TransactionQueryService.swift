@@ -100,84 +100,35 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
         timeFilter: TimeFilter,
         baseCurrency: String,
         validCategoryNames: Set<String>?,
-        aggregateCache: CategoryAggregateCacheProtocol,
         cacheManager: TransactionCacheManager,
         transactions: [Transaction]? = nil,
         currencyService: TransactionCurrencyService? = nil
     ) -> [String: CategoryExpense] {
 
-        // ✅ Check cache with time filter as key
+        // Check cache with time filter as key
         if let cached = cacheManager.getCachedCategoryExpenses(for: timeFilter) {
             return cached
         }
 
-        // ✅ OPTIMIZED: Use daily aggregates for date-based filters (10-100x faster)
-        // Date-based filters (last30Days, thisWeek, yesterday) use pre-computed daily aggregates
-        // Month/year filters use monthly/yearly/all-time aggregates
-        let isDateBasedFilter = isDateBasedFilterPreset(timeFilter.preset)
-
-        let result: [String: CategoryExpense]
-
-        if isDateBasedFilter {
-            // Use daily aggregates from aggregate cache (O(days) instead of O(transactions))
-            let dateRange = timeFilter.dateRange()
-            result = aggregateCache.getDailyAggregates(
-                dateRange: dateRange,
-                baseCurrency: baseCurrency,
-                validCategoryNames: validCategoryNames
-            )
-
-            // Fallback: If no daily aggregates available, calculate from transactions
-            if result.isEmpty, let transactions = transactions, let currencyService = currencyService {
-                return calculateCategoryExpensesFromTransactions(
-                    transactions: transactions,
-                    timeFilter: timeFilter,
-                    baseCurrency: baseCurrency,
-                    validCategoryNames: validCategoryNames,
-                    currencyService: currencyService
-                )
-            }
-        } else {
-            // Use aggregate cache for month/year-based filters (more efficient)
-            result = aggregateCache.getCategoryExpenses(
-                timeFilter: timeFilter,
-                baseCurrency: baseCurrency,
-                validCategoryNames: validCategoryNames
-            )
-
-            // 🔧 CRITICAL FIX: Fallback for non-date-based filters too!
-            // aggregateCache is a stub (Phase 8) that returns empty results
-            // Need to calculate from transactions as fallback
-            if result.isEmpty, let transactions = transactions, let currencyService = currencyService {
-                return calculateCategoryExpensesFromTransactions(
-                    transactions: transactions,
-                    timeFilter: timeFilter,
-                    baseCurrency: baseCurrency,
-                    validCategoryNames: validCategoryNames,
-                    currencyService: currencyService
-                )
-            }
+        // Phase 36: aggregateCache stub removed — always calculate from transactions directly
+        guard let transactions = transactions, let currencyService = currencyService else {
+            return [:]
         }
 
-        // ✅ CRITICAL FIX: Only cache non-empty results
-        // During aggregate cache rebuild, getCategoryExpenses() may return empty results
-        // If we cache empty results, UI will show 0.00 even after rebuild completes
-        // Empty results should trigger a fresh calculation next time
+        let result = calculateCategoryExpensesFromTransactions(
+            transactions: transactions,
+            timeFilter: timeFilter,
+            baseCurrency: baseCurrency,
+            validCategoryNames: validCategoryNames,
+            currencyService: currencyService
+        )
+
+        // Only cache non-empty results
         if !result.isEmpty {
             cacheManager.setCachedCategoryExpenses(result, for: timeFilter)
         }
 
         return result
-    }
-
-    /// Check if filter preset requires date-based (day-level) calculation
-    private func isDateBasedFilterPreset(_ preset: TimeFilterPreset) -> Bool {
-        switch preset {
-        case .last30Days, .thisWeek, .yesterday, .today, .custom:
-            return true
-        case .allTime, .thisMonth, .lastMonth, .thisYear, .lastYear:
-            return false
-        }
     }
 
     /// Calculate category expenses directly from transactions (for date-based filters)
