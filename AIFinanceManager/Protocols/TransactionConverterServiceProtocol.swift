@@ -2,33 +2,13 @@
 //  TransactionConverterServiceProtocol.swift
 //  AIFinanceManager
 //
-//  Created on 2026-02-03
-//  CSV Import Refactoring Phase 1
+//  DEPRECATED — Phase 37: `convertRow()` merged into `EntityMappingServiceProtocol`.
 //
-
-import Foundation
-
-/// Protocol for converting validated CSV rows to Transaction objects
-/// Handles ID generation, date formatting, and transaction structure creation
-@MainActor
-protocol TransactionConverterServiceProtocol {
-    /// Converts a validated CSV row to a Transaction object
-    /// - Parameters:
-    ///   - csvRow: Validated CSV row data
-    ///   - accountId: Resolved account ID (optional)
-    ///   - targetAccountId: Resolved target account ID for transfers (optional)
-    ///   - categoryName: Resolved category name
-    ///   - categoryId: Resolved category ID
-    ///   - subcategoryIds: Array of resolved subcategory IDs
-    ///   - rowIndex: Row index for deterministic ID generation
-    /// - Returns: Complete Transaction object ready for import
-    func convertRow(
-        _ csvRow: CSVRow,
-        accountId: String?,
-        targetAccountId: String?,
-        categoryName: String,
-        categoryId: String,
-        subcategoryIds: [String],
-        rowIndex: Int
-    ) -> Transaction
-}
+//  The conversion step is now declared in `EntityMappingServiceProtocol` and implemented
+//  by `EntityMappingService`. The separate converter protocol and service have been removed
+//  because all resolved IDs (accountId, categoryId, subcategoryIds) originate from
+//  EntityMappingService anyway — conversion is a natural continuation of mapping.
+//
+//  This file is kept as a tombstone to preserve git history context.
+//  Remove this file in a future cleanup pass.
+//

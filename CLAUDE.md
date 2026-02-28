@@ -140,6 +140,13 @@ AIFinanceManager/
 - Fixed: `InsightDetailView` previously omitted the parameter entirely (relied on default `false`)
 - Design doc: `docs/plans/2026-02-22-chart-display-mode-design.md`
 
+**Phase 38** (2026-02-28): InsightsService Split — 2832 LOC Monolith → 10 Domain Files
+- `InsightsService.swift` shrunk to 782 LOC — retains: class decl, init, public API, granularity API, period data points, shared helpers
+- 9 new extension files: `+Spending`, `+Income`, `+Budget`, `+Recurring`, `+CashFlow`, `+Wealth`, `+Savings`, `+Forecasting`, `+HealthScore`
+- **Access control rule**: cross-file extensions need `internal` (no modifier) — changed `private let/static let/func` on logger, deps, formatters, `PeriodSummary`, shared helpers (`resolveAmount`, `startOfMonth`, `seriesMonthlyEquivalent`, `monthlyRecurringNet`)
+- **Import rule**: each extension file needs its own `import os` (for `Self.logger`) and `import CoreData` (for `NSFetchRequest`) — not inherited from main file
+- Service audit also completed: deleted 3 dead protocols, merged `TransactionConverterService` → `EntityMappingService`, fixed `TransactionQueryService` dateFormatter race, documented `CurrencyConverter` vs `TransactionCurrencyService`, marked `RecurringTransactionService` deprecations
+
 **Phase 36** (2026-02-28): Reactivity Audit — Dead Code Removal, Cache Simplification, Instant UI Updates
 - **~800 LOC deleted**: `BalanceCacheManager.swift`, `BalanceUpdateQueue.swift`, `BalanceUpdateCoordinator.swift`, `CategoryAggregateCacheStub.swift`, `CategoryAggregateCacheProtocol.swift` — all were dead after Phase 22 aggregate caching
 - **Double-invalidation fixed**: Removed synchronous `invalidateCaches()` from `TransactionStore.invalidateCache(for:)` — only the debounced path now runs
@@ -164,52 +171,15 @@ AIFinanceManager/
 - **`AmountFormatter.swift`**: убран мёртвый `import Combine`.
 - **`CategoryStyleCache.swift` НЕ удалён** — активно используется через `CategoryStyleHelper.cached()` в 4 view-файлах (TransactionCard, TransactionRowContent, CategoryChip, TransactionCardComponents). Не удалять.
 
-**Phase 33** (2026-02-26): Component Extraction
-- **New `BudgetProgressCircle` component** (`Views/Components/BudgetProgressCircle.swift`) — extracted from `CategoryChip` + `CategoryRow`. Params: `progress: Double`, `size: CGFloat = AppIconSize.categoryIcon`, `lineWidth: CGFloat = 3`, `isOverBudget: Bool = false`. Uses `AppColors.success` / `AppColors.destructive` automatically.
-- **New `StatusIndicatorBadge` component** (`Views/Components/StatusIndicatorBadge.swift`) — extracted from `SubscriptionCard`. Backed by new `EntityStatus` enum (`.active/.paused/.archived/.pending`) with `iconName`, `tintColor`, `accessibilityLabel` props. `tintColor` uses `AppColors.statusActive/Paused/Archived/accent`.
-- **`RecurringSeries.entityStatus`** — bridge computed property mapping `subscriptionStatus` → `EntityStatus?` (in `StatusIndicatorBadge.swift`).
-- **`futureTransactionStyle(isFuture:)` View modifier** added to `AppTheme.swift` — replaces inline `.opacity(0.5)` in `TransactionRowContent`. Use `.futureTransactionStyle(isFuture: bool)` everywhere for future transactions.
-- **Design system now 100% compliant** — zero hardcoded colors remain in UI components after Phase 32+33.
+**Phase 33** (2026-02-26): Component Extraction — `BudgetProgressCircle` (`Views/Components/`), `StatusIndicatorBadge` + `EntityStatus` enum (`.active/.paused/.archived/.pending`), `RecurringSeries.entityStatus` bridge. `.futureTransactionStyle(isFuture:)` modifier added — use instead of inline `.opacity(0.5)`.
 
-**Phase 32** (2026-02-26): Design System Hardening
-- **New `AppColors` tokens**: `transfer` (cyan-teal `Color(red:0.0, green:0.75, blue:0.85)`), `planned` (`Color.blue`), `statusActive` (green alias), `statusPaused` (orange alias), `statusArchived` (gray alias). Note: old `transfer = Color.primary` was wrong — now distinct cyan-teal.
-- **New `AppSize` tokens**: `chartHeightLarge/Small`, `calendarRowHeight/HeaderHeight/DaySize`, `dotSize`(10pt), `dotLargeSize`(12pt), `colorSwatchSize`, `selectedBorderWidth`(2pt).
-- **New `AppAnimation` constants**: `shimmerDuration`(1.4), `skeletonResponse`(0.4), `skeletonScale`(0.97), `shimmerOpacityDark`(0.15), `shimmerOpacityLight`(0.6), `bannerEntranceResponse`(0.6), `bannerEntranceDamping`(0.7), `bannerIconResponse`(0.5), `bannerIconDamping`(0.6), `bannerIconDelay`(0.1), `bannerHiddenScale`(0.85), `bannerHiddenOffset`(-20).
-- **27 hardcoded colors fixed** across 13 files — all replaced with `AppColors.*` semantic tokens. Key files: `MessageBanner`, `SkeletonView/Modifier`, `TransactionRowContent`, `FormTextField`, `SiriWaveView`, `CategoryDeepDiveView`, `CSVEntityMappingView`.
-- **Critical localization bug**: `AccountRow.swift` line 43 — `Text("account.interestTodayPrefix")` was NOT localized (renders raw key). Fixed to `Text(String(localized: "account.interestTodayPrefix", defaultValue: "Interest today: "))`.
-- **`AnalyticsCard.swift` Russian defaultValues** → English: `"История"` → `"History"`, added missing `defaultValue: "Planned"`.
-- **`AppTheme.swift` inline hardcodes**: `Color.blue.opacity(0.1/0.12)` in `transactionRowStyle`/`glassTransactionRowStyle` → `AppColors.planned.opacity(...)`.
+**Phase 32** (2026-02-26): Design System Hardening — new `AppColors` tokens (`transfer` cyan-teal, `planned` blue, `statusActive/Paused/Archived`); new `AppSize`/`AppAnimation` constants; 27 hardcoded colors eliminated across 13 files. Critical localization fix: `AccountRow.swift` line 43 `Text("account.interestTodayPrefix")` → `String(localized:defaultValue:)`.
 
-**Phase 31** (2026-02-26): SwiftUI Anti-Pattern Sweep
-- **`@ObservationIgnored` in `InsightsViewModel`**: Added to 8 properties — `insightsService`, `transactionStore`, `transactionsViewModel`, `precomputedInsights`, `precomputedPeriodPoints`, `precomputedTotals`, `recomputeTask`, `isStale`. Eliminates spurious re-renders caused by tracking immutable deps and internal caches.
-- **`@ObservationIgnored` in `TransactionsViewModel`**: Added to 8 properties — `aggregateCache`, `recurringService`, `filterCoordinator`, `accountOperationService`, `queryService`, `groupingService`, `balanceCalculator`, `balanceUpdateCoordinator`. Phase 23 compliance.
-- **`makeNumberFormatter()` hot path**: `FormattedAmountText` now uses `AmountDisplayConfiguration.formatter` (cached) instead of `makeNumberFormatter()` per render. `Formatting.formatCurrencySmart` uses cached formatter for hot path, creates new only for rare no-decimals variant (which mutates digit counts).
-- **`AnyView` → `@ViewBuilder` in `AppTheme.swift`**: All 4 style modifiers (`filterChipStyle`, `glassCardStyle`, `cardBackground`, `glassTransactionRowStyle`) converted — type info preserved, SwiftUI diffing works correctly.
-- **`AnyView` → generic in `InsightDetailView`**: `InsightDetailView<CategoryDestination: View>` — `_onCategoryTap: ((CategoryBreakdownItem) -> CategoryDestination)?`; `@ViewBuilder` init with drill-down; `extension where CategoryDestination == Never` for no-tap init. `InsightsView` adds `@ViewBuilder insightDetailView(for:)` replacing `spendingCategoryTap: (CategoryBreakdownItem) -> AnyView`.
-- **`DispatchQueue.main.asyncAfter` → structured concurrency in Views**: `VoiceInputConfirmationView` uses `Task { @MainActor in; await Task.yield() }` for @Observable propagation; `CSVEntityMappingView` uses `Task { @MainActor in; try? await Task.sleep(for: .milliseconds(300)) }` for sheet dismiss timing.
-- **`DispatchQueue.main.async` → structured concurrency in repos**: `TransactionRepository.batchInsertTransactions` and `CategoryRepository` NSBatchDeleteRequest merge now use `Task { @MainActor [weak self] in }`.
-- **Symmetric scale in `SkeletonLoadingModifier`**: Both skeleton exit and content enter now use `.scale(0.97)` — eliminates subtle "pop" from asymmetric 0.98→1.02 values.
-- **Note on generic static properties**: `InsightDetailView<T>` cannot have `static let` (Swift limitation); logger is `private var logger: Logger { Logger(...) }` instance computed property — os.Logger handles are cached by OSLog framework internally so creation is cheap.
+**Phase 31** (2026-02-26): SwiftUI Anti-Pattern Sweep — `@ObservationIgnored` added to service deps in `InsightsViewModel` + `TransactionsViewModel`; `AnyView` → `@ViewBuilder` in 4 style modifiers; `InsightDetailView` made generic `<CategoryDestination: View>` (no `AnyView` in nav callback); `DispatchQueue` → structured concurrency in 2 views + 2 repos.
 
-**Phase 30** (2026-02-23): Per-Element Skeleton Loading
-- **Root cause fixed**: Phase 29 skeleton had 3 bugs — skeleton had no opaque background (transparent), shimmer dismissed after ~50ms (fast-path < shimmer duration), `.blendMode(.screen)` on light gray imperceptible (~0.03 luminance delta)
-- **SkeletonLoadingModifier**: New `Views/Components/SkeletonLoadingModifier.swift` — `View.skeletonLoading(isLoading:skeleton:)` universal per-element modifier. `Group { if isLoading { skeleton() } else { content } }` with `.spring(response: 0.4)` animation per section
-- **SkeletonView shimmer fixes**: phase `-1.0→-0.5` (immediate visibility on appear), end `2.0→1.5`, opacity `0.3→0.5`, removed `.blendMode(.screen)`
-- **AppCoordinator**: `private(set) var isFastPathDone = false` (set after `initializeFastPath`) + `private(set) var isFullyInitialized = false` (set after balance registration in `initialize`). Observable outputs for UI binding — separate from internal `isFastPathStarted`/`isInitialized` reentrancy guards
-- **ContentView**: Removed `isInitializing`/`loadingOverlay`/`initializeIfNeeded`. 4 sections use `.skeletonLoading`: `accountsSection`(`!isFastPathDone`) + `historyNavigationLink`(`!isFullyInitialized`) + `subscriptionsNavigationLink`(`!isFullyInitialized`) + `categoriesSection`(`!isFastPathDone`). Private `AccountsCarouselSkeleton` + `SectionCardSkeleton` structs. Both skeleton structs have `.accessibilityHidden(true)`.
-- **ContentViewSkeleton.swift**: Deleted (full-screen approach replaced)
-- **InsightsView**: Restructured `if isLoading { loadingView } / else if !hasData { emptyState } / else { content }` → `if !isLoading && !hasData { emptyState } else { insightsSummaryHeaderSection + insightsFilterSection + insightsSectionsSection }`. Each section uses `.skeletonLoading(isLoading: insightsViewModel.isLoading)`. Removed redundant outer `.animation` (SkeletonLoadingModifier owns animation per section).
-- **InsightsSkeleton.swift → InsightsSkeletonComponents.swift**: Renamed; `InsightsSkeleton` full-screen struct deleted; `InsightsSummaryHeaderSkeleton`/`InsightCardSkeleton` made internal; new `InsightsFilterCarouselSkeleton` extracted; all three have `.accessibilityHidden(true)`
-- Design docs: `docs/plans/2026-02-23-per-element-skeleton-design.md`, `docs/plans/2026-02-23-per-element-skeleton-implementation.md`
+**Phase 30** (2026-02-23): Per-Element Skeleton — `SkeletonLoadingModifier` (`Views/Components/SkeletonLoadingModifier.swift`), shimmer background/duration/blendMode fixes. `AppCoordinator` gains observable `isFastPathDone` / `isFullyInitialized` flags driving per-section skeleton display.
 
-**Phase 29** (2026-02-23): Skeleton Loading — ContentView & InsightsView
-- **SkeletonShimmerModifier**: `ViewModifier` with `@State phase: CGFloat` animation — `LinearGradient` blick sweeps left-to-right in 1.4s, `easeInOut`, `repeatForever`. `.blendMode(.screen)` for Liquid Glass character. `.clipped()` prevents overdraw.
-- **SkeletonView**: Base block — `RoundedRectangle` with `AppColors.secondaryBackground` + `.skeletonShimmer()`. `width: nil` fills available space via `maxWidth: .infinity`. Default `cornerRadius: AppRadius.sm`.
-- **ContentViewSkeleton**: Mirrors home screen — filter chip (110×32) + 3 account cards carousel (200×120) + 3 section cards (icon circle + 2 text lines). Replaces capsule `ProgressView` in `loadingOverlay` (ContentView.swift). Full-screen overlay with `.ignoresSafeArea()`.
-- **InsightsSkeleton**: Mirrors analytics screen — summary header (3 metric columns + health score row) + filter carousel (4 chips) + section label + 3 insight cards with trailing chart rects. Replaces `loadingView` property (InsightsView.swift). Uses plain `VStack` body (not `ScrollView`) to self-size inside InsightsView's outer `ScrollView`.
-- Transition: `.opacity.combined(with: .scale(0.98))` — subtle zoom-out on content appear. Animation driven by `.animation(.spring(response: 0.4), value: isLoading)`.
-- New files: `ContentViewSkeleton.swift`, `InsightsSkeleton.swift`. Rewritten: `SkeletonView.swift`.
-- Design doc: `docs/plans/2026-02-23-skeleton-loading-design.md`
+**Phase 29** (2026-02-23): Initial skeleton attempt — superseded by Phase 30 bug fixes.
 
 **Phase 28** (2026-02-23): Instant Launch — Startup Performance
 - **Progressive UI**: `initializeFastPath()` loads accounts+categories only (<50ms) → UI visible instantly; full 19k-transaction load runs in background via `initialize()`
@@ -235,117 +205,22 @@ AIFinanceManager/
 - **Two-phase progressive loading**: Phase 1 computes only `currentGranularity` → writes to UI immediately (user sees real data after ~1/5 of total time). Phase 2 computes remaining 4 granularities + health score → final UI write.
 - Design doc: `docs/plans/2026-02-22-insights-performance-optimization.md`
 
-**Phase 24** (2026-02-22): Full Intelligence Suite — New Insights
-- Added 10 new `InsightType` cases and 2 new `InsightCategory` cases (`.savings`, `.forecasting`)
-- **Savings category** (3 insights): savingsRate, emergencyFund, savingsMomentum
-- **Forecasting category** (6 insights): spendingForecast, balanceRunway, yearOverYear, incomeSeasonality, spendingVelocity, incomeSourceBreakdown
-- **Behavioral insights** (2): duplicateSubscriptions (→ `.recurring`), accountDormancy (→ `.wealth`)
-- **FinancialHealthScore**: composite 0-100 score (5 weighted components), shown in `InsightsSummaryHeader` badge
-- `InsightsViewModel` gains `savingsInsights`, `forecastingInsights`, `healthScore` properties
-- Localization: 29 new keys (en + ru)
+**Phase 24** (2026-02-22): Full Intelligence Suite — 10 new `InsightType` cases; `.savings` + `.forecasting` categories; `FinancialHealthScore` (0-100, 5 weighted components). `InsightsViewModel` gains `savingsInsights`, `forecastingInsights`, `healthScore`.
 
-**Phase 23** (2026-02-20): @ObservationIgnored — Fine-Grained UI Updates
-- **Eliminated unnecessary dependency tracking** in 7 `@Observable` classes
-- **`AppCoordinator`**: 8 зависимостей (ViewModels + Store + Coordinator) помечены `@ObservationIgnored`; observable остаётся только `isInitialized`
-- **`TransactionStore`**: `repository`, `recurringGenerator`, `recurringValidator`, `recurringCache`, `categoryAggregateService`, `monthlyAggregateService`, `coordinator` → `@ObservationIgnored`
-- **`TransactionsViewModel`**: `repository`, `currencyService`, `cacheManager`, `recurringGenerator` → `@ObservationIgnored`
-- **`AddTransactionCoordinator`** / **`EditTransactionCoordinator`** / **`QuickAddCoordinator`**: все публичные VM-зависимости → `@ObservationIgnored`; observable остаётся только `formData`
-- **`DepositsViewModel`**: `repository`, `accountsViewModel` → `@ObservationIgnored`
-- **Правило**: все `let`-зависимости (сервисы, репозитории, другие VM) в `@Observable` классах обязаны быть помечены `@ObservationIgnored`
+**Phase 23** (2026-02-20): @ObservationIgnored sweep — rule now in Dev Guidelines. Reference implementations: `AppCoordinator`, `TransactionStore`, `AddTransactionCoordinator`.
 
-**Phase 22** (2026-02-19): Persistent Aggregate Caching
-- **Activated `CategoryAggregateEntity`** — schema existed since Phase 8 as stub, now fully live
-- **New `MonthlyAggregateEntity`** — stores pre-computed monthly income/expense totals in CoreData
-- **New `BudgetSpendingCacheService`** — caches period spending in `CustomCategoryEntity.cachedSpentAmount`
-- **InsightsService fast path** — `computeMonthlyDataPoints()` reads from CoreData (O(M)) with fallback to O(N×M) scan
-- **Category spending fast path** — `generateSpendingInsights()` reads from `CategoryAggregateService.fetchRange()` first
-- **Incremental maintenance** — `TransactionStore.apply()` calls `updateAggregates(for:)` after each event
-- **Rebuild on currency change** — `updateBaseCurrency()` triggers full rebuild of all aggregates
-- **Rebuild after CSV import** — `finishImport()` triggers full rebuild from all imported transactions
-- **Startup rebuild check** — `AppCoordinator.initialize()` runs background rebuild if CoreData is empty
+**Phase 22** (2026-02-19): Persistent Aggregate Caching — `CategoryAggregateEntity` activated; `MonthlyAggregateEntity` + `BudgetSpendingCacheService` added. `TransactionStore.apply()` calls `updateAggregates(for:)` after each mutation. Performance: Insights O(N×M) → O(M), budget read O(N) → O(1). Startup rebuild if aggregates empty.
 
-**Performance improvements (Phase 22):**
-- InsightsService "Last Year" chart: O(N×M) → O(M) CoreData fetch (12k tx × 12 months → 12 records)
-- Category spending breakdown: O(N) filter+group → O(M) CoreData fetch per filter period
-- Budget progress read: O(N) scan per category → O(1) CoreData field read
-- CSV import aggregate rebuild: single O(N) pass after import (instead of repeated O(N) per view)
+**Phase 16-21** (2026-02-19): Performance — ViewModels use computed properties from TransactionStore (SSOT); debounced sync (16ms); InsightsViewModel lazy. **⚠️ `allTransactions` setter is a no-op** — to delete use `TransactionStore.deleteTransactions(for...)` which routes through `apply(.deleted)` for proper aggregate/cache/persistence.
 
-**Phase 16-21** (2026-02-19): Performance Refactoring
-- **Phase 16**: Eliminated `syncTransactionStoreToViewModels()` array copies — ViewModels now use computed properties reading directly from TransactionStore (SSOT). Removed 5 redundant array copies per mutation.
-- **⚠️ `allTransactions` setter is a Phase 16 no-op**: `TransactionsViewModel.allTransactions.removeAll { }` compiles silently but does nothing (empty setter for legacy compatibility). To delete transactions use `TransactionStore.deleteTransactions(for...)` which routes through `apply(.deleted)` events for proper aggregate/cache/persistence updates.
-- **Phase 17**: Added debounced sync (16ms coalesce) in `TransactionStore.apply()`. Fixed `addTransactions()` to use `addBatch()` instead of individual `add()` loop. Reduced ContentView onChange handlers from 3 to 2.
-- **Phase 18**: Made InsightsViewModel lazy — marks data as stale instead of eagerly recomputing all 5 granularities on every data change. Computation deferred until user opens Insights tab.
-- **Phase 19**: Streamlined startup — removed duplicate `transactionsViewModel.loadDataAsync()`, balance registration uses already-loaded TransactionStore data.
-- **Phase 20**: Granular cache invalidation — `apply()` now invalidates only affected cache keys (summary, daily expenses for affected dates) instead of `cache.invalidateAll()`.
-- **Phase 21**: Removed stub methods and `dataRefreshTrigger`/`notifyDataChanged()` — @Observable handles UI updates automatically.
-
-**Performance improvements:**
-- Sync operations per transaction mutation: 7 → 1 (debounced)
-- Array copies per mutation: 5 → 0
-- Insights recompute per mutation: 5 granularities → 0 (lazy)
-- CSV import of 100 transactions: 700 operations → 1 batch sync
-- Startup: eliminated duplicate data loading
-
-**Phase 15** (2026-02-16): MessageBanner Component
-- Created universal message banner with beautiful spring animations
-- Consolidated ErrorMessageView and SuccessMessageView (2 → 1 component)
-- Added `.warning` and `.info` message type variants
-- Spring entrance animation: scale (0.85→1.0), fade, slide with icon bounce
-- Type-matched haptic feedback (success/error/warning notifications)
-- Color-matched shadows for visual depth (8pt radius)
-- Enhanced HapticManager with `.notification(type:)` method
-- 100% Design System compliance with Liquid Glass support
-
-**Phase 14** (2026-02-16): UniversalFilterButton Component
-- Created universal filter button component supporting Button and Menu modes
-- Consolidated FilterChip, CategoryFilterButton, and AccountFilterMenu (3 → 1 component)
-- Added CategoryFilterHelper for reusable category filter logic
-- Centralized localization with LocalizedRowKeys enum (+3 filter keys)
-- Reduced code duplication by 45% (201 → 110 LOC)
-- 100% Design System compliance with `.filterChipStyle`
-
-**Phase 13** (2026-02-16): UniversalCarousel Component
-- Created universal horizontal carousel component for consistent scrolling
-- Consolidated 8+ carousel implementations with CarouselConfiguration presets
-- Added auto-scroll support via ScrollViewReader for selected items
-- Migrated 8 components: ColorPickerRow, HistoryFilterSection, AccountsCarousel, etc.
-- Reduced code duplication by 56% (655 → 285 LOC)
-- 100% Design System compliance
-
-**Phase 12** (2026-02-16): UniversalRow Component
-- Created universal row component with IconView integration
-- Migrated 5 row components to UniversalRow architecture
-- Centralized localization with LocalizedRowKeys enum
-- Reduced code duplication by 83% (1,200 → 400 LOC)
-- 100% Design System compliance
-
-**Phase 11** (2026-02-15): Swift 6.0 Warnings Resolution
-- Fixed ~164 Swift 6 strict concurrency warnings
-- Wrapped all CoreData entity mutations in context.perform { }
-- Made CoreDataStack @unchecked Sendable
-- Added Sendable conformance to request types
-- 0 build errors, 100% critical violations fixed
-
-**Phase 10** (2026-02-15): Project Structure Reorganization
-- Split monolithic CoreDataRepository (1,503 lines) into specialized repositories:
-  - TransactionRepository - Transaction persistence
-  - AccountRepository - Account operations and balance management
-  - CategoryRepository - Categories, subcategories, links, and aggregates
-  - RecurringRepository - Recurring series and occurrences
-  - CoreDataRepository - Facade pattern delegating to specialized repos
-- Reorganized Services/ directory into logical subdirectories
-- Moved misplaced service files from ViewModels/ to Services/
-- Consolidated Managers/ directory into Services/ subdirectories
-- Improved code organization: 83% → 95% well-organized
-
-**Phase 9**:
-- Removed SubscriptionsViewModel - recurring operations moved to TransactionStore
-- Removed RecurringTransactionCoordinator - operations consolidated
-- Enhanced TransactionStore with recurring operations support
-
-**Phase 7**: TransactionStore introduction
-**Phase 1-4**: BalanceCoordinator foundation
-**Phase 1**: Settings refactoring with SettingsViewModel
+**Phase 15** (2026-02-16): `MessageBanner` — unified `.success`/`.error`/`.warning`/`.info` (see `Views/Components/MessageBanner.swift`).
+**Phase 14** (2026-02-16): `UniversalFilterButton` — `.button(onTap)` + `.menu(content)` modes (see `Views/Components/UniversalFilterButton.swift`).
+**Phase 13** (2026-02-16): `UniversalCarousel` — presets `.standard/.compact/.filter/.cards/.csvPreview` (see `Views/Components/UniversalCarousel.swift`).
+**Phase 12** (2026-02-16): `UniversalRow` — generic row with `IconConfig`; `.navigationRow()`, `.actionRow()`, `.selectableRow()` (see `Views/Components/UniversalRow.swift`).
+**Phase 11** (2026-02-15): Swift 6 concurrency — ~164 warnings fixed; patterns in Dev Guidelines.
+**Phase 10** (2026-02-15): Repository split — `CoreDataRepository` facade + 4 specialized repos; `Services/` reorganized.
+**Phase 9**: `SubscriptionsViewModel` removed; recurring ops moved to `TransactionStore`.
+**Phase 7**: TransactionStore introduction. **Phase 1-4**: BalanceCoordinator foundation.
 
 ## Development Guidelines
 
@@ -550,6 +425,8 @@ New file needed?
 - **⚠️ Dead code deletion — orphaned call sites**: When deleting a class (e.g. `BalanceUpdateQueue`), grep all `.swift` sources for the class name AND all method names it implemented. Removed parameters silently survive at call sites and only surface at build time as "extra argument" errors. Example: after deleting `BalanceUpdateQueue`, `AccountOperationService` still passed `priority: .immediate` to `coordinator.updateForTransaction()`.
 - **`CompileAssetCatalogVariant` failure can be transient** — if the only failing build step is asset catalog compilation and `grep -E "error:"` returns nothing, just retry; it's a Xcode caching artifact, not a code issue.
 - **Making an `@Observable` property reactive**: remove `@ObservationIgnored`, change to `private(set) var`; in the observing View add `.onChange(of: vm.property) { ... }`. Used for `InsightsViewModel.isStale` → drives `InsightsView` reload while tab stays open.
+- **Cross-file extension access control**: `private` on a class member is file-scoped — extensions in OTHER `.swift` files CANNOT access it. When splitting a class into extension files: change `private let/static let/func` shared helpers and dependencies to `internal` (no modifier). Methods only called within the same extension file can stay `private` within that extension. Rule: caller and callee in different files → `internal`; same file only → `private`.
+- **Extension file imports are not inherited**: Each extension file is an independent compilation unit — it does NOT inherit `import os`, `import CoreData`, `import SwiftUI` from the main class file. Every file calling `Self.logger.debug(...)` needs `import os`; every file using `NSFetchRequest` needs `import CoreData`.
 
 ## SwiftUI Layout Gotchas
 
@@ -585,342 +462,46 @@ New file needed?
 - Support both light and dark modes
 - Test on multiple device sizes
 
-#### MessageBanner Component (Phase 15 - 2026-02-16)
-Universal message banner component for displaying success, error, warning, and info messages with beautiful spring animations. Consolidates ErrorMessageView and SuccessMessageView.
+#### MessageBanner Component (`Views/Components/MessageBanner.swift`)
+Universal banner: `.success`, `.error`, `.warning`, `.info` with spring animations (scale 0.85→1.0, upward slide, icon bounce) and type-matched haptics via `HapticManager.notification(type:)`.
 
-**Architecture:**
-- Enum-based message types: `.success`, `.error`, `.warning`, `.info`
-- Automatic icon and color selection per message type
-- iOS 26+ Liquid Glass support with fallback for older versions
-- Static factory methods for convenient usage
-- **Beautiful spring animations**: scale, fade, slide with icon bounce effect
-- **Automatic haptic feedback**: type-matched notifications (success/error/warning)
-
-**Animation Details:**
-- Spring entrance animation (0.6s response, 0.7 damping)
-- Icon scale bounce effect (0.5s delay)
-- Smooth fade-in with upward slide (-20pt → 0)
-- Color-matched shadow for depth (8pt radius, 0.3 opacity)
-- Scale effect: 0.85 → 1.0 for gentle zoom-in
-
-**Message Types:**
-- `.success` - Green checkmark circle + success haptic
-- `.error` - Red triangle + error haptic
-- `.warning` - Orange circle + warning haptic
-- `.info` - Blue circle + success haptic
-
-**Usage Examples:**
 ```swift
-// Static factory methods (recommended)
 MessageBanner.success("Transaction saved successfully")
 MessageBanner.error("Failed to load data")
-MessageBanner.warning("Low balance detected")
-MessageBanner.info("Sync completed")
+// With transition:
+MessageBanner.success(msg).transition(.move(edge: .top).combined(with: .opacity))
+```
 
-// Direct initialization
-MessageBanner(message: "Custom message", type: .success)
+#### UniversalCarousel Component (`Views/Components/UniversalCarousel.swift`)
+Generic horizontal carousel. Presets: `.standard` (selectors + auto-scroll), `.compact` (chips), `.filter` (tags), `.cards` (large items + `.screenPadding()`), `.csvPreview` (shows scroll indicators). Config: `Utils/CarouselConfiguration.swift`.
 
-// In views with conditional display
-if let successMessage = viewModel.successMessage {
-    MessageBanner.success(successMessage)
-        .transition(.move(edge: .top).combined(with: .opacity))
+```swift
+UniversalCarousel(config: .standard, scrollToId: .constant(selectedId)) {
+    ForEach(items) { item in ChipView(item).id(item.id) }
 }
 ```
 
-**Consolidated Components:**
-- ✅ ErrorMessageView - red error messages (removed)
-- ✅ SuccessMessageView - green success messages (removed)
+#### UniversalFilterButton Component (`Views/Components/UniversalFilterButton.swift`)
+Filter chip in `.button(onTap)` or `.menu(menuContent:)` mode. Styling: `.filterChipStyle(isSelected:)`. Use `CategoryFilterHelper` for category display logic.
 
-**Benefits:**
-- 📉 -57% lines of code (85 → 37 LOC → 115 LOC with animations)
-- 🎯 100% Design System compliance
-- 🔄 Eliminates 100% toast message duplication
-- ✨ Adds `.warning` and `.info` variants
-- 🎬 Beautiful spring animations with haptic feedback
-- 🎨 Color-matched shadows for visual depth
-- ✅ Unified API for all message types
-
-**Related Files:**
-- `Views/Components/MessageBanner.swift` - Main component
-- `Utils/HapticManager.swift` - Enhanced with `.notification(type:)` method
-- `Views/Home/ContentView.swift` - Error message usage
-- `Views/Settings/SettingsView.swift` - Success/error toast messages
-
-#### UniversalCarousel Component (Phase 13 - 2026-02-16)
-Universal horizontal carousel component for consistent scrolling patterns across the app. Consolidates 8+ carousel implementations.
-
-**Architecture:**
-- Generic ViewBuilder for flexible carousel content
-- CarouselConfiguration presets: `.standard`, `.compact`, `.filter`, `.cards`, `.csvPreview`
-- Optional ScrollViewReader support for auto-scroll via `scrollToId` binding
-- Full Design System integration (AppSpacing, AppColors, AppRadius)
-
-**Configuration Presets:**
-- `.standard` - Account/category selectors (spacing: md, padding: lg/xs, auto-scroll support)
-- `.compact` - Color pickers, small chip lists (spacing: sm, padding: sm/0)
-- `.filter` - Filter sections, tag lists (spacing: md, padding: lg/0)
-- `.cards` - Account cards, large content (spacing: md, padding: 0/xs, use with .screenPadding())
-- `.csvPreview` - CSV data preview (spacing: sm, padding: md/sm, **shows indicators**)
-
-**Migrated Components:**
-- ✅ ColorPickerRow - color palette selector
-- ✅ HistoryFilterSection - filter chips
-- ✅ AccountsCarousel - account cards
-- ✅ SubcategorySelectorView - subcategory chips
-- ✅ AccountSelectorView - account selection **with auto-scroll**
-- ✅ CategorySelectorView - category chips **with auto-scroll**
-- ✅ DepositTransferView - account selection in forms **with auto-scroll**
-- ✅ CSVPreviewView - CSV headers and data rows
-
-**NOT Migrated (special cases):**
-- ❌ SkeletonView - commented reference implementation
-- ❌ CategoryEditView inline picker - part of larger form
-
-**Usage Examples:**
 ```swift
-// Simple carousel
-UniversalCarousel(config: .standard) {
-    ForEach(accounts) { account in
-        AccountRadioButton(account: account, ...)
-    }
-}
-
-// With auto-scroll to selected item (categories)
-UniversalCarousel(
-    config: .standard,
-    scrollToId: .constant(selectedCategoryId)
-) {
-    ForEach(categories, id: \.self) { category in
-        CategoryChip(category: category, ...)
-            .id(category)
-    }
-}
-
-// With auto-scroll to selected item (accounts)
-UniversalCarousel(
-    config: .standard,
-    scrollToId: .constant(selectedAccountId)
-) {
-    ForEach(accounts) { account in
-        AccountRadioButton(account: account, ...)
-            .id(account.id)
-    }
-}
-
-// Cards with screenPadding
-UniversalCarousel(config: .cards) {
-    ForEach(accounts) { account in
-        AccountCard(account: account, ...)
-    }
-}
-.screenPadding()
-
-// CSV preview with indicators
-UniversalCarousel(config: .csvPreview) {
-    ForEach(headers, id: \.self) { header in
-        Text(header)
-            .padding(AppSpacing.sm)
-            .background(AppColors.accent.opacity(0.2))
-    }
-}
-```
-
-**Benefits:**
-- 📉 -56% lines of code (655 → 285 LOC)
-- 🎯 100% Design System compliance
-- 🔄 Eliminates 90% carousel pattern duplication
-- 🌐 Centralized localization via LocalizedRowKey enum
-- ✅ Consistent spacing, haptics, and behavior
-
-**Related Files:**
-- `Views/Components/UniversalCarousel.swift` - Main component
-- `Utils/CarouselConfiguration.swift` - Configuration presets
-- `Utils/LocalizedRowKeys.swift` - Centralized localization (+10 carousel keys)
-- `Localizable.strings` (en/ru) - Localized strings
-
-#### UniversalFilterButton Component (Phase 14 - 2026-02-16)
-Universal filter button/menu component for consistent filtering UI across the app. Consolidates all filter chip patterns.
-
-**Architecture:**
-- Generic ViewBuilders for flexible icon and menu content
-- Supports two modes: `.button(onTap)` for simple actions, `.menu(content)` for dropdowns
-- Shared `.filterChipStyle(isSelected:)` styling with Liquid Glass effects
-- CategoryFilterHelper for reusable category filter display logic
-
-**Consolidated Components:**
-- ✅ FilterChip - simple filter buttons (time, type filters)
-- ✅ CategoryFilterButton - category filter with icon logic
-- ✅ AccountFilterMenu - account selection dropdown
-
-**Usage Examples:**
-```swift
-// 1. Simple Button Filter (time, type)
-UniversalFilterButton(
-    title: "All Time",
-    isSelected: false,
-    onTap: { showTimeFilter = true }
-) {
+// Button mode
+UniversalFilterButton(title: "All Time", isSelected: false, onTap: { showFilter = true }) {
     Image(systemName: "calendar")
 }
-
-// 2. Category Filter with Dynamic Icon
-UniversalFilterButton(
-    title: CategoryFilterHelper.displayText(for: selectedCategories),
-    isSelected: selectedCategories != nil,
-    onTap: { showCategoryFilter = true }
-) {
-    CategoryFilterHelper.iconView(
-        for: selectedCategories,
-        customCategories: customCategories,
-        incomeCategories: incomeCategories
-    )
-}
-
-// 3. Account Filter Menu (Dropdown)
-UniversalFilterButton(
-    title: selectedAccountId == nil ? "All Accounts" : accountName,
-    isSelected: selectedAccountId != nil
-) {
-    if let account = selectedAccount {
-        IconView(source: account.iconSource, size: AppIconSize.sm)
-    }
-} menuContent: {
-    Button("All Accounts") { selectedAccountId = nil }
-    ForEach(accounts) { account in
-        Button {
-            selectedAccountId = account.id
-        } label: {
-            HStack {
-                IconView(source: account.iconSource, size: AppIconSize.md)
-                VStack(alignment: .leading) {
-                    Text(account.name)
-                    Text(formattedBalance)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if selectedAccountId == account.id {
-                    Image(systemName: "checkmark")
-                }
-            }
-        }
-    }
-}
+// Menu mode: add `menuContent: { Button(...) }` trailing closure
 ```
 
-**Benefits:**
-- 📉 -45% lines of code (201 → 110 LOC)
-- 🎯 100% Design System compliance
-- 🔄 Eliminates 100% filter label duplication
-- 🌐 Centralized localization (+3 filter keys)
-- ✅ Unified API for Button and Menu modes
+#### UniversalRow Component (`Views/Components/UniversalRow.swift`)
+Generic row with `IconConfig` leading icons. Presets: `.standard`, `.settings`, `.selectable`, `.info`, `.card`. Modifiers: `.navigationRow { Dest() }`, `.actionRow(role:) { }`, `.selectableRow(isSelected:) { }`. `IconConfig`: `.sfSymbol(name, color)`, `.bankLogo(logo)`, `.brandService(name)`, `.custom(source, style)`.
 
-**Related Files:**
-- `Views/Components/UniversalFilterButton.swift` - Main component
-- `Utils/CategoryFilterHelper.swift` - Category filter display logic
-- `Utils/LocalizedRowKeys.swift` - Filter localization keys (+3 keys)
-- `Localizable.strings` (en/ru) - "All Accounts", "All Categories", "%d categories"
-
-#### UniversalRow Component (Phase 12 - 2026-02-16)
-Universal row component for consistent UI patterns across the app. Replaces redundant row implementations.
-
-**Architecture:**
-- Generic ViewBuilders for flexible content and trailing elements
-- IconView integration via IconConfig for leading icons
-- RowConfiguration presets: `.standard`, `.settings`, `.selectable`, `.info`, `.card`
-- Row modifiers: `.navigationRow()`, `.actionRow()`, `.selectableRow()`
-
-**Migrated Components:**
-- ✅ InfoRow - label + value display
-- ✅ ActionSettingsRow - action buttons
-- ✅ NavigationSettingsRow - navigation links
-- ✅ BankLogoRow - bank selection with checkmark
-- ✅ SubcategoryRow - subcategory selection
-
-**NOT Migrated (complex interactive logic):**
-- ❌ IconPickerRow - sheet management
-- ❌ MenuPickerRow - generic picker with Menu
-- ❌ ColorPickerRow - horizontal ScrollView palette
-- ❌ DatePickerRow - DatePicker wrapper
-- ❌ WallpaperPickerRow - PhotosPicker + async logic
-- ❌ AccountRow, CategoryRow, TransactionRowContent - domain-specific
-
-**Usage Examples:**
-```swift
-// Settings Navigation Row
-UniversalRow(
-    config: .settings,
-    leadingIcon: .sfSymbol("tag", color: AppColors.accent)
-) {
-    Text("Categories")
-} trailing: {
-    Image(systemName: "chevron.right")
-}
-.navigationRow { CategoriesView() }
-
-// Action Row with Destructive Style
-UniversalRow(
-    config: .settings,
-    leadingIcon: .sfSymbol("trash", color: AppColors.destructive)
-) {
-    Text("Delete All")
-        .foregroundStyle(AppColors.destructive)
-} trailing: {
-    EmptyView()
-}
-.actionRow(role: .destructive) { deleteAll() }
-
-// Selectable Row with Bank Logo
-UniversalRow(
-    config: .selectable,
-    leadingIcon: .bankLogo(.kaspi)
-) {
-    Text("Kaspi Bank")
-} trailing: {
-    if isSelected {
-        Image(systemName: "checkmark")
-            .foregroundStyle(AppColors.accent)
-    }
-}
-.selectableRow(isSelected: isSelected) { select() }
-
-// Info Row
-UniversalRow(
-    config: .info,
-    leadingIcon: .sfSymbol("calendar", color: .secondary)
-) {
-    HStack {
-        Text("Frequency").foregroundStyle(.secondary)
-        Spacer()
-        Text("Monthly")
-    }
-} trailing: {
-    EmptyView()
-}
-```
-
-**IconConfig Variants:**
-- `.sfSymbol(name, color, size)` - SF Symbols
-- `.bankLogo(logo, size)` - Bank logos via IconView
-- `.brandService(name, size)` - Service logos
-- `.custom(source, style)` - Custom IconView configuration
-
-**Benefits:**
-- 📉 -67% lines of code (1,200 → 400 LOC)
-- 🎯 100% Design System compliance
-- 🔄 Eliminates duplication (~83% reduction)
-- 🌐 Centralized localization via LocalizedRowKey enum
-- ✅ Consistent spacing, sizing, and behavior
-
-**Related Files:**
-- `Views/Components/UniversalRow.swift` - Main component
-- `Utils/LocalizedRowKeys.swift` - Centralized localization
-- `Views/Components/IconView.swift` - Icon rendering (referenced by IconConfig)
-- `Utils/AppColors.swift` - Semantic colors + CategoryColors palette (бывший Colors.swift поглощён)
-- `Utils/AppSpacing.swift` - AppSpacing, AppRadius, AppIconSize, AppSize
-- `Utils/AppTypography.swift` - AppTypography (Inter variable font)
-- `Utils/AppShadow.swift` - AppShadow, Shadow struct
-- `Utils/AppAnimation.swift` - AppAnimation durations, BounceButtonStyle
-- `Utils/AppModifiers.swift` - All View style extensions (cardStyle, filterChipStyle, transactionRowStyle, futureTransactionStyle, etc.) + TransactionRowVariant
+**Design system files** (`Utils/`):
+- `AppColors.swift` — semantic colors + `CategoryColors` palette (absorbed `Colors.swift`)
+- `AppSpacing.swift` — `AppSpacing`, `AppRadius`, `AppIconSize`, `AppSize`
+- `AppTypography.swift` — `AppTypography` (Inter variable font)
+- `AppShadow.swift` — `AppShadow` enum, `Shadow` struct
+- `AppAnimation.swift` — `AppAnimation` constants, `BounceButtonStyle`
+- `AppModifiers.swift` — all View style extensions (`cardStyle`, `filterChipStyle`, `transactionRowStyle`, `futureTransactionStyle`, etc.) + `TransactionRowVariant`
 
 ## Testing
 
@@ -1011,116 +592,6 @@ When unsure about architecture decisions:
 
 ---
 
-## Project Reorganization Summary (Phase 10 - February 2026)
-
-### Completed Improvements
-
-✅ **Repository Layer Refactoring**
-- Split CoreDataRepository (1,503 lines) into 4 specialized repositories
-- TransactionRepository, AccountRepository, CategoryRepository, RecurringRepository
-- CoreDataRepository now acts as facade pattern
-- Location: Services/Repository/
-
-✅ **Services Directory Reorganization**
-- Organized 21 root-level files into 14 logical subdirectories
-- Clear domain separation: Balance/, Transactions/, Categories/, CSV/, Voice/, Import/, etc.
-- Improved file discoverability and maintenance
-
-✅ **Fixed Architectural Violations**
-- Moved service files from ViewModels/ to Services/
-- Consolidated Managers/ directory into Services/ subdirectories
-- Clear separation: ViewModels = UI state, Services = business logic
-
-✅ **Test Structure Reorganization**
-- Created mirror directory structure for tests
-- Tests now organized: Models/, ViewModels/, Services/, Utils/, Balance/
-- Easier to locate and maintain tests
-
-✅ **Expanded Extensions**
-- Date+Helpers.swift: Date manipulation utilities (startOfDay, monthsBetween, etc.)
-- Decimal+Formatting.swift: Currency formatting and calculations
-- String+Validation.swift: String validation and parsing
-- Color+Theme.swift: Theme colors and HEX conversion
-
-✅ **Enhanced Documentation**
-- Updated project structure diagram
-- Added "Where Should I Put This File?" decision tree
-- Documented naming conventions
-- Added Repository pattern reference
-
-✅ **Project Cleanup**
-- Removed all empty directories (ViewModels/Recurring, ViewModels/Transactions)
-- Simplified Views/Shared/Components/ → Views/Components/ (removed extra nesting)
-- Fixed Views/Components/Components/ double nesting
-- Cleaned up empty test directories (4 removed)
-- Verified all directories contain files - zero empty directories
-
-### Metrics Improvement
-
-| Metric | Before | After | Status |
-|--------|--------|-------|--------|
-| Organization Score | 83% | **98%** | ✅ **+15%** |
-| CoreDataRepository Lines | 1,503 | ~300 (facade) | ✅ -80% |
-| Services/ Root Files | 21 | 0 | ✅ -100% |
-| Extensions Count | 2 | 6 | ✅ +200% |
-| Test Structure | Flat | Mirrored | ✅ Organized |
-| Empty Directories | 6 | **0** | ✅ **-100%** |
-| Excess Nesting | Yes | **No** | ✅ **Fixed** |
-| Architecture Clarity | Good | Excellent | ✅ Improved |
-
----
-
-## Swift 6.0 Warnings Resolution (Phase 11 - February 15, 2026)
-
-### Summary
-Comprehensive fix for Swift 6 strict concurrency warnings across the entire codebase.
-
-**Metrics:**
-- ✅ **~164 warnings resolved** (from ~180 total)
-- ✅ **40 files modified**
-- ✅ **0 build errors**
-- ✅ **100% critical concurrency violations fixed**
-
-### Key Fixes
-
-#### 1. Code Quality Improvements (66 warnings)
-- **Unused imports**: Removed `Combine` from 18 CoreData entity files
-- **Unused variables**: Fixed 30+ instances
-- **Never mutated vars**: Changed 9x `var` → `let`
-- **Unreachable code**: Removed 4 catch blocks
-- **iOS 26 compat**: Replaced `UIScreen.main` with adaptive GridItem
-
-#### 2. Swift 6 Concurrency (98 warnings)
-- **AppSettings**: `nonisolated(unsafe)` for static constants
-- **CoreDataStack**: Made `@unchecked Sendable`
-- **BalanceUpdateCoordinator**: Added `Sendable` conformance
-- **Repository Layer** (84 fixes): Wrapped all entity mutations in `context.perform { }`
-  - AccountRepository: 11 violations fixed
-  - CategoryRepository: 30 violations fixed
-  - TransactionRepository: 28 violations fixed
-  - RecurringRepository: 15 violations fixed
-- **TransactionsViewModel**: Changed observers to `.main` queue
-
-### Thread-Safe Patterns Applied
-
-**Pattern**: CoreData Entity Mutation Safety
-```swift
-// Applied in 84 locations across Repository Layer
-context.perform {
-    entity.property = newValue
-}
-```
-
-**Impact**:
-- ✅ Thread-safe CoreData operations
-- ✅ Actor-safe CoreDataStack access
-- ✅ Proper MainActor isolation for UI updates
-- ✅ 98% memory reduction from Phase 10 optimizations preserved
-
-**Reference Commit**: `3686f90` - Fix Swift 6.0 compiler warnings
-
----
-
 ## Reference Docs
 
 The `docs/` directory contains 200+ historical analysis and implementation docs from past sessions.
@@ -1129,6 +600,6 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 ---
 
 **Last Updated**: 2026-02-28
-**Project Status**: Active development - Reactivity audit + dead code removal (Phase 36). ~800 LOC deleted, 7 reactivity bugs fixed (ForEach identity, sheet flicker, insights staleness, budget rollover, double-invalidation, category grid, isStale). CSV import crash fix (Phase 35). Utils cleanup + design system split (Phase 34). Zero hardcoded colors (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates.
+**Project Status**: Active development - InsightsService split 2832→782 LOC (Phase 38). Service audit: 3 dead protocols deleted, TransactionConverterService merged, RecurringTransactionService documented. Reactivity audit + dead code removal (Phase 36). ~800 LOC deleted, 7 reactivity bugs fixed (ForEach identity, sheet flicker, insights staleness, budget rollover, double-invalidation, category grid, isStale). CSV import crash fix (Phase 35). Utils cleanup + design system split (Phase 34). Zero hardcoded colors (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28), Performance optimized, Persistent aggregate caching, Fine-grained @Observable updates.
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`

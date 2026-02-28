@@ -4,15 +4,50 @@
 //
 //  Created on 2026-01-31
 //
+//  ════════════════════════════════════════════════════════════════════
+//  ⚠️  FULLY DEPRECATED — DO NOT EXTEND OR CALL FROM NEW CODE
+//  ════════════════════════════════════════════════════════════════════
+//
+//  STATUS (Phase 37 audit):
+//  ───────────────────────
+//  This class is a Phase 2 relic. By Phase 9, all recurring CRUD operations
+//  were moved into TransactionStore (createRecurringSeries, updateRecurringSeries,
+//  stopRecurringSeries, deleteRecurringSeries — all via `apply(event:)`).
+//
+//  The methods in this class fall into three categories:
+//
+//  1. COMMENTED-OUT (no-ops):
+//     createRecurringSeries, updateRecurringSeries, stopRecurringSeries,
+//     archiveSubscription — these attempt to mutate `delegate.recurringSeries`,
+//     which became a READ-ONLY computed property in Phase 9.
+//     They execute a save+generate call but perform no actual state mutation.
+//
+//  2. ⚠️  DEADLOCK RISK on @MainActor:
+//     updateRecurringSeries, stopRecurringSeriesAndCleanup, deleteRecurringSeries,
+//     updateRecurringTransaction — all use:
+//         Task { @MainActor in ... semaphore.signal() }
+//         semaphore.wait()   ← blocks the calling @MainActor thread
+//     If the Task needs the MainActor to signal the semaphore, but the semaphore
+//     is blocking that same MainActor thread, this is a DEADLOCK.
+//     These methods appear not to be reachable in practice (TransactionStore handles
+//     all actual mutations), but they MUST NOT be called from @MainActor contexts.
+//
+//  3. LIVE (but should move to TransactionStore):
+//     generateRecurringTransactions() — still called from TransactionsViewModel
+//     as a post-load trigger. This functionality belongs in TransactionStore.initialize().
+//
+//  MIGRATION PATH:
+//     All callers in TransactionsViewModel (lines ~600-650) should be replaced with
+//     direct TransactionStore method calls. Until that migration is complete, this
+//     class must remain as a bridge.
+//
+//  TARGET: Remove this file entirely in a future phase once TransactionsViewModel
+//  wrapper methods are wired to TransactionStore+Recurring.swift.
+//  ════════════════════════════════════════════════════════════════════
 
 import Foundation
 
-/// Service responsible for recurring transaction operations
-/// Extracted from TransactionsViewModel to follow Single Responsibility Principle
-///
-/// ⚠️ DEPRECATED 2026-02-02: This service is deprecated in favor of RecurringTransactionCoordinator
-/// Most methods cannot work anymore because recurringSeries is now a read-only computed property
-/// Use RecurringTransactionCoordinator for all recurring operations
+/// ⚠️ DEPRECATED — see file header for migration guidance.
 @MainActor
 class RecurringTransactionService: RecurringTransactionServiceProtocol {
 
@@ -64,6 +99,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
     }
 
     /// ⚠️ DEPRECATED: Cannot mutate read-only recurringSeries. Use RecurringTransactionCoordinator.updateSeries()
+    /// ⛔️ DEADLOCK RISK: Contains DispatchSemaphore.wait() on @MainActor — never call from MainActor context.
     func updateRecurringSeries(_ series: RecurringSeries) {
         guard let delegate = delegate else { return }
 
@@ -140,6 +176,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         }
     }
 
+    /// ⛔️ DEADLOCK RISK: Contains DispatchSemaphore.wait() on @MainActor — never call from MainActor context.
     func stopRecurringSeriesAndCleanup(seriesId: String, transactionDate: String) {
         guard let delegate = delegate else { return }
 
@@ -200,6 +237,7 @@ class RecurringTransactionService: RecurringTransactionServiceProtocol {
         delegate.saveToStorage()
     }
 
+    /// ⛔️ DEADLOCK RISK: Contains DispatchSemaphore.wait() on @MainActor — never call from MainActor context.
     func deleteRecurringSeries(_ seriesId: String, deleteTransactions: Bool = true) {
         guard let delegate = delegate else { return }
 

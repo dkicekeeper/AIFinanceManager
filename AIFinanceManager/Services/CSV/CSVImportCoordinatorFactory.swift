@@ -18,6 +18,9 @@ extension CSVImportCoordinator {
     ///   - csvFile: CSV file to configure validator with headers
     ///   - transactionStore: TransactionStore instance for direct data manipulation
     /// - Returns: Configured coordinator ready for import
+    // Phase 37: TransactionConverterService removed — convertRow() merged into EntityMappingService.
+    // Coordinator no longer accepts a `converter` parameter.
+
     static func create(
         for csvFile: CSVFile,
         transactionStore: TransactionStore
@@ -28,17 +31,11 @@ extension CSVImportCoordinator {
             parser: CSVParsingService(),
             validator: CSVValidationService(headers: csvFile.headers),
             mapper: EntityMappingService(cache: cache, transactionStore: transactionStore),
-            converter: TransactionConverterService(),
             cache: cache
         )
     }
 
     /// Creates a coordinator with custom cache capacity
-    /// - Parameters:
-    ///   - csvFile: CSV file to configure validator
-    ///   - transactionStore: TransactionStore instance for direct data manipulation
-    ///   - cacheCapacity: LRU cache capacity (default: 1000)
-    /// - Returns: Configured coordinator
     static func create(
         for csvFile: CSVFile,
         transactionStore: TransactionStore,
@@ -50,7 +47,6 @@ extension CSVImportCoordinator {
             parser: CSVParsingService(),
             validator: CSVValidationService(headers: csvFile.headers),
             mapper: EntityMappingService(cache: cache, transactionStore: transactionStore),
-            converter: TransactionConverterService(),
             cache: cache
         )
     }

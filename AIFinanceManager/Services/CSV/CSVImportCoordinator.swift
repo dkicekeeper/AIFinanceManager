@@ -20,7 +20,8 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
     private let parser: CSVParsingServiceProtocol
     private let validator: CSVValidationServiceProtocol
     private let mapper: EntityMappingServiceProtocol
-    private let converter: TransactionConverterServiceProtocol
+    // Phase 37: converter removed — convertRow() merged into EntityMappingServiceProtocol.
+    // Use mapper.convertRow(...) directly.
     private let cache: ImportCacheManager
     private let logger = Logger(subsystem: "AIFinanceManager", category: "CSVImportCoordinator")
 
@@ -30,13 +31,11 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
         parser: CSVParsingServiceProtocol,
         validator: CSVValidationServiceProtocol,
         mapper: EntityMappingServiceProtocol,
-        converter: TransactionConverterServiceProtocol,
         cache: ImportCacheManager
     ) {
         self.parser = parser
         self.validator = validator
         self.mapper = mapper
-        self.converter = converter
         self.cache = cache
     }
 
@@ -196,8 +195,8 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
                 }
             }
 
-            // Convert to transaction
-            let transaction = converter.convertRow(
+            // Convert to transaction (convertRow merged into mapper — Phase 37)
+            let transaction = mapper.convertRow(
                 csvRow,
                 accountId: accountId,
                 targetAccountId: targetAccountId,

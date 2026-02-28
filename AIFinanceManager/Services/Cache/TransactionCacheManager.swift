@@ -2,19 +2,37 @@
 //  TransactionCacheManager.swift
 //  AIFinanceManager
 //
-//  Phase 8: Minimal stub for backward compatibility with display operations
-//  Write operations now handled by TransactionStore + UnifiedTransactionCache
-//  This stub provides caching ONLY for read-only display operations (grouping, querying)
+//  PURPOSE (Phase 36+): READ-ONLY display cache. Do NOT use for write operations.
+//
+//  ROLE CLARITY (updated Phase 36):
+//  ─────────────────────────────────────────────────────────────────────────────
+//  ✅ TransactionCacheManager — in-memory read cache for display layer only:
+//      • Date string → Date parsing (O(1) repeat parses)
+//      • Transaction ID → Subcategory IDs index (built once per load)
+//      • Summary cache (total income/expenses for current filter)
+//      • Per-filter category expense cache (keyed by TimeFilter)
+//      • Category list caches (unique, expense, income names)
+//
+//  ❌ NOT for:
+//      • Account balances — use BalanceCoordinator instead
+//      • Transaction persistence — use TransactionStore.apply(event:)
+//      • Aggregate data — use CategoryAggregateService / MonthlyAggregateService (CoreData)
+//      • Budget spending — use BudgetSpendingCacheService (CoreData)
+//  ─────────────────────────────────────────────────────────────────────────────
+//
+//  ACTIVE CALLERS:
+//      • TransactionGroupingService — getParsedDate() for date section grouping
+//      • TransactionQueryService — category expense caching + summary cache
+//      • TransactionsViewModel — invalidateAll() on data change events
 //
 
 import Foundation
 
-/// Minimal cache manager for read-only display operations
-/// Phase 8: Write operations moved to TransactionStore
-/// This provides backward compatibility for:
-/// - TransactionGroupingService (date parsing cache)
-/// - TransactionQueryService (category filtering)
-/// - Display helpers (subcategory links, balances)
+// MARK: - Read-Only Display Cache (Phase 36+)
+
+/// In-memory cache for read-only UI display operations.
+/// Write/mutation caching is handled by TransactionStore + CoreData aggregate services.
+/// This class is @MainActor-compatible (not marked @MainActor; callers ensure main-thread use).
 class TransactionCacheManager {
 
     // MARK: - Date Parsing Cache (for display performance)
@@ -56,8 +74,11 @@ class TransactionCacheManager {
         }
     }
 
-    // MARK: - Account Balance Cache (deprecated - use BalanceCoordinator)
+    // MARK: - Account Balance Cache (DEPRECATED — use BalanceCoordinator instead)
+    // These properties exist only for legacy RecurringTransactionServiceDelegate compatibility.
+    // New code must read balances from BalanceCoordinator, not from this cache.
 
+    @available(*, deprecated, message: "Read balances from BalanceCoordinator, not from TransactionCacheManager")
     var cachedAccountBalances: [String: Double] = [:]
     var balanceCacheInvalidated = false
 

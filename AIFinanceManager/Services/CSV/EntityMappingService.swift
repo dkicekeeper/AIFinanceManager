@@ -208,6 +208,65 @@ class EntityMappingService: EntityMappingServiceProtocol {
         return .created(id: newSubcategory.id)
     }
 
+    // MARK: - Transaction Conversion (merged from TransactionConverterService, Phase 37)
+
+    /// Converts a validated CSVRow + resolved entity IDs into a Transaction value.
+    /// Previously lived in `TransactionConverterService`. Merged here because:
+    ///   • All entity IDs (accountId, categoryId, subcategoryIds) are resolved by this service,
+    ///     so conversion is a natural continuation of the mapping step.
+    ///   • Eliminates a dedicated 74-LOC wrapper class with no state.
+    func convertRow(
+        _ csvRow: CSVRow,
+        accountId: String?,
+        targetAccountId: String?,
+        categoryName: String,
+        categoryId: String,
+        subcategoryIds: [String],
+        rowIndex: Int
+    ) -> Transaction {
+
+        let dateFormatter = DateFormatters.dateFormatter
+        let dateString = dateFormatter.string(from: csvRow.date)
+
+        // Generate deterministic createdAt (date + row offset for stable sorting)
+        let createdAt = csvRow.date.timeIntervalSince1970 + Double(rowIndex) * 0.001
+
+        // Prefer note for ID generation; fall back to category name
+        let descriptionForID = csvRow.note?.isEmpty == false ? csvRow.note! : categoryName
+
+        let transactionId = TransactionIDGenerator.generateID(
+            date: dateString,
+            description: descriptionForID,
+            amount: csvRow.amount,
+            type: csvRow.type,
+            currency: csvRow.currency,
+            createdAt: createdAt
+        )
+
+        let subcategoryName = csvRow.subcategoryNames.first
+
+        return Transaction(
+            id: transactionId,
+            date: dateString,
+            description: csvRow.note ?? "",
+            amount: csvRow.amount,
+            currency: csvRow.currency,
+            convertedAmount: nil,
+            type: csvRow.type,
+            category: categoryName,
+            subcategory: subcategoryName,
+            accountId: accountId,
+            targetAccountId: targetAccountId,
+            accountName: nil,         // resolved by CSVImportCoordinator after batch add
+            targetAccountName: nil,   // resolved by CSVImportCoordinator after batch add
+            targetCurrency: csvRow.targetCurrency,
+            targetAmount: csvRow.targetAmount,
+            recurringSeriesId: nil,
+            recurringOccurrenceId: nil,
+            createdAt: createdAt
+        )
+    }
+
     // MARK: - Helper Methods
 
     private func ensureCategorySubcategoryLink(categoryId: String, subcategoryId: String) {

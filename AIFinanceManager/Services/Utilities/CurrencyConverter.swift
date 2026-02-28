@@ -2,8 +2,24 @@
 //  CurrencyConverter.swift
 //  AIFinanceManager
 //
-//  Created on 2024
+//  PURPOSE: Live / historical exchange-rate fetching from the National Bank of Kazakhstan.
 //
+//  RESPONSIBILITY SPLIT (do NOT confuse these two currency utilities):
+//  ─────────────────────────────────────────────────────────────────────
+//  CurrencyConverter  (THIS FILE)
+//      • Async network requests to https://nationalbank.kz/rss/get_rates.cfm
+//      • XML parsing of rate feed. 24-hour in-process cache for current rates.
+//      • Separate historical rates cache keyed by date string.
+//      • Used by: BalanceCalculationEngine for cross-currency account balance totals.
+//
+//  TransactionCurrencyService  (Services/Utilities/TransactionCurrencyService.swift)
+//      • NO network calls. Reads the `convertedAmount` already stored on Transaction.
+//      • O(1) lookup via in-memory cache, O(N) precompute pass.
+//      • Used by: display layer (TransactionQueryService, InsightsService).
+//  ─────────────────────────────────────────────────────────────────────
+//
+//  NOTE: `convertSync` only works after at least one successful async `getExchangeRate` call
+//  has populated `cachedRates`. Do NOT call it on first launch without awaiting async load first.
 
 import Foundation
 

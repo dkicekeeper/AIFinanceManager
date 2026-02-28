@@ -2,14 +2,27 @@
 //  TransactionCurrencyService.swift
 //  AIFinanceManager
 //
-//  Isolated service for currency conversion caching.
-//  Pre-computes converted amounts from stored transaction data (no network calls).
+//  PURPOSE: In-memory cache of pre-computed currency amounts for display.
 //
+//  RESPONSIBILITY SPLIT (do NOT confuse these two currency utilities):
+//  ─────────────────────────────────────────────────────────────────────
+//  TransactionCurrencyService  (THIS FILE)
+//      • Reads the `convertedAmount` field already stored on each Transaction.
+//      • NO network calls, NO exchange-rate fetching.
+//      • Provides O(1) lookup after a single O(N) precompute pass.
+//      • Used by: TransactionQueryService, InsightsService (display layer).
+//
+//  CurrencyConverter  (Services/Utilities/CurrencyConverter.swift)
+//      • Fetches live / historical exchange rates from the National Bank of Kazakhstan API.
+//      • Async network calls, XML parsing, 24-hour cache.
+//      • Used by: BalanceCalculationEngine for cross-currency balance recalculation.
+//  ─────────────────────────────────────────────────────────────────────
 
 import Foundation
 
-/// Кэш конвертации валют для транзакций.
-/// Использует только `convertedAmount`, записанный при создании транзакции.
+/// In-memory display cache for pre-computed transaction amounts in base currency.
+/// Reads only from `Transaction.convertedAmount` (set at import/creation time).
+/// For live exchange-rate conversion use `CurrencyConverter`.
 @MainActor
 class TransactionCurrencyService {
 

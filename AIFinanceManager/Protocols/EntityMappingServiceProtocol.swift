@@ -49,6 +49,18 @@ protocol EntityMappingServiceProtocol {
         names: [String],
         categoryId: String
     ) async -> [SubcategoryResolutionResult]
+
+    /// Converts a validated CSV row + resolved entity IDs into a Transaction value.
+    /// Previously `TransactionConverterService.convertRow()` — merged into this protocol (Phase 37).
+    func convertRow(
+        _ csvRow: CSVRow,
+        accountId: String?,
+        targetAccountId: String?,
+        categoryName: String,
+        categoryId: String,
+        subcategoryIds: [String],
+        rowIndex: Int
+    ) -> Transaction
 }
 
 // MARK: - Resolution Result Types
