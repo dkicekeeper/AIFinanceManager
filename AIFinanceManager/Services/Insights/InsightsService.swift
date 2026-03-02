@@ -938,6 +938,11 @@ final class InsightsService: @unchecked Sendable {
         /// Phase 42e: Pre-computed last transaction date per account. O(1) lookup replaces
         /// O(N) DateFormatter loop in generateAccountDormancy.
         let lastAccountDates: [String: Date]
+        /// Phase 03-PERF-01: Total expense per category across ALL transactions. O(1) lookup
+        /// for .allTime generator — replaces O(N) Dictionary(grouping:) + map { resolveAmount }.
+        /// Type is Double (not Decimal) for consistency with resolveAmountStatic return type and
+        /// the existing categoryMonthExpenses: [CategoryMonthKey: Double] field.
+        let categoryTotals: [String: Double]
 
         // MARK: Helpers (O(M) dictionary lookups, not O(N) scans)
 
@@ -1014,6 +1019,8 @@ final class InsightsService: @unchecked Sendable {
             var accountCounts = [String: Int]()
             // Phase 42e: Last transaction date per account — O(1) lookup for dormancy detection
             var lastAccountDates = [String: Date]()
+            // Phase 03-PERF-01: All-time expense total per category
+            var categoryTotals = [String: Double]()
 
             for tx in transactions {
                 // Phase 42b: Cache date parsing — each unique date string parsed exactly once
@@ -1055,6 +1062,8 @@ final class InsightsService: @unchecked Sendable {
                     if !tx.category.isEmpty {
                         let catKey = CategoryMonthKey(category: tx.category, year: year, month: month)
                         categoryMonth[catKey, default: 0] += amount
+                        // Phase 03-PERF-01: Accumulate all-time total (piggyback: zero extra loop cost)
+                        categoryTotals[tx.category, default: 0] += amount
                     }
                 default: break
                 }
@@ -1067,7 +1076,8 @@ final class InsightsService: @unchecked Sendable {
                 lastDate: lastDate,
                 txDateMap: dateMap,
                 accountTransactionCounts: accountCounts,
-                lastAccountDates: lastAccountDates
+                lastAccountDates: lastAccountDates,
+                categoryTotals: categoryTotals
             )
         }
     }
