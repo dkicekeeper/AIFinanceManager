@@ -74,13 +74,6 @@ class TransactionCacheManager {
         }
     }
 
-    // MARK: - Account Balance Cache (DEPRECATED — use BalanceCoordinator instead)
-    // New code must read balances from BalanceCoordinator, not from this cache.
-
-    @available(*, deprecated, message: "Read balances from BalanceCoordinator, not from TransactionCacheManager")
-    var cachedAccountBalances: [String: Double] = [:]
-    var balanceCacheInvalidated = false
-
     // MARK: - Category Expenses Cache (for summary display)
 
     var summaryCacheInvalidated = false
@@ -125,13 +118,11 @@ class TransactionCacheManager {
     func invalidateAll() {
         parsedDateCache.removeAll()
         subcategoryIndex.removeAll()
-        cachedAccountBalances.removeAll()
         cachedSummary = nil
         cachedCategoryExpensesByFilter.removeAll()
         cachedUniqueCategories = nil
         cachedExpenseCategories = nil
         cachedIncomeCategories = nil
-        balanceCacheInvalidated = true
         summaryCacheInvalidated = true
         categoryListsCacheInvalidated = true
     }
