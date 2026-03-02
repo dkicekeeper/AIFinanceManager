@@ -15,10 +15,9 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
 
     // MARK: - Dependencies
 
-    // nonisolated(unsafe): DateFormatter is not Sendable, but all callers are @MainActor methods
-    // on this class — single-threaded access is guaranteed. The stored let avoids the computed-var
-    // overhead on every call inside tight loops (calculateSummary iterates all transactions).
-    nonisolated(unsafe) private static let dateFormatter = DateFormatters.dateFormatter
+    // @MainActor isolation: all callers are @MainActor methods on this class.
+    // Static let avoids repeated DateFormatters.dateFormatter lookups in tight loops.
+    @MainActor private static let dateFormatter = DateFormatters.dateFormatter
 
     // MARK: - TransactionQueryServiceProtocol Implementation
 
