@@ -21,12 +21,11 @@ class TransactionsViewModel {
     // eliminating O(N) array copies on every mutation.
 
     /// All transactions — reads directly from TransactionStore (SSOT)
-    /// Setter redirects to TransactionStore for RecurringTransactionServiceDelegate compatibility
+    /// Setter is a no-op legacy compatibility shim — prefer direct TransactionStore mutations
     var allTransactions: [Transaction] {
         get { transactionStore?.transactions ?? [] }
         set {
-            // Redirect writes to TransactionStore (used by RecurringTransactionService)
-            // This is a legacy compatibility path — prefer direct TransactionStore mutations
+            // No-op: legacy compatibility path — all mutations go through TransactionStore
         }
     }
 
@@ -95,13 +94,11 @@ class TransactionsViewModel {
 
     // MARK: - Services (initialized eagerly for @Observable compatibility)
 
-    @ObservationIgnored private let recurringService: RecurringTransactionServiceProtocol
     @ObservationIgnored private let filterCoordinator: TransactionFilterCoordinatorProtocol
     @ObservationIgnored private let accountOperationService: AccountOperationServiceProtocol
     @ObservationIgnored private let queryService: TransactionQueryServiceProtocol
     @ObservationIgnored private let groupingService: TransactionGroupingService
     @ObservationIgnored private let balanceCalculator: BalanceCalculator
-    @ObservationIgnored let recurringGenerator: RecurringTransactionGenerator
 
     // MARK: - Batch Mode for Performance
 
@@ -120,7 +117,6 @@ class TransactionsViewModel {
         self.repository = repository
 
         // Initialize services (required for @Observable compatibility)
-        self.recurringService = RecurringTransactionService(delegate: nil)  // Will set delegate after init
         let filterService = TransactionFilterService(dateFormatter: DateFormatters.dateFormatter)
         self.filterCoordinator = TransactionFilterCoordinator(filterService: filterService, dateFormatter: DateFormatters.dateFormatter)
         self.accountOperationService = AccountOperationService()
@@ -132,11 +128,6 @@ class TransactionsViewModel {
             cacheManager: cacheManager
         )
         self.balanceCalculator = BalanceCalculator(dateFormatter: DateFormatters.dateFormatter)
-        self.recurringGenerator = RecurringTransactionGenerator(dateFormatter: DateFormatters.dateFormatter)
-
-        // Set delegate after all properties are initialized
-        // NOTE: RecurringService delegate setup handled by AppCoordinator
-        // Delegation pattern is managed at coordinator level for better separation of concerns
 
         setupRecurringSeriesObserver()
     }
@@ -155,26 +146,16 @@ class TransactionsViewModel {
             queue: .main
         ) { [weak self] notification in
             Task { @MainActor [weak self] in
-                guard let self = self, let seriesId = notification.userInfo?["seriesId"] as? String else { return }
+                guard let self = self, let _ = notification.userInfo?["seriesId"] as? String else { return }
 
-
-                guard !self.isProcessingRecurringNotification else {
-                    return
-                }
+                guard !self.isProcessingRecurringNotification else { return }
 
                 self.isProcessingRecurringNotification = true
                 defer { self.isProcessingRecurringNotification = false }
 
-
-                // 🔧 FIX: Only call generateRecurringTransactions() - it handles everything internally
-                // RecurringTransactionService already calls scheduleBalanceRecalculation() and scheduleSave() inside
-                // Calling them again here causes duplicate balance recalculations
-                self.generateRecurringTransactions()
-                // Phase 8: Cache invalidation handled by TransactionStore
+                // Recurring generation is handled by TransactionStore — no action needed here.
+                // TransactionStore.createSeries() already generates transactions.
                 self.rebuildIndexes()
-                // 🔧 REMOVED: scheduleBalanceRecalculation() - already called in RecurringTransactionService
-                // 🔧 REMOVED: scheduleSave() - already called in RecurringTransactionService
-
             }
         }
 
@@ -191,7 +172,8 @@ class TransactionsViewModel {
                 self.isProcessingRecurringNotification = true
                 defer { self.isProcessingRecurringNotification = false }
 
-                self.recurringService.generateRecurringTransactions()
+                // Recurring generation is handled by TransactionStore — no action needed here.
+                // TransactionStore.updateSeries() already regenerates transactions.
             }
         }
     }
@@ -570,7 +552,7 @@ class TransactionsViewModel {
         saveToStorage()
     }
 
-    // MARK: - Recurring Transactions
+    // MARK: - Recurring Transactions (routed through TransactionStore)
 
     func createRecurringSeries(
         amount: Decimal,
@@ -583,7 +565,7 @@ class TransactionsViewModel {
         frequency: RecurringFrequency,
         startDate: String
     ) -> RecurringSeries {
-        recurringService.createRecurringSeries(
+        let series = RecurringSeries(
             amount: amount,
             currency: currency,
             category: category,
@@ -594,47 +576,59 @@ class TransactionsViewModel {
             frequency: frequency,
             startDate: startDate
         )
+        Task { @MainActor [weak self] in
+            try? await self?.transactionStore?.createSeries(series)
+        }
+        return series
     }
 
     func updateRecurringSeries(_ series: RecurringSeries) {
-        recurringService.updateRecurringSeries(series)
+        Task { @MainActor [weak self] in
+            try? await self?.transactionStore?.updateSeries(series)
+        }
     }
 
     func stopRecurringSeries(_ seriesId: String) {
-        recurringService.stopRecurringSeries(seriesId)
+        let today = DateFormatters.dateFormatter.string(from: Date())
+        Task { @MainActor [weak self] in
+            try? await self?.transactionStore?.stopSeries(id: seriesId, fromDate: today)
+        }
     }
 
     func stopRecurringSeriesAndCleanup(seriesId: String, transactionDate: String) {
-        recurringService.stopRecurringSeriesAndCleanup(seriesId: seriesId, transactionDate: transactionDate)
+        Task { @MainActor [weak self] in
+            try? await self?.transactionStore?.stopSeries(id: seriesId, fromDate: transactionDate)
+        }
     }
 
     func deleteRecurringSeries(_ seriesId: String, deleteTransactions: Bool = true) {
-        recurringService.deleteRecurringSeries(seriesId, deleteTransactions: deleteTransactions)
+        Task { @MainActor [weak self] in
+            try? await self?.transactionStore?.deleteSeries(id: seriesId, deleteTransactions: deleteTransactions)
+        }
     }
 
     func archiveSubscription(_ seriesId: String) {
-        recurringService.archiveSubscription(seriesId)
+        // Subscription archiving (pause) — route through TransactionStore
+        Task { @MainActor [weak self] in
+            try? await self?.transactionStore?.pauseSubscription(id: seriesId)
+        }
     }
 
     func nextChargeDate(for subscriptionId: String) -> Date? {
-        recurringService.nextChargeDate(for: subscriptionId)
+        transactionStore?.nextChargeDate(for: subscriptionId)
     }
 
     func generateRecurringTransactions() {
-        recurringService.generateRecurringTransactions()
+        // No-op: recurring generation happens inside TransactionStore.createSeries/updateSeries.
+        // Called from AppCoordinator.initialize() as a background task — TransactionStore
+        // already loaded recurring data during loadData(); no explicit regeneration needed.
     }
 
-    /// DEPRECATED 2026-02-02: This method is not used anywhere and will be removed
-    /// Use RecurringTransactionCoordinator.updateSeries() instead
-    @available(*, deprecated, message: "Use RecurringTransactionCoordinator.updateSeries() instead")
-    func updateRecurringTransaction(_ transactionId: String, updateAllFuture: Bool, newAmount: Decimal? = nil, newCategory: String? = nil, newSubcategory: String? = nil) {
-        recurringService.updateRecurringTransaction(
-            transactionId,
-            updateAllFuture: updateAllFuture,
-            newAmount: newAmount,
-            newCategory: newCategory,
-            newSubcategory: newSubcategory
-        )
+    /// DEPRECATED — kept for call-site compatibility only. Does nothing.
+    @available(*, deprecated, message: "Use TransactionStore recurring methods directly.")
+    func updateRecurringTransaction(_ transactionId: String, updateAllFuture: Bool,
+        newAmount: Decimal? = nil, newCategory: String? = nil, newSubcategory: String? = nil) {
+        // No-op: superseded by TransactionStore.updateSeries()
     }
 
     // MARK: - Subscriptions
@@ -730,8 +724,6 @@ class TransactionsViewModel {
         Task { @MainActor in
             await balanceCoordinator?.removeAccount(accountId)
         }
-        cacheManager.cachedAccountBalances.removeValue(forKey: accountId)
-        cacheManager.balanceCacheInvalidated = true
     }
 
     func rebuildIndexes() {
@@ -822,10 +814,6 @@ class TransactionsViewModel {
     // MARK: - Private Helpers
     // MIGRATED: clearBalanceFlags removed - balance modes managed by BalanceCoordinator
 }
-
-// MARK: - Helper Methods
-
-extension TransactionsViewModel: RecurringTransactionServiceDelegate {}
 
 // MARK: - Supporting Types
 
