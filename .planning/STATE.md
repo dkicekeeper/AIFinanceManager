@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T18:35:19.880Z"
+last_updated: "2026-03-02T18:51:00Z"
 progress:
-  total_phases: 1
+  total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 11
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Точный учёт финансов с мгновенным откликом — приложение не должно терять данные, зависать или давать неверные цифры.
-**Current focus:** Phase 1 — Safety & Cleanup
+**Current focus:** Phase 2 — Security & Data Migration
 
 ## Current Position
 
-Phase: 1 of 4 (Safety & Cleanup)
-Plan: 3 of 3 in current phase (01-01, 01-02, and 01-03 all complete)
-Status: Phase 1 complete
-Last activity: 2026-03-02 — Completed 01-03 (cache dead code removal; CLN-03 + CLN-04)
+Phase: 2 of 4 (Security & Data Migration)
+Plan: 3 of ? in current phase — 02-03 at checkpoint (Task 2: human-verify build)
+Status: Checkpoint — awaiting human verification of Xcode build
+Last activity: 2026-03-02 — Completed 02-03 Task 1 (CoreData v2→v3 mapping model created; 99e5ae6)
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -41,9 +41,10 @@ Progress: [███░░░░░░░] 30%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Safety & Cleanup | 3 | 12 min | 4 min |
+| 2. Security & Data Migration | 1 (partial) | 2 min | - |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (1 min), 01-02 (4 min), 01-01 (7 min)
+- Last 5 plans: 02-03 (2 min, checkpoint), 01-03 (1 min), 01-02 (4 min), 01-01 (7 min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -69,10 +70,10 @@ None.
 ### Blockers/Concerns
 
 - ~~Phase 3 (PERF-02 RecurringStore extract) must not start until Phase 1 SAFE-01 is complete~~ — RESOLVED: SAFE-01 complete; RecurringTransactionService deleted, no competing source of truth
-- DATA-01 (CoreData migration) requires verifying against real device with old app version installed; emulator-only testing is insufficient
+- DATA-01 (CoreData migration): mapping model file created (99e5ae6); still requires human Xcode build verification and ideally testing against real device with old app version installed; emulator-only testing is insufficient
 
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 01-03-PLAN.md — cache dead code removal (CLN-03 + CLN-04); Phase 1 Safety & Cleanup is fully complete; next is Phase 2
+Stopped at: 02-03-PLAN.md Task 2 checkpoint (human-verify) — mapping model created (99e5ae6); awaiting user to confirm Xcode build compiles .xcmappingmodel without errors
 Resume file: None

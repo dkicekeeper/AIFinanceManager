@@ -37,7 +37,7 @@
 
 ### CoreData (Миграция схемы)
 
-- [ ] **DATA-01**: Создать explicit CoreData migration mapping model для deprecated aggregate entities (`MonthlyAggregateEntity`, `CategoryAggregateEntity`) — предотвратить crash при обновлении у пользователей со старой схемой
+- [x] **DATA-01**: Создать explicit CoreData migration mapping model для deprecated aggregate entities (`MonthlyAggregateEntity`, `CategoryAggregateEntity`) — предотвратить crash при обновлении у пользователей со старой схемой
 
 ## v2 Requirements
 
@@ -79,7 +79,7 @@
 | CLN-04 | Phase 1 | Complete |
 | SEC-01 | Phase 2 | Pending |
 | SEC-02 | Phase 2 | Pending |
-| DATA-01 | Phase 2 | Pending |
+| DATA-01 | Phase 2 | Complete |
 | PERF-01 | Phase 3 | Pending |
 | PERF-02 | Phase 3 | Pending |
 | TEST-01 | Phase 4 | Pending |
