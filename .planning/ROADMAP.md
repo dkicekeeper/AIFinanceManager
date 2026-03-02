@@ -30,7 +30,7 @@ Four phases eliminate active risks (deadlock, race conditions, dead code), harde
 
 Plans:
 - [ ] 01-01-PLAN.md — Delete RecurringTransactionService + protocol; rewire TransactionsViewModel recurring calls to TransactionStore
-- [ ] 01-02-PLAN.md — Fix TransactionQueryService DateFormatter thread safety; delete TransactionConverterService tombstones
+- [x] 01-02-PLAN.md — Fix TransactionQueryService DateFormatter thread safety; delete TransactionConverterService tombstones
 - [ ] 01-03-PLAN.md — Remove deprecated Account Balance Cache from TransactionCacheManager; resolve UnifiedTransactionCache TODO
 
 ### Phase 2: Security & Data Migration
@@ -70,7 +70,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Safety & Cleanup | 0/3 | Planning done | - |
+| 1. Safety & Cleanup | 1/3 | In progress | - |
 | 2. Security & Data Migration | 0/TBD | Not started | - |
 | 3. Performance | 0/TBD | Not started | - |
 | 4. Critical Tests | 0/TBD | Not started | - |

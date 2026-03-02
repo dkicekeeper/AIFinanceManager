@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 1 of 4 (Safety & Cleanup)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-02 — Roadmap created; 16 v1 requirements mapped to 4 phases
+Plan: 2 of 3 in current phase
+Status: In progress
+Last activity: 2026-03-02 — Completed 01-02 (DateFormatter fix + tombstone deletion)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 4 min
+- Total execution time: 0.1 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1. Safety & Cleanup | 1 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: -
+- Last 5 plans: 01-02 (4 min)
 - Trend: -
 
 *Updated after each plan completion*
@@ -45,10 +45,12 @@ See PROJECT.md Key Decisions table for full log. Active decisions affecting curr
 - `UnifiedTransactionCache`: replace incomplete prefix invalidation with full invalidation (simpler, safe enough for current load)
 - `TransactionStore`: extract only `RecurringStore` this milestone; full split deferred (too risky without tests)
 - CoreData file protection: `.complete` (financial data; iOS enforces at locked screen)
+- Use `@MainActor private static let` (not `nonisolated(unsafe)`) for DateFormatter on @MainActor classes — matches CLAUDE.md rule
+- Delete tombstone files immediately — no live code referenced them; only historical comments remained
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
@@ -58,5 +60,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Roadmap written; REQUIREMENTS.md traceability updated; ready to run `/gsd:plan-phase 1`
+Stopped at: Completed 01-02-PLAN.md — DateFormatter race fix + tombstone deletion; next is 01-03-PLAN.md
 Resume file: None

@@ -9,7 +9,7 @@
 
 - [ ] **SAFE-01**: Удалить `RecurringTransactionService.swift` (558 LOC) — мигрировать все активные call sites в `TransactionStore+Recurring.swift`
 - [ ] **SAFE-02**: Удалить `RecurringTransactionServiceProtocol.swift` (59 LOC) после завершения SAFE-01
-- [ ] **SAFE-03**: Исправить `DateFormatter` race в `TransactionQueryService` — объявить `@MainActor private static let`, форматировать на MainActor, передавать `String` в `Task.detached`
+- [x] **SAFE-03**: Исправить `DateFormatter` race в `TransactionQueryService` — объявить `@MainActor private static let`, форматировать на MainActor, передавать `String` в `Task.detached`
 
 ### Security (Безопасность данных)
 
@@ -18,8 +18,8 @@
 
 ### Cleanup (Мёртвый код)
 
-- [ ] **CLN-01**: Удалить `Services/CSV/TransactionConverterService.swift` (5 LOC, deprecated Phase 37)
-- [ ] **CLN-02**: Удалить `Protocols/TransactionConverterServiceProtocol.swift` (6 LOC, no implementations)
+- [x] **CLN-01**: Удалить `Services/CSV/TransactionConverterService.swift` (5 LOC, deprecated Phase 37)
+- [x] **CLN-02**: Удалить `Protocols/TransactionConverterServiceProtocol.swift` (6 LOC, no implementations)
 - [ ] **CLN-03**: Удалить deprecated секцию Account Balance Cache из `TransactionCacheManager.swift` (~77 LOC)
 - [ ] **CLN-04**: Закрыть TODO в `UnifiedTransactionCache.swift` — заменить незаконченный prefix invalidation на full invalidation per event
 
@@ -72,9 +72,9 @@
 |-------------|-------|--------|
 | SAFE-01 | Phase 1 | Pending |
 | SAFE-02 | Phase 1 | Pending |
-| SAFE-03 | Phase 1 | Pending |
-| CLN-01 | Phase 1 | Pending |
-| CLN-02 | Phase 1 | Pending |
+| SAFE-03 | Phase 1 | Complete |
+| CLN-01 | Phase 1 | Complete |
+| CLN-02 | Phase 1 | Complete |
 | CLN-03 | Phase 1 | Pending |
 | CLN-04 | Phase 1 | Pending |
 | SEC-01 | Phase 2 | Pending |
