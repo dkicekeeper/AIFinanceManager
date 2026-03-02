@@ -32,7 +32,7 @@
 
 - [ ] **TEST-01**: Unit-тесты для `DepositInterestService` — расчёт процентов, граничные даты
 - [ ] **TEST-02**: Unit-тесты для `CategoryBudgetService` — граничные периоды, budget rollover
-- [ ] **TEST-03**: Unit-тесты для `RecurringTransactionGenerator` — leap year (Feb 29), month-end (Jan 31 → Feb 28/29), DST
+- [x] **TEST-03**: Unit-тесты для `RecurringTransactionGenerator` — leap year (Feb 29), month-end (Jan 31 → Feb 28/29), DST
 - [ ] **TEST-04**: CoreData round-trip тест — save transaction → reload app → verify fields intact
 
 ### CoreData (Миграция схемы)
@@ -84,7 +84,7 @@
 | PERF-02 | Phase 3 | Complete |
 | TEST-01 | Phase 4 | Pending |
 | TEST-02 | Phase 4 | Pending |
-| TEST-03 | Phase 4 | Pending |
+| TEST-03 | Phase 4 | Complete |
 | TEST-04 | Phase 4 | Pending |
 
 **Coverage:**

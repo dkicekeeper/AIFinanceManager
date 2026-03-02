@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T19:54:11.503Z"
+last_updated: "2026-03-02T20:08:59.647Z"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 11
+  completed_plans: 9
 ---
 
 # Project State
@@ -53,6 +53,7 @@ Progress: [██████████] 100% (Phase 2 complete)
 | Phase 02-security-and-data-migration P03 | 3 | 2 tasks | 1 files |
 | Phase 03-performance P01 | 3 | 2 tasks | 2 files |
 | Phase 03-performance P02 | 3 | 2 tasks | 4 files |
+| Phase 04-critical-tests P02 | 3 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ See PROJECT.md Key Decisions table for full log. Active decisions affecting curr
 - [Phase 03-performance]: Computed forwarders on TransactionStore (not AppCoordinator storage) — views already access recurring data via transactionStore.recurringSeries; no callsite changes needed
 - [Phase 03-performance]: RecurringStore.load(series:occurrences:) accepts already-fetched arrays from Task.detached — avoids duplicate background fetch; keeps threading logic in TransactionStore
 - [Phase 03-performance]: Phase 03-02: Four private updateStateFor* helpers deleted outright — logic moved into RecurringStore.handle* methods; delegate-via-owned-store + computed forwarder pattern ready for future AccountStore/CategoryStore splits
+- [Phase 04-critical-tests]: Use horizonMonths=3 for past-dated series (2024/2025); injected DST Calendar uses America/New_York timezone for spring-forward test
 
 ### Pending Todos
 
