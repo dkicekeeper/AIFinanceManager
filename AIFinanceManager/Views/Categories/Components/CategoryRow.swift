@@ -92,10 +92,17 @@ struct CategoryRow: View {
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if !isDefault {
-                Button(role: .destructive, action: onDelete) {
+                Button(role: .destructive) {
+                    HapticManager.warning()
+                    onDelete()
+                } label: {
                     Label(String(localized: "button.delete"), systemImage: "trash")
                 }
             }
+        }
+        // Budget overflow haptic — fires when spending first crosses 100 %
+        .onChange(of: budgetProgress?.isOverBudget) { _, isOver in
+            if isOver == true { HapticManager.warning() }
         }
     }
 }

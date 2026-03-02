@@ -54,6 +54,15 @@ struct CSVImportResultView: View {
             .navigationTitle(String(localized: "csvImport.result.title"))
             .navigationBarTitleDisplayMode(.inline)
         }
+        .onAppear {
+            if statistics.persistenceError != nil {
+                HapticManager.error()
+            } else if statistics.successRate > 0.8 {
+                HapticManager.success()
+            } else {
+                HapticManager.warning()
+            }
+        }
     }
 
     // MARK: - Sections

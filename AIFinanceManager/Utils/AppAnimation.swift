@@ -64,6 +64,52 @@ enum AppAnimation {
 
     /// Banner Y-offset when hidden (slides in from above)
     static let bannerHiddenOffset: CGFloat = -20
+
+    // MARK: - Reduce Motion Aware Animations
+
+    /// `true` когда пользователь включил "Reduce Motion" в Настройках → Универсальный доступ.
+    /// Используй для условного отключения декоративных анимаций (shimmer, bounce и т.д.).
+    static var isReduceMotionEnabled: Bool {
+        UIAccessibility.isReduceMotionEnabled
+    }
+
+    /// `Animation` для быстрых переходов с учётом Reduce Motion.
+    /// Замена для `.easeInOut(duration: AppAnimation.fast)` в местах, где анимация декоративная.
+    static var fastAnimation: Animation {
+        UIAccessibility.isReduceMotionEnabled
+            ? .linear(duration: 0)
+            : .easeInOut(duration: fast)
+    }
+
+    /// `Animation` для стандартных переходов с учётом Reduce Motion.
+    /// Замена для `.easeInOut(duration: AppAnimation.standard)`.
+    static var standardAnimation: Animation {
+        UIAccessibility.isReduceMotionEnabled
+            ? .linear(duration: 0)
+            : .easeInOut(duration: standard)
+    }
+
+    /// `Animation` для медленных переходов (модальные экраны) с учётом Reduce Motion.
+    static var slowAnimation: Animation {
+        UIAccessibility.isReduceMotionEnabled
+            ? .linear(duration: 0)
+            : .easeInOut(duration: slow)
+    }
+
+    /// Spring-анимация с учётом Reduce Motion.
+    /// Замена для `AppAnimation.spring` в декоративных bounce-эффектах.
+    static var adaptiveSpring: Animation {
+        UIAccessibility.isReduceMotionEnabled
+            ? .linear(duration: 0)
+            : spring
+    }
+
+    /// Продолжительность shimmer-анимации с учётом Reduce Motion.
+    /// Когда Reduce Motion включён — возвращает 0, что эффективно останавливает shimmer.
+    /// Используй в `SkeletonLoadingModifier` вместо прямого `shimmerDuration`.
+    static var adaptiveShimmerDuration: Double {
+        UIAccessibility.isReduceMotionEnabled ? 0 : shimmerDuration
+    }
 }
 
 // MARK: - Interactive Button Style

@@ -19,6 +19,9 @@ struct TransactionsSummaryCard: View {
     var body: some View {
         // Fix #14: ZStack + .transition(.opacity) + .animation gives a smooth fade
         // between loading → loaded → empty states instead of abrupt view replacement.
+        // minHeight = analyticsCardHeight: фиксирует высоту контейнера во время
+        // перехода loadingState (fixed height) → emptyState/loadedState (variable height),
+        // предотвращая layout shift ("прыжок" контента вверх/вниз).
         ZStack {
             if isEmpty {
                 emptyState
@@ -34,6 +37,7 @@ struct TransactionsSummaryCard: View {
                     .transition(.opacity)
             }
         }
+        .frame(minHeight: AppSize.analyticsCardHeight)
         .animation(.spring(response: 0.4), value: isEmpty)
         .animation(.spring(response: 0.4), value: summary != nil)
     }

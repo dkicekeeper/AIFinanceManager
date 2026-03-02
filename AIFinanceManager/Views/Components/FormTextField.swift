@@ -8,8 +8,18 @@
 
 import SwiftUI
 
-/// Enhanced text field for forms with error/help states and multiple styles
-/// Supports single-line, multiline, and compact variants
+/// Enhanced text field for forms with error/help states and multiple styles.
+/// Supports single-line, multiline, and compact variants.
+///
+/// **Focus chain (multi-field forms):**
+/// Передай `onSubmit` чтобы переключать фокус между полями при нажатии Return:
+/// ```swift
+/// @FocusState private var focused: Field?
+/// enum Field { case name, amount }
+///
+/// FormTextField(text: $name,   placeholder: "Название",  onSubmit: { focused = .amount })
+/// FormTextField(text: $amount, placeholder: "Сумма",     keyboardType: .decimalPad)
+/// ```
 struct FormTextField: View {
     @Binding var text: String
     let placeholder: String
@@ -17,6 +27,10 @@ struct FormTextField: View {
     let keyboardType: UIKeyboardType
     let errorMessage: String?
     let helpText: String?
+    /// Вызывается при нажатии Return на клавиатуре.
+    /// Используй для перевода фокуса на следующее поле (focus chain) в форме.
+    /// `nil` (дефолт) — стандартное поведение Return.
+    let onSubmit: (() -> Void)?
     @FocusState private var isFocused: Bool
 
     enum Style {
@@ -36,7 +50,8 @@ struct FormTextField: View {
         style: Style = .standard,
         keyboardType: UIKeyboardType = .default,
         errorMessage: String? = nil,
-        helpText: String? = nil
+        helpText: String? = nil,
+        onSubmit: (() -> Void)? = nil
     ) {
         self._text = text
         self.placeholder = placeholder
@@ -44,6 +59,7 @@ struct FormTextField: View {
         self.keyboardType = keyboardType
         self.errorMessage = errorMessage
         self.helpText = helpText
+        self.onSubmit = onSubmit
     }
 
     var body: some View {
@@ -98,9 +114,11 @@ struct FormTextField: View {
             .keyboardType(keyboardType)
             .focused($isFocused)
             .font(AppTypography.body)
+            .onSubmit { onSubmit?() }
     }
 
     private func multilineField(min: Int, max: Int) -> some View {
+        // Multiline поля не имеют Return как submit — onSubmit здесь не применяется.
         TextField(placeholder, text: $text, axis: .vertical)
             .lineLimit(min...max)
             .focused($isFocused)
@@ -112,6 +130,7 @@ struct FormTextField: View {
             .keyboardType(keyboardType)
             .focused($isFocused)
             .font(AppTypography.bodySmall)
+            .onSubmit { onSubmit?() }
     }
 
     // MARK: - Styling Helpers

@@ -72,7 +72,10 @@ struct AccountRow: View {
             }
             .buttonStyle(.plain)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                Button(role: .destructive, action: onDelete) {
+                Button(role: .destructive) {
+                    HapticManager.warning()
+                    onDelete()
+                } label: {
                     Label(String(localized: "button.delete"), systemImage: "trash")
                 }
             }

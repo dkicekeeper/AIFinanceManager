@@ -47,20 +47,35 @@ struct UniversalCarousel<Content: View>: View {
     /// When set, the carousel will automatically scroll to center the item with this ID
     let scrollToId: Binding<AnyHashable?>?
 
+    /// Optional VoiceOver label for the carousel container.
+    ///
+    /// When provided, VoiceOver announces this label before the individual child elements,
+    /// giving screen-reader users context about what the carousel contains
+    /// (e.g. `"Period filter"`, `"Account selector"`, `"CSV column preview"`).
+    ///
+    /// When `nil` (default), VoiceOver traverses child elements directly without a
+    /// container announcement — suitable when the surrounding UI already provides context.
+    let accessibilityLabel: String?
+
     // MARK: - Initializer
 
     /// Creates a universal carousel with specified configuration
     /// - Parameters:
     ///   - config: Configuration preset (default: .standard)
     ///   - scrollToId: Optional binding for auto-scroll to item ID
+    ///   - accessibilityLabel: Optional VoiceOver container label. Pass a localised string when
+    ///     the carousel has semantic meaning (e.g. "Period filter", "Account selector").
+    ///     Omit (default `nil`) when surrounding UI already conveys context.
     ///   - content: ViewBuilder for carousel items
     init(
         config: CarouselConfiguration = .standard,
         scrollToId: Binding<AnyHashable?>? = nil,
+        accessibilityLabel: String? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.config = config
         self.scrollToId = scrollToId
+        self.accessibilityLabel = accessibilityLabel
         self.content = content
     }
 
@@ -86,8 +101,8 @@ struct UniversalCarousel<Content: View>: View {
 
     // MARK: - Private Views
 
-    /// The actual ScrollView content
-    private var scrollViewContent: some View {
+    /// Base ScrollView without an accessibility container label.
+    private var baseScrollView: some View {
         ScrollView(.horizontal, showsIndicators: config.showsIndicators) {
             HStack(spacing: config.spacing) {
                 content()
@@ -96,6 +111,20 @@ struct UniversalCarousel<Content: View>: View {
             .padding(.vertical, config.verticalPadding)
         }
         .scrollClipDisabled(config.clipDisabled)
+    }
+
+    /// ScrollView with optional VoiceOver container label applied.
+    ///
+    /// When `accessibilityLabel` is set the scroll container is announced by VoiceOver
+    /// so users understand what type of items the carousel holds before swiping through them.
+    @ViewBuilder
+    private var scrollViewContent: some View {
+        if let label = accessibilityLabel {
+            baseScrollView
+                .accessibilityLabel(label)
+        } else {
+            baseScrollView
+        }
     }
 }
 

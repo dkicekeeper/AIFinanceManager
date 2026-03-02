@@ -25,7 +25,17 @@ extension View {
             .padding(.vertical, AppSpacing.sm)
     }
 
-    /// Применяет стиль chip (используется для CategoryChip, general purpose chips)
+    /// Static display chip — non-interactive label/tag.
+    ///
+    /// Background: `secondaryBackground` fill (no glass effect). The chip is visually inert —
+    /// it does **not** receive hover/press treatment and has no `.interactive()` glass modifier.
+    ///
+    /// **Use when:** showing read-only tags, category badges, info labels, inline chips that
+    /// do not trigger any action on tap.
+    ///
+    /// **Do NOT use for:** tappable filter controls or action triggers — use `filterChipStyle` instead.
+    ///
+    /// Current call sites: `CategoryChip`, general-purpose info tags.
     func chipStyle(isSelected: Bool = false) -> some View {
         self
             .font(AppTypography.label)
@@ -36,7 +46,17 @@ extension View {
             .clipShape(.rect(cornerRadius: AppRadius.pill))
     }
 
-    /// Стандартный стиль для фильтров с glass effect (FilterChip, AccountFilterMenu, CategoryFilterButton)
+    /// Interactive filter chip — uses Liquid Glass on iOS 26+; falls back to tinted `secondaryBackground`.
+    ///
+    /// Unlike `chipStyle`, this modifier applies `.interactive()` to the glass effect so the chip
+    /// responds correctly to hover/press. The `isSelected` state adds an `accent` tint on both platforms.
+    ///
+    /// **Use when:** the chip triggers filtering, navigation, or any tap action
+    /// (filter buttons, action menu triggers, segmented-style selectors in toolbars).
+    ///
+    /// **Do NOT use for:** static read-only tags with no tap behavior — use `chipStyle` instead.
+    ///
+    /// Current call sites: `FilterChip`, `AccountFilterMenu`, `CategoryFilterButton`, `UniversalFilterButton`.
     @ViewBuilder
     func filterChipStyle(isSelected: Bool = false) -> some View {
         if #available(iOS 26, *) {

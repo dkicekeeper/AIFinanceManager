@@ -40,8 +40,15 @@ enum AppTypography {
 
     // MARK: Body Text
 
-    /// Body Large - Emphasized body text (18pt medium, scales with body)
-    static let bodyLarge = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.medium)
+    /// Body Emphasis — акцентированный body (18pt medium).
+    /// Отличается от `body` ВЕСОМ (medium vs regular), не размером.
+    /// Используй для: названия строк, лейблы кнопок, section subheaders.
+    /// Канонический идентификатор. `bodyLarge` — deprecated алиас для обратной совместимости.
+    static let bodyEmphasis = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.medium)
+
+    /// Deprecated: используй `bodyEmphasis`. Сохранён для обратной совместимости (30+ call sites).
+    /// ⚠️ Не создавай новый код с `bodyLarge` — он вводит в заблуждение (18pt = тот же размер что `body`).
+    static let bodyLarge = bodyEmphasis
 
     /// Body - Default text (18pt regular, scales with body)
     static let body = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.regular)
@@ -57,7 +64,9 @@ enum AppTypography {
     /// Caption Emphasis - Important helper text (14pt medium, scales with caption)
     static let captionEmphasis = Font.custom(AppInterFont.family, size: 14, relativeTo: .caption).weight(.medium)
 
-    /// Caption 2 - Very small text (12pt regular, scales with caption2)
+    /// Caption 2 - Very small text (12pt regular, scales with caption2).
+    /// Примечание: системный iOS caption2 = 11pt; наши 12pt намеренно выше минимума.
+    /// Применяй только для не-критичного декоративного текста (бейджи, мета-информация).
     static let caption2 = Font.custom(AppInterFont.family, size: 12, relativeTo: .caption2).weight(.regular)
 
     // MARK: - Semantic Typography

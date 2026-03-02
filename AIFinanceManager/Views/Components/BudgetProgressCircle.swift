@@ -16,15 +16,31 @@ import SwiftUI
 /// - Progress  > 100 %  → destructive red arc
 ///
 /// The ring starts at the 12-o'clock position (−90° rotation) and sweeps
-/// clockwise. It is purely decorative so it is hidden from VoiceOver by default.
+/// clockwise.
+///
+/// **VoiceOver behaviour:**
+/// - `accessibilityLabel: nil` (default) — элемент скрыт из дерева VoiceOver.
+///   Используй когда родительская строка уже несёт семантику (CategoryRow, CategoryChip).
+/// - `accessibilityLabel: "75 % бюджета использовано"` — VoiceOver читает метку.
+///   Используй в standalone-контекстах (BudgetDetail, CardsGrid).
 ///
 /// Usage:
 /// ```swift
+/// // Embedded in row — parent row carries accessibility meaning
 /// BudgetProgressCircle(
 ///     progress: budgetProgress.percentage / 100,
 ///     size: AppIconSize.categoryIcon,
 ///     lineWidth: 3,
 ///     isOverBudget: budgetProgress.isOverBudget
+/// )
+///
+/// // Standalone — provide label for VoiceOver
+/// BudgetProgressCircle(
+///     progress: 0.75,
+///     size: AppIconSize.budgetRing,
+///     lineWidth: 4,
+///     isOverBudget: false,
+///     accessibilityLabel: String(localized: "75% бюджета использовано")
 /// )
 /// ```
 struct BudgetProgressCircle: View {
@@ -43,8 +59,13 @@ struct BudgetProgressCircle: View {
     /// `AppColors.success`.
     var isOverBudget: Bool = false
 
+    /// Метка для VoiceOver. Когда `nil` — элемент скрыт из accessibility дерева
+    /// (ожидается, что родительская View несёт семантику). Когда указана —
+    /// VoiceOver читает её и помечает элемент `.updatesFrequently`.
+    var accessibilityLabel: String? = nil
+
     var body: some View {
-        Circle()
+        let arc = Circle()
             .trim(from: 0, to: min(progress, 1.0))
             .stroke(
                 isOverBudget ? AppColors.destructive : AppColors.success,
@@ -53,7 +74,15 @@ struct BudgetProgressCircle: View {
             .rotationEffect(.degrees(-90))
             .frame(width: size, height: size)
             .animation(.easeInOut(duration: AppAnimation.standard), value: progress)
-            .accessibilityHidden(true) // decorative — the row label carries semantic meaning
+
+        if let label = accessibilityLabel {
+            arc
+                .accessibilityLabel(label)
+                .accessibilityAddTraits(.updatesFrequently)
+        } else {
+            arc
+                .accessibilityHidden(true) // decorative — the row label carries semantic meaning
+        }
     }
 }
 

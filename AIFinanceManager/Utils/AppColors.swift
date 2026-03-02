@@ -33,8 +33,19 @@ enum AppColors {
     /// Primary text (используй системный .primary для auto light/dark)
     static let textPrimary = Color.primary
 
-    /// Secondary text (используй системный .secondary для auto light/dark)
+    /// Secondary text — системный адаптивный цвет.
+    /// Light mode: ~2.5:1 контраст на белом фоне — допустимо для вспомогательного текста
+    /// (временны́е метки, описания, подписи). Для критических данных используй `textSecondaryAccessible`.
     static let textSecondary = Color.secondary
+
+    /// Secondary text с гарантированным контрастом ≥ 4.5:1 (WCAG AA).
+    /// Light: #595959 (7:1 на белом) | Dark: white 75% (5.5:1 на чёрном).
+    /// Используй для secondary-текста, который несёт важную информацию (суммы, статусы).
+    static let textSecondaryAccessible = Color(UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.75)
+            : UIColor(red: 89/255, green: 89/255, blue: 89/255, alpha: 1)
+    })
 
     /// Tertiary text (используй системный .gray для мета-информации)
     static let textTertiary = Color.gray

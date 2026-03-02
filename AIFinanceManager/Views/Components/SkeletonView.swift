@@ -39,6 +39,8 @@ struct SkeletonShimmerModifier: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             .onAppear {
                 guard !isAnimating else { return }
+                // Shimmer — декоративное движение. Пропускаем когда включён Reduce Motion.
+                guard !AppAnimation.isReduceMotionEnabled else { return }
                 isAnimating = true
                 withAnimation(
                     .linear(duration: AppAnimation.shimmerDuration).repeatForever(autoreverses: false)
