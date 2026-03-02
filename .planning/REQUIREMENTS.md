@@ -13,7 +13,7 @@
 
 ### Security (Безопасность данных)
 
-- [ ] **SEC-01**: Включить `NSFileProtectionComplete` для CoreData SQLite store в `CoreDataStack.swift`
+- [x] **SEC-01**: Включить `NSFileProtectionComplete` для CoreData SQLite store в `CoreDataStack.swift`
 - [ ] **SEC-02**: Добавить upper-bound валидацию (≤ 999_999_999.99) в `AmountInputView` и вызывать `AmountFormatter.validate()` перед принятием суммы
 
 ### Cleanup (Мёртвый код)
@@ -77,7 +77,7 @@
 | CLN-02 | Phase 1 | Complete |
 | CLN-03 | Phase 1 | Complete |
 | CLN-04 | Phase 1 | Complete |
-| SEC-01 | Phase 2 | Pending |
+| SEC-01 | Phase 2 | Complete |
 | SEC-02 | Phase 2 | Pending |
 | DATA-01 | Phase 2 | Complete |
 | PERF-01 | Phase 3 | Pending |

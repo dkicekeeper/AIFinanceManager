@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T18:51:00Z"
+last_updated: "2026-03-02T18:51:45.194Z"
 progress:
-  total_phases: 4
+  total_phases: 2
   completed_phases: 1
-  total_plans: 11
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -48,6 +48,7 @@ Progress: [████░░░░░░] 40%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 02-security-and-data-migration P01 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,7 @@ See PROJECT.md Key Decisions table for full log. Active decisions affecting curr
 - Use `@MainActor private static let` (not `nonisolated(unsafe)`) for DateFormatter on @MainActor classes — matches CLAUDE.md rule
 - Delete tombstone files immediately — no live code referenced them; only historical comments remained
 - Deprecated property sections: delete outright once all callers confirmed removed (not just mark with @available)
+- [Phase 02-security-and-data-migration]: FileProtectionType.complete chosen for CoreData store — financial data warrants strictest iOS protection class (file inaccessible while device is locked)
 
 ### Pending Todos
 
