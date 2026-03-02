@@ -17,18 +17,24 @@ extension InsightsService {
         allIncome: Double,
         allExpenses: Double,
         baseCurrency: String,
-        balanceFor: (String) -> Double
+        balanceFor: (String) -> Double,
+        preAggregated: PreAggregatedData? = nil,     // Phase 42
+        skipSharedGenerators: Bool = false            // Phase 42b: shared generators already computed
     ) -> [Insight] {
         var insights: [Insight] = []
 
+        // SavingsRate is granularity-dependent (uses windowed income/expenses) — always compute
         if let rate = generateSavingsRate(allIncome: allIncome, allExpenses: allExpenses, baseCurrency: baseCurrency) {
             insights.append(rate)
         }
-        if let fund = generateEmergencyFund(baseCurrency: baseCurrency, balanceFor: balanceFor) {
-            insights.append(fund)
-        }
-        if let momentum = generateSavingsMomentum(baseCurrency: baseCurrency) {
-            insights.append(momentum)
+        // EmergencyFund and SavingsMomentum are granularity-independent — skip when shared provided
+        if !skipSharedGenerators {
+            if let fund = generateEmergencyFund(baseCurrency: baseCurrency, balanceFor: balanceFor, preAggregated: preAggregated) {
+                insights.append(fund)
+            }
+            if let momentum = generateSavingsMomentum(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+                insights.append(momentum)
+            }
         }
         return insights
     }
@@ -60,12 +66,17 @@ extension InsightsService {
     }
 
     @MainActor
-    private func generateEmergencyFund(baseCurrency: String, balanceFor: (String) -> Double) -> Insight? {
+    private func generateEmergencyFund(baseCurrency: String, balanceFor: (String) -> Double, preAggregated: PreAggregatedData? = nil) -> Insight? {
         let totalBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         guard totalBalance > 0 else { return nil }
 
-        // Phase 40: In-memory 3-month average replaces MonthlyAggregateService.fetchLast()
-        let aggregates = Self.computeLastMonthlyTotals(3, from: transactionStore.transactions, baseCurrency: baseCurrency)
+        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        let aggregates: [InMemoryMonthlyTotal]
+        if let preAggregated {
+            aggregates = preAggregated.lastMonthlyTotals(3)
+        } else {
+            aggregates = Self.computeLastMonthlyTotals(3, from: transactionStore.transactions, baseCurrency: baseCurrency)
+        }
         guard !aggregates.isEmpty else { return nil }
 
         let avgMonthlyExpenses = aggregates.reduce(0.0) { $0 + $1.totalExpenses } / Double(aggregates.count)
@@ -94,9 +105,14 @@ extension InsightsService {
     }
 
     @MainActor
-    private func generateSavingsMomentum(baseCurrency: String) -> Insight? {
-        // Phase 40: In-memory computation replaces MonthlyAggregateService.fetchLast()
-        let aggregates = Self.computeLastMonthlyTotals(4, from: transactionStore.transactions, baseCurrency: baseCurrency)
+    private func generateSavingsMomentum(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
+        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        let aggregates: [InMemoryMonthlyTotal]
+        if let preAggregated {
+            aggregates = preAggregated.lastMonthlyTotals(4)
+        } else {
+            aggregates = Self.computeLastMonthlyTotals(4, from: transactionStore.transactions, baseCurrency: baseCurrency)
+        }
         guard aggregates.count >= 2 else { return nil }
 
         let rates: [Double] = aggregates.map { agg in

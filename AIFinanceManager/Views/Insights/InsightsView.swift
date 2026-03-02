@@ -61,11 +61,13 @@ struct InsightsView: View {
         .onChange(of: insightsViewModel.currentGranularity) { _, _ in
             HapticManager.light()
         }
-        // Phase 41: onChange(of: isStale) removed — recompute is now debounced inside
-        // InsightsViewModel.invalidateAndRecompute() (800ms). The .task below handles
-        // tab navigation; the debounce handles mutations while the tab is open.
+        // Phase 42: Lazy compute — onAppear triggers computation only if stale;
+        // onDisappear stops background recomputes on transaction changes.
         .task {
             insightsViewModel.onAppear()
+        }
+        .onDisappear {
+            insightsViewModel.onDisappear()
         }
     }
 

@@ -120,6 +120,13 @@ All return lightweight value-type structs (`InMemoryMonthlyTotal`, `InMemoryCate
 
 ### Recent Refactoring Phases
 
+**Phase 42** (2026-03-02): Insights Deep Performance Optimization — PreAggregatedData Pattern
+- **PreAggregatedData struct** (`InsightsService.swift`): Single O(N) pass builds monthly totals, category-month expenses, date parse cache (`txDateMap`), per-account transaction counts, and last-activity dates. All generators use O(M) dictionary lookups instead of O(N) scans.
+- **Shared insights** (Phase 42b): Granularity-independent insights (spendingSpike, categoryTrend, subscriptionGrowth, duplicateSubscriptions, accountDormancy) computed once on first granularity, merged into subsequent ones via `sharedInsights` parameter.
+- **Date parse cache** (`txDateMap: [String: Date]`): ~3794 unique date strings for 19k transactions. Passed to generators that need time-range filtering — eliminates O(DateFormatter) re-parsing (~16μs/call).
+- **Performance**: Total 4877ms → 1986ms (−59%). Phase 1 user-visible latency: ~370ms. `.week`/`.quarter`/`.year` generators: 7–19ms each.
+- **Key rule**: When adding new generators to InsightsService, accept `PreAggregatedData?` parameter and use its helpers. Never iterate `allTransactions` with `DateFormatter.date(from:)` — use `txDateMap` or pre-computed fields.
+
 **Phase 40** (2026-03-02): Single Source of Truth — Window + Aggregates Removed
 - **Root cause**: `windowMonths=3` + three CoreData aggregate services = two sources of truth. Every new feature had to account for both paths; every edge case broke one of them.
 - **Fix**: Load all transactions (`dateRange: nil`). 19k × ~400B ≈ 7.6 MB — acceptable.
@@ -439,6 +446,8 @@ New file needed?
 - **`.task(id:)` вместо цепочки `onChange`** — объединяй все реактивные входы в `Equatable` struct (`SummaryTrigger`-паттерн); SwiftUI управляет отменой сам. Смешанная срочность: дебаунс внутри `if !isFullyInitialized`, чтобы init-complete-триггер был немедленным.
 - **`DateFormatter` не Sendable** — объявляй как `@MainActor private static let`; форматируй строки на MainActor до `Task.detached`; передавай `String`, а не сам форматтер. Никогда не создавай `DateFormatter` внутри `Task.detached`.
 - **`Group {}` в `@ViewBuilder` computed var лишний** — если `private var foo: some View` возвращает `if/else`, добавь `@ViewBuilder` и убери `Group`; семантика идентична, один уровень иерархии сэкономлен.
+- **PreAggregatedData "piggyback" pattern**: When multiple generators need per-transaction data, add a field to `PreAggregatedData` struct and compute it in the existing `build()` O(N) loop — zero extra cost. Examples: `accountTransactionCounts`, `lastAccountDates`. Never add separate O(N) loops when one already exists.
+- **`filterService.filterByTimeRange` is expensive** (~16μs/tx due to DateFormatter): When `txDateMap` is available, use inline `transactions.filter { guard let d = map[tx.date], d >= start, d < end else { return false }; return true }` instead. Applied in spending generator and currentBucketForForecasting.
 
 ## SwiftUI Layout Gotchas
 
@@ -612,6 +621,6 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 ---
 
 **Last Updated**: 2026-03-02
-**Project Status**: Active development - Single source of truth (Phase 40): window removed, all 3 aggregate services deleted, all transactions in memory. ContentView fully reactive via `.task(id:)` (Phase 39). InsightsService split 2832→782 LOC (Phase 38). Service audit: 3 dead protocols deleted, TransactionConverterService merged (Phase 38). Reactivity audit + dead code removal (Phase 36). CSV import crash fix (Phase 35). Utils cleanup + design system split (Phase 34). Zero hardcoded colors (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28).
+**Project Status**: Active development - Insights deep perf optimization (Phase 42): PreAggregatedData single O(N) pass, shared insights, date parse cache — total 4877→1986ms. Single source of truth (Phase 40): window removed, all 3 aggregate services deleted, all transactions in memory. ContentView fully reactive via `.task(id:)` (Phase 39). InsightsService split 2832→782 LOC (Phase 38). Service audit: 3 dead protocols deleted, TransactionConverterService merged (Phase 38). Reactivity audit + dead code removal (Phase 36). CSV import crash fix (Phase 35). Utils cleanup + design system split (Phase 34). Zero hardcoded colors (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28).
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`

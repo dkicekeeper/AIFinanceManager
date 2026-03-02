@@ -41,7 +41,8 @@ extension InsightsService {
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
         granularity: InsightGranularity? = nil,
-        periodPoints: [PeriodDataPoint] = []
+        periodPoints: [PeriodDataPoint] = [],
+        txDateMap: [String: Date]? = nil   // Phase 42d: pre-parsed dates for O(1) range filter
     ) -> [Insight] {
         var insights: [Insight] = []
         let expenses = filterService.filterByType(filtered, type: .expense)
@@ -63,7 +64,15 @@ extension InsightsService {
 
         if let cp = currentBucketPoint {
             topRange = (cp.periodStart, cp.periodEnd)
-            topExpenses = filterService.filterByTimeRange(expenses, start: cp.periodStart, end: cp.periodEnd)
+            // Phase 42d: Use dateMap for O(1) date lookups — avoids O(N) DateFormatter re-parsing
+            if let map = txDateMap {
+                topExpenses = expenses.filter { tx in
+                    guard let d = map[tx.date], d >= cp.periodStart, d < cp.periodEnd else { return false }
+                    return true
+                }
+            } else {
+                topExpenses = filterService.filterByTimeRange(expenses, start: cp.periodStart, end: cp.periodEnd)
+            }
             topTotalExpenses = cp.expenses
         } else {
             topRange = timeFilter.dateRange()
@@ -72,15 +81,14 @@ extension InsightsService {
         }
 
         // Phase 40: Direct in-memory category grouping — all transactions available.
-        let bucketGroups = Dictionary(grouping: topExpenses, by: { $0.category })
-        let sortedCategories: [(key: String, total: Double)] = bucketGroups
+        // Phase 42e: Single grouping pass (was duplicated — bucketGroups + categoryGroups identical)
+        let categoryGroups = Dictionary(grouping: topExpenses, by: { $0.category })
+        let sortedCategories: [(key: String, total: Double)] = categoryGroups
             .map { key, txns in
                 let total = txns.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
                 return (key: key, total: total)
             }
             .sorted { $0.total > $1.total }
-
-        let categoryGroups = Dictionary(grouping: topExpenses, by: { $0.category })
 
         let topCategoryName = sortedCategories.first?.key ?? "—"
         let topCategoryAmount = sortedCategories.first?.total ?? 0
@@ -302,18 +310,20 @@ extension InsightsService {
 
     /// Detects a category whose current-month spending exceeds 1.5× its 3-month historical average.
     @MainActor
-    func generateSpendingSpike(baseCurrency: String) -> Insight? {
+    func generateSpendingSpike(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
         guard let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: startOfMonth(calendar, for: now)) else { return nil }
 
-        // Phase 40: In-memory computation replaces CategoryAggregateService.fetchRange()
-        let monthlyAggregates = Self.computeCategoryMonthTotals(
-            from: transactionStore.transactions,
-            from: threeMonthsAgo,
-            to: now,
-            baseCurrency: baseCurrency
-        )
+        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        let monthlyAggregates: [InMemoryCategoryMonthTotal]
+        if let preAggregated {
+            monthlyAggregates = preAggregated.categoryMonthTotalsInRange(from: threeMonthsAgo, to: now)
+        } else {
+            monthlyAggregates = Self.computeCategoryMonthTotals(
+                from: transactionStore.transactions, from: threeMonthsAgo, to: now, baseCurrency: baseCurrency
+            )
+        }
         guard !monthlyAggregates.isEmpty else { return nil }
 
         let currentComps = calendar.dateComponents([.year, .month], from: now)
@@ -373,18 +383,20 @@ extension InsightsService {
 
     /// Finds the expense category that has been rising for the most consecutive months (min 2).
     @MainActor
-    func generateCategoryTrend(baseCurrency: String) -> Insight? {
+    func generateCategoryTrend(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
         guard let sixMonthsAgo = calendar.date(byAdding: .month, value: -6, to: startOfMonth(calendar, for: now)) else { return nil }
 
-        // Phase 40: In-memory computation replaces CategoryAggregateService.fetchRange()
-        let monthlyAggregates = Self.computeCategoryMonthTotals(
-            from: transactionStore.transactions,
-            from: sixMonthsAgo,
-            to: now,
-            baseCurrency: baseCurrency
-        )
+        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        let monthlyAggregates: [InMemoryCategoryMonthTotal]
+        if let preAggregated {
+            monthlyAggregates = preAggregated.categoryMonthTotalsInRange(from: sixMonthsAgo, to: now)
+        } else {
+            monthlyAggregates = Self.computeCategoryMonthTotals(
+                from: transactionStore.transactions, from: sixMonthsAgo, to: now, baseCurrency: baseCurrency
+            )
+        }
         guard monthlyAggregates.count >= 4 else { return nil }
 
         let byCategory = Dictionary(grouping: monthlyAggregates, by: { $0.categoryName })

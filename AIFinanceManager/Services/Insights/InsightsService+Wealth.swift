@@ -6,7 +6,6 @@
 //  Responsible for: total wealth, wealth growth, account dormancy detection.
 //
 
-import CoreData
 import Foundation
 import os
 
@@ -21,20 +20,28 @@ extension InsightsService {
         granularity: InsightGranularity,
         baseCurrency: String,
         currencyService: TransactionCurrencyService,
-        balanceFor: (String) -> Double
+        balanceFor: (String) -> Double,
+        accountTransactionCounts: [String: Int]? = nil   // Phase 42d: pre-computed from PreAggregatedData
     ) -> [Insight] {
         let accounts = transactionStore.accounts
         guard !accounts.isEmpty else { return [] }
 
         let totalWealth = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
 
+        // Phase 42d: Use pre-computed counts (O(1) lookup) instead of O(N×M) allTransactions.filter
         let accountItems: [AccountInsightItem] = accounts.map { account in
-            AccountInsightItem(
+            let txCount: Int
+            if let counts = accountTransactionCounts {
+                txCount = counts[account.id] ?? 0
+            } else {
+                txCount = allTransactions.filter { $0.accountId == account.id }.count
+            }
+            return AccountInsightItem(
                 id: account.id,
                 accountName: account.name,
                 currency: account.currency,
                 balance: balanceFor(account.id),
-                transactionCount: allTransactions.filter { $0.accountId == account.id }.count,
+                transactionCount: txCount,
                 lastActivityDate: nil,
                 iconSource: account.iconSource
             )
@@ -125,28 +132,37 @@ extension InsightsService {
     // MARK: - Account Dormancy (Phase 24 Behavioral)
 
     /// Flags accounts that have been idle for 30+ days but still hold a positive balance.
+    /// Phase 42: Replaced CoreData fetchLastTransactionDates with in-memory computation.
+    /// Phase 42e: Uses PreAggregatedData.lastAccountDates — O(accounts) instead of O(N) date-parsing loop.
     @MainActor
-    func generateAccountDormancy(allTransactions: [Transaction], balanceFor: (String) -> Double) -> Insight? {
+    func generateAccountDormancy(allTransactions: [Transaction], balanceFor: (String) -> Double, preAggregated: PreAggregatedData? = nil) -> Insight? {
         let now = Date()
         guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now) else { return nil }
 
-        // Phase 31: Fetch last transaction dates from CoreData (full history, not windowed store).
-        let lastDates = fetchLastTransactionDates()
+        // Phase 42e: Use pre-computed lastAccountDates (O(1) per account) when available.
+        // Falls back to O(N) date-parsing loop when preAggregated is nil.
+        let lastDates: [String: Date]
+        if let preAgg = preAggregated {
+            lastDates = preAgg.lastAccountDates
+        } else {
+            let dateFormatter = DateFormatters.dateFormatter
+            var computed: [String: Date] = [:]
+            for tx in allTransactions {
+                guard let accountId = tx.accountId, !accountId.isEmpty,
+                      let txDate = dateFormatter.date(from: tx.date) else { continue }
+                if let existing = computed[accountId] {
+                    if txDate > existing { computed[accountId] = txDate }
+                } else {
+                    computed[accountId] = txDate
+                }
+            }
+            lastDates = computed
+        }
 
         let dormantAccounts: [AccountInsightItem] = transactionStore.accounts.compactMap { account in
             let balance = balanceFor(account.id)
             guard balance > 0 else { return nil }
-            let lastTx: Date?
-            if let cdDate = lastDates[account.id] {
-                lastTx = cdDate
-            } else {
-                let dateFormatter = DateFormatters.dateFormatter
-                lastTx = allTransactions
-                    .filter { $0.accountId == account.id }
-                    .compactMap { dateFormatter.date(from: $0.date) }
-                    .max()
-            }
-            guard let last = lastTx, last < thirtyDaysAgo else { return nil }
+            guard let last = lastDates[account.id], last < thirtyDaysAgo else { return nil }
             return AccountInsightItem(
                 id: account.id,
                 accountName: account.name,
@@ -176,33 +192,6 @@ extension InsightsService {
         )
     }
 
-    // MARK: - CoreData Helper
-
-    /// Phase 31: Fetch the most recent transaction date per accountId directly from CoreData.
-    /// Bypasses the windowed transactionStore.transactions — detects dormancy beyond windowMonths.
-    @MainActor
-    private func fetchLastTransactionDates() -> [String: Date] {
-        let context = CoreDataStack.shared.viewContext
-        let request = NSFetchRequest<NSDictionary>(entityName: "TransactionEntity")
-        request.propertiesToFetch = ["accountId", "date"]
-        request.resultType = .dictionaryResultType
-        request.predicate = NSPredicate(format: "accountId != nil AND date != nil")
-
-        var result: [String: Date] = [:]
-        do {
-            let rows = try context.fetch(request) as! [[String: Any]]
-            for row in rows {
-                guard let accountId = row["accountId"] as? String,
-                      let date = row["date"] as? Date else { continue }
-                if let existing = result[accountId] {
-                    if date > existing { result[accountId] = date }
-                } else {
-                    result[accountId] = date
-                }
-            }
-        } catch {
-            Self.logger.error("❌ [Insights] fetchLastTransactionDates failed: \(error.localizedDescription, privacy: .public)")
-        }
-        return result
-    }
+    // Phase 42: fetchLastTransactionDates (CoreData) deleted — replaced by in-memory
+    // computation above. All transactions are in memory since Phase 40.
 }

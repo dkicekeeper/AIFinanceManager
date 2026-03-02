@@ -28,7 +28,8 @@ extension InsightsService {
         allTransactions: [Transaction],
         categories: [CustomCategory],
         recurringSeries: [RecurringSeries],
-        accounts: [Account]
+        accounts: [Account],
+        preAggregated: PreAggregatedData? = nil     // Phase 42
     ) -> FinancialHealthScore {
         guard totalIncome > 0 else { return .unavailable() }
 
@@ -41,10 +42,15 @@ extension InsightsService {
 
         // --- Component 2: Budget Adherence (weight 0.25) ---
         let monthStart = startOfMonth(calendar, for: now)
-        // Phase 40: In-memory computation replaces CategoryAggregateService.fetchRange()
-        let currentMonthAggregates = Self.computeCategoryMonthTotals(
-            from: allTransactions, from: monthStart, to: now, baseCurrency: baseCurrency
-        )
+        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        let currentMonthAggregates: [InMemoryCategoryMonthTotal]
+        if let preAggregated {
+            currentMonthAggregates = preAggregated.categoryMonthTotalsInRange(from: monthStart, to: now)
+        } else {
+            currentMonthAggregates = Self.computeCategoryMonthTotals(
+                from: allTransactions, from: monthStart, to: now, baseCurrency: baseCurrency
+            )
+        }
         let categoriesWithBudget = categories.filter { ($0.budgetAmount ?? 0) > 0 }
         let onBudgetCount = categoriesWithBudget.filter { category in
             let spent = currentMonthAggregates.first { $0.categoryName == category.name }?.totalExpenses ?? 0
@@ -66,8 +72,13 @@ extension InsightsService {
 
         // --- Component 4: Emergency Fund (weight 0.15) ---
         let totalBalance = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
-        // Phase 40: In-memory computation replaces MonthlyAggregateService.fetchLast()
-        let last3Months = Self.computeLastMonthlyTotals(3, from: allTransactions, baseCurrency: baseCurrency)
+        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        let last3Months: [InMemoryMonthlyTotal]
+        if let preAggregated {
+            last3Months = preAggregated.lastMonthlyTotals(3)
+        } else {
+            last3Months = Self.computeLastMonthlyTotals(3, from: allTransactions, baseCurrency: baseCurrency)
+        }
         let avgMonthlyExpenses = last3Months.isEmpty
             ? totalExpenses / 12
             : last3Months.reduce(0.0) { $0 + $1.totalExpenses } / Double(last3Months.count)

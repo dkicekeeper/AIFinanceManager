@@ -57,10 +57,13 @@ final class InsightsViewModel {
     /// Phase 41: Debounce task — coalesces rapid mutation bursts into a single recompute.
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
 
-    /// Phase 36: Stale flag — observable so InsightsView can react while tab is open.
-    /// When true, data needs recompute. Removed @ObservationIgnored so the View sees the change
-    /// and triggers reload even when Insights tab is already visible.
-    private(set) var isStale: Bool = true
+    /// Phase 42: isStale is now @ObservationIgnored — InsightsView no longer observes it
+    /// (Phase 41 already removed the .onChange). Used only as internal guard in onAppear().
+    @ObservationIgnored private(set) var isStale: Bool = true
+
+    /// Phase 42: Tracks whether Insights tab is currently visible.
+    /// When not visible, invalidateAndRecompute() only marks stale (no background compute).
+    @ObservationIgnored private var isVisible: Bool = false
 
     // MARK: - Observable State
 
@@ -82,7 +85,13 @@ final class InsightsViewModel {
         didSet {
             guard oldValue != self.currentGranularity else { return }
             Self.logger.debug("🧠 [InsightsVM] granularity → \(self.currentGranularity.rawValue, privacy: .public)")
-            self.applyPrecomputed(for: self.currentGranularity)
+            if precomputedInsights[self.currentGranularity] != nil {
+                // Phase 42: Cache HIT — instant switch (0ms)
+                self.applyPrecomputed(for: self.currentGranularity)
+            } else {
+                // Phase 42: Cache MISS — trigger lazy background compute for this granularity only
+                self.loadInsightsBackground()
+            }
         }
     }
 
@@ -137,6 +146,7 @@ final class InsightsViewModel {
     /// Called when Insights tab appears — triggers computation if stale.
     /// When data is fresh, reads from precomputed cache (0ms).
     func onAppear() {
+        isVisible = true
         if isStale || precomputedInsights[currentGranularity] == nil {
             Self.logger.debug("🧠 [InsightsVM] onAppear — stale or cache MISS, loading")
             isStale = false
@@ -147,13 +157,17 @@ final class InsightsViewModel {
         }
     }
 
-    /// Lazy invalidation — marks stale without eager recompute.
-    /// Phase 41: schedules a debounced recompute (800ms) so rapid mutations
-    /// coalesce into a single background pass instead of triggering one per transaction.
-    /// If the Insights tab is not visible the debounce fires harmlessly via loadInsightsBackground
-    /// (which checks cache freshness); if the tab IS open the debounce updates the visible data.
+    /// Phase 42: Called when Insights tab disappears.
+    func onDisappear() {
+        isVisible = false
+    }
+
+    /// Phase 42: Lazy invalidation — marks stale and wipes caches.
+    /// Only schedules background recompute when the Insights tab is currently visible.
+    /// When not visible, onAppear() triggers recompute lazily when user navigates to Insights.
+    /// When visible, debounces (800ms) and recomputes only the current granularity for speed.
     func invalidateAndRecompute() {
-        Self.logger.debug("🔄 [InsightsVM] invalidateAndRecompute — marking stale (debounced)")
+        Self.logger.debug("🔄 [InsightsVM] invalidateAndRecompute — marking stale (visible=\(self.isVisible))")
         insightsService.invalidateCache()
         precomputedInsights = [:]
         precomputedPeriodPoints = [:]
@@ -161,6 +175,10 @@ final class InsightsViewModel {
         isStale = true
         recomputeTask?.cancel()
         debounceTask?.cancel()
+
+        // Phase 42: Only schedule background compute when tab is visible
+        guard isVisible else { return }
+
         debounceTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(800))
             guard !Task.isCancelled else { return }
@@ -175,9 +193,18 @@ final class InsightsViewModel {
         invalidateAndRecompute()
     }
 
+    /// Phase 42: Fixed double-fire — invalidateAndRecompute() was scheduling a debounced
+    /// loadInsightsBackground(), and then loadInsightsBackground() was called immediately too.
+    /// Now: wipe caches directly and trigger immediate (non-debounced) background load.
     func refreshInsights() {
         Self.logger.debug("🔄 [InsightsVM] refreshInsights — manual refresh")
-        invalidateAndRecompute()
+        insightsService.invalidateCache()
+        precomputedInsights = [:]
+        precomputedPeriodPoints = [:]
+        precomputedTotals = [:]
+        recomputeTask?.cancel()
+        debounceTask?.cancel()
+        isStale = false
         loadInsightsBackground()
     }
 
@@ -245,12 +272,21 @@ final class InsightsViewModel {
         let recurringSnapshot   = Array(transactionStore.recurringSeries)
         let accountsSnapshot    = Array(transactionStore.accounts)
         let priorityGranularity = currentGranularity  // show this one first
-        // Phase 40: All transactions in memory — compute firstDate directly from the array.
-        let firstDate = allTransactions.compactMap { DateFormatters.dateFormatter.date(from: $0.date) }.min()
+        // Phase 42: firstDate scan moved OFF MainActor — PreAggregatedData.build() computes it
+        // as part of its single O(N) pass on the background thread. No more 20-50ms MainActor block.
 
         recomputeTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self, !Task.isCancelled else { return }
-            Self.logger.debug("🔧 [InsightsVM] Background recompute START (detached) — 5 granularities")
+            let totalStart = ContinuousClock.now
+            Self.logger.debug("🔧 [InsightsVM] Background recompute START (detached)")
+
+            // Phase 42: Build PreAggregatedData once — single O(N) pass replaces ~10× O(N) scans per granularity.
+            // This also computes firstDate, eliminating the previous MainActor O(N) date-parse scan.
+            let preAggStart = ContinuousClock.now
+            let preAggregated = InsightsService.PreAggregatedData.build(from: allTransactions, baseCurrency: currency)
+            let preAggDur = preAggStart.duration(to: .now)
+            let preAggMs = Int(preAggDur.components.seconds * 1000) + Int(preAggDur.components.attoseconds / 1_000_000_000_000_000)
+            Self.logger.debug("⏱ [InsightsVM] PreAggregatedData.build(): \(preAggMs)ms")
 
             var newInsights = [InsightGranularity: [Insight]]()
             var newPoints   = [InsightGranularity: [PeriodDataPoint]]()
@@ -259,18 +295,25 @@ final class InsightsViewModel {
             // ── Phase 1: priority granularity → early UI update ──────────────
             guard !Task.isCancelled else { return }
 
-            let phase1 = await service.computeGranularities(
+            let p1Start = ContinuousClock.now
+            let phase1Result = await service.computeGranularities(
                 [priorityGranularity],
                 transactions: allTransactions,
                 baseCurrency: currency,
                 cacheManager: cacheManager,
                 currencyService: currencyService,
                 balanceFor: { balanceSnapshot[$0] ?? 0 },
-                firstTransactionDate: firstDate
+                firstTransactionDate: preAggregated.firstDate,
+                preAggregated: preAggregated,
+                sharedInsights: nil     // Phase 42b: first call computes shared insights
             )
+            let p1Dur = p1Start.duration(to: .now)
+            let p1Ms = Int(p1Dur.components.seconds * 1000) + Int(p1Dur.components.attoseconds / 1_000_000_000_000_000)
+            // Phase 42b: capture shared insights from first granularity for reuse in Phase 2
+            let sharedInsights = phase1Result.sharedInsights
 
             for gran in [priorityGranularity] {
-                guard let result = phase1[gran] else { continue }
+                guard let result = phase1Result.results[gran] else { continue }
                 let pts = result.periodPoints
                 var income: Double = 0; var expenses: Double = 0
                 for p in pts { income += p.income; expenses += p.expenses }
@@ -279,6 +322,7 @@ final class InsightsViewModel {
                 newTotals[gran]   = PeriodTotals(income: income, expenses: expenses, netFlow: income - expenses)
                 Self.logger.debug("🔧 [InsightsVM] Gran .\(gran.rawValue, privacy: .public) — \(result.insights.count) insights, \(pts.count) pts")
             }
+            Self.logger.debug("⏱ [InsightsVM] Phase 1 (.\(priorityGranularity.rawValue, privacy: .public)): \(p1Ms)ms — shared=\(sharedInsights.count)")
 
             guard !Task.isCancelled else { return }
 
@@ -296,17 +340,23 @@ final class InsightsViewModel {
             let remainingGrans = InsightGranularity.allCases.filter { $0 != priorityGranularity }
             guard !Task.isCancelled else { return }
 
-            let phase2 = await service.computeGranularities(
+            let p2Start = ContinuousClock.now
+            let phase2Result = await service.computeGranularities(
                 remainingGrans,
                 transactions: allTransactions,
                 baseCurrency: currency,
                 cacheManager: cacheManager,
                 currencyService: currencyService,
                 balanceFor: { balanceSnapshot[$0] ?? 0 },
-                firstTransactionDate: firstDate
+                firstTransactionDate: preAggregated.firstDate,
+                preAggregated: preAggregated,
+                sharedInsights: sharedInsights   // Phase 42b: reuse shared from Phase 1
             )
+            let p2Dur = p2Start.duration(to: .now)
+            let p2Ms = Int(p2Dur.components.seconds * 1000) + Int(p2Dur.components.attoseconds / 1_000_000_000_000_000)
+            Self.logger.debug("⏱ [InsightsVM] Phase 2 (\(remainingGrans.count) grans): \(p2Ms)ms")
 
-            for (gran, result) in phase2 {
+            for (gran, result) in phase2Result.results {
                 let pts = result.periodPoints
                 var income: Double = 0; var expenses: Double = 0
                 for p in pts { income += p.income; expenses += p.expenses }
@@ -324,6 +374,7 @@ final class InsightsViewModel {
             let monthPoints   = newPoints[.month] ?? []
             let latestNetFlow = monthPoints.last?.netFlow ?? 0
             // Phase 41: No longer @MainActor — runs synchronously in Task.detached.
+            // Phase 42: Pass preAggregated to avoid redundant O(N) scans inside computeHealthScore.
             let computedHealthScore = service.computeHealthScore(
                 totalIncome: monthTotals?.income   ?? 0,
                 totalExpenses: monthTotals?.expenses ?? 0,
@@ -333,8 +384,12 @@ final class InsightsViewModel {
                 allTransactions: allTransactions,
                 categories: categoriesSnapshot,
                 recurringSeries: recurringSnapshot,
-                accounts: accountsSnapshot
+                accounts: accountsSnapshot,
+                preAggregated: preAggregated
             )
+
+            let totalDur = totalStart.duration(to: .now)
+            let totalMs = Int(totalDur.components.seconds * 1000) + Int(totalDur.components.attoseconds / 1_000_000_000_000_000)
 
             // Hop back to MainActor for the final UI write.
             // Use self.currentGranularity (not the captured `priorityGranularity`) so that if the
@@ -346,7 +401,7 @@ final class InsightsViewModel {
                 self.precomputedTotals       = newTotals
                 self.healthScore             = computedHealthScore
                 self.applyPrecomputed(for: self.currentGranularity)
-                Self.logger.debug("🔧 [InsightsVM] Background recompute END — UI updated for .\(self.currentGranularity.rawValue, privacy: .public)")
+                Self.logger.debug("🔧 [InsightsVM] Background recompute END — total \(totalMs)ms — UI updated for .\(self.currentGranularity.rawValue, privacy: .public)")
             }
         }
     }

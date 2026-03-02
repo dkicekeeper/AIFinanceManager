@@ -283,6 +283,8 @@ final class InsightsService: @unchecked Sendable {
     /// Generates all insights for a given granularity.
     /// Phase 23: accepts pre-built `transactions` array — caller builds it once on MainActor,
     /// avoiding repeated Array(transactionStore.transactions) copies per granularity (P3/P4 fix).
+    /// Phase 42b: `sharedInsights` — granularity-independent insights computed once by caller;
+    /// when provided, shared generators are skipped and these insights are merged in.
     func generateAllInsights(
         granularity: InsightGranularity,
         transactions allTransactions: [Transaction],
@@ -290,8 +292,15 @@ final class InsightsService: @unchecked Sendable {
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
         balanceFor: (String) -> Double,
-        firstTransactionDate: Date? = nil          // hoisted by caller to avoid 5× O(N) re-scan
+        firstTransactionDate: Date? = nil,          // hoisted by caller to avoid 5× O(N) re-scan
+        preAggregated: PreAggregatedData? = nil,    // Phase 42: single O(N) pass data
+        sharedInsights: [Insight]? = nil             // Phase 42b: skip shared generators
     ) -> (insights: [Insight], periodPoints: [PeriodDataPoint]) {
+        let genStart = ContinuousClock.now   // Phase 42c: timing instrumentation
+        let hasShared = sharedInsights != nil
+        // Phase 42b: Pre-parsed date cache from PreAggregatedData
+        let dateMap = preAggregated?.txDateMap
+
         // Determine the date window for this granularity.
         // For .week: last 52 weeks. For .month/.quarter/.year/.allTime: first tx → now (covers all).
         // Use the pre-computed value when provided; fall back to local scan if called standalone.
@@ -300,45 +309,92 @@ final class InsightsService: @unchecked Sendable {
             firstDate = provided
         } else {
             firstDate = allTransactions
-                .compactMap { DateFormatters.dateFormatter.date(from: $0.date) }
+                .compactMap { (dateMap?[$0.date]) ?? DateFormatters.dateFormatter.date(from: $0.date) }
                 .min()
         }
         let (windowStart, windowEnd) = granularity.dateRange(firstTransactionDate: firstDate)
 
-        // Filter transactions to the granularity window so spending / income / budget / savings
-        // all respect the selected period. For non-week granularities the window covers every
-        // transaction, so this filter is a no-op and performance is unaffected.
-        let windowedTransactions = filterService.filterByTimeRange(allTransactions, start: windowStart, end: windowEnd)
+        // Phase 42c: Non-week granularities cover the full date range (first tx → now).
+        // The filter is guaranteed no-op for these — skip the O(N) scan entirely.
+        // .week has a 52-week window that genuinely filters out older transactions.
+        let windowedTransactions: [Transaction]
+        if granularity != .week {
+            windowedTransactions = allTransactions
+        } else if let map = dateMap {
+            windowedTransactions = allTransactions.filter { tx in
+                guard let d = map[tx.date], d >= windowStart, d < windowEnd else { return false }
+                return true
+            }
+        } else {
+            windowedTransactions = filterService.filterByTimeRange(allTransactions, start: windowStart, end: windowEnd)
+        }
 
         // TimeFilter wrapping the window — passed to generators that use aggregate fetch ranges
         // and the MoM reference date helper.
         let granularityTimeFilter = TimeFilter(preset: .custom, startDate: windowStart, endDate: windowEnd)
 
-        // Period summary scoped to the granularity window
-        let (windowedIncome, windowedExpenses) = calculateMonthlySummary(
-            transactions: windowedTransactions,
-            baseCurrency: baseCurrency,
-            currencyService: currencyService
-        )
+        // Phase 42c: For non-week granularities, derive income/expenses from PreAggregated totals
+        // in O(M) dictionary value iteration instead of O(N) transaction scan with currency conversion.
+        // .week still requires per-transaction scan (52-week window ≠ month boundaries).
+        let windowedIncome: Double
+        let windowedExpenses: Double
+        if let preAgg = preAggregated, granularity != .week {
+            var totalInc: Double = 0
+            var totalExp: Double = 0
+            for totals in preAgg.monthlyTotals.values {
+                totalInc += totals.income
+                totalExp += totals.expenses
+            }
+            windowedIncome = totalInc
+            windowedExpenses = totalExp
+        } else {
+            let (wi, we) = calculateMonthlySummary(
+                transactions: windowedTransactions,
+                baseCurrency: baseCurrency,
+                currencyService: currencyService,
+                txDateMap: dateMap
+            )
+            windowedIncome = wi
+            windowedExpenses = we
+        }
         let periodSummary = PeriodSummary(
             totalIncome: windowedIncome,
             totalExpenses: windowedExpenses,
             netFlow: windowedIncome - windowedExpenses
         )
 
-        // Phase 30: Compute period data points BEFORE generators so spending/income can use
-        // granularity-aware bucket comparisons (currentPeriodKey / previousPeriodKey) without
-        // duplicate O(N) scans.
-        let periodPoints = computePeriodDataPoints(
-            transactions: allTransactions,
-            granularity: granularity,
-            baseCurrency: baseCurrency,
-            currencyService: currencyService,
-            firstTransactionDate: firstDate
-        )
+        // Phase 42c: For non-week granularities, build period data points from PreAggregated's
+        // monthly totals — O(months) lookups instead of O(N) transaction scan with Calendar+currency ops.
+        // .week requires per-transaction scan (weekly buckets ≠ monthly resolution).
+        let periodPoints: [PeriodDataPoint]
+        if let preAgg = preAggregated, granularity != .week {
+            periodPoints = computePeriodDataPointsFromPreAggregated(
+                preAggregated: preAgg,
+                granularity: granularity,
+                firstTransactionDate: firstDate
+            )
+        } else {
+            periodPoints = computePeriodDataPoints(
+                transactions: allTransactions,
+                granularity: granularity,
+                baseCurrency: baseCurrency,
+                currencyService: currencyService,
+                firstTransactionDate: firstDate,
+                txDateMap: dateMap
+            )
+        }
 
+        // Phase 42c: Timing — setup (filter + summary + periodPoints)
+        let setupDur = genStart.duration(to: .now)
+        let setupMs = Int(setupDur.components.seconds * 1000) + Int(setupDur.components.attoseconds / 1_000_000_000_000_000)
+        Self.logger.debug("⏱ [Insights] .\(granularity.rawValue, privacy: .public) setup: \(setupMs)ms (filter+summary+pts, shared=\(hasShared))")
+
+        let genPhaseStart = ContinuousClock.now
         var insights: [Insight] = []
 
+        // ── Granularity-DEPENDENT generators (always compute) ──────────────
+
+        // Phase 42d: pass txDateMap to spending generator to avoid date re-parsing
         insights.append(contentsOf: generateSpendingInsights(
             filtered: windowedTransactions,
             allTransactions: allTransactions,
@@ -348,7 +404,8 @@ final class InsightsService: @unchecked Sendable {
             cacheManager: cacheManager,
             currencyService: currencyService,
             granularity: granularity,
-            periodPoints: periodPoints
+            periodPoints: periodPoints,
+            txDateMap: dateMap
         ))
 
         insights.append(contentsOf: generateIncomeInsights(
@@ -379,68 +436,102 @@ final class InsightsService: @unchecked Sendable {
             balanceFor: balanceFor
         ))
 
+        // Phase 42d: pass accountTransactionCounts to avoid O(N×M) filter loop
         insights.append(contentsOf: generateWealthInsights(
             periodPoints: periodPoints,
             allTransactions: allTransactions,
             granularity: granularity,
             baseCurrency: baseCurrency,
             currencyService: currencyService,
-            balanceFor: balanceFor
+            balanceFor: balanceFor,
+            accountTransactionCounts: preAggregated?.accountTransactionCounts
         ))
 
-        // Phase 24 — Spending behavioral
-        if let spike = generateSpendingSpike(baseCurrency: baseCurrency) {
-            insights.append(spike)
-        }
-        if let trend = generateCategoryTrend(baseCurrency: baseCurrency) {
-            insights.append(trend)
-        }
-
-        // Phase 24 — Recurring behavioral
-        if let growth = generateSubscriptionGrowth(baseCurrency: baseCurrency) {
-            insights.append(growth)
-        }
-
-        // Phase 24 — Savings category (uses windowed income/expenses to respect granularity)
+        // Phase 24 — Savings: SavingsRate is granularity-dependent; EmergencyFund/SavingsMomentum are shared
+        // Phase 42b: skipSharedGenerators when shared insights already computed
         insights.append(contentsOf: generateSavingsInsights(
             allIncome: windowedIncome,
             allExpenses: windowedExpenses,
             baseCurrency: baseCurrency,
-            balanceFor: balanceFor
+            balanceFor: balanceFor,
+            preAggregated: preAggregated,
+            skipSharedGenerators: hasShared
         ))
 
         // Phase 31: Narrow incomeSourceBreakdown to current granularity bucket only.
-        // This ensures income sources reflect what was earned in the current period, not the full window.
+        // Phase 42d: Use dateMap for O(1) date lookups — avoids O(N) DateFormatter re-parsing (~312ms)
         let currentBucketForForecasting: [Transaction]
         if let cp = periodPoints.first(where: { $0.key == granularity.currentPeriodKey }) {
-            currentBucketForForecasting = filterService.filterByTimeRange(
-                allTransactions, start: cp.periodStart, end: cp.periodEnd
-            )
+            if let map = dateMap {
+                currentBucketForForecasting = allTransactions.filter { tx in
+                    guard let d = map[tx.date], d >= cp.periodStart, d < cp.periodEnd else { return false }
+                    return true
+                }
+            } else {
+                currentBucketForForecasting = filterService.filterByTimeRange(
+                    allTransactions, start: cp.periodStart, end: cp.periodEnd
+                )
+            }
         } else {
             currentBucketForForecasting = windowedTransactions
         }
 
-        // Phase 24 — Forecasting category
+        // Phase 24 — Forecasting: IncomeSourceBreakdown is granularity-dependent; rest are shared
+        // Phase 42b: skipSharedGenerators when shared insights already computed
         insights.append(contentsOf: generateForecastingInsights(
             allTransactions: allTransactions,
             baseCurrency: baseCurrency,
             balanceFor: balanceFor,
-            filteredTransactions: currentBucketForForecasting
+            filteredTransactions: currentBucketForForecasting,
+            preAggregated: preAggregated,
+            skipSharedGenerators: hasShared
         ))
 
-        // Phase 24 — Behavioral (appended to relevant existing categories)
-        if let duplicates = generateDuplicateSubscriptions(baseCurrency: baseCurrency) {
-            insights.append(duplicates)
+        // ── Granularity-INDEPENDENT generators ─────────────────────────────
+        // Phase 42b: Compute only on first granularity; subsequent iterations
+        // receive pre-computed results via sharedInsights parameter.
+
+        if !hasShared {
+            // Phase 24 — Spending behavioral
+            if let spike = generateSpendingSpike(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+                insights.append(spike)
+            }
+            if let trend = generateCategoryTrend(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+                insights.append(trend)
+            }
+            // Phase 24 — Recurring behavioral
+            if let growth = generateSubscriptionGrowth(baseCurrency: baseCurrency) {
+                insights.append(growth)
+            }
+            if let duplicates = generateDuplicateSubscriptions(baseCurrency: baseCurrency) {
+                insights.append(duplicates)
+            }
+            if let dormancy = generateAccountDormancy(allTransactions: allTransactions, balanceFor: balanceFor, preAggregated: preAggregated) {
+                insights.append(dormancy)
+            }
+        } else {
+            // Merge pre-computed shared insights
+            insights.append(contentsOf: sharedInsights!)
         }
-        if let dormancy = generateAccountDormancy(allTransactions: allTransactions, balanceFor: balanceFor) {
-            insights.append(dormancy)
-        }
+
+        // Phase 42c: Timing — generators
+        let genPhaseDur = genPhaseStart.duration(to: .now)
+        let genPhaseMs = Int(genPhaseDur.components.seconds * 1000) + Int(genPhaseDur.components.attoseconds / 1_000_000_000_000_000)
+        let totalGenDur = genStart.duration(to: .now)
+        let totalGenMs = Int(totalGenDur.components.seconds * 1000) + Int(totalGenDur.components.attoseconds / 1_000_000_000_000_000)
+        Self.logger.debug("⏱ [Insights] .\(granularity.rawValue, privacy: .public) generators: \(genPhaseMs)ms, total: \(totalGenMs)ms")
 
         return (insights, periodPoints)
     }
 
     /// Computes a specific subset of granularities. Used by progressive loading in InsightsViewModel:
     /// Phase 1 computes the priority granularity for immediate display; Phase 2 computes the rest.
+    /// Phase 42: Builds PreAggregatedData once and passes to all granularity calls.
+    /// Phase 42b: Computes granularity-independent ("shared") insights on the FIRST granularity,
+    /// then reuses them for subsequent granularities — eliminates 4× redundant generator runs.
+    ///
+    /// Returns: `(results, sharedInsights)` — caller should pass `sharedInsights` from Phase 1
+    /// into Phase 2 via the `sharedInsights` parameter.
     func computeGranularities(
         _ granularities: [InsightGranularity],
         transactions allTransactions: [Transaction],
@@ -448,24 +539,69 @@ final class InsightsService: @unchecked Sendable {
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
         balanceFor: (String) -> Double,
-        firstTransactionDate: Date?
-    ) -> [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])] {
+        firstTransactionDate: Date?,
+        preAggregated: PreAggregatedData? = nil,    // Phase 42: caller can pass pre-built data
+        sharedInsights: [Insight]? = nil             // Phase 42b: pass from Phase 1 → Phase 2
+    ) -> (results: [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])], sharedInsights: [Insight]) {
+        // Phase 42: Build PreAggregatedData once — single O(N) pass replaces ~10× O(N) scans per granularity
+        let aggregated = preAggregated ?? PreAggregatedData.build(from: allTransactions, baseCurrency: baseCurrency)
+
+        var shared = sharedInsights
         var results: [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])] = [:]
+
         for gran in granularities {
-            results[gran] = generateAllInsights(
+            let result = generateAllInsights(
                 granularity: gran,
                 transactions: allTransactions,
                 baseCurrency: baseCurrency,
                 cacheManager: cacheManager,
                 currencyService: currencyService,
                 balanceFor: balanceFor,
-                firstTransactionDate: firstTransactionDate
+                firstTransactionDate: aggregated.firstDate ?? firstTransactionDate,
+                preAggregated: aggregated,
+                sharedInsights: shared
             )
+
+            // After the first granularity, extract shared insights for reuse
+            if shared == nil {
+                shared = Self.extractSharedInsights(from: result.insights)
+                Self.logger.debug("🔗 [Insights] Extracted \(shared?.count ?? 0) shared insights from .\(gran.rawValue, privacy: .public)")
+            }
+
+            results[gran] = result
         }
-        return results
+
+        return (results, shared ?? [])
     }
 
-    /// Computes all insight granularities in a single @MainActor call.
+    // MARK: - Shared Insight Extraction (Phase 42b)
+
+    /// IDs of granularity-independent insights that produce identical results regardless of
+    /// which granularity (week/month/quarter/year/allTime) is being computed.
+    /// These are computed once on the first granularity and reused for all subsequent ones.
+    private static let sharedInsightIDs: Set<String> = [
+        "spending_spike",
+        "subscription_growth",
+        "duplicate_subscriptions",
+        "accountDormancy",
+        "emergency_fund",
+        "savings_momentum",
+        "spending_forecast",
+        "balance_runway",
+        "year_over_year",
+        "income_seasonality",
+        "spending_velocity"
+    ]
+
+    /// Extracts granularity-independent insights from a full insight array.
+    /// Handles both exact-match IDs and prefix-match for `category_trend_*`.
+    static func extractSharedInsights(from insights: [Insight]) -> [Insight] {
+        insights.filter { insight in
+            sharedInsightIDs.contains(insight.id) || insight.id.hasPrefix("category_trend_")
+        }
+    }
+
+    /// Computes all insight granularities in a single call.
     /// Called once from InsightsViewModel.loadInsightsBackground() to replace
     /// the 5-iteration for-loop that caused 5 separate main actor hops.
     func computeAllGranularities(
@@ -474,8 +610,9 @@ final class InsightsService: @unchecked Sendable {
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
         balanceFor: (String) -> Double,
-        firstTransactionDate: Date?
-    ) -> [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])] {
+        firstTransactionDate: Date?,
+        preAggregated: PreAggregatedData? = nil     // Phase 42
+    ) -> (results: [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])], sharedInsights: [Insight]) {
         return computeGranularities(
             InsightGranularity.allCases,
             transactions: allTransactions,
@@ -483,7 +620,8 @@ final class InsightsService: @unchecked Sendable {
             cacheManager: cacheManager,
             currencyService: currencyService,
             balanceFor: balanceFor,
-            firstTransactionDate: firstTransactionDate
+            firstTransactionDate: firstTransactionDate,
+            preAggregated: preAggregated
         )
     }
 
@@ -495,14 +633,15 @@ final class InsightsService: @unchecked Sendable {
         granularity: InsightGranularity,
         baseCurrency: String,
         currencyService: TransactionCurrencyService,
-        firstTransactionDate: Date? = nil
+        firstTransactionDate: Date? = nil,
+        txDateMap: [String: Date]? = nil   // Phase 42b: pre-parsed dates
     ) -> [PeriodDataPoint] {
         let dateFormatter = DateFormatters.dateFormatter
         let calendar = Calendar.current
 
         // Determine data window
         let firstDate = firstTransactionDate
-            ?? transactions.compactMap { dateFormatter.date(from: $0.date) }.min()
+            ?? transactions.compactMap { (txDateMap?[$0.date]) ?? dateFormatter.date(from: $0.date) }.min()
             ?? Date()
         let (windowStart, windowEnd) = granularity.dateRange(firstTransactionDate: firstDate)
 
@@ -534,9 +673,15 @@ final class InsightsService: @unchecked Sendable {
         var expensesByKey = [String: Double]()
 
         for tx in transactions {
-            guard let txDate = dateFormatter.date(from: tx.date),
-                  txDate >= windowStart, txDate < windowEnd else { continue }
-            let key = granularity.groupingKey(for: txDate)
+            // Phase 42b: Use pre-parsed date when available (O(1) lookup vs O(DateFormatter))
+            let txDate: Date?
+            if let map = txDateMap {
+                txDate = map[tx.date]
+            } else {
+                txDate = dateFormatter.date(from: tx.date)
+            }
+            guard let date = txDate, date >= windowStart, date < windowEnd else { continue }
+            let key = granularity.groupingKey(for: date)
             let amount = currencyService.getConvertedAmountOrCompute(transaction: tx, to: baseCurrency)
             switch tx.type {
             case .income:  incomeByKey[key, default: 0] += amount
@@ -565,6 +710,72 @@ final class InsightsService: @unchecked Sendable {
                 label: granularity.periodLabel(for: key),
                 income: incomeByKey[key] ?? 0,
                 expenses: expensesByKey[key] ?? 0,
+                cumulativeBalance: nil
+            )
+        }
+    }
+
+    // MARK: - Phase 42c: Period Data Points from PreAggregated
+
+    /// Builds period data points from PreAggregatedData's monthly totals.
+    /// O(M) dictionary lookups (M = months in window) instead of O(N) transaction scans.
+    /// For .month: direct 1:1 mapping (MonthKey → PeriodDataPoint).
+    /// For .quarter/.year: aggregates 3/12 monthly totals per period.
+    /// For .allTime: aggregates all monthly totals into one point.
+    /// .week MUST NOT use this (weekly resolution ≠ monthly) — caller checks granularity.
+    private func computePeriodDataPointsFromPreAggregated(
+        preAggregated: PreAggregatedData,
+        granularity: InsightGranularity,
+        firstTransactionDate: Date?
+    ) -> [PeriodDataPoint] {
+        let calendar = Calendar.current
+        let firstDate = firstTransactionDate ?? preAggregated.firstDate ?? Date()
+        let (windowStart, windowEnd) = granularity.dateRange(firstTransactionDate: firstDate)
+
+        // Build ordered period keys (same key-building logic as computePeriodDataPoints)
+        var orderedKeys: [String] = []
+        var keySet = Set<String>()
+        var cursor = windowStart
+        while cursor < windowEnd {
+            let key = granularity.groupingKey(for: cursor)
+            if !keySet.contains(key) {
+                orderedKeys.append(key)
+                keySet.insert(key)
+            }
+            switch granularity {
+            case .week:    cursor = calendar.date(byAdding: .weekOfYear, value: 1, to: cursor) ?? windowEnd
+            case .month:   cursor = calendar.date(byAdding: .month, value: 1, to: cursor) ?? windowEnd
+            case .quarter: cursor = calendar.date(byAdding: .month, value: 3, to: cursor) ?? windowEnd
+            case .year:    cursor = calendar.date(byAdding: .year, value: 1, to: cursor) ?? windowEnd
+            case .allTime: cursor = windowEnd
+            }
+        }
+
+        return orderedKeys.map { key in
+            let periodStart = granularity.periodStart(for: key)
+            let periodEnd: Date
+            switch granularity {
+            case .week:    periodEnd = calendar.date(byAdding: .weekOfYear, value: 1, to: periodStart) ?? periodStart
+            case .month:   periodEnd = calendar.date(byAdding: .month, value: 1, to: periodStart) ?? periodStart
+            case .quarter: periodEnd = calendar.date(byAdding: .month, value: 3, to: periodStart) ?? periodStart
+            case .year:    periodEnd = calendar.date(byAdding: .year, value: 1, to: periodStart) ?? periodStart
+            case .allTime: periodEnd = windowEnd
+            }
+
+            // Sum monthly totals within [periodStart, periodEnd) — O(months_in_period) lookups
+            let monthTotals = preAggregated.monthlyTotalsInRange(from: periodStart, to: periodEnd)
+            let income = monthTotals.reduce(0.0) { $0 + $1.totalIncome }
+            let expenses = monthTotals.reduce(0.0) { $0 + $1.totalExpenses }
+
+            return PeriodDataPoint(
+                id: key,
+                granularity: granularity,
+                key: key,
+                periodStart: periodStart,
+                periodEnd: periodEnd,
+                label: granularity.periodLabel(for: key),
+                income: income,
+                expenses: expenses,
                 cumulativeBalance: nil
             )
         }
@@ -689,8 +900,181 @@ final class InsightsService: @unchecked Sendable {
         .sorted { $0.year != $1.year ? $0.year < $1.year : $0.month < $1.month }
     }
 
+    // MARK: - Phase 42: PreAggregatedData — Single O(N) Pass
+
+    /// Pre-aggregated monthly and category-monthly totals built from a single O(N) pass.
+    /// Replaces ~10× separate O(N) `computeMonthlyTotals`/`computeCategoryMonthTotals` calls
+    /// that previously re-scanned the full transaction array per generator.
+    ///
+    /// Usage: build once via `PreAggregatedData.build(from:baseCurrency:)` before the generator loop,
+    /// then pass to generators. Each generator calls O(M) dictionary lookups (M = months) instead of O(N).
+    struct PreAggregatedData: Sendable {
+        struct MonthKey: Hashable, Sendable {
+            let year: Int
+            let month: Int
+        }
+        struct CategoryMonthKey: Hashable, Sendable {
+            let category: String
+            let year: Int
+            let month: Int
+        }
+        struct MonthTotals: Sendable {
+            var income: Double
+            var expenses: Double
+            var netFlow: Double { income - expenses }
+        }
+
+        let monthlyTotals: [MonthKey: MonthTotals]
+        let categoryMonthExpenses: [CategoryMonthKey: Double]
+        let firstDate: Date?
+        let lastDate: Date?
+        /// Phase 42b: Pre-parsed date strings → Date. Keyed by date STRING (not tx.id)
+        /// since many transactions share the same date. ~3794 unique entries for 19k transactions.
+        /// Eliminates O(DateFormatter) re-parsing (~16μs/call on simulator) across all generators.
+        let txDateMap: [String: Date]
+        /// Phase 42d: Pre-computed per-account transaction counts. O(1) lookup replaces
+        /// O(N×M) allTransactions.filter { $0.accountId == id }.count in wealth generator.
+        let accountTransactionCounts: [String: Int]
+        /// Phase 42e: Pre-computed last transaction date per account. O(1) lookup replaces
+        /// O(N) DateFormatter loop in generateAccountDormancy.
+        let lastAccountDates: [String: Date]
+
+        // MARK: Helpers (O(M) dictionary lookups, not O(N) scans)
+
+        /// Returns monthly totals within a date range, sorted chronologically.
+        func monthlyTotalsInRange(from start: Date, to end: Date) -> [InMemoryMonthlyTotal] {
+            let calendar = Calendar.current
+            var results: [InMemoryMonthlyTotal] = []
+            var cursor = calendar.date(from: calendar.dateComponents([.year, .month], from: start)) ?? start
+            while cursor < end {
+                let comps = calendar.dateComponents([.year, .month], from: cursor)
+                guard let year = comps.year, let month = comps.month else { break }
+                let key = MonthKey(year: year, month: month)
+                if let totals = monthlyTotals[key] {
+                    results.append(InMemoryMonthlyTotal(
+                        year: year, month: month,
+                        totalIncome: totals.income, totalExpenses: totals.expenses
+                    ))
+                }
+                guard let next = calendar.date(byAdding: .month, value: 1, to: cursor) else { break }
+                cursor = next
+            }
+            return results
+        }
+
+        /// Returns monthly totals for the last `n` months ending at `anchor`.
+        func lastMonthlyTotals(_ months: Int, anchor: Date = Date()) -> [InMemoryMonthlyTotal] {
+            let calendar = Calendar.current
+            let anchorMonthStart = calendar.date(
+                from: calendar.dateComponents([.year, .month], from: anchor)
+            ) ?? anchor
+            guard let startDate = calendar.date(byAdding: .month, value: -(months - 1), to: anchorMonthStart),
+                  let endDateExclusive = calendar.date(byAdding: .month, value: 1, to: anchorMonthStart)
+            else { return [] }
+            return monthlyTotalsInRange(from: startDate, to: endDateExclusive)
+        }
+
+        /// Returns category-monthly expense totals within a date range, sorted chronologically.
+        func categoryMonthTotalsInRange(from start: Date, to end: Date) -> [InMemoryCategoryMonthTotal] {
+            let calendar = Calendar.current
+            var categorySet = Set<String>()
+            for key in categoryMonthExpenses.keys { categorySet.insert(key.category) }
+            var results: [InMemoryCategoryMonthTotal] = []
+            var cursor = calendar.date(from: calendar.dateComponents([.year, .month], from: start)) ?? start
+            while cursor < end {
+                let comps = calendar.dateComponents([.year, .month], from: cursor)
+                guard let year = comps.year, let month = comps.month else { break }
+                for category in categorySet {
+                    let key = CategoryMonthKey(category: category, year: year, month: month)
+                    if let expenses = categoryMonthExpenses[key] {
+                        results.append(InMemoryCategoryMonthTotal(
+                            categoryName: category, year: year, month: month, totalExpenses: expenses
+                        ))
+                    }
+                }
+                guard let next = calendar.date(byAdding: .month, value: 1, to: cursor) else { break }
+                cursor = next
+            }
+            return results.sorted { $0.year != $1.year ? $0.year < $1.year : $0.month < $1.month }
+        }
+
+        // MARK: Builder
+
+        static func build(from transactions: [Transaction], baseCurrency: String) -> PreAggregatedData {
+            let calendar = Calendar.current
+            let df = DateFormatters.dateFormatter
+            var monthly = [MonthKey: MonthTotals]()
+            var categoryMonth = [CategoryMonthKey: Double]()
+            var firstDate: Date?
+            var lastDate: Date?
+            // Phase 42b: Build date parse cache — eliminates redundant DateFormatter calls
+            // across all generators. ~3794 unique date strings for 19k transactions.
+            var dateMap = [String: Date]()
+            // Phase 42d: Per-account transaction counts — O(1) lookup for wealth generator
+            var accountCounts = [String: Int]()
+            // Phase 42e: Last transaction date per account — O(1) lookup for dormancy detection
+            var lastAccountDates = [String: Date]()
+
+            for tx in transactions {
+                // Phase 42b: Cache date parsing — each unique date string parsed exactly once
+                let txDate: Date
+                if let cached = dateMap[tx.date] {
+                    txDate = cached
+                } else if let parsed = df.date(from: tx.date) {
+                    dateMap[tx.date] = parsed
+                    txDate = parsed
+                } else {
+                    continue
+                }
+
+                if firstDate == nil || txDate < firstDate! { firstDate = txDate }
+                if lastDate == nil || txDate > lastDate! { lastDate = txDate }
+
+                // Phase 42d: Count transactions per account (all types, not just income/expense)
+                // Phase 42e: Track last transaction date per account (for dormancy detection)
+                if let accountId = tx.accountId, !accountId.isEmpty {
+                    accountCounts[accountId, default: 0] += 1
+                    if let existing = lastAccountDates[accountId] {
+                        if txDate > existing { lastAccountDates[accountId] = txDate }
+                    } else {
+                        lastAccountDates[accountId] = txDate
+                    }
+                }
+
+                guard tx.type == .income || tx.type == .expense else { continue }
+                let comps = calendar.dateComponents([.year, .month], from: txDate)
+                guard let year = comps.year, let month = comps.month else { continue }
+                let monthKey = MonthKey(year: year, month: month)
+                let amount = resolveAmountStatic(tx, baseCurrency: baseCurrency)
+
+                switch tx.type {
+                case .income:
+                    monthly[monthKey, default: MonthTotals(income: 0, expenses: 0)].income += amount
+                case .expense:
+                    monthly[monthKey, default: MonthTotals(income: 0, expenses: 0)].expenses += amount
+                    if !tx.category.isEmpty {
+                        let catKey = CategoryMonthKey(category: tx.category, year: year, month: month)
+                        categoryMonth[catKey, default: 0] += amount
+                    }
+                default: break
+                }
+            }
+
+            return PreAggregatedData(
+                monthlyTotals: monthly,
+                categoryMonthExpenses: categoryMonth,
+                firstDate: firstDate,
+                lastDate: lastDate,
+                txDateMap: dateMap,
+                accountTransactionCounts: accountCounts,
+                lastAccountDates: lastAccountDates
+            )
+        }
+    }
+
     /// Amount resolver for static helper methods (no `self` needed).
-    private static func resolveAmountStatic(_ tx: Transaction, baseCurrency: String) -> Double {
+    /// Phase 42: Changed from `private` to `static` so PreAggregatedData.build() can call it.
+    static func resolveAmountStatic(_ tx: Transaction, baseCurrency: String) -> Double {
         guard tx.currency != baseCurrency else { return tx.amount }
         return tx.convertedAmount ?? tx.amount
     }
@@ -720,7 +1104,8 @@ final class InsightsService: @unchecked Sendable {
     private func calculateMonthlySummary(
         transactions: [Transaction],
         baseCurrency: String,
-        currencyService: TransactionCurrencyService
+        currencyService: TransactionCurrencyService,
+        txDateMap: [String: Date]? = nil   // Phase 42b: pre-parsed dates
     ) -> (income: Double, expenses: Double) {
         let today = Calendar.current.startOfDay(for: Date())
         let dateFormatter = DateFormatters.dateFormatter
@@ -728,7 +1113,14 @@ final class InsightsService: @unchecked Sendable {
         var expenses: Double = 0
 
         for tx in transactions {
-            guard let txDate = dateFormatter.date(from: tx.date), txDate <= today else { continue }
+            // Phase 42b: Use pre-parsed date when available (O(1) lookup vs O(DateFormatter))
+            let txDate: Date?
+            if let map = txDateMap {
+                txDate = map[tx.date]
+            } else {
+                txDate = dateFormatter.date(from: tx.date)
+            }
+            guard let date = txDate, date <= today else { continue }
             let amount = currencyService.getConvertedAmountOrCompute(transaction: tx, to: baseCurrency)
             switch tx.type {
             case .income:  income += amount
