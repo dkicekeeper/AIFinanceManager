@@ -53,7 +53,7 @@ Plans:
 **Depends on**: Phase 1 (RecurringTransactionService deleted before RecurringStore extracted)
 **Requirements**: PERF-01, PERF-02
 **Success Criteria** (what must be TRUE):
-  1. `PreAggregatedData.build()` computes `categoryTotals: [String: Decimal]` in its single O(N) pass; Insights generators use this dictionary instead of scanning transactions per granularity
+  1. `PreAggregatedData.build()` computes `categoryTotals: [String: Double]` in its single O(N) pass; Insights generators use this dictionary instead of scanning transactions per granularity
   2. Insights `.allTime` wall-clock time drops from ~307ms to under 50ms (measurable via `PerformanceProfiler` in DEBUG mode)
   3. Recurring methods are in a standalone `RecurringStore` file; `TransactionStore.swift` no longer contains recurring generation or series management logic
 **Plans**: 2 plans

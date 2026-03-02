@@ -25,7 +25,7 @@
 
 ### Performance (Производительность)
 
-- [ ] **PERF-01**: Добавить `categoryTotals: [String: Decimal]` в `PreAggregatedData.build()` — устранить O(N) группировку по категориям при каждой гранулярности Insights (`.allTime` 307ms → <50ms)
+- [ ] **PERF-01**: Добавить `categoryTotals: [String: Double]` в `PreAggregatedData.build()` — устранить O(N) группировку по категориям при каждой гранулярности Insights (`.allTime` 307ms → <50ms). `Double` используется для консистентности с `resolveAmountStatic` (возвращает `Double`) и существующим `categoryMonthExpenses: [CategoryMonthKey: Double]`.
 - [ ] **PERF-02**: Вынести Recurring методы из `TransactionStore` в отдельный `RecurringStore` (~200 LOC извлечь) — первый шаг разбивки 1213-LOC монолита
 
 ### Testing (Критичное покрытие)
@@ -94,4 +94,4 @@
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 — traceability filled by roadmapper*
+*Last updated: 2026-03-03 — PERF-01 type corrected to Double (consistency with existing PreAggregatedData Double fields)*
