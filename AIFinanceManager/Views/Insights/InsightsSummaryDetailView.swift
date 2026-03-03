@@ -82,10 +82,9 @@ struct InsightsSummaryDetailView: View {
                 granularity: granularity,
                 mode: .full
             )
-            .padding([.horizontal, .bottom], AppSpacing.lg)
         }
-        .cardBackground(radius: AppRadius.pill)
-        .screenPadding()
+//        .cardBackground(radius: AppRadius.pill)
+//        .screenPadding()
     }
 
     // MARK: - Period List

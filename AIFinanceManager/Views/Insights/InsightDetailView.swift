@@ -125,7 +125,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
                 EmptyView()
             }
         }
-        .screenPadding()
+//        .screenPadding()
     }
 
     // P22: LazyVStack eliminates upfront layout of all budget rows

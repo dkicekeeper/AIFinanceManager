@@ -92,7 +92,7 @@ struct CategoryDeepDiveView: View {
                 HStack {
                     Circle()
                         .fill(color.opacity(Double(subcategoryIndexMap[item.id] ?? 0) * 0.15 + 0.3))
-                        .frame(width: 10, height: 10)
+                        .frame(width: 16, height: 16)
 
                     Text(item.name)
                         .font(AppTypography.body)
