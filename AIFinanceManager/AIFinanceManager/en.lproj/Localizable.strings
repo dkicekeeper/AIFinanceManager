@@ -829,7 +829,7 @@
 "insights.incomeSourceBreakdown" = "Income Sources";
 
 // Phase 24 — Health Score & Behavioral
-"insights.healthScore" = "Financial Health";
+"insights.healthScore" = "Finance";
 "insights.healthGrade.excellent" = "Excellent";
 "insights.healthGrade.good" = "Good";
 "insights.healthGrade.fair" = "Fair";

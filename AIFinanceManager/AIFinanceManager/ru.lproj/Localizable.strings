@@ -829,7 +829,7 @@
 "insights.incomeSourceBreakdown" = "Источники дохода";
 
 // Phase 24 — Health Score & Behavioral
-"insights.healthScore" = "Финансовое здоровье";
+"insights.healthScore" = "Финансы";
 "insights.healthGrade.excellent" = "Отлично";
 "insights.healthGrade.good" = "Хорошо";
 "insights.healthGrade.fair" = "Неплохо";

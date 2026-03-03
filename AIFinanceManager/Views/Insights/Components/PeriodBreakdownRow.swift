@@ -31,7 +31,7 @@ struct PeriodBreakdownRow: View {
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
+                VStack(alignment: .trailing, spacing: AppSpacing.xs) {
                     FormattedAmountText(
                         amount: netFlow,
                         currency: currency,

@@ -22,52 +22,50 @@ struct WallpaperPickerRow: View {
     // MARK: - Body
 
     var body: some View {
-        HStack(spacing: AppSpacing.md) {
-            Image(systemName: "photo")
-                .font(.system(size: AppIconSize.md))
-                .foregroundStyle(AppColors.accent)
-
+        UniversalRow(
+            config: .settings,
+            leadingIcon: .sfSymbol("photo", color: AppColors.accent)
+        ) {
             Text(String(localized: "settings.wallpaper"))
                 .font(AppTypography.body)
                 .foregroundStyle(AppColors.textPrimary)
-
-            Spacer()
-
-            PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                HStack(spacing: AppSpacing.xs) {
-                    if hasWallpaper {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: AppIconSize.sm))
-                            .foregroundStyle(AppColors.success)
+        } trailing: {
+            HStack(spacing: AppSpacing.sm) {
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    HStack(spacing: AppSpacing.xs) {
+                        if hasWallpaper {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: AppIconSize.sm))
+                                .foregroundStyle(AppColors.success)
+                        }
+                        Text(hasWallpaper
+                            ? String(localized: "button.change")
+                            : String(localized: "button.select")
+                        )
+                        .font(AppTypography.bodySmall)
+                        .foregroundStyle(AppColors.accent)
                     }
-                    Text(hasWallpaper
-                        ? String(localized: "button.change")
-                        : String(localized: "button.select")
-                    )
-                    .font(AppTypography.bodySmall)
-                    .foregroundStyle(AppColors.accent)
                 }
-            }
-            .onChange(of: selectedPhoto) { _, newItem in
-                Task {
-                    await onPhotoChange(newItem)
-                }
-            }
-
-            if hasWallpaper {
-                Button(action: {
+                .onChange(of: selectedPhoto) { _, newItem in
                     Task {
-                        await onRemove()
+                        await onPhotoChange(newItem)
                     }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: AppIconSize.md))
-                        .foregroundStyle(AppColors.destructive)
                 }
-                .buttonStyle(.plain)
+
+                if hasWallpaper {
+                    Button(action: {
+                        Task {
+                            await onRemove()
+                        }
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: AppIconSize.md))
+                            .foregroundStyle(AppColors.destructive)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
-        .padding(.vertical, AppSpacing.xs)
     }
 }
 

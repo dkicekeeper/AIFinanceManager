@@ -17,7 +17,7 @@ struct InsightsTotalsRow: View {
     let netFlow: Double
     let currency: String
     /// Font for the amount values (default .bodySmall matches both callers).
-    var amountFont: Font = AppTypography.bodySmall
+    var amountFont: Font = AppTypography.body
 
     var body: some View {
         HStack(alignment: .top, spacing: AppSpacing.xs) {
@@ -36,15 +36,15 @@ struct InsightsTotalsRow: View {
             totalItem(
                 title: String(localized: "insights.netFlow"),
                 amount: netFlow,
-                color: netFlow >= 0 ? AppColors.success : AppColors.destructive
+                color: netFlow >= 0 ? AppColors.textPrimary : AppColors.destructive
             )
         }
     }
 
     private func totalItem(title: String, amount: Double, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+        VStack(alignment: .center, spacing: AppSpacing.xs) {
             Text(title)
-                .font(AppTypography.caption)
+                .font(AppTypography.bodySmall)
                 .foregroundStyle(AppColors.textSecondary)
             FormattedAmountText(
                 amount: amount,

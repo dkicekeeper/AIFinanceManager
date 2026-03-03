@@ -29,27 +29,19 @@ struct MenuPickerRow<T: Hashable>: View {
     }
 
     var body: some View {
-        HStack(spacing: AppSpacing.md) {
-            // Left side: Icon + Title
+        UniversalRow(config: .standard) {
             HStack(spacing: AppSpacing.md) {
                 if let icon = icon {
                     Image(systemName: icon)
                         .font(.system(size: AppIconSize.sm))
                         .foregroundStyle(AppColors.textPrimary)
-                        .frame(
-                            width : AppIconSize.lg,
-                            height: AppIconSize.lg
-                        )
+                        .frame(width: AppIconSize.lg, height: AppIconSize.lg)
                 }
-
                 Text(title)
                     .font(AppTypography.body)
                     .foregroundStyle(AppColors.textPrimary)
             }
-
-            Spacer()
-
-            // Right side: Selected value in capsule (like DatePicker)
+        } trailing: {
             Menu {
                 ForEach(options, id: \.value) { option in
                     Button {
@@ -64,21 +56,17 @@ struct MenuPickerRow<T: Hashable>: View {
                     }
                 }
             } label: {
-                HStack(spacing: AppSpacing.xs) {
-                    // Display selected value
-                    if let selectedOption = options.first(where: { $0.value == selection }) {
-                        Text(selectedOption.label)
-                            .font(AppTypography.body)
-                            .foregroundStyle(AppColors.textPrimary)
-                    }
+                if let selectedOption = options.first(where: { $0.value == selection }) {
+                    Text(selectedOption.label)
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.textPrimary)
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.vertical, AppSpacing.sm)
+                        .background(AppColors.secondaryBackground)
+                        .clipShape(Capsule())
                 }
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.vertical, AppSpacing.sm)
-                .background(AppColors.secondaryBackground)
-                .clipShape(Capsule())
             }
         }
-//        .padding(.horizontal, AppSpacing.lg)
     }
 }
 

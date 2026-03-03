@@ -14,13 +14,13 @@ struct HealthScoreBadge: View {
     let score: FinancialHealthScore
 
     var body: some View {
-        HStack(spacing: AppSpacing.sm) {
+        HStack(spacing: AppSpacing.md) {
             Image(systemName: "heart.text.square.fill")
                 .foregroundStyle(score.gradeColor)
-                .font(AppTypography.body)
+                .font(AppTypography.bodyLarge)
 
             Text(String(localized: "insights.healthScore"))
-                .font(AppTypography.caption)
+                .font(AppTypography.body)
                 .foregroundStyle(AppColors.textSecondary)
 
             Spacer()
@@ -30,10 +30,10 @@ struct HealthScoreBadge: View {
                 .foregroundStyle(score.gradeColor)
 
             Text(score.grade)
-                .font(AppTypography.caption)
+                .font(AppTypography.body)
                 .foregroundStyle(score.gradeColor)
-                .padding(.horizontal, AppSpacing.xs)
-                .padding(.vertical, 2)
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.vertical, AppSpacing.xs)
                 .background(score.gradeColor.opacity(0.12))
                 .clipShape(Capsule())
         }

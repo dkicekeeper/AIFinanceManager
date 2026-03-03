@@ -27,24 +27,14 @@ struct IconPickerRow: View {
     }
 
     var body: some View {
-        Button {
-            HapticManager.light()
-            showingPicker = true
-        } label: {
-            HStack(spacing: AppSpacing.md) {
-                Text(title)
-                    .foregroundStyle(AppColors.textPrimary)
-
-                Spacer()
-
-                // Icon preview
+        UniversalRow(config: .standard) {
+            Text(title)
+                .foregroundStyle(AppColors.textPrimary)
+        } trailing: {
+            HStack(spacing: AppSpacing.xs) {
                 if let source = selectedSource {
-                    IconView(
-                        source: source,
-                        size: iconSize
-                    )
+                    IconView(source: source, size: iconSize)
                 } else {
-                    // Placeholder when no icon selected
                     Image(systemName: "photo")
                         .font(.system(size: iconSize * 0.6))
                         .foregroundStyle(AppColors.textSecondary)
@@ -52,12 +42,14 @@ struct IconPickerRow: View {
                         .background(AppColors.surface)
                         .clipShape(.rect(cornerRadius: iconSize * 0.2))
                 }
-
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(AppColors.textSecondary)
             }
-            .padding(AppSpacing.md)
+        }
+        .actionRow {
+            HapticManager.light()
+            showingPicker = true
         }
         .sheet(isPresented: $showingPicker) {
             IconPickerView(selectedSource: $selectedSource)
