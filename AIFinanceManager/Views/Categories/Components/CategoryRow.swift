@@ -38,14 +38,10 @@ struct CategoryRow: View {
                                 Group {
                                     if case .sfSymbol(let symbolName) = category.iconSource {
                                         Image(systemName: symbolName)
-                                            .font(.system(size: AppIconSize.md))
+                                            .font(AppTypography.h4)
                                             .foregroundStyle(category.color)
                                     }
                                 }
-                            )
-                            .overlay(
-                                Circle()
-                                    .stroke(category.color, lineWidth: 2)
                             )
                     }
 

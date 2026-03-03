@@ -264,7 +264,8 @@ final class RecurringRepository: RecurringRepositoryProtocol {
         entity.lastGeneratedDate = item.lastGeneratedDate.flatMap { DateFormatters.dateFormatter.date(from: $0) }
         entity.kind = item.kind.rawValue
 
-        // Save iconSource as brandLogo/brandId strings (backward compatible)
+        // Persist iconSource to brandLogo/brandId string columns.
+        // sfSymbol uses the "sf:<name>" prefix in brandId so the name survives a CoreData round-trip.
         if let iconSource = item.iconSource {
             switch iconSource {
             case .bankLogo(let bankLogo):
@@ -273,9 +274,9 @@ final class RecurringRepository: RecurringRepositoryProtocol {
             case .brandService(let brandId):
                 entity.brandLogo = nil
                 entity.brandId = brandId
-            case .sfSymbol:
+            case .sfSymbol(let name):
                 entity.brandLogo = nil
-                entity.brandId = nil
+                entity.brandId = "sf:\(name)"
             }
         } else {
             entity.brandLogo = nil

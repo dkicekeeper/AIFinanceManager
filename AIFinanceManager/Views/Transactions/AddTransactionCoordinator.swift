@@ -135,12 +135,15 @@ final class AddTransactionCoordinator {
 
         // Step 2: Handle recurring series if enabled
         if case .frequency = formData.recurring {
-            createRecurringSeries()
-
-            // If future date, only create series (not individual transaction)
-            if isFutureDate(formData.selectedDate) {
-                return .valid
+            do {
+                try await createRecurringSeriesWithSubcategories()
+            } catch {
+                return ValidationResult(isValid: false, errors: [.custom(error.localizedDescription)])
             }
+            // The generator creates occurrences for ALL dates (past, today, future).
+            // Never fall through to add a separate individual transaction — it would
+            // duplicate today's generated occurrence (which already carries a recurring badge).
+            return .valid
         }
 
         // Step 3: Convert currency to base currency
@@ -183,10 +186,13 @@ final class AddTransactionCoordinator {
 
     // MARK: - Private Methods
 
-    private func createRecurringSeries() {
+    /// Creates a recurring series and links any selected subcategories to ALL generated transactions.
+    /// Uses `await transactionStore.createSeries()` directly so that generated transactions
+    /// are already in the store when we call `linkSubcategories(to:)`.
+    private func createRecurringSeriesWithSubcategories() async throws {
         guard case .frequency(let freq) = formData.recurring else { return }
 
-        _ = transactionsViewModel.createRecurringSeries(
+        let series = RecurringSeries(
             amount: formData.parsedAmount!,
             currency: formData.currency,
             category: formData.category,
@@ -197,6 +203,20 @@ final class AddTransactionCoordinator {
             frequency: freq,
             startDate: DateFormatters.dateFormatter.string(from: formData.selectedDate)
         )
+
+        // Await full series creation — generator runs synchronously inside createSeries,
+        // so all transactions (backfill + 1 future) are in transactionStore.transactions after this.
+        try await transactionStore.createSeries(series)
+
+        // Link selected subcategories to every generated transaction
+        guard !formData.subcategoryIds.isEmpty else { return }
+
+        let generatedTransactions = transactionStore.transactions.filter {
+            $0.recurringSeriesId == series.id
+        }
+        for tx in generatedTransactions {
+            await linkSubcategories(to: tx)
+        }
     }
 
     private func createTransaction(
@@ -369,11 +389,4 @@ final class AddTransactionCoordinator {
         return .none
     }
 
-    /// ✅ REFACTORED: Date utility moved from FormService
-    private func isFutureDate(_ date: Date) -> Bool {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let transactionDate = calendar.startOfDay(for: date)
-        return transactionDate > today
-    }
 }

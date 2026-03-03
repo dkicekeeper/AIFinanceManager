@@ -133,25 +133,27 @@ struct PeriodLineChart: View {
                         container,
                         CGFloat(dataPoints.count) * pointWidth
                     )
-                    ZStack(alignment: .topLeading) {
+                    ZStack(alignment: .topTrailing) {
                         // Scrollable chart content
                         ScrollView(.horizontal, showsIndicators: false) {
                             mainChart
                                 .frame(width: scrollWidth, height: chartHeight)
                         }
+                        .scrollClipDisabled()
                         .scrollBounceBehavior(.basedOnSize)
                         .defaultScrollAnchor(.trailing)
 
                         // Y-axis overlay — always visible, doesn't scroll with chart
                         yAxisReferenceChart
-                            .frame(width: yAxisWidth, height: chartHeight)
+                            .frame(width: yAxisWidth, height: chartHeight-28)
                             .allowsHitTesting(false)
+//                            .padding(.horizontal, AppSpacing.sm)
                     }
                 }
             }
         }
         .frame(height: chartHeight)
-        .padding(.top, isCompact ? 0 : AppSpacing.sm)
+//        .padding(.top, isCompact ? 0 : AppSpacing.sm)
         .chartAppear()
     }
 
@@ -198,14 +200,14 @@ struct PeriodLineChart: View {
                         endPoint: .bottom
                     )
                 )
-                .interpolationMethod(.catmullRom)
+                .interpolationMethod(.monotone)
 
                 LineMark(
                     x: .value("Period", point.label),
                     y: .value("Value", value)
                 )
                 .foregroundStyle(lineColor)
-                .interpolationMethod(.catmullRom)
+                .interpolationMethod(.monotone)
                 .lineStyle(StrokeStyle(lineWidth: lineWidth))
 
                 if !isCompact {

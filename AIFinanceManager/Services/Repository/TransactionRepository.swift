@@ -372,6 +372,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             entity.targetAccountId  = transaction.targetAccountId
             entity.accountName      = transaction.accountName
             entity.targetAccountName = transaction.targetAccountName
+            entity.recurringSeriesId = transaction.recurringSeriesId
             entity.createdAt        = Date(timeIntervalSince1970: transaction.createdAt)
 
             // Sync recurringSeries relationship
@@ -425,6 +426,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 dict["targetAccountId"]  = tx.targetAccountId ?? ""
                 dict["accountName"]      = tx.accountName ?? ""
                 dict["targetAccountName"] = tx.targetAccountName ?? ""
+                dict["recurringSeriesId"] = tx.recurringSeriesId ?? ""
                 dict["createdAt"]        = Date(timeIntervalSince1970: tx.createdAt)
                 return dict
             }
@@ -434,7 +436,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
 
             // NOTE: recurringSeries relationships are intentionally omitted here. NSBatchInsertRequest
             // bypasses NSManagedObject lifecycle and cannot resolve managed-object relationships.
-            // toTransaction() uses the recurringSeriesId String column as a fallback, which is sufficient.
+            // recurringSeriesId String column is set directly so toTransaction() returns the correct value.
             do {
                 let result = try bgContext.execute(insertRequest) as? NSBatchInsertResult
                 // Merge inserted object IDs into viewContext so @Observable picks them up.
@@ -474,6 +476,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         entity.targetAccountName = transaction.targetAccountName
         entity.accountId = transaction.accountId
         entity.targetAccountId = transaction.targetAccountId
+        entity.recurringSeriesId = transaction.recurringSeriesId
 
         // Update relationships (also direct, same context.perform block)
         if let accountId = transaction.accountId {
@@ -517,6 +520,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
         entity.accountId = transaction.accountId
         entity.targetAccountId = transaction.targetAccountId
         entity.targetAccountName = transaction.targetAccountName
+        entity.recurringSeriesId = transaction.recurringSeriesId
 
         // Set relationships using pre-fetched dictionaries
         if let accountId = transaction.accountId {

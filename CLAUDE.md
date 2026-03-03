@@ -127,6 +127,13 @@ All return lightweight value-type structs (`InMemoryMonthlyTotal`, `InMemoryCate
 - **Performance**: Total 4877ms → 1986ms (−59%). Phase 1 user-visible latency: ~370ms. `.week`/`.quarter`/`.year` generators: 7–19ms each.
 - **Key rule**: When adding new generators to InsightsService, accept `PreAggregatedData?` parameter and use its helpers. Never iterate `allTransactions` with `DateFormatter.date(from:)` — use `txDateMap` or pre-computed fields.
 
+**Phase 43** (2026-03-04): Recurring Transactions — Single-Next-Occurrence Model
+- **Model**: `generateUpToNextFuture()` backfills all past occurrences + creates exactly 1 future; `extendAllActiveSeriesHorizons()` called on `loadData` and foreground resume. No fixed 3-month horizon → yearly series always gets its next occurrence.
+- **`stopSeries`/`resumeSeries`**: `handleSeriesStopped` sets `status = .paused` for subscriptions (so SubscriptionDetailView shows Resume, not Pause). `resumeSeries(id:)` sets `isActive=true`, `status=.active`, calls `updateSeries()` then manually calls `generateUpToNextFuture()` (updateSeries only regenerates on freq/startDate change), reschedules notifications.
+- **Subcategory persistence for recurring**: `AddTransactionCoordinator.save()` calls `await createRecurringSeriesWithSubcategories()` — awaits `transactionStore.createSeries()` before linking subcats to all generated txs. Fire-and-forget Task was root cause of lost subcategories.
+- **Subcategory restoration on resume**: Snapshot `Set(transactionStore.transactions.map { $0.id })` before `resumeSeries`, subtract after to find newly generated IDs, link subcats from the original transaction. Pattern used in `TransactionCard` swipe action and `SubscriptionDetailView`.
+- **`SubscriptionDetailView` history**: uses `transactionStore.transactions.filter { $0.recurringSeriesId == id }` directly — no `getPlannedTransactions(horizon:)`. `isPlanned` uses `TransactionDisplayHelper.isFutureDate` instead of `"planned-"` prefix check.
+
 **Phase 40** (2026-03-02): Single Source of Truth — Window + Aggregates Removed
 - **Root cause**: `windowMonths=3` + three CoreData aggregate services = two sources of truth. Every new feature had to account for both paths; every edge case broke one of them.
 - **Fix**: Load all transactions (`dateRange: nil`). 19k × ~400B ≈ 7.6 MB — acceptable.
@@ -448,6 +455,11 @@ New file needed?
 - **`Group {}` в `@ViewBuilder` computed var лишний** — если `private var foo: some View` возвращает `if/else`, добавь `@ViewBuilder` и убери `Group`; семантика идентична, один уровень иерархии сэкономлен.
 - **PreAggregatedData "piggyback" pattern**: When multiple generators need per-transaction data, add a field to `PreAggregatedData` struct and compute it in the existing `build()` O(N) loop — zero extra cost. Examples: `accountTransactionCounts`, `lastAccountDates`. Never add separate O(N) loops when one already exists.
 - **`filterService.filterByTimeRange` is expensive** (~16μs/tx due to DateFormatter): When `txDateMap` is available, use inline `transactions.filter { guard let d = map[tx.date], d >= start, d < end else { return false }; return true }` instead. Applied in spending generator and currentBucketForForecasting.
+- **⚠️ Recurring: fire-and-forget `createRecurringSeries()`** — `TransactionsViewModel.createRecurringSeries()` wraps a `Task`; generated txs are NOT in the store when `save()` returns. Always `await transactionStore.createSeries(series)` directly when you need to act on generated transactions (e.g. link subcategories).
+- **⚠️ `getPlannedTransactions(horizon:)` deprecated** — uses old 3-month generator; do not use in new code. Filter `transactionStore.transactions` directly.
+- **`isActive` vs `status` in `RecurringSeries`**: `isActive: Bool` gates occurrence generation. `status: SubscriptionStatus?` controls Pause/Resume UI in `SubscriptionDetailView`. Both must be updated in tandem by `stopSeries`/`resumeSeries`.
+- **Subcategory CoreData relationship**: `Transaction.subcategory: String?` is legacy; real subcats live in CoreData via `categoriesViewModel.linkSubcategoriesToTransaction(transactionId:subcategoryIds:)`. Generated recurring txs start with no subcategory links — must be linked explicitly after creation.
+- **`categoriesViewModel` threading in Views**: `SubscriptionDetailView` and `SubscriptionsListView` require `CategoriesViewModel` passed as parameter from `ContentView` → `SubscriptionsListView` → `SubscriptionDetailView`.
 
 ## SwiftUI Layout Gotchas
 
@@ -620,7 +632,7 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 
 ---
 
-**Last Updated**: 2026-03-02
-**Project Status**: Active development - Insights deep perf optimization (Phase 42): PreAggregatedData single O(N) pass, shared insights, date parse cache — total 4877→1986ms. Single source of truth (Phase 40): window removed, all 3 aggregate services deleted, all transactions in memory. ContentView fully reactive via `.task(id:)` (Phase 39). InsightsService split 2832→782 LOC (Phase 38). Service audit: 3 dead protocols deleted, TransactionConverterService merged (Phase 38). Reactivity audit + dead code removal (Phase 36). CSV import crash fix (Phase 35). Utils cleanup + design system split (Phase 34). Zero hardcoded colors (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28).
+**Last Updated**: 2026-03-04
+**Project Status**: Active development - Recurring single-next-occurrence model (Phase 43): stopSeries/resumeSeries fixed, subcategory persistence for recurring, SubscriptionDetailView history fix. Insights deep perf optimization (Phase 42): PreAggregatedData single O(N) pass, shared insights, date parse cache — total 4877→1986ms. Single source of truth (Phase 40): window removed, all 3 aggregate services deleted, all transactions in memory. ContentView fully reactive via `.task(id:)` (Phase 39). InsightsService split 2832→782 LOC (Phase 38). Service audit: 3 dead protocols deleted, TransactionConverterService merged (Phase 38). Reactivity audit + dead code removal (Phase 36). CSV import crash fix (Phase 35). Utils cleanup + design system split (Phase 34). Zero hardcoded colors (Phase 32-33). SwiftUI anti-pattern sweep (Phase 31), Per-element skeleton loading (Phase 30), Instant launch (Phase 28).
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`

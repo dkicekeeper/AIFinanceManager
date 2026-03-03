@@ -14,6 +14,9 @@ struct TransactionIconView: View {
     let styleData: CategoryStyleData
     /// Icon source from the related subscription series (if any)
     var subscriptionIconSource: IconSource? = nil
+    /// Show the arrow.clockwise badge in the top-left corner.
+    /// Should be true only for future transactions whose recurring series is still active.
+    var showRecurringBadge: Bool = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -38,8 +41,8 @@ struct TransactionIconView: View {
                     )
             }
 
-            // Recurring badge — top-left corner
-            if transaction.recurringSeriesId != nil {
+            // Recurring badge — top-left corner (future + active series only)
+            if showRecurringBadge {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: AppIconSize.sm))
                     .foregroundStyle(.primary)

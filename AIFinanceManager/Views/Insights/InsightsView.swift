@@ -38,7 +38,7 @@ struct InsightsView: View {
             // owns its own spring animation, preventing compositing conflicts.
         }
         .navigationTitle(String(localized: "insights.title"))
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .navigationDestination(for: Insight.self) { insight in
             insightDetailView(for: insight)
                 .navigationTransition(.zoom(sourceID: insight.id, in: insightNamespace))
@@ -54,8 +54,10 @@ struct InsightsView: View {
                     }
                     .pickerStyle(.inline)
                 } label: {
-                    Label(insightsViewModel.currentGranularity.displayName, systemImage: insightsViewModel.currentGranularity.icon)
-                        .labelStyle(.titleAndIcon)
+                    HStack(spacing: 4) {
+                        Image(systemName: insightsViewModel.currentGranularity.icon)
+                        Text(insightsViewModel.currentGranularity.displayName)
+                    }
                 }
             }
         }

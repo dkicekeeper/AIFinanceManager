@@ -21,6 +21,8 @@ struct TransactionCard: View {
     @State private var showingEditModal = false
     @State private var showingDeleteError = false
     @State private var deleteErrorMessage = ""
+    @State private var showingResumeError = false
+    @State private var resumeErrorMessage = ""
 
     // TransactionStore for delete and edit operations
     @Environment(TransactionStore.self) private var transactionStore
@@ -36,6 +38,25 @@ struct TransactionCard: View {
         let series = transactionStore.recurringSeries.first(where: { $0.id == seriesId })
         guard series?.kind == .subscription else { return nil }
         return series?.iconSource
+    }
+
+    /// Badge is shown only for future transactions whose recurring series is still active.
+    /// Past/executed transactions and stopped series never show the badge.
+    private var showRecurringBadge: Bool {
+        guard let seriesId = transaction.recurringSeriesId else { return false }
+        guard isFutureDate else { return false }
+        return transactionStore.recurringSeries.first(where: { $0.id == seriesId })?.isActive ?? false
+    }
+
+    /// The recurring series linked to this transaction, if it still exists in the store.
+    private var linkedRecurringSeries: RecurringSeries? {
+        guard let seriesId = transaction.recurringSeriesId else { return nil }
+        return transactionStore.recurringSeries.first(where: { $0.id == seriesId })
+    }
+
+    /// True when the linked series exists and is currently active (generates future transactions).
+    private var isSeriesActive: Bool {
+        linkedRecurringSeries?.isActive ?? false
     }
 
     init(
@@ -70,7 +91,8 @@ struct TransactionCard: View {
             TransactionIconView(
                 transaction: transaction,
                 styleData: styleData,
-                subscriptionIconSource: subscriptionIconSource
+                subscriptionIconSource: subscriptionIconSource,
+                showRecurringBadge: showRecurringBadge
             )
             
             // Transaction info
@@ -147,8 +169,8 @@ struct TransactionCard: View {
             }
             .accessibilityLabel(String(localized: "accessibility.deleteTransaction"))
 
-            // Управление recurring (если есть)
-            if transaction.recurringSeriesId != nil {
+            // Stop Recurring — shown only when series exists and is active
+            if isSeriesActive {
                 Button {
                     showingStopRecurringConfirmation = true
                 } label: {
@@ -156,6 +178,53 @@ struct TransactionCard: View {
                 }
                 .tint(.blue)
                 .accessibilityLabel(String(localized: "accessibility.stopRecurring"))
+            }
+
+            // Resume Recurring — shown when series exists but was stopped
+            if !isSeriesActive, linkedRecurringSeries != nil {
+                Button {
+                    HapticManager.selection()
+                    Task {
+                        do {
+                            guard let seriesId = transaction.recurringSeriesId else { return }
+
+                            // Read subcategory IDs from the current transaction — they serve
+                            // as the template for any newly generated occurrences.
+                            let subcategoryIds = categoriesViewModel?
+                                .getSubcategoriesForTransaction(transaction.id)
+                                .map { $0.id } ?? []
+
+                            // Snapshot IDs before resume so we can find newly generated txs.
+                            let idsBefore = Set(transactionStore.transactions.map { $0.id })
+
+                            try await transactionStore.resumeSeries(id: seriesId)
+
+                            // Link subcategories to every newly generated transaction.
+                            if !subcategoryIds.isEmpty, let catVM = categoriesViewModel {
+                                let idsAfter = Set(transactionStore.transactions.map { $0.id })
+                                let newIds = idsAfter.subtracting(idsBefore)
+                                for id in newIds {
+                                    catVM.linkSubcategoriesToTransaction(
+                                        transactionId: id,
+                                        subcategoryIds: subcategoryIds
+                                    )
+                                }
+                            }
+
+                            HapticManager.success()
+                        } catch {
+                            await MainActor.run {
+                                resumeErrorMessage = error.localizedDescription
+                                showingResumeError = true
+                                HapticManager.error()
+                            }
+                        }
+                    }
+                } label: {
+                    Label(String(localized: "transaction.resumeRecurring", defaultValue: "Resume"), systemImage: "play.circle")
+                }
+                .tint(.green)
+                .accessibilityLabel(String(localized: "transaction.resumeRecurring", defaultValue: "Resume Recurring"))
             }
         }
         .alert(String(localized: "transaction.stopRecurring.title"), isPresented: $showingStopRecurringConfirmation) {
@@ -173,6 +242,11 @@ struct TransactionCard: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(deleteErrorMessage)
+        }
+        .alert("Error", isPresented: $showingResumeError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(resumeErrorMessage)
         }
         .onTapGesture {
             HapticManager.selection()

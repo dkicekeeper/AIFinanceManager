@@ -250,6 +250,163 @@ class RecurringTransactionGenerator {
         }
     }
 
+    // MARK: - Single Next Occurrence Generation
+
+    /// Generates all missing past occurrences + exactly 1 future occurrence for a single series.
+    ///
+    /// Replaces the 3-month horizon approach. Works correctly for all frequencies:
+    /// - `.daily`:   fills gaps day-by-day, then 1 tomorrow
+    /// - `.weekly`:  fills weekly gaps, then 1 next week
+    /// - `.monthly`: fills monthly gaps, then 1 next month
+    /// - `.yearly`:  fills yearly gaps (rare), then 1 next year — horizon would miss this
+    ///
+    /// Algorithm:
+    ///   1. Find `latestOccurrenceDate` for this series in `existingOccurrences`
+    ///   2. `candidateDate` = latestOccurrenceDate + step  (or series.startDate if no occurrences)
+    ///   3. While candidateDate <= today AND occurrence doesn't exist → generate (backfill)
+    ///   4. Generate 1 more future occurrence (candidateDate > today) → STOP
+    ///
+    /// - Returns: new transactions + occurrences to add. Empty if series has no valid startDate
+    ///            or already has a future transaction.
+    func generateUpToNextFuture(
+        series: RecurringSeries,
+        existingOccurrences: [RecurringOccurrence],
+        existingTransactionIds: Set<String>,
+        accounts: [Account],
+        baseCurrency: String
+    ) -> (transactions: [Transaction], occurrences: [RecurringOccurrence]) {
+        guard series.isActive else { return ([], []) }
+        guard let startDate = dateFormatter.date(from: series.startDate) else { return ([], []) }
+
+        let today = calendar.startOfDay(for: Date())
+
+        // Build fast lookup for existing occurrences of THIS series
+        var existingOccurrenceKeys: Set<String> = []
+        for occ in existingOccurrences where occ.seriesId == series.id {
+            existingOccurrenceKeys.insert("\(occ.seriesId):\(occ.occurrenceDate)")
+        }
+
+        // Find the latest occurrence date for this series → advance from there
+        let latestOccurrenceDate: Date? = existingOccurrences
+            .filter { $0.seriesId == series.id }
+            .compactMap { dateFormatter.date(from: $0.occurrenceDate) }
+            .max()
+
+        // Determine starting candidate: right after the last known occurrence
+        var candidateDate: Date
+        if let latest = latestOccurrenceDate {
+            guard let next = calculateNextDate(from: latest, frequency: series.frequency) else {
+                return ([], [])
+            }
+            candidateDate = next
+        } else {
+            candidateDate = startDate
+        }
+
+        var newTransactions: [Transaction] = []
+        var newOccurrences: [RecurringOccurrence] = []
+        var iterationCount = 0
+        let maxIterations = 3650 // Safety cap (10 years of daily)
+
+        while iterationCount < maxIterations {
+            iterationCount += 1
+
+            let dateString = dateFormatter.string(from: candidateDate)
+            let occurrenceKey = "\(series.id):\(dateString)"
+
+            // Skip if this occurrence already exists (shouldn't happen, but defensive)
+            if existingOccurrenceKeys.contains(occurrenceKey) {
+                guard let next = calculateNextDate(from: candidateDate, frequency: series.frequency),
+                      next > candidateDate else { break }
+                candidateDate = next
+                // If we've moved past today and skipped a future — it means future already exists
+                if candidateDate > today { break }
+                continue
+            }
+
+            // Build the transaction
+            let amountDouble = NSDecimalNumber(decimal: series.amount).doubleValue
+            let createdAt = candidateDate.timeIntervalSince1970
+
+            let transactionId = TransactionIDGenerator.generateID(
+                date: dateString,
+                description: series.description,
+                amount: amountDouble,
+                type: .expense,
+                currency: series.currency,
+                createdAt: createdAt
+            )
+
+            if !existingTransactionIds.contains(transactionId) {
+                let occurrenceId = UUID().uuidString
+
+                let accountName = series.accountId.flatMap { id in
+                    accounts.first(where: { $0.id == id })?.name
+                }
+                let targetAccountName = series.targetAccountId.flatMap { id in
+                    accounts.first(where: { $0.id == id })?.name
+                }
+
+                var targetCurrency: String? = nil
+                var targetAmount: Double? = nil
+                if series.currency != baseCurrency {
+                    if let converted = CurrencyConverter.convertSync(
+                        amount: amountDouble,
+                        from: series.currency,
+                        to: baseCurrency
+                    ) {
+                        targetCurrency = baseCurrency
+                        targetAmount = converted
+                    }
+                }
+
+                let transaction = Transaction(
+                    id: transactionId,
+                    date: dateString,
+                    description: series.description,
+                    amount: amountDouble,
+                    currency: series.currency,
+                    convertedAmount: nil,
+                    type: .expense,
+                    category: series.category,
+                    subcategory: series.subcategory,
+                    accountId: series.accountId,
+                    targetAccountId: series.targetAccountId,
+                    accountName: accountName,
+                    targetAccountName: targetAccountName,
+                    targetCurrency: targetCurrency,
+                    targetAmount: targetAmount,
+                    recurringSeriesId: series.id,
+                    recurringOccurrenceId: occurrenceId,
+                    createdAt: createdAt
+                )
+
+                let occurrence = RecurringOccurrence(
+                    id: occurrenceId,
+                    seriesId: series.id,
+                    occurrenceDate: dateString,
+                    transactionId: transactionId
+                )
+
+                newTransactions.append(transaction)
+                newOccurrences.append(occurrence)
+                existingOccurrenceKeys.insert(occurrenceKey)
+            }
+
+            // If candidateDate is in the future — we just created the 1 future occurrence. Done.
+            if candidateDate > today {
+                break
+            }
+
+            // Advance to the next date
+            guard let next = calculateNextDate(from: candidateDate, frequency: series.frequency),
+                  next > candidateDate else { break }
+            candidateDate = next
+        }
+
+        return (newTransactions, newOccurrences)
+    }
+
     // MARK: - Future Transaction Cleanup
 
     /// Delete future transactions and occurrences for a series

@@ -58,7 +58,7 @@ struct PeriodBarChart: View {
                         container,
                         CGFloat(dataPoints.count) * pointWidth
                     )
-                    ZStack(alignment: .topLeading) {
+                    ZStack(alignment: .topTrailing) {
                         // Scrollable bars (Y-axis hidden)
                         ScrollView(.horizontal, showsIndicators: false) {
                             mainChart(showYAxis: false)
@@ -69,7 +69,7 @@ struct PeriodBarChart: View {
 
                         // Y-axis overlay — always visible, doesn't scroll with chart
                         yAxisReferenceChart
-                            .frame(width: yAxisWidth, height: chartHeight)
+                            .frame(width: yAxisWidth, height: chartHeight-44)
                             .allowsHitTesting(false)
                     }
                 }

@@ -59,7 +59,7 @@ struct CategoryChip: View {
                     
                     if #available(iOS 26, *) {
                         Image(systemName: styleData.iconName)
-                            .font(.title2)
+                            .font(AppTypography.h2)
                             .foregroundStyle(styleData.iconColor)
                             .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                             .glassEffect(
@@ -74,7 +74,7 @@ struct CategoryChip: View {
                             .frame(width: AppIconSize.coin, height: AppIconSize.coin)
                             .overlay(
                                 Image(systemName: styleData.iconName)
-                                    .font(.title2)
+                                    .font(AppTypography.h2)
                                     .foregroundStyle(styleData.iconColor)
                             )
                             .overlay(

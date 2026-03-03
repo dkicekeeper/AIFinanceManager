@@ -164,8 +164,7 @@ struct DonutChart: View {
                 .annotation(position: .overlay) {
                     if showAnnotations && slice.percentage > 10 {
                         Text(String(format: "%.0f%%", slice.percentage))
-                            .font(AppTypography.captionEmphasis)
-                            .fontWeight(.semibold)
+                            .font(AppTypography.bodyEmphasis)
                             .foregroundStyle(.white)
                     }
                 }

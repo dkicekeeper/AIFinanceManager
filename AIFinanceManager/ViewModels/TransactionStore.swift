@@ -150,6 +150,9 @@ final class TransactionStore {
         ) { [weak self] _ in
             Task { @MainActor in
                 await self?.rescheduleSubscriptionNotifications()
+                // Extend recurring horizons: any series whose future occurrence date has
+                // arrived (or was never generated) gets a new next occurrence added.
+                await self?.extendAllActiveSeriesHorizons()
             }
         }
     }
@@ -197,6 +200,13 @@ final class TransactionStore {
         recurringStore.load(series: series, occurrences: occurrences)  // Phase 03-PERF-02
 
         // Note: baseCurrency will be set via updateBaseCurrency() from AppCoordinator
+
+        // Extend recurring horizons in background: generates the next future occurrence
+        // for any active series that has no future transaction (e.g. yearly series, or any
+        // series whose pre-generated future date has now arrived).
+        Task(priority: .background) { [weak self] in
+            await self?.extendAllActiveSeriesHorizons()
+        }
     }
 
     /// Lightweight startup load: only accounts + categories (fast-path for instant UI).

@@ -11,6 +11,7 @@ struct SubscriptionDetailView: View {
     // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
     @Environment(TimeFilterManager.self) private var timeFilterManager
     let subscription: RecurringSeries
     @State private var showingEditView = false
@@ -19,11 +20,12 @@ struct SubscriptionDetailView: View {
     @Environment(\.dismiss) var dismiss
 
     private func refreshTransactions() async {
-        let existing = transactionStore.transactions.filter {
-            $0.recurringSeriesId == subscription.id
-        }
-        let planned = transactionStore.getPlannedTransactions(for: subscription.id, horizon: 6)
-        cachedTransactions = (existing + planned).sorted { $0.date < $1.date }
+        // Use only the transactions already in the store — the single-next-occurrence
+        // model guarantees exactly 1 future transaction exists for active series.
+        // No horizon-based generation needed (that was the old 3-month approach).
+        cachedTransactions = transactionStore.transactions
+            .filter { $0.recurringSeriesId == subscription.id }
+            .sorted { $0.date < $1.date }
     }
 
     private var nextChargeDate: Date? {
@@ -66,7 +68,29 @@ struct SubscriptionDetailView: View {
                     } else if subscription.subscriptionStatus == .paused {
                         Button {
                             Task {
+                                // Find subcategory IDs from any existing transaction in this series
+                                // to apply them to newly generated occurrences after resume.
+                                let existingTx = transactionStore.transactions.first {
+                                    $0.recurringSeriesId == subscription.id
+                                }
+                                let subcategoryIds = existingTx.map {
+                                    categoriesViewModel.getSubcategoriesForTransaction($0.id).map { $0.id }
+                                } ?? []
+
+                                let idsBefore = Set(transactionStore.transactions.map { $0.id })
+
                                 try await transactionStore.resumeSubscription(id: subscription.id)
+
+                                if !subcategoryIds.isEmpty {
+                                    let idsAfter = Set(transactionStore.transactions.map { $0.id })
+                                    let newIds = idsAfter.subtracting(idsBefore)
+                                    for id in newIds {
+                                        categoriesViewModel.linkSubcategoriesToTransaction(
+                                            transactionId: id,
+                                            subcategoryIds: subcategoryIds
+                                        )
+                                    }
+                                }
                             }
                         } label: {
                             Label(String(localized: "subscriptions.resume"), systemImage: "play.circle")
@@ -217,7 +241,9 @@ struct SubscriptionDetailView: View {
 
             VStack(spacing: AppSpacing.sm) {
                 ForEach(cachedTransactions) { transaction in
-                    let isPlanned = transaction.id.hasPrefix("planned-")
+                    // A transaction is "planned" (future/upcoming) when its date is
+                    // strictly after today — consistent with TransactionCard badge logic.
+                    let isPlanned = TransactionDisplayHelper.isFutureDate(transaction.date)
 
                     TransactionRowContent(
                         transaction: transaction,
@@ -246,6 +272,7 @@ struct SubscriptionDetailView: View {
         SubscriptionDetailView(
             transactionStore: coordinator.transactionStore,
             transactionsViewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
             subscription: RecurringSeries(
                 amount: 9.99,
                 currency: "USD",
@@ -270,6 +297,7 @@ struct SubscriptionDetailView: View {
         SubscriptionDetailView(
             transactionStore: coordinator.transactionStore,
             transactionsViewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
             subscription: RecurringSeries(
                 amount: 14.99,
                 currency: "USD",
@@ -294,6 +322,7 @@ struct SubscriptionDetailView: View {
         SubscriptionDetailView(
             transactionStore: coordinator.transactionStore,
             transactionsViewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel,
             subscription: RecurringSeries(
                 amount: 4.99,
                 currency: "USD",

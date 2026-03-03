@@ -601,6 +601,12 @@ class TransactionsViewModel {
         }
     }
 
+    func resumeRecurringSeries(_ seriesId: String) {
+        Task { @MainActor [weak self] in
+            try? await self?.transactionStore?.resumeSeries(id: seriesId)
+        }
+    }
+
     func deleteRecurringSeries(_ seriesId: String, deleteTransactions: Bool = true) {
         Task { @MainActor [weak self] in
             try? await self?.transactionStore?.deleteSeries(id: seriesId, deleteTransactions: deleteTransactions)

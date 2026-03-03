@@ -24,12 +24,14 @@ extension RecurringSeriesEntity {
         let kind = RecurringSeriesKind(rawValue: self.kind ?? "generic") ?? .generic
         let status = self.status.flatMap { SubscriptionStatus(rawValue: $0) }
 
-        // Migrate from old brandLogo/brandId fields to iconSource
+        // Reconstruct iconSource from stored brandLogo/brandId fields.
+        // brandId may carry an "sf:" prefix for sfSymbol icons — decode via IconSource.from(displayIdentifier:).
+        // Legacy brandId values without a recognised prefix fall back to .brandService.
         let iconSource: IconSource?
         if let logoString = brandLogo, let bankLogo = BankLogo(rawValue: logoString), bankLogo != .none {
             iconSource = .bankLogo(bankLogo)
         } else if let brandId = brandId, !brandId.isEmpty {
-            iconSource = .brandService(brandId)
+            iconSource = IconSource.from(displayIdentifier: brandId) ?? .brandService(brandId)
         } else {
             iconSource = nil
         }
@@ -68,7 +70,8 @@ extension RecurringSeriesEntity {
         entity.startDate = DateFormatters.dateFormatter.date(from: series.startDate)
         entity.lastGeneratedDate = series.lastGeneratedDate.flatMap { DateFormatters.dateFormatter.date(from: $0) }
         entity.kind = series.kind.rawValue
-        // Save iconSource as brandLogo/brandId strings (backward compatible)
+        // Persist iconSource to brandLogo/brandId string columns.
+        // sfSymbol uses the "sf:<name>" prefix in brandId so the name survives a CoreData round-trip.
         if let iconSource = series.iconSource {
             switch iconSource {
             case .bankLogo(let bankLogo):
@@ -77,9 +80,9 @@ extension RecurringSeriesEntity {
             case .brandService(let brandId):
                 entity.brandLogo = nil
                 entity.brandId = brandId
-            case .sfSymbol:
+            case .sfSymbol(let name):
                 entity.brandLogo = nil
-                entity.brandId = nil
+                entity.brandId = "sf:\(name)"
             }
         } else {
             entity.brandLogo = nil

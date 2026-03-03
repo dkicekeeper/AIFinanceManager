@@ -11,6 +11,7 @@ struct SubscriptionsListView: View {
     // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
     @Environment(TimeFilterManager.self) private var timeFilterManager
     @Namespace private var subscriptionNamespace
     private enum SubscriptionSheetItem: Identifiable {
@@ -52,6 +53,7 @@ struct SubscriptionsListView: View {
             SubscriptionDetailView(
                 transactionStore: transactionStore,
                 transactionsViewModel: transactionsViewModel,
+                categoriesViewModel: categoriesViewModel,
                 subscription: subscription
             )
             .environment(timeFilterManager)
@@ -121,7 +123,8 @@ struct SubscriptionsListView: View {
     return NavigationStack {
         SubscriptionsListView(
             transactionStore: coordinator.transactionStore,
-            transactionsViewModel: coordinator.transactionsViewModel
+            transactionsViewModel: coordinator.transactionsViewModel,
+            categoriesViewModel: coordinator.categoriesViewModel
         )
         .environment(TimeFilterManager())
     }

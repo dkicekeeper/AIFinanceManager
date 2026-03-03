@@ -226,7 +226,7 @@ final class EditTransactionCoordinator {
         let dateString = DateFormatters.dateFormatter.string(from: formData.selectedDate)
 
         // Handle recurring series
-        var finalRecurringSeriesId: String? = handleRecurringSeries(
+        var finalRecurringSeriesId: String? = await handleRecurringSeries(
             amount: amount,
             dateString: dateString
         )
@@ -277,14 +277,15 @@ final class EditTransactionCoordinator {
     // MARK: - Private: Recurring Series
 
     /// Manages recurring series creation/update. Returns the final recurringSeriesId.
-    private func handleRecurringSeries(amount: Double, dateString: String) -> String? {
+    /// Async so we can await series creation and then link subcategories to generated transactions.
+    private func handleRecurringSeries(amount: Double, dateString: String) async -> String? {
         guard case .frequency(let freq) = formData.recurring else {
             return nil
         }
 
         if transaction.recurringSeriesId == nil {
-            // Create new series
-            let series = transactionsViewModel.createRecurringSeries(
+            // Create new series — await so generated transactions are in the store
+            let series = RecurringSeries(
                 amount: Decimal(amount),
                 currency: formData.selectedCurrency,
                 category: formData.selectedCategory,
@@ -295,6 +296,20 @@ final class EditTransactionCoordinator {
                 frequency: freq,
                 startDate: dateString
             )
+            try? await transactionStore.createSeries(series)
+
+            // Link selected subcategories to all generated transactions (backfill + future)
+            if !formData.selectedSubcategoryIds.isEmpty {
+                let generated = transactionStore.transactions.filter {
+                    $0.recurringSeriesId == series.id
+                }
+                for tx in generated {
+                    categoriesViewModel.linkSubcategoriesToTransaction(
+                        transactionId: tx.id,
+                        subcategoryIds: Array(formData.selectedSubcategoryIds)
+                    )
+                }
+            }
             return series.id
         } else {
             // Update existing series

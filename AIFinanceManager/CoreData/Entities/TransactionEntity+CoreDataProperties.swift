@@ -30,6 +30,8 @@ extension TransactionEntity {
     @NSManaged public var date: Date?
     @NSManaged public var descriptionText: String?
     @NSManaged public var id: String?
+    /// Stored series ID string — survives RecurringSeriesEntity deletion (mirrors accountId pattern).
+    @NSManaged public var recurringSeriesId: String?
     @NSManaged public var subcategory: String?
     @NSManaged public var targetAccountId: String?
     @NSManaged public var targetAmount: Double

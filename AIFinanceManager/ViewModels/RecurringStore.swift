@@ -68,9 +68,27 @@ final class RecurringStore {
         if let index = recurringSeries.firstIndex(where: { $0.id == seriesId }) {
             var updatedSeries = recurringSeries[index]
             updatedSeries.isActive = false
+            // For subscriptions: set status → .paused so that SubscriptionDetailView
+            // shows "Resume" instead of "Pause" after stopping from history.
+            if updatedSeries.kind == .subscription {
+                updatedSeries.status = .paused
+            }
             recurringSeries[index] = updatedSeries
         }
-        // Note: Transaction cleanup is handled in TransactionStore+Recurring.stopSeries() before calling apply()
+        // Transaction cleanup is performed in TransactionStore+Recurring.stopSeries()
+        // BEFORE apply(.seriesStopped) is called — via individual apply(.deleted) events.
+    }
+
+    /// Remove future occurrences for a series after the given cutoff date (exclusive).
+    /// Called by TransactionStore.stopSeries() before apply(.seriesStopped) so that
+    /// persistIncremental's saveOccurrences() persists the pruned list.
+    func removeOccurrences(seriesId: String, afterDate cutoff: Date) {
+        let formatter = DateFormatters.dateFormatter
+        recurringOccurrences.removeAll { occ in
+            guard occ.seriesId == seriesId else { return false }
+            guard let date = formatter.date(from: occ.occurrenceDate) else { return false }
+            return date > cutoff
+        }
     }
 
     func handleSeriesDeleted(seriesId: String) {

@@ -20,10 +20,13 @@ public class TransactionEntity: NSManagedObject {
 extension TransactionEntity {
     /// Convert to domain model
     func toTransaction() -> Transaction {
-        // accountId / targetAccountId: prefer stored strings (survive account deletion / relationship faults),
-        // fall back to relationship if the string column is nil (pre-migration data).
+        // Prefer stored String columns (survive entity deletion / relationship faults),
+        // fall back to relationship traversal for pre-migration rows where the column is nil.
         let resolvedAccountId = accountId ?? account?.id
         let resolvedTargetAccountId = targetAccountId ?? targetAccount?.id
+        // recurringSeriesId: stored String (v4+) survives RecurringSeriesEntity deletion;
+        // relationship fallback handles pre-v4 rows that still have the entity intact.
+        let resolvedRecurringSeriesId = recurringSeriesId ?? recurringSeries?.id
 
         let tx = Transaction(
             id: id ?? "",
@@ -41,7 +44,7 @@ extension TransactionEntity {
             targetAccountName: targetAccountName ?? targetAccount?.name,
             targetCurrency: targetCurrency ?? targetAccount?.currency,
             targetAmount: targetAmount == 0 ? nil : targetAmount,
-            recurringSeriesId: recurringSeries?.id,
+            recurringSeriesId: resolvedRecurringSeriesId,
             recurringOccurrenceId: nil,
             createdAt: createdAt?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
         )
@@ -65,9 +68,10 @@ extension TransactionEntity {
         entity.createdAt = Date(timeIntervalSince1970: transaction.createdAt)
         entity.accountName = transaction.accountName
         entity.targetAccountName = transaction.targetAccountName
-        // Store accountId / targetAccountId as strings so they survive account deletion / relationship faults
+        // Store ID strings so they survive entity deletion / relationship faults (same pattern as accountId)
         entity.accountId = transaction.accountId
         entity.targetAccountId = transaction.targetAccountId
+        entity.recurringSeriesId = transaction.recurringSeriesId
         // Relationships will be set separately by finding AccountEntity and RecurringSeriesEntity
         return entity
     }
