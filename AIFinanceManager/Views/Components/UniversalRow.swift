@@ -223,7 +223,7 @@ struct RowConfiguration {
     static let info = RowConfiguration(
         spacing: AppSpacing.md,
         verticalPadding: AppSpacing.compact,
-        horizontalPadding: 0,
+        horizontalPadding: AppSpacing.md,
         backgroundColor: .clear,
         cornerRadius: 0
     )
@@ -232,10 +232,10 @@ struct RowConfiguration {
     /// Row with background and corner radius
     static let card = RowConfiguration(
         spacing: AppSpacing.md,
-        verticalPadding: AppSpacing.md,
-        horizontalPadding: AppSpacing.md,
+        verticalPadding: AppSpacing.lg,
+        horizontalPadding: AppSpacing.lg,
         backgroundColor: AppColors.cardBackground,
-        cornerRadius: AppRadius.md
+        cornerRadius: AppRadius.pill
     )
 }
 

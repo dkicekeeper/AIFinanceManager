@@ -165,9 +165,8 @@ struct SubscriptionDetailView: View {
                 }
                 Spacer()
             }
-            VStack(
-                spacing: AppSpacing.sm
-            ) {
+            VStack(spacing: AppSpacing.sm)
+            {
                 InfoRow(
                     icon: "tag.fill",
                     label: String(
