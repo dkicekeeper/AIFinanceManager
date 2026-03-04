@@ -21,6 +21,19 @@ struct AccountRow: View {
         balanceCoordinator.balances[account.id] ?? 0
     }
 
+    private var accountAccessibilityLabel: String {
+        var parts = [account.name]
+        // Balance is already formatted by FormattedAmountText but we need a plain string
+        let formatter = AmountDisplayConfiguration.formatter
+        if let formatted = formatter.string(from: NSNumber(value: balance)) {
+            parts.append("\(formatted) \(account.currency)")
+        }
+        if account.isDeposit {
+            parts.append(String(localized: "deposit.title"))
+        }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
             Button(action: onEdit) {
                 HStack(spacing: AppSpacing.md) {
@@ -71,6 +84,8 @@ struct AccountRow: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accountAccessibilityLabel)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button(role: .destructive) {
                     HapticManager.warning()

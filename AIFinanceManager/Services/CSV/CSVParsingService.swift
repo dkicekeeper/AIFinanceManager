@@ -57,42 +57,52 @@ class CSVParsingService: CSVParsingServiceProtocol {
 
     // MARK: - Private Helpers
 
-    /// Parses a single CSV line with quote handling
-    /// Supports quoted fields with embedded commas and escaped quotes
+    /// Parses a single CSV line per RFC 4180:
+    /// - Fields may be enclosed in double-quotes
+    /// - Double-quotes inside a quoted field are escaped as "" (two consecutive quotes)
+    /// - Commas inside quoted fields are literal (not delimiters)
     private func parseCSVLine(_ line: String) -> [String] {
         var fields: [String] = []
-        fields.reserveCapacity(10) // Average 10 columns per CSV
+        fields.reserveCapacity(10)
 
         var currentField = ""
-        currentField.reserveCapacity(50) // Average field length
+        currentField.reserveCapacity(50)
 
         var insideQuotes = false
+        let chars = Array(line)
+        var i = 0
 
-        for char in line {
-            if char == "\"" {
-                if insideQuotes {
-                    // Check for escaped quote (double quote)
-                    if currentField.last == "\"" {
-                        currentField.removeLast()
+        while i < chars.count {
+            let char = chars[i]
+
+            if insideQuotes {
+                if char == "\"" {
+                    // Peek ahead: "" = escaped quote, otherwise end of quoted field
+                    if i + 1 < chars.count && chars[i + 1] == "\"" {
                         currentField.append("\"")
+                        i += 2
+                        continue
                     } else {
                         insideQuotes = false
                     }
                 } else {
-                    insideQuotes = true
+                    currentField.append(char)
                 }
-            } else if char == "," && !insideQuotes {
-                fields.append(currentField.trimmingCharacters(in: .whitespaces))
-                currentField = ""
-                currentField.reserveCapacity(50)
             } else {
-                currentField.append(char)
+                if char == "\"" {
+                    insideQuotes = true
+                } else if char == "," {
+                    fields.append(currentField.trimmingCharacters(in: .whitespaces))
+                    currentField = ""
+                    currentField.reserveCapacity(50)
+                } else {
+                    currentField.append(char)
+                }
             }
+            i += 1
         }
 
-        // Add last field
         fields.append(currentField.trimmingCharacters(in: .whitespaces))
-
         return fields
     }
 

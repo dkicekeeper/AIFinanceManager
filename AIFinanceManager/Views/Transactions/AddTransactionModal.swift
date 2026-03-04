@@ -158,6 +158,7 @@ struct AddTransactionModal: View {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
                 }
+                .accessibilityLabel(String(localized: "button.close"))
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 recurringMenuButton
@@ -168,6 +169,7 @@ struct AddTransactionModal: View {
                 }) {
                     Image(systemName: "clock.arrow.circlepath")
                 }
+                .accessibilityLabel(String(localized: "accessibility.transaction.history"))
                 .matchedTransitionSource(id: "history", in: historyNamespace)
             }
         }
@@ -211,7 +213,8 @@ struct AddTransactionModal: View {
                     .progressViewStyle(CircularProgressViewStyle())
                     .scaleEffect(1.5)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black.opacity(0.2))
+                    .background(.regularMaterial)
+                    .accessibilityLabel(String(localized: "progress.saving"))
             }
         }
     }

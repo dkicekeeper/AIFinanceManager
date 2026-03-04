@@ -42,7 +42,11 @@ struct CSVColumnMapping {
         "переводы": .internalTransfer,
         "трансфер": .internalTransfer,
         "internal": .internalTransfer,
-        "internaltransfer": .internalTransfer
+        "internaltransfer": .internalTransfer,
+        // Deposit types (exported by CSVExporter)
+        "deposit_topup": .depositTopUp,
+        "deposit_withdrawal": .depositWithdrawal,
+        "deposit_interest": .depositInterestAccrual
     ]
 }
 

@@ -152,9 +152,9 @@ enum AppAnimation {
 struct BounceButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 1.08 : 1.0)
-            .brightness(configuration.isPressed ? 0.1 : 0.0)
-            .animation(AppAnimation.spring, value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .brightness(configuration.isPressed ? -0.05 : 0.0)
+            .animation(AppAnimation.adaptiveSpring, value: configuration.isPressed)
     }
 }
 

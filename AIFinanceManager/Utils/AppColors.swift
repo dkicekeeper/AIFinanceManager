@@ -105,7 +105,7 @@ struct CategoryColors {
     static let palette: [Color] = [
         .blue, .cyan, .pink, .orange, .yellow,
         .green, .teal, .indigo, .purple, .mint,
-        .red, .purple, .green, .orange
+        .red, .brown, Color(red: 0.35, green: 0.55, blue: 0.85), Color(red: 0.85, green: 0.45, blue: 0.55)
     ]
 
     /// Возвращает цвет из палитры по хэшу имени категории

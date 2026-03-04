@@ -86,9 +86,11 @@ struct CategoryChip: View {
             }
         }
         .buttonStyle(.plain) 
-        .accessibilityLabel("\(category) category")
+        .accessibilityLabel(String(format: String(localized: "accessibility.category.label"), category))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-        .accessibilityHint(budgetProgress.map { "Budget: \(Int($0.percentage))% spent" } ?? "")
+        .accessibilityHint(budgetProgress.map {
+            String(format: String(localized: "accessibility.category.budgetHint"), Int($0.percentage))
+        } ?? "")
     }
 }
 

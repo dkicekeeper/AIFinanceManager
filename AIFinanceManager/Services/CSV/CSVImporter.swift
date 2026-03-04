@@ -104,35 +104,47 @@ class CSVImporter {
         }
     }
     
+    /// Parses a single CSV line per RFC 4180:
+    /// - Fields may be enclosed in double-quotes
+    /// - Double-quotes inside a quoted field are escaped as "" (two consecutive quotes)
+    /// - Commas inside quoted fields are literal (not delimiters)
     private static func parseCSVLine(_ line: String) -> [String] {
         var fields: [String] = []
         var currentField = ""
         var insideQuotes = false
-        
-        for char in line {
-            if char == "\"" {
-                if insideQuotes {
-                    // Проверяем, не двойная ли это кавычка
-                    if currentField.last == "\"" {
-                        currentField.removeLast()
+        let chars = Array(line)
+        var i = 0
+
+        while i < chars.count {
+            let char = chars[i]
+
+            if insideQuotes {
+                if char == "\"" {
+                    // Peek ahead: "" = escaped quote, otherwise end of quoted field
+                    if i + 1 < chars.count && chars[i + 1] == "\"" {
                         currentField.append("\"")
+                        i += 2
+                        continue
                     } else {
                         insideQuotes = false
                     }
                 } else {
-                    insideQuotes = true
+                    currentField.append(char)
                 }
-            } else if char == "," && !insideQuotes {
-                fields.append(currentField.trimmingCharacters(in: .whitespaces))
-                currentField = ""
             } else {
-                currentField.append(char)
+                if char == "\"" {
+                    insideQuotes = true
+                } else if char == "," {
+                    fields.append(currentField.trimmingCharacters(in: .whitespaces))
+                    currentField = ""
+                } else {
+                    currentField.append(char)
+                }
             }
+            i += 1
         }
-        
-        // Добавляем последнее поле
+
         fields.append(currentField.trimmingCharacters(in: .whitespaces))
-        
         return fields
     }
 }

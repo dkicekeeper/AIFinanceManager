@@ -161,6 +161,10 @@ class CSVValidationService: CSVValidationServiceProtocol {
         var allResults: [Result<CSVRow, CSVValidationError>] = []
         allResults.reserveCapacity(csvFile.rowCount)
 
+        // Collect indexed results, then sort by globalIndex to preserve row order
+        var indexedResults: [(Int, Result<CSVRow, CSVValidationError>)] = []
+        indexedResults.reserveCapacity(csvFile.rowCount)
+
         await withTaskGroup(of: [(Int, Result<CSVRow, CSVValidationError>)].self) { group in
             for (batchIndex, batch) in batches.enumerated() {
                 group.addTask { @MainActor in
@@ -178,9 +182,13 @@ class CSVValidationService: CSVValidationServiceProtocol {
             }
 
             for await batchResults in group {
-                allResults.append(contentsOf: batchResults.map { $0.1 })
+                indexedResults.append(contentsOf: batchResults)
             }
         }
+
+        // Sort by original row index — TaskGroup does not guarantee order
+        indexedResults.sort { $0.0 < $1.0 }
+        allResults = indexedResults.map { $0.1 }
 
         return allResults
     }

@@ -59,6 +59,8 @@ struct InsightsView: View {
                         Text(insightsViewModel.currentGranularity.displayName)
                     }
                 }
+                .accessibilityLabel(String(localized: "accessibility.insights.granularityPicker"))
+                .accessibilityHint(String(localized: "accessibility.insights.granularityPickerHint"))
             }
         }
         .onChange(of: insightsViewModel.currentGranularity) { _, _ in

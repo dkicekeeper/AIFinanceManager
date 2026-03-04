@@ -73,6 +73,7 @@ struct TransactionsSummaryCard: View {
         VStack(spacing: AppSpacing.md) {
             ProgressView()
                 .scaleEffect(1.2)
+                .accessibilityLabel(String(localized: "progress.loadingTransactions"))
             Text(String(localized: "progress.loadingData"))
                 .font(AppTypography.caption)
                 .foregroundStyle(.secondary)
@@ -80,6 +81,7 @@ struct TransactionsSummaryCard: View {
         .frame(maxWidth: .infinity)
         .frame(height: AppSize.analyticsCardHeight)
         .glassCardStyle(radius: AppRadius.pill)
+        .accessibilityElement(children: .combine)
     }
 }
 

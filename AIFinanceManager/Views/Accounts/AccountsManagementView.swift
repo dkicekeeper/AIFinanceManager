@@ -83,6 +83,17 @@ struct AccountsManagementView: View {
                     .onMove(perform: isReordering ? moveAccount : nil)
                 }
                 .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
+            } else {
+                // balanceCoordinator not yet initialized — show loading state
+                VStack(spacing: AppSpacing.md) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text(String(localized: "progress.loadingData"))
+                        .font(AppTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel(String(localized: "progress.loadingAccounts"))
             }
         }
         .navigationTitle(String(localized: "settings.accounts"))
@@ -112,8 +123,11 @@ struct AccountsManagementView: View {
                         }
                     } label: {
                         Image(systemName: isReordering ? "checkmark" : "arrow.up.arrow.down")
-                            .foregroundStyle(isReordering ? .blue : .primary)
+                            .foregroundStyle(isReordering ? AppColors.accent : .primary)
                     }
+                    .accessibilityLabel(isReordering
+                        ? String(localized: "accessibility.accounts.doneReordering")
+                        : String(localized: "accessibility.accounts.reorder"))
 
                     Menu {
                         Button(action: {
@@ -131,6 +145,7 @@ struct AccountsManagementView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel(String(localized: "accessibility.accounts.addMenu"))
                 }
             }
         }

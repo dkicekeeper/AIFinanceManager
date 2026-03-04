@@ -11,7 +11,6 @@ import Observation
 
 /// Coordinator for data export operations
 /// Handles CSV export with progress tracking and async operations
-/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
 @Observable
 @MainActor
 final class ExportCoordinator: ExportCoordinatorProtocol {
@@ -21,8 +20,8 @@ final class ExportCoordinator: ExportCoordinatorProtocol {
 
     // MARK: - Dependencies (weak to prevent retain cycles)
 
-    private weak var transactionsViewModel: TransactionsViewModel?
-    private weak var accountsViewModel: AccountsViewModel?
+    @ObservationIgnored private weak var transactionsViewModel: TransactionsViewModel?
+    @ObservationIgnored private weak var accountsViewModel: AccountsViewModel?
 
     init(
         transactionsViewModel: TransactionsViewModel? = nil,
@@ -55,71 +54,42 @@ final class ExportCoordinator: ExportCoordinatorProtocol {
         let transactions = transactionsViewModel.allTransactions
         let accounts = accountsViewModel.accounts
 
+        // Gather subcategory data for full export
+        let subcategoryLinks = transactionsViewModel.transactionStore?.transactionSubcategoryLinks ?? []
+        let subcategories = transactionsViewModel.transactionStore?.subcategories ?? []
+
         // Check if there's data to export
         guard !transactions.isEmpty else {
             throw ExportError.noDataToExport
         }
 
         // Reset progress
-        await MainActor.run {
-            exportProgress = 0
-        }
+        exportProgress = 0
 
-        // Perform export in background
-        return try await withCheckedThrowingContinuation { continuation in
-            Task.detached(priority: .userInitiated) { [weak self] in
-                guard let self = self else {
-                    continuation.resume(throwing: ExportError.exportFailed(underlying: NSError(
-                        domain: "ExportCoordinator",
-                        code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "ExportCoordinator deallocated"]
-                    )))
-                    return
-                }
+        // Capture all data on MainActor before switching to background
+        let csvString = CSVExporter.exportTransactions(
+            transactions,
+            accounts: accounts,
+            subcategoryLinks: subcategoryLinks,
+            subcategories: subcategories
+        )
 
-                do {
-                    // Update progress: Starting
-                    await self.updateProgress(0.1)
+        updateProgress(0.7)
 
-                    // Generate CSV string
-                    let csvString = await CSVExporter.exportTransactions(
-                        transactions,
-                        accounts: accounts
-                    )
+        // Write file in background
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withYear, .withMonth, .withDay, .withTime]
+        let dateString = dateFormatter.string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let fileName = "transactions_export_\(dateString).csv"
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
 
-                    // Update progress: CSV generated
-                    await self.updateProgress(0.7)
+        updateProgress(0.9)
 
-                    // Generate filename
-                    let dateFormatter = ISO8601DateFormatter()
-                    dateFormatter.formatOptions = [.withYear, .withMonth, .withDay, .withTime]
-                    let dateString = dateFormatter.string(from: Date()).replacingOccurrences(of: ":", with: "-")
-                    let fileName = "transactions_export_\(dateString).csv"
-                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        try csvString.write(to: tempURL, atomically: true, encoding: .utf8)
 
-                    // Update progress: Writing file
-                    await self.updateProgress(0.9)
+        updateProgress(1.0)
 
-                    // Write to file
-                    try csvString.write(to: tempURL, atomically: true, encoding: .utf8)
-
-                    // Update progress: Complete
-                    await self.updateProgress(1.0)
-
-
-                    continuation.resume(returning: tempURL)
-                } catch {
-
-                    if let urlError = error as? URLError {
-                        continuation.resume(throwing: ExportError.fileWriteFailed(underlying: urlError))
-                    } else if let exportError = error as? ExportError {
-                        continuation.resume(throwing: exportError)
-                    } else {
-                        continuation.resume(throwing: ExportError.exportFailed(underlying: error))
-                    }
-                }
-            }
-        }
+        return tempURL
     }
 
     // MARK: - Dependency Injection

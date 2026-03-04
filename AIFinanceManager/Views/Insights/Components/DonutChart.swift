@@ -166,6 +166,7 @@ struct DonutChart: View {
                         Text(String(format: "%.0f%%", slice.percentage))
                             .font(AppTypography.bodyEmphasis)
                             .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.5), radius: 2)
                     }
                 }
             }

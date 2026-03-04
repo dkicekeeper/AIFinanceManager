@@ -27,6 +27,7 @@ struct SubscriptionEditView: View {
     @State private var reminder: ReminderOption = .none
     @State private var showingNotificationPermission = false
     @State private var validationError: String? = nil
+    @State private var isSaving = false
     @State private var availableCategories: [String] = []
 
     private func computeAvailableCategories() -> [String] {
@@ -53,7 +54,7 @@ struct SubscriptionEditView: View {
             title: subscription == nil ?
                 String(localized: "subscription.newTitle") :
                 String(localized: "subscription.editTitle"),
-            isSaveDisabled: description.isEmpty || amountText.isEmpty,
+            isSaveDisabled: description.isEmpty || amountText.isEmpty || isSaving,
             useScrollView: true,
             onSave: saveSubscription,
             onCancel: { dismiss() }
@@ -169,6 +170,9 @@ struct SubscriptionEditView: View {
     }
 
     private func saveSubscription() {
+        // Prevent double-tap
+        guard !isSaving else { return }
+
         // Validate required fields: description, amount, category, and account
         guard !description.isEmpty else {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -241,6 +245,8 @@ struct SubscriptionEditView: View {
             status: subscription?.status ?? .active
         )
 
+        isSaving = true
+
         Task {
             do {
                 if subscription == nil {
@@ -251,6 +257,7 @@ struct SubscriptionEditView: View {
                 HapticManager.success()
                 dismiss()
             } catch {
+                isSaving = false
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     validationError = error.localizedDescription
                 }

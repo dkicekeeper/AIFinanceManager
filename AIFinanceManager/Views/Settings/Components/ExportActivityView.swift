@@ -13,10 +13,11 @@ struct ExportActivityView: UIViewControllerRepresentable {
     @Environment(\.dismiss) var dismiss
     
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        // Note: Need accounts from AccountsViewModel, but for now using transactionsViewModel.accounts
         let csvContent = CSVExporter.exportTransactions(
             transactionsViewModel.allTransactions,
-            accounts: transactionsViewModel.accounts
+            accounts: transactionsViewModel.accounts,
+            subcategoryLinks: transactionsViewModel.transactionStore?.transactionSubcategoryLinks ?? [],
+            subcategories: transactionsViewModel.transactionStore?.subcategories ?? []
         )
         
         // Создаем временный файл

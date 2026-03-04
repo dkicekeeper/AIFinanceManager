@@ -276,6 +276,14 @@ Never use `@StateObject`, `@ObservedObject`, `@EnvironmentObject` — those are 
 - **Entity resolution case-sensitivity**: `resolveCategoryByName` must use case-insensitive comparison. When cache HITs on a case-variant, return the **stored** entity name (not the input name).
 - **NEVER use `NSBatchDeleteRequest` then `context.save()` on the SAME context** when deleted objects have inverse relationships. Use `context.delete()` instead.
 
+### CSV Export/Import Round-Trip Rules
+- **All 6 TransactionTypes** must export/import: `expense`, `income`, `internal`, `deposit_topup`, `deposit_withdrawal`, `deposit_interest`. Mappings live in `CSVColumnMapping.typeMappings`.
+- **Income column swap**: Export writes `account` column = category, `targetAccount` = account name. Import's `CSVRow.effectiveAccountValue` for income reads `targetAccount`; `effectiveCategoryValue` reads `account`. This swap enables correct round-trip.
+- **`targetCurrency`/`targetAmount` dual purpose**: For `internalTransfer` → target account data. For all other types → `convertedAmount`. Determined by `type` column on import (`EntityMappingService.convertRow`).
+- **Subcategories export**: `CSVExporter` resolves `TransactionSubcategoryLink` → subcategory names via lookup dictionaries. Falls back to legacy `Transaction.subcategory` field.
+- **CSV quote parsing**: RFC 4180 — peek-ahead for `""` (escaped quote). Both `CSVImporter.parseCSVLine` and `CSVParsingService.parseCSVLine` use index-based iteration, not `for char in line`.
+- **`validateFileParallel` ordering**: `TaskGroup` doesn't guarantee order — results must be sorted by `globalIndex` after collection.
+
 ### File Organization Rules ("Where Should I Put This File?")
 
 **Decision Tree:**
@@ -450,7 +458,7 @@ Current branch: `main`
 - **Services/Transactions/**: Transaction filtering, grouping, pagination
 - **Services/Balance/**: Balance calculations, updates, caching
 - **Services/Categories/**: Category budgets, CRUD operations
-- **Services/CSV/**: CSV import/export coordination
+- **Services/CSV/**: CSV import/export coordination (see CSV Round-Trip Rules below)
 - **Services/Voice/**: Voice input parsing and services
 - **Services/Import/**: PDF and statement text parsing
 - **Services/Cache/**: Caching coordinators and managers

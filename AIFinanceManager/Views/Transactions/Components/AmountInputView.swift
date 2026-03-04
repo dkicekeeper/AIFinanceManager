@@ -39,10 +39,10 @@ struct AmountInputView: View {
                     Spacer()
                     HStack(spacing: AppSpacing.xs) {
                         Text(displayAmount)
-                            .font(.custom("Inter", size: currentFontSize).weight(.bold))
+                            .font(.custom(AppTypography.fontFamily, size: currentFontSize).weight(.bold))
                             .contentTransition(.numericText())
                             .foregroundStyle(errorMessage != nil ? AppColors.destructive : AppColors.textPrimary)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: displayAmount)
+                            .animation(AppAnimation.adaptiveSpring, value: displayAmount)
                             .lineLimit(1)
                             .minimumScaleFactor(0.3)
 
@@ -133,7 +133,7 @@ struct AmountInputView: View {
     private var convertedAmountView: some View {
         if shouldShowConversion {
             HStack(spacing: AppSpacing.xs) {
-                Text("currency.conversion.approximate")
+                Text(String(localized: "currency.conversion.approximate"))
                     .font(AppTypography.h4)
                     .foregroundStyle(AppColors.textSecondary)
 

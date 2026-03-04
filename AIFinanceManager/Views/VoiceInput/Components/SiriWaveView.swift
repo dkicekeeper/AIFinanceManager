@@ -134,7 +134,12 @@ struct SiriWaveRecordingView: View {
                     .font(AppTypography.bodyLarge)
                     .foregroundStyle(AppColors.accent)
                     .opacity(isAnimating ? 0.5 : 1.0)
-                    .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
+                    .animation(
+                        AppAnimation.isReduceMotionEnabled
+                            ? nil
+                            : .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                        value: isAnimating
+                    )
             }
         }
         .frame(height: 100)

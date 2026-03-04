@@ -21,7 +21,7 @@ struct InsightsGranularityPicker: View {
                     isSelected: selected == granularity
                 ) {
                     HapticManager.light()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    withAnimation(AppAnimation.adaptiveSpring) {
                         selected = granularity
                     }
                     onSelect?(granularity)
@@ -62,6 +62,8 @@ private struct GranularityChip: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityLabel(granularity.displayName)
     }
 }
 

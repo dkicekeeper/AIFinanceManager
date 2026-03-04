@@ -14,6 +14,7 @@ struct SkeletonShimmerModifier: ViewModifier {
     var cornerRadius: CGFloat = 0
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var phase: CGFloat = -0.5
     @State private var isAnimating = false
 
@@ -40,7 +41,8 @@ struct SkeletonShimmerModifier: ViewModifier {
             .onAppear {
                 guard !isAnimating else { return }
                 // Shimmer — декоративное движение. Пропускаем когда включён Reduce Motion.
-                guard !AppAnimation.isReduceMotionEnabled else { return }
+                // Uses @Environment for live reactivity (user can toggle mid-session).
+                guard !reduceMotion else { return }
                 isAnimating = true
                 withAnimation(
                     .linear(duration: AppAnimation.shimmerDuration).repeatForever(autoreverses: false)

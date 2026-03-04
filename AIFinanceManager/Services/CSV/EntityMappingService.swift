@@ -245,13 +245,20 @@ class EntityMappingService: EntityMappingServiceProtocol {
 
         let subcategoryName = csvRow.subcategoryNames.first
 
+        // For non-transfers: targetCurrency/targetAmount columns carry convertedAmount
+        // For transfers: they carry the actual target account currency/amount
+        let isTransfer = csvRow.type == .internalTransfer
+        let convertedAmount: Double? = !isTransfer ? csvRow.targetAmount : nil
+        let targetCurrency: String? = isTransfer ? csvRow.targetCurrency : nil
+        let targetAmount: Double? = isTransfer ? csvRow.targetAmount : nil
+
         return Transaction(
             id: transactionId,
             date: dateString,
             description: csvRow.note ?? "",
             amount: csvRow.amount,
             currency: csvRow.currency,
-            convertedAmount: nil,
+            convertedAmount: convertedAmount,
             type: csvRow.type,
             category: categoryName,
             subcategory: subcategoryName,
@@ -259,8 +266,8 @@ class EntityMappingService: EntityMappingServiceProtocol {
             targetAccountId: targetAccountId,
             accountName: nil,         // resolved by CSVImportCoordinator after batch add
             targetAccountName: nil,   // resolved by CSVImportCoordinator after batch add
-            targetCurrency: csvRow.targetCurrency,
-            targetAmount: csvRow.targetAmount,
+            targetCurrency: targetCurrency,
+            targetAmount: targetAmount,
             recurringSeriesId: nil,
             recurringOccurrenceId: nil,
             createdAt: createdAt

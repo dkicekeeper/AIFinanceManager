@@ -15,6 +15,17 @@ struct CategoryRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
 
+    private var categoryAccessibilityLabel: String {
+        var parts = [category.name]
+        if let progress = budgetProgress {
+            parts.append(String(format: String(localized: "accessibility.category.budgetProgress"), Int(progress.percentage)))
+            if progress.isOverBudget {
+                parts.append(String(localized: "accessibility.category.overBudget"))
+            }
+        }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         Button(action: onEdit) {
             HStack(spacing: AppSpacing.md) {
@@ -86,6 +97,8 @@ struct CategoryRow: View {
                 .padding(.vertical, AppSpacing.xs)
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(categoryAccessibilityLabel)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if !isDefault {
                 Button(role: .destructive) {

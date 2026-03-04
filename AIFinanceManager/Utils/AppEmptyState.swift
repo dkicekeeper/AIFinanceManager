@@ -113,6 +113,7 @@ struct EmptyStateView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(AppSpacing.xxxl)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Compact Body
@@ -132,6 +133,7 @@ struct EmptyStateView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(AppSpacing.md)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Error Body

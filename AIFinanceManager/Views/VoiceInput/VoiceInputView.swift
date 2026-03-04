@@ -38,6 +38,7 @@ struct VoiceInputView: View {
                             } label: {
                                 Image(systemName: "xmark")
                             }
+                            .accessibilityLabel(String(localized: "button.close"))
                         }
                     }
             }
@@ -84,6 +85,10 @@ struct VoiceInputView: View {
         }
         .onChange(of: voiceService.transcribedText) { _, newText in
             recognizedEntities = parser.parseEntitiesLive(from: newText)
+            // Announce transcription updates to VoiceOver users
+            if !newText.isEmpty {
+                UIAccessibility.post(notification: .announcement, argument: newText)
+            }
         }
         .onAppear { startRecordingOnAppear() }
         .onDisappear {
@@ -160,6 +165,12 @@ struct VoiceInputView: View {
                             .foregroundStyle(.white)
                     }
                 }
+                .accessibilityLabel(String(localized: "voice.stopRecording"))
+                .accessibilityHint(
+                    voiceService.transcribedText.isEmpty
+                        ? String(localized: "voice.noTextRecognizedYet")
+                        : String(localized: "voice.tapToFinish")
+                )
                 Spacer()
             }
             .padding(.bottom, AppSpacing.xl)
@@ -233,7 +244,12 @@ struct RecordingIndicatorView: View {
                 .fill(AppColors.destructive)
                 .frame(width: AppSize.dotLargeSize, height: AppSize.dotLargeSize)
                 .opacity(isAnimating ? 0.3 : 1.0)
-                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isAnimating)
+                .animation(
+                    AppAnimation.isReduceMotionEnabled
+                        ? nil
+                        : .easeInOut(duration: 0.6).repeatForever(autoreverses: true),
+                    value: isAnimating
+                )
 
             Text(String(localized: "voice.recording"))
                 .font(AppTypography.bodyLarge)

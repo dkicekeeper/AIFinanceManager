@@ -13,7 +13,7 @@ import SwiftUI
 /// Weight axis (wght 100–900) is set via .weight() modifier.
 /// Optical size axis (opsz) is set automatically from pointSize.
 /// Verify with: UIFont.fontNames(forFamilyName: "Inter")
-private enum AppInterFont {
+enum AppInterFont {
     static let family = "Inter"
 }
 
@@ -24,6 +24,10 @@ private enum AppInterFont {
 /// Ось opsz применяется автоматически — iOS передаёт pointSize как значение opsz.
 /// Веса задаются через .weight(), который маппируется на ось wght (100–900).
 enum AppTypography {
+    /// Font family name for use in `Font.custom()` calls outside the design system
+    /// (e.g., AmountInputView's dynamic font sizing).
+    static let fontFamily = AppInterFont.family
+
     // MARK: Headers
 
     /// H1 - Screen titles (34pt bold, scales with largeTitle)

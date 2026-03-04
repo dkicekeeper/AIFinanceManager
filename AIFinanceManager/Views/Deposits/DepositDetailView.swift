@@ -30,6 +30,7 @@ struct DepositDetailView: View {
     @State private var showingRateChange = false
     @State private var showingDeleteConfirmation = false
     @State private var showingHistory = false
+    @State private var reconciliationError: String? = nil
     @Environment(\.dismiss) var dismiss
     @Namespace private var depositActionNamespace
 
@@ -57,6 +58,11 @@ struct DepositDetailView: View {
             if let account = account {
                 ScrollView {
                     VStack(spacing: AppSpacing.lg) {
+                        if let error = reconciliationError {
+                            MessageBanner.error(error)
+                                .screenPadding()
+                        }
+
                         if let depositInfo = depositInfo {
                             depositInfoCard(depositInfo: depositInfo, account: account)
                                 .screenPadding()
@@ -86,6 +92,7 @@ struct DepositDetailView: View {
                 } label: {
                     Image(systemName: "clock.arrow.circlepath")
                 }
+                .accessibilityLabel(String(localized: "accessibility.deposit.history"))
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -115,6 +122,7 @@ struct DepositDetailView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+                .accessibilityLabel(String(localized: "accessibility.deposit.moreActions"))
             }
         }
         .sheet(isPresented: $showingHistory) {
@@ -204,6 +212,9 @@ struct DepositDetailView: View {
                             _ = try await transactionStore.add(transaction)
                         } catch {
                             logger.error("Failed to add deposit interest transaction: \(error.localizedDescription)")
+                            await MainActor.run {
+                                reconciliationError = error.localizedDescription
+                            }
                         }
                     }
                 }
@@ -302,7 +313,7 @@ struct DepositDetailView: View {
                 Label(String(localized: "deposit.transferToAccount"), systemImage: "arrow.up.circle.fill")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .secondaryButton()
         }
     }
 
