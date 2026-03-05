@@ -17,6 +17,8 @@ private let cvLogger = Logger(subsystem: "AIFinanceManager", category: "ContentV
 enum HomeDestination: Hashable {
     case history
     case subscriptions
+    case loans
+    case loanDetail(String) // accountId
 }
 
 // MARK: - ContentView (Home Screen)
@@ -90,6 +92,21 @@ struct ContentView: View {
                     historyDestination
                 case .subscriptions:
                     subscriptionsDestination
+                case .loans:
+                    LoansListView(
+                        loansViewModel: coordinator.loansViewModel,
+                        transactionsViewModel: viewModel,
+                        balanceCoordinator: coordinator.balanceCoordinator
+                    )
+                    .environment(timeFilterManager)
+                case .loanDetail(let accountId):
+                    LoanDetailView(
+                        loansViewModel: coordinator.loansViewModel,
+                        transactionsViewModel: viewModel,
+                        balanceCoordinator: coordinator.balanceCoordinator,
+                        accountId: accountId
+                    )
+                    .environment(timeFilterManager)
                 }
             }
             .navigationDestination(for: Account.self) { account in
@@ -204,6 +221,11 @@ struct ContentView: View {
                         SectionCardSkeleton()
                             .screenPadding()
                     }
+                loansNavigationLink
+                    .skeletonLoading(isLoading: !coordinator.isFullyInitialized) {
+                        SectionCardSkeleton()
+                            .screenPadding()
+                    }
                 categoriesSection
                     .skeletonLoading(isLoading: !coordinator.isFastPathDone) {
                         SectionCardSkeleton()
@@ -246,6 +268,17 @@ struct ContentView: View {
         NavigationLink(value: HomeDestination.subscriptions) {
             SubscriptionsCardView(
                 transactionStore: transactionStore,
+                transactionsViewModel: viewModel
+            )
+        }
+        .buttonStyle(.bounce)
+        .screenPadding()
+    }
+
+    private var loansNavigationLink: some View {
+        NavigationLink(value: HomeDestination.loans) {
+            LoansCardView(
+                loansViewModel: coordinator.loansViewModel,
                 transactionsViewModel: viewModel
             )
         }

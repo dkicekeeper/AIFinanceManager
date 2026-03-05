@@ -24,6 +24,7 @@ struct SettingsView: View {
     // ✨ Phase 9: Use TransactionStore instead of SubscriptionsViewModel
     let transactionStore: TransactionStore
     let depositsViewModel: DepositsViewModel
+    let loansViewModel: LoansViewModel
 
     // MARK: - State
 
@@ -165,6 +166,7 @@ struct SettingsView: View {
             AccountsManagementView(
                 accountsViewModel: accountsViewModel,
                 depositsViewModel: depositsViewModel,
+                loansViewModel: loansViewModel,
                 transactionsViewModel: transactionsViewModel
             )
         }
@@ -211,7 +213,8 @@ struct SettingsView: View {
             accountsViewModel: coordinator.accountsViewModel,
             categoriesViewModel: coordinator.categoriesViewModel,
             transactionStore: coordinator.transactionStore,
-            depositsViewModel: coordinator.depositsViewModel
+            depositsViewModel: coordinator.depositsViewModel,
+            loansViewModel: coordinator.loansViewModel
         )
     }
 }

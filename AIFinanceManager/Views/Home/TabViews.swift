@@ -46,7 +46,8 @@ struct SettingsTab: View {
                 accountsViewModel: coordinator.accountsViewModel,
                 categoriesViewModel: coordinator.categoriesViewModel,
                 transactionStore: coordinator.transactionStore,
-                depositsViewModel: coordinator.depositsViewModel
+                depositsViewModel: coordinator.depositsViewModel,
+                loansViewModel: coordinator.loansViewModel
             )
         }
     }

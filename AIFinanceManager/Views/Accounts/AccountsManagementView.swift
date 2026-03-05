@@ -11,15 +11,18 @@ import SwiftUI
 struct AccountsManagementView: View {
     let accountsViewModel: AccountsViewModel
     let depositsViewModel: DepositsViewModel
+    let loansViewModel: LoansViewModel
     let transactionsViewModel: TransactionsViewModel
     @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
     @Environment(\.dismiss) var dismiss
     @State private var showingAddAccount = false
     @State private var showingAddDeposit = false
+    @State private var showingAddLoan = false
     @State private var editingAccount: Account?
     @State private var accountToDelete: Account?
     @State private var showingAccountDeleteDialog = false
     @State private var convertingAccount: Account?
+    @State private var convertingToLoanAccount: Account?
     @State private var isReordering = false
 
     // Кешируем baseCurrency для оптимизации
@@ -87,12 +90,18 @@ struct AccountsManagementView: View {
                                 Label(String(localized: "button.edit", defaultValue: "Edit"), systemImage: "pencil")
                             }
 
-                            if !account.isDeposit {
+                            if !account.isDeposit && !account.isLoan {
                                 Button {
                                     HapticManager.light()
                                     convertingAccount = account
                                 } label: {
                                     Label(String(localized: "account.convertToDeposit", defaultValue: "Convert to Deposit"), systemImage: "banknote")
+                                }
+                                Button {
+                                    HapticManager.light()
+                                    convertingToLoanAccount = account
+                                } label: {
+                                    Label(String(localized: "account.convertToLoan", defaultValue: "Convert to Loan"), systemImage: "creditcard")
                                 }
                             }
 
@@ -137,6 +146,19 @@ struct AccountsManagementView: View {
                     }
                 }
             )
+            // Reconcile loan payments
+            loansViewModel.reconcileAllLoans(
+                allTransactions: transactionsViewModel.allTransactions,
+                onTransactionCreated: { transaction in
+                    Task {
+                        do {
+                            _ = try await transactionStore.add(transaction)
+                        } catch {
+                            logger.error("Failed to add loan transaction: \(error.localizedDescription)")
+                        }
+                    }
+                }
+            )
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -166,6 +188,12 @@ struct AccountsManagementView: View {
                             showingAddDeposit = true
                         }) {
                             Label(String(localized: "account.newDeposit"), systemImage: "banknote")
+                        }
+                        Button(action: {
+                            HapticManager.light()
+                            showingAddLoan = true
+                        }) {
+                            Label(String(localized: "account.newLoan", defaultValue: "New Loan"), systemImage: "creditcard")
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -214,6 +242,18 @@ struct AccountsManagementView: View {
                 }
             )
         }
+        .sheet(isPresented: $showingAddLoan) {
+            LoanEditView(
+                loansViewModel: loansViewModel,
+                account: nil,
+                onSave: { account in
+                    guard account.isLoan else { return }
+                    HapticManager.success()
+                    loansViewModel.addLoanAccount(account)
+                    showingAddLoan = false
+                }
+            )
+        }
         .sheet(item: $editingAccount) { account in
             Group {
                 if account.isDeposit {
@@ -224,6 +264,16 @@ struct AccountsManagementView: View {
                             HapticManager.success()
                             depositsViewModel.updateDeposit(updatedAccount)
                             transactionsViewModel.recalculateAccountBalances()
+                            editingAccount = nil
+                        }
+                    )
+                } else if account.isLoan {
+                    LoanEditView(
+                        loansViewModel: loansViewModel,
+                        account: account,
+                        onSave: { updatedAccount in
+                            HapticManager.success()
+                            loansViewModel.updateLoan(updatedAccount)
                             editingAccount = nil
                         }
                     )
@@ -263,6 +313,17 @@ struct AccountsManagementView: View {
                         }
                     )
                     convertingAccount = nil
+                }
+            )
+        }
+        .sheet(item: $convertingToLoanAccount) { account in
+            LoanEditView(
+                loansViewModel: loansViewModel,
+                account: account,
+                onSave: { updatedAccount in
+                    HapticManager.success()
+                    loansViewModel.addLoanAccount(updatedAccount)
+                    convertingToLoanAccount = nil
                 }
             )
         }
@@ -318,6 +379,7 @@ struct AccountsManagementView: View {
         AccountsManagementView(
             accountsViewModel: coordinator.accountsViewModel,
             depositsViewModel: coordinator.depositsViewModel,
+            loansViewModel: coordinator.loansViewModel,
             transactionsViewModel: coordinator.transactionsViewModel
         )
     }
@@ -331,6 +393,7 @@ struct AccountsManagementView: View {
         AccountsManagementView(
             accountsViewModel: coordinator.accountsViewModel,
             depositsViewModel: coordinator.depositsViewModel,
+            loansViewModel: coordinator.loansViewModel,
             transactionsViewModel: coordinator.transactionsViewModel
         )
     }

@@ -218,7 +218,43 @@ class AccountsViewModel {
     func deleteDeposit(_ account: Account) {
         deleteAccount(account)
     }
-    
+
+    // MARK: - Loan Operations
+
+    /// Add a fully-formed loan Account (preserves computed fields in LoanInfo)
+    func addLoanAccount(_ account: Account) {
+        guard account.isLoan, let loanInfo = account.loanInfo else { return }
+
+        transactionStore?.addAccount(account)
+
+        let balance = NSDecimalNumber(decimal: loanInfo.remainingPrincipal).doubleValue
+        if let coordinator = balanceCoordinator {
+            Task {
+                await coordinator.registerAccounts([account])
+                await coordinator.setInitialBalance(balance, for: account.id)
+            }
+        }
+    }
+
+    func updateLoan(_ account: Account) {
+        guard account.isLoan else { return }
+        if accounts.firstIndex(where: { $0.id == account.id }) != nil {
+            transactionStore?.updateAccount(account)
+
+            if let coordinator = balanceCoordinator, let loanInfo = account.loanInfo {
+                let balance = NSDecimalNumber(decimal: loanInfo.remainingPrincipal).doubleValue
+                Task {
+                    await coordinator.updateForAccount(account, newBalance: balance)
+                    await coordinator.setInitialBalance(balance, for: account.id)
+                }
+            }
+        }
+    }
+
+    func deleteLoan(_ account: Account) {
+        deleteAccount(account)
+    }
+
     // MARK: - Helper Methods
 
     /// Синхронизирует initialAccountBalances с BalanceCoordinator
@@ -257,9 +293,9 @@ class AccountsViewModel {
         return accounts.filter { $0.isDeposit }
     }
     
-    /// Получить все обычные счета (не депозиты)
+    /// Получить все обычные счета (не депозиты и не кредиты)
     var regularAccounts: [Account] {
-        return accounts.filter { !$0.isDeposit }
+        return accounts.filter { !$0.isDeposit && !$0.isLoan }
     }
     
     // MIGRATED: syncAccountBalances removed - now managed by BalanceCoordinator (Single Source of Truth)

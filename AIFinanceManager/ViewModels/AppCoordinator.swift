@@ -27,6 +27,7 @@ class AppCoordinator {
     @ObservationIgnored let categoriesViewModel: CategoriesViewModel
     // ✨ Phase 9: Removed SubscriptionsViewModel - recurring operations now in TransactionStore
     @ObservationIgnored let depositsViewModel: DepositsViewModel
+    @ObservationIgnored let loansViewModel: LoansViewModel
     @ObservationIgnored let transactionsViewModel: TransactionsViewModel
     @ObservationIgnored let settingsViewModel: SettingsViewModel  // NEW: Phase 1 - Settings refactoring
     @ObservationIgnored let insightsViewModel: InsightsViewModel  // NEW: Phase 17 - Financial Insights
@@ -113,6 +114,9 @@ class AppCoordinator {
         // 5. Deposits (depends on Accounts)
         self.depositsViewModel = DepositsViewModel(repository: self.repository, accountsViewModel: accountsViewModel)
 
+        // 6. Loans (depends on Accounts) — mirrors DepositsViewModel pattern
+        self.loansViewModel = LoansViewModel(repository: self.repository, accountsViewModel: accountsViewModel)
+
         // ✨ Phase 9: Removed RecurringTransactionCoordinator initialization - operations now in TransactionStore
 
         // 7. REFACTORED 2026-02-04: Setup SettingsViewModel (Phase 1)
@@ -191,6 +195,7 @@ class AppCoordinator {
         accountsViewModel.balanceCoordinator = balanceCoordinator
         transactionsViewModel.balanceCoordinator = balanceCoordinator
         depositsViewModel.balanceCoordinator = balanceCoordinator
+        loansViewModel.balanceCoordinator = balanceCoordinator
 
         // Phase 8: Inject TransactionStore into TransactionsViewModel
         // Completes migration to Single Source of Truth for transactions
