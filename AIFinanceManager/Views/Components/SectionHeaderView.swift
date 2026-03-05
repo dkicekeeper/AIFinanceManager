@@ -56,7 +56,7 @@ struct SectionHeaderView: View {
 
     private var defaultStyle: some View {
         Text(title)
-            .font(AppTypography.bodyLarge)
+            .font(AppTypography.bodyEmphasis)
             .foregroundStyle(AppColors.textPrimary)
     }
 

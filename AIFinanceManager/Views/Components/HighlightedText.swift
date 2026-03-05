@@ -50,7 +50,7 @@ struct HighlightedText: View {
 
             // Add bold weight for high confidence
             if entity.confidence >= 0.8 {
-                attributed[attributedRange].font = AppTypography.bodyLarge
+                attributed[attributedRange].font = AppTypography.bodyEmphasis
             }
         }
 

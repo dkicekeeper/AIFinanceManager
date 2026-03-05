@@ -66,7 +66,11 @@ struct BrandLogoView: View {
     
     private var fallbackIcon: some View {
         Image(systemName: "creditcard")
-            .fallbackIconStyle(size: size)
+            .font(.system(size: size * 0.6))
+            .foregroundStyle(.secondary)
+            .frame(width: size, height: size)
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
     }
     
     private func updateURL() {

@@ -48,7 +48,7 @@ struct AnimatedAmountInput: View {
                             .font(.custom("Inter", size: currentFontSize).weight(.bold))
                             .contentTransition(.numericText())
                             .foregroundStyle(isPlaceholder ? AppColors.textTertiary : color)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: displayAmount)
+                            .animation(AppAnimation.contentSpring, value: displayAmount)
                             .lineLimit(1)
                             .minimumScaleFactor(0.3)
 
@@ -169,7 +169,7 @@ struct AnimatedTitleInput: View {
                         .font(font)
                         .foregroundStyle(color)
                         .contentTransition(.interpolate)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: text)
+                        .animation(AppAnimation.contentSpring, value: text)
 
                     if showCursor {
                         BlinkingCursor(height: AppSize.cursorHeightLarge)
@@ -267,7 +267,7 @@ struct AnimatedTitleInput: View {
                 AnimatedAmountInput(amount: $amount)
 
                 Text("KZT")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(AppColors.textSecondary)
             }
             .padding(AppSpacing.xl)

@@ -316,7 +316,9 @@ struct SubscriptionDetailView: View {
                         }
                     }
                     .futureTransactionStyle(isFuture: isPlanned)
-                    .transactionRowStyle(isPlanned: isPlanned)
+                    .padding(AppSpacing.sm)
+                    .background(isPlanned ? AppColors.planned.opacity(0.1) : AppColors.secondaryBackground)
+                    .clipShape(.rect(cornerRadius: AppRadius.sm))
                 }
             }
         }

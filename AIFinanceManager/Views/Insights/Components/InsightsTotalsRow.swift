@@ -61,14 +61,14 @@ struct InsightsTotalsRow: View {
 
 #Preview("Positive") {
     InsightsTotalsRow(income: 530_000, expenses: 320_000, netFlow: 210_000, currency: "KZT")
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
         .screenPadding()
         .padding(.vertical)
 }
 
 #Preview("Negative net flow") {
     InsightsTotalsRow(income: 280_000, expenses: 340_000, netFlow: -60_000, currency: "KZT")
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
         .screenPadding()
         .padding(.vertical)
 }

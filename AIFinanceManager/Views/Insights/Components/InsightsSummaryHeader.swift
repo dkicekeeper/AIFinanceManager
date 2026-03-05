@@ -36,7 +36,7 @@ struct InsightsSummaryHeader: View {
             }
 
             // Mini trend chart.
-            // Using cardBackground (not glassCardStyle) so clipShape doesn't cut Charts layers.
+            // Using cardBackground (not cardStyle) so clipShape doesn't cut Charts layers.
 //            if periodDataPoints.count >= 2 {
 //                PeriodIncomeExpenseChart(
 //                    dataPoints: periodDataPoints,
@@ -46,7 +46,7 @@ struct InsightsSummaryHeader: View {
 //                )
 //            }
         }
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
         .onAppear {
             Self.logger.debug("📊 [SummaryHeader] RENDER — income=\(String(format: "%.0f", totalIncome), privacy: .public), expenses=\(String(format: "%.0f", totalExpenses), privacy: .public), net=\(String(format: "%.0f", netFlow), privacy: .public) \(currency, privacy: .public), pts=\(periodDataPoints.count)")
         }

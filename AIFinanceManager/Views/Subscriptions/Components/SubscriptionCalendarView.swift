@@ -60,7 +60,7 @@ struct SubscriptionCalendarView: View {
             }
             .frame(height: calculateCalendarHeight())
         }
-        .glassCardStyle()
+        .cardStyle()
         .task {
             await calculateAllMonthTotals()
         }
@@ -95,7 +95,7 @@ struct SubscriptionCalendarView: View {
                 FormattedAmountText(
                     amount: NSDecimalNumber(decimal: total).doubleValue,
                     currency: baseCurrency,
-                    fontSize: AppTypography.bodyLarge,
+                    fontSize: AppTypography.bodyEmphasis,
                     color: AppColors.textPrimary
                 )
             }
@@ -163,7 +163,7 @@ struct SubscriptionCalendarView: View {
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: occurrences.count)
+                .animation(AppAnimation.contentSpring, value: occurrences.count)
             } else {
                 Spacer().frame(height: AppIconSize.md)
             }

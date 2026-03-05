@@ -102,42 +102,29 @@ enum AppColors {
 
 /// Цвета для категорий транзакций — hash-based assignment из палитры
 struct CategoryColors {
-    static let palette: [Color] = [
-        .blue, .cyan, .pink, .orange, .yellow,
-        .green, .teal, .indigo, .purple, .mint,
-        .red, .brown, Color(red: 0.35, green: 0.55, blue: 0.85), Color(red: 0.85, green: 0.45, blue: 0.55)
-    ]
+    /// Pre-computed color palette (avoids hex parsing on every call)
+    private static let palette: [Color] = {
+        let hexValues: [UInt64] = [
+            0x3b82f6, 0x8b5cf6, 0xec4899, 0xf97316, 0xeab308,
+            0x22c55e, 0x14b8a6, 0x06b6d4, 0x6366f1, 0xd946ef,
+            0xf43f5e, 0xa855f7, 0x10b981, 0xf59e0b
+        ]
+        return hexValues.map { rgb in
+            Color(
+                red:   Double((rgb & 0xFF0000) >> 16) / 255.0,
+                green: Double((rgb & 0x00FF00) >> 8)  / 255.0,
+                blue:  Double( rgb & 0x0000FF)         / 255.0
+            )
+        }
+    }()
 
-    /// Возвращает цвет из палитры по хэшу имени категории
-    static func color(for category: String, opacity: Double = 1.0) -> Color {
-        let index = abs(category.hashValue) % palette.count
-        return palette[index].opacity(opacity)
-    }
-
-    /// Возвращает цвет по hex-палитре с учётом пользовательских категорий
+    /// Возвращает цвет по палитре с учётом пользовательских категорий
     static func hexColor(for category: String, opacity: Double = 1.0, customCategories: [CustomCategory] = []) -> Color {
         if let custom = customCategories.first(where: { $0.name.lowercased() == category.lowercased() }) {
             return custom.color.opacity(opacity)
         }
 
-        let colors: [String] = [
-            "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#eab308",
-            "#22c55e", "#14b8a6", "#06b6d4", "#6366f1", "#d946ef",
-            "#f43f5e", "#a855f7", "#10b981", "#f59e0b"
-        ]
-
-        let hex = colors[abs(category.hashValue) % colors.count]
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "#", with: "")
-
-        var rgb: UInt64 = 0
-        Scanner(string: hexSanitized).scanHexInt64(&rgb)
-
-        return Color(
-            red:   Double((rgb & 0xFF0000) >> 16) / 255.0,
-            green: Double((rgb & 0x00FF00) >> 8)  / 255.0,
-            blue:  Double( rgb & 0x0000FF)         / 255.0,
-            opacity: opacity
-        )
+        let index = abs(category.hashValue) % palette.count
+        return palette[index].opacity(opacity)
     }
 }

@@ -142,7 +142,7 @@ struct PDFImportCoordinator: View {
             }
         }
         .padding(AppSpacing.md)
-        .glassCardStyle()
+        .cardStyle()
     }
 
     // MARK: - PDF Analysis

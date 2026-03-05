@@ -2,7 +2,7 @@
 //  AppButton.swift
 //  AIFinanceManager
 //
-//  Консистентные стили кнопок
+//  Consistent button styles
 //
 
 import SwiftUI
@@ -23,7 +23,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let effectivelyDisabled = isDisabled || !isEnabled
         configuration.label
-            .font(AppTypography.bodyLarge)
+            .font(AppTypography.bodyEmphasis)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSpacing.md)
@@ -51,51 +51,6 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Tertiary Button - неакцентированное действие (текстовая кнопка)
-/// Используй для: Links, "See all", optional actions
-struct TertiaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(AppTypography.body)
-            .foregroundStyle(AppColors.accent)
-            .opacity(configuration.isPressed ? 0.6 : 1.0)
-            .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
-    }
-}
-
-/// Destructive Button - опасное действие
-/// Используй для: Delete, Reset, Remove
-struct DestructiveButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(AppTypography.bodyLarge)
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, AppSpacing.md)
-            .background(AppColors.destructive)
-            .clipShape(.rect(cornerRadius: AppRadius.md))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
-    }
-}
-
-// MARK: - Date Buttons Style (special case)
-
-/// Стиль для кнопок выбора даты (Вчера/Сегодня/Календарь)
-/// Это специализированный стиль для DateButtonsView
-struct DateButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(AppTypography.body)
-            .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, AppSpacing.md)
-            .background(AppColors.secondaryBackground)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
-    }
-}
-
 // MARK: - Convenience Extensions
 
 extension View {
@@ -110,20 +65,5 @@ extension View {
     /// Применяет secondary button style
     func secondaryButton() -> some View {
         self.buttonStyle(SecondaryButtonStyle())
-    }
-
-    /// Применяет tertiary button style
-    func tertiaryButton() -> some View {
-        self.buttonStyle(TertiaryButtonStyle())
-    }
-
-    /// Применяет destructive button style
-    func destructiveButton() -> some View {
-        self.buttonStyle(DestructiveButtonStyle())
-    }
-
-    /// Применяет date button style
-    func dateButton() -> some View {
-        self.buttonStyle(DateButtonStyle())
     }
 }

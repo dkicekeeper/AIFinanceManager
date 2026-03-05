@@ -252,7 +252,7 @@ struct RecordingIndicatorView: View {
                 )
 
             Text(String(localized: "voice.recording"))
-                .font(AppTypography.bodyLarge)
+                .font(AppTypography.bodyEmphasis)
                 .foregroundStyle(AppColors.destructive)
         }
         .onAppear {

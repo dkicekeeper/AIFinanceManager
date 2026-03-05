@@ -79,8 +79,8 @@ enum AppRadius {
     /// 12pt - Большие карточки
     static let lg: CGFloat = 12
 
-    /// 20pt - Pills и filter chips
-    static let pill: CGFloat = 20
+    /// 20pt - Large radius (cards, pills, filter chips)
+    static let xl: CGFloat = 20
 
     /// Бесконечность - Круги (category icons, avatars)
     static let circle: CGFloat = .infinity

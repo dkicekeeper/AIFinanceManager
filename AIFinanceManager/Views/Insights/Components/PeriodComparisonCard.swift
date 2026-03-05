@@ -84,7 +84,7 @@ struct PeriodComparisonCard: View {
                 )
             }
         }
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
     }
 }
 

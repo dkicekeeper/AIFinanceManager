@@ -25,6 +25,14 @@ enum AppAnimation {
     /// Spring animation для bounce эффекта (iOS 16+ style)
     static let spring = Animation.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0)
 
+    /// Snappy content spring — for content transitions (amount inputs, list changes, toggles).
+    /// response 0.3 + damping 0.7 = quick settle with minimal overshoot.
+    static let contentSpring = Animation.spring(response: 0.3, dampingFraction: 0.7)
+
+    /// Gentle spring — for smooth value animations (amount display, error messages, state changes).
+    /// response 0.4 + damping 0.8 = soft deceleration, no visible overshoot.
+    static let gentleSpring = Animation.spring(response: 0.4, dampingFraction: 0.8)
+
     // MARK: - Skeleton Loading
 
     /// Shimmer sweep duration (left-to-right single pass)

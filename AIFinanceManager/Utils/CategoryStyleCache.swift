@@ -111,11 +111,11 @@ final class CategoryStyleCache {
         // Special case: income
         if type == .income {
             return CategoryStyleData(
-                coinColor: Color.green.opacity(0.3),
-                coinBorderColor: Color.green.opacity(0.6),
-                iconColor: Color.green,
-                primaryColor: Color.green,
-                lightBackgroundColor: Color.green.opacity(0.15),
+                coinColor: AppColors.income.opacity(0.3),
+                coinBorderColor: AppColors.income.opacity(0.6),
+                iconColor: AppColors.income,
+                primaryColor: AppColors.income,
+                lightBackgroundColor: AppColors.income.opacity(0.15),
                 iconName: CategoryIcon.iconName(for: category, type: type, customCategories: customCategories)
             )
         }

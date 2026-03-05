@@ -133,7 +133,7 @@ struct EditTransactionView: View {
                             placeholder: String(localized: "transactionForm.descriptionPlaceholder")
                         )
                     }
-                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: coordinator.errorMessage)
+                    .animation(AppAnimation.gentleSpring, value: coordinator.errorMessage)
                 }
             }
             .navigationTitle(String(localized: "transactionForm.editTransaction"))

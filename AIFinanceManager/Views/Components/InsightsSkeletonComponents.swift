@@ -49,7 +49,7 @@ struct InsightsFilterCarouselSkeleton: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: AppSpacing.sm) {
                 ForEach(0..<4, id: \.self) { _ in
-                    SkeletonView(width: 70, height: 30, cornerRadius: AppRadius.pill)
+                    SkeletonView(width: 70, height: 30, cornerRadius: AppRadius.xl)
                 }
             }
             .padding(.horizontal, AppSpacing.lg)

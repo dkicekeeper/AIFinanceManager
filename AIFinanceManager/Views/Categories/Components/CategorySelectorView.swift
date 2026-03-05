@@ -42,7 +42,7 @@ struct CategorySelectorView: View {
             if categories.isEmpty {
                 if let message = emptyStateMessage {
                     Text(message)
-                        .font(AppTypography.bodyLarge)
+                        .font(AppTypography.bodyEmphasis)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(AppSpacing.lg)
