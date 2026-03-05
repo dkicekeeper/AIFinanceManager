@@ -72,7 +72,7 @@ struct AmountInputView: View {
 
             // Converted amount in base currency
             convertedAmountView
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: shouldShowConversion)
+                .animation(AppAnimation.gentleSpring, value: shouldShowConversion)
 
             // Hidden TextField captures keyboard input
             TextField("", text: $amount)

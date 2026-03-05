@@ -36,9 +36,9 @@ struct AccountRadioButton: View {
                     )
                 }
             }
-            .glassCardStyle()
+            .cardStyle()
             .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.pill, style: .continuous)
+                RoundedRectangle(cornerRadius: AppRadius.xl, style: .continuous)
                     .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: AppSize.selectedBorderWidth)
             )
         }

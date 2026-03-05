@@ -32,7 +32,7 @@ struct EmptyAccountsPrompt: View {
                 )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .glassCardStyle(radius: AppRadius.pill)
+            .cardStyle(radius: AppRadius.xl)
         }
         .buttonStyle(.bounce)
         .screenPadding()

@@ -286,51 +286,13 @@ struct TransactionCard: View {
         TransactionDisplayHelper.amountPrefix(for: transaction.type)
     }
     
-    @ViewBuilder
     private var transferAmountView: some View {
-        // sourceAccount / targetAccount are stored properties — pre-resolved at the call site.
-        if let source = sourceAccount {
-            // Используем валюту транзакции (то, что ввёл пользователь), не валюту счёта
-            let sourceCurrency = transaction.currency.isEmpty ? source.currency : transaction.currency
-            let sourceAmount = transaction.amount
-
-            if let target = targetAccount {
-                let targetCurrency = transaction.targetCurrency ?? target.currency
-                // Сумма получателя — из targetAmount, записанного при создании
-                let targetAmount = transaction.targetAmount ?? transaction.convertedAmount ?? transaction.amount
-
-                VStack(alignment: .trailing, spacing: AppSpacing.xs) {
-                    FormattedAmountView(
-                        amount: sourceAmount,
-                        currency: sourceCurrency,
-                        prefix: "-",
-                        color: .primary
-                    )
-
-                    FormattedAmountView(
-                        amount: targetAmount,
-                        currency: targetCurrency,
-                        prefix: "+",
-                        color: .green
-                    )
-                }
-            } else {
-                FormattedAmountView(
-                    amount: sourceAmount,
-                    currency: sourceCurrency,
-                    prefix: "-",
-                    color: .primary
-                )
-            }
-        } else {
-            // Если счета источника нет, показываем основную сумму
-            FormattedAmountView(
-                amount: transaction.amount,
-                currency: transaction.currency,
-                prefix: "",
-                color: amountColor
-            )
-        }
+        TransferAmountView(
+            transaction: transaction,
+            sourceAccount: sourceAccount,
+            targetAccount: targetAccount,
+            depositAccountId: nil
+        )
     }
 }
 

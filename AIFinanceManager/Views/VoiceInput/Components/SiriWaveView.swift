@@ -131,7 +131,7 @@ struct SiriWaveRecordingView: View {
             VStack {
                 Spacer()
                 Text(String(localized: "voice.recording"))
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(AppColors.accent)
                     .opacity(isAnimating ? 0.5 : 1.0)
                     .animation(
@@ -154,7 +154,7 @@ struct SiriWaveRecordingView: View {
 #Preview("Single Wave") {
     VStack(spacing: 40) {
         Text("Single Wave")
-            .font(AppTypography.bodyLarge)
+            .font(AppTypography.bodyEmphasis)
 
         SiriWaveView(
             amplitude: 30,
@@ -169,7 +169,7 @@ struct SiriWaveRecordingView: View {
 #Preview("Recording Indicator") {
     VStack(spacing: 40) {
         Text("Siri-like Recording")
-            .font(AppTypography.bodyLarge)
+            .font(AppTypography.bodyEmphasis)
 
         SiriWaveRecordingView()
             .padding()

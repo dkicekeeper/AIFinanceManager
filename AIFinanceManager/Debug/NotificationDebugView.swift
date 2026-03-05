@@ -49,7 +49,7 @@ struct NotificationDebugView: View {
                         ForEach(pendingNotifications, id: \.identifier) { request in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(request.content.title)
-                                    .font(AppTypography.bodyLarge)
+                                    .font(AppTypography.bodyEmphasis)
                                 Text(request.content.body)
                                     .font(AppTypography.caption)
                                     .foregroundStyle(.secondary)

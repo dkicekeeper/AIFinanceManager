@@ -22,7 +22,7 @@ struct SubscriptionCard: View {
             // Info
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 Text(subscription.description)
-                    .font(AppTypography.bodyLarge.weight(.semibold))
+                    .font(AppTypography.bodyEmphasis.weight(.semibold))
 
                 FormattedAmountText(
                     amount: NSDecimalNumber(decimal: subscription.amount).doubleValue,
@@ -43,7 +43,7 @@ struct SubscriptionCard: View {
             // Status indicator
             statusIndicator
         }
-        .glassCardStyle()
+        .cardStyle()
     }
     
     @ViewBuilder

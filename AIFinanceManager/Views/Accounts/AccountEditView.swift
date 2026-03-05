@@ -30,7 +30,7 @@ struct AccountEditView: View {
         EditSheetContainer(
             title: account == nil ? String(localized: "modal.newAccount") : String(localized: "modal.editAccount"),
             isSaveDisabled: name.isEmpty,
-            useScrollView: true,
+            wrapInForm: false,
             onSave: saveAccount,
             onCancel: onCancel
         ) {

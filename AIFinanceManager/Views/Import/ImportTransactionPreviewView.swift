@@ -198,7 +198,7 @@ struct ImportTransactionPreviewRow: View {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(isSelected ? AppColors.accent : AppColors.textSecondary)
                         .font(AppTypography.h4)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                        .animation(AppAnimation.spring, value: isSelected)
                 }
                 .accessibilityLabel(isSelected
                     ? String(localized: "button.select")

@@ -19,7 +19,7 @@ struct CategoryStyleHelper {
     /// Цвет фона "монеты" категории (30% opacity)
     var coinColor: Color {
         if type == .income {
-            return Color.green.opacity(0.3)
+            return AppColors.income.opacity(0.3)
         }
         return CategoryColors.hexColor(for: category, opacity: 0.3, customCategories: customCategories)
     }
@@ -27,7 +27,7 @@ struct CategoryStyleHelper {
     /// Цвет границы "монеты" категории (60% opacity)
     var coinBorderColor: Color {
         if type == .income {
-            return Color.green.opacity(0.6)
+            return AppColors.income.opacity(0.6)
         }
         return CategoryColors.hexColor(for: category, opacity: 0.6, customCategories: customCategories)
     }
@@ -35,7 +35,7 @@ struct CategoryStyleHelper {
     /// Цвет иконки категории (100% opacity)
     var iconColor: Color {
         if type == .income {
-            return Color.green
+            return AppColors.income
         }
         return CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: customCategories)
     }
@@ -43,7 +43,7 @@ struct CategoryStyleHelper {
     /// Основной цвет категории (100% opacity) - для текста и акцентов
     var primaryColor: Color {
         if type == .income {
-            return Color.green
+            return AppColors.income
         }
         return CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: customCategories)
     }
@@ -51,7 +51,7 @@ struct CategoryStyleHelper {
     /// Светлый фоновый цвет (15% opacity) - для card backgrounds
     var lightBackgroundColor: Color {
         if type == .income {
-            return Color.green.opacity(0.15)
+            return AppColors.income.opacity(0.15)
         }
         return CategoryColors.hexColor(for: category, opacity: 0.15, customCategories: customCategories)
     }
@@ -79,7 +79,7 @@ struct CategoryStyleHelper {
     /// Быстрый доступ к цвету категории без создания helper
     static func color(for category: String, type: TransactionType, opacity: Double = 1.0, customCategories: [CustomCategory]) -> Color {
         if type == .income {
-            return Color.green.opacity(opacity)
+            return AppColors.income.opacity(opacity)
         }
         return CategoryColors.hexColor(for: category, opacity: opacity, customCategories: customCategories)
     }

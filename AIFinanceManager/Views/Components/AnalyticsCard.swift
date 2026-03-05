@@ -46,7 +46,7 @@ struct AnalyticsCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
     }
 }
 

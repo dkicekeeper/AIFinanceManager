@@ -250,7 +250,7 @@ struct RowConfiguration {
         verticalPadding: AppSpacing.lg,
         horizontalPadding: AppSpacing.lg,
         backgroundColor: AppColors.cardBackground,
-        cornerRadius: AppRadius.pill
+        cornerRadius: AppRadius.xl
     )
 }
 
@@ -471,11 +471,11 @@ extension UniversalRow where Content == Text, Trailing == EmptyView {
         ) {
             HStack {
                 Text("Category")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text("Food")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
             }
         } trailing: {
             EmptyView()
@@ -487,11 +487,11 @@ extension UniversalRow where Content == Text, Trailing == EmptyView {
         ) {
             HStack {
                 Text("Frequency")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text("Monthly")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
             }
         } trailing: {
             EmptyView()
@@ -500,11 +500,11 @@ extension UniversalRow where Content == Text, Trailing == EmptyView {
         UniversalRow(config: .info) {
             HStack {
                 Text("No Icon")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text("Value")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
             }
         } trailing: {
             EmptyView()
@@ -546,7 +546,7 @@ extension UniversalRow where Content == Text, Trailing == EmptyView {
             }
         } trailing: {
             Text("$9.99")
-                .font(AppTypography.bodyLarge)
+                .font(AppTypography.bodyEmphasis)
                 .fontWeight(.semibold)
         }
     }

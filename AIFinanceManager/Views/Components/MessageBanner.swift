@@ -46,7 +46,7 @@ struct MessageBanner: View {
         Group {
             if #available(iOS 26, *) {
                 bannerContent
-                    .clipShape(.rect(cornerRadius: AppRadius.pill))
+                    .clipShape(.rect(cornerRadius: AppRadius.xl))
                     .glassEffect(.regular
                         .tint(type.tintColor.opacity(0.15))
                         .interactive())
@@ -54,7 +54,7 @@ struct MessageBanner: View {
                 bannerContent
                     .background(
                         type.tintColor.opacity(0.15),
-                        in: RoundedRectangle(cornerRadius: AppRadius.pill)
+                        in: RoundedRectangle(cornerRadius: AppRadius.xl)
                     )
             }
         }

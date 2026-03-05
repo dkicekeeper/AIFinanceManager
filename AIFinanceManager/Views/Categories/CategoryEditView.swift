@@ -43,7 +43,7 @@ struct CategoryEditView: View {
         EditSheetContainer(
             title: category == nil ? String(localized: "modal.newCategory") : String(localized: "modal.editCategory"),
             isSaveDisabled: name.isEmpty,
-            useScrollView: true,
+            wrapInForm: false,
             onSave: saveCategory,
             onCancel: onCancel
         ) {

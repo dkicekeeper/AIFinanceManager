@@ -35,7 +35,7 @@ struct AccountCard: View {
                     )
                 }
             }
-            .glassCardStyle()
+            .cardStyle()
             .glassEffectID("account-card-\(account.id)", in: namespace)
         }
         .buttonStyle(.bounce)

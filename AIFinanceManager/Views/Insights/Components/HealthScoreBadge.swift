@@ -17,7 +17,7 @@ struct HealthScoreBadge: View {
         HStack(spacing: AppSpacing.md) {
             Image(systemName: "heart.text.square.fill")
                 .foregroundStyle(score.gradeColor)
-                .font(AppTypography.bodyLarge)
+                .font(AppTypography.bodyEmphasis)
 
             Text(String(localized: "insights.healthScore"))
                 .font(AppTypography.body)
@@ -47,7 +47,7 @@ struct HealthScoreBadge: View {
         HealthScoreBadge(score: .mockGood())
         HealthScoreBadge(score: .mockNeedsAttention())
     }
-    .glassCardStyle(radius: AppRadius.pill)
+    .cardStyle(radius: AppRadius.xl)
     .screenPadding()
     .padding(.vertical)
 }

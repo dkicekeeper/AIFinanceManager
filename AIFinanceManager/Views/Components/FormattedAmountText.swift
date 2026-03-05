@@ -77,7 +77,7 @@ struct FormattedAmountText: View {
                 .fontWeight(fontWeight)
                 .foregroundStyle(color)
                 .contentTransition(.numericText())
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: amount)
+                .animation(AppAnimation.gentleSpring, value: amount)
 
             if shouldShowDecimal {
                 Text(AmountDisplayConfiguration.shared.decimalSeparator + parts.decimal)
@@ -86,7 +86,7 @@ struct FormattedAmountText: View {
                     .foregroundStyle(color)
                     .opacity(decimalOpacity)
                     .contentTransition(.numericText())
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: amount)
+                    .animation(AppAnimation.gentleSpring, value: amount)
             }
 
             Text(" " + parts.symbol)

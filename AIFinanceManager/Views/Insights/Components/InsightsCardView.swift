@@ -53,7 +53,7 @@ struct InsightsCardView<BottomChart: View>: View {
             }
 
             Text(insight.subtitle)
-                .font(AppTypography.bodyLarge)
+                .font(AppTypography.bodyEmphasis)
                 .foregroundStyle(AppColors.textPrimary)
                 .lineLimit(1)
 
@@ -70,7 +70,7 @@ struct InsightsCardView<BottomChart: View>: View {
                 }
                 if let unit = insight.metric.unit {
                     Text(unit)
-                        .font(AppTypography.bodyLarge)
+                        .font(AppTypography.bodyEmphasis)
                         .foregroundStyle(AppColors.textSecondary)
                 }
             }
@@ -81,7 +81,7 @@ struct InsightsCardView<BottomChart: View>: View {
             }
         }
 //        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
     }
 
     // MARK: - Mini Chart

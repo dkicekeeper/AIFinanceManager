@@ -253,7 +253,7 @@ struct StatRow: View {
                 .font(AppTypography.body)
             Spacer()
             Text(value)
-                .font(AppTypography.bodyLarge)
+                .font(AppTypography.bodyEmphasis)
                 .fontWeight(.semibold)
                 .foregroundStyle(color)
         }

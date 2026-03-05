@@ -292,7 +292,7 @@ struct DepositDetailView: View {
                 )
             }
         }
-        .glassCardStyle()
+        .cardStyle()
     }
 
     private var actionsSection: some View {

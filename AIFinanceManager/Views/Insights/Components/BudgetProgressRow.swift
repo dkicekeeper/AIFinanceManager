@@ -65,7 +65,7 @@ struct BudgetProgressRow: View {
                 }
             }
         }
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
     }
 }
 

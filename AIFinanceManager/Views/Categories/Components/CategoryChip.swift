@@ -43,7 +43,7 @@ struct CategoryChip: View {
         Button(action: onTap) {
             VStack(spacing: AppSpacing.sm) {
                 Text(category)
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(AppColors.textPrimary)
                     .lineLimit(1)
                 ZStack {

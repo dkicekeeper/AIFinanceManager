@@ -65,7 +65,7 @@ struct InsightsSummaryDetailView: View {
             netFlow: netFlow,
             currency: currency
         )
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
         .screenPadding()
     }
 
@@ -83,7 +83,7 @@ struct InsightsSummaryDetailView: View {
                 mode: .full
             )
         }
-//        .cardBackground(radius: AppRadius.pill)
+//        .cardBackground(radius: AppRadius.xl)
 //        .screenPadding()
     }
 

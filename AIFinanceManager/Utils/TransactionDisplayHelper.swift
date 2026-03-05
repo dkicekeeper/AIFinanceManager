@@ -3,7 +3,7 @@
 //  AIFinanceManager
 //
 //  Phase 16 (2026-02-17): Centralized display logic for transactions.
-//  Eliminates ~80 lines of duplication between TransactionCard and TransactionRowContent.
+//  Eliminates duplication between TransactionCard and other transaction display components.
 //
 //  Usage:
 //  ```swift
@@ -16,7 +16,7 @@
 import SwiftUI
 
 /// Centralized display helpers for transaction UI rendering.
-/// Shared between TransactionCard, TransactionRowContent, and any other transaction display components.
+/// Shared between TransactionCard, TransferAmountView, and any other transaction display components.
 enum TransactionDisplayHelper {
 
     // MARK: - Amount Color

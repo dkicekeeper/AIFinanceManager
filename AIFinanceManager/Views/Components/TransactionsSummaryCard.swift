@@ -38,8 +38,8 @@ struct TransactionsSummaryCard: View {
             }
         }
         .frame(minHeight: AppSize.analyticsCardHeight)
-        .animation(.spring(response: 0.4), value: isEmpty)
-        .animation(.spring(response: 0.4), value: summary != nil)
+        .animation(AppAnimation.gentleSpring, value: isEmpty)
+        .animation(AppAnimation.gentleSpring, value: summary != nil)
     }
 
     // MARK: - Empty State
@@ -57,7 +57,7 @@ struct TransactionsSummaryCard: View {
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
     }
 
     // MARK: - Loaded State
@@ -80,7 +80,7 @@ struct TransactionsSummaryCard: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: AppSize.analyticsCardHeight)
-        .glassCardStyle(radius: AppRadius.pill)
+        .cardStyle(radius: AppRadius.xl)
         .accessibilityElement(children: .combine)
     }
 }

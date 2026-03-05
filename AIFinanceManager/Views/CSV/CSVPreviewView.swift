@@ -61,14 +61,14 @@ struct CSVPreviewView: View {
                 Text(String(localized: "csvImport.preview.columns"))
                 Spacer()
                 Text("\(csvFile.headers.count)")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
             }
 
             HStack {
                 Text(String(localized: "csvImport.preview.rows"))
                 Spacer()
                 Text("\(csvFile.rowCount)")
-                    .font(AppTypography.bodyLarge)
+                    .font(AppTypography.bodyEmphasis)
             }
         }
         .cardContentPadding()

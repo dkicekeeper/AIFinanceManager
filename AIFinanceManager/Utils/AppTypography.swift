@@ -47,12 +47,7 @@ enum AppTypography {
     /// Body Emphasis — акцентированный body (18pt medium).
     /// Отличается от `body` ВЕСОМ (medium vs regular), не размером.
     /// Используй для: названия строк, лейблы кнопок, section subheaders.
-    /// Канонический идентификатор. `bodyLarge` — deprecated алиас для обратной совместимости.
     static let bodyEmphasis = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.medium)
-
-    /// Deprecated: используй `bodyEmphasis`. Сохранён для обратной совместимости (30+ call sites).
-    /// ⚠️ Не создавай новый код с `bodyLarge` — он вводит в заблуждение (18pt = тот же размер что `body`).
-    static let bodyLarge = bodyEmphasis
 
     /// Body - Default text (18pt regular, scales with body)
     static let body = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.regular)

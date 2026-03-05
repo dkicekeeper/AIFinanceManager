@@ -415,13 +415,12 @@ Filter chip in `.button(onTap)` or `.menu(menuContent:)` mode. Styling: `.filter
 Generic row with `IconConfig` leading icons. Presets: `.standard`, `.settings`, `.selectable`, `.info`, `.card`. Modifiers: `.navigationRow {}`, `.actionRow(role:) {}`, `.selectableRow(isSelected:) {}`. `IconConfig`: `.sfSymbol(name, color)`, `.bankLogo(logo)`, `.brandService(name)`, `.custom(source, style)`.
 
 **Design system files** (`Utils/`):
-- `AppColors.swift` — semantic colors + `CategoryColors` palette
-- `AppSpacing.swift` — `AppSpacing`, `AppRadius`, `AppIconSize`, `AppSize`
-- `AppTypography.swift` — `AppTypography` (Inter variable font)
-- `AppShadow.swift` — `AppShadow` enum, `Shadow` struct
-- `AppAnimation.swift` — `AppAnimation` constants, `BounceButtonStyle`
-- `AppModifiers.swift` — all View style extensions (`cardStyle`, `filterChipStyle`, `transactionRowStyle`, `futureTransactionStyle`, etc.) + `TransactionRowVariant`
-- `AppButton.swift` — button component variants
+- `AppColors.swift` — semantic colors + `CategoryColors` palette (pre-computed hex→Color)
+- `AppSpacing.swift` — `AppSpacing`, `AppRadius` (xs/compact/sm/md/lg/xl/circle), `AppIconSize`, `AppSize`
+- `AppTypography.swift` — `AppTypography` (Inter variable font). `bodyEmphasis` for emphasized body text (18pt medium)
+- `AppAnimation.swift` — `AppAnimation` constants (`contentSpring`, `gentleSpring`, `spring`), `BounceButtonStyle`
+- `AppModifiers.swift` — View style extensions (`cardStyle`, `filterChipStyle`, `futureTransactionStyle`, `chartAppear`)
+- `AppButton.swift` — `PrimaryButtonStyle`, `SecondaryButtonStyle`
 - `AppEmptyState.swift` — empty state view component
 
 ## Testing
@@ -520,6 +519,6 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 
 ---
 
-**Last Updated**: 2026-03-04
+**Last Updated**: 2026-03-05
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns enforced via `SWIFT_STRICT_CONCURRENCY = targeted`
