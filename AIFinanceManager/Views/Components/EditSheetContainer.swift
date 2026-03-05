@@ -30,8 +30,9 @@ struct EditSheetContainer<Content: View>: View {
     let title: String
     /// When `true`, the save (checkmark) button is disabled
     let isSaveDisabled: Bool
-    /// Use ScrollView instead of Form for white background (hero-style views)
-    let useScrollView: Bool
+    /// When `true` (default), content is wrapped in `Form {}`.
+    /// Pass `false` for hero-style views that supply their own `ScrollView`.
+    let wrapInForm: Bool
     /// Called when the user taps the checkmark button
     let onSave: () -> Void
     /// Called when the user taps the xmark button
@@ -42,14 +43,14 @@ struct EditSheetContainer<Content: View>: View {
     init(
         title: String,
         isSaveDisabled: Bool,
-        useScrollView: Bool = false,
+        wrapInForm: Bool = true,
         onSave: @escaping () -> Void,
         onCancel: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.title = title
         self.isSaveDisabled = isSaveDisabled
-        self.useScrollView = useScrollView
+        self.wrapInForm = wrapInForm
         self.onSave = onSave
         self.onCancel = onCancel
         self.content = content
@@ -57,14 +58,7 @@ struct EditSheetContainer<Content: View>: View {
 
     var body: some View {
         NavigationStack {
-            if useScrollView {
-                content()
-                    .navigationTitle(title)
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        toolbarContent
-                    }
-            } else {
+            if wrapInForm {
                 Form {
                     content()
                 }
@@ -73,6 +67,13 @@ struct EditSheetContainer<Content: View>: View {
                 .toolbar {
                     toolbarContent
                 }
+            } else {
+                content()
+                    .navigationTitle(title)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        toolbarContent
+                    }
             }
         }
     }

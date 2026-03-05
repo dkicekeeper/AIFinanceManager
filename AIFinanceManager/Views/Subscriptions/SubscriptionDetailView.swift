@@ -45,7 +45,7 @@ struct SubscriptionDetailView: View {
                         .screenPadding()
                 }
             }
-            .padding(.vertical, AppSpacing.md)
+//            .padding(.vertical, AppSpacing.md)
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -240,24 +240,95 @@ struct SubscriptionDetailView: View {
 
             VStack(spacing: AppSpacing.sm) {
                 ForEach(cachedTransactions) { transaction in
-                    // A transaction is "planned" (future/upcoming) when its date is
-                    // strictly after today — consistent with TransactionCard badge logic.
                     let isPlanned = TransactionDisplayHelper.isFutureDate(transaction.date)
-
-                    TransactionRowContent(
-                        transaction: transaction,
-                        currency: transaction.currency,
-                        showDescription: false,
-                        isPlanned: isPlanned
+                    let styleData = CategoryStyleHelper.cached(
+                        category: transaction.category,
+                        type: transaction.type,
+                        customCategories: []
                     )
+
+                    HStack(spacing: AppSpacing.md) {
+                        // Icon
+                        if isPlanned {
+                            Image(systemName: "clock")
+                                .foregroundStyle(AppColors.planned)
+                                .font(AppTypography.caption)
+                        } else {
+                            TransactionIconView(transaction: transaction, styleData: styleData)
+                        }
+
+                        // Description + date
+                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                            if !transaction.description.isEmpty {
+                                Text(transaction.description)
+                                    .font(AppTypography.body)
+                            }
+                            Text(formatTransactionDate(transaction.date))
+                                .font(AppTypography.bodySmall)
+                                .foregroundStyle(isPlanned ? AppColors.planned : .secondary)
+                        }
+
+                        Spacer()
+
+                        // Amount
+                        VStack(alignment: .trailing, spacing: AppSpacing.xs) {
+                            if transaction.type == .internalTransfer {
+                                TransferAmountView(
+                                    transaction: transaction,
+                                    sourceAccount: nil,
+                                    targetAccount: nil,
+                                    depositAccountId: nil
+                                )
+                            } else {
+                                FormattedAmountView(
+                                    amount: transaction.amount,
+                                    currency: transaction.currency,
+                                    prefix: TransactionDisplayHelper.amountPrefix(
+                                        for: transaction.type,
+                                        targetAccountId: transaction.targetAccountId,
+                                        depositAccountId: nil,
+                                        isPlanned: isPlanned
+                                    ),
+                                    color: TransactionDisplayHelper.amountColor(
+                                        for: transaction.type,
+                                        targetAccountId: transaction.targetAccountId,
+                                        depositAccountId: nil,
+                                        isPlanned: isPlanned
+                                    )
+                                )
+
+                                if let targetCurrency = transaction.targetCurrency,
+                                   let targetAmount = transaction.targetAmount,
+                                   targetCurrency != transaction.currency {
+                                    FormattedAmountView(
+                                        amount: targetAmount,
+                                        currency: targetCurrency,
+                                        prefix: "",
+                                        color: TransactionDisplayHelper.amountColor(
+                                            for: transaction.type,
+                                            targetAccountId: transaction.targetAccountId,
+                                            depositAccountId: nil,
+                                            isPlanned: isPlanned
+                                        ).opacity(0.7)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    .futureTransactionStyle(isFuture: isPlanned)
                     .transactionRowStyle(isPlanned: isPlanned)
                 }
             }
         }
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         DateFormatters.displayDateFormatter.string(from: date)
+    }
+
+    private func formatTransactionDate(_ dateString: String) -> String {
+        guard let date = DateFormatters.dateFormatter.date(from: dateString) else { return dateString }
+        return DateFormatters.displayDateFormatter.string(from: date)
     }
 }
 

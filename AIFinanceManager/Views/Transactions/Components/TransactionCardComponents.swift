@@ -171,6 +171,55 @@ struct RegularAccountInfo: View {
     }
 }
 
+// MARK: - Transfer Amount View
+
+/// Shared component for rendering transfer amounts in both regular and deposit contexts.
+/// Pass `depositAccountId` to show only the directional amount relevant to that deposit account.
+struct TransferAmountView: View {
+    let transaction: Transaction
+    let sourceAccount: Account?
+    let targetAccount: Account?
+    /// When non-nil, applies deposit direction logic: shows only the amount for this deposit
+    /// account with a +/- prefix based on whether it's the source or target.
+    let depositAccountId: String?
+
+    var body: some View {
+        if let source = sourceAccount {
+            let sourceCurrency = transaction.currency.isEmpty ? source.currency : transaction.currency
+            let sourceAmount = transaction.amount
+
+            if let target = targetAccount {
+                let targetCurrency = transaction.targetCurrency ?? target.currency
+                let targetAmount = transaction.targetAmount ?? transaction.convertedAmount ?? transaction.amount
+
+                if let depositId = depositAccountId {
+                    let isIncoming = transaction.targetAccountId == depositId
+                    FormattedAmountView(
+                        amount: isIncoming ? targetAmount : sourceAmount,
+                        currency: isIncoming ? targetCurrency : sourceCurrency,
+                        prefix: isIncoming ? "+" : "-",
+                        color: isIncoming ? AppColors.income : .primary
+                    )
+                } else {
+                    VStack(alignment: .trailing, spacing: AppSpacing.xs) {
+                        FormattedAmountView(amount: sourceAmount, currency: sourceCurrency, prefix: "-", color: .primary)
+                        FormattedAmountView(amount: targetAmount, currency: targetCurrency, prefix: "+", color: AppColors.income)
+                    }
+                }
+            } else {
+                FormattedAmountView(amount: sourceAmount, currency: sourceCurrency, prefix: "-", color: .primary)
+            }
+        } else {
+            FormattedAmountView(
+                amount: transaction.amount,
+                currency: transaction.currency,
+                prefix: "",
+                color: TransactionDisplayHelper.amountColor(for: transaction.type)
+            )
+        }
+    }
+}
+
 // MARK: - Preview Helpers
 
 private extension Transaction {

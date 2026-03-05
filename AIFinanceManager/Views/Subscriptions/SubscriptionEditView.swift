@@ -55,7 +55,7 @@ struct SubscriptionEditView: View {
                 String(localized: "subscription.newTitle") :
                 String(localized: "subscription.editTitle"),
             isSaveDisabled: description.isEmpty || amountText.isEmpty || isSaving,
-            useScrollView: true,
+            wrapInForm: false,
             onSave: saveSubscription,
             onCancel: { dismiss() }
         ) {
