@@ -118,8 +118,12 @@ struct BalanceCalculationEngine {
                 break
 
             case .loanPayment, .loanEarlyRepayment:
-                // Loan payments reduce the paying account balance (treated as expense)
+                // Loan payments reduce the loan account balance
                 if tx.accountId == accountId {
+                    balance -= getTransactionAmount(tx, for: accountCurrency)
+                }
+                // Manual payments also reduce the source bank account balance
+                if let targetId = tx.targetAccountId, targetId == accountId {
                     balance -= getTransactionAmount(tx, for: accountCurrency)
                 }
             }
@@ -171,7 +175,10 @@ struct BalanceCalculationEngine {
             return currentBalance
 
         case .loanPayment, .loanEarlyRepayment:
-            return currentBalance - getTransactionAmount(transaction, for: account.currency)
+            if transaction.accountId == account.id || transaction.targetAccountId == account.id {
+                return currentBalance - getTransactionAmount(transaction, for: account.currency)
+            }
+            return currentBalance
         }
     }
 
@@ -210,7 +217,10 @@ struct BalanceCalculationEngine {
             return currentBalance
 
         case .loanPayment, .loanEarlyRepayment:
-            return currentBalance + getTransactionAmount(transaction, for: account.currency)
+            if transaction.accountId == account.id || transaction.targetAccountId == account.id {
+                return currentBalance + getTransactionAmount(transaction, for: account.currency)
+            }
+            return currentBalance
         }
     }
 
@@ -293,8 +303,12 @@ struct BalanceCalculationEngine {
             break
 
         case .loanPayment, .loanEarlyRepayment:
-            // Loan payments are expenses from the paying account
+            // Loan payments reduce the loan account balance
             if transaction.accountId == accountId {
+                return -sign * getTransactionAmount(transaction, for: accountCurrency)
+            }
+            // Manual payments also reduce the source bank account balance
+            if transaction.targetAccountId == accountId {
                 return -sign * getTransactionAmount(transaction, for: accountCurrency)
             }
         }

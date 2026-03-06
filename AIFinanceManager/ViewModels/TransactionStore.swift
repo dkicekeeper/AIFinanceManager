@@ -944,10 +944,16 @@ final class TransactionStore {
             }
         }
 
-        // Category exists (for expense/income)
-        if transaction.type != .internalTransfer && !transaction.category.isEmpty {
-            guard categories.contains(where: { $0.name == transaction.category }) else {
-                throw TransactionStoreError.categoryNotFound
+        // Category exists (for expense/income — skip system types with internal category names)
+        switch transaction.type {
+        case .internalTransfer, .loanPayment, .loanEarlyRepayment,
+             .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            break
+        default:
+            if !transaction.category.isEmpty {
+                guard categories.contains(where: { $0.name == transaction.category }) else {
+                    throw TransactionStoreError.categoryNotFound
+                }
             }
         }
     }

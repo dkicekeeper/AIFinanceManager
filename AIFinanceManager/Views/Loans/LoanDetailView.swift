@@ -18,6 +18,7 @@ struct LoanDetailView: View {
     let accountId: String
 
     @State private var showingEditView = false
+    @State private var showingPayment = false
     @State private var showingEarlyRepayment = false
     @State private var showingRateChange = false
     @State private var showingDeleteConfirmation = false
@@ -49,18 +50,23 @@ struct LoanDetailView: View {
 
                         if let loanInfo = loanInfo {
                             headerCard(loanInfo: loanInfo, account: account)
+                                .chartAppear()
                                 .screenPadding()
 
                             paymentBreakdownCard(loanInfo: loanInfo, account: account)
+                                .chartAppear(delay: 0.05)
                                 .screenPadding()
 
                             statsCard(loanInfo: loanInfo, account: account)
+                                .chartAppear(delay: 0.1)
                                 .screenPadding()
 
                             amortizationSection(loanInfo: loanInfo)
+                                .chartAppear(delay: 0.15)
                                 .screenPadding()
 
                             actionsSection
+                                .chartAppear(delay: 0.2)
                                 .screenPadding()
                         }
                     }
@@ -150,6 +156,32 @@ struct LoanDetailView: View {
                 )
             }
         }
+        .sheet(isPresented: $showingPayment) {
+            if let account = account, let loanInfo = loanInfo {
+                LoanPaymentView(
+                    account: account,
+                    loanInfo: loanInfo,
+                    availableAccounts: loansViewModel.accountsViewModel.regularAccounts,
+                    onPayment: { amount, date, sourceAccountId in
+                        if let transaction = loansViewModel.makeManualPayment(
+                            accountId: account.id,
+                            amount: amount,
+                            date: date,
+                            sourceAccountId: sourceAccountId
+                        ) {
+                            Task {
+                                do {
+                                    _ = try await transactionStore.add(transaction)
+                                    transactionsViewModel.recalculateAccountBalances()
+                                } catch {
+                                    logger.error("Failed to add loan payment: \(error.localizedDescription)")
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+        }
         .sheet(isPresented: $showingEarlyRepayment) {
             if let account = account, let loanInfo = loanInfo {
                 LoanEarlyRepaymentView(
@@ -198,20 +230,19 @@ struct LoanDetailView: View {
         } message: {
             Text(String(localized: "loan.deleteMessage", defaultValue: "All loan data and payment history will be deleted."))
         }
-        .task {
+        .task(id: accountId) {
             // Reconcile only this loan's payments
+            let store = transactionStore
             loansViewModel.reconcileLoanPayments(
                 for: accountId,
                 allTransactions: transactionsViewModel.allTransactions,
                 onTransactionCreated: { transaction in
-                    Task {
+                    Task { @MainActor in
                         do {
-                            _ = try await transactionStore.add(transaction)
+                            _ = try await store.add(transaction)
                         } catch {
                             logger.error("Failed to add loan payment transaction: \(error.localizedDescription)")
-                            await MainActor.run {
-                                reconciliationError = error.localizedDescription
-                            }
+                            reconciliationError = error.localizedDescription
                         }
                     }
                 }
@@ -232,14 +263,14 @@ struct LoanDetailView: View {
                     HStack(spacing: AppSpacing.xs) {
                         Text(loanInfo.bankName)
                             .font(AppTypography.bodySmall)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColors.textSecondaryAccessible)
                         Text("·")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColors.textSecondaryAccessible)
                         Text(loanInfo.loanType == .annuity
                              ? String(localized: "loan.typeAnnuityShort", defaultValue: "Credit")
                              : String(localized: "loan.typeInstallmentShort", defaultValue: "Installment"))
                             .font(AppTypography.bodySmall)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColors.textSecondaryAccessible)
                     }
                 }
                 Spacer()
@@ -280,7 +311,7 @@ struct LoanDetailView: View {
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(String(format: String(localized: "loan.nextPayment", defaultValue: "Next payment: %@"), formatDate(nextDate)))
                         .font(AppTypography.bodySmall)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColors.textSecondaryAccessible)
                     FormattedAmountText(
                         amount: NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue,
                         currency: account.currency,
@@ -340,7 +371,7 @@ struct LoanDetailView: View {
                 if total > 0 {
                     let principalRatio = NSDecimalNumber(decimal: breakdown.principal / total).doubleValue
                     GeometryReader { geo in
-                        HStack(spacing: 2) {
+                        HStack(spacing: AppSpacing.xxs) {
                             RoundedRectangle(cornerRadius: AppRadius.xs)
                                 .fill(AppColors.income)
                                 .frame(width: geo.size.width * principalRatio)
@@ -457,7 +488,7 @@ struct LoanDetailView: View {
                     } label: {
                         Text(String(format: String(localized: "loan.showAllPayments", defaultValue: "Show all %d payments"), schedule.count))
                             .font(AppTypography.bodySmall)
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(AppColors.accent)
                     }
                 }
             }
@@ -467,7 +498,7 @@ struct LoanDetailView: View {
 
     private func amortizationRow(entry: LoanPaymentService.AmortizationEntry) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                 Text("#\(entry.paymentNumber)")
                     .font(AppTypography.label)
                 Text(formatDateString(entry.date))
@@ -477,7 +508,7 @@ struct LoanDetailView: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
                 Text(Formatting.formatCurrency(NSDecimalNumber(decimal: entry.payment).doubleValue, currency: account?.currency ?? "KZT"))
                     .font(AppTypography.bodySmall)
                 if entry.interest > 0 {
@@ -501,12 +532,21 @@ struct LoanDetailView: View {
         VStack(spacing: AppSpacing.sm) {
             Button {
                 HapticManager.light()
+                showingPayment = true
+            } label: {
+                Label(String(localized: "loan.makePayment", defaultValue: "Make Payment"), systemImage: "banknote")
+                    .frame(maxWidth: .infinity)
+            }
+            .primaryButton()
+
+            Button {
+                HapticManager.light()
                 showingEarlyRepayment = true
             } label: {
                 Label(String(localized: "loan.makeEarlyRepayment", defaultValue: "Early Repayment"), systemImage: "bolt.fill")
                     .frame(maxWidth: .infinity)
             }
-            .primaryButton()
+            .secondaryButton()
         }
     }
 
@@ -517,9 +557,6 @@ struct LoanDetailView: View {
     }
 
     private func formatDateString(_ dateStr: String) -> String {
-        if let date = DateFormatters.dateFormatter.date(from: dateStr) {
-            return DateFormatters.displayDateFormatter.string(from: date)
-        }
-        return dateStr
+        DateFormatters.displayString(from: dateStr)
     }
 }

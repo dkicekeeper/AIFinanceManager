@@ -90,11 +90,16 @@ struct LoanEditView: View {
             Section(header: Text(String(localized: "loan.typeHeader", defaultValue: "Loan Type"))) {
                 Picker(String(localized: "loan.typePicker", defaultValue: "Type"), selection: $loanType) {
                     Text(String(localized: "loan.typeAnnuity", defaultValue: "Annuity (Credit)")).tag(LoanType.annuity)
-                    Text(String(localized: "loan.typeInstallment", defaultValue: "Installment (Рассрочка)")).tag(LoanType.installment)
+                    Text(String(localized: "loan.typeInstallment", defaultValue: "Installment")).tag(LoanType.installment)
                 }
                 .pickerStyle(.segmented)
+                .disabled(isEditing)
 
-                if loanType == .installment {
+                if isEditing {
+                    Text(String(localized: "loan.typeLockedHint", defaultValue: "Loan type cannot be changed after creation"))
+                        .font(AppTypography.caption)
+                        .foregroundStyle(.secondary)
+                } else if loanType == .installment {
                     Text(String(localized: "loan.installmentHint", defaultValue: "Installment = 0% interest, equal payments"))
                         .font(AppTypography.caption)
                         .foregroundStyle(.secondary)

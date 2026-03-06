@@ -6,6 +6,7 @@
 //  next payment info, and navigation to detail/edit views.
 //
 
+import OSLog
 import SwiftUI
 
 struct LoansListView: View {
@@ -13,9 +14,13 @@ struct LoansListView: View {
     let transactionsViewModel: TransactionsViewModel
     let balanceCoordinator: BalanceCoordinator
     @Environment(AppCoordinator.self) private var appCoordinator
+    @Environment(TransactionStore.self) private var transactionStore
 
     @State private var showingAddLoan = false
+    @State private var showingPayAll = false
     @State private var selectedFilter: LoanFilter = .all
+
+    private let logger = Logger(subsystem: "AIFinanceManager", category: "LoansListView")
 
     enum LoanFilter: String, CaseIterable {
         case all
@@ -81,11 +86,23 @@ struct LoansListView: View {
         .navigationTitle(String(localized: "loan.listTitle", defaultValue: "Loans"))
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    HapticManager.light()
-                    showingAddLoan = true
-                } label: {
-                    Image(systemName: "plus")
+                HStack(spacing: AppSpacing.md) {
+                    if !activeLoans.isEmpty {
+                        Button {
+                            HapticManager.light()
+                            showingPayAll = true
+                        } label: {
+                            Image(systemName: "creditcard")
+                        }
+                        .accessibilityLabel(String(localized: "loan.payAll", defaultValue: "Pay All"))
+                    }
+
+                    Button {
+                        HapticManager.light()
+                        showingAddLoan = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
@@ -96,6 +113,16 @@ struct LoansListView: View {
                 onSave: { newAccount in
                     loansViewModel.addLoanAccount(newAccount)
                     showingAddLoan = false
+                }
+            )
+        }
+        .sheet(isPresented: $showingPayAll) {
+            LoanPayAllView(
+                activeLoans: activeLoans,
+                availableAccounts: loansViewModel.accountsViewModel.regularAccounts,
+                currency: loansViewModel.loans.first?.currency ?? "KZT",
+                onPayAll: { sourceAccountId, dateStr in
+                    payAllLoans(sourceAccountId: sourceAccountId, dateStr: dateStr)
                 }
             )
         }
@@ -145,20 +172,19 @@ struct LoansListView: View {
 
     // MARK: - Loan Card
 
+    @ViewBuilder
     private func loanCard(_ loan: Account) -> some View {
-        guard let loanInfo = loan.loanInfo else { return AnyView(EmptyView()) }
+        if let loanInfo = loan.loanInfo {
+            let progress = LoanPaymentService.progressPercentage(loanInfo: loanInfo)
+            let nextDate = LoanPaymentService.nextPaymentDate(loanInfo: loanInfo)
+            let remaining = LoanPaymentService.remainingPayments(loanInfo: loanInfo)
 
-        let progress = LoanPaymentService.progressPercentage(loanInfo: loanInfo)
-        let nextDate = LoanPaymentService.nextPaymentDate(loanInfo: loanInfo)
-        let remaining = LoanPaymentService.remainingPayments(loanInfo: loanInfo)
-
-        return AnyView(
             VStack(alignment: .leading, spacing: AppSpacing.md) {
                 // Header: icon + name + bank + type badge
                 HStack {
                     IconView(source: loan.iconSource, size: AppIconSize.lg)
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                         Text(loan.name)
                             .font(AppTypography.bodyEmphasis)
                         Text(loanInfo.bankName)
@@ -183,6 +209,7 @@ struct LoansListView: View {
                     HStack {
                         Text(Formatting.formatCurrency(NSDecimalNumber(decimal: loanInfo.remainingPrincipal).doubleValue, currency: loan.currency))
                             .font(AppTypography.bodySmall)
+                            .foregroundStyle(AppColors.textSecondaryAccessible)
                         Text(String(localized: "loan.of", defaultValue: "of"))
                             .font(AppTypography.caption)
                             .foregroundStyle(.secondary)
@@ -219,11 +246,36 @@ struct LoansListView: View {
                 }
             }
             .cardStyle()
-        )
+        }
     }
 
     private var hasMultipleTypes: Bool {
         let types = Set(loansViewModel.loans.compactMap { $0.loanInfo?.loanType })
         return types.count > 1
+    }
+
+    private var activeLoans: [Account] {
+        loansViewModel.loans.filter { ($0.loanInfo?.remainingPrincipal ?? 0) > 0 }
+    }
+
+    private func payAllLoans(sourceAccountId: String, dateStr: String) {
+        Task {
+            for loan in activeLoans {
+                guard let loanInfo = loan.loanInfo else { continue }
+                if let transaction = loansViewModel.makeManualPayment(
+                    accountId: loan.id,
+                    amount: loanInfo.monthlyPayment,
+                    date: dateStr,
+                    sourceAccountId: sourceAccountId
+                ) {
+                    do {
+                        _ = try await transactionStore.add(transaction)
+                    } catch {
+                        logger.error("Failed to add payment for \(loan.name): \(error.localizedDescription)")
+                    }
+                }
+            }
+            transactionsViewModel.recalculateAccountBalances()
+        }
     }
 }

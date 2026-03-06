@@ -166,7 +166,6 @@ struct SettingsView: View {
             AccountsManagementView(
                 accountsViewModel: accountsViewModel,
                 depositsViewModel: depositsViewModel,
-                loansViewModel: loansViewModel,
                 transactionsViewModel: transactionsViewModel
             )
         }

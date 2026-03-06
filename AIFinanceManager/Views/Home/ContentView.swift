@@ -241,11 +241,12 @@ struct ContentView: View {
 
     @ViewBuilder
     private var accountsSection: some View {
-        if accountsViewModel.accounts.isEmpty {
+        let nonLoanAccounts = accountsViewModel.accounts.filter { !$0.isLoan }
+        if nonLoanAccounts.isEmpty {
             EmptyAccountsPrompt(onAddAccount: { showingAddAccount = true })
         } else {
             AccountsCarousel(
-                accounts: accountsViewModel.accounts,
+                accounts: nonLoanAccounts,
                 balanceCoordinator: coordinator.balanceCoordinator,
                 namespace: accountNamespace
             )

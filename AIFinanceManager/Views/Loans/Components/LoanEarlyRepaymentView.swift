@@ -145,9 +145,6 @@ struct LoanEarlyRepaymentView: View {
     }
 
     private func formatDateString(_ dateStr: String) -> String {
-        if let date = DateFormatters.dateFormatter.date(from: dateStr) {
-            return DateFormatters.displayDateFormatter.string(from: date)
-        }
-        return dateStr
+        DateFormatters.displayString(from: dateStr)
     }
 }

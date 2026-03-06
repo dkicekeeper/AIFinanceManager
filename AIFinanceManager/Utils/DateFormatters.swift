@@ -44,4 +44,13 @@ enum DateFormatters {
         formatter.timeZone = TimeZone.current
         return formatter
     }()
+
+    /// Convert "yyyy-MM-dd" string to display format "d MMMM".
+    /// Returns the original string if parsing fails.
+    static func displayString(from isoDateString: String) -> String {
+        if let date = dateFormatter.date(from: isoDateString) {
+            return displayDateFormatter.string(from: date)
+        }
+        return isoDateString
+    }
 }

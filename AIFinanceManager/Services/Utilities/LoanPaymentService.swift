@@ -222,6 +222,51 @@ enum LoanPaymentService {
         }
     }
 
+    // MARK: - Manual Payment
+
+    /// Create a manual loan payment transaction and update loan state.
+    /// Returns the transaction + updated loanInfo so the caller can persist both.
+    static func createManualPayment(
+        account: Account,
+        loanInfo: LoanInfo,
+        paymentAmount: Decimal,
+        dateStr: String,
+        sourceAccountId: String,
+        sourceAccountName: String?
+    ) -> (transaction: Transaction, updatedLoanInfo: LoanInfo) {
+        var updated = loanInfo
+
+        let (interest, principalPart) = paymentBreakdown(
+            remainingPrincipal: updated.remainingPrincipal,
+            annualRate: updated.interestRateAnnual,
+            monthlyPayment: paymentAmount
+        )
+
+        let actualPrincipal = min(principalPart, updated.remainingPrincipal)
+        let actualPayment = actualPrincipal + interest
+
+        updated.remainingPrincipal -= actualPrincipal
+        updated.totalInterestPaid += interest
+        updated.paymentsMade += 1
+        updated.lastPaymentDate = dateStr
+
+        let transaction = Transaction(
+            id: UUID().uuidString,
+            date: dateStr,
+            description: String(localized: "loan.payment.description", defaultValue: "Loan payment"),
+            amount: NSDecimalNumber(decimal: actualPayment).doubleValue,
+            currency: account.currency,
+            type: .loanPayment,
+            category: TransactionType.loanPaymentCategoryName,
+            accountId: account.id,
+            targetAccountId: sourceAccountId,
+            accountName: account.name,
+            targetAccountName: sourceAccountName
+        )
+
+        return (transaction, updated)
+    }
+
     // MARK: - Reconciliation
 
     /// Сверка: создаёт запланированные транзакции платежей на прошедшие даты.

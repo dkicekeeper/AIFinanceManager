@@ -108,6 +108,38 @@ class LoansViewModel {
         accountsViewModel.updateAccount(account)
     }
 
+    // MARK: - Manual Payment
+
+    /// Record a manual loan payment from a source bank account.
+    /// Returns the Transaction for the caller to persist via TransactionStore.
+    func makeManualPayment(
+        accountId: String,
+        amount: Decimal,
+        date: String,
+        sourceAccountId: String
+    ) -> Transaction? {
+        guard var account = accountsViewModel.getAccount(by: accountId),
+              let loanInfo = account.loanInfo else {
+            return nil
+        }
+
+        let sourceAccount = accountsViewModel.getAccount(by: sourceAccountId)
+
+        let (transaction, updatedLoanInfo) = LoanPaymentService.createManualPayment(
+            account: account,
+            loanInfo: loanInfo,
+            paymentAmount: amount,
+            dateStr: date,
+            sourceAccountId: sourceAccountId,
+            sourceAccountName: sourceAccount?.name
+        )
+
+        account.loanInfo = updatedLoanInfo
+        accountsViewModel.updateAccount(account)
+
+        return transaction
+    }
+
     // MARK: - Reconciliation
 
     /// Reconcile payments for all loans
