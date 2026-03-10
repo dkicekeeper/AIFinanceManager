@@ -73,29 +73,29 @@ final class TransactionStore {
     // MARK: - Observable State (Single Source of Truth)
 
     /// All transactions - THE ONLY source of transaction data
-    private(set) var transactions: [Transaction] = []
+    internal(set) var transactions: [Transaction] = []
 
     /// All accounts - managed alongside transactions for balance updates
-    private(set) var accounts: [Account] = []
+    internal(set) var accounts: [Account] = []
 
     /// All categories - needed for validation
-    private(set) var categories: [CustomCategory] = []
+    internal(set) var categories: [CustomCategory] = []
 
     // MARK: - Subcategory Data (Phase 10: CSV Import Fix - Single Source of Truth)
 
     /// All subcategories - managed alongside categories
-    private(set) var subcategories: [Subcategory] = []
+    internal(set) var subcategories: [Subcategory] = []
 
     /// Links between categories and subcategories
-    private(set) var categorySubcategoryLinks: [CategorySubcategoryLink] = []
+    internal(set) var categorySubcategoryLinks: [CategorySubcategoryLink] = []
 
     /// Links between transactions and subcategories
-    private(set) var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
+    internal(set) var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
 
     // MARK: - Dependencies
 
     @ObservationIgnored internal let repository: DataRepositoryProtocol  // ✨ Phase 9: internal for access from extension
-    @ObservationIgnored private let cache: UnifiedTransactionCache
+    @ObservationIgnored internal let cache: UnifiedTransactionCache
 
     // ✅ REFACTORED: Balance coordinator is now REQUIRED (not optional)
     // This ensures balance updates always occur, no silent failures
@@ -116,7 +116,7 @@ final class TransactionStore {
     internal var baseCurrency: String = "KZT"
 
     // Import mode flag - when true, persistence is deferred until finishImport()
-    private(set) var isImporting: Bool = false
+    internal(set) var isImporting: Bool = false
 
     // Phase 17: Debounce task for coalescing rapid mutations into single sync
     private var syncDebounceTask: Task<Void, Never>?
@@ -472,359 +472,6 @@ final class TransactionStore {
 
     }
 
-    // MARK: - Account CRUD Operations (Phase 3)
-
-    /// Add a new account
-    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
-    func addAccount(_ account: Account) {
-        // Check if account already exists
-        if accounts.contains(where: { $0.id == account.id }) {
-            return
-        }
-
-        accounts.append(account)
-
-        // Don't persist during import mode - will be done in finishImport()
-        if !isImporting {
-            persistAccounts()
-
-            // ✅ Save order to UserDefaults (UI preference)
-            if let order = account.order {
-                AccountOrderManager.shared.setOrder(order, for: account.id)
-            }
-
-            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
-            // @Observable automatically notifies SwiftUI when accounts array changes
-        }
-
-    }
-
-    /// Update an existing account
-    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
-    func updateAccount(_ account: Account) {
-        guard let index = accounts.firstIndex(where: { $0.id == account.id }) else {
-            return
-        }
-
-        accounts[index] = account
-
-        // Don't persist during import mode - will be done in finishImport()
-        if !isImporting {
-            persistAccounts()
-
-            // ✅ Save order to UserDefaults (UI preference, separate from repository)
-            if let order = account.order {
-                AccountOrderManager.shared.setOrder(order, for: account.id)
-            }
-
-            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
-        }
-
-    }
-
-    /// Delete an account
-    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
-    func deleteAccount(_ accountId: String) {
-        accounts.removeAll { $0.id == accountId }
-
-        // Don't persist during import mode - will be done in finishImport()
-        if !isImporting {
-            persistAccounts()
-
-            // ✅ Remove order from UserDefaults
-            AccountOrderManager.shared.removeOrder(for: accountId)
-
-            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
-        }
-
-    }
-
-    /// Deletes all transactions associated with an account (where accountId or targetAccountId matches).
-    /// Call this before deleteAccount when you want to remove an account with all its transactions.
-    /// Each deletion goes through apply(.deleted) so aggregates, cache, and persistence are all updated.
-    func deleteTransactions(forAccountId accountId: String) async {
-        let toDelete = transactions.filter {
-            $0.accountId == accountId || $0.targetAccountId == accountId
-        }
-        for transaction in toDelete {
-            let event = TransactionEvent.deleted(transaction)
-            try? await apply(event)
-        }
-    }
-
-    /// Deletes all transactions matching the given category name and type.
-    /// Call this before deleteCategory when you want to remove a category with all its transactions.
-    /// Each deletion goes through apply(.deleted) so aggregates, cache, and persistence are all updated.
-    func deleteTransactions(forCategoryName categoryName: String, type: TransactionType) async {
-        let toDelete = transactions.filter {
-            $0.category == categoryName && $0.type == type
-        }
-        for transaction in toDelete {
-            let event = TransactionEvent.deleted(transaction)
-            try? await apply(event)
-        }
-    }
-
-    // MARK: - Category CRUD Operations (Phase 3)
-
-    /// Add a new category
-    /// Phase 3: TransactionStore is now Single Source of Truth for categories
-    func addCategory(_ category: CustomCategory) {
-        // Check if category already exists
-        if categories.contains(where: { $0.id == category.id }) {
-            return
-        }
-
-        // Assign order if not set
-        var categoryToAdd = category
-        if categoryToAdd.order == nil {
-            // Get max order for this type
-            let maxOrder = categories
-                .filter { $0.type == category.type }
-                .compactMap { $0.order }
-                .max() ?? -1
-            categoryToAdd.order = maxOrder + 1
-        }
-
-        categories.append(categoryToAdd)
-
-        // Don't persist during import mode - will be done in finishImport()
-        if !isImporting {
-            persistCategories()
-
-            // ✅ Save order to UserDefaults (UI preference)
-            if let order = categoryToAdd.order {
-                CategoryOrderManager.shared.setOrder(order, for: categoryToAdd.id)
-            }
-
-            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
-        }
-
-    }
-
-    /// Update an existing category
-    /// Phase 3: TransactionStore is now Single Source of Truth for categories
-    func updateCategory(_ category: CustomCategory) {
-        guard let index = categories.firstIndex(where: { $0.id == category.id }) else {
-            return
-        }
-
-        categories[index] = category
-        persistCategories()
-
-        // ✅ Save order to UserDefaults (UI preference, separate from CoreData)
-        if let order = category.order {
-            CategoryOrderManager.shared.setOrder(order, for: category.id)
-        }
-
-        // ✅ FIX: Invalidate style cache so icon/color changes reflect immediately.
-        // CategoryDisplayDataMapper reads icon data through CategoryStyleCache.
-        // Without this, the singleton cache may serve stale icon data until next restart.
-        CategoryStyleCache.shared.invalidateCache()
-
-        // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
-
-    }
-
-    /// Delete a category
-    /// Phase 3: TransactionStore is now Single Source of Truth for categories
-    func deleteCategory(_ categoryId: String) {
-        categories.removeAll { $0.id == categoryId }
-        persistCategories()
-
-        // ✅ Remove order from UserDefaults
-        CategoryOrderManager.shared.removeOrder(for: categoryId)
-
-        // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
-
-    }
-
-    // MARK: - Subcategory CRUD Operations (Phase 10: CSV Import Fix)
-
-    /// Add a new subcategory
-    /// Phase 10: TransactionStore is now Single Source of Truth for subcategories
-    func addSubcategory(_ subcategory: Subcategory) {
-        subcategories.append(subcategory)
-
-        // Don't persist during import mode - will be done in finishImport()
-        if !isImporting {
-            persistSubcategories()
-        }
-
-    }
-
-    /// Update subcategories array (for bulk operations)
-    /// Phase 10: Used by CategoriesViewModel during CSV import
-    func updateSubcategories(_ newSubcategories: [Subcategory]) {
-        subcategories = newSubcategories
-
-        // Don't persist during import mode - will be done in finishImport()
-        if !isImporting {
-            persistSubcategories()
-        }
-
-    }
-
-    /// Update category-subcategory links (for bulk operations)
-    /// Phase 10: Used by CategoriesViewModel during CSV import
-    func updateCategorySubcategoryLinks(_ newLinks: [CategorySubcategoryLink]) {
-        categorySubcategoryLinks = newLinks
-
-        // Don't persist during import mode - will be done in finishImport()
-        if !isImporting {
-            persistCategorySubcategoryLinks()
-        }
-
-    }
-
-    /// Update transaction-subcategory links (for bulk operations)
-    /// Phase 10: Used by CategoriesViewModel during CSV import
-    func updateTransactionSubcategoryLinks(_ newLinks: [TransactionSubcategoryLink]) {
-        transactionSubcategoryLinks = newLinks
-
-        // Don't persist during import mode - will be done in finishImport()
-        if !isImporting {
-            persistTransactionSubcategoryLinks()
-        }
-
-    }
-
-    // MARK: - Computed Properties with Caching
-
-    /// Summary of income/expense/transfers
-    /// Phase 6: Cached computed property
-    var summary: Summary {
-        // Try cache first
-        if let cached: Summary = cache.summary {
-            return cached
-        }
-
-        // Calculate
-        let result = calculateSummary(transactions: transactions)
-
-        // Cache result
-        cache.setSummary(result)
-
-        return result
-    }
-
-    /// Expenses grouped by category
-    /// Phase 6: Cached computed property
-    var categoryExpenses: [CachedCategoryExpense] {
-        // Try cache first
-        if let cached: [CachedCategoryExpense] = cache.categoryExpenses {
-            return cached
-        }
-
-        // Calculate
-        let result = calculateCategoryExpenses(transactions: transactions)
-
-        // Cache result
-        cache.setCachedCategoryExpenses(result)
-
-        return result
-    }
-
-    /// Daily expenses for a specific date
-    /// Phase 6: Cached computed property
-    func expenses(for date: Date) -> Double {
-        let dateString = DateFormatters.dateFormatter.string(from: date)
-
-        // Try cache first
-        if let cached = cache.dailyExpenses(for: dateString) {
-            return cached
-        }
-
-        // Calculate
-        let result = calculateDailyExpenses(for: dateString, transactions: transactions)
-
-        // Cache result
-        cache.setDailyExpenses(result, for: dateString)
-
-        return result
-    }
-
-    // MARK: - Calculation Methods
-
-    /// Calculate summary from transactions
-    private func calculateSummary(transactions: [Transaction]) -> Summary {
-        var totalIncome: Double = 0
-        var totalExpenses: Double = 0
-        var totalInternal: Double = 0
-
-        let dateFormatter = DateFormatters.dateFormatter
-        var minDate: Date?
-        var maxDate: Date?
-
-        for tx in transactions {
-            let amountInBase = convertToBaseCurrency(amount: tx.amount, from: tx.currency)
-
-            switch tx.type {
-            case .income:
-                totalIncome += amountInBase
-            case .expense:
-                totalExpenses += amountInBase
-            case .internalTransfer:
-                totalInternal += amountInBase
-            case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
-                // Deposit transactions - handle separately
-                totalInternal += amountInBase
-            case .loanPayment, .loanEarlyRepayment:
-                totalExpenses += amountInBase
-            }
-
-            // Track date range
-            if let txDate = dateFormatter.date(from: tx.date) {
-                if minDate == nil || txDate < minDate! {
-                    minDate = txDate
-                }
-                if maxDate == nil || txDate > maxDate! {
-                    maxDate = txDate
-                }
-            }
-        }
-
-        let startDate = minDate.map { dateFormatter.string(from: $0) } ?? ""
-        let endDate = maxDate.map { dateFormatter.string(from: $0) } ?? ""
-
-        return Summary(
-            totalIncome: totalIncome,
-            totalExpenses: totalExpenses,
-            totalInternalTransfers: totalInternal,
-            netFlow: totalIncome - totalExpenses,
-            currency: baseCurrency,
-            startDate: startDate,
-            endDate: endDate,
-            plannedAmount: 0  // NOTE: Planned amount calculation not implemented (future feature)
-        )
-    }
-
-    /// Calculate category expenses from transactions
-    private func calculateCategoryExpenses(transactions: [Transaction]) -> [CachedCategoryExpense] {
-        var categoryMap: [String: Double] = [:]
-
-        for tx in transactions where tx.type == .expense && !tx.category.isEmpty {
-            let amountInBase = convertToBaseCurrency(amount: tx.amount, from: tx.currency)
-            categoryMap[tx.category, default: 0] += amountInBase
-        }
-
-        return categoryMap.map { CachedCategoryExpense(name: $0.key, amount: $0.value, currency: baseCurrency) }
-            .sorted { $0.amount > $1.amount }  // Sort by amount descending
-    }
-
-    /// Calculate daily expenses for a specific date
-    private func calculateDailyExpenses(for dateString: String, transactions: [Transaction]) -> Double {
-        return transactions
-            .filter { $0.date == dateString && $0.type == .expense }
-            .reduce(0.0) { sum, tx in
-                sum + convertToBaseCurrency(amount: tx.amount, from: tx.currency)
-            }
-    }
-
-    /// Convert amount to base currency
-    private func convertToBaseCurrency(amount: Double, from currency: String) -> Double {
-        return convertToCurrency(amount: amount, from: currency, to: baseCurrency)
-    }
 
     // MARK: - Private Helpers
 
@@ -1063,40 +710,6 @@ final class TransactionStore {
 
     }
 
-    /// Persist accounts to repository
-    /// Phase 3: TransactionStore now manages account persistence
-    private func persistAccounts() {
-        repository.saveAccounts(accounts)
-
-    }
-
-    /// Persist categories to repository
-    /// Phase 3: TransactionStore now manages category persistence
-    private func persistCategories() {
-        repository.saveCategories(categories)
-
-    }
-
-    /// Persist subcategories to repository
-    /// Phase 10: TransactionStore now manages subcategory persistence
-    private func persistSubcategories() {
-        repository.saveSubcategories(subcategories)
-
-    }
-
-    /// Persist category-subcategory links to repository
-    /// Phase 10: TransactionStore now manages category-subcategory link persistence
-    private func persistCategorySubcategoryLinks() {
-        repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
-
-    }
-
-    /// Persist transaction-subcategory links to repository
-    /// Phase 10: TransactionStore now manages transaction-subcategory link persistence
-    private func persistTransactionSubcategoryLinks() {
-        repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
-
-    }
 
     /// Phase 20: Granular cache invalidation based on event type
     /// Only invalidates affected cache keys instead of clearing everything
@@ -1140,37 +753,7 @@ final class TransactionStore {
         }
     }
 
-    /// Convert amount between currencies
-    private func convertToCurrency(amount: Double, from: String, to: String) -> Double {
-        // Same currency - no conversion
-        if from == to {
-            return amount
-        }
 
-        // Use currency converter (sync version for computed properties)
-        return CurrencyConverter.convertSync(amount: amount, from: from, to: to) ?? amount
-    }
-
-    /// Convert amount to base currency
-
-    // MARK: - Category Synchronization
-
-    /// Synchronize categories from CategoriesViewModel during CSV import
-    /// This ensures TransactionStore knows about newly created categories
-    /// before transactions are added
-    /// ✨ Phase 10: Updated to just update in-memory array, persistence happens in finishImport()
-    func syncCategories(_ newCategories: [CustomCategory]) async {
-
-        categories = newCategories
-
-        // ✨ Phase 10: Don't persist during import - will be done in finishImport()
-        // This ensures all categories are saved synchronously at once
-        if !isImporting {
-            // Only persist if not in import mode (e.g., manual sync)
-            repository.saveCategories(newCategories)
-        } else {
-        }
-    }
 }
 
 // MARK: - Debug Helpers

@@ -94,11 +94,9 @@ class TransactionsViewModel {
 
     // MARK: - Services (initialized eagerly for @Observable compatibility)
 
-    @ObservationIgnored private let filterCoordinator: TransactionFilterCoordinatorProtocol
-    @ObservationIgnored private let accountOperationService: AccountOperationServiceProtocol
-    @ObservationIgnored private let queryService: TransactionQueryServiceProtocol
-    @ObservationIgnored private let groupingService: TransactionGroupingService
-    @ObservationIgnored private let balanceCalculator: BalanceCalculator
+    @ObservationIgnored let filterCoordinator: TransactionFilterCoordinatorProtocol
+    @ObservationIgnored let queryService: TransactionQueryServiceProtocol
+    @ObservationIgnored let groupingService: TransactionGroupingService
 
     // MARK: - Batch Mode for Performance
 
@@ -119,7 +117,6 @@ class TransactionsViewModel {
         // Initialize services (required for @Observable compatibility)
         let filterService = TransactionFilterService(dateFormatter: DateFormatters.dateFormatter)
         self.filterCoordinator = TransactionFilterCoordinator(filterService: filterService, dateFormatter: DateFormatters.dateFormatter)
-        self.accountOperationService = AccountOperationService()
         self.queryService = TransactionQueryService()
         self.groupingService = TransactionGroupingService(
             dateFormatter: DateFormatters.dateFormatter,
@@ -127,7 +124,6 @@ class TransactionsViewModel {
             displayDateWithYearFormatter: DateFormatters.displayDateWithYearFormatter,
             cacheManager: cacheManager
         )
-        self.balanceCalculator = BalanceCalculator(dateFormatter: DateFormatters.dateFormatter)
 
         setupRecurringSeriesObserver()
     }
@@ -344,7 +340,7 @@ class TransactionsViewModel {
         }
     }
 
-    // MARK: - Account Operations (Delegated to AccountOperationService)
+    // MARK: - Account Operations
 
     func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {
         // Phase 8: Delegate to TransactionStore
@@ -370,138 +366,6 @@ class TransactionsViewModel {
             }
         }
     }
-
-    // MARK: - Queries (Delegated to QueryService)
-
-    func summary(timeFilterManager: TimeFilterManager) -> Summary {
-        let filtered = filterCoordinator.filterByTime(
-            transactions: allTransactions,
-            timeFilter: timeFilterManager.currentFilter
-        )
-
-        // IMPORTANT: Always invalidate summary cache because time filtering produces different results
-        // The cache doesn't account for time filters, so we need fresh calculation each time
-        cacheManager.summaryCacheInvalidated = true
-
-        let result = queryService.calculateSummary(
-            transactions: filtered,
-            baseCurrency: appSettings.baseCurrency,
-            cacheManager: cacheManager,
-            currencyService: currencyService
-        )
-
-        // ✅ FIX: Don't restore invalidation state
-        // calculateSummary() already sets it to false after computing the new summary
-        // Restoring the old state was breaking the invalidation flow when transactions changed
-
-        return result
-    }
-
-    func categoryExpenses(
-        timeFilterManager: TimeFilterManager,
-        categoriesViewModel: CategoriesViewModel? = nil
-    ) -> [String: CategoryExpense] {
-        let validCategoryNames: Set<String>? = categoriesViewModel.map { vm in
-            Set(vm.customCategories.map { $0.name })
-        }
-
-        // Phase 40: All transactions in memory — always compute directly from allTransactions.
-        let filter = timeFilterManager.currentFilter
-        let result = queryService.getCategoryExpenses(
-            timeFilter: filter,
-            baseCurrency: appSettings.baseCurrency,
-            validCategoryNames: validCategoryNames,
-            cacheManager: cacheManager,
-            transactions: allTransactions,
-            currencyService: currencyService
-        )
-
-        return result
-    }
-
-    func popularCategories(
-        timeFilterManager: TimeFilterManager,
-        categoriesViewModel: CategoriesViewModel? = nil
-    ) -> [String] {
-        let expenses = categoryExpenses(
-            timeFilterManager: timeFilterManager,
-            categoriesViewModel: categoriesViewModel
-        )
-        return queryService.getPopularCategories(expenses: expenses)
-    }
-
-    var uniqueCategories: [String] {
-        queryService.getUniqueCategories(transactions: allTransactions, cacheManager: cacheManager)
-    }
-
-    var expenseCategories: [String] {
-        queryService.getExpenseCategories(transactions: allTransactions, cacheManager: cacheManager)
-    }
-
-    var incomeCategories: [String] {
-        queryService.getIncomeCategories(transactions: allTransactions, cacheManager: cacheManager)
-    }
-
-    // MARK: - Filtering (Delegated to FilterCoordinator)
-
-    var filteredTransactions: [Transaction] {
-        filterCoordinator.getFiltered(
-            transactions: allTransactions,
-            selectedCategories: selectedCategories,
-            recurringSeries: recurringSeries
-        )
-    }
-
-    func transactionsFilteredByTime(_ timeFilterManager: TimeFilterManager) -> [Transaction] {
-        filterCoordinator.filterByTime(transactions: allTransactions, timeFilter: timeFilterManager.currentFilter)
-    }
-
-    func transactionsFilteredByTimeAndCategory(_ timeFilterManager: TimeFilterManager) -> [Transaction] {
-        filterCoordinator.filterByTimeAndCategory(
-            transactions: allTransactions,
-            timeFilter: timeFilterManager.currentFilter,
-            categories: selectedCategories,
-            series: recurringSeries
-        )
-    }
-
-    func filterTransactionsForHistory(
-        timeFilterManager: TimeFilterManager,
-        accountId: String?,
-        searchText: String
-    ) -> [Transaction] {
-        let transactions = transactionsFilteredByTimeAndCategory(timeFilterManager)
-
-        return filterCoordinator.filterForHistory(
-            transactions: transactions,
-            accountId: accountId,
-            searchText: searchText,
-            accounts: accounts,
-            baseCurrency: appSettings.baseCurrency,
-            getSubcategories: { [weak self] transactionId in
-                self?.getSubcategoriesForTransaction(transactionId) ?? []
-            }
-        )
-    }
-
-    func groupAndSortTransactionsByDate(_ transactions: [Transaction]) -> (grouped: [String: [Transaction]], sortedKeys: [String]) {
-        groupingService.groupByDate(transactions)
-    }
-
-    // MARK: - Cache Management (Delegated to CacheCoordinator)
-
-    func invalidateCaches() {
-        // ✅ Invalidate category expenses cache when transactions change
-        // This is a derived cache computed from aggregates, so it must be cleared
-        // to reflect the updated aggregate values after incremental updates
-        cacheManager.invalidateCategoryExpenses()
-    }
-
-    // Phase 21: Stub methods kept for backward compatibility
-    func rebuildAggregateCacheAfterImport() async { cacheManager.invalidateAll() }
-    func rebuildAggregateCacheInBackground() { cacheManager.invalidateAll() }
-    func clearAndRebuildAggregateCache() { cacheManager.invalidateAll() }
-    func precomputeCurrencyConversions() { /* No-op */ }
 
     // MARK: - Balance Management
 
@@ -550,101 +414,6 @@ class TransactionsViewModel {
 
         recalculateAccountBalances()
         saveToStorage()
-    }
-
-    // MARK: - Recurring Transactions (routed through TransactionStore)
-
-    func createRecurringSeries(
-        amount: Decimal,
-        currency: String,
-        category: String,
-        subcategory: String?,
-        description: String,
-        accountId: String?,
-        targetAccountId: String?,
-        frequency: RecurringFrequency,
-        startDate: String
-    ) -> RecurringSeries {
-        let series = RecurringSeries(
-            amount: amount,
-            currency: currency,
-            category: category,
-            subcategory: subcategory,
-            description: description,
-            accountId: accountId,
-            targetAccountId: targetAccountId,
-            frequency: frequency,
-            startDate: startDate
-        )
-        Task { @MainActor [weak self] in
-            try? await self?.transactionStore?.createSeries(series)
-        }
-        return series
-    }
-
-    func updateRecurringSeries(_ series: RecurringSeries) {
-        Task { @MainActor [weak self] in
-            try? await self?.transactionStore?.updateSeries(series)
-        }
-    }
-
-    func stopRecurringSeries(_ seriesId: String) {
-        let today = DateFormatters.dateFormatter.string(from: Date())
-        Task { @MainActor [weak self] in
-            try? await self?.transactionStore?.stopSeries(id: seriesId, fromDate: today)
-        }
-    }
-
-    func stopRecurringSeriesAndCleanup(seriesId: String, transactionDate: String) {
-        Task { @MainActor [weak self] in
-            try? await self?.transactionStore?.stopSeries(id: seriesId, fromDate: transactionDate)
-        }
-    }
-
-    func resumeRecurringSeries(_ seriesId: String) {
-        Task { @MainActor [weak self] in
-            try? await self?.transactionStore?.resumeSeries(id: seriesId)
-        }
-    }
-
-    func deleteRecurringSeries(_ seriesId: String, deleteTransactions: Bool = true) {
-        Task { @MainActor [weak self] in
-            try? await self?.transactionStore?.deleteSeries(id: seriesId, deleteTransactions: deleteTransactions)
-        }
-    }
-
-    func archiveSubscription(_ seriesId: String) {
-        // Subscription archiving (pause) — route through TransactionStore
-        Task { @MainActor [weak self] in
-            try? await self?.transactionStore?.pauseSubscription(id: seriesId)
-        }
-    }
-
-    func nextChargeDate(for subscriptionId: String) -> Date? {
-        transactionStore?.nextChargeDate(for: subscriptionId)
-    }
-
-    func generateRecurringTransactions() {
-        // No-op: recurring generation happens inside TransactionStore.createSeries/updateSeries.
-        // Called from AppCoordinator.initialize() as a background task — TransactionStore
-        // already loaded recurring data during loadData(); no explicit regeneration needed.
-    }
-
-    /// DEPRECATED — kept for call-site compatibility only. Does nothing.
-    @available(*, deprecated, message: "Use TransactionStore recurring methods directly.")
-    func updateRecurringTransaction(_ transactionId: String, updateAllFuture: Bool,
-        newAmount: Decimal? = nil, newCategory: String? = nil, newSubcategory: String? = nil) {
-        // No-op: superseded by TransactionStore.updateSeries()
-    }
-
-    // MARK: - Subscriptions
-
-    var subscriptions: [RecurringSeries] {
-        recurringSeries.filter { $0.isSubscription }
-    }
-
-    var activeSubscriptions: [RecurringSeries] {
-        subscriptions.filter { $0.subscriptionStatus == .active && $0.isActive }
     }
 
     // MARK: - Storage

@@ -14,25 +14,25 @@ struct AmountFormatterTests {
     @Test("Parse valid decimal amount")
     func testParseValidAmount() {
         let result = AmountFormatter.parse("1234.56")
-        #expect(result == 1234.56)
+        #expect(result == Decimal(string: "1234.56"))
     }
 
     @Test("Parse amount with spaces")
     func testParseAmountWithSpaces() {
         let result = AmountFormatter.parse("1 234 567.89")
-        #expect(result == 1234567.89)
+        #expect(result == Decimal(string: "1234567.89"))
     }
 
     @Test("Parse amount with comma as decimal separator")
     func testParseAmountWithComma() {
         let result = AmountFormatter.parse("1234,56")
-        #expect(result == 1234.56)
+        #expect(result == Decimal(string: "1234.56"))
     }
 
     @Test("Parse zero amount")
     func testParseZero() {
         let result = AmountFormatter.parse("0")
-        #expect(result == 0)
+        #expect(result == Decimal.zero)
     }
 
     @Test("Parse invalid amount returns nil")
