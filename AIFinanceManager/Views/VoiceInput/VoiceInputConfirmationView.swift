@@ -161,11 +161,10 @@ struct VoiceInputConfirmationView: View {
                         .frame(height: 0)
                     
                     // 7. Описание
-                    DescriptionTextField(
+                    FormTextField(
                         text: $noteText,
                         placeholder: String(localized: "quickAdd.descriptionPlaceholder"),
-                        minLines: VoiceInputConstants.descriptionMinLines,
-                        maxLines: VoiceInputConstants.descriptionMaxLines
+                        style: .multiline(min: VoiceInputConstants.descriptionMinLines, max: VoiceInputConstants.descriptionMaxLines)
                     )
                 }
             }

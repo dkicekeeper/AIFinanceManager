@@ -22,9 +22,6 @@ struct DepositEditView: View {
     @State private var interestRateText: String = ""
     @State private var interestPostingDay: Int = 1
     @State private var capitalizationEnabled: Bool = true
-    @State private var showingIconPicker = false
-    @FocusState private var isNameFocused: Bool
-
     private let depositCurrencies = ["KZT", "USD", "EUR"]
 
     /// True when converting a regular account → deposit (account exists but has no depositInfo)
@@ -36,122 +33,78 @@ struct DepositEditView: View {
         EditSheetContainer(
             title: isConverting ? String(localized: "deposit.convertTitle", defaultValue: "Convert to Deposit") : (account == nil ? String(localized: "deposit.new") : String(localized: "deposit.editTitle")),
             isSaveDisabled: name.isEmpty || bankName.isEmpty || principalBalanceText.isEmpty || interestRateText.isEmpty,
-            onSave: {
-                guard let principalBalance = AmountFormatter.parse(principalBalanceText),
-                      let interestRate = AmountFormatter.parse(interestRateText) else {
-                    return
-                }
-
-                // When editing, preserve accumulated state (rate history, accruals, etc.)
-                let existingInfo = account?.depositInfo
-
-                // For conversion (or new deposit): set lastInterestCalculationDate
-                // to the most recent posting day so interest accumulates correctly.
-                // E.g. posting day = 3, today = March 5 → lastCalcDate = March 3 → shows 2 days interest.
-                let lastCalcDate: String?
-                let lastPostingMonth: String?
-                if let existing = existingInfo {
-                    lastCalcDate = existing.lastInterestCalculationDate
-                    lastPostingMonth = existing.lastInterestPostingMonth
-                } else {
-                    let (calcDate, postMonth) = Self.computeInitialDates(postingDay: interestPostingDay)
-                    lastCalcDate = calcDate
-                    lastPostingMonth = postMonth
-                }
-
-                let depositInfo = DepositInfo(
-                    bankName: bankName,
-                    principalBalance: principalBalance,
-                    capitalizationEnabled: capitalizationEnabled,
-                    interestAccruedNotCapitalized: existingInfo?.interestAccruedNotCapitalized ?? 0,
-                    interestRateAnnual: interestRate,
-                    interestRateHistory: existingInfo?.interestRateHistory,
-                    interestPostingDay: interestPostingDay,
-                    lastInterestCalculationDate: lastCalcDate,
-                    lastInterestPostingMonth: lastPostingMonth,
-                    interestAccruedForCurrentPeriod: existingInfo?.interestAccruedForCurrentPeriod ?? 0
-                )
-
-                let balance = NSDecimalNumber(decimal: principalBalance).doubleValue
-                let newAccount = Account(
-                    id: account?.id ?? UUID().uuidString,
-                    name: name,
-                    currency: currency,
-                    iconSource: selectedIconSource,
-                    depositInfo: depositInfo,
-                    shouldCalculateFromTransactions: false,
-                    initialBalance: balance,
-                    order: account?.order
-                )
-                HapticManager.success()
-                onSave(newAccount)
-            },
+            wrapInForm: false,
+            onSave: saveDeposit,
             onCancel: { dismiss() }
         ) {
-            Section(header: Text(String(localized: "deposit.name"))) {
-                TextField(String(localized: "deposit.namePlaceholder"), text: $name)
-                    .focused($isNameFocused)
-            }
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // Hero Section: Icon, Name, Balance, Currency
+                    EditableHeroSection(
+                        iconSource: $selectedIconSource,
+                        title: $name,
+                        balance: $principalBalanceText,
+                        currency: $currency,
+                        titlePlaceholder: String(localized: "deposit.namePlaceholder"),
+                        config: .accountHero,
+                        currencies: depositCurrencies
+                    )
 
-            Section(header: Text(String(localized: "deposit.bank"))) {
-                TextField(String(localized: "deposit.bankNamePlaceholder"), text: $bankName)
+                    // Bank name
+                    FormSection(header: String(localized: "deposit.bank")) {
+                        UniversalRow(config: .standard, leadingIcon: .sfSymbol("building.columns", color: .secondary)) {
+                            FormTextField(
+                                text: $bankName,
+                                placeholder: String(localized: "deposit.bankNamePlaceholder"),
+                                style: .compact
+                            )
+                        }
+                    }
 
-                Button {
-                    HapticManager.light()
-                    showingIconPicker = true
-                } label: {
-                    HStack(spacing: AppSpacing.md) {
-                        Text(String(localized: "iconPicker.title"))
-                        Spacer()
-                        IconView(
-                            source: selectedIconSource,
-                            size: AppIconSize.lg
+                    // Interest settings
+                    FormSection(header: String(localized: "deposit.interestRate")) {
+                        UniversalRow(config: .standard, leadingIcon: .sfSymbol("percent", color: .secondary)) {
+                            FormTextField(
+                                text: $interestRateText,
+                                placeholder: "0.0",
+                                style: .compact,
+                                keyboardType: .decimalPad
+                            )
+                        } trailing: {
+                            Text(String(localized: "deposit.rateAnnual"))
+                                .font(AppTypography.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    // Posting day & capitalization
+                    FormSection(
+                        header: String(localized: "deposit.postingDayTitle"),
+                        footer: String(localized: "deposit.postingDayHint")
+                    ) {
+                        MenuPickerRow(
+                            icon: "calendar.badge.clock",
+                            title: String(localized: "deposit.dayOfMonth"),
+                            selection: $interestPostingDay,
+                            options: (1...31).map { ("\($0)", $0) }
                         )
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                            .font(AppTypography.caption)
+                    }
+
+                    FormSection(
+                        header: String(localized: "deposit.capitalizationTitle"),
+                        footer: String(localized: "deposit.capitalizationHint")
+                    ) {
+                        UniversalRow(config: .standard, leadingIcon: .sfSymbol("arrow.triangle.2.circlepath", color: .secondary)) {
+                            Text(String(localized: "deposit.enableCapitalization"))
+                                .font(AppTypography.body)
+                        } trailing: {
+                            Toggle("", isOn: $capitalizationEnabled)
+                                .labelsHidden()
+                        }
                     }
                 }
-            }
-
-            Section(header: Text(String(localized: "common.currency"))) {
-                Picker(String(localized: "common.currency"), selection: $currency) {
-                    ForEach(depositCurrencies, id: \.self) { curr in
-                        Text("\(Formatting.currencySymbol(for: curr)) \(curr)").tag(curr)
-                    }
-                }
-            }
-
-            Section(header: Text(String(localized: "deposit.initialAmount"))) {
-                TextField(String(localized: "common.balancePlaceholder"), text: $principalBalanceText)
-                    .keyboardType(.decimalPad)
-            }
-
-            Section(header: Text(String(localized: "deposit.interestRate"))) {
-                HStack {
-                    TextField("0.0", text: $interestRateText)
-                        .keyboardType(.decimalPad)
-                    Text(String(localized: "deposit.rateAnnual"))
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section(header: Text(String(localized: "deposit.postingDayTitle"))) {
-                Picker(String(localized: "deposit.dayOfMonth"), selection: $interestPostingDay) {
-                    ForEach(1...31, id: \.self) { day in
-                        Text("\(day)").tag(day)
-                    }
-                }
-                Text(String(localized: "deposit.postingDayHint"))
-                    .font(AppTypography.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section(header: Text(String(localized: "deposit.capitalizationTitle"))) {
-                Toggle(String(localized: "deposit.enableCapitalization"), isOn: $capitalizationEnabled)
-                Text(String(localized: "deposit.capitalizationHint"))
-                    .font(AppTypography.caption)
-                    .foregroundStyle(.secondary)
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.top, AppSpacing.md)
             }
         }
         .onAppear {
@@ -181,15 +134,60 @@ struct DepositEditView: View {
                 capitalizationEnabled = true
             }
         }
-        .task {
-            // One MainActor tick is sufficient for @FocusState after layout
-            guard account == nil else { return }
-            await Task.yield()
-            isNameFocused = true
+    }
+}
+
+// MARK: - Save
+
+extension DepositEditView {
+    private func saveDeposit() {
+        guard let principalBalance = AmountFormatter.parse(principalBalanceText),
+              let interestRate = AmountFormatter.parse(interestRateText) else {
+            return
         }
-        .sheet(isPresented: $showingIconPicker) {
-            IconPickerView(selectedSource: $selectedIconSource)
+
+        // When editing, preserve accumulated state (rate history, accruals, etc.)
+        let existingInfo = account?.depositInfo
+
+        // For conversion (or new deposit): set lastInterestCalculationDate
+        // to the most recent posting day so interest accumulates correctly.
+        let lastCalcDate: String?
+        let lastPostingMonth: String?
+        if let existing = existingInfo {
+            lastCalcDate = existing.lastInterestCalculationDate
+            lastPostingMonth = existing.lastInterestPostingMonth
+        } else {
+            let (calcDate, postMonth) = Self.computeInitialDates(postingDay: interestPostingDay)
+            lastCalcDate = calcDate
+            lastPostingMonth = postMonth
         }
+
+        let depositInfo = DepositInfo(
+            bankName: bankName,
+            principalBalance: principalBalance,
+            capitalizationEnabled: capitalizationEnabled,
+            interestAccruedNotCapitalized: existingInfo?.interestAccruedNotCapitalized ?? 0,
+            interestRateAnnual: interestRate,
+            interestRateHistory: existingInfo?.interestRateHistory,
+            interestPostingDay: interestPostingDay,
+            lastInterestCalculationDate: lastCalcDate,
+            lastInterestPostingMonth: lastPostingMonth,
+            interestAccruedForCurrentPeriod: existingInfo?.interestAccruedForCurrentPeriod ?? 0
+        )
+
+        let balance = NSDecimalNumber(decimal: principalBalance).doubleValue
+        let newAccount = Account(
+            id: account?.id ?? UUID().uuidString,
+            name: name,
+            currency: currency,
+            iconSource: selectedIconSource,
+            depositInfo: depositInfo,
+            shouldCalculateFromTransactions: false,
+            initialBalance: balance,
+            order: account?.order
+        )
+        HapticManager.success()
+        onSave(newAccount)
     }
 }
 

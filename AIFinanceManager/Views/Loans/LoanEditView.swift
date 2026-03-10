@@ -4,6 +4,7 @@
 //
 //  View for creating, editing, and converting accounts to loans/installments.
 //  3 modes: new, edit, convert (mirrors DepositEditView pattern).
+//  Migrated to hero-style UI with EditableHeroSection.
 //
 
 import SwiftUI
@@ -25,8 +26,7 @@ struct LoanEditView: View {
     @State private var termMonthsText: String = ""
     @State private var paymentDay: Int = 1
     @State private var startDate: Date = Date()
-    @State private var showingIconPicker = false
-    @FocusState private var isNameFocused: Bool
+    @State private var validationError: String? = nil
 
     private let currencies = ["KZT", "USD", "EUR"]
 
@@ -58,107 +58,122 @@ struct LoanEditView: View {
         EditSheetContainer(
             title: title,
             isSaveDisabled: isSaveDisabled,
+            wrapInForm: false,
             onSave: saveLoan,
             onCancel: { dismiss() }
         ) {
-            Section(header: Text(String(localized: "loan.nameHeader", defaultValue: "Name"))) {
-                TextField(String(localized: "loan.namePlaceholder", defaultValue: "e.g. Car Loan"), text: $name)
-                    .focused($isNameFocused)
-            }
-
-            Section(header: Text(String(localized: "loan.bankHeader", defaultValue: "Bank"))) {
-                TextField(String(localized: "loan.bankPlaceholder", defaultValue: "Bank name"), text: $bankName)
-
-                Button {
-                    HapticManager.light()
-                    showingIconPicker = true
-                } label: {
-                    HStack(spacing: AppSpacing.md) {
-                        Text(String(localized: "iconPicker.title"))
-                        Spacer()
-                        IconView(
-                            source: selectedIconSource,
-                            size: AppIconSize.lg
-                        )
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.secondary)
-                            .font(AppTypography.caption)
-                    }
-                }
-            }
-
-            Section(header: Text(String(localized: "loan.typeHeader", defaultValue: "Loan Type"))) {
-                Picker(String(localized: "loan.typePicker", defaultValue: "Type"), selection: $loanType) {
-                    Text(String(localized: "loan.typeAnnuity", defaultValue: "Annuity (Credit)")).tag(LoanType.annuity)
-                    Text(String(localized: "loan.typeInstallment", defaultValue: "Installment")).tag(LoanType.installment)
-                }
-                .pickerStyle(.segmented)
-                .disabled(isEditing)
-
-                if isEditing {
-                    Text(String(localized: "loan.typeLockedHint", defaultValue: "Loan type cannot be changed after creation"))
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.secondary)
-                } else if loanType == .installment {
-                    Text(String(localized: "loan.installmentHint", defaultValue: "Installment = 0% interest, equal payments"))
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section(header: Text(String(localized: "common.currency"))) {
-                Picker(String(localized: "common.currency"), selection: $currency) {
-                    ForEach(currencies, id: \.self) { curr in
-                        Text("\(Formatting.currencySymbol(for: curr)) \(curr)").tag(curr)
-                    }
-                }
-            }
-
-            Section(header: Text(String(localized: "loan.principalHeader", defaultValue: "Loan Amount"))) {
-                TextField(String(localized: "loan.principalPlaceholder", defaultValue: "Total loan amount"), text: $principalAmountText)
-                    .keyboardType(.decimalPad)
-            }
-
-            if loanType == .annuity {
-                Section(header: Text(String(localized: "loan.interestRateHeader", defaultValue: "Interest Rate"))) {
-                    HStack {
-                        TextField("0.0", text: $interestRateText)
-                            .keyboardType(.decimalPad)
-                        Text(String(localized: "loan.rateAnnual", defaultValue: "% annual"))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            Section(header: Text(String(localized: "loan.termHeader", defaultValue: "Term"))) {
-                HStack {
-                    TextField(String(localized: "loan.termPlaceholder", defaultValue: "Number of months"), text: $termMonthsText)
-                        .keyboardType(.numberPad)
-                    Text(String(localized: "loan.months", defaultValue: "months"))
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section(header: Text(String(localized: "loan.paymentDayHeader", defaultValue: "Payment Day"))) {
-                Picker(String(localized: "loan.paymentDay", defaultValue: "Day of month"), selection: $paymentDay) {
-                    ForEach(1...31, id: \.self) { day in
-                        Text("\(day)").tag(day)
-                    }
-                }
-                Text(String(localized: "loan.paymentDayHint", defaultValue: "Day of month when payment is due"))
-                    .font(AppTypography.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if !isEditing {
-                Section(header: Text(String(localized: "loan.startDateHeader", defaultValue: "Start Date"))) {
-                    DatePicker(
-                        String(localized: "loan.startDate", defaultValue: "Loan start date"),
-                        selection: $startDate,
-                        displayedComponents: .date
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // Hero Section: Icon, Name, Amount, Currency
+                    EditableHeroSection(
+                        iconSource: $selectedIconSource,
+                        title: $name,
+                        balance: $principalAmountText,
+                        currency: $currency,
+                        titlePlaceholder: String(localized: "loan.namePlaceholder", defaultValue: "e.g. Car Loan"),
+                        config: .accountHero,
+                        currencies: currencies
                     )
-                    .datePickerStyle(.compact)
+
+                    // Validation Error
+                    if let error = validationError {
+                        InlineStatusText(message: error, type: .error)
+                            .padding(.horizontal, AppSpacing.lg)
+                    }
+
+                    // Loan details
+                    FormSection(style: .list) {
+                        // Bank name
+                        UniversalRow(config: .standard) {
+                            FormTextField(
+                                text: $bankName,
+                                placeholder: String(localized: "loan.bankPlaceholder", defaultValue: "Bank name"),
+                                style: .standard
+                            )
+                        }
+
+                        Divider()
+
+                        // Loan type
+                        VStack(spacing: AppSpacing.sm) {
+                            Picker(String(localized: "loan.typePicker", defaultValue: "Type"), selection: $loanType) {
+                                Text(String(localized: "loan.typeAnnuity", defaultValue: "Annuity (Credit)")).tag(LoanType.annuity)
+                                Text(String(localized: "loan.typeInstallment", defaultValue: "Installment")).tag(LoanType.installment)
+                            }
+                            .pickerStyle(.segmented)
+                            .disabled(isEditing)
+                            .padding(.horizontal, AppSpacing.md)
+                            .padding(.vertical, AppSpacing.sm)
+
+                            if isEditing {
+                                Text(String(localized: "loan.typeLockedHint", defaultValue: "Loan type cannot be changed after creation"))
+                                    .font(AppTypography.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, AppSpacing.md)
+                                    .padding(.bottom, AppSpacing.sm)
+                            } else if loanType == .installment {
+                                Text(String(localized: "loan.installmentHint", defaultValue: "Installment = 0% interest, equal payments"))
+                                    .font(AppTypography.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, AppSpacing.md)
+                                    .padding(.bottom, AppSpacing.sm)
+                            }
+                        }
+
+                        Divider()
+
+                        // Interest rate & term
+                        if loanType == .annuity {
+                            UniversalRow(config: .standard, leadingIcon: .sfSymbol("percent", color: .secondary)) {
+                                FormTextField(
+                                    text: $interestRateText,
+                                    placeholder: "0.0",
+                                    style: .compact,
+                                    keyboardType: .decimalPad
+                                )
+                            } trailing: {
+                                Text(String(localized: "loan.rateAnnual", defaultValue: "% annual"))
+                                    .font(AppTypography.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Divider()
+                        }
+
+                        UniversalRow(config: .standard, leadingIcon: .sfSymbol("clock", color: .secondary)) {
+                            FormTextField(
+                                text: $termMonthsText,
+                                placeholder: String(localized: "loan.termPlaceholder", defaultValue: "Number of months"),
+                                style: .compact,
+                                keyboardType: .numberPad
+                            )
+                        } trailing: {
+                            Text(String(localized: "loan.months", defaultValue: "months"))
+                                .font(AppTypography.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Divider()
+
+                        // Payment day
+                        MenuPickerRow(
+                            icon: "calendar.badge.clock",
+                            title: String(localized: "loan.paymentDay", defaultValue: "Day of month"),
+                            selection: $paymentDay,
+                            options: (1...31).map { ("\($0)", $0) }
+                        )
+
+                        // Start date (only for new/convert)
+                        if !isEditing {
+                            Divider()
+                            DatePickerRow(
+                                icon: "calendar",
+                                title: String(localized: "loan.startDate", defaultValue: "Loan start date"),
+                                selection: $startDate
+                            )
+                        }
+                    }
                 }
+                .padding(AppSpacing.lg)
             }
         }
         .onAppear {
@@ -193,31 +208,40 @@ struct LoanEditView: View {
                 startDate = Date()
             }
         }
-        .task {
-            guard account == nil else { return }
-            await Task.yield()
-            isNameFocused = true
-        }
-        .sheet(isPresented: $showingIconPicker) {
-            IconPickerView(selectedSource: $selectedIconSource)
-        }
     }
 
     // MARK: - Save
 
     private func saveLoan() {
-        guard let principalAmount = AmountFormatter.parse(principalAmountText),
-              let termMonths = Int(termMonthsText), termMonths > 0 else {
+        guard let principalAmount = AmountFormatter.parse(principalAmountText) else {
+            withAnimation(AppAnimation.contentSpring) {
+                validationError = String(localized: "loan.error.invalidAmount", defaultValue: "Enter a valid amount")
+            }
+            HapticManager.error()
+            return
+        }
+        guard let termMonths = Int(termMonthsText), termMonths > 0 else {
+            withAnimation(AppAnimation.contentSpring) {
+                validationError = String(localized: "loan.error.invalidTerm", defaultValue: "Enter a valid term")
+            }
+            HapticManager.error()
             return
         }
 
         let interestRate: Decimal
         if loanType == .annuity {
-            guard let rate = AmountFormatter.parse(interestRateText) else { return }
+            guard let rate = AmountFormatter.parse(interestRateText) else {
+                withAnimation(AppAnimation.contentSpring) {
+                    validationError = String(localized: "loan.error.invalidRate", defaultValue: "Enter a valid interest rate")
+                }
+                HapticManager.error()
+                return
+            }
             interestRate = rate
         } else {
             interestRate = 0
         }
+        validationError = nil
 
         let existingInfo = account?.loanInfo
         let startDateStr = isEditing
@@ -258,4 +282,44 @@ struct LoanEditView: View {
         HapticManager.success()
         onSave(newAccount)
     }
+}
+
+// MARK: - Previews
+
+#Preview("Loan Edit - New") {
+    let coordinator = AppCoordinator()
+
+    LoanEditView(
+        loansViewModel: coordinator.loansViewModel,
+        account: nil,
+        onSave: { _ in }
+    )
+}
+
+#Preview("Loan Edit - Edit") {
+    let coordinator = AppCoordinator()
+    let sampleAccount = Account(
+        id: "preview-loan",
+        name: "Car Loan",
+        currency: "KZT",
+        iconSource: .bankLogo(.halykBank),
+        loanInfo: LoanInfo(
+            bankName: "Halyk Bank",
+            loanType: .annuity,
+            originalPrincipal: 5_000_000,
+            remainingPrincipal: 3_500_000,
+            interestRateAnnual: 18.5,
+            termMonths: 36,
+            startDate: "2025-06-01",
+            paymentDay: 15,
+            paymentsMade: 9
+        ),
+        initialBalance: 5_000_000
+    )
+
+    LoanEditView(
+        loansViewModel: coordinator.loansViewModel,
+        account: sampleAccount,
+        onSave: { _ in }
+    )
 }

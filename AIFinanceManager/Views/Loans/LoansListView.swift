@@ -57,6 +57,7 @@ struct LoansListView: View {
                     VStack(spacing: AppSpacing.md) {
                         // Summary card
                         loansSummary
+                            .chartAppear()
                             .screenPadding()
 
                         // Filter
@@ -71,11 +72,12 @@ struct LoansListView: View {
                         }
 
                         // Loan cards
-                        ForEach(filteredLoans) { loan in
+                        ForEach(Array(filteredLoans.enumerated()), id: \.element.id) { index, loan in
                             NavigationLink(value: HomeDestination.loanDetail(loan.id)) {
                                 loanCard(loan)
                             }
                             .buttonStyle(.plain)
+                            .chartAppear(delay: Double(index) * 0.05)
                             .screenPadding()
                         }
                     }
@@ -277,5 +279,35 @@ struct LoansListView: View {
             }
             transactionsViewModel.recalculateAccountBalances()
         }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Loans List") {
+    let coordinator = AppCoordinator()
+
+    NavigationStack {
+        LoansListView(
+            loansViewModel: coordinator.loansViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+        )
+        .environment(coordinator)
+        .environment(coordinator.transactionStore)
+    }
+}
+
+#Preview("Loans List - Empty") {
+    let coordinator = AppCoordinator()
+
+    NavigationStack {
+        LoansListView(
+            loansViewModel: coordinator.loansViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+        )
+        .environment(coordinator)
+        .environment(coordinator.transactionStore)
     }
 }

@@ -47,8 +47,6 @@ struct FormSection<Content: View>: View {
                     SectionHeaderView(header, style: .default)
                     Spacer()
                 }
-//                .padding(.horizontal, AppSpacing.lg)
-                .padding(.bottom, AppSpacing.xs)
             }
 
             // Content
@@ -64,6 +62,8 @@ struct FormSection<Content: View>: View {
                     VStack(spacing: 0) {
                         content
                     }
+                    .background(.secondary.opacity(0.05))
+                    .cornerRadius(AppRadius.xl)
 
                 case .plain:
                     content

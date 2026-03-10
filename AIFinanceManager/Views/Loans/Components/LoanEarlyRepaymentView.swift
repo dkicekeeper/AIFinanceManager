@@ -20,74 +20,66 @@ struct LoanEarlyRepaymentView: View {
     @State private var repaymentType: EarlyRepaymentType = .reduceTerm
     @State private var noteText: String = ""
     @FocusState private var isAmountFocused: Bool
+    @State private var validationError: String? = nil
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text(String(localized: "loan.repaymentAmount", defaultValue: "Repayment Amount"))) {
-                    HStack {
-                        TextField(String(localized: "loan.amountPlaceholder", defaultValue: "Amount"), text: $amountText)
-                            .keyboardType(.decimalPad)
-                            .focused($isAmountFocused)
-                        Text(Formatting.currencySymbol(for: account.currency))
-                            .foregroundStyle(.secondary)
-                    }
+        EditSheetContainer(
+            title: String(localized: "loan.earlyRepaymentTitle", defaultValue: "Early Repayment"),
+            isSaveDisabled: amountText.isEmpty,
+            onSave: { saveRepayment() },
+            onCancel: { dismiss() }
+        ) {
+            if let error = validationError {
+                InlineStatusText(message: error, type: .error)
+            }
 
-                    Text(String(format: String(localized: "loan.remainingBalance", defaultValue: "Remaining: %@"), Formatting.formatCurrency(NSDecimalNumber(decimal: loanInfo.remainingPrincipal).doubleValue, currency: account.currency)))
-                        .font(AppTypography.caption)
+            Section(header: Text(String(localized: "loan.repaymentAmount", defaultValue: "Repayment Amount"))) {
+                HStack {
+                    TextField(String(localized: "loan.amountPlaceholder", defaultValue: "Amount"), text: $amountText)
+                        .keyboardType(.decimalPad)
+                        .focused($isAmountFocused)
+                    Text(Formatting.currencySymbol(for: account.currency))
                         .foregroundStyle(.secondary)
                 }
 
-                Section(header: Text(String(localized: "loan.repaymentDate", defaultValue: "Date"))) {
-                    DatePicker(String(localized: "loan.date", defaultValue: "Date"), selection: $repaymentDate, displayedComponents: .date)
+                Text(String(format: String(localized: "loan.remainingBalance", defaultValue: "Remaining: %@"), Formatting.formatCurrency(NSDecimalNumber(decimal: loanInfo.remainingPrincipal).doubleValue, currency: account.currency)))
+                    .font(AppTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section(header: Text(String(localized: "loan.repaymentDate", defaultValue: "Date"))) {
+                DatePicker(String(localized: "loan.date", defaultValue: "Date"), selection: $repaymentDate, displayedComponents: .date)
+            }
+
+            Section(header: Text(String(localized: "loan.repaymentType", defaultValue: "Repayment Strategy"))) {
+                Picker(String(localized: "loan.strategy", defaultValue: "Strategy"), selection: $repaymentType) {
+                    Text(String(localized: "loan.reduceTerm", defaultValue: "Reduce Term")).tag(EarlyRepaymentType.reduceTerm)
+                    Text(String(localized: "loan.reducePayment", defaultValue: "Reduce Payment")).tag(EarlyRepaymentType.reducePayment)
                 }
+                .pickerStyle(.segmented)
 
-                Section(header: Text(String(localized: "loan.repaymentType", defaultValue: "Repayment Strategy"))) {
-                    Picker(String(localized: "loan.strategy", defaultValue: "Strategy"), selection: $repaymentType) {
-                        Text(String(localized: "loan.reduceTerm", defaultValue: "Reduce Term")).tag(EarlyRepaymentType.reduceTerm)
-                        Text(String(localized: "loan.reducePayment", defaultValue: "Reduce Payment")).tag(EarlyRepaymentType.reducePayment)
-                    }
-                    .pickerStyle(.segmented)
+                Text(repaymentType == .reduceTerm
+                     ? String(localized: "loan.reduceTermHint", defaultValue: "Keep monthly payment, finish sooner")
+                     : String(localized: "loan.reducePaymentHint", defaultValue: "Keep term, lower monthly payment"))
+                    .font(AppTypography.caption)
+                    .foregroundStyle(.secondary)
+            }
 
-                    Text(repaymentType == .reduceTerm
-                         ? String(localized: "loan.reduceTermHint", defaultValue: "Keep monthly payment, finish sooner")
-                         : String(localized: "loan.reducePaymentHint", defaultValue: "Keep term, lower monthly payment"))
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                // Impact preview
-                if let amount = AmountFormatter.parse(amountText), amount > 0, amount <= loanInfo.remainingPrincipal {
-                    Section(header: Text(String(localized: "loan.impact", defaultValue: "Impact"))) {
-                        impactPreview(amount: amount)
-                    }
-                }
-
-                Section(header: Text(String(localized: "loan.note", defaultValue: "Note"))) {
-                    TextField(String(localized: "loan.notePlaceholder", defaultValue: "Optional note"), text: $noteText, axis: .vertical)
-                        .lineLimit(3...6)
+            // Impact preview
+            if let amount = AmountFormatter.parse(amountText), amount > 0, amount <= loanInfo.remainingPrincipal {
+                Section(header: Text(String(localized: "loan.impact", defaultValue: "Impact"))) {
+                    impactPreview(amount: amount)
                 }
             }
-            .navigationTitle(String(localized: "loan.earlyRepaymentTitle", defaultValue: "Early Repayment"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(String(localized: "button.cancel")) {
-                        HapticManager.light()
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(String(localized: "button.save")) {
-                        saveRepayment()
-                    }
-                    .disabled(amountText.isEmpty)
-                }
+
+            Section(header: Text(String(localized: "loan.note", defaultValue: "Note"))) {
+                TextField(String(localized: "loan.notePlaceholder", defaultValue: "Optional note"), text: $noteText, axis: .vertical)
+                    .lineLimit(3...6)
             }
-            .task {
-                await Task.yield()
-                isAmountFocused = true
-            }
+        }
+        .task {
+            await Task.yield()
+            isAmountFocused = true
         }
     }
 
@@ -134,7 +126,21 @@ struct LoanEarlyRepaymentView: View {
     }
 
     private func saveRepayment() {
-        guard let amount = AmountFormatter.parse(amountText), amount > 0 else { return }
+        guard let amount = AmountFormatter.parse(amountText), amount > 0 else {
+            withAnimation(AppAnimation.contentSpring) {
+                validationError = String(localized: "loan.error.invalidAmount", defaultValue: "Enter a valid amount")
+            }
+            HapticManager.error()
+            return
+        }
+        guard amount <= loanInfo.remainingPrincipal else {
+            withAnimation(AppAnimation.contentSpring) {
+                validationError = String(localized: "loan.error.exceedsRemaining", defaultValue: "Amount exceeds remaining balance")
+            }
+            HapticManager.error()
+            return
+        }
+        validationError = nil
 
         let dateStr = DateFormatters.dateFormatter.string(from: repaymentDate)
         let note = noteText.isEmpty ? nil : noteText
@@ -147,4 +153,33 @@ struct LoanEarlyRepaymentView: View {
     private func formatDateString(_ dateStr: String) -> String {
         DateFormatters.displayString(from: dateStr)
     }
+}
+
+// MARK: - Previews
+
+#Preview("Early Repayment") {
+    let sampleAccount = Account(
+        id: "preview-loan",
+        name: "Car Loan",
+        currency: "KZT",
+        iconSource: .bankLogo(.halykBank),
+        loanInfo: LoanInfo(
+            bankName: "Halyk Bank",
+            loanType: .annuity,
+            originalPrincipal: 5_000_000,
+            remainingPrincipal: 3_500_000,
+            interestRateAnnual: 18.5,
+            termMonths: 36,
+            startDate: "2025-06-01",
+            paymentDay: 15,
+            paymentsMade: 9
+        ),
+        initialBalance: 5_000_000
+    )
+
+    LoanEarlyRepaymentView(
+        account: sampleAccount,
+        loanInfo: sampleAccount.loanInfo!,
+        onRepayment: { _, _, _, _ in }
+    )
 }

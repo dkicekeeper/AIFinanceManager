@@ -128,9 +128,10 @@ struct EditTransactionView: View {
                         )
 
                         // 5. Description
-                        DescriptionTextField(
+                        FormTextField(
                             text: $bindableCoordinator.formData.descriptionText,
-                            placeholder: String(localized: "transactionForm.descriptionPlaceholder")
+                            placeholder: String(localized: "transactionForm.descriptionPlaceholder"),
+                            style: .multiline(min: 2, max: 6)
                         )
                     }
                     .animation(AppAnimation.gentleSpring, value: coordinator.errorMessage)

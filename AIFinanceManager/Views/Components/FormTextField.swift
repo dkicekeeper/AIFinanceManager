@@ -138,7 +138,7 @@ struct FormTextField: View {
     private var paddingForStyle: CGFloat {
         switch style {
         case .standard, .multiline:
-            return AppSpacing.md
+            return AppSpacing.lg
         case .compact:
             return AppSpacing.sm
         }
@@ -148,9 +148,9 @@ struct FormTextField: View {
         if errorMessage != nil {
             return AppColors.destructive.opacity(0.05)
         } else if isFocused {
-            return AppColors.accent.opacity(0.05)
+            return AppColors.surface.opacity(0.5)
         } else {
-            return AppColors.surface
+            return AppColors.surface.opacity(0.5)
         }
     }
 

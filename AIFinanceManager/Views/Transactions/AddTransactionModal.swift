@@ -142,9 +142,10 @@ struct AddTransactionModal: View {
                     )
                 }
 
-                DescriptionTextField(
+                FormTextField(
                     text: $bindableCoordinator.formData.description,
-                    placeholder: String(localized: "quickAdd.descriptionPlaceholder")
+                    placeholder: String(localized: "quickAdd.descriptionPlaceholder"),
+                    style: .multiline(min: 2, max: 6)
                 )
             }
         }

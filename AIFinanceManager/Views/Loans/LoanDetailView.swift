@@ -509,8 +509,7 @@ struct LoanDetailView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                Text(Formatting.formatCurrency(NSDecimalNumber(decimal: entry.payment).doubleValue, currency: account?.currency ?? "KZT"))
-                    .font(AppTypography.bodySmall)
+                FormattedAmountText(amount: NSDecimalNumber(decimal: entry.payment).doubleValue, currency: account?.currency ?? "KZT", fontSize: AppTypography.bodySmall)
                 if entry.interest > 0 {
                     Text(String(format: String(localized: "loan.interestShort", defaultValue: "int: %@"), Formatting.formatCurrency(NSDecimalNumber(decimal: entry.interest).doubleValue, currency: account?.currency ?? "KZT")))
                         .font(AppTypography.caption)
@@ -558,5 +557,39 @@ struct LoanDetailView: View {
 
     private func formatDateString(_ dateStr: String) -> String {
         DateFormatters.displayString(from: dateStr)
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Loan Detail") {
+    let coordinator = AppCoordinator()
+
+    NavigationStack {
+        LoanDetailView(
+            loansViewModel: coordinator.loansViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
+            accountId: coordinator.loansViewModel.loans.first?.id ?? "test"
+        )
+        .environment(coordinator)
+        .environment(coordinator.transactionStore)
+        .environment(TimeFilterManager())
+    }
+}
+
+#Preview("Loan Detail - Not Found") {
+    let coordinator = AppCoordinator()
+
+    NavigationStack {
+        LoanDetailView(
+            loansViewModel: coordinator.loansViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel,
+            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
+            accountId: "non-existent"
+        )
+        .environment(coordinator)
+        .environment(coordinator.transactionStore)
+        .environment(TimeFilterManager())
     }
 }

@@ -24,95 +24,136 @@ struct LoanPayAllView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                // Loan list
-                Section(header: Text(String(localized: "loan.payAllTitle", defaultValue: "Pay All Loans"))) {
-                    ForEach(activeLoans) { loan in
-                        if let loanInfo = loan.loanInfo {
-                            HStack {
-                                IconView(source: loan.iconSource, size: AppIconSize.md)
+        EditSheetContainer(
+            title: String(localized: "loan.payAllTitle", defaultValue: "Pay All Loans"),
+            isSaveDisabled: selectedSourceAccountId.isEmpty || activeLoans.isEmpty,
+            onSave: {
+                let dateStr = DateFormatters.dateFormatter.string(from: paymentDate)
+                onPayAll(selectedSourceAccountId, dateStr)
+                HapticManager.success()
+                dismiss()
+            },
+            onCancel: { dismiss() }
+        ) {
+            // Loan list
+            Section(header: Text(String(localized: "loan.payAllLoans", defaultValue: "Loans"))) {
+                ForEach(activeLoans) { loan in
+                    if let loanInfo = loan.loanInfo {
+                        HStack {
+                            IconView(source: loan.iconSource, size: AppIconSize.md)
 
-                                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                                    Text(loan.name)
-                                        .font(AppTypography.bodySmall)
-                                    Text(loanInfo.bankName)
-                                        .font(AppTypography.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Spacer()
-
-                                Text(Formatting.formatCurrency(NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue, currency: loan.currency))
+                            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                                Text(loan.name)
                                     .font(AppTypography.bodySmall)
-                                    .foregroundStyle(AppColors.expense)
+                                Text(loanInfo.bankName)
+                                    .font(AppTypography.caption)
+                                    .foregroundStyle(.secondary)
                             }
+
+                            Spacer()
+
+                            FormattedAmountText(amount: NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue, currency: loan.currency, fontSize: AppTypography.bodySmall, color: AppColors.expense)
                         }
                     }
                 }
+            }
 
-                // Total
-                Section {
-                    HStack {
-                        Text(String(localized: "loan.payAllTotal", defaultValue: "Total Payment"))
-                            .font(AppTypography.bodyEmphasis)
-                        Spacer()
-                        FormattedAmountText(
-                            amount: NSDecimalNumber(decimal: totalPayment).doubleValue,
-                            currency: currency,
-                            fontSize: AppTypography.bodyEmphasis,
-                            color: AppColors.expense
-                        )
-                    }
+            // Total
+            Section {
+                HStack {
+                    Text(String(localized: "loan.payAllTotal", defaultValue: "Total Payment"))
+                        .font(AppTypography.bodyEmphasis)
+                    Spacer()
+                    FormattedAmountText(
+                        amount: NSDecimalNumber(decimal: totalPayment).doubleValue,
+                        currency: currency,
+                        fontSize: AppTypography.bodyEmphasis,
+                        color: AppColors.expense
+                    )
                 }
+            }
 
-                // Source account
-                Section(header: Text(String(localized: "loan.sourceAccount", defaultValue: "Source Account"))) {
-                    if availableAccounts.isEmpty {
-                        Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts available"))
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Picker(String(localized: "loan.selectSourceAccount", defaultValue: "Select account to pay from"), selection: $selectedSourceAccountId) {
-                            Text(String(localized: "loan.selectSourceAccount", defaultValue: "Select account to pay from"))
-                                .tag("")
-                            ForEach(availableAccounts) { acc in
-                                Text(acc.name)
-                                    .tag(acc.id)
-                            }
+            // Source account
+            Section(header: Text(String(localized: "loan.sourceAccount", defaultValue: "Source Account"))) {
+                if availableAccounts.isEmpty {
+                    Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts available"))
+                        .font(AppTypography.bodySmall)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Picker(String(localized: "loan.selectSourceAccount", defaultValue: "Select account to pay from"), selection: $selectedSourceAccountId) {
+                        Text(String(localized: "loan.selectSourceAccount", defaultValue: "Select account to pay from"))
+                            .tag("")
+                        ForEach(availableAccounts) { acc in
+                            Text(acc.name)
+                                .tag(acc.id)
                         }
                     }
                 }
+            }
 
-                // Date
-                Section(header: Text(String(localized: "loan.repaymentDate", defaultValue: "Date"))) {
-                    DatePicker(String(localized: "loan.date", defaultValue: "Date"), selection: $paymentDate, displayedComponents: .date)
-                }
+            // Date
+            Section(header: Text(String(localized: "loan.repaymentDate", defaultValue: "Date"))) {
+                DatePicker(String(localized: "loan.date", defaultValue: "Date"), selection: $paymentDate, displayedComponents: .date)
             }
-            .navigationTitle(String(localized: "loan.payAllTitle", defaultValue: "Pay All Loans"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(String(localized: "button.cancel")) {
-                        HapticManager.light()
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(String(localized: "loan.payAllConfirm", defaultValue: "Pay All")) {
-                        let dateStr = DateFormatters.dateFormatter.string(from: paymentDate)
-                        onPayAll(selectedSourceAccountId, dateStr)
-                        HapticManager.success()
-                        dismiss()
-                    }
-                    .disabled(selectedSourceAccountId.isEmpty || activeLoans.isEmpty)
-                }
-            }
-            .onAppear {
-                if selectedSourceAccountId.isEmpty, let first = availableAccounts.first {
-                    selectedSourceAccountId = first.id
-                }
+        }
+        .onAppear {
+            if selectedSourceAccountId.isEmpty, let first = availableAccounts.first {
+                selectedSourceAccountId = first.id
             }
         }
     }
+}
+
+// MARK: - Previews
+
+#Preview("Pay All Loans") {
+    let loan1 = Account(
+        id: "loan-1",
+        name: "Car Loan",
+        currency: "KZT",
+        iconSource: .bankLogo(.halykBank),
+        loanInfo: LoanInfo(
+            bankName: "Halyk Bank",
+            loanType: .annuity,
+            originalPrincipal: 5_000_000,
+            remainingPrincipal: 3_500_000,
+            interestRateAnnual: 18.5,
+            termMonths: 36,
+            startDate: "2025-06-01",
+            paymentDay: 15,
+            paymentsMade: 9
+        ),
+        initialBalance: 5_000_000
+    )
+
+    let loan2 = Account(
+        id: "loan-2",
+        name: "Phone Installment",
+        currency: "KZT",
+        loanInfo: LoanInfo(
+            bankName: "Kaspi Bank",
+            loanType: .installment,
+            originalPrincipal: 450_000,
+            remainingPrincipal: 300_000,
+            termMonths: 12,
+            startDate: "2025-09-01",
+            paymentDay: 5,
+            paymentsMade: 4
+        ),
+        initialBalance: 450_000
+    )
+
+    let sourceAccount = Account(
+        id: "source-1",
+        name: "Kaspi Gold",
+        currency: "KZT",
+        initialBalance: 500_000
+    )
+
+    LoanPayAllView(
+        activeLoans: [loan1, loan2],
+        availableAccounts: [sourceAccount],
+        currency: "KZT",
+        onPayAll: { _, _ in }
+    )
 }

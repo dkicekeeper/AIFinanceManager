@@ -84,9 +84,10 @@ struct AccountActionView: View {
                 }
 
                 // 5. Описание
-                DescriptionTextField(
+                FormTextField(
                     text: $viewModel.descriptionText,
-                    placeholder: String(localized: "transactionForm.descriptionPlaceholder")
+                    placeholder: String(localized: "transactionForm.descriptionPlaceholder"),
+                    style: .multiline(min: 2, max: 6)
                 )
             }
         }

@@ -240,85 +240,27 @@ struct SubscriptionDetailView: View {
 
             VStack(spacing: AppSpacing.sm) {
                 ForEach(cachedTransactions) { transaction in
-                    let isPlanned = TransactionDisplayHelper.isFutureDate(transaction.date)
                     let styleData = CategoryStyleHelper.cached(
                         category: transaction.category,
                         type: transaction.type,
-                        customCategories: []
+                        customCategories: categoriesViewModel.customCategories
                     )
-
-                    HStack(spacing: AppSpacing.md) {
-                        // Icon
-                        if isPlanned {
-                            Image(systemName: "clock")
-                                .foregroundStyle(AppColors.planned)
-                                .font(AppTypography.caption)
-                        } else {
-                            TransactionIconView(transaction: transaction, styleData: styleData)
-                        }
-
-                        // Description + date
-                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                            if !transaction.description.isEmpty {
-                                Text(transaction.description)
-                                    .font(AppTypography.body)
-                            }
-                            Text(formatTransactionDate(transaction.date))
-                                .font(AppTypography.bodySmall)
-                                .foregroundStyle(isPlanned ? AppColors.planned : .secondary)
-                        }
-
-                        Spacer()
-
-                        // Amount
-                        VStack(alignment: .trailing, spacing: AppSpacing.xs) {
-                            if transaction.type == .internalTransfer {
-                                TransferAmountView(
-                                    transaction: transaction,
-                                    sourceAccount: nil,
-                                    targetAccount: nil,
-                                    depositAccountId: nil
-                                )
-                            } else {
-                                FormattedAmountView(
-                                    amount: transaction.amount,
-                                    currency: transaction.currency,
-                                    prefix: TransactionDisplayHelper.amountPrefix(
-                                        for: transaction.type,
-                                        targetAccountId: transaction.targetAccountId,
-                                        depositAccountId: nil,
-                                        isPlanned: isPlanned
-                                    ),
-                                    color: TransactionDisplayHelper.amountColor(
-                                        for: transaction.type,
-                                        targetAccountId: transaction.targetAccountId,
-                                        depositAccountId: nil,
-                                        isPlanned: isPlanned
-                                    )
-                                )
-
-                                if let targetCurrency = transaction.targetCurrency,
-                                   let targetAmount = transaction.targetAmount,
-                                   targetCurrency != transaction.currency {
-                                    FormattedAmountView(
-                                        amount: targetAmount,
-                                        currency: targetCurrency,
-                                        prefix: "",
-                                        color: TransactionDisplayHelper.amountColor(
-                                            for: transaction.type,
-                                            targetAccountId: transaction.targetAccountId,
-                                            depositAccountId: nil,
-                                            isPlanned: isPlanned
-                                        ).opacity(0.7)
-                                    )
-                                }
-                            }
-                        }
+                    let sourceAccount = transactionsViewModel.accounts.first { $0.id == transaction.accountId }
+                    let targetAccount = transaction.targetAccountId.flatMap { tid in
+                        transactionsViewModel.accounts.first { $0.id == tid }
                     }
-                    .futureTransactionStyle(isFuture: isPlanned)
-                    .padding(AppSpacing.sm)
-                    .background(isPlanned ? AppColors.planned.opacity(0.1) : AppColors.secondaryBackground)
-                    .clipShape(.rect(cornerRadius: AppRadius.sm))
+
+                    TransactionCard(
+                        transaction: transaction,
+                        currency: subscription.currency,
+                        styleData: styleData,
+                        sourceAccount: sourceAccount,
+                        targetAccount: targetAccount,
+                        viewModel: nil,
+                        categoriesViewModel: nil,
+                        accountsViewModel: nil,
+                        balanceCoordinator: nil
+                    )
                 }
             }
         }
@@ -326,11 +268,6 @@ struct SubscriptionDetailView: View {
 
     private func formatDate(_ date: Date) -> String {
         DateFormatters.displayDateFormatter.string(from: date)
-    }
-
-    private func formatTransactionDate(_ dateString: String) -> String {
-        guard let date = DateFormatters.dateFormatter.date(from: dateString) else { return dateString }
-        return DateFormatters.displayDateFormatter.string(from: date)
     }
 }
 

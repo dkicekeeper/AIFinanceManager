@@ -86,3 +86,25 @@ private extension Decimal {
         NSDecimalNumber(decimal: self).doubleValue
     }
 }
+
+// MARK: - Previews
+
+#Preview("Loans Card") {
+    let coordinator = AppCoordinator()
+
+    LoansCardView(
+        loansViewModel: coordinator.loansViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel
+    )
+    .padding()
+}
+
+#Preview("Loans Card - Empty") {
+    let coordinator = AppCoordinator()
+
+    LoansCardView(
+        loansViewModel: coordinator.loansViewModel,
+        transactionsViewModel: coordinator.transactionsViewModel
+    )
+    .padding()
+}
