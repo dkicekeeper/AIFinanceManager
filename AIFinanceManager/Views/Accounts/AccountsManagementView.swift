@@ -273,7 +273,7 @@ struct AccountsManagementView: View {
             Button(String(localized: "account.deleteOnlyAccount"), role: .destructive) {
                 HapticManager.warning()
 
-                accountsViewModel.deleteAccount(account, deleteTransactions: false)
+                accountsViewModel.deleteAccount(account)
 
                 // Очистить состояние удаленного счета ПЕРЕД пересчетом
                 transactionsViewModel.cleanupDeletedAccount(account.id)
@@ -294,7 +294,7 @@ struct AccountsManagementView: View {
                 }
 
                 // Transactions already removed via TransactionStore above
-                accountsViewModel.deleteAccount(account, deleteTransactions: false)
+                accountsViewModel.deleteAccount(account)
 
                 // Очистить состояние удаленного счета ПЕРЕД пересчетом
                 transactionsViewModel.cleanupDeletedAccount(account.id)

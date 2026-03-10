@@ -87,11 +87,9 @@ enum LoanPaymentService {
             let dateStr = DateFormatters.dateFormatter.string(from: paymentDate)
 
             // Применяем досрочные погашения, произошедшие до этой даты
-            for (erDate, erAmount) in earlyRepaymentsByMonth {
-                if erDate < dateStr {
-                    remaining -= erAmount
-                    earlyRepaymentsByMonth.removeValue(forKey: erDate)
-                }
+            let applicableKeys = earlyRepaymentsByMonth.keys.filter { $0 < dateStr }
+            for erDate in applicableKeys {
+                remaining -= earlyRepaymentsByMonth.removeValue(forKey: erDate) ?? 0
             }
             guard remaining > 0 else { break }
 

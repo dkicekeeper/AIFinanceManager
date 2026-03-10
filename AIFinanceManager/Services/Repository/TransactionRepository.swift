@@ -94,7 +94,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
     // MARK: - Save Operations
 
     func saveTransactions(_ transactions: [Transaction]) {
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
 
             PerformanceProfiler.start("TransactionRepository.saveTransactions")

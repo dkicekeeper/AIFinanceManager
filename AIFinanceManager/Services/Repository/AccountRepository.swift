@@ -111,12 +111,13 @@ final class AccountRepository: AccountRepositoryProtocol {
     }
 
     func saveAccountsSync(_ accounts: [Account]) throws {
-        let context = stack.viewContext
-        try saveAccountsInternal(accounts, context: context)
-
-        // Save if there are changes
-        if context.hasChanges {
-            try context.save()
+        let context = stack.newBackgroundContext()
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        try context.performAndWait {
+            try saveAccountsInternal(accounts, context: context)
+            if context.hasChanges {
+                try context.save()
+            }
         }
     }
 

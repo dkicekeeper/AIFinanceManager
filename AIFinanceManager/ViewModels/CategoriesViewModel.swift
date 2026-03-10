@@ -298,13 +298,6 @@ class CategoriesViewModel {
         return budgetService.budgetProgress(for: category, transactions: transactions)
     }
 
-    // MARK: - Private Helpers
-
-    /// Schedule save operation (called by delegate)
-    func scheduleSave() {
-        // Implement debounced save if needed
-        // For now, services handle saves directly
-    }
 }
 
 // MARK: - CategoryCRUDDelegate

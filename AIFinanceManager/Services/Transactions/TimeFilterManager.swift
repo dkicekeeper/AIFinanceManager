@@ -7,12 +7,14 @@
 
 import Foundation
 import SwiftUI
-import Combine
 import Observation
+import os
 
 @Observable
 @MainActor
 class TimeFilterManager {
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "TimeFilterManager")
+
     var currentFilter: TimeFilter {
         didSet {
             saveToStorage()
@@ -32,10 +34,14 @@ class TimeFilterManager {
             self.currentFilter = TimeFilter(preset: .allTime)
             UserDefaults.standard.set(true, forKey: migrationKey)
             saveToStorage()
-        } else if let data = UserDefaults.standard.data(forKey: storageKey),
-                  let decoded = try? JSONDecoder().decode(TimeFilter.self, from: data) {
+        } else if let data = UserDefaults.standard.data(forKey: storageKey) {
             // Use saved filter
-            self.currentFilter = decoded
+            do {
+                self.currentFilter = try JSONDecoder().decode(TimeFilter.self, from: data)
+            } catch {
+                Self.logger.warning("Failed to decode TimeFilter: \(error.localizedDescription, privacy: .public) — using .allTime")
+                self.currentFilter = TimeFilter(preset: .allTime)
+            }
         } else {
             // Fallback - use .allTime
             self.currentFilter = TimeFilter(preset: .allTime)
@@ -55,8 +61,11 @@ class TimeFilterManager {
     }
     
     private func saveToStorage() {
-        if let encoded = try? JSONEncoder().encode(currentFilter) {
+        do {
+            let encoded = try JSONEncoder().encode(currentFilter)
             UserDefaults.standard.set(encoded, forKey: storageKey)
+        } catch {
+            Self.logger.warning("Failed to encode TimeFilter: \(error.localizedDescription, privacy: .public)")
         }
     }
     

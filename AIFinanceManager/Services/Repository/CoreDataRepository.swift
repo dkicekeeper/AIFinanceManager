@@ -9,10 +9,13 @@
 
 import Foundation
 import CoreData
+import os
 
 /// Core Data implementation of DataRepositoryProtocol
 /// Delegates operations to specialized repositories for better separation of concerns
 final class CoreDataRepository: DataRepositoryProtocol {
+
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CoreDataRepository")
 
     // MARK: - Properties
 
@@ -218,6 +221,7 @@ final class CoreDataRepository: DataRepositoryProtocol {
             try stack.resetAllData()
             UserDefaultsRepository().clearAllData()
         } catch {
+            Self.logger.error("clearAllData: CoreData resetAllData failed — UserDefaults may be out of sync: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

@@ -10,10 +10,13 @@
 //
 
 import Foundation
+import os
 
 // MARK: - Recurring CRUD Operations
 
 extension TransactionStore {
+    private static let recurringLogger = Logger(subsystem: "AIFinanceManager", category: "TransactionStore.Recurring")
+
     /// Computed properties for recurring data
 
     /// Get all subscriptions (convenience)
@@ -43,7 +46,7 @@ extension TransactionStore {
 
         // 3. Generate initial transactions: past backfill + 1 future occurrence
         //    (no horizon cap — works correctly for all frequencies including .yearly)
-        let existingTransactionIds = Set(transactions.map { $0.id })
+        let existingTransactionIds = transactionIdSet
         let result = recurringGenerator.generateUpToNextFuture(
             series: series,
             existingOccurrences: recurringOccurrences,
@@ -106,7 +109,7 @@ extension TransactionStore {
 
         // 5. If schedule changed (or no future tx exists) — generate the new next occurrence
         if scheduleChanged {
-            let existingTransactionIds = Set(transactions.map { $0.id })
+            let existingTransactionIds = transactionIdSet
             let result = recurringGenerator.generateUpToNextFuture(
                 series: series,
                 existingOccurrences: recurringOccurrences,
@@ -187,15 +190,49 @@ extension TransactionStore {
             throw TransactionStoreError.seriesNotFound
         }
 
-        // 2. Create event
-        let event = TransactionEvent.seriesDeleted(seriesId: seriesId, deleteTransactions: deleteTransactions)
+        // 2. Handle transactions belonging to this series BEFORE deleting the series
+        let seriesTransactions = transactions.filter { $0.recurringSeriesId == seriesId }
+        if deleteTransactions {
+            // Delete all transactions for this series (same pattern as stopSeries)
+            for tx in seriesTransactions {
+                try await apply(TransactionEvent.deleted(tx))
+            }
+        } else {
+            // Convert recurring transactions to regular (detach from series)
+            for tx in seriesTransactions {
+                let converted = Transaction(
+                    id: tx.id,
+                    date: tx.date,
+                    description: tx.description,
+                    amount: tx.amount,
+                    currency: tx.currency,
+                    convertedAmount: tx.convertedAmount,
+                    type: tx.type,
+                    category: tx.category,
+                    subcategory: tx.subcategory,
+                    accountId: tx.accountId,
+                    targetAccountId: tx.targetAccountId,
+                    accountName: tx.accountName,
+                    targetAccountName: tx.targetAccountName,
+                    targetCurrency: tx.targetCurrency,
+                    targetAmount: tx.targetAmount,
+                    recurringSeriesId: nil,
+                    recurringOccurrenceId: nil,
+                    createdAt: tx.createdAt
+                )
+                try await apply(TransactionEvent.updated(old: tx, new: converted))
+            }
+        }
 
-        // 3. Apply
+        // 3. Clean up occurrences for this series
+        recurringStore.removeAllOccurrences(for: seriesId)
+
+        // 4. Create event and apply (removes series from RecurringStore + persists)
+        let event = TransactionEvent.seriesDeleted(seriesId: seriesId, deleteTransactions: deleteTransactions)
         try await apply(event)
 
-        // 4. Cancel notifications
+        // 5. Cancel notifications
         await SubscriptionNotificationScheduler.shared.cancelNotifications(for: seriesId)
-
     }
 
     // MARK: - Private Validation
@@ -257,7 +294,7 @@ extension TransactionStore {
         }
 
         // 3. Generate transactions using correct API
-        let existingTransactionIds = Set(transactions.map { $0.id })
+        let existingTransactionIds = transactionIdSet
         let result = recurringGenerator.generateTransactions(
             series: [series],
             existingOccurrences: recurringOccurrences,
@@ -293,7 +330,7 @@ extension TransactionStore {
     /// - Returns: Array of all generated transactions
     func generateAllRecurringTransactions(horizon: Int = 3) -> [Transaction] {
         let activeSeries = recurringSeries.filter { $0.isActive }
-        let existingTransactionIds = Set(transactions.map { $0.id })
+        let existingTransactionIds = transactionIdSet
 
         let result = recurringGenerator.generateTransactions(
             series: activeSeries,
@@ -332,7 +369,7 @@ extension TransactionStore {
             guard !hasFuture else { continue }
 
             // Generate backfill (past gaps) + 1 future
-            let existingTransactionIds = Set(transactions.map { $0.id })
+            let existingTransactionIds = transactionIdSet
             let result = recurringGenerator.generateUpToNextFuture(
                 series: series,
                 existingOccurrences: recurringOccurrences,
@@ -345,7 +382,11 @@ extension TransactionStore {
 
             // Persist transactions
             let bulkEvent = TransactionEvent.bulkAdded(result.transactions)
-            try? await apply(bulkEvent)
+            do {
+                try await apply(bulkEvent)
+            } catch {
+                Self.recurringLogger.error("extendAllActiveSeriesHorizons: failed to apply bulk event for series \(series.id): \(error.localizedDescription)")
+            }
 
             // Track occurrences
             recurringStore.appendOccurrences(result.occurrences)
@@ -374,9 +415,10 @@ extension TransactionStore {
             throw TransactionStoreError.invalidSeriesData
         }
 
-        // 2. Update with paused status
+        // 2. Update with paused status — both isActive and status must be updated in tandem
         var updated = series
         updated.status = .paused
+        updated.isActive = false
 
         try await updateSeries(updated)
 
@@ -421,7 +463,7 @@ extension TransactionStore {
         // 4. Generate the next future occurrence
         //    updateSeries skips generation when only isActive/status changed,
         //    so we trigger it manually here.
-        let existingTransactionIds = Set(transactions.map { $0.id })
+        let existingTransactionIds = transactionIdSet
         let result = recurringGenerator.generateUpToNextFuture(
             series: updated,
             existingOccurrences: recurringOccurrences,

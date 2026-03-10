@@ -103,7 +103,6 @@ class TransactionPaginationManager {
         hasMore = endIndex < allSortedKeys.count
         isLoadingMore = false
 
-        _ = groupedTransactions.values.flatMap { $0 }.count
     }
 
     /// Reset pagination to initial state
@@ -126,9 +125,6 @@ class TransactionPaginationManager {
 
         let triggerIndex = max(0, visibleSections.count - 3)
         let shouldLoad = index >= triggerIndex && hasMore && !isLoadingMore
-
-        if shouldLoad {
-        }
 
         return shouldLoad
     }

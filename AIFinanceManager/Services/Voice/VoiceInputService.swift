@@ -60,8 +60,8 @@ class VoiceInputService: NSObject {
     // MARK: - Dynamic Context (iOS 17+)
 
     /// Weak references to ViewModels for contextual strings
-    weak var categoriesViewModel: CategoriesViewModel?
-    weak var accountsViewModel: AccountsViewModel?
+    @ObservationIgnored weak var categoriesViewModel: CategoriesViewModel?
+    @ObservationIgnored weak var accountsViewModel: AccountsViewModel?
     
     override init() {
         // Инициализируем распознаватель для русского языка

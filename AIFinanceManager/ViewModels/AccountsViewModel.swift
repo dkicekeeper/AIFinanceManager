@@ -25,11 +25,11 @@ class AccountsViewModel {
 
     /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth
     /// Injected by AppCoordinator, optional for backward compatibility
-    var balanceCoordinator: BalanceCoordinator?
+    @ObservationIgnored var balanceCoordinator: BalanceCoordinator?
 
     /// PHASE 3: TransactionStore as Single Source of Truth for accounts
     /// ViewModels observe this instead of owning data
-    weak var transactionStore: TransactionStore?
+    @ObservationIgnored weak var transactionStore: TransactionStore?
 
     // MARK: - Private Properties
 
@@ -103,7 +103,7 @@ class AccountsViewModel {
         }
     }
 
-    func deleteAccount(_ account: Account, deleteTransactions: Bool = false) {
+    func deleteAccount(_ account: Account) {
         // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
         transactionStore?.deleteAccount(account.id)
         // Note: Transaction deletion is handled by the calling view
@@ -286,11 +286,6 @@ class AccountsViewModel {
     /// Получить счет по ID
     func getAccount(by id: String) -> Account? {
         return accounts.first { $0.id == id }
-    }
-    
-    /// Получить все депозиты
-    var deposits: [Account] {
-        return accounts.filter { $0.isDeposit }
     }
     
     /// Получить все обычные счета (не депозиты и не кредиты)

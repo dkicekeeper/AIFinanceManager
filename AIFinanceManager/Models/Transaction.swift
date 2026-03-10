@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum TransactionType: String, Codable {
+enum TransactionType: String, Codable, Sendable {
     case income
     case expense
     case internalTransfer = "internal"
@@ -24,7 +24,7 @@ enum TransactionType: String, Codable {
     static let loanPaymentCategoryName = "Loan Payment"
 }
 
-struct Transaction: Identifiable, Codable, Equatable {
+struct Transaction: Identifiable, Codable, Equatable, Sendable {
     let id: String
     let date: String // YYYY-MM-DD
     let description: String

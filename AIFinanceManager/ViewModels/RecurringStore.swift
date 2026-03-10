@@ -91,6 +91,11 @@ final class RecurringStore {
         }
     }
 
+    /// Remove all occurrences for a series (used by deleteSeries).
+    func removeAllOccurrences(for seriesId: String) {
+        recurringOccurrences.removeAll { $0.seriesId == seriesId }
+    }
+
     func handleSeriesDeleted(seriesId: String) {
         recurringSeries.removeAll { $0.id == seriesId }
         // Note: Transaction cleanup is handled in TransactionStore+Recurring.deleteSeries() before calling apply()

@@ -11,7 +11,6 @@
 //
 
 import Foundation
-import Combine
 import CoreData
 import Observation
 
@@ -75,6 +74,9 @@ final class TransactionStore {
     /// All transactions - THE ONLY source of transaction data
     internal(set) var transactions: [Transaction] = []
 
+    /// Pre-maintained set of transaction IDs for O(1) lookups (avoids O(N) Set construction)
+    @ObservationIgnored internal var transactionIdSet: Set<String> = []
+
     /// All accounts - managed alongside transactions for balance updates
     internal(set) var accounts: [Account] = []
 
@@ -121,6 +123,9 @@ final class TransactionStore {
     // Phase 17: Debounce task for coalescing rapid mutations into single sync
     private var syncDebounceTask: Task<Void, Never>?
 
+    // Lifecycle observer token for cleanup in deinit
+    @ObservationIgnored private var lifecycleObserver: NSObjectProtocol?
+
     // Coordinator for syncing changes to ViewModels (with @Observable we need manual sync)
     @ObservationIgnored weak var coordinator: AppCoordinator?
 
@@ -142,13 +147,19 @@ final class TransactionStore {
         setupNotificationObservers()
     }
 
+    deinit {
+        if let observer = lifecycleObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
     private func setupNotificationObservers() {
-        NotificationCenter.default.addObserver(
+        lifecycleObserver = NotificationCenter.default.addObserver(
             forName: .applicationDidBecomeActive,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
+            Task {
                 await self?.rescheduleSubscriptionNotifications()
                 // Extend recurring horizons: any series whose future occurrence date has
                 // arrived (or was never generated) gets a new next occurrence added.
@@ -193,6 +204,7 @@ final class TransactionStore {
         // Back on @MainActor — single assignment cycle triggers one @Observable update.
         accounts  = AccountOrderManager.shared.applyOrders(to: accs)
         transactions = txs
+        transactionIdSet = Set(txs.map { $0.id })
         categories = CategoryOrderManager.shared.applyOrders(to: cats)
         subcategories = subs
         categorySubcategoryLinks = catLinks
@@ -226,6 +238,11 @@ final class TransactionStore {
     func updateBaseCurrency(_ currency: String) {
         baseCurrency = currency
         cache.invalidateAll() // Currency change affects all cached calculations
+
+        // Currency change requires full balance recalculation in BalanceCoordinator
+        Task {
+            await balanceCoordinator.recalculateAll(accounts: accounts, transactions: transactions)
+        }
     }
 
     // MARK: - CRUD Operations
@@ -483,8 +500,8 @@ final class TransactionStore {
         // 1. Update state (SSOT)
         updateState(event)
 
-        // 2. Update balances (incremental)
-        updateBalances(for: event)
+        // 2. Update balances (incremental, awaited for consistency)
+        await updateBalances(for: event)
 
         // 3. Phase 20: Granular cache invalidation — only invalidate what changed
         invalidateCache(for: event)
@@ -511,17 +528,21 @@ final class TransactionStore {
         switch event {
         case .added(let tx):
             transactions.append(tx)
+            transactionIdSet.insert(tx.id)
 
         case .updated(let old, let new):
             if let index = transactions.firstIndex(where: { $0.id == old.id }) {
                 transactions[index] = new
             }
+            // IDs don't change on update
 
         case .deleted(let tx):
             transactions.removeAll { $0.id == tx.id }
+            transactionIdSet.remove(tx.id)
 
         case .bulkAdded(let txs):
             transactions.append(contentsOf: txs)
+            transactionIdSet.formUnion(txs.map { $0.id })
 
         // MARK: - Recurring Series Events (Phase 9 / Phase 03-PERF-02: delegated to RecurringStore)
 
@@ -547,7 +568,7 @@ final class TransactionStore {
     ///   - series: The recurring series to generate transactions for
     ///   - horizonMonths: Number of months ahead to generate (default: 3)
     internal func generateAndAddTransactions(for series: RecurringSeries, horizonMonths: Int = 3) async throws {
-        let existingTransactionIds = Set(transactions.map { $0.id })
+        let existingTransactionIds = transactionIdSet
         let result = recurringGenerator.generateTransactions(
             series: [series],
             existingOccurrences: recurringOccurrences,
@@ -591,7 +612,9 @@ final class TransactionStore {
             }
         }
 
-        // Category exists (for expense/income — skip system types with internal category names)
+        // Category exists (for expense/income — skip system types with internal category names).
+        // Note: Empty category is intentionally allowed — represents "uncategorized" transactions.
+        // CSV import and voice input may produce transactions without a category.
         switch transaction.type {
         case .internalTransfer, .loanPayment, .loanEarlyRepayment,
              .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
@@ -608,7 +631,7 @@ final class TransactionStore {
     /// Update balances for affected accounts
     /// ✅ REFACTORED: Use incremental updates instead of full recalculation
     /// This fixes the balance doubling bug by applying transaction deltas instead of recalculating from initialBalance
-    private func updateBalances(for event: TransactionEvent) {
+    private func updateBalances(for event: TransactionEvent) async {
         // Get affected account IDs from event
         let affectedAccounts = event.affectedAccounts
 
@@ -616,46 +639,36 @@ final class TransactionStore {
             return
         }
 
-        // ✅ FIX: Use updateForTransaction() for incremental updates
-        // instead of recalculateAccounts() which recalculates from initialBalance
-        Task {
-            switch event {
-            case .added(let transaction):
-                // Apply transaction incrementally (O(1) instead of O(n))
+        // Incremental balance updates — O(1) per transaction via BalanceCoordinator
+        switch event {
+        case .added(let transaction):
+            await balanceCoordinator.updateForTransaction(
+                transaction,
+                operation: .add(transaction)
+            )
+
+        case .deleted(let transaction):
+            await balanceCoordinator.updateForTransaction(
+                transaction,
+                operation: .remove(transaction)
+            )
+
+        case .updated(let old, let new):
+            await balanceCoordinator.updateForTransaction(
+                new,
+                operation: .update(old: old, new: new)
+            )
+
+        case .bulkAdded(let transactions):
+            for transaction in transactions {
                 await balanceCoordinator.updateForTransaction(
                     transaction,
                     operation: .add(transaction)
                 )
-
-            case .deleted(let transaction):
-                // Revert transaction incrementally
-                await balanceCoordinator.updateForTransaction(
-                    transaction,
-                    operation: .remove(transaction)
-                )
-
-            case .updated(let old, let new):
-                // Update transaction (revert old, apply new)
-                await balanceCoordinator.updateForTransaction(
-                    new,
-                    operation: .update(old: old, new: new)
-                )
-
-            case .bulkAdded(let transactions):
-                // Bulk add - apply each transaction
-                for transaction in transactions {
-                    await balanceCoordinator.updateForTransaction(
-                        transaction,
-                        operation: .add(transaction)
-                    )
-                }
-
-            // Handle other event types (recurring series events, etc.)
-            default:
-                // For other events, do nothing - they don't affect balances directly
-                break
             }
 
+        default:
+            break
         }
     }
 
@@ -693,23 +706,6 @@ final class TransactionStore {
             recurringStore.saveOccurrences()
         }
     }
-
-    /// Persist current state to repository
-    /// Phase 1: Persistence for transactions only (accounts handled separately)
-    /// Phase 9: Added recurring series and occurrences persistence
-    private func persist() async {
-        // Save transactions
-        repository.saveTransactions(transactions)
-
-        // Phase 03-PERF-02: Save recurring data via RecurringStore
-        recurringStore.saveSeries()
-        recurringStore.saveOccurrences()
-
-        // Note: Accounts are not saved here - balance is managed by BalanceCoordinator
-        // and will trigger its own save when balances are recalculated
-
-    }
-
 
     /// Phase 20: Granular cache invalidation based on event type
     /// Only invalidates affected cache keys instead of clearing everything

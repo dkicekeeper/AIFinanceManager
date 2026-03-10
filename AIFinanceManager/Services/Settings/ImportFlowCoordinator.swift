@@ -41,10 +41,10 @@ final class ImportFlowCoordinator {
 
     // MARK: - Dependencies
 
-    private var importCoordinator: CSVImportCoordinatorProtocol?
-    private weak var transactionsViewModel: TransactionsViewModel?
-    private weak var categoriesViewModel: CategoriesViewModel?
-    private weak var accountsViewModel: AccountsViewModel?
+    @ObservationIgnored private var importCoordinator: CSVImportCoordinatorProtocol?
+    @ObservationIgnored private weak var transactionsViewModel: TransactionsViewModel?
+    @ObservationIgnored private weak var categoriesViewModel: CategoriesViewModel?
+    @ObservationIgnored private weak var accountsViewModel: AccountsViewModel?
 
     // MARK: - Initialization
 

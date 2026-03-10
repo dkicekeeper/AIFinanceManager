@@ -205,11 +205,6 @@ class RecurringTransactionGenerator {
             currentDate = nextDate
         }
 
-        // Log completion
-        if iterationCount >= maxIterations {
-        } else if iterationCount > 0 {
-        }
-
         return (newTransactions, newOccurrences)
     }
 

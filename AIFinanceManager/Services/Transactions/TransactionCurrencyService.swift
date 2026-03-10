@@ -45,26 +45,21 @@ class TransactionCurrencyService {
 
         PerformanceProfiler.start("TransactionCurrencyService.precompute")
 
-        Task.detached(priority: .userInitiated) { [weak self] in
-            var newCache: [String: Double] = [:]
-            newCache.reserveCapacity(transactions.count)
+        var newCache: [String: Double] = [:]
+        newCache.reserveCapacity(transactions.count)
 
-            for tx in transactions {
-                let key = "\(tx.id)_\(baseCurrency)"
-                if tx.currency == baseCurrency {
-                    newCache[key] = tx.amount
-                } else {
-                    newCache[key] = tx.convertedAmount ?? tx.amount
-                }
-            }
-
-            await MainActor.run {
-                guard let self = self else { return }
-                self.cache = newCache
-                self.isInvalidated = false
-                PerformanceProfiler.end("TransactionCurrencyService.precompute")
+        for tx in transactions {
+            let key = "\(tx.id)_\(baseCurrency)"
+            if tx.currency == baseCurrency {
+                newCache[key] = tx.amount
+            } else {
+                newCache[key] = tx.convertedAmount ?? tx.amount
             }
         }
+
+        self.cache = newCache
+        self.isInvalidated = false
+        PerformanceProfiler.end("TransactionCurrencyService.precompute")
     }
 
     /// Get cached converted amount for a transaction

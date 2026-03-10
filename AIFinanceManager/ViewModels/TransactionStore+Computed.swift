@@ -73,9 +73,9 @@ extension TransactionStore {
         var totalExpenses: Double = 0
         var totalInternal: Double = 0
 
-        let dateFormatter = DateFormatters.dateFormatter
-        var minDate: Date?
-        var maxDate: Date?
+        // YYYY-MM-DD format sorts lexicographically — no DateFormatter needed
+        var minDateStr: String?
+        var maxDateStr: String?
 
         for tx in transactions {
             let amountInBase = convertToBaseCurrency(amount: tx.amount, from: tx.currency)
@@ -88,25 +88,20 @@ extension TransactionStore {
             case .internalTransfer:
                 totalInternal += amountInBase
             case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
-                // Deposit transactions - handle separately
                 totalInternal += amountInBase
             case .loanPayment, .loanEarlyRepayment:
                 totalExpenses += amountInBase
             }
 
-            // Track date range
-            if let txDate = dateFormatter.date(from: tx.date) {
-                if minDate == nil || txDate < minDate! {
-                    minDate = txDate
+            if !tx.date.isEmpty {
+                if minDateStr == nil || tx.date < minDateStr! {
+                    minDateStr = tx.date
                 }
-                if maxDate == nil || txDate > maxDate! {
-                    maxDate = txDate
+                if maxDateStr == nil || tx.date > maxDateStr! {
+                    maxDateStr = tx.date
                 }
             }
         }
-
-        let startDate = minDate.map { dateFormatter.string(from: $0) } ?? ""
-        let endDate = maxDate.map { dateFormatter.string(from: $0) } ?? ""
 
         return Summary(
             totalIncome: totalIncome,
@@ -114,9 +109,9 @@ extension TransactionStore {
             totalInternalTransfers: totalInternal,
             netFlow: totalIncome - totalExpenses,
             currency: baseCurrency,
-            startDate: startDate,
-            endDate: endDate,
-            plannedAmount: 0  // NOTE: Planned amount calculation not implemented (future feature)
+            startDate: minDateStr ?? "",
+            endDate: maxDateStr ?? "",
+            plannedAmount: 0
         )
     }
 

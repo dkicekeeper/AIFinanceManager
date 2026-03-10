@@ -33,7 +33,4 @@ protocol CategoryCRUDDelegate: AnyObject {
     /// Update categories array (controlled mutation)
     /// - Parameter categories: New categories array
     func updateCategories(_ categories: [CustomCategory])
-
-    /// Schedule a save operation (debounced)
-    func scheduleSave()
 }

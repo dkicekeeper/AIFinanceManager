@@ -14,6 +14,7 @@
 
 import Foundation
 import Observation
+import os
 
 // MARK: - Balance Coordinator
 
@@ -23,6 +24,9 @@ import Observation
 @Observable
 @MainActor
 final class BalanceCoordinator: BalanceCoordinatorProtocol {
+
+    // MARK: - Logger
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "BalanceCoordinator")
 
     // MARK: - Observable State
 
@@ -36,7 +40,7 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
     // MARK: - State
 
-    private var optimisticUpdates: [UUID: OptimisticUpdate] = [:]
+    @ObservationIgnored private var optimisticUpdates: [UUID: OptimisticUpdate] = [:]
 
     // MARK: - Initialization
 
@@ -434,6 +438,7 @@ final class BalanceCoordinator: BalanceCoordinatorProtocol {
     /// Persist balance to Core Data after balance calculation
     private func persistBalance(_ balance: Double, for accountId: String) {
         guard let coreDataRepo = repository as? CoreDataRepository else {
+            Self.logger.warning("persistBalance: repository is not CoreDataRepository — balance not persisted for \(accountId, privacy: .public)")
             return
         }
 

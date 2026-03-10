@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreData
+import os
 
 /// Protocol for recurring transaction repository operations
 protocol RecurringRepositoryProtocol {
@@ -20,6 +21,7 @@ protocol RecurringRepositoryProtocol {
 /// CoreData implementation of RecurringRepositoryProtocol
 final class RecurringRepository: RecurringRepositoryProtocol {
 
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "RecurringRepository")
     private let stack: CoreDataStack
     private let saveCoordinator: CoreDataSaveCoordinator
     private let userDefaultsRepository: UserDefaultsRepository
@@ -68,7 +70,7 @@ final class RecurringRepository: RecurringRepositoryProtocol {
 
     func saveRecurringSeries(_ series: [RecurringSeries]) {
 
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
 
             PerformanceProfiler.start("RecurringRepository.saveRecurringSeries")
@@ -141,6 +143,7 @@ final class RecurringRepository: RecurringRepositoryProtocol {
 
                     PerformanceProfiler.end("RecurringRepository.saveRecurringSeries")
                 } catch {
+                    Self.logger.error("saveRecurringSeries failed: \(error.localizedDescription, privacy: .public)")
                     PerformanceProfiler.end("RecurringRepository.saveRecurringSeries")
                 }
             }
@@ -177,7 +180,7 @@ final class RecurringRepository: RecurringRepositoryProtocol {
 
     func saveRecurringOccurrences(_ occurrences: [RecurringOccurrence]) {
 
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
 
             PerformanceProfiler.start("RecurringRepository.saveRecurringOccurrences")
@@ -237,6 +240,7 @@ final class RecurringRepository: RecurringRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
+                    Self.logger.error("saveRecurringOccurrences failed: \(error.localizedDescription, privacy: .public)")
                 }
             }
 

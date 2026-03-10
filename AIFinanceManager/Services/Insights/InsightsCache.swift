@@ -92,12 +92,6 @@ final class InsightsCache: @unchecked Sendable {
         for key in keysToRemove { evictLocked(key: key) }
     }
 
-    // MARK: - Cache Key
-
-    static func makeKey(timeFilter: TimeFilter, baseCurrency: String) -> String {
-        "\(timeFilter.preset.rawValue)_\(baseCurrency)_\(timeFilter.startDate.timeIntervalSince1970)"
-    }
-
     // MARK: - Private Helpers (call only while lock is held)
 
     private func promoteLocked(key: String) {

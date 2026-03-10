@@ -100,6 +100,7 @@ class DepositsViewModel {
                 onTransactionCreated: onTransactionCreated
             )
             accountsViewModel.updateAccount(updatedAccount)
+            syncDepositBalance(updatedAccount)
         }
     }
 
@@ -116,6 +117,19 @@ class DepositsViewModel {
             onTransactionCreated: onTransactionCreated
         )
         accountsViewModel.updateAccount(account)
+        syncDepositBalance(account)
+    }
+
+    /// Sync deposit balance to BalanceCoordinator after interest reconciliation.
+    /// Without this, BalanceCoordinator's in-memory state stays stale until next full recalculation.
+    private func syncDepositBalance(_ account: Account) {
+        guard let depositInfo = account.depositInfo,
+              let coordinator = balanceCoordinator else { return }
+        let newBalance = BalanceCalculationEngine().calculateDepositBalance(depositInfo: depositInfo)
+        Task {
+            await coordinator.updateDepositInfo(account, depositInfo: depositInfo)
+            await coordinator.updateForAccount(account, newBalance: newBalance)
+        }
     }
 
     // MARK: - Helper Methods

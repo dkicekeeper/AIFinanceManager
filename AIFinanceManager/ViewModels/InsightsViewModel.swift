@@ -277,6 +277,12 @@ final class InsightsViewModel {
         // as part of its single O(N) pass on the background thread. No more 20-50ms MainActor block.
 
         recomputeTask = Task.detached(priority: .userInitiated) { [weak self] in
+            defer {
+                Task { @MainActor [weak self] in
+                    guard let self, self.isLoading else { return }
+                    self.isLoading = false
+                }
+            }
             guard let self, !Task.isCancelled else { return }
             let totalStart = ContinuousClock.now
             Self.logger.debug("🔧 [InsightsVM] Background recompute START (detached)")

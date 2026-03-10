@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import os
 
 struct CSVFile {
     let headers: [String]
@@ -18,6 +19,8 @@ struct CSVFile {
 }
 
 class CSVImporter {
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CSVImporter")
+
     static func parseCSV(from url: URL) throws -> CSVFile {
         
         // Проверяем, является ли URL временным файлом (уже скопированным DocumentPicker)
@@ -34,19 +37,19 @@ class CSVImporter {
             }
             
             if !isAccessing {
+                logger.warning("startAccessingSecurityScopedResource failed for \(url.lastPathComponent, privacy: .public)")
             }
-            
+
             // Копируем файл во временную директорию для надежного доступа
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".csv")
             try? FileManager.default.removeItem(at: tempURL)
-            
+
             do {
                 try FileManager.default.copyItem(at: url, to: tempURL)
                 fileURL = tempURL
             } catch {
-                // Пробуем использовать оригинальный URL
+                logger.warning("copyItem failed for \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public) — falling back to original URL")
             }
-        } else {
         }
         
         // Читаем содержимое файла

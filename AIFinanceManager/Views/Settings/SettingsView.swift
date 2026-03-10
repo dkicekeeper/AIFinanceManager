@@ -189,6 +189,13 @@ struct SettingsView: View {
             } label: {
                 Label("Эксперименты", systemImage: "flask")
             }
+            #if DEBUG
+            NavigationLink {
+                NotificationDebugView()
+            } label: {
+                Label("Notification Debug", systemImage: "bell.badge")
+            }
+            #endif
         }
     }
 

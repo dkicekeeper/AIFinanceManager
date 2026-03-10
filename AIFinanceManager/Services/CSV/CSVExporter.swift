@@ -47,7 +47,7 @@ class CSVExporter {
             if transaction.type == .income {
                 // Swap: account column = category (import reads as income category)
                 accountName = escapeCSVField(transaction.category)
-                category = escapeCSVField(transaction.category)
+                category = ""
                 // targetAccount = actual account name (import reads as income account)
                 let resolvedAccount = transaction.accountId.flatMap { accountById[$0] } ?? ""
                 targetAccountName = escapeCSVField(resolvedAccount)

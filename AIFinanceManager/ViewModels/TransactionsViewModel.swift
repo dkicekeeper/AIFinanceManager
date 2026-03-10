@@ -77,12 +77,12 @@ class TransactionsViewModel {
 
     /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth for balances
     /// Injected by AppCoordinator - replaces old TransactionBalanceCoordinator
-    var balanceCoordinator: BalanceCoordinator?
+    @ObservationIgnored var balanceCoordinator: BalanceCoordinator?
 
     /// Phase 8: TransactionStore as Single Source of Truth for all transaction operations
     /// ✨ Phase 9: Now includes recurring operations (subscriptions + recurring transactions)
     /// Replaces legacy CRUD services, cache managers, and coordinators
-    var transactionStore: TransactionStore?
+    @ObservationIgnored var transactionStore: TransactionStore?
 
     // MARK: - Services (Remaining)
 

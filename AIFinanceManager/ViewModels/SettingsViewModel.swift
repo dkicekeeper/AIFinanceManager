@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Combine
 import Observation
 
 /// ViewModel for Settings screen
@@ -39,18 +38,18 @@ final class SettingsViewModel {
 
     // MARK: - Dependencies (Protocol-oriented for testability)
 
-    private let storageService: SettingsStorageServiceProtocol
-    private let wallpaperService: WallpaperManagementServiceProtocol
-    private let resetCoordinator: DataResetCoordinatorProtocol
-    private let validationService: SettingsValidationServiceProtocol
-    private let exportCoordinator: ExportCoordinatorProtocol
-    private let importCoordinator: CSVImportCoordinatorProtocol?
+    @ObservationIgnored private let storageService: SettingsStorageServiceProtocol
+    @ObservationIgnored private let wallpaperService: WallpaperManagementServiceProtocol
+    @ObservationIgnored private let resetCoordinator: DataResetCoordinatorProtocol
+    @ObservationIgnored private let validationService: SettingsValidationServiceProtocol
+    @ObservationIgnored private let exportCoordinator: ExportCoordinatorProtocol
+    @ObservationIgnored private let importCoordinator: CSVImportCoordinatorProtocol?
 
     // MARK: - ViewModel References (weak to prevent retain cycles)
 
-    private weak var transactionsViewModel: TransactionsViewModel?
-    private weak var categoriesViewModel: CategoriesViewModel?
-    private weak var accountsViewModel: AccountsViewModel?
+    @ObservationIgnored private weak var transactionsViewModel: TransactionsViewModel?
+    @ObservationIgnored private weak var categoriesViewModel: CategoriesViewModel?
+    @ObservationIgnored private weak var accountsViewModel: AccountsViewModel?
 
     // MARK: - Initialization
 
