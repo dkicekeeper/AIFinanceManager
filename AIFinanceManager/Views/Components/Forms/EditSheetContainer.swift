@@ -77,7 +77,6 @@ struct EditSheetContainer<Content: View>: View {
             }
         }
     }
-
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigationBarLeading) {
@@ -93,6 +92,7 @@ struct EditSheetContainer<Content: View>: View {
                 Image(systemName: "checkmark")
             }
             .disabled(isSaveDisabled)
+            .buttonStyle(.glassProminent)
         }
     }
 }

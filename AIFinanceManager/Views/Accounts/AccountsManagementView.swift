@@ -140,20 +140,28 @@ struct AccountsManagementView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: AppSpacing.md) {
+                if isReordering {
                     Button {
                         HapticManager.light()
-                        withAnimation {
-                            isReordering.toggle()
-                        }
+                        withAnimation { isReordering.toggle() }
                     } label: {
-                        Image(systemName: isReordering ? "checkmark" : "arrow.up.arrow.down")
-                            .foregroundStyle(isReordering ? AppColors.accent : .primary)
+                        Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(isReordering
-                        ? String(localized: "accessibility.accounts.doneReordering")
-                        : String(localized: "accessibility.accounts.reorder"))
-
+                    .buttonStyle(.glassProminent)
+                    .accessibilityLabel(String(localized: "accessibility.accounts.doneReordering"))
+                } else {
+                    Button {
+                        HapticManager.light()
+                        withAnimation { isReordering.toggle() }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                    }
+                    .accessibilityLabel(String(localized: "accessibility.accounts.reorder"))
+                }
+            }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            ToolbarItem(placement: .topBarTrailing) {
+                if !isReordering {
                     Menu {
                         Button(action: {
                             HapticManager.light()

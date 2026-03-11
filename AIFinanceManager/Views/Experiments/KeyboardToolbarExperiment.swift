@@ -14,28 +14,28 @@ struct KeyboardToolbarExperiment: View {
                 .padding(.horizontal)
                 
                 .toolbar {
-                    ToolbarItem(placement: .keyboard) {
-                        HStack(spacing: 12) {
-                            Button {
-                                // action
-                            } label: {
-                                Text("Продолжить")
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(.black)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
-                                    .background(.yellow, in: .capsule)
-                            }
-                            .buttonStyle(.plain)
+                    ToolbarItemGroup(placement: .keyboard) {
 
-                            Button("Готово") {
-                                isTextFieldFocused = false
-                            }
+                        Button {
+                            // action
+                        } label: {
+                            Text("Продолжить")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.black)
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 16)
                         }
-                        .padding(.bottom, 8)
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.glassProminent)
+                        .tint(.yellow)
+
+                        Spacer()
+
+                        Button("Готово") {
+                            isTextFieldFocused = false
+                        }
                     }
                 }
-                
 
             Spacer()
 

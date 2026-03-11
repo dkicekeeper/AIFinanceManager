@@ -91,12 +91,11 @@ struct CategoryRow: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-
-                    Spacer()
                 }
-                .padding(.vertical, AppSpacing.xs)
+//                .padding(.vertical, AppSpacing.xs)
         }
         .buttonStyle(.plain)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(categoryAccessibilityLabel)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {

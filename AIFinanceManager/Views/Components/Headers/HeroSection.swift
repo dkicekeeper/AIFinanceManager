@@ -35,7 +35,7 @@ struct HeroSection: View {
             iconContent
                 .scaleEffect(iconScale)
                 .onAppear {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                    withAnimation(AppAnimation.heroSpring) {
                         iconScale = 1.0
                     }
                 }

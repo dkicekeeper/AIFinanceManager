@@ -33,6 +33,14 @@ enum AppAnimation {
     /// response 0.4 + damping 0.8 = soft deceleration, no visible overshoot.
     static let gentleSpring = Animation.spring(response: 0.4, dampingFraction: 0.8)
 
+    /// Hero spring — for hero icon entrance animations (slower, dramatic settle).
+    /// response 0.6 + damping 0.7 = visible overshoot with smooth settle.
+    static let heroSpring = Animation.spring(response: 0.6, dampingFraction: 0.7)
+
+    /// Progress bar spring — for animated bar width changes.
+    /// response 0.55 + damping 0.72 = smooth bar expansion with slight bounce.
+    static let progressBarSpring = Animation.spring(response: 0.55, dampingFraction: 0.72)
+
     // MARK: - Skeleton Loading
 
     /// Shimmer sweep duration (left-to-right single pass)

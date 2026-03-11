@@ -50,25 +50,23 @@ struct FormSection<Content: View>: View {
             }
 
             // Content
-            Group {
-                switch style {
-                case .card:
-                    VStack(spacing: 0) {
-                        content
-                    }
-                    .cardStyle()
-
-                case .list:
-                    VStack(spacing: 0) {
-                        content
-                    }
-                    .padding(AppSpacing.lg)
-                    .background(AppColors.groupedBackground)
-                    .cornerRadius(AppRadius.xl)
-
-                case .plain:
+            switch style {
+            case .card:
+                VStack(spacing: 0) {
                     content
                 }
+                .cardStyle()
+
+            case .list:
+                VStack(spacing: 0) {
+                    content
+                }
+                .padding(AppSpacing.lg)
+                .background(AppColors.groupedBackground)
+                .cornerRadius(AppRadius.xl)
+
+            case .plain:
+                content
             }
 
             // Footer

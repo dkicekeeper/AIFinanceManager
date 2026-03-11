@@ -33,7 +33,7 @@ struct CategoryFilterView: View {
                             Spacer()
                             if selectedExpenseCategories.isEmpty && selectedIncomeCategories.isEmpty {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(AppColors.accent)
                             }
                         }
                     }
@@ -60,7 +60,7 @@ struct CategoryFilterView: View {
                                     Spacer()
                                     if selectedExpenseCategories.contains(category) {
                                         Image(systemName: "checkmark")
-                                            .foregroundStyle(.blue)
+                                            .foregroundStyle(AppColors.accent)
                                     }
                                 }
                             }
@@ -89,7 +89,7 @@ struct CategoryFilterView: View {
                                     Spacer()
                                     if selectedIncomeCategories.contains(category) {
                                         Image(systemName: "checkmark")
-                                            .foregroundStyle(.blue)
+                                            .foregroundStyle(AppColors.accent)
                                     }
                                 }
                             }
@@ -117,6 +117,7 @@ struct CategoryFilterView: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
+                    .buttonStyle(.glassProminent)
                 }
             }
             .onAppear {

@@ -79,7 +79,7 @@ struct SubscriptionCalendarView: View {
     private var header: some View {
         HStack {
             Button(action: {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                withAnimation(AppAnimation.contentSpring) {
                     currentMonthIndex = 0
                 }
             }) {

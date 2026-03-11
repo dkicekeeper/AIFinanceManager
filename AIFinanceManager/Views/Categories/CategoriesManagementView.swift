@@ -111,23 +111,33 @@ struct CategoriesManagementView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: AppSpacing.md) {
+                if isReordering {
                     Button {
                         HapticManager.light()
-                        withAnimation {
-                            isReordering.toggle()
-                        }
+                        withAnimation { isReordering.toggle() }
                     } label: {
-                        Image(systemName: isReordering ? "checkmark" : "arrow.up.arrow.down")
-                            .foregroundStyle(isReordering ? .blue : .primary)
+                        Image(systemName: "checkmark")
                     }
-
+                    .buttonStyle(.glassProminent)
+                } else {
+                    Button {
+                        HapticManager.light()
+                        withAnimation { isReordering.toggle() }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                    }
+                }
+            }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            ToolbarItem(placement: .topBarTrailing) {
+                if !isReordering {
                     Button {
                         HapticManager.light()
                         showingAddCategory = true
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .buttonStyle(.glassProminent)
                 }
             }
         }

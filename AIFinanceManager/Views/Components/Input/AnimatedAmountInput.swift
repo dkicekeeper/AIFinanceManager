@@ -194,8 +194,8 @@ struct AnimatedTitleInput: View {
             HapticManager.light()
             isFocused = true
         }
-        .animation(.easeInOut(duration: 0.15), value: showPlaceholder)
-        .animation(.easeInOut(duration: 0.15), value: showCursor)
+        .animation(AppAnimation.fastAnimation, value: showPlaceholder)
+        .animation(AppAnimation.fastAnimation, value: showCursor)
     }
 }
 

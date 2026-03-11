@@ -96,6 +96,7 @@ struct AccountRow: View {
                 }
             }
             .buttonStyle(.plain)
+            .contentShape(Rectangle())
             .accessibilityElement(children: .combine)
             .accessibilityLabel(accountAccessibilityLabel)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {

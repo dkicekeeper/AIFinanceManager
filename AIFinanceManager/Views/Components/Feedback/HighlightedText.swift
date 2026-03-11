@@ -65,11 +65,11 @@ struct HighlightedText: View {
     private func colorForConfidence(_ confidence: Double) -> Color {
         switch confidence {
         case 0.8...1.0:
-            return .green // High confidence
+            return AppColors.success // High confidence
         case 0.5..<0.8:
-            return .orange // Medium confidence
+            return AppColors.warning // Medium confidence
         default:
-            return .red // Low confidence
+            return AppColors.destructive // Low confidence
         }
     }
 }

@@ -27,7 +27,7 @@ struct ExpenseIncomeProgressBar: View {
         total > 0 ? max(0, min(1, incomeAmount / total)) : 0.0
     }
 
-    private static let barAnimation = Animation.spring(response: 0.55, dampingFraction: 0.72)
+    private static let barAnimation = AppAnimation.progressBarSpring
 
     var body: some View {
         VStack(spacing: AppSpacing.sm) {

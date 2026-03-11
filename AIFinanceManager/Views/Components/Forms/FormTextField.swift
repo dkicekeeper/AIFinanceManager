@@ -88,8 +88,8 @@ struct FormTextField: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.18), value: isFocused)
-        .animation(.easeInOut(duration: 0.2), value: errorMessage != nil)
+        .animation(AppAnimation.fastAnimation, value: isFocused)
+        .animation(AppAnimation.fastAnimation, value: errorMessage != nil)
     }
 
     // MARK: - Field Area

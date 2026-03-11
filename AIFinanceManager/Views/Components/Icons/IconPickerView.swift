@@ -58,8 +58,8 @@ struct IconPickerView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "checkmark")
-                            .font(.system(size: AppIconSize.md, weight: .semibold))
                     }
+                    .buttonStyle(.glassProminent)
                 }
             }
         }
@@ -314,7 +314,7 @@ private struct OnlineSearchResultsView: View {
                 Text(String(localized: "iconPicker.searchResults"))
                     .foregroundStyle(AppColors.textPrimary)
             } footer: {
-                Text("Введите домен бренда (например: netflix.com)")
+                Text(String(localized: "iconPicker.brandDomainHint", defaultValue: "Введите домен бренда (например: netflix.com)"))
                     .font(AppTypography.caption)
                     .foregroundStyle(AppColors.textSecondary)
             }
