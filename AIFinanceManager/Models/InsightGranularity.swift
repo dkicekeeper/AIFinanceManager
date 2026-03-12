@@ -21,12 +21,12 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     case year       // All years from first transaction
     case allTime    // Single summary bucket
 
-    var id: String { rawValue }
+    nonisolated var id: String { rawValue }
 
     // MARK: - Display
 
     /// Localised display name shown in the picker
-    var displayName: String {
+    nonisolated var displayName: String {
         switch self {
         case .week:    return String(localized: "insights.granularity.week")
         case .month:   return String(localized: "insights.granularity.month")
@@ -37,7 +37,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     }
 
     /// Short label used in compact UI contexts
-    var shortName: String {
+    nonisolated var shortName: String {
         switch self {
         case .week:    return String(localized: "insights.granularity.week.short")
         case .month:   return String(localized: "insights.granularity.month.short")
@@ -50,7 +50,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     // MARK: - Chart Layout
 
     /// Preferred width per data point in the scrollable chart.
-    var pointWidth: CGFloat {
+    nonisolated var pointWidth: CGFloat {
         switch self {
         case .week:    return 28
         case .month:   return 50
@@ -63,7 +63,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     // MARK: - Comparison Period Name
 
     /// Label used in MoM/YoY comparison strings ("vs prev. month", etc.)
-    var comparisonPeriodName: String {
+    nonisolated var comparisonPeriodName: String {
         switch self {
         case .week:    return String(localized: "insights.granularity.prev.week")
         case .month:   return String(localized: "insights.granularity.prev.month")
@@ -81,7 +81,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     /// - Parameter firstTransactionDate: earliest transaction date in the store.
     ///   Used to determine how far back to go for month/quarter/year.
     ///   Pass `nil` to fall back to a sensible default.
-    func dateRange(firstTransactionDate: Date?) -> (start: Date, end: Date) {
+    nonisolated func dateRange(firstTransactionDate: Date?) -> (start: Date, end: Date) {
         let now = Date()
         let calendar = Calendar.current
         let end = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: now)!)
@@ -118,7 +118,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     // MARK: - Grouping Key
 
     /// Returns a stable string key for bucketing a date into this granularity's period.
-    func groupingKey(for date: Date) -> String {
+    nonisolated func groupingKey(for date: Date) -> String {
         let calendar = Calendar.current
         switch self {
         case .week:
@@ -150,7 +150,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     // MARK: - Period Start Date for a Key
 
     /// Returns the start `Date` of the period represented by `key`.
-    func periodStart(for key: String) -> Date {
+    nonisolated func periodStart(for key: String) -> Date {
         let calendar = Calendar.current
         switch self {
         case .week:
@@ -198,7 +198,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     // MARK: - Period Label for a Key
 
     /// Human-readable label shown on charts / breakdown list.
-    func periodLabel(for key: String, locale: Locale = .current) -> String {
+    nonisolated func periodLabel(for key: String, locale: Locale = .current) -> String {
         let date = periodStart(for: key)
         let calendar = Calendar.current
         switch self {
@@ -243,7 +243,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     // MARK: - SF Symbol icon
 
     /// SF Symbol name representing this granularity in pickers and menus.
-    var icon: String {
+    nonisolated var icon: String {
         switch self {
         case .week:    return "calendar.badge.clock"
         case .month:   return "calendar"
@@ -257,7 +257,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
 
     /// Card title for the period-over-period spending change insight.
     /// "Monthly Spending Change" for month, "Weekly Spending" for week, etc.
-    var monthOverMonthTitle: String {
+    nonisolated var monthOverMonthTitle: String {
         switch self {
         case .week:    return String(localized: "insights.monthOverMonth.week")
         case .month:   return String(localized: "insights.monthOverMonth.month")
@@ -268,7 +268,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     }
 
     /// Card title for the best-period cashflow insight.
-    var bestPeriodTitle: String {
+    nonisolated var bestPeriodTitle: String {
         switch self {
         case .week:    return String(localized: "insights.bestPeriod.week")
         case .month:   return String(localized: "insights.bestPeriod.month")
@@ -279,7 +279,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     }
 
     /// Card title for the worst-period cashflow insight.
-    var worstPeriodTitle: String {
+    nonisolated var worstPeriodTitle: String {
         switch self {
         case .week:    return String(localized: "insights.worstPeriod.week")
         case .month:   return String(localized: "insights.worstPeriod.month")
@@ -290,7 +290,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     }
 
     /// Card title for the total recurring cost insight.
-    var totalRecurringTitle: String {
+    nonisolated var totalRecurringTitle: String {
         switch self {
         case .week:    return String(localized: "insights.totalRecurring.week")
         case .month:   return String(localized: "insights.totalRecurring.month")
@@ -304,7 +304,7 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
 
     /// Returns the exclusive end `Date` for the period identified by `key`.
     /// Exclusive end is the first instant after the period completes (same convention as `dateRange()`).
-    func periodEnd(for key: String) -> Date {
+    nonisolated func periodEnd(for key: String) -> Date {
         let start = periodStart(for: key)
         let calendar = Calendar.current
         switch self {
@@ -319,10 +319,10 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
     // MARK: - Current Period Key
 
     /// Returns the grouping key for the current (today's) period.
-    var currentPeriodKey: String { groupingKey(for: Date()) }
+    nonisolated var currentPeriodKey: String { groupingKey(for: Date()) }
 
     /// Returns the grouping key for the previous period (used for MoP comparison).
-    var previousPeriodKey: String {
+    nonisolated var previousPeriodKey: String {
         let calendar = Calendar.current
         let now = Date()
         let prev: Date

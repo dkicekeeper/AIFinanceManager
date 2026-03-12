@@ -46,7 +46,7 @@ struct PeriodDataPoint: Identifiable, Hashable {
     let expenses: Double
 
     /// `income - expenses` for the bucket.
-    var netFlow: Double { income - expenses }
+    nonisolated var netFlow: Double { income - expenses }
 
     // MARK: - Optional: Cumulative Balance
 

@@ -44,10 +44,10 @@ enum TimeFilterPreset: String, CaseIterable, Codable {
         }
     }
     
-    func dateRange() -> (start: Date, end: Date) {
+    nonisolated func dateRange() -> (start: Date, end: Date) {
         let calendar = Calendar.current
         let now = Date()
-        
+
         switch self {
         case .today:
             let start = calendar.startOfDay(for: now)
@@ -130,7 +130,7 @@ struct TimeFilter: Codable, Equatable, Hashable {
         }
     }
     
-    func dateRange() -> (start: Date, end: Date) {
+    nonisolated func dateRange() -> (start: Date, end: Date) {
         return (startDate, endDate)
     }
     
