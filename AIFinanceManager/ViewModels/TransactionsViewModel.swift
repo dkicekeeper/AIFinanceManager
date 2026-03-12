@@ -147,11 +147,11 @@ class TransactionsViewModel {
                 guard !self.isProcessingRecurringNotification else { return }
 
                 self.isProcessingRecurringNotification = true
-                defer { self.isProcessingRecurringNotification = false }
 
                 // Recurring generation is handled by TransactionStore — no action needed here.
                 // TransactionStore.createSeries() already generates transactions.
                 self.rebuildIndexes()
+                self.isProcessingRecurringNotification = false
             }
         }
 
