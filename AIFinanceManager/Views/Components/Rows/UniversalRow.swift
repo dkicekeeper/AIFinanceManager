@@ -189,12 +189,12 @@ struct RowConfiguration {
     // MARK: - Presets
 
     /// Standard form row (default)
-    /// V: 8pt / H: 12pt — matches TextField rows inside FormSection(.card).
+    /// V: 12pt / H: 16pt — rows own their padding; cardStyle() adds no padding.
     /// Used for: MenuPickerRow, DatePickerRow, InfoRow, BudgetSettingsSection rows.
     static let standard = RowConfiguration(
         spacing: AppSpacing.md,
-        verticalPadding: AppSpacing.sm,
-        horizontalPadding: AppSpacing.md,
+        verticalPadding: AppSpacing.md,
+        horizontalPadding: AppSpacing.lg,
         backgroundColor: .clear,
         cornerRadius: 0
     )
@@ -211,34 +211,35 @@ struct RowConfiguration {
     )
 
     /// Selectable row — for single-select lists (checkmark pattern).
-    /// V: 8pt / H: 12pt — same rhythm as .standard; semantic distinction only.
+    /// V: 12pt / H: 16pt — same rhythm as .standard; semantic distinction only.
     /// Use `.selectableRow(isSelected:action:)` modifier on top.
     /// Used for: TimeFilterView selectable rows
     static let selectable = RowConfiguration(
         spacing: AppSpacing.md,
-        verticalPadding: AppSpacing.sm,
-        horizontalPadding: AppSpacing.md,
-        backgroundColor: .clear,
-        cornerRadius: 0
-    )
-
-    /// Sheet / form-list row — wider horizontal inset for modal selection sheets.
-    /// V: 8pt / H: 16pt — gives breathing room in full-width sheet lists.
-    /// Used for: modal selection sheets with wider horizontal inset
-    static let sheetList = RowConfiguration(
-        spacing: AppSpacing.md,
-        verticalPadding: AppSpacing.sm,
+        verticalPadding: AppSpacing.md,
         horizontalPadding: AppSpacing.lg,
         backgroundColor: .clear,
         cornerRadius: 0
     )
 
-    /// Info row style
-    /// Used for InfoRow (read-only label + value)
+    /// Sheet / form-list row — wider horizontal inset for modal selection sheets.
+    /// V: 12pt / H: 16pt — gives breathing room in full-width sheet lists.
+    /// Used for: modal selection sheets with wider horizontal inset
+    static let sheetList = RowConfiguration(
+        spacing: AppSpacing.md,
+        verticalPadding: AppSpacing.md,
+        horizontalPadding: AppSpacing.lg,
+        backgroundColor: .clear,
+        cornerRadius: 0
+    )
+
+    /// Info row style — display-only component, always inside a padded container.
+    /// V: 8pt / H: 0 — container (detail card VStack with .padding(.lg)) owns horizontal spacing.
+    /// Used for InfoRow (read-only label + value) inside LoanDetailView, DepositDetailView, etc.
     static let info = RowConfiguration(
         spacing: AppSpacing.md,
-        verticalPadding: AppSpacing.compact,
-        horizontalPadding: AppSpacing.md,
+        verticalPadding: AppSpacing.sm,
+        horizontalPadding: 0,
         backgroundColor: .clear,
         cornerRadius: 0
     )

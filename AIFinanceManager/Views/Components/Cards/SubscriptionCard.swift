@@ -43,6 +43,7 @@ struct SubscriptionCard: View {
             // Status indicator
             statusIndicator
         }
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
     

@@ -57,7 +57,7 @@ struct DatePickerRow: View {
             .padding(AppSpacing.md)
 
         Divider()
-            .padding(.leading, AppSpacing.md)
+            .padding(.leading, AppSpacing.lg)
 
         DatePickerRow(
             icon: "calendar",

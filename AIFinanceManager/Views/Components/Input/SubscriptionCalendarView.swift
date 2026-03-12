@@ -60,6 +60,7 @@ struct SubscriptionCalendarView: View {
             }
             .frame(height: calculateCalendarHeight())
         }
+        .padding(AppSpacing.lg)
         .cardStyle()
         .task {
             await calculateAllMonthTotals()

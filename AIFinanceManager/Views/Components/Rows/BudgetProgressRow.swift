@@ -65,6 +65,7 @@ struct BudgetProgressRow: View {
                 }
             }
         }
+        .padding(AppSpacing.lg)
         .cardStyle(radius: AppRadius.xl)
     }
 }

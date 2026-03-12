@@ -141,7 +141,7 @@ struct PDFImportCoordinator: View {
                 ProgressView(String(localized: "progress.processingPDF", defaultValue: "Processing PDF..."))
             }
         }
-        .padding(AppSpacing.md)
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
 

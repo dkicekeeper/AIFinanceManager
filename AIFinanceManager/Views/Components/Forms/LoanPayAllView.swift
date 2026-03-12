@@ -27,68 +27,81 @@ struct LoanPayAllView: View {
         EditSheetContainer(
             title: String(localized: "loan.payAllTitle", defaultValue: "Pay All Loans"),
             isSaveDisabled: selectedSourceAccountId.isEmpty || activeLoans.isEmpty,
+            wrapInForm: false,
             onSave: { savePayAll() },
             onCancel: { dismiss() }
         ) {
-            // Loan list
-            Section(header: Text(String(localized: "loan.payAllLoans", defaultValue: "Loans"))) {
-                ForEach(activeLoans) { loan in
-                    if let loanInfo = loan.loanInfo {
-                        HStack {
-                            IconView(source: loan.iconSource, size: AppIconSize.md)
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // Loans + Total in one card
+                    FormSection(header: String(localized: "loan.payAllLoans", defaultValue: "Loans")) {
+                        ForEach(Array(activeLoans.enumerated()), id: \.element.id) { index, loan in
+                            if let loanInfo = loan.loanInfo {
+                                if index > 0 {
+                                    Divider().padding(.leading, AppSpacing.lg)
+                                }
+                                UniversalRow(
+                                    config: .standard,
+                                    leadingIcon: .custom(source: loan.iconSource, style: .bankLogo(size: AppIconSize.lg))
+                                ) {
+                                    VStack(alignment: .leading, spacing: AppSpacing.xxs) {
+                                        Text(loan.name)
+                                            .font(AppTypography.body)
+                                            .foregroundStyle(AppColors.textPrimary)
+                                        Text(loanInfo.bankName)
+                                            .font(AppTypography.caption)
+                                            .foregroundStyle(AppColors.textSecondary)
+                                    }
+                                } trailing: {
+                                    FormattedAmountText(
+                                        amount: NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue,
+                                        currency: loan.currency,
+                                        fontSize: AppTypography.bodySmall,
+                                        color: AppColors.expense
+                                    )
+                                }
+                            }
+                        }
 
-                            VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                                Text(loan.name)
+                        Divider().padding(.leading, AppSpacing.lg)
+
+                        FormLabeledRow(icon: "sum", label: String(localized: "loan.payAllTotal", defaultValue: "Total")) {
+                            FormattedAmountText(
+                                amount: NSDecimalNumber(decimal: totalPayment).doubleValue,
+                                currency: currency,
+                                fontSize: AppTypography.bodySmall,
+                                color: AppColors.expense
+                            )
+                        }
+                    }
+
+                    // Source account + Date in one card
+                    FormSection(header: String(localized: "loan.paymentSection", defaultValue: "Payment")) {
+                        if availableAccounts.isEmpty {
+                            FormLabeledRow(icon: "building.columns", label: String(localized: "loan.sourceAccount", defaultValue: "From account")) {
+                                Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts"))
                                     .font(AppTypography.bodySmall)
-                                Text(loanInfo.bankName)
-                                    .font(AppTypography.caption)
                                     .foregroundStyle(AppColors.textSecondary)
                             }
-
-                            Spacer()
-
-                            FormattedAmountText(amount: NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue, currency: loan.currency, fontSize: AppTypography.bodySmall, color: AppColors.expense)
+                        } else {
+                            MenuPickerRow(
+                                icon: "building.columns",
+                                title: String(localized: "loan.sourceAccount", defaultValue: "From account"),
+                                selection: $selectedSourceAccountId,
+                                options: availableAccounts.map { (label: $0.name, value: $0.id) }
+                            )
                         }
+
+                        Divider().padding(.leading, AppSpacing.lg)
+
+                        DatePickerRow(
+                            icon: "calendar",
+                            title: String(localized: "loan.date", defaultValue: "Date"),
+                            selection: $paymentDate
+                        )
                     }
                 }
-            }
-
-            // Total
-            Section {
-                HStack {
-                    Text(String(localized: "loan.payAllTotal", defaultValue: "Total Payment"))
-                        .font(AppTypography.bodyEmphasis)
-                    Spacer()
-                    FormattedAmountText(
-                        amount: NSDecimalNumber(decimal: totalPayment).doubleValue,
-                        currency: currency,
-                        fontSize: AppTypography.bodyEmphasis,
-                        color: AppColors.expense
-                    )
-                }
-            }
-
-            // Source account
-            Section(header: Text(String(localized: "loan.sourceAccount", defaultValue: "Source Account"))) {
-                if availableAccounts.isEmpty {
-                    Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts available"))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(AppColors.textSecondary)
-                } else {
-                    Picker(String(localized: "loan.selectSourceAccount", defaultValue: "Select account to pay from"), selection: $selectedSourceAccountId) {
-                        Text(String(localized: "loan.selectSourceAccount", defaultValue: "Select account to pay from"))
-                            .tag("")
-                        ForEach(availableAccounts) { acc in
-                            Text(acc.name)
-                                .tag(acc.id)
-                        }
-                    }
-                }
-            }
-
-            // Date
-            Section(header: Text(String(localized: "loan.repaymentDate", defaultValue: "Date"))) {
-                DatePicker(String(localized: "loan.date", defaultValue: "Date"), selection: $paymentDate, displayedComponents: .date)
+                .padding(AppSpacing.lg)
             }
         }
         .onAppear {

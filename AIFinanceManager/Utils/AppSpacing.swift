@@ -73,11 +73,11 @@ enum AppRadius {
     /// 8pt - Малые элементы (chips, небольшие кнопки)
     static let sm: CGFloat = 8
 
-    /// 10pt - Стандартные карточки и кнопки (основной радиус)
-    static let md: CGFloat = 10
+    /// 12pt - Стандартные карточки и кнопки (основной радиус)
+    static let md: CGFloat = 12
 
-    /// 12pt - Большие карточки
-    static let lg: CGFloat = 12
+    /// 16pt - Большие карточки
+    static let lg: CGFloat = 16
 
     /// 20pt - Large radius (cards, pills, filter chips)
     static let xl: CGFloat = 20

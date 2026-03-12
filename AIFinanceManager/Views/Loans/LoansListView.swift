@@ -169,6 +169,7 @@ struct LoansListView: View {
                 .font(AppTypography.caption)
                 .foregroundStyle(.secondary)
         }
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
 
@@ -247,6 +248,7 @@ struct LoansListView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .padding(AppSpacing.lg)
             .cardStyle()
         }
     }

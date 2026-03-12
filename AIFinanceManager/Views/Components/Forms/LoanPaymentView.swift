@@ -23,71 +23,101 @@ struct LoanPaymentView: View {
 
     @State private var validationError: String? = nil
 
+    private var scheduledHint: String {
+        String(
+            format: String(localized: "loan.scheduledPayment", defaultValue: "Scheduled: %@"),
+            Formatting.formatCurrency(
+                NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue,
+                currency: account.currency
+            )
+        )
+    }
+
     var body: some View {
         EditSheetContainer(
             title: String(localized: "loan.paymentTitle", defaultValue: "Loan Payment"),
             isSaveDisabled: !isFormValid,
+            wrapInForm: false,
             onSave: { savePayment() },
             onCancel: { dismiss() }
         ) {
-            if let error = validationError {
-                InlineStatusText(message: error, type: .error)
-            }
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    if let error = validationError {
+                        InlineStatusText(message: error, type: .error)
+                    }
 
-            Section(header: Text(String(localized: "loan.paymentAmount", defaultValue: "Payment Amount"))) {
-                HStack {
-                    TextField(String(localized: "loan.amountPlaceholder", defaultValue: "Amount"), text: $amountText)
-                        .keyboardType(.decimalPad)
-                        .focused($isAmountFocused)
-                    Text(Formatting.currencySymbol(for: account.currency))
-                        .foregroundStyle(AppColors.textSecondary)
-                }
+                    // Amount + Source + Date in one card
+                    FormSection {
+                        FormLabeledRow(
+                            icon: "banknote",
+                            label: String(localized: "loan.amountLabel", defaultValue: "Amount"),
+                            hint: scheduledHint
+                        ) {
+                            HStack(spacing: AppSpacing.xs) {
+                                TextField(
+                                    String(localized: "loan.amountPlaceholder", defaultValue: "Amount"),
+                                    text: $amountText
+                                )
+                                .keyboardType(.decimalPad)
+                                .focused($isAmountFocused)
+                                .multilineTextAlignment(.trailing)
+                                .font(AppTypography.bodySmall)
+                                Text(Formatting.currencySymbol(for: account.currency))
+                                    .font(AppTypography.bodySmall)
+                                    .foregroundStyle(AppColors.textSecondary)
+                            }
+                        }
 
-                Text(String(format: String(localized: "loan.scheduledPayment", defaultValue: "Scheduled: %@"), Formatting.formatCurrency(NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue, currency: account.currency)))
-                    .font(AppTypography.caption)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
+                        Divider().padding(.leading, AppSpacing.lg)
 
-            Section(header: Text(String(localized: "loan.sourceAccount", defaultValue: "Source Account"))) {
-                if availableAccounts.isEmpty {
-                    Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts available"))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(AppColors.textSecondary)
-                } else {
-                    Picker(String(localized: "loan.selectSourceAccount", defaultValue: "Select account to pay from"), selection: $selectedSourceAccountId) {
-                        Text(String(localized: "loan.selectSourceAccount", defaultValue: "Select account to pay from"))
-                            .tag("")
-                        ForEach(availableAccounts) { acc in
-                            Text(acc.name)
-                                .tag(acc.id)
+                        if availableAccounts.isEmpty {
+                            FormLabeledRow(icon: "building.columns", label: String(localized: "loan.sourceAccount", defaultValue: "From account")) {
+                                Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts"))
+                                    .font(AppTypography.bodySmall)
+                                    .foregroundStyle(AppColors.textSecondary)
+                            }
+                        } else {
+                            MenuPickerRow(
+                                icon: "building.columns",
+                                title: String(localized: "loan.sourceAccount", defaultValue: "From account"),
+                                selection: $selectedSourceAccountId,
+                                options: availableAccounts.map { (label: $0.name, value: $0.id) }
+                            )
+                        }
+
+                        Divider().padding(.leading, AppSpacing.lg)
+
+                        DatePickerRow(
+                            icon: "calendar",
+                            title: String(localized: "loan.date", defaultValue: "Date"),
+                            selection: $paymentDate
+                        )
+                    }
+
+                    // Impact preview (conditional second section)
+                    if let amount = AmountFormatter.parse(amountText), amount > 0 {
+                        let breakdown = LoanPaymentService.paymentBreakdown(
+                            remainingPrincipal: loanInfo.remainingPrincipal,
+                            annualRate: loanInfo.interestRateAnnual,
+                            monthlyPayment: amount
+                        )
+                        FormSection(header: String(localized: "loan.impact", defaultValue: "Impact")) {
+                            InfoRow(
+                                icon: "percent",
+                                label: String(localized: "loan.interestPortion", defaultValue: "Interest"),
+                                value: Formatting.formatCurrency(NSDecimalNumber(decimal: breakdown.interest).doubleValue, currency: account.currency)
+                            )
+                            Divider().padding(.leading, AppSpacing.lg)
+                            InfoRow(
+                                icon: "arrow.down.to.line",
+                                label: String(localized: "loan.principalPortion", defaultValue: "Principal"),
+                                value: Formatting.formatCurrency(NSDecimalNumber(decimal: breakdown.principal).doubleValue, currency: account.currency)
+                            )
                         }
                     }
                 }
-            }
-
-            Section(header: Text(String(localized: "loan.repaymentDate", defaultValue: "Date"))) {
-                DatePicker(String(localized: "loan.date", defaultValue: "Date"), selection: $paymentDate, displayedComponents: .date)
-            }
-
-            // Payment breakdown preview
-            if let amount = AmountFormatter.parse(amountText), amount > 0 {
-                Section(header: Text(String(localized: "loan.impact", defaultValue: "Impact"))) {
-                    let breakdown = LoanPaymentService.paymentBreakdown(
-                        remainingPrincipal: loanInfo.remainingPrincipal,
-                        annualRate: loanInfo.interestRateAnnual,
-                        monthlyPayment: amount
-                    )
-                    InfoRow(
-                        icon: "percent",
-                        label: String(localized: "loan.interestPortion", defaultValue: "Interest"),
-                        value: Formatting.formatCurrency(NSDecimalNumber(decimal: breakdown.interest).doubleValue, currency: account.currency)
-                    )
-                    InfoRow(
-                        icon: "arrow.down.to.line",
-                        label: String(localized: "loan.principalPortion", defaultValue: "Principal"),
-                        value: Formatting.formatCurrency(NSDecimalNumber(decimal: breakdown.principal).doubleValue, currency: account.currency)
-                    )
-                }
+                .padding(AppSpacing.lg)
             }
         }
         .onAppear {

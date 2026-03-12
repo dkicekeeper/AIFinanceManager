@@ -82,9 +82,9 @@ struct FormTextField: View {
             standardField
                 .padding(AppSpacing.lg)
                 .background(backgroundForState)
-                .clipShape(.rect(cornerRadius: AppRadius.md))
+                .clipShape(.rect(cornerRadius: AppRadius.lg))
                 .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.md)
+                    RoundedRectangle(cornerRadius: AppRadius.lg)
                         .stroke(borderForState, lineWidth: borderWidth)
                 )
 
@@ -92,9 +92,9 @@ struct FormTextField: View {
             multilineField(min: min, max: max)
                 .padding(AppSpacing.lg)
                 .background(backgroundForState)
-                .clipShape(.rect(cornerRadius: AppRadius.md))
+                .clipShape(.rect(cornerRadius: AppRadius.lg))
                 .overlay(
-                    RoundedRectangle(cornerRadius: AppRadius.md)
+                    RoundedRectangle(cornerRadius: AppRadius.lg)
                         .stroke(borderForState, lineWidth: borderWidth)
                 )
         }
@@ -292,7 +292,7 @@ struct FormTextField: View {
     @Previewable @State var description = ""
 
     return ScrollView {
-        VStack(spacing: AppSpacing.xxl) {
+        VStack(spacing: 0) {
             FormSection(
                 header: String(localized: "subscription.basicInfo"),
                 style: .card
@@ -301,9 +301,8 @@ struct FormTextField: View {
                     text: $name,
                     placeholder: String(localized: "subscription.namePlaceholder")
                 )
-
-                Divider()
-                    .padding(.leading, AppSpacing.md)
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.md)
 
                 FormTextField(
                     text: $amount,
@@ -311,15 +310,16 @@ struct FormTextField: View {
                     keyboardType: .decimalPad,
                     helpText: "Enter subscription amount"
                 )
-
-                Divider()
-                    .padding(.leading, AppSpacing.md)
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.md)
 
                 FormTextField(
                     text: $description,
                     placeholder: "Description (optional)",
                     style: .multiline(min: 2, max: 4)
                 )
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.md)
             }
         }
         .padding()

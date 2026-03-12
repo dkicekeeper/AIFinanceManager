@@ -36,6 +36,7 @@ struct AccountRadioButton: View {
                     )
                 }
             }
+            .padding(AppSpacing.lg)
             .cardStyle()
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.xl, style: .continuous)

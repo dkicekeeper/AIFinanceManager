@@ -216,6 +216,7 @@ struct SubscriptionDetailView: View {
                     value: statusText
                 )
             }
+            .padding(AppSpacing.lg)
             .cardStyle()
         }
     }

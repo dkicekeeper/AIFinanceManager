@@ -436,6 +436,15 @@ Filter chip in `.button(onTap)` or `.menu(menuContent:)` mode. Styling: `.filter
 #### UniversalRow (`Views/Components/Rows/UniversalRow.swift`)
 Generic row with `IconConfig` leading icons. Presets: `.standard`, `.settings`, `.selectable`, `.info`, `.card`. Modifiers: `.navigationRow {}`, `.actionRow(role:) {}`, `.selectableRow(isSelected:) {}`. `IconConfig`: `.sfSymbol(name, color)`, `.bankLogo(logo)`, `.brandService(name)`, `.custom(source, style)`.
 
+#### cardStyle() — Padding Contract
+- `cardStyle()` = **pure visual only** (shape + material, NO padding). Never rely on it for spacing.
+- **Rows own their padding** — `RowConfiguration` presets: `.standard` V:12 H:16, `.info` V:8 H:0, `.selectable` V:12 H:16, `.sheetList` V:12 H:16, `.settings` V:4 H:0
+- **Arbitrary content** (VStack, HStack, custom cards) must add `.padding(AppSpacing.lg)` explicitly before `.cardStyle()`
+- **`.info` H:0**: InfoRow always lives inside a container with `.padding(.lg)` — adding own H padding would double it to 32pt
+- **`.settings` H:0**: `List`/`Form` apply `listRowInsets` (16pt leading/trailing) automatically — rows inside must NOT add H padding
+- **`FormLabeledRow`**: V:12 H:16 — matches `.standard` for consistency inside `FormSection(.card)`
+- **Dividers inside cards**: `.padding(.leading, AppSpacing.lg)` (16pt) to align with row content start
+
 **Design system files** (`Utils/`):
 - `AppColors.swift` — semantic colors + `CategoryColors` palette (pre-computed hex→Color)
 - `AppSpacing.swift` — `AppSpacing`, `AppRadius` (xs/compact/sm/md/lg/xl/circle), `AppIconSize`, `AppSize`

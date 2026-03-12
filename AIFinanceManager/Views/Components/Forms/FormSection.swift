@@ -70,16 +70,16 @@ struct FormSection<Content: View>: View {
         style: .card
     ) {
         TextField("Name", text: .constant("Netflix"))
-            .padding(AppSpacing.md)
+            .padding(AppSpacing.lg)
 
         Divider()
-            .padding(.leading, AppSpacing.md)
+            .padding(.leading, AppSpacing.lg)
 
         TextField("Amount", text: .constant("9.99"))
-            .padding(AppSpacing.md)
+            .padding(AppSpacing.lg)
 
         Divider()
-            .padding(.leading, AppSpacing.md)
+            .padding(.leading, AppSpacing.lg)
 
         HStack {
             Text("Frequency")
@@ -88,7 +88,7 @@ struct FormSection<Content: View>: View {
             Text("Monthly")
                 .foregroundStyle(AppColors.textSecondary)
         }
-        .padding(AppSpacing.md)
+        .padding(AppSpacing.lg)
     }
     .padding()
 }
@@ -101,13 +101,13 @@ struct FormSection<Content: View>: View {
                 style: .card
             ) {
                 TextField("Name", text: .constant("Netflix"))
-                    .padding(AppSpacing.md)
+                    .padding(AppSpacing.lg)
 
                 Divider()
-                    .padding(.leading, AppSpacing.md)
+                    .padding(.leading, AppSpacing.lg)
 
                 TextField("Amount", text: .constant("9.99"))
-                    .padding(AppSpacing.md)
+                    .padding(AppSpacing.lg)
             }
 
             FormSection(
@@ -116,13 +116,13 @@ struct FormSection<Content: View>: View {
                 style: .card
             ) {
                 Toggle("1 day before", isOn: .constant(true))
-                    .padding(AppSpacing.md)
+                    .padding(AppSpacing.lg)
 
                 Divider()
-                    .padding(.leading, AppSpacing.md)
+                    .padding(.leading, AppSpacing.lg)
 
                 Toggle("7 days before", isOn: .constant(false))
-                    .padding(AppSpacing.md)
+                    .padding(AppSpacing.lg)
             }
         }
         .padding()
@@ -133,7 +133,7 @@ struct FormSection<Content: View>: View {
 #Preview("No Header/Footer") {
     FormSection(style: .card) {
         Text("Content without header or footer")
-            .padding(AppSpacing.md)
+            .padding(AppSpacing.lg)
     }
     .padding()
 }

@@ -22,59 +22,103 @@ struct LoanEarlyRepaymentView: View {
     @FocusState private var isAmountFocused: Bool
     @State private var validationError: String? = nil
 
+    private var remainingHint: String {
+        String(
+            format: String(localized: "loan.remainingBalance", defaultValue: "Remaining: %@"),
+            Formatting.formatCurrency(
+                NSDecimalNumber(decimal: loanInfo.remainingPrincipal).doubleValue,
+                currency: account.currency
+            )
+        )
+    }
+
+    private var strategyHint: String {
+        repaymentType == .reduceTerm
+            ? String(localized: "loan.reduceTermHint", defaultValue: "Keep monthly payment, finish sooner")
+            : String(localized: "loan.reducePaymentHint", defaultValue: "Keep term, lower monthly payment")
+    }
+
     var body: some View {
         EditSheetContainer(
             title: String(localized: "loan.earlyRepaymentTitle", defaultValue: "Early Repayment"),
             isSaveDisabled: amountText.isEmpty,
+            wrapInForm: false,
             onSave: { saveRepayment() },
             onCancel: { dismiss() }
         ) {
-            if let error = validationError {
-                InlineStatusText(message: error, type: .error)
-            }
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    if let error = validationError {
+                        InlineStatusText(message: error, type: .error)
+                    }
 
-            Section(header: Text(String(localized: "loan.repaymentAmount", defaultValue: "Repayment Amount"))) {
-                HStack {
-                    TextField(String(localized: "loan.amountPlaceholder", defaultValue: "Amount"), text: $amountText)
-                        .keyboardType(.decimalPad)
-                        .focused($isAmountFocused)
-                    Text(Formatting.currencySymbol(for: account.currency))
-                        .foregroundStyle(AppColors.textSecondary)
+                    // Amount + Date + Strategy + Note in one card
+                    FormSection {
+                        FormLabeledRow(
+                            icon: "banknote",
+                            label: String(localized: "loan.amountLabel", defaultValue: "Amount"),
+                            hint: remainingHint
+                        ) {
+                            HStack(spacing: AppSpacing.xs) {
+                                TextField(
+                                    String(localized: "loan.amountPlaceholder", defaultValue: "Amount"),
+                                    text: $amountText
+                                )
+                                .keyboardType(.decimalPad)
+                                .focused($isAmountFocused)
+                                .multilineTextAlignment(.trailing)
+                                .font(AppTypography.bodySmall)
+                                Text(Formatting.currencySymbol(for: account.currency))
+                                    .font(AppTypography.bodySmall)
+                                    .foregroundStyle(AppColors.textSecondary)
+                            }
+                        }
+
+                        Divider().padding(.leading, AppSpacing.lg)
+
+                        DatePickerRow(
+                            icon: "calendar",
+                            title: String(localized: "loan.date", defaultValue: "Date"),
+                            selection: $repaymentDate
+                        )
+
+                        Divider().padding(.leading, AppSpacing.lg)
+
+                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                            Picker(String(localized: "loan.strategy", defaultValue: "Strategy"), selection: $repaymentType) {
+                                Text(String(localized: "loan.reduceTerm", defaultValue: "Reduce Term")).tag(EarlyRepaymentType.reduceTerm)
+                                Text(String(localized: "loan.reducePayment", defaultValue: "Reduce Payment")).tag(EarlyRepaymentType.reducePayment)
+                            }
+                            .pickerStyle(.segmented)
+                            Text(strategyHint)
+                                .font(AppTypography.caption)
+                                .foregroundStyle(AppColors.textSecondary)
+                        }
+                        .padding(.vertical, AppSpacing.sm)
+                        .padding(.horizontal, AppSpacing.md)
+
+                        Divider().padding(.leading, AppSpacing.lg)
+
+                        FormLabeledRow(icon: "note.text", label: String(localized: "loan.noteLabel", defaultValue: "Note")) {
+                            TextField(
+                                String(localized: "loan.notePlaceholder", defaultValue: "Optional"),
+                                text: $noteText,
+                                axis: .vertical
+                            )
+                            .lineLimit(1...4)
+                            .multilineTextAlignment(.trailing)
+                            .font(AppTypography.bodySmall)
+                        }
+                    }
+
+                    // Impact preview (conditional second section)
+                    if let amount = AmountFormatter.parse(amountText), amount > 0, amount <= loanInfo.remainingPrincipal {
+                        FormSection(header: String(localized: "loan.impact", defaultValue: "Impact")) {
+                            impactPreview(amount: amount)
+                        }
+                    }
                 }
-
-                Text(String(format: String(localized: "loan.remainingBalance", defaultValue: "Remaining: %@"), Formatting.formatCurrency(NSDecimalNumber(decimal: loanInfo.remainingPrincipal).doubleValue, currency: account.currency)))
-                    .font(AppTypography.caption)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
-
-            Section(header: Text(String(localized: "loan.repaymentDate", defaultValue: "Date"))) {
-                DatePicker(String(localized: "loan.date", defaultValue: "Date"), selection: $repaymentDate, displayedComponents: .date)
-            }
-
-            Section(header: Text(String(localized: "loan.repaymentType", defaultValue: "Repayment Strategy"))) {
-                Picker(String(localized: "loan.strategy", defaultValue: "Strategy"), selection: $repaymentType) {
-                    Text(String(localized: "loan.reduceTerm", defaultValue: "Reduce Term")).tag(EarlyRepaymentType.reduceTerm)
-                    Text(String(localized: "loan.reducePayment", defaultValue: "Reduce Payment")).tag(EarlyRepaymentType.reducePayment)
-                }
-                .pickerStyle(.segmented)
-
-                Text(repaymentType == .reduceTerm
-                     ? String(localized: "loan.reduceTermHint", defaultValue: "Keep monthly payment, finish sooner")
-                     : String(localized: "loan.reducePaymentHint", defaultValue: "Keep term, lower monthly payment"))
-                    .font(AppTypography.caption)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
-
-            // Impact preview
-            if let amount = AmountFormatter.parse(amountText), amount > 0, amount <= loanInfo.remainingPrincipal {
-                Section(header: Text(String(localized: "loan.impact", defaultValue: "Impact"))) {
-                    impactPreview(amount: amount)
-                }
-            }
-
-            Section(header: Text(String(localized: "loan.note", defaultValue: "Note"))) {
-                TextField(String(localized: "loan.notePlaceholder", defaultValue: "Optional note"), text: $noteText, axis: .vertical)
-                    .lineLimit(3...6)
+                .padding(AppSpacing.lg)
             }
         }
         .task {
@@ -106,6 +150,8 @@ struct LoanEarlyRepaymentView: View {
                 label: String(localized: "loan.termReduction", defaultValue: "Term reduced by"),
                 value: String(format: String(localized: "loan.monthsValue", defaultValue: "%d months"), loanInfo.termMonths - preview.termMonths)
             )
+            Divider()
+                .padding(.leading, AppSpacing.lg)
             InfoRow(
                 icon: "calendar",
                 label: String(localized: "loan.newEndDate", defaultValue: "New end date"),
@@ -117,6 +163,8 @@ struct LoanEarlyRepaymentView: View {
                 label: String(localized: "loan.paymentReduction", defaultValue: "Payment reduced by"),
                 value: Formatting.formatCurrency(NSDecimalNumber(decimal: loanInfo.monthlyPayment - preview.monthlyPayment).doubleValue, currency: account.currency)
             )
+            Divider()
+                .padding(.leading, AppSpacing.lg)
             InfoRow(
                 icon: "banknote",
                 label: String(localized: "loan.newMonthlyPayment", defaultValue: "New monthly payment"),

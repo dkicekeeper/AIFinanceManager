@@ -321,6 +321,7 @@ struct LoanDetailView: View {
                 }
             }
         }
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
 
@@ -388,6 +389,7 @@ struct LoanDetailView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
 
@@ -458,6 +460,7 @@ struct LoanDetailView: View {
                 )
             }
         }
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
 
@@ -493,6 +496,7 @@ struct LoanDetailView: View {
                 }
             }
         }
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
 

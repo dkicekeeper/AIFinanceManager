@@ -22,26 +22,56 @@ struct LoanRateChangeView: View {
         EditSheetContainer(
             title: String(localized: "loan.changeRateTitle", defaultValue: "Change Rate"),
             isSaveDisabled: rateText.isEmpty,
+            wrapInForm: false,
             onSave: { saveRateChange() },
             onCancel: { dismiss() }
         ) {
-            Section(header: Text(String(localized: "loan.newRate", defaultValue: "New Interest Rate"))) {
-                HStack {
-                    TextField("0.0", text: $rateText)
-                        .keyboardType(.decimalPad)
-                        .focused($isRateFocused)
-                    Text(String(localized: "loan.rateAnnual", defaultValue: "% annual"))
-                        .foregroundStyle(AppColors.textSecondary)
-                }
-            }
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // Rate + Date + Note in one card
+                    FormSection {
+                        FormLabeledRow(
+                            icon: "percent",
+                            label: String(localized: "loan.rateLabel", defaultValue: "Annual rate")
+                        ) {
+                            HStack(spacing: AppSpacing.xs) {
+                                TextField("0.0", text: $rateText)
+                                    .keyboardType(.decimalPad)
+                                    .focused($isRateFocused)
+                                    .multilineTextAlignment(.trailing)
+                                    .font(AppTypography.bodySmall)
+                                    .frame(maxWidth: 80)
+                                Text(String(localized: "loan.rateAnnual", defaultValue: "% annual"))
+                                    .font(AppTypography.caption)
+                                    .foregroundStyle(AppColors.textSecondary)
+                            }
+                        }
 
-            Section(header: Text(String(localized: "loan.effectiveDate", defaultValue: "Effective From"))) {
-                DatePicker(String(localized: "loan.date", defaultValue: "Date"), selection: $effectiveFromDate, displayedComponents: .date)
-            }
+                        Divider().padding(.leading, AppSpacing.lg)
 
-            if let loanInfo = account.loanInfo {
-                Section(header: Text(String(localized: "loan.rateChangeImpact", defaultValue: "Impact"))) {
-                    if let newRate = AmountFormatter.parse(rateText), newRate > 0 {
+                        DatePickerRow(
+                            icon: "calendar",
+                            title: String(localized: "loan.effectiveDate", defaultValue: "Effective from"),
+                            selection: $effectiveFromDate
+                        )
+
+                        Divider().padding(.leading, AppSpacing.lg)
+
+                        FormLabeledRow(icon: "note.text", label: String(localized: "loan.noteLabel", defaultValue: "Note")) {
+                            TextField(
+                                String(localized: "loan.notePlaceholder", defaultValue: "Optional"),
+                                text: $noteText,
+                                axis: .vertical
+                            )
+                            .lineLimit(1...4)
+                            .multilineTextAlignment(.trailing)
+                            .font(AppTypography.bodySmall)
+                        }
+                    }
+
+                    // Impact preview (conditional second section)
+                    if let loanInfo = account.loanInfo,
+                       let newRate = AmountFormatter.parse(rateText), newRate > 0 {
                         let remaining = LoanPaymentService.remainingPayments(loanInfo: loanInfo)
                         let newPayment = LoanPaymentService.calculateMonthlyPayment(
                             principal: loanInfo.remainingPrincipal,
@@ -50,29 +80,22 @@ struct LoanRateChangeView: View {
                         )
                         let diff = newPayment - loanInfo.monthlyPayment
 
-                        InfoRow(
-                            icon: "banknote",
-                            label: String(localized: "loan.newMonthlyPayment", defaultValue: "New monthly payment"),
-                            value: Formatting.formatCurrency(NSDecimalNumber(decimal: newPayment).doubleValue, currency: account.currency)
-                        )
-
-                        let diffAmount = NSDecimalNumber(decimal: diff).doubleValue
-                        InfoRow(
-                            icon: diff > 0 ? "arrow.up" : "arrow.down",
-                            label: String(localized: "loan.paymentChange", defaultValue: "Change"),
-                            value: String(format: "%@%@", diff > 0 ? "+" : "", Formatting.formatCurrency(diffAmount, currency: account.currency))
-                        )
-                    } else {
-                        Text(String(localized: "loan.enterRateForPreview", defaultValue: "Enter rate to see impact"))
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(AppColors.textSecondary)
+                        FormSection(header: String(localized: "loan.rateChangeImpact", defaultValue: "Impact")) {
+                            InfoRow(
+                                icon: "banknote",
+                                label: String(localized: "loan.newMonthlyPayment", defaultValue: "New monthly payment"),
+                                value: Formatting.formatCurrency(NSDecimalNumber(decimal: newPayment).doubleValue, currency: account.currency)
+                            )
+                            Divider().padding(.leading, AppSpacing.lg)
+                            InfoRow(
+                                icon: diff > 0 ? "arrow.up" : "arrow.down",
+                                label: String(localized: "loan.paymentChange", defaultValue: "Change"),
+                                value: String(format: "%@%@", diff > 0 ? "+" : "", Formatting.formatCurrency(NSDecimalNumber(decimal: diff).doubleValue, currency: account.currency))
+                            )
+                        }
                     }
                 }
-            }
-
-            Section(header: Text(String(localized: "loan.note", defaultValue: "Note"))) {
-                TextField(String(localized: "loan.notePlaceholder", defaultValue: "Optional note"), text: $noteText, axis: .vertical)
-                    .lineLimit(3...6)
+                .padding(AppSpacing.lg)
             }
         }
         .onAppear {

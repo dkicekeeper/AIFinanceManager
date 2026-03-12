@@ -43,6 +43,7 @@ struct DateSectionHeaderView: View {
             }
         }
         .textCase(nil)
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
 }

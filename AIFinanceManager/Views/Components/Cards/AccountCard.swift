@@ -35,6 +35,7 @@ struct AccountCard: View {
                     )
                 }
             }
+            .padding(AppSpacing.lg)
             .cardStyle()
             .glassEffectID("account-card-\(account.id)", in: namespace)
         }

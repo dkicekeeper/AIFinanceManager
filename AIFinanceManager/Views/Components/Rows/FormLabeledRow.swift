@@ -82,10 +82,10 @@ struct FormLabeledRow<TrailingContent: View>: View {
         VStack(alignment: .leading, spacing: AppSpacing.xs) {
             HStack(spacing: AppSpacing.md) {
                 if let icon {
-                    Image(systemName: icon)
-                        .font(.system(size: AppIconSize.sm, weight: .regular))
-                        .foregroundStyle(iconColor)
-                        .frame(width: AppIconSize.md, height: AppIconSize.md)
+                    IconView(
+                        source: .sfSymbol(icon),
+                        style: .circle(size: AppIconSize.md, tint: .monochrome(iconColor))
+                    )
                 }
 
                 Text(label)
@@ -107,8 +107,7 @@ struct FormLabeledRow<TrailingContent: View>: View {
                     .padding(.bottom, AppSpacing.xxs)
             }
         }
-        .padding(.vertical, AppSpacing.sm)
-        .padding(.horizontal, AppSpacing.md)
+        .padding(AppSpacing.lg)
     }
 }
 

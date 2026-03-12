@@ -290,6 +290,7 @@ struct DepositDetailView: View {
                 value: "\(depositInfo.interestPostingDay)"
             )
         }
+        .padding(AppSpacing.lg)
         .cardStyle()
     }
 

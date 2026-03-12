@@ -46,17 +46,17 @@ extension View {
     }
 
     /// Применяет glass effect с стандартным cornerRadius для карточек (iOS 26+)
+    /// Padding НЕ добавляется — ответственность за отступы лежит на содержимом
+    /// (строки используют собственный padding; произвольный контент добавляет .padding перед вызовом)
     @ViewBuilder
     func cardStyle(radius: CGFloat = AppRadius.xl) -> some View {
         if #available(iOS 26, *) {
             self
-                .padding(AppSpacing.lg)
                 .contentShape(Rectangle())
                 .clipShape(.rect(cornerRadius: radius))
                 .glassEffect(.regular, in: .rect(cornerRadius: radius))
         } else {
             self
-                .padding(AppSpacing.lg)
                 .background(
                     .ultraThinMaterial,
                     in: RoundedRectangle(cornerRadius: radius)
