@@ -15,15 +15,15 @@ extension MonthlyAggregateEntity {
     }
 
     /// Unique key: "monthly_{year}_{month}_{currency}"
-    @NSManaged nonisolated public var id: String?
-    @NSManaged nonisolated public var year: Int16
-    @NSManaged nonisolated public var month: Int16
-    @NSManaged nonisolated public var currency: String?
-    @NSManaged nonisolated public var totalIncome: Double
-    @NSManaged nonisolated public var totalExpenses: Double
-    @NSManaged nonisolated public var netFlow: Double
-    @NSManaged nonisolated public var transactionCount: Int32
-    @NSManaged nonisolated public var lastUpdated: Date?
+    @NSManaged public nonisolated var id: String?
+    @NSManaged public nonisolated var year: Int16
+    @NSManaged public nonisolated var month: Int16
+    @NSManaged public nonisolated var currency: String?
+    @NSManaged public nonisolated var totalIncome: Double
+    @NSManaged public nonisolated var totalExpenses: Double
+    @NSManaged public nonisolated var netFlow: Double
+    @NSManaged public nonisolated var transactionCount: Int32
+    @NSManaged public nonisolated var lastUpdated: Date?
 }
 
 extension MonthlyAggregateEntity: Identifiable {

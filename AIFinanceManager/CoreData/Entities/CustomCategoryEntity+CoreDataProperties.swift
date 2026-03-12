@@ -18,23 +18,23 @@ extension CustomCategoryEntity {
         return NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
     }
 
-    @NSManaged nonisolated public var id: String?
-    @NSManaged nonisolated public var name: String?
-    @NSManaged nonisolated public var type: String?
-    @NSManaged nonisolated public var iconName: String?
-    @NSManaged nonisolated public var colorHex: String?
-    @NSManaged nonisolated public var budgetAmount: Double
-    @NSManaged nonisolated public var budgetPeriod: String?
-    @NSManaged nonisolated public var budgetStartDate: Date?
-    @NSManaged nonisolated public var budgetResetDay: Int64
-    @NSManaged nonisolated public var transactions: NSSet?
+    @NSManaged public nonisolated var id: String?
+    @NSManaged public nonisolated var name: String?
+    @NSManaged public nonisolated var type: String?
+    @NSManaged public nonisolated var iconName: String?
+    @NSManaged public nonisolated var colorHex: String?
+    @NSManaged public nonisolated var budgetAmount: Double
+    @NSManaged public nonisolated var budgetPeriod: String?
+    @NSManaged public nonisolated var budgetStartDate: Date?
+    @NSManaged public nonisolated var budgetResetDay: Int64
+    @NSManaged public nonisolated var transactions: NSSet?
 
     // MARK: - Phase 22: Budget Spending Cache
     /// Cached total spent in the current budget period (base currency).
     /// Invalidated whenever a transaction in this category changes.
-    @NSManaged nonisolated public var cachedSpentAmount: Double
-    @NSManaged nonisolated public var cachedSpentUpdatedAt: Date?
-    @NSManaged nonisolated public var cachedSpentCurrency: String?
+    @NSManaged public nonisolated var cachedSpentAmount: Double
+    @NSManaged public nonisolated var cachedSpentUpdatedAt: Date?
+    @NSManaged public nonisolated var cachedSpentCurrency: String?
 
 }
 
@@ -42,16 +42,16 @@ extension CustomCategoryEntity {
 extension CustomCategoryEntity {
 
     @objc(addTransactionsObject:)
-    @NSManaged nonisolated public func addToTransactions(_ value: CustomCategoryEntity)
+    @NSManaged public nonisolated func addToTransactions(_ value: CustomCategoryEntity)
 
     @objc(removeTransactionsObject:)
-    @NSManaged nonisolated public func removeFromTransactions(_ value: CustomCategoryEntity)
+    @NSManaged public nonisolated func removeFromTransactions(_ value: CustomCategoryEntity)
 
     @objc(addTransactions:)
-    @NSManaged nonisolated public func addToTransactions(_ values: NSSet)
+    @NSManaged public nonisolated func addToTransactions(_ values: NSSet)
 
     @objc(removeTransactions:)
-    @NSManaged nonisolated public func removeFromTransactions(_ values: NSSet)
+    @NSManaged public nonisolated func removeFromTransactions(_ values: NSSet)
 
 }
 

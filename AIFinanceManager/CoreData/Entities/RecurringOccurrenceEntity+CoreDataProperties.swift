@@ -14,11 +14,11 @@ extension RecurringOccurrenceEntity {
         return NSFetchRequest<RecurringOccurrenceEntity>(entityName: "RecurringOccurrenceEntity")
     }
 
-    @NSManaged nonisolated public var id: String?
-    @NSManaged nonisolated public var seriesId: String?
-    @NSManaged nonisolated public var occurrenceDate: String?
-    @NSManaged nonisolated public var transactionId: String?
-    @NSManaged nonisolated public var series: RecurringSeriesEntity?
+    @NSManaged public nonisolated var id: String?
+    @NSManaged public nonisolated var seriesId: String?
+    @NSManaged public nonisolated var occurrenceDate: String?
+    @NSManaged public nonisolated var transactionId: String?
+    @NSManaged public nonisolated var series: RecurringSeriesEntity?
 
 }
 

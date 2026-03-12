@@ -18,22 +18,22 @@ extension AccountEntity {
         return NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
     }
 
-    @NSManaged nonisolated public var balance: Double         // Current balance (updated incrementally)
-    @NSManaged nonisolated public var initialBalance: Double  // Balance at account creation (never changes)
-    @NSManaged nonisolated public var bankName: String?
-    @NSManaged nonisolated public var createdAt: Date?
-    @NSManaged nonisolated public var currency: String?
-    @NSManaged nonisolated public var depositInfoData: Data?  // Stores full DepositInfo as JSON (v5)
-    @NSManaged nonisolated public var id: String?
-    @NSManaged nonisolated public var isDeposit: Bool
-    @NSManaged nonisolated public var isLoan: Bool
-    @NSManaged nonisolated public var loanInfoData: Data?     // Stores full LoanInfo as JSON (v6)
-    @NSManaged nonisolated public var logo: String?  // Deprecated: Use iconSourceData instead
-    @NSManaged nonisolated public var iconSourceData: Data?  // Stores full IconSource as JSON
-    @NSManaged nonisolated public var name: String?
-    @NSManaged nonisolated public var shouldCalculateFromTransactions: Bool  // ✨ Phase 10: Track balance calculation mode
-    @NSManaged nonisolated public var targetTransactions: NSSet?
-    @NSManaged nonisolated public var transactions: NSSet?
+    @NSManaged public nonisolated var balance: Double         // Current balance (updated incrementally)
+    @NSManaged public nonisolated var initialBalance: Double  // Balance at account creation (never changes)
+    @NSManaged public nonisolated var bankName: String?
+    @NSManaged public nonisolated var createdAt: Date?
+    @NSManaged public nonisolated var currency: String?
+    @NSManaged public nonisolated var depositInfoData: Data?  // Stores full DepositInfo as JSON (v5)
+    @NSManaged public nonisolated var id: String?
+    @NSManaged public nonisolated var isDeposit: Bool
+    @NSManaged public nonisolated var isLoan: Bool
+    @NSManaged public nonisolated var loanInfoData: Data?     // Stores full LoanInfo as JSON (v6)
+    @NSManaged public nonisolated var logo: String?  // Deprecated: Use iconSourceData instead
+    @NSManaged public nonisolated var iconSourceData: Data?  // Stores full IconSource as JSON
+    @NSManaged public nonisolated var name: String?
+    @NSManaged public nonisolated var shouldCalculateFromTransactions: Bool  // ✨ Phase 10: Track balance calculation mode
+    @NSManaged public nonisolated var targetTransactions: NSSet?
+    @NSManaged public nonisolated var transactions: NSSet?
 
 }
 
@@ -41,16 +41,16 @@ extension AccountEntity {
 extension AccountEntity {
 
     @objc(addTargetTransactionsObject:)
-    @NSManaged nonisolated public func addToTargetTransactions(_ value: TransactionEntity)
+    @NSManaged public nonisolated func addToTargetTransactions(_ value: TransactionEntity)
 
     @objc(removeTargetTransactionsObject:)
-    @NSManaged nonisolated public func removeFromTargetTransactions(_ value: TransactionEntity)
+    @NSManaged public nonisolated func removeFromTargetTransactions(_ value: TransactionEntity)
 
     @objc(addTargetTransactions:)
-    @NSManaged nonisolated public func addToTargetTransactions(_ values: NSSet)
+    @NSManaged public nonisolated func addToTargetTransactions(_ values: NSSet)
 
     @objc(removeTargetTransactions:)
-    @NSManaged nonisolated public func removeFromTargetTransactions(_ values: NSSet)
+    @NSManaged public nonisolated func removeFromTargetTransactions(_ values: NSSet)
 
 }
 
@@ -58,16 +58,16 @@ extension AccountEntity {
 extension AccountEntity {
 
     @objc(addTransactionsObject:)
-    @NSManaged nonisolated public func addToTransactions(_ value: TransactionEntity)
+    @NSManaged public nonisolated func addToTransactions(_ value: TransactionEntity)
 
     @objc(removeTransactionsObject:)
-    @NSManaged nonisolated public func removeFromTransactions(_ value: TransactionEntity)
+    @NSManaged public nonisolated func removeFromTransactions(_ value: TransactionEntity)
 
     @objc(addTransactions:)
-    @NSManaged nonisolated public func addToTransactions(_ values: NSSet)
+    @NSManaged public nonisolated func addToTransactions(_ values: NSSet)
 
     @objc(removeTransactions:)
-    @NSManaged nonisolated public func removeFromTransactions(_ values: NSSet)
+    @NSManaged public nonisolated func removeFromTransactions(_ values: NSSet)
 
 }
 

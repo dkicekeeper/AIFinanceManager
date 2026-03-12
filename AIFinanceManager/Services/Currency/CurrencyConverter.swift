@@ -25,12 +25,13 @@ import Foundation
 
 nonisolated class CurrencyConverter: @unchecked Sendable {
     private static let baseURL = "https://nationalbank.kz/rss/get_rates.cfm"
-    private static var cachedRates: [String: Double] = [:]
-    private static var cacheDate: Date?
+    // nonisolated(unsafe): callers must ensure serialized access; known race accepted
+    private nonisolated(unsafe) static var cachedRates: [String: Double] = [:]
+    private nonisolated(unsafe) static var cacheDate: Date?
     private static let cacheValidityHours: TimeInterval = 24 * 60 * 60 // 24 часа
 
     // Кэш исторических курсов: [дата: [валюта: курс]]
-    private static var historicalRatesCache: [String: [String: Double]] = [:]
+    private nonisolated(unsafe) static var historicalRatesCache: [String: [String: Double]] = [:]
 
     // Получить курс валюты к тенге на конкретную дату
     static func getExchangeRate(for currency: String, on date: Date? = nil) async -> Double? {
