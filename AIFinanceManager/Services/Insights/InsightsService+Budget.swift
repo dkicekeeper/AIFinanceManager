@@ -14,14 +14,14 @@ extension InsightsService {
 
     // MARK: - Budget Insights
 
-    @MainActor
     func generateBudgetInsights(
         transactions: [Transaction],
         timeFilter: TimeFilter,
-        baseCurrency: String
+        baseCurrency: String,
+        categories: [CustomCategory]
     ) -> [Insight] {
         var insights: [Insight] = []
-        let categoriesWithBudget = transactionStore.categories.filter { $0.budgetAmount != nil && $0.type == .expense }
+        let categoriesWithBudget = categories.filter { $0.budgetAmount != nil && $0.type == .expense }
         guard !categoriesWithBudget.isEmpty else {
             Self.logger.debug("💼 [Insights] Budget — SKIPPED (no budget categories)")
             return insights

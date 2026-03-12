@@ -13,14 +13,13 @@ extension InsightsService {
 
     // MARK: - Cash Flow Insights (legacy timeFilter path)
 
-    @MainActor
     func generateCashFlowInsights(
         allTransactions: [Transaction],
         timeFilter: TimeFilter,
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
-        balanceFor: (String) -> Double
+        snapshot: DataSnapshot
     ) -> [Insight] {
         // Choose number of months based on the selected filter preset:
         // "Last Year" / "All Time" → 12 months; anything shorter → 6 months.
@@ -116,11 +115,11 @@ extension InsightsService {
         }
 
         // 3. Projected balance (30 days ahead) — show recurring impact delta
-        let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
-        let recurringNet = monthlyRecurringNet(baseCurrency: baseCurrency)
+        let currentBalance = snapshot.accounts.reduce(0.0) { $0 + snapshot.balanceFor($1.id) }
+        let recurringNet = monthlyRecurringNet(baseCurrency: baseCurrency, recurringSeries: snapshot.recurringSeries, categories: snapshot.categories)
         let projectedBalance = currentBalance + recurringNet
 
-        let accountCount = transactionStore.accounts.count
+        let accountCount = snapshot.accounts.count
         Self.logger.debug("💸 [Insights] Projected balance — accounts=\(accountCount), currentBalance=\(String(format: "%.0f", currentBalance), privacy: .public), recurringNet=\(String(format: "%+.0f", recurringNet), privacy: .public), projected=\(String(format: "%.0f", projectedBalance), privacy: .public) \(baseCurrency, privacy: .public)")
 
         let projectedMetricFormatted: String
@@ -159,13 +158,12 @@ extension InsightsService {
 
     // MARK: - Cash Flow from Period Points (Phase 18)
 
-    @MainActor
     func generateCashFlowInsightsFromPeriodPoints(
         periodPoints: [PeriodDataPoint],
         allTransactions: [Transaction],
         granularity: InsightGranularity,
         baseCurrency: String,
-        balanceFor: (String) -> Double
+        snapshot: DataSnapshot
     ) -> [Insight] {
         guard periodPoints.count >= 2 else { return [] }
 
@@ -242,8 +240,8 @@ extension InsightsService {
         }
 
         // 4. Projected balance — recurring delta scaled to granularity period.
-        let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
-        let recurringNet = monthlyRecurringNet(baseCurrency: baseCurrency)
+        let currentBalance = snapshot.accounts.reduce(0.0) { $0 + snapshot.balanceFor($1.id) }
+        let recurringNet = monthlyRecurringNet(baseCurrency: baseCurrency, recurringSeries: snapshot.recurringSeries, categories: snapshot.categories)
 
         let projectedPeriodMultiplier: Double
         let projectedPeriodUnit: String

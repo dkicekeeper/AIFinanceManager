@@ -190,10 +190,8 @@ final class InsightsViewModel {
         debounceTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(800))
             guard !Task.isCancelled else { return }
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                self.loadInsightsBackground()
-            }
+            guard let self else { return }
+            self.loadInsightsBackground()
         }
     }
 
@@ -280,6 +278,14 @@ final class InsightsViewModel {
         let recurringSnapshot   = Array(transactionStore.recurringSeries)
         let accountsSnapshot    = Array(transactionStore.accounts)
         let priorityGranularity = currentGranularity  // show this one first
+        // Phase 48: Bundle all snapshots into DataSnapshot for InsightsService nonisolated computation
+        let snapshot = InsightsService.DataSnapshot(
+            transactions: allTransactions,
+            categories: categoriesSnapshot,
+            recurringSeries: recurringSnapshot,
+            accounts: accountsSnapshot,
+            balanceFor: { [balanceSnapshot] id in balanceSnapshot[id] ?? 0 }
+        )
         // Phase 42: firstDate scan moved OFF MainActor — PreAggregatedData.build() computes it
         // as part of its single O(N) pass on the background thread. No more 20-50ms MainActor block.
 
@@ -310,13 +316,13 @@ final class InsightsViewModel {
             guard !Task.isCancelled else { return }
 
             let p1Start = ContinuousClock.now
-            let phase1Result = await service.computeGranularities(
+            let phase1Result = service.computeGranularities(
                 [priorityGranularity],
                 transactions: allTransactions,
                 baseCurrency: currency,
                 cacheManager: cacheManager,
                 currencyService: currencyService,
-                balanceFor: { balanceSnapshot[$0] ?? 0 },
+                snapshot: snapshot,
                 firstTransactionDate: preAggregated.firstDate,
                 preAggregated: preAggregated,
                 sharedInsights: nil     // Phase 42b: first call computes shared insights
@@ -355,13 +361,13 @@ final class InsightsViewModel {
             guard !Task.isCancelled else { return }
 
             let p2Start = ContinuousClock.now
-            let phase2Result = await service.computeGranularities(
+            let phase2Result = service.computeGranularities(
                 remainingGrans,
                 transactions: allTransactions,
                 baseCurrency: currency,
                 cacheManager: cacheManager,
                 currencyService: currencyService,
-                balanceFor: { balanceSnapshot[$0] ?? 0 },
+                snapshot: snapshot,
                 firstTransactionDate: preAggregated.firstDate,
                 preAggregated: preAggregated,
                 sharedInsights: sharedInsights   // Phase 42b: reuse shared from Phase 1

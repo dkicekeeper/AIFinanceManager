@@ -31,7 +31,6 @@ extension InsightsService {
 
     // MARK: - Spending Insights
 
-    @MainActor
     func generateSpendingInsights(
         filtered: [Transaction],
         allTransactions: [Transaction],
@@ -43,7 +42,8 @@ extension InsightsService {
         granularity: InsightGranularity? = nil,
         periodPoints: [PeriodDataPoint] = [],
         txDateMap: [String: Date]? = nil,   // Phase 42d: pre-parsed dates for O(1) range filter
-        preAggregated: PreAggregatedData? = nil // Phase 03-PERF-01: O(1) categoryTotals for .allTime
+        preAggregated: PreAggregatedData? = nil, // Phase 03-PERF-01: O(1) categoryTotals for .allTime
+        categories: [CustomCategory]
     ) -> [Insight] {
         var insights: [Insight] = []
         let expenses = filterService.filterByType(filtered, type: .expense)
@@ -121,7 +121,7 @@ extension InsightsService {
             // Phase 30: show ALL categories in breakdown
             let breakdownItems: [CategoryBreakdownItem] = sortedCategories.map { item in
                 let pct = topTotalExpenses > 0 ? (item.total / topTotalExpenses) * 100 : 0
-                let cat = transactionStore.categories.first { $0.name == item.key }
+                let cat = categories.first { $0.name == item.key }
                 let catColor = cat.map { Color(hex: $0.colorHex) } ?? AppColors.accent
                 let txns = categoryGroups[item.key] ?? []
 
@@ -324,8 +324,7 @@ extension InsightsService {
     // MARK: - Spending Spike (Phase 24)
 
     /// Detects a category whose current-month spending exceeds 1.5× its 3-month historical average.
-    @MainActor
-    func generateSpendingSpike(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
+    func generateSpendingSpike(baseCurrency: String, transactions: [Transaction], preAggregated: PreAggregatedData? = nil) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
         guard let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: startOfMonth(calendar, for: now)) else { return nil }
@@ -336,7 +335,7 @@ extension InsightsService {
             monthlyAggregates = preAggregated.categoryMonthTotalsInRange(from: threeMonthsAgo, to: now)
         } else {
             monthlyAggregates = Self.computeCategoryMonthTotals(
-                from: transactionStore.transactions, from: threeMonthsAgo, to: now, baseCurrency: baseCurrency
+                from: transactions, from: threeMonthsAgo, to: now, baseCurrency: baseCurrency
             )
         }
         guard !monthlyAggregates.isEmpty else { return nil }
@@ -397,8 +396,7 @@ extension InsightsService {
     // MARK: - Category Trend (Phase 24)
 
     /// Finds the expense category that has been rising for the most consecutive months (min 2).
-    @MainActor
-    func generateCategoryTrend(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
+    func generateCategoryTrend(baseCurrency: String, transactions: [Transaction], preAggregated: PreAggregatedData? = nil) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
         guard let sixMonthsAgo = calendar.date(byAdding: .month, value: -6, to: startOfMonth(calendar, for: now)) else { return nil }
@@ -409,7 +407,7 @@ extension InsightsService {
             monthlyAggregates = preAggregated.categoryMonthTotalsInRange(from: sixMonthsAgo, to: now)
         } else {
             monthlyAggregates = Self.computeCategoryMonthTotals(
-                from: transactionStore.transactions, from: sixMonthsAgo, to: now, baseCurrency: baseCurrency
+                from: transactions, from: sixMonthsAgo, to: now, baseCurrency: baseCurrency
             )
         }
         guard monthlyAggregates.count >= 4 else { return nil }

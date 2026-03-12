@@ -28,7 +28,7 @@ import Foundation
 import SwiftUI
 import os
 
-final class InsightsService {
+nonisolated final class InsightsService {
 
     // MARK: - Logger
     // Internal so cross-file extensions can log with `Self.logger`.
@@ -92,7 +92,6 @@ final class InsightsService {
 
     /// Builds `[PeriodDataPoint]` for the given number of calendar months ending at `anchorDate`.
     /// Replaces the removed `computeMonthlyDataPoints` (MonthlyDataPoint deleted in Phase 44).
-    @MainActor
     func computeMonthlyPeriodDataPoints(
         transactions: [Transaction],
         months: Int,
@@ -116,8 +115,7 @@ final class InsightsService {
             let monthTx = filterService.filterByTimeRange(transactions, start: monthStart, end: monthEnd)
             let (inc, exp) = calculateMonthlySummary(
                 transactions: monthTx,
-                baseCurrency: baseCurrency,
-                currencyService: currencyService
+                baseCurrency: baseCurrency
             )
             let key   = InsightGranularity.month.groupingKey(for: monthStart)
             let label = Self.monthYearFormatter.string(from: monthStart)
@@ -138,7 +136,6 @@ final class InsightsService {
 
     // MARK: - Category Deep Dive
 
-    @MainActor
     func generateCategoryDeepDive(
         categoryName: String,
         allTransactions: [Transaction],
@@ -195,7 +192,7 @@ final class InsightsService {
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
-        balanceFor: (String) -> Double,
+        snapshot: DataSnapshot,
         firstTransactionDate: Date? = nil,          // hoisted by caller to avoid 5× O(N) re-scan
         preAggregated: PreAggregatedData? = nil,    // Phase 42: single O(N) pass data
         sharedInsights: [Insight]? = nil             // Phase 42b: skip shared generators
@@ -255,7 +252,6 @@ final class InsightsService {
             let (wi, we) = calculateMonthlySummary(
                 transactions: windowedTransactions,
                 baseCurrency: baseCurrency,
-                currencyService: currencyService,
                 txDateMap: dateMap
             )
             windowedIncome = wi
@@ -282,7 +278,6 @@ final class InsightsService {
                 transactions: allTransactions,
                 granularity: granularity,
                 baseCurrency: baseCurrency,
-                currencyService: currencyService,
                 firstTransactionDate: firstDate,
                 txDateMap: dateMap
             )
@@ -311,7 +306,8 @@ final class InsightsService {
             granularity: granularity,
             periodPoints: periodPoints,
             txDateMap: dateMap,
-            preAggregated: preAggregated
+            preAggregated: preAggregated,
+            categories: snapshot.categories
         ))
 
         insights.append(contentsOf: generateIncomeInsights(
@@ -329,17 +325,22 @@ final class InsightsService {
         insights.append(contentsOf: generateBudgetInsights(
             transactions: windowedTransactions,
             timeFilter: granularityTimeFilter,
-            baseCurrency: baseCurrency
+            baseCurrency: baseCurrency,
+            categories: snapshot.categories
         ))
 
-        insights.append(contentsOf: generateRecurringInsights(baseCurrency: baseCurrency, granularity: granularity))
+        insights.append(contentsOf: generateRecurringInsights(
+            baseCurrency: baseCurrency,
+            granularity: granularity,
+            recurringSeries: snapshot.recurringSeries
+        ))
 
         insights.append(contentsOf: generateCashFlowInsightsFromPeriodPoints(
             periodPoints: periodPoints,
             allTransactions: allTransactions,
             granularity: granularity,
             baseCurrency: baseCurrency,
-            balanceFor: balanceFor
+            snapshot: snapshot
         ))
 
         // Phase 42d: pass accountTransactionCounts to avoid O(N×M) filter loop
@@ -349,8 +350,9 @@ final class InsightsService {
             granularity: granularity,
             baseCurrency: baseCurrency,
             currencyService: currencyService,
-            balanceFor: balanceFor,
-            accountTransactionCounts: preAggregated?.accountTransactionCounts
+            balanceFor: snapshot.balanceFor,
+            accountTransactionCounts: preAggregated?.accountTransactionCounts,
+            accounts: snapshot.accounts
         ))
 
         // Phase 24 — Savings: SavingsRate is granularity-dependent; EmergencyFund/SavingsMomentum are shared
@@ -359,7 +361,9 @@ final class InsightsService {
             allIncome: windowedIncome,
             allExpenses: windowedExpenses,
             baseCurrency: baseCurrency,
-            balanceFor: balanceFor,
+            balanceFor: snapshot.balanceFor,
+            accounts: snapshot.accounts,
+            transactions: allTransactions,
             preAggregated: preAggregated,
             skipSharedGenerators: hasShared
         ))
@@ -387,7 +391,7 @@ final class InsightsService {
         insights.append(contentsOf: generateForecastingInsights(
             allTransactions: allTransactions,
             baseCurrency: baseCurrency,
-            balanceFor: balanceFor,
+            snapshot: snapshot,
             filteredTransactions: currentBucketForForecasting,
             preAggregated: preAggregated,
             skipSharedGenerators: hasShared
@@ -399,20 +403,20 @@ final class InsightsService {
 
         if !hasShared {
             // Phase 24 — Spending behavioral
-            if let spike = generateSpendingSpike(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+            if let spike = generateSpendingSpike(baseCurrency: baseCurrency, transactions: allTransactions, preAggregated: preAggregated) {
                 insights.append(spike)
             }
-            if let trend = generateCategoryTrend(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+            if let trend = generateCategoryTrend(baseCurrency: baseCurrency, transactions: allTransactions, preAggregated: preAggregated) {
                 insights.append(trend)
             }
             // Phase 24 — Recurring behavioral
-            if let growth = generateSubscriptionGrowth(baseCurrency: baseCurrency) {
+            if let growth = generateSubscriptionGrowth(baseCurrency: baseCurrency, recurringSeries: snapshot.recurringSeries) {
                 insights.append(growth)
             }
-            if let duplicates = generateDuplicateSubscriptions(baseCurrency: baseCurrency) {
+            if let duplicates = generateDuplicateSubscriptions(baseCurrency: baseCurrency, recurringSeries: snapshot.recurringSeries) {
                 insights.append(duplicates)
             }
-            if let dormancy = generateAccountDormancy(allTransactions: allTransactions, balanceFor: balanceFor, preAggregated: preAggregated) {
+            if let dormancy = generateAccountDormancy(allTransactions: allTransactions, balanceFor: snapshot.balanceFor, preAggregated: preAggregated, accounts: snapshot.accounts) {
                 insights.append(dormancy)
             }
         } else {
@@ -444,7 +448,7 @@ final class InsightsService {
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
-        balanceFor: (String) -> Double,
+        snapshot: DataSnapshot,
         firstTransactionDate: Date?,
         preAggregated: PreAggregatedData? = nil,    // Phase 42: caller can pass pre-built data
         sharedInsights: [Insight]? = nil             // Phase 42b: pass from Phase 1 → Phase 2
@@ -462,7 +466,7 @@ final class InsightsService {
                 baseCurrency: baseCurrency,
                 cacheManager: cacheManager,
                 currencyService: currencyService,
-                balanceFor: balanceFor,
+                snapshot: snapshot,
                 firstTransactionDate: aggregated.firstDate ?? firstTransactionDate,
                 preAggregated: aggregated,
                 sharedInsights: shared
@@ -515,7 +519,7 @@ final class InsightsService {
         baseCurrency: String,
         cacheManager: TransactionCacheManager,
         currencyService: TransactionCurrencyService,
-        balanceFor: (String) -> Double,
+        snapshot: DataSnapshot,
         firstTransactionDate: Date?,
         preAggregated: PreAggregatedData? = nil     // Phase 42
     ) -> (results: [InsightGranularity: (insights: [Insight], periodPoints: [PeriodDataPoint])], sharedInsights: [Insight]) {
@@ -525,7 +529,7 @@ final class InsightsService {
             baseCurrency: baseCurrency,
             cacheManager: cacheManager,
             currencyService: currencyService,
-            balanceFor: balanceFor,
+            snapshot: snapshot,
             firstTransactionDate: firstTransactionDate,
             preAggregated: preAggregated
         )
@@ -538,11 +542,10 @@ final class InsightsService {
         transactions: [Transaction],
         granularity: InsightGranularity,
         baseCurrency: String,
-        currencyService: TransactionCurrencyService,
         firstTransactionDate: Date? = nil,
         txDateMap: [String: Date]? = nil   // Phase 42b: pre-parsed dates
     ) -> [PeriodDataPoint] {
-        let dateFormatter = DateFormatters.dateFormatter
+        let dateFormatter = Self.yearMonthFormatter  // Phase 48: nonisolated-safe static
         let calendar = Calendar.current
 
         // Determine data window
@@ -588,7 +591,7 @@ final class InsightsService {
             }
             guard let date = txDate, date >= windowStart, date < windowEnd else { continue }
             let key = granularity.groupingKey(for: date)
-            let amount = currencyService.getConvertedAmountOrCompute(transaction: tx, to: baseCurrency)
+            let amount = resolveAmount(tx, baseCurrency: baseCurrency)
             switch tx.type {
             case .income:  incomeByKey[key, default: 0] += amount
             case .expense: expensesByKey[key, default: 0] += amount
@@ -695,6 +698,17 @@ final class InsightsService {
         let totalIncome: Double
         let totalExpenses: Double
         let netFlow: Double
+    }
+
+    /// Snapshot of all MainActor-isolated data, captured once before background computation.
+    /// Eliminates 30+ direct `transactionStore` accesses across extension files,
+    /// enabling InsightsService to run fully off the main thread.
+    struct DataSnapshot: Sendable {
+        let transactions: [Transaction]
+        let categories: [CustomCategory]
+        let recurringSeries: [RecurringSeries]
+        let accounts: [Account]
+        let balanceFor: @Sendable (String) -> Double
     }
 
     // MARK: - Phase 40: In-Memory Aggregate Helpers
@@ -1020,11 +1034,10 @@ final class InsightsService {
     private func calculateMonthlySummary(
         transactions: [Transaction],
         baseCurrency: String,
-        currencyService: TransactionCurrencyService,
         txDateMap: [String: Date]? = nil   // Phase 42b: pre-parsed dates
     ) -> (income: Double, expenses: Double) {
         let today = Calendar.current.startOfDay(for: Date())
-        let dateFormatter = DateFormatters.dateFormatter
+        let dateFormatter = Self.yearMonthFormatter  // Phase 48: use own static formatter (nonisolated-safe)
         var income: Double = 0
         var expenses: Double = 0
 
@@ -1034,10 +1047,13 @@ final class InsightsService {
             if let map = txDateMap {
                 txDate = map[tx.date]
             } else {
-                txDate = dateFormatter.date(from: tx.date)
+                // Fallback: allocate a formatter locally (rare path when preAggregated is nil)
+                let fallbackDF = DateFormatter()
+                fallbackDF.dateFormat = "yyyy-MM-dd"
+                txDate = fallbackDF.date(from: tx.date)
             }
             guard let date = txDate, date <= today else { continue }
-            let amount = currencyService.getConvertedAmountOrCompute(transaction: tx, to: baseCurrency)
+            let amount = resolveAmount(tx, baseCurrency: baseCurrency)
             switch tx.type {
             case .income:  income += amount
             case .expense: expenses += amount
@@ -1066,9 +1082,13 @@ final class InsightsService {
 
     /// Phase 23-C P12: shared monthly recurring net calculation.
     /// Was duplicated verbatim in generateCashFlowInsights and generateCashFlowInsightsFromPeriodPoints.
-    @MainActor
-    func monthlyRecurringNet(baseCurrency: String) -> Double {
-        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
+    /// Phase 48: Takes snapshot params instead of accessing transactionStore directly.
+    func monthlyRecurringNet(
+        baseCurrency: String,
+        recurringSeries: [RecurringSeries],
+        categories: [CustomCategory]
+    ) -> Double {
+        let activeSeries = recurringSeries.filter { $0.isActive }
         return activeSeries.reduce(0.0) { total, series in
             let amount = NSDecimalNumber(decimal: series.amount).doubleValue
             let monthly: Double
@@ -1078,7 +1098,7 @@ final class InsightsService {
             case .monthly: monthly = amount
             case .yearly:  monthly = amount / 12
             }
-            let isIncome = transactionStore.categories.first { $0.name == series.category }?.type == .income
+            let isIncome = categories.first { $0.name == series.category }?.type == .income
             return total + (isIncome ? monthly : -monthly)
         }
     }

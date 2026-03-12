@@ -13,9 +13,8 @@ extension InsightsService {
 
     // MARK: - Recurring Insights
 
-    @MainActor
-    func generateRecurringInsights(baseCurrency: String, granularity: InsightGranularity? = nil) -> [Insight] {
-        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
+    func generateRecurringInsights(baseCurrency: String, granularity: InsightGranularity? = nil, recurringSeries: [RecurringSeries]) -> [Insight] {
+        let activeSeries = recurringSeries.filter { $0.isActive }
         guard !activeSeries.isEmpty else {
             Self.logger.debug("🔁 [Insights] Recurring — SKIPPED (no active series)")
             return []
@@ -109,9 +108,8 @@ extension InsightsService {
     // MARK: - Subscription Growth (Phase 24)
 
     /// Compares current monthly recurring total with the total 3 months ago.
-    @MainActor
-    func generateSubscriptionGrowth(baseCurrency: String) -> Insight? {
-        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive }
+    func generateSubscriptionGrowth(baseCurrency: String, recurringSeries: [RecurringSeries]) -> Insight? {
+        let activeSeries = recurringSeries.filter { $0.isActive }
         guard activeSeries.count >= 2 else { return nil }
 
         let calendar = Calendar.current
@@ -161,9 +159,8 @@ extension InsightsService {
 
     /// Detects possible duplicate subscriptions — active series with the same category
     /// OR monthly cost within 15% of each other.
-    @MainActor
-    func generateDuplicateSubscriptions(baseCurrency: String) -> Insight? {
-        let activeSeries = transactionStore.recurringSeries.filter { $0.isActive && $0.kind == .subscription }
+    func generateDuplicateSubscriptions(baseCurrency: String, recurringSeries: [RecurringSeries]) -> Insight? {
+        let activeSeries = recurringSeries.filter { $0.isActive && $0.kind == .subscription }
         guard activeSeries.count >= 2 else { return nil }
 
         // Group by category; flag categories with 2+ subscriptions

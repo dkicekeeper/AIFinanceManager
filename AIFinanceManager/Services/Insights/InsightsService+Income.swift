@@ -13,7 +13,6 @@ extension InsightsService {
 
     // MARK: - Income Insights
 
-    @MainActor
     func generateIncomeInsights(
         filtered: [Transaction],
         allTransactions: [Transaction],

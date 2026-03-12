@@ -13,7 +13,6 @@ extension InsightsService {
 
     // MARK: - Wealth Insights (Phase 18)
 
-    @MainActor
     func generateWealthInsights(
         periodPoints: [PeriodDataPoint],
         allTransactions: [Transaction],
@@ -21,9 +20,9 @@ extension InsightsService {
         baseCurrency: String,
         currencyService: TransactionCurrencyService,
         balanceFor: (String) -> Double,
-        accountTransactionCounts: [String: Int]? = nil   // Phase 42d: pre-computed from PreAggregatedData
+        accountTransactionCounts: [String: Int]? = nil,   // Phase 42d: pre-computed from PreAggregatedData
+        accounts: [Account]
     ) -> [Insight] {
-        let accounts = transactionStore.accounts
         guard !accounts.isEmpty else { return [] }
 
         let totalWealth = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
@@ -134,8 +133,7 @@ extension InsightsService {
     /// Flags accounts that have been idle for 30+ days but still hold a positive balance.
     /// Phase 42: Replaced CoreData fetchLastTransactionDates with in-memory computation.
     /// Phase 42e: Uses PreAggregatedData.lastAccountDates — O(accounts) instead of O(N) date-parsing loop.
-    @MainActor
-    func generateAccountDormancy(allTransactions: [Transaction], balanceFor: (String) -> Double, preAggregated: PreAggregatedData? = nil) -> Insight? {
+    func generateAccountDormancy(allTransactions: [Transaction], balanceFor: (String) -> Double, preAggregated: PreAggregatedData? = nil, accounts: [Account]) -> Insight? {
         let now = Date()
         guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now) else { return nil }
 
@@ -159,7 +157,7 @@ extension InsightsService {
             lastDates = computed
         }
 
-        let dormantAccounts: [AccountInsightItem] = transactionStore.accounts.compactMap { account in
+        let dormantAccounts: [AccountInsightItem] = accounts.compactMap { account in
             let balance = balanceFor(account.id)
             guard balance > 0 else { return nil }
             guard let last = lastDates[account.id], last < thirtyDaysAgo else { return nil }

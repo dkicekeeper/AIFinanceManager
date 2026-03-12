@@ -18,7 +18,7 @@ extension InsightsService {
     func generateForecastingInsights(
         allTransactions: [Transaction],
         baseCurrency: String,
-        balanceFor: (String) -> Double,
+        snapshot: DataSnapshot,
         filteredTransactions: [Transaction]? = nil,
         preAggregated: PreAggregatedData? = nil,     // Phase 42
         skipSharedGenerators: Bool = false            // Phase 42b: shared generators already computed
@@ -28,19 +28,19 @@ extension InsightsService {
         // SpendingForecast, BalanceRunway, YoY, IncomeSeasonality, SpendingVelocity
         // are granularity-independent — skip when shared insights already provided
         if !skipSharedGenerators {
-            if let forecast = generateSpendingForecast(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+            if let forecast = generateSpendingForecast(transactions: snapshot.transactions, recurringSeries: snapshot.recurringSeries, categories: snapshot.categories, baseCurrency: baseCurrency, preAggregated: preAggregated) {
                 insights.append(forecast)
             }
-            if let runway = generateBalanceRunway(baseCurrency: baseCurrency, balanceFor: balanceFor, preAggregated: preAggregated) {
+            if let runway = generateBalanceRunway(accounts: snapshot.accounts, transactions: snapshot.transactions, baseCurrency: baseCurrency, balanceFor: snapshot.balanceFor, preAggregated: preAggregated) {
                 insights.append(runway)
             }
-            if let yoy = generateYearOverYear(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+            if let yoy = generateYearOverYear(transactions: snapshot.transactions, baseCurrency: baseCurrency, preAggregated: preAggregated) {
                 insights.append(yoy)
             }
-            if let seasonality = generateIncomeSeasonality(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+            if let seasonality = generateIncomeSeasonality(transactions: snapshot.transactions, baseCurrency: baseCurrency, preAggregated: preAggregated) {
                 insights.append(seasonality)
             }
-            if let velocity = generateSpendingVelocity(baseCurrency: baseCurrency, preAggregated: preAggregated) {
+            if let velocity = generateSpendingVelocity(transactions: snapshot.transactions, baseCurrency: baseCurrency, preAggregated: preAggregated) {
                 insights.append(velocity)
             }
         }
@@ -48,7 +48,7 @@ extension InsightsService {
         // Phase 30: use filteredTransactions (windowed) when available so incomeSourceBreakdown
         // respects the selected granularity period.
         let sourceTransactions = filteredTransactions ?? allTransactions
-        if let breakdown = generateIncomeSourceBreakdown(allTransactions: sourceTransactions, baseCurrency: baseCurrency) {
+        if let breakdown = generateIncomeSourceBreakdown(allTransactions: sourceTransactions, categories: snapshot.categories, baseCurrency: baseCurrency) {
             insights.append(breakdown)
         }
         return insights
@@ -57,8 +57,7 @@ extension InsightsService {
     // MARK: - Private Forecasting Sub-Generators
 
     /// Projects month-end spend = avg daily rate × remaining days + pending recurring.
-    @MainActor
-    private func generateSpendingForecast(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
+    private func generateSpendingForecast(transactions: [Transaction], recurringSeries: [RecurringSeries], categories: [CustomCategory], baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
         let df = DateFormatters.dateFormatter
@@ -67,7 +66,7 @@ extension InsightsService {
 
         // Phase 40: Direct in-memory expense sum for last 30 days
         // Note: this 30-day filter doesn't align to month boundaries, so it can't use preAggregated
-        let last30Spent = transactionStore.transactions
+        let last30Spent = transactions
             .filter { $0.type == .expense }
             .reduce(0.0) { total, tx in
                 guard let txDate = df.date(from: tx.date),
@@ -80,10 +79,10 @@ extension InsightsService {
         let dayOfMonth = calendar.component(.day, from: now)
         let daysRemaining = totalDaysInMonth - dayOfMonth
 
-        let monthlyRecurringExpenses = transactionStore.recurringSeries
+        let monthlyRecurringExpenses = recurringSeries
             .filter { $0.isActive }
             .filter { series in
-                let isExpense = transactionStore.categories.first { c in c.name == series.category }?.type != .income
+                let isExpense = categories.first { c in c.name == series.category }?.type != .income
                 return isExpense
             }
             .reduce(0.0) { total, series in
@@ -97,7 +96,7 @@ extension InsightsService {
         if let preAggregated {
             currentMonthData = preAggregated.lastMonthlyTotals(1).first
         } else {
-            currentMonthData = Self.computeLastMonthlyTotals(1, from: transactionStore.transactions, baseCurrency: baseCurrency).first
+            currentMonthData = Self.computeLastMonthlyTotals(1, from: transactions, baseCurrency: baseCurrency).first
         }
         let spentSoFar = currentMonthData?.totalExpenses ?? 0
         let monthlyIncome = currentMonthData?.totalIncome ?? 0
@@ -127,9 +126,8 @@ extension InsightsService {
     }
 
     /// How many months the current balance will last at the current net-burn rate.
-    @MainActor
-    private func generateBalanceRunway(baseCurrency: String, balanceFor: (String) -> Double, preAggregated: PreAggregatedData? = nil) -> Insight? {
-        let currentBalance = transactionStore.accounts.reduce(0.0) { $0 + balanceFor($1.id) }
+    private func generateBalanceRunway(accounts: [Account], transactions: [Transaction], baseCurrency: String, balanceFor: (String) -> Double, preAggregated: PreAggregatedData? = nil) -> Insight? {
+        let currentBalance = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         guard currentBalance > 0 else { return nil }
 
         // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
@@ -137,7 +135,7 @@ extension InsightsService {
         if let preAggregated {
             aggregates = preAggregated.lastMonthlyTotals(3)
         } else {
-            aggregates = Self.computeLastMonthlyTotals(3, from: transactionStore.transactions, baseCurrency: baseCurrency)
+            aggregates = Self.computeLastMonthlyTotals(3, from: transactions, baseCurrency: baseCurrency)
         }
         guard !aggregates.isEmpty else { return nil }
 
@@ -184,8 +182,7 @@ extension InsightsService {
     }
 
     /// Compares this month's expenses against the same month last year.
-    @MainActor
-    private func generateYearOverYear(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
+    private func generateYearOverYear(transactions: [Transaction], baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
         guard let oneYearAgo = calendar.date(byAdding: .year, value: -1, to: now) else { return nil }
@@ -197,8 +194,8 @@ extension InsightsService {
             thisMonth = preAggregated.lastMonthlyTotals(1).first
             lastYear = preAggregated.lastMonthlyTotals(1, anchor: oneYearAgo).first
         } else {
-            thisMonth = Self.computeLastMonthlyTotals(1, from: transactionStore.transactions, baseCurrency: baseCurrency).first
-            lastYear = Self.computeLastMonthlyTotals(1, from: transactionStore.transactions, anchor: oneYearAgo, baseCurrency: baseCurrency).first
+            thisMonth = Self.computeLastMonthlyTotals(1, from: transactions, baseCurrency: baseCurrency).first
+            lastYear = Self.computeLastMonthlyTotals(1, from: transactions, anchor: oneYearAgo, baseCurrency: baseCurrency).first
         }
 
         guard let thisExpenses = thisMonth?.totalExpenses,
@@ -236,8 +233,7 @@ extension InsightsService {
     }
 
     /// Identifies which calendar month historically generates the highest income.
-    @MainActor
-    private func generateIncomeSeasonality(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
+    private func generateIncomeSeasonality(transactions: [Transaction], baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
         guard let fiveYearsAgo = calendar.date(byAdding: .year, value: -5, to: now) else { return nil }
@@ -248,7 +244,7 @@ extension InsightsService {
             allAggregates = preAggregated.monthlyTotalsInRange(from: fiveYearsAgo, to: now)
         } else {
             allAggregates = Self.computeMonthlyTotals(
-                from: transactionStore.transactions, from: fiveYearsAgo, to: now, baseCurrency: baseCurrency
+                from: transactions, from: fiveYearsAgo, to: now, baseCurrency: baseCurrency
             )
         }
         guard allAggregates.count >= 12 else { return nil }
@@ -295,8 +291,7 @@ extension InsightsService {
     }
 
     /// Compares current daily spending rate vs last month's daily rate.
-    @MainActor
-    private func generateSpendingVelocity(baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
+    private func generateSpendingVelocity(transactions: [Transaction], baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
         let calendar = Calendar.current
         let now = Date()
         let dayOfMonth = calendar.component(.day, from: now)
@@ -309,8 +304,8 @@ extension InsightsService {
             thisMonth = preAggregated.lastMonthlyTotals(1).first
             lastMonth = preAggregated.lastMonthlyTotals(2).first
         } else {
-            thisMonth = Self.computeLastMonthlyTotals(1, from: transactionStore.transactions, baseCurrency: baseCurrency).first
-            lastMonth = Self.computeLastMonthlyTotals(2, from: transactionStore.transactions, baseCurrency: baseCurrency).first
+            thisMonth = Self.computeLastMonthlyTotals(1, from: transactions, baseCurrency: baseCurrency).first
+            lastMonth = Self.computeLastMonthlyTotals(2, from: transactions, baseCurrency: baseCurrency).first
         }
 
         guard let spentSoFar = thisMonth?.totalExpenses, spentSoFar > 0 else { return nil }
@@ -357,9 +352,8 @@ extension InsightsService {
 
     /// Groups income transactions by category to show income source distribution.
     /// Phase 31: Uses CoreData fetch for full-history income totals by category.
-    @MainActor
-    func generateIncomeSourceBreakdown(allTransactions: [Transaction], baseCurrency: String) -> Insight? {
-        let incomeCategories = transactionStore.categories.filter { $0.type == .income }
+    func generateIncomeSourceBreakdown(allTransactions: [Transaction], categories: [CustomCategory], baseCurrency: String) -> Insight? {
+        let incomeCategories = categories.filter { $0.type == .income }
         guard incomeCategories.count >= 2 else { return nil }
 
         // Phase 42: Replaced CoreData fetchIncomeByCategoryFromCoreData with in-memory computation.
@@ -373,7 +367,7 @@ extension InsightsService {
             .map { catName, txns -> CategoryBreakdownItem in
                 let amount = txns.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
                 let pct = (amount / totalIncome) * 100
-                let cat = transactionStore.categories.first { $0.name == catName }
+                let cat = categories.first { $0.name == catName }
                 return CategoryBreakdownItem(
                     id: catName,
                     categoryName: catName,
