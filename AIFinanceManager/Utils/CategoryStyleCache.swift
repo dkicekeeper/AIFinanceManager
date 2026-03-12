@@ -84,7 +84,7 @@ final class CategoryStyleCache {
 
     /// Invalidate entire cache (call when categories change)
     func invalidateCache() {
-        let count = cache.count
+        _ = cache.count
         cache.removeAll()
         cachedCategoriesSnapshot.removeAll()
 

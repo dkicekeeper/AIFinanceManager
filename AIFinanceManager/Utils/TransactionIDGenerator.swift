@@ -8,7 +8,7 @@
 import Foundation
 
 struct TransactionIDGenerator {
-    static func generateID(for transaction: Transaction) -> String {
+    nonisolated static func generateID(for transaction: Transaction) -> String {
         let normalizedDate = transaction.date.trimmingCharacters(in: .whitespaces)
         let normalizedDescription = normalizeWhitespace(transaction.description)
         let normalizedType = normalizeWhitespace(transaction.type.rawValue)
@@ -22,7 +22,7 @@ struct TransactionIDGenerator {
         return hashHex(for: key)
     }
     
-    static func generateID(date: String, description: String, amount: Double, type: TransactionType, currency: String, createdAt: TimeInterval? = nil) -> String {
+    nonisolated static func generateID(date: String, description: String, amount: Double, type: TransactionType, currency: String, createdAt: TimeInterval? = nil) -> String {
         let normalizedDate = date.trimmingCharacters(in: .whitespaces)
         let normalizedDescription = normalizeWhitespace(description)
         let normalizedType = normalizeWhitespace(type.rawValue)
@@ -36,13 +36,13 @@ struct TransactionIDGenerator {
         return hashHex(for: key)
     }
     
-    private static func normalizeWhitespace(_ value: String) -> String {
+    private nonisolated static func normalizeWhitespace(_ value: String) -> String {
         return value.trimmingCharacters(in: .whitespaces)
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .lowercased()
     }
     
-    private static func hashHex(for value: String) -> String {
+    private nonisolated static func hashHex(for value: String) -> String {
         var hasher = Hasher()
         hasher.combine(value)
         let raw = hasher.finalize()

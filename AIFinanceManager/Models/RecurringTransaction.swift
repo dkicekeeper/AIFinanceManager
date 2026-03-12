@@ -75,7 +75,7 @@ struct RecurringSeries: Identifiable, Codable, Equatable, Hashable {
     }
     
     // Helper computed property
-    var isSubscription: Bool {
+    nonisolated var isSubscription: Bool {
         kind == .subscription
     }
     
@@ -212,8 +212,8 @@ struct RecurringOccurrence: Identifiable, Codable, Equatable {
     let seriesId: String
     let occurrenceDate: String // YYYY-MM-DD
     let transactionId: String
-    
-    init(
+
+    nonisolated init(
         id: String = UUID().uuidString,
         seriesId: String,
         occurrenceDate: String,

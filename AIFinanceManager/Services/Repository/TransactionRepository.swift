@@ -11,20 +11,20 @@ import CoreData
 import os
 
 /// Protocol for transaction repository operations
-protocol TransactionRepositoryProtocol {
-    func loadTransactions(dateRange: DateInterval?) -> [Transaction]
-    func saveTransactions(_ transactions: [Transaction])
-    func saveTransactionsSync(_ transactions: [Transaction]) throws
+protocol TransactionRepositoryProtocol: Sendable {
+    nonisolated func loadTransactions(dateRange: DateInterval?) -> [Transaction]
+    nonisolated func saveTransactions(_ transactions: [Transaction])
+    nonisolated func saveTransactionsSync(_ transactions: [Transaction]) throws
     /// Immediately delete a single transaction from CoreData by ID (synchronous on background context).
     /// Use this for user-initiated deletions to guarantee the delete is persisted
     /// even if the app is killed shortly after.
-    func deleteTransactionImmediately(id: String)
+    nonisolated func deleteTransactionImmediately(id: String)
     /// Insert a single new transaction. O(1) — does NOT fetch existing records.
-    func insertTransaction(_ transaction: Transaction)
+    nonisolated func insertTransaction(_ transaction: Transaction)
     /// Update fields of an existing transaction by ID. O(1) — fetches by PK only.
-    func updateTransactionFields(_ transaction: Transaction)
+    nonisolated func updateTransactionFields(_ transaction: Transaction)
     /// Batch-insert using NSBatchInsertRequest. O(N) — ideal for CSV import.
-    func batchInsertTransactions(_ transactions: [Transaction])
+    nonisolated func batchInsertTransactions(_ transactions: [Transaction])
 }
 
 /// CoreData implementation of TransactionRepositoryProtocol
@@ -161,13 +161,18 @@ nonisolated final class TransactionRepository: TransactionRepositoryProtocol, @u
         //
         // By capturing the notification and merging immediately after performAndWait, we
         // ensure the viewContext is up-to-date before any subsequent code can access stale objects.
-        var savedNotification: Notification?
+        // NotificationBox: @unchecked Sendable wrapper so the @Sendable observer closure can
+        // capture and store a Notification (which is not Sendable) without a warning.
+        // This is safe because the closure and the reader (below performAndWait) run sequentially
+        // on the same thread — no concurrent access occurs.
+        final class NotificationBox: @unchecked Sendable { var value: Notification? }
+        let notificationBox = NotificationBox()
         let observer = NotificationCenter.default.addObserver(
             forName: .NSManagedObjectContextDidSave,
             object: backgroundContext,
             queue: nil
         ) { notification in
-            savedNotification = notification
+            notificationBox.value = notification
         }
 
         try backgroundContext.performAndWait {
@@ -283,7 +288,7 @@ nonisolated final class TransactionRepository: TransactionRepositoryProtocol, @u
         // BEFORE any subsequent code runs (e.g., isImporting=false, @Observable notifications).
         // automaticallyMergesChangesFromParent will also process this later — double-merge is
         // idempotent (refresh already-refreshed objects = no-op).
-        if let notification = savedNotification {
+        if let notification = notificationBox.value {
             stack.viewContext.mergeChanges(fromContextDidSave: notification)
         }
 

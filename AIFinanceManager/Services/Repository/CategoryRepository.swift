@@ -11,23 +11,23 @@ import CoreData
 import os
 
 /// Protocol for category repository operations
-protocol CategoryRepositoryProtocol {
-    func loadCategories() -> [CustomCategory]
-    func saveCategories(_ categories: [CustomCategory])
-    func saveCategoriesSync(_ categories: [CustomCategory]) throws
-    func loadCategoryRules() -> [CategoryRule]
-    func saveCategoryRules(_ rules: [CategoryRule])
-    func loadSubcategories() -> [Subcategory]
-    func saveSubcategories(_ subcategories: [Subcategory])
-    func saveSubcategoriesSync(_ subcategories: [Subcategory]) throws
-    func loadCategorySubcategoryLinks() -> [CategorySubcategoryLink]
-    func saveCategorySubcategoryLinks(_ links: [CategorySubcategoryLink])
-    func saveCategorySubcategoryLinksSync(_ links: [CategorySubcategoryLink]) throws
-    func loadTransactionSubcategoryLinks() -> [TransactionSubcategoryLink]
-    func saveTransactionSubcategoryLinks(_ links: [TransactionSubcategoryLink])
-    func saveTransactionSubcategoryLinksSync(_ links: [TransactionSubcategoryLink]) throws
-    func loadAggregates(year: Int16?, month: Int16?, limit: Int?) -> [CategoryAggregate]
-    func saveAggregates(_ aggregates: [CategoryAggregate])
+protocol CategoryRepositoryProtocol: Sendable {
+    nonisolated func loadCategories() -> [CustomCategory]
+    nonisolated func saveCategories(_ categories: [CustomCategory])
+    nonisolated func saveCategoriesSync(_ categories: [CustomCategory]) throws
+    nonisolated func loadCategoryRules() -> [CategoryRule]
+    nonisolated func saveCategoryRules(_ rules: [CategoryRule])
+    nonisolated func loadSubcategories() -> [Subcategory]
+    nonisolated func saveSubcategories(_ subcategories: [Subcategory])
+    nonisolated func saveSubcategoriesSync(_ subcategories: [Subcategory]) throws
+    nonisolated func loadCategorySubcategoryLinks() -> [CategorySubcategoryLink]
+    nonisolated func saveCategorySubcategoryLinks(_ links: [CategorySubcategoryLink])
+    nonisolated func saveCategorySubcategoryLinksSync(_ links: [CategorySubcategoryLink]) throws
+    nonisolated func loadTransactionSubcategoryLinks() -> [TransactionSubcategoryLink]
+    nonisolated func saveTransactionSubcategoryLinks(_ links: [TransactionSubcategoryLink])
+    nonisolated func saveTransactionSubcategoryLinksSync(_ links: [TransactionSubcategoryLink]) throws
+    nonisolated func loadAggregates(year: Int16?, month: Int16?, limit: Int?) -> [CategoryAggregate]
+    nonisolated func saveAggregates(_ aggregates: [CategoryAggregate])
 }
 
 /// CoreData implementation of CategoryRepositoryProtocol

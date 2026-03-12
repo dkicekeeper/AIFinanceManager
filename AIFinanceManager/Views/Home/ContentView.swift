@@ -385,7 +385,7 @@ struct ContentView: View {
 
     /// Decodes `fileURL` into a UIImage downsampled to `screenSize × scale` pixels.
     /// Returns nil if the file cannot be read or decoded.
-    private static func downsampleWallpaper(
+    private nonisolated static func downsampleWallpaper(
         at fileURL: URL,
         screenSize: CGSize,
         scale: CGFloat

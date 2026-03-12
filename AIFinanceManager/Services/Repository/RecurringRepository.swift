@@ -11,11 +11,11 @@ import CoreData
 import os
 
 /// Protocol for recurring transaction repository operations
-protocol RecurringRepositoryProtocol {
-    func loadRecurringSeries() -> [RecurringSeries]
-    func saveRecurringSeries(_ series: [RecurringSeries])
-    func loadRecurringOccurrences() -> [RecurringOccurrence]
-    func saveRecurringOccurrences(_ occurrences: [RecurringOccurrence])
+protocol RecurringRepositoryProtocol: Sendable {
+    nonisolated func loadRecurringSeries() -> [RecurringSeries]
+    nonisolated func saveRecurringSeries(_ series: [RecurringSeries])
+    nonisolated func loadRecurringOccurrences() -> [RecurringOccurrence]
+    nonisolated func saveRecurringOccurrences(_ occurrences: [RecurringOccurrence])
 }
 
 /// CoreData implementation of RecurringRepositoryProtocol

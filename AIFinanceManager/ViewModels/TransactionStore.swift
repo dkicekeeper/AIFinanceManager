@@ -189,7 +189,7 @@ final class TransactionStore {
         // Each repository method uses bgContext.performAndWait internally,
         // so they are safe to call from any thread.
         let (txs, accs, cats, subs, catLinks, txLinks, series, occurrences) =
-            try await Task.detached(priority: .userInitiated) {
+            await Task.detached(priority: .userInitiated) {
                 let txs        = repo.loadTransactions(dateRange: nil)  // Phase 40: load all
                 let accs       = repo.loadAccounts()
                 let cats       = repo.loadCategories()

@@ -340,17 +340,17 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
 // MARK: - Calendar helpers
 
 private extension Calendar {
-    func startOfWeek(for date: Date) -> Date {
+    nonisolated func startOfWeek(for date: Date) -> Date {
         let comps = dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
         return self.date(from: comps) ?? date
     }
 
-    func startOfMonth(for date: Date) -> Date {
+    nonisolated func startOfMonth(for date: Date) -> Date {
         let comps = dateComponents([.year, .month], from: date)
         return self.date(from: comps) ?? date
     }
 
-    func startOfQuarter(for date: Date) -> Date {
+    nonisolated func startOfQuarter(for date: Date) -> Date {
         let m = component(.month, from: date)
         let qStartMonth = ((m - 1) / 3) * 3 + 1
         var comps = dateComponents([.year], from: date)

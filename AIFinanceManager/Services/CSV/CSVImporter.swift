@@ -13,7 +13,7 @@ struct CSVFile {
     let rows: [[String]]
     let preview: [[String]]
     
-    var rowCount: Int {
+    nonisolated var rowCount: Int {
         rows.count
     }
 }

@@ -19,9 +19,9 @@ enum TransactionType: String, Codable, Sendable {
 
     /// Static category name stored for internalTransfer transactions.
     /// Must be locale-independent so it survives locale changes and app restarts.
-    static let transferCategoryName = "Transfer"
+    nonisolated static let transferCategoryName = "Transfer"
     /// Locale-independent category name for loan payment transactions.
-    static let loanPaymentCategoryName = "Loan Payment"
+    nonisolated static let loanPaymentCategoryName = "Loan Payment"
 }
 
 struct Transaction: Identifiable, Codable, Equatable, Sendable {
@@ -44,7 +44,7 @@ struct Transaction: Identifiable, Codable, Equatable, Sendable {
     let recurringOccurrenceId: String? // Связь с конкретным occurrence
     let createdAt: TimeInterval // Timestamp создания транзакции для сортировки
     
-    init(
+    nonisolated init(
         id: String,
         date: String,
         description: String,
@@ -179,8 +179,8 @@ struct RateChange: Codable, Equatable, Hashable {
     let effectiveFrom: String // YYYY-MM-DD
     let annualRate: Decimal
     let note: String?
-    
-    init(effectiveFrom: String, annualRate: Decimal, note: String? = nil) {
+
+    nonisolated init(effectiveFrom: String, annualRate: Decimal, note: String? = nil) {
         self.effectiveFrom = effectiveFrom
         self.annualRate = annualRate
         self.note = note
@@ -198,7 +198,27 @@ struct DepositInfo: Codable, Equatable, Hashable {
     var lastInterestCalculationDate: String // YYYY-MM-DD, дата последнего расчета
     var lastInterestPostingMonth: String // YYYY-MM-01, начало месяца последнего начисления
     var interestAccruedForCurrentPeriod: Decimal // Накоплено за текущий период до начисления
-    
+
+    enum CodingKeys: String, CodingKey {
+        case bankName, principalBalance, capitalizationEnabled, interestAccruedNotCapitalized
+        case interestRateAnnual, interestRateHistory, interestPostingDay
+        case lastInterestCalculationDate, lastInterestPostingMonth, interestAccruedForCurrentPeriod
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        bankName = try container.decode(String.self, forKey: .bankName)
+        principalBalance = try container.decode(Decimal.self, forKey: .principalBalance)
+        capitalizationEnabled = try container.decode(Bool.self, forKey: .capitalizationEnabled)
+        interestAccruedNotCapitalized = try container.decode(Decimal.self, forKey: .interestAccruedNotCapitalized)
+        interestRateAnnual = try container.decode(Decimal.self, forKey: .interestRateAnnual)
+        interestRateHistory = try container.decode([RateChange].self, forKey: .interestRateHistory)
+        interestPostingDay = try container.decode(Int.self, forKey: .interestPostingDay)
+        lastInterestCalculationDate = try container.decode(String.self, forKey: .lastInterestCalculationDate)
+        lastInterestPostingMonth = try container.decode(String.self, forKey: .lastInterestPostingMonth)
+        interestAccruedForCurrentPeriod = try container.decode(Decimal.self, forKey: .interestAccruedForCurrentPeriod)
+    }
+
     init(
         bankName: String,
         principalBalance: Decimal,
@@ -237,6 +257,20 @@ struct DepositInfo: Codable, Equatable, Hashable {
         }
         self.interestAccruedForCurrentPeriod = interestAccruedForCurrentPeriod
     }
+
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(bankName, forKey: .bankName)
+        try container.encode(principalBalance, forKey: .principalBalance)
+        try container.encode(capitalizationEnabled, forKey: .capitalizationEnabled)
+        try container.encode(interestAccruedNotCapitalized, forKey: .interestAccruedNotCapitalized)
+        try container.encode(interestRateAnnual, forKey: .interestRateAnnual)
+        try container.encode(interestRateHistory, forKey: .interestRateHistory)
+        try container.encode(interestPostingDay, forKey: .interestPostingDay)
+        try container.encode(lastInterestCalculationDate, forKey: .lastInterestCalculationDate)
+        try container.encode(lastInterestPostingMonth, forKey: .lastInterestPostingMonth)
+        try container.encode(interestAccruedForCurrentPeriod, forKey: .interestAccruedForCurrentPeriod)
+    }
 }
 
 // MARK: - Loan Models
@@ -257,7 +291,7 @@ struct EarlyRepayment: Codable, Equatable, Hashable {
     let type: EarlyRepaymentType
     let note: String?
 
-    init(date: String, amount: Decimal, type: EarlyRepaymentType, note: String? = nil) {
+    nonisolated init(date: String, amount: Decimal, type: EarlyRepaymentType, note: String? = nil) {
         self.date = date
         self.amount = amount
         self.type = type
@@ -292,6 +326,34 @@ struct LoanInfo: Codable, Equatable, Hashable {
 
     // Досрочные погашения
     var earlyRepayments: [EarlyRepayment]
+
+    enum CodingKeys: String, CodingKey {
+        case bankName, loanType, originalPrincipal, remainingPrincipal
+        case interestRateAnnual, interestRateHistory, totalInterestPaid
+        case termMonths, startDate, endDate
+        case monthlyPayment, paymentDay, paymentsMade, lastPaymentDate, lastReconciliationDate
+        case earlyRepayments
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        bankName = try container.decode(String.self, forKey: .bankName)
+        loanType = try container.decode(LoanType.self, forKey: .loanType)
+        originalPrincipal = try container.decode(Decimal.self, forKey: .originalPrincipal)
+        remainingPrincipal = try container.decode(Decimal.self, forKey: .remainingPrincipal)
+        interestRateAnnual = try container.decode(Decimal.self, forKey: .interestRateAnnual)
+        interestRateHistory = try container.decode([RateChange].self, forKey: .interestRateHistory)
+        totalInterestPaid = try container.decode(Decimal.self, forKey: .totalInterestPaid)
+        termMonths = try container.decode(Int.self, forKey: .termMonths)
+        startDate = try container.decode(String.self, forKey: .startDate)
+        endDate = try container.decode(String.self, forKey: .endDate)
+        monthlyPayment = try container.decode(Decimal.self, forKey: .monthlyPayment)
+        paymentDay = try container.decode(Int.self, forKey: .paymentDay)
+        paymentsMade = try container.decode(Int.self, forKey: .paymentsMade)
+        lastPaymentDate = try container.decodeIfPresent(String.self, forKey: .lastPaymentDate)
+        lastReconciliationDate = try container.decode(String.self, forKey: .lastReconciliationDate)
+        earlyRepayments = try container.decode([EarlyRepayment].self, forKey: .earlyRepayments)
+    }
 
     init(
         bankName: String,
@@ -353,6 +415,26 @@ struct LoanInfo: Codable, Equatable, Hashable {
         self.lastPaymentDate = lastPaymentDate
         self.lastReconciliationDate = lastReconciliationDate ?? DateFormatters.dateFormatter.string(from: Date())
         self.earlyRepayments = earlyRepayments
+    }
+
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(bankName, forKey: .bankName)
+        try container.encode(loanType, forKey: .loanType)
+        try container.encode(originalPrincipal, forKey: .originalPrincipal)
+        try container.encode(remainingPrincipal, forKey: .remainingPrincipal)
+        try container.encode(interestRateAnnual, forKey: .interestRateAnnual)
+        try container.encode(interestRateHistory, forKey: .interestRateHistory)
+        try container.encode(totalInterestPaid, forKey: .totalInterestPaid)
+        try container.encode(termMonths, forKey: .termMonths)
+        try container.encode(startDate, forKey: .startDate)
+        try container.encode(endDate, forKey: .endDate)
+        try container.encode(monthlyPayment, forKey: .monthlyPayment)
+        try container.encode(paymentDay, forKey: .paymentDay)
+        try container.encode(paymentsMade, forKey: .paymentsMade)
+        try container.encodeIfPresent(lastPaymentDate, forKey: .lastPaymentDate)
+        try container.encode(lastReconciliationDate, forKey: .lastReconciliationDate)
+        try container.encode(earlyRepayments, forKey: .earlyRepayments)
     }
 }
 
@@ -442,12 +524,12 @@ struct Account: Identifiable, Codable, Equatable, Hashable {
     }
     
     // Computed property для проверки, является ли счет депозитом
-    var isDeposit: Bool {
+    nonisolated var isDeposit: Bool {
         depositInfo != nil
     }
 
     // Computed property для проверки, является ли счет кредитом/рассрочкой
-    var isLoan: Bool {
+    nonisolated var isLoan: Bool {
         loanInfo != nil
     }
 }

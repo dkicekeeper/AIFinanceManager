@@ -34,7 +34,7 @@ final class CoreDataStack: @unchecked Sendable {
     /// registered in one coordinator become "not reachable" from the other, causing:
     /// "persistent store is not reachable from this NSManagedObjectContext's coordinator".
     private let containerLock = NSLock()
-    private var _persistentContainer: NSPersistentContainer?
+    nonisolated(unsafe) private var _persistentContainer: NSPersistentContainer?
 
     private init() {
         setupNotifications()
@@ -100,7 +100,7 @@ final class CoreDataStack: @unchecked Sendable {
     /// Thread-safe accessor for the persistent container.
     /// Uses NSLock to guarantee exactly ONE NSPersistentContainer is created, even when
     /// preWarm() (background thread) and AppCoordinator.initialize() (main thread) race.
-    var persistentContainer: NSPersistentContainer {
+    nonisolated var persistentContainer: NSPersistentContainer {
         containerLock.lock()
         defer { containerLock.unlock() }
 
@@ -155,12 +155,12 @@ final class CoreDataStack: @unchecked Sendable {
     // MARK: - Contexts
     
     /// Main view context - use for UI operations on main thread
-    var viewContext: NSManagedObjectContext {
+    nonisolated var viewContext: NSManagedObjectContext {
         return persistentContainer.viewContext
     }
     
     /// Create new background context for heavy operations
-    func newBackgroundContext() -> NSManagedObjectContext {
+    nonisolated func newBackgroundContext() -> NSManagedObjectContext {
         let context = persistentContainer.newBackgroundContext()
         context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         context.undoManager = nil
@@ -261,10 +261,10 @@ final class CoreDataStack: @unchecked Sendable {
     /// Posted synchronously on the main thread after the persistent store has been
     /// destroyed and recreated. Observers (e.g. NSFetchedResultsController holders)
     /// must tear down stale references and re-fetch from the new store.
-    static let storeDidResetNotification = Notification.Name("CoreDataStack.storeDidReset")
+    nonisolated static let storeDidResetNotification = Notification.Name("CoreDataStack.storeDidReset")
 
     /// Delete all data from persistent store (use for testing/debugging)
-    func resetAllData() throws {
+    nonisolated func resetAllData() throws {
         let coordinator = persistentContainer.persistentStoreCoordinator
 
         for store in coordinator.persistentStores {
