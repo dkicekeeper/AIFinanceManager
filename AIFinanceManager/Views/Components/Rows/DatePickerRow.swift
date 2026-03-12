@@ -54,7 +54,7 @@ struct DatePickerRow: View {
         style: .card
     ) {
         TextField("Name", text: .constant("Netflix"))
-            .padding(AppSpacing.md)
+            .padding(AppSpacing.lg)
 
         Divider()
             .padding(.leading, AppSpacing.lg)

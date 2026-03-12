@@ -6,7 +6,6 @@
 //  Используется для программного добавления индексов, если GUI в Xcode недоступен
 
 import Foundation
-import Combine
 import CoreData
 
 /// Утилита для создания индексов в Core Data

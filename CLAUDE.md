@@ -134,7 +134,7 @@ AIFinanceManager/
 
 #### Deposits — Interest Accrual & Capitalization
 - `Account.isDeposit` is a **computed property** (`depositInfo != nil`), not a stored flag
-- `DepositInfo` persisted via `depositInfoData: Data?` (JSON-encoded Binary) on `AccountEntity` (CoreData v5)
+- `DepositInfo` persisted via `depositInfoData: Data?` (JSON-encoded Binary) on `AccountEntity` (CoreData v6)
 - Interest formula: `principalBalance × (rate/100) / 365` per day — simple daily, compound monthly at posting
 - `DepositInterestService.reconcileDepositInterest()`: triggered on view appear (`.task {}`), walks days since `lastInterestCalculationDate`, creates `.depositInterestAccrual` transaction on posting day
 - Capitalization: if enabled → `principalBalance += postedAmount`; if disabled → `interestAccruedNotCapitalized += postedAmount`
@@ -144,7 +144,7 @@ AIFinanceManager/
 - **⚠️ Don't decompose Account for addDeposit**: Use `AccountsViewModel.addDepositAccount(_ account:)` to preserve computed DepositInfo dates. Decomposing into fields loses `lastInterestCalculationDate`/`lastInterestPostingMonth`.
 
 ### Current State
-- CoreData v5 model (`depositInfoData` on AccountEntity, `recurringSeriesId` String on `TransactionEntity`)
+- CoreData v6 model (`depositInfoData`, `isLoan`, `loanInfoData` on AccountEntity, `recurringSeriesId` String on `TransactionEntity`)
 - Old aggregate entities (`MonthlyAggregateEntity`, `CategoryAggregateEntity`) remain in `.xcdatamodeld` but are not read/written
 - ContentView reactivity via `.task(id: SummaryTrigger)` — no manual `onChange` chains
 - Per-element skeleton loading during initialization (`SkeletonLoadingModifier`)

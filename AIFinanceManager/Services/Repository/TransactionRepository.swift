@@ -134,6 +134,7 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                     }
                     PerformanceProfiler.end("TransactionRepository.saveTransactions")
                 } catch {
+                    Self.logger.error("saveTransactions failed: \(error.localizedDescription, privacy: .public)")
                     PerformanceProfiler.end("TransactionRepository.saveTransactions")
                 }
             }
@@ -304,8 +305,12 @@ final class TransactionRepository: TransactionRepositoryProtocol {
                 return
             }
             context.delete(entity)
-            try? context.save()
-            Self.logger.debug("✅ [TransactionRepository] deleteTransactionImmediately: deleted and saved for id: \(id, privacy: .public)")
+            do {
+                try context.save()
+                Self.logger.debug("✅ [TransactionRepository] deleteTransactionImmediately: deleted and saved for id: \(id, privacy: .public)")
+            } catch {
+                Self.logger.error("deleteTransactionImmediately save failed for id \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 

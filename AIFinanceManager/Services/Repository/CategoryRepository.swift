@@ -102,12 +102,13 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     }
 
     func saveCategoriesSync(_ categories: [CustomCategory]) throws {
-        let context = stack.viewContext
-        try saveCategoriesInternal(categories, context: context)
-
-        // Save if there are changes
-        if context.hasChanges {
-            try context.save()
+        let context = stack.newBackgroundContext()
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        try context.performAndWait {
+            try saveCategoriesInternal(categories, context: context)
+            if context.hasChanges {
+                try context.save()
+            }
         }
     }
 
@@ -199,7 +200,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
     func saveSubcategories(_ subcategories: [Subcategory]) {
 
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
 
             let context = self.stack.newBackgroundContext()
@@ -213,6 +214,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
+                    Self.logger.error("saveSubcategories failed: \(error.localizedDescription, privacy: .public)")
                 }
             }
         }
@@ -266,7 +268,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
     func saveCategorySubcategoryLinks(_ links: [CategorySubcategoryLink]) {
 
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
 
             let context = self.stack.newBackgroundContext()
@@ -280,6 +282,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
+                    Self.logger.error("saveCategorySubcategoryLinks failed: \(error.localizedDescription, privacy: .public)")
                 }
             }
         }
@@ -335,7 +338,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
     func saveTransactionSubcategoryLinks(_ links: [TransactionSubcategoryLink]) {
 
-        Task.detached(priority: .utility) { @MainActor [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             guard let self = self else { return }
 
             let context = self.stack.newBackgroundContext()
@@ -349,6 +352,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
                         try context.save()
                     }
                 } catch {
+                    Self.logger.error("saveTransactionSubcategoryLinks failed: \(error.localizedDescription, privacy: .public)")
                 }
             }
         }
@@ -380,41 +384,38 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         month: Int16? = nil,
         limit: Int? = nil
     ) -> [CategoryAggregate] {
-        let context = stack.viewContext
-        let request = CategoryAggregateEntity.fetchRequest()
+        let bgContext = stack.newBackgroundContext()
+        var aggregates: [CategoryAggregate] = []
 
-        // Build predicates for filtering
-        var predicates: [NSPredicate] = []
+        bgContext.performAndWait {
+            let request = CategoryAggregateEntity.fetchRequest()
 
-        if let year = year {
-            let yearPredicate = NSPredicate(format: "year == %d OR year == 0", year)
-            predicates.append(yearPredicate)
+            var predicates: [NSPredicate] = []
 
-            if let month = month {
-                let monthPredicate = NSPredicate(format: "month == %d OR month == 0", month)
-                predicates.append(monthPredicate)
+            if let year = year {
+                predicates.append(NSPredicate(format: "year == %d OR year == 0", year))
+                if let month = month {
+                    predicates.append(NSPredicate(format: "month == %d OR month == 0", month))
+                }
+            }
+
+            if !predicates.isEmpty {
+                request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+            }
+
+            request.sortDescriptors = [NSSortDescriptor(key: "lastUpdated", ascending: false)]
+            request.fetchBatchSize = 200
+
+            if let limit = limit {
+                request.fetchLimit = limit
+            }
+
+            if let entities = try? bgContext.fetch(request) {
+                aggregates = entities.map { $0.toAggregate() }
             }
         }
 
-        if !predicates.isEmpty {
-            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
-        }
-
-        request.sortDescriptors = [
-            NSSortDescriptor(key: "lastUpdated", ascending: false)
-        ]
-        request.fetchBatchSize = 200
-
-        if let limit = limit {
-            request.fetchLimit = limit
-        }
-
-        do {
-            let entities = try context.fetch(request)
-            return entities.map { $0.toAggregate() }
-        } catch {
-            return []
-        }
+        return aggregates
     }
 
     func saveAggregates(_ aggregates: [CategoryAggregate]) {
@@ -434,17 +435,13 @@ final class CategoryRepository: CategoryRepositoryProtocol {
     // MARK: - Private Helper Methods
 
     private nonisolated func saveCategoriesInternal(_ categories: [CustomCategory], context: NSManagedObjectContext) throws {
-        // Fetch all existing categories
+        // Caller is already inside context.perform/performAndWait — direct access is safe.
         let fetchRequest = NSFetchRequest<CustomCategoryEntity>(entityName: "CustomCategoryEntity")
         let existingEntities = try context.fetch(fetchRequest)
 
-        // Build dictionary safely, handling duplicates
         var existingDict: [String: CustomCategoryEntity] = [:]
         for entity in existingEntities {
-            var entityId: String = ""
-            context.performAndWait {
-                entityId = entity.id ?? ""
-            }
+            let entityId = entity.id ?? ""
             if !entityId.isEmpty && existingDict[entityId] == nil {
                 existingDict[entityId] = entity
             } else if !entityId.isEmpty {
@@ -454,56 +451,43 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
         var keptIds = Set<String>()
 
-        // Update or create categories
         for category in categories {
             keptIds.insert(category.id)
 
             if let existing = existingDict[category.id] {
-                // Update existing — performAndWait so mutations are applied before we return
-                context.performAndWait {
-                    existing.name = category.name
-                    existing.type = category.type.rawValue
-                    if case .sfSymbol(let symbolName) = category.iconSource {
-                        existing.iconName = symbolName
-                    } else {
-                        existing.iconName = "questionmark.circle"
-                    }
-                    existing.colorHex = category.colorHex
-                    existing.budgetAmount = category.budgetAmount ?? 0.0
-                    existing.budgetPeriod = category.budgetPeriod.rawValue
-                    existing.budgetStartDate = category.budgetStartDate
-                    existing.budgetResetDay = Int64(category.budgetResetDay)
+                // Direct mutation — caller is already inside perform/performAndWait
+                existing.name = category.name
+                existing.type = category.type.rawValue
+                if case .sfSymbol(let symbolName) = category.iconSource {
+                    existing.iconName = symbolName
+                } else {
+                    existing.iconName = "questionmark.circle"
                 }
+                existing.colorHex = category.colorHex
+                existing.budgetAmount = category.budgetAmount ?? 0.0
+                existing.budgetPeriod = category.budgetPeriod.rawValue
+                existing.budgetStartDate = category.budgetStartDate
+                existing.budgetResetDay = Int64(category.budgetResetDay)
             } else {
-                // Create new
                 _ = CustomCategoryEntity.from(category, context: context)
             }
         }
 
-        // Delete categories that no longer exist
         for entity in existingEntities {
-            var entityId: String?
-            context.performAndWait {
-                entityId = entity.id
-            }
-            if let id = entityId, !keptIds.contains(id) {
+            if let id = entity.id, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }
     }
 
     private nonisolated func saveSubcategoriesInternal(_ subcategories: [Subcategory], context: NSManagedObjectContext) throws {
-        // Fetch all existing subcategories
+        // Caller is already inside context.perform/performAndWait — direct access is safe.
         let fetchRequest = NSFetchRequest<SubcategoryEntity>(entityName: "SubcategoryEntity")
         let existingEntities = try context.fetch(fetchRequest)
 
-        // Build dictionary safely
         var existingDict: [String: SubcategoryEntity] = [:]
         for entity in existingEntities {
-            var entityId: String = ""
-            context.performAndWait {
-                entityId = entity.id ?? ""
-            }
+            let entityId = entity.id ?? ""
             if !entityId.isEmpty && existingDict[entityId] == nil {
                 existingDict[entityId] = entity
             } else if !entityId.isEmpty {
@@ -513,45 +497,31 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
         var keptIds = Set<String>()
 
-        // Update or create subcategories
         for subcategory in subcategories {
             keptIds.insert(subcategory.id)
 
             if let existing = existingDict[subcategory.id] {
-                // Update existing
-                context.perform {
-                    existing.name = subcategory.name
-                }
+                existing.name = subcategory.name
             } else {
-                // Create new
                 _ = SubcategoryEntity.from(subcategory, context: context)
             }
         }
 
-        // Delete subcategories that no longer exist
         for entity in existingEntities {
-            var entityId: String?
-            context.performAndWait {
-                entityId = entity.id
-            }
-            if let id = entityId, !keptIds.contains(id) {
+            if let id = entity.id, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }
     }
 
     private nonisolated func saveCategorySubcategoryLinksInternal(_ links: [CategorySubcategoryLink], context: NSManagedObjectContext) throws {
-        // Fetch all existing links
+        // Caller is already inside context.perform/performAndWait — direct access is safe.
         let fetchRequest = NSFetchRequest<CategorySubcategoryLinkEntity>(entityName: "CategorySubcategoryLinkEntity")
         let existingEntities = try context.fetch(fetchRequest)
 
-        // Build dictionary safely
         var existingDict: [String: CategorySubcategoryLinkEntity] = [:]
         for entity in existingEntities {
-            var entityId: String = ""
-            context.performAndWait {
-                entityId = entity.id ?? ""
-            }
+            let entityId = entity.id ?? ""
             if !entityId.isEmpty && existingDict[entityId] == nil {
                 existingDict[entityId] = entity
             } else if !entityId.isEmpty {
@@ -566,11 +536,9 @@ final class CategoryRepository: CategoryRepositoryProtocol {
             keptIds.insert(link.id)
 
             if let existing = existingDict[link.id] {
-                // Update existing
-                context.perform {
-                    existing.categoryId = link.categoryId
-                    existing.subcategoryId = link.subcategoryId
-                }
+                // Direct mutation — caller is already inside perform/performAndWait
+                existing.categoryId = link.categoryId
+                existing.subcategoryId = link.subcategoryId
             } else {
                 // Create new
                 _ = CategorySubcategoryLinkEntity.from(link, context: context)
@@ -579,10 +547,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
 
         // Delete links that no longer exist
         for entity in existingEntities {
-            var entityId: String?
-            context.performAndWait {
-                entityId = entity.id
-            }
+            let entityId = entity.id
             if let id = entityId, !keptIds.contains(id) {
                 context.delete(entity)
             }
@@ -597,10 +562,7 @@ final class CategoryRepository: CategoryRepositoryProtocol {
         // Build dictionary safely
         var existingDict: [String: TransactionSubcategoryLinkEntity] = [:]
         for entity in existingEntities {
-            var entityId: String = ""
-            context.performAndWait {
-                entityId = entity.id ?? ""
-            }
+            let entityId = entity.id ?? ""
             if !entityId.isEmpty && existingDict[entityId] == nil {
                 existingDict[entityId] = entity
             } else if !entityId.isEmpty {
@@ -615,41 +577,30 @@ final class CategoryRepository: CategoryRepositoryProtocol {
             keptIds.insert(link.id)
 
             if let existing = existingDict[link.id] {
-                // Update existing
-                context.perform {
-                    existing.transactionId = link.transactionId
-                    existing.subcategoryId = link.subcategoryId
-                }
+                // Direct mutation — caller is already inside perform/performAndWait
+                existing.transactionId = link.transactionId
+                existing.subcategoryId = link.subcategoryId
             } else {
                 // Create new
                 _ = TransactionSubcategoryLinkEntity.from(link, context: context)
             }
         }
 
-        // Delete links that no longer exist
         for entity in existingEntities {
-            var entityId: String?
-            context.performAndWait {
-                entityId = entity.id
-            }
-            if let id = entityId, !keptIds.contains(id) {
+            if let id = entity.id, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }
     }
 
     private nonisolated func saveAggregatesInternal(_ aggregates: [CategoryAggregate], context: NSManagedObjectContext) throws {
-        // Fetch существующие агрегаты
+        // Caller is already inside save coordinator's context.perform — direct access is safe.
         let fetchRequest = NSFetchRequest<CategoryAggregateEntity>(entityName: "CategoryAggregateEntity")
         let existingEntities = try context.fetch(fetchRequest)
 
         var existingDict: [String: CategoryAggregateEntity] = [:]
         for entity in existingEntities {
-            var entityId: String?
-            context.performAndWait {
-                entityId = entity.id
-            }
-            if let id = entityId {
+            if let id = entity.id {
                 existingDict[id] = entity
             }
         }
@@ -661,31 +612,24 @@ final class CategoryRepository: CategoryRepositoryProtocol {
             keptIds.insert(aggregate.id)
 
             if let existing = existingDict[aggregate.id] {
-                // Обновить существующий
-                context.perform {
-                    existing.categoryName = aggregate.categoryName
-                    existing.subcategoryName = aggregate.subcategoryName
-                    existing.year = aggregate.year
-                    existing.month = aggregate.month
-                    existing.totalAmount = aggregate.totalAmount
-                    existing.transactionCount = aggregate.transactionCount
-                    existing.currency = aggregate.currency
-                    existing.lastUpdated = Date()
-                    existing.lastTransactionDate = aggregate.lastTransactionDate
-                }
+                // Direct mutation — caller is already inside save coordinator's context.perform
+                existing.categoryName = aggregate.categoryName
+                existing.subcategoryName = aggregate.subcategoryName
+                existing.year = aggregate.year
+                existing.month = aggregate.month
+                existing.totalAmount = aggregate.totalAmount
+                existing.transactionCount = aggregate.transactionCount
+                existing.currency = aggregate.currency
+                existing.lastUpdated = Date()
+                existing.lastTransactionDate = aggregate.lastTransactionDate
             } else {
                 // Создать новый
                 _ = CategoryAggregateEntity.from(aggregate, context: context)
             }
         }
 
-        // Удалить агрегаты, которых больше нет
         for entity in existingEntities {
-            var entityId: String?
-            context.performAndWait {
-                entityId = entity.id
-            }
-            if let id = entityId, !keptIds.contains(id) {
+            if let id = entity.id, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }

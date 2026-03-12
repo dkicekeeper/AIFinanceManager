@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreData
+import os
 
 /// Protocol for account repository operations
 protocol AccountRepositoryProtocol {
@@ -24,6 +25,7 @@ protocol AccountRepositoryProtocol {
 /// CoreData implementation of AccountRepositoryProtocol
 final class AccountRepository: AccountRepositoryProtocol {
 
+    private static let logger = Logger(subsystem: "AIFinanceManager", category: "AccountRepository")
     private let stack: CoreDataStack
     private let saveCoordinator: CoreDataSaveCoordinator
     private let userDefaultsRepository: UserDefaultsRepository
@@ -139,6 +141,7 @@ final class AccountRepository: AccountRepositoryProtocol {
                     }
                 }
             } catch {
+                Self.logger.error("updateAccountBalance failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -182,89 +185,70 @@ final class AccountRepository: AccountRepositoryProtocol {
     // MARK: - Private Helper Methods
 
     private nonisolated func saveAccountsInternal(_ accounts: [Account], context: NSManagedObjectContext) throws {
-        // Fetch all existing accounts
+        // Caller is already inside context.perform/performAndWait — direct access is safe.
         let fetchRequest = NSFetchRequest<AccountEntity>(entityName: "AccountEntity")
         let existingEntities = try context.fetch(fetchRequest)
 
-        // Build dictionary safely, handling duplicates by keeping the first occurrence
         var existingDict: [String: AccountEntity] = [:]
         for entity in existingEntities {
-            // Extract id safely outside perform block
-            var entityId: String = ""
-            context.performAndWait {
-                entityId = entity.id ?? ""
-            }
+            let entityId = entity.id ?? ""
             if !entityId.isEmpty && existingDict[entityId] == nil {
                 existingDict[entityId] = entity
             } else if !entityId.isEmpty {
-                // Found duplicate - delete the extra entity
                 context.delete(entity)
             }
         }
 
         var keptIds = Set<String>()
 
-        // Update or create accounts
         for account in accounts {
             keptIds.insert(account.id)
 
             if let existing = existingDict[account.id] {
-                // Update existing - MUST use performAndWait for synchronous execution
-                context.performAndWait {
-                    existing.name = account.name
-                    // ⚠️ CRITICAL: Don't overwrite `balance` here — it's managed by BalanceCoordinator
-                    // ⚠️ CRITICAL: Don't overwrite `initialBalance` — it's set once at creation and never changes
-                    existing.currency = account.currency
+                // Direct mutation — caller is already inside perform/performAndWait
+                existing.name = account.name
+                // ⚠️ CRITICAL: Don't overwrite `balance` here — it's managed by BalanceCoordinator
+                // ⚠️ CRITICAL: Don't overwrite `initialBalance` — it's set once at creation and never changes
+                existing.currency = account.currency
 
-                    // Save full iconSource as JSON data (new approach)
-                    if let iconSource = account.iconSource,
-                       let encoded = try? JSONEncoder().encode(iconSource) {
-                        existing.iconSourceData = encoded
-                    } else {
-                        existing.iconSourceData = nil
-                    }
+                if let iconSource = account.iconSource,
+                   let encoded = try? JSONEncoder().encode(iconSource) {
+                    existing.iconSourceData = encoded
+                } else {
+                    existing.iconSourceData = nil
+                }
 
-                    // Keep logo field for backward compatibility
-                    if case .bankLogo(let bankLogo) = account.iconSource {
-                        existing.logo = bankLogo.rawValue
-                    } else {
-                        existing.logo = BankLogo.none.rawValue
-                    }
+                if case .bankLogo(let bankLogo) = account.iconSource {
+                    existing.logo = bankLogo.rawValue
+                } else {
+                    existing.logo = BankLogo.none.rawValue
+                }
 
-                    existing.isDeposit = account.isDeposit
-                    existing.isLoan = account.isLoan
-                    existing.bankName = account.depositInfo?.bankName ?? account.loanInfo?.bankName
-                    existing.shouldCalculateFromTransactions = account.shouldCalculateFromTransactions
+                existing.isDeposit = account.isDeposit
+                existing.isLoan = account.isLoan
+                existing.bankName = account.depositInfo?.bankName ?? account.loanInfo?.bankName
+                existing.shouldCalculateFromTransactions = account.shouldCalculateFromTransactions
 
-                    // Encode full DepositInfo as JSON (v5+)
-                    if let depositInfo = account.depositInfo,
-                       let encoded = try? JSONEncoder().encode(depositInfo) {
-                        existing.depositInfoData = encoded
-                    } else {
-                        existing.depositInfoData = nil
-                    }
+                if let depositInfo = account.depositInfo,
+                   let encoded = try? JSONEncoder().encode(depositInfo) {
+                    existing.depositInfoData = encoded
+                } else {
+                    existing.depositInfoData = nil
+                }
 
-                    // Encode full LoanInfo as JSON (v6+)
-                    if let loanInfo = account.loanInfo,
-                       let encoded = try? JSONEncoder().encode(loanInfo) {
-                        existing.loanInfoData = encoded
-                    } else {
-                        existing.loanInfoData = nil
-                    }
+                if let loanInfo = account.loanInfo,
+                   let encoded = try? JSONEncoder().encode(loanInfo) {
+                    existing.loanInfoData = encoded
+                } else {
+                    existing.loanInfoData = nil
                 }
             } else {
-                // Create new
                 _ = AccountEntity.from(account, context: context)
             }
         }
 
-        // Delete accounts that no longer exist
         for entity in existingEntities {
-            var entityId: String?
-            context.performAndWait {
-                entityId = entity.id
-            }
-            if let id = entityId, !keptIds.contains(id) {
+            if let id = entity.id, !keptIds.contains(id) {
                 context.delete(entity)
             }
         }

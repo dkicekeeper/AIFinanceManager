@@ -56,7 +56,8 @@ actor CoreDataSaveCoordinator {
         let startTime = Date()
 
         // Create background context for this operation
-        let context = await MainActor.run { stack.newBackgroundContext() }
+        // newBackgroundContext() is thread-safe (container already initialized) — no MainActor hop needed
+        let context = stack.newBackgroundContext()
 
         do {
             let result = try await context.perform {
@@ -97,7 +98,7 @@ actor CoreDataSaveCoordinator {
         operations: [(name: String, work: (NSManagedObjectContext) throws -> Void)]
     ) async throws {
 
-        let context = await MainActor.run { stack.newBackgroundContext() }
+        let context = stack.newBackgroundContext()
 
         try await context.perform {
             for (_, work) in operations {
@@ -113,16 +114,11 @@ actor CoreDataSaveCoordinator {
     // MARK: - Conflict Resolution
 
     private nonisolated func handleMergeConflict(context: NSManagedObjectContext) throws {
-        // Reset the context to clear conflicts
+        // After context.reset(), hasChanges is always false — retry is impossible.
+        // The merge policy (NSMergeByPropertyObjectTrumpMergePolicy) on the context
+        // should handle most conflicts automatically. If we still get here, log and
+        // let the error propagate to the caller for retry at a higher level.
         context.reset()
-
-        // Merge changes from parent context
-        context.refreshAllObjects()
-
-        // Retry save
-        if context.hasChanges {
-            try context.save()
-        }
     }
     
     // MARK: - Status
@@ -178,37 +174,5 @@ struct SaveStatus {
 
 // MARK: - Convenience Extensions
 
-extension CoreDataSaveCoordinator {
-    
-    /// Save entities with automatic batching
-    /// - Parameters:
-    ///   - operation: Operation name
-    ///   - entities: Array of entities to save
-    ///   - batchSize: Number of entities per batch (default: 500)
-    func saveBatched<T: NSManagedObject>(
-        operation: String,
-        entities: [T],
-        batchSize: Int = 500
-    ) async throws {
-        guard !entities.isEmpty else {
-            return
-        }
-        
-        let batches = stride(from: 0, to: entities.count, by: batchSize).map {
-            Array(entities[$0..<min($0 + batchSize, entities.count)])
-        }
-        
-        
-        for (index, batch) in batches.enumerated() {
-            try await performSave(operation: "\(operation)_batch_\(index)") { context in
-                for entity in batch {
-                    // Import entity to this context if needed
-                    if entity.managedObjectContext != context {
-                        _ = context.object(with: entity.objectID)
-                    }
-                }
-            }
-        }
-        
-    }
-}
+// saveBatched removed — dead code: fetched entities via context.object(with:) but
+// discarded the result (assigned to _), never mutated anything, so saves were no-ops.

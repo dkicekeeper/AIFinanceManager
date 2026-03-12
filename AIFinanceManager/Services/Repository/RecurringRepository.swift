@@ -207,24 +207,33 @@ final class RecurringRepository: RecurringRepositoryProtocol {
 
                     var keptIds = Set<String>()
 
+                    // Pre-fetch all needed series in one query (fixes N+1)
+                    let neededSeriesIds = Array(Set(occurrences.map { $0.seriesId }))
+                    var seriesDict: [String: RecurringSeriesEntity] = [:]
+                    if !neededSeriesIds.isEmpty {
+                        let seriesRequest = NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
+                        seriesRequest.predicate = NSPredicate(format: "id IN %@", neededSeriesIds)
+                        if let fetchedSeries = try? context.fetch(seriesRequest) {
+                            for series in fetchedSeries {
+                                if let seriesId = series.id {
+                                    seriesDict[seriesId] = series
+                                }
+                            }
+                        }
+                    }
+
                     // Update or create occurrences
                     for occurrence in occurrences {
                         keptIds.insert(occurrence.id)
 
                         if let existing = existingDict[occurrence.id] {
-                            // Direct mutations — caller is already inside context.perform
                             existing.seriesId = occurrence.seriesId
                             existing.occurrenceDate = occurrence.occurrenceDate
                             existing.transactionId = occurrence.transactionId
-
-                            // Update series relationship if needed
-                            existing.series = self.fetchRecurringSeriesSync(id: occurrence.seriesId, context: context)
+                            existing.series = seriesDict[occurrence.seriesId]
                         } else {
-                            // Create new
                             let entity = RecurringOccurrenceEntity.from(occurrence, context: context)
-
-                            // Set series relationship
-                            entity.series = self.fetchRecurringSeriesSync(id: occurrence.seriesId, context: context)
+                            entity.series = seriesDict[occurrence.seriesId]
                         }
                     }
 

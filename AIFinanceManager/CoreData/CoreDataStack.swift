@@ -8,7 +8,6 @@
 
 import Foundation
 import CoreData
-import Combine
 import UIKit
 import os
 
@@ -75,12 +74,13 @@ final class CoreDataStack: @unchecked Sendable {
 
     private func saveContextSync() {
         let context = viewContext
-        guard context.hasChanges else { return }
-
-        do {
-            try context.save()
-        } catch {
-            CoreDataStack.logger.error("Error saving context on lifecycle event: \(error as NSError)")
+        context.performAndWait {
+            guard context.hasChanges else { return }
+            do {
+                try context.save()
+            } catch {
+                CoreDataStack.logger.error("Error saving context on lifecycle event: \(error as NSError)")
+            }
         }
     }
     
@@ -186,8 +186,10 @@ final class CoreDataStack: @unchecked Sendable {
     /// Save context synchronously (use carefully, can block thread)
     /// - Parameter context: The context to save
     func saveContextSync(_ context: NSManagedObjectContext) throws {
-        guard context.hasChanges else { return }
-        try context.save()
+        try context.performAndWait {
+            guard context.hasChanges else { return }
+            try context.save()
+        }
     }
     
     // MARK: - Batch Operations
@@ -197,26 +199,30 @@ final class CoreDataStack: @unchecked Sendable {
     func batchDelete<T: NSManagedObject>(_ fetchRequest: NSFetchRequest<T>) throws {
         let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest as! NSFetchRequest<NSFetchRequestResult>)
         deleteRequest.resultType = .resultTypeObjectIDs
-        
-        let result = try viewContext.execute(deleteRequest) as? NSBatchDeleteResult
-        let objectIDArray = result?.result as? [NSManagedObjectID] ?? []
-        
-        // Merge changes to view context
-        let changes = [NSDeletedObjectsKey: objectIDArray]
-        NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
+
+        try viewContext.performAndWait {
+            let result = try viewContext.execute(deleteRequest) as? NSBatchDeleteResult
+            let objectIDArray = result?.result as? [NSManagedObjectID] ?? []
+
+            // Merge changes to view context
+            let changes = [NSDeletedObjectsKey: objectIDArray]
+            NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
+        }
     }
-    
+
     /// Execute batch update request
     /// - Parameter batchUpdate: The batch update request
     func batchUpdate(_ batchUpdate: NSBatchUpdateRequest) throws {
         batchUpdate.resultType = .updatedObjectIDsResultType
 
-        let result = try viewContext.execute(batchUpdate) as? NSBatchUpdateResult
-        let objectIDArray = result?.result as? [NSManagedObjectID] ?? []
+        try viewContext.performAndWait {
+            let result = try viewContext.execute(batchUpdate) as? NSBatchUpdateResult
+            let objectIDArray = result?.result as? [NSManagedObjectID] ?? []
 
-        // Merge changes to view context
-        let changes = [NSUpdatedObjectsKey: objectIDArray]
-        NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
+            // Merge changes to view context
+            let changes = [NSUpdatedObjectsKey: objectIDArray]
+            NSManagedObjectContext.mergeChanges(fromRemoteContextSave: changes, into: [viewContext])
+        }
     }
 
     /// Merge inserted object IDs from an NSBatchInsertRequest result into viewContext.
@@ -264,9 +270,13 @@ final class CoreDataStack: @unchecked Sendable {
         for store in coordinator.persistentStores {
             if let storeURL = store.url {
                 try coordinator.destroyPersistentStore(at: storeURL, ofType: store.type, options: nil)
-                // Restore file protection on the recreated store — passing nil would drop it.
+                // Restore all store options on the recreated store — passing nil would drop them.
+                // Without re-applying these, persistent history tracking and remote change
+                // notifications are silently disabled until the next app restart.
                 let storeOptions: [String: Any] = [
-                    NSPersistentStoreFileProtectionKey: FileProtectionType.complete
+                    NSPersistentStoreFileProtectionKey: FileProtectionType.complete,
+                    NSPersistentHistoryTrackingKey: true as NSNumber,
+                    NSPersistentStoreRemoteChangeNotificationPostOptionKey: true as NSNumber
                 ]
                 try coordinator.addPersistentStore(ofType: store.type, configurationName: nil, at: storeURL, options: storeOptions)
             }
