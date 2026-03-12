@@ -54,7 +54,7 @@ struct SubscriptionsCardView: View {
                         }
 
                         Text(String(format: String(localized: "subscriptions.activeCount"), subscriptions.count))
-                            .font(AppTypography.bodySecondary)
+                            .font(AppTypography.bodySmall)
                             .foregroundStyle(AppColors.textPrimary)
                     }
                 }
@@ -66,7 +66,8 @@ struct SubscriptionsCardView: View {
                     .frame(width: AppSize.subscriptionCardWidth, alignment: .top)
             }
         }
-        .cardStyle(radius: AppRadius.xl)
+        .padding(AppSpacing.lg)
+        .cardStyle()
         // Fix #3: replaced two separate `onChange + unstructured Task {}` blocks with a single
         // `.task(id: refreshID)`. SwiftUI automatically cancels and restarts this task whenever
         // `refreshID` changes (subscriptions count or base currency), and cancels it on view

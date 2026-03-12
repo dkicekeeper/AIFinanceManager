@@ -26,7 +26,7 @@ struct RecognizedTextView: View {
                     Text(String(localized: "modal.recognizedText.title"))
                         .font(AppTypography.h4)
                     Text(String(localized: "modal.recognizedText.message"))
-                        .font(AppTypography.bodySecondary)
+                        .font(AppTypography.bodySmall)
                         .foregroundStyle(AppColors.textSecondary)
                         .multilineTextAlignment(.center)
                 }

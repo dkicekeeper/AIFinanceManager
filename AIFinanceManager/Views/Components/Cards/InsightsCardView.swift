@@ -80,9 +80,8 @@ struct InsightsCardView<BottomChart: View>: View {
                 bottomChartContent()
             }
         }
-//        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(AppSpacing.lg)
-        .cardStyle(radius: AppRadius.xl)
+        .cardStyle()
     }
 
     // MARK: - Mini Chart

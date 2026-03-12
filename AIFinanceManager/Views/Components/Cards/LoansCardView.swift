@@ -28,7 +28,13 @@ struct LoansCardView: View {
                     .foregroundStyle(.primary)
 
                 if loans.isEmpty {
-                    EmptyStateView(title: String(localized: "loan.emptyTitle", defaultValue: "No Loans"), style: .compact)
+                    EmptyStateView(
+                        title: String(
+                            localized: "loan.emptyTitle",
+                            defaultValue: "No Loans"
+                        ),
+                        style: .compact
+                    )
                 } else {
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {
                         FormattedAmountText(
@@ -40,7 +46,7 @@ struct LoansCardView: View {
                         )
 
                         Text(String(format: String(localized: "loan.activeCount", defaultValue: "%d active loans"), loans.count))
-                            .font(AppTypography.bodySecondary)
+                            .font(AppTypography.bodySmall)
                             .foregroundStyle(AppColors.textPrimary)
                     }
                 }
@@ -53,7 +59,7 @@ struct LoansCardView: View {
             }
         }
         .padding(AppSpacing.lg)
-        .cardStyle(radius: AppRadius.xl)
+        .cardStyle()
     }
 
     // MARK: - Computed

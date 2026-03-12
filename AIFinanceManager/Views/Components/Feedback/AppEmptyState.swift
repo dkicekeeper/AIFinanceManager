@@ -123,12 +123,12 @@ struct EmptyStateView: View {
         VStack(spacing: AppSpacing.xs) {
             Text(title)
                 .font(AppTypography.body)
-                .foregroundStyle(AppColors.textPrimary)
+                .foregroundStyle(AppColors.textSecondary)
 
             if let description = description {
                 Text(description)
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppColors.textSecondary)
+                    .font(AppTypography.caption)
+                    .foregroundStyle(AppColors.textTertiary)
                     .multilineTextAlignment(.center)
             }
         }

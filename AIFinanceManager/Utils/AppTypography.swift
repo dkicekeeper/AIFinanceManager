@@ -68,23 +68,4 @@ enum AppTypography {
     /// Применяй только для не-критичного декоративного текста (бейджи, мета-информация).
     static let caption2 = Font.custom(AppInterFont.family, size: 12, relativeTo: .caption2).weight(.regular)
 
-    // MARK: - Semantic Typography
-
-    /// Screen titles (alias для h1)
-    static let screenTitle = h1
-
-    /// Section headers (alias для captionEmphasis)
-    static let sectionHeader = captionEmphasis
-
-    /// Primary body text (alias для body)
-    static let bodyPrimary = body
-
-    /// Secondary text (alias для bodySmall)
-    static let bodySecondary = bodySmall
-
-    /// Label text (16pt medium, scales with subheadline)
-    static let label = Font.custom(AppInterFont.family, size: 16, relativeTo: .subheadline).weight(.medium)
-
-    /// Amount text (18pt semibold, scales with body)
-    static let amount = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.semibold)
 }

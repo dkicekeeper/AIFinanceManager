@@ -84,7 +84,8 @@ struct PeriodComparisonCard: View {
                 )
             }
         }
-        .cardStyle(radius: AppRadius.xl)
+        .padding(AppSpacing.lg)
+        .cardStyle()
     }
 }
 

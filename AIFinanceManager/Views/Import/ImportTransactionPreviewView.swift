@@ -30,7 +30,7 @@ struct ImportTransactionPreviewView: View {
                     Text(String(format: String(localized: "transactionPreview.found"), transactions.count))
                         .font(AppTypography.h4)
                     Text(String(localized: "transactionPreview.selectHint"))
-                        .font(AppTypography.bodySecondary)
+                        .font(AppTypography.bodySmall)
                         .foregroundStyle(AppColors.textSecondary)
                 }
                 .cardContentPadding()
@@ -206,7 +206,7 @@ struct ImportTransactionPreviewRow: View {
 
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                     Text(transaction.description)
-                        .font(AppTypography.bodyPrimary)
+                        .font(AppTypography.body)
                         .fontWeight(.medium)
 
                     Text(transaction.date)
@@ -228,7 +228,7 @@ struct ImportTransactionPreviewRow: View {
                     FormattedAmountText(
                         amount: transaction.amount,
                         currency: transaction.currency,
-                        fontSize: AppTypography.amount,
+                        fontSize: AppTypography.body.weight(.semibold),
                         color: transaction.type == .income ? AppColors.income : AppColors.expense
                     )
 

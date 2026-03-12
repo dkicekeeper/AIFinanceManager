@@ -20,7 +20,7 @@ extension View {
     func filterChipStyle(isSelected: Bool = false) -> some View {
         if #available(iOS 26, *) {
             self
-                .font(AppTypography.label)
+                .font(AppTypography.bodySmall.weight(.medium))
                 .foregroundStyle(AppColors.textPrimary)
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.vertical, AppSpacing.sm)
@@ -32,7 +32,7 @@ extension View {
                 )
         } else {
             self
-                .font(AppTypography.label)
+                .font(AppTypography.bodySmall.weight(.medium))
                 .foregroundStyle(AppColors.textPrimary)
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.vertical, AppSpacing.sm)

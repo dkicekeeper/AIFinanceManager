@@ -285,7 +285,7 @@ struct LoanDetailView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(String(format: "%.0f%%", progress * 100))
-                        .font(AppTypography.label)
+                        .font(AppTypography.bodySmall.weight(.medium))
                         .foregroundStyle(AppColors.income)
                 }
                 ProgressView(value: progress)
@@ -504,7 +504,7 @@ struct LoanDetailView: View {
         HStack {
             VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                 Text("#\(entry.paymentNumber)")
-                    .font(AppTypography.label)
+                    .font(AppTypography.bodySmall.weight(.medium))
                 Text(formatDateString(entry.date))
                     .font(AppTypography.caption)
                     .foregroundStyle(.secondary)

@@ -221,7 +221,7 @@ struct LoansListView: View {
                             .foregroundStyle(.secondary)
                         Spacer()
                         Text(String(format: "%.0f%%", progress * 100))
-                            .font(AppTypography.label)
+                            .font(AppTypography.bodySmall.weight(.medium))
                             .foregroundStyle(AppColors.income)
                     }
                     ProgressView(value: progress)
