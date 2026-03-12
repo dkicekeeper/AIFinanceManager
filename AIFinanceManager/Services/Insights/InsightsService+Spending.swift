@@ -59,12 +59,11 @@ extension InsightsService {
             periodPoints.first(where: { $0.key == gran.currentPeriodKey })
         }
 
-        let topRange: (start: Date, end: Date)
         let topExpenses: [Transaction]
         let topTotalExpenses: Double
 
         if let cp = currentBucketPoint {
-            topRange = (cp.periodStart, cp.periodEnd)
+            _ = (cp.periodStart, cp.periodEnd) // topRange was unused
             // Phase 42d: Use dateMap for O(1) date lookups — avoids O(N) DateFormatter re-parsing
             if let map = txDateMap {
                 topExpenses = expenses.filter { tx in
@@ -76,7 +75,7 @@ extension InsightsService {
             }
             topTotalExpenses = cp.expenses
         } else {
-            topRange = timeFilter.dateRange()
+            _ = timeFilter.dateRange() // topRange was unused
             topExpenses = expenses
             topTotalExpenses = periodSummary.totalExpenses
         }

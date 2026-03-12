@@ -26,7 +26,7 @@ import os
 final class InsightsViewModel {
     // MARK: - Logger
 
-    private nonisolated(unsafe) static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsViewModel")
+    private nonisolated static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsViewModel")
 
     // MARK: - Dependencies
 

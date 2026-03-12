@@ -72,27 +72,27 @@ final class TransactionStore {
     // MARK: - Observable State (Single Source of Truth)
 
     /// All transactions - THE ONLY source of transaction data
-    internal(set) var transactions: [Transaction] = []
+    var transactions: [Transaction] = []
 
     /// Pre-maintained set of transaction IDs for O(1) lookups (avoids O(N) Set construction)
     @ObservationIgnored internal var transactionIdSet: Set<String> = []
 
     /// All accounts - managed alongside transactions for balance updates
-    internal(set) var accounts: [Account] = []
+    var accounts: [Account] = []
 
     /// All categories - needed for validation
-    internal(set) var categories: [CustomCategory] = []
+    var categories: [CustomCategory] = []
 
     // MARK: - Subcategory Data (Phase 10: CSV Import Fix - Single Source of Truth)
 
     /// All subcategories - managed alongside categories
-    internal(set) var subcategories: [Subcategory] = []
+    var subcategories: [Subcategory] = []
 
     /// Links between categories and subcategories
-    internal(set) var categorySubcategoryLinks: [CategorySubcategoryLink] = []
+    var categorySubcategoryLinks: [CategorySubcategoryLink] = []
 
     /// Links between transactions and subcategories
-    internal(set) var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
+    var transactionSubcategoryLinks: [TransactionSubcategoryLink] = []
 
     // MARK: - Dependencies
 
@@ -118,7 +118,7 @@ final class TransactionStore {
     internal var baseCurrency: String = "KZT"
 
     // Import mode flag - when true, persistence is deferred until finishImport()
-    internal(set) var isImporting: Bool = false
+    var isImporting: Bool = false
 
     // Phase 17: Debounce task for coalescing rapid mutations into single sync
     private var syncDebounceTask: Task<Void, Never>?
