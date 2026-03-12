@@ -81,6 +81,7 @@ struct InsightsCardView<BottomChart: View>: View {
             }
         }
 //        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppSpacing.lg)
         .cardStyle(radius: AppRadius.xl)
     }
 

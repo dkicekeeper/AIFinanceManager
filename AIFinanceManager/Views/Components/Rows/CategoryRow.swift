@@ -42,18 +42,7 @@ struct CategoryRow: View {
                         }
 
                         // Иконка
-                        Circle()
-                            .fill(category.color.opacity(0.2))
-                            .frame(width: AppIconSize.xxl, height: AppIconSize.xxl)
-                            .overlay(
-                                Group {
-                                    if case .sfSymbol(let symbolName) = category.iconSource {
-                                        Image(systemName: symbolName)
-                                            .font(AppTypography.h4)
-                                            .foregroundStyle(category.color)
-                                    }
-                                }
-                            )
+                        IconView(source: category.iconSource, size: AppIconSize.xxl)
                     }
 
                     // Название и бюджет

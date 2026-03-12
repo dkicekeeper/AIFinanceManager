@@ -256,7 +256,7 @@ struct AnimatedTitleInput: View {
         var body: some View {
             VStack(spacing: AppSpacing.lg) {
                 Image(systemName: "creditcard.fill")
-                    .font(.system(size: AppIconSize.largeButton))
+                    .font(.system(size: AppIconSize.ultra))
                     .foregroundStyle(AppColors.accent)
 
                 AnimatedTitleInput(

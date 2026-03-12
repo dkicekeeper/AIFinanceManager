@@ -373,7 +373,7 @@ private struct PlaceholderSection: View {
             HStack(spacing: AppSpacing.lg) {
                 IconView(source: nil, style: .placeholder(size: AppIconSize.xl))
                 IconView(source: nil, style: .placeholder(size: AppIconSize.avatar))
-                IconView(source: nil, style: .placeholder(size: AppIconSize.coin))
+                IconView(source: nil, style: .placeholder(size: AppIconSize.mega))
             }
         }
     }

@@ -61,7 +61,7 @@ struct CategoryChip: View {
                         Image(systemName: styleData.iconName)
                             .font(AppTypography.h2)
                             .foregroundStyle(styleData.iconColor)
-                            .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                            .frame(width: AppIconSize.mega, height: AppIconSize.mega)
                             .glassEffect(
                                 isSelected
                                     ? .regular.tint(styleData.coinColor).interactive()
@@ -71,7 +71,7 @@ struct CategoryChip: View {
                     } else {
                         Circle()
                             .fill(isSelected ? styleData.coinColor.opacity(0.2) : AppColors.secondaryBackground)
-                            .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+                            .frame(width: AppIconSize.mega, height: AppIconSize.mega)
                             .overlay(
                                 Image(systemName: styleData.iconName)
                                     .font(AppTypography.h2)

@@ -173,7 +173,7 @@ struct IconStyle: Equatable, Hashable {
     }
 
     /// Крупная иконка категории для монеты (в CategoryRow)
-    static func categoryCoin(size: CGFloat = AppIconSize.coin) -> IconStyle {
+    static func categoryCoin(size: CGFloat = AppIconSize.mega) -> IconStyle {
         .circle(
             size: size,
             tint: .accentMonochrome,
@@ -251,14 +251,14 @@ struct IconStyle: Equatable, Hashable {
     /// Иконка для Empty State
     static func emptyState() -> IconStyle {
         .circle(
-            size: AppIconSize.xxxl,
-            tint: .secondaryMonochrome
+            size: AppIconSize.ultra,
+            tint: .accentMonochrome
         )
     }
 
     /// Стеклянная иконка для hero секций (подписки, счета)
     /// Используется в: SubscriptionDetailView, AccountDetailView
-    static func glassHero(size: CGFloat = AppIconSize.largeButton) -> IconStyle {
+    static func glassHero(size: CGFloat = AppIconSize.ultra) -> IconStyle {
         .circle(
             size: size,
             tint: .original,

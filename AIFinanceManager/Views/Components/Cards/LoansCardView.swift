@@ -52,6 +52,7 @@ struct LoansCardView: View {
                     .frame(width: AppSize.subscriptionCardWidth, alignment: .top)
             }
         }
+        .padding(AppSpacing.lg)
         .cardStyle(radius: AppRadius.xl)
     }
 

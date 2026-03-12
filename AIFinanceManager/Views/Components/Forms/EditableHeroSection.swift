@@ -118,7 +118,7 @@ struct EditableHeroSection: View {
                 IconView(
                     source: iconSource ?? .sfSymbol("star.fill"),
                     style: .circle(
-                        size: AppIconSize.largeButton,
+                        size: AppIconSize.ultra,
                         tint: .monochrome(Color(hex: tintHex)),
                         backgroundColor: AppColors.surface
                     )
@@ -133,7 +133,7 @@ struct EditableHeroSection: View {
                 } else {
                     IconView(
                         source: iconSource,
-                        size: AppIconSize.largeButton
+                        size: AppIconSize.ultra
                     )
                 }
             }

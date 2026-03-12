@@ -137,14 +137,14 @@ enum AppIconSize {
     /// 56pt - Floating action buttons
     static let fab: CGFloat = 56
 
-    /// 64pt - Category coins
-    static let coin: CGFloat = 64
+    /// 64pt - Mega icons (category coins, large display elements)
+    static let mega: CGFloat = 64
 
     /// 72pt - Budget ring (coin + 8pt stroke space)
     static let budgetRing: CGFloat = 72
 
-    /// 80pt - Large action buttons (voice input button)
-    static let largeButton: CGFloat = 80
+    /// 80pt - Ultra icons (hero sections, large action buttons)
+    static let ultra: CGFloat = 80
 }
 
 // MARK: - Container Sizes

@@ -86,19 +86,20 @@ struct EmptyStateView: View {
 
     private var standardBody: some View {
         VStack(spacing: AppSpacing.lg) {
-            Image(systemName: icon.isEmpty ? "tray" : icon)
-                .font(.system(size: AppIconSize.xxxl))
-                .foregroundStyle(.secondary)
+            IconView(
+                source: .sfSymbol(icon.isEmpty ? "tray" : icon),
+                style: .emptyState()
+            )
 
             VStack(spacing: AppSpacing.sm) {
                 Text(title)
-                    .font(AppTypography.h4)
-                    .foregroundStyle(.secondary)
+                    .font(AppTypography.h3)
+                    .foregroundStyle(AppColors.textPrimary)
 
                 if let description = description {
                     Text(description)
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -107,7 +108,7 @@ struct EmptyStateView: View {
                 Button(action: action) {
                     Text(actionTitle)
                 }
-                .secondaryButton()
+                .primaryButton()
                 .padding(.top, AppSpacing.sm)
             }
         }
@@ -121,13 +122,13 @@ struct EmptyStateView: View {
     private var compactBody: some View {
         VStack(spacing: AppSpacing.xs) {
             Text(title)
-                .font(AppTypography.bodySmall)
-                .foregroundStyle(.secondary)
+                .font(AppTypography.body)
+                .foregroundStyle(AppColors.textPrimary)
 
             if let description = description {
                 Text(description)
-                    .font(AppTypography.caption)
-                    .foregroundStyle(.secondary)
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -140,20 +141,22 @@ struct EmptyStateView: View {
 
     private var errorBody: some View {
         VStack(spacing: AppSpacing.lg) {
-            // Иконка ошибки — если передана custom, используем её; fallback → exclamationmark.triangle
-            Image(systemName: icon.isEmpty ? "exclamationmark.triangle" : icon)
-                .font(.system(size: AppIconSize.xxxl))
-                .foregroundStyle(AppColors.destructive)
-                .symbolEffect(.pulse, options: .repeating)
+            IconView(
+                source: .sfSymbol(icon.isEmpty ? "exclamationmark.triangle" : icon),
+                style: .circle(
+                    size: AppIconSize.ultra,
+                    tint: .destructiveMonochrome
+                )
+            )
 
             VStack(spacing: AppSpacing.sm) {
                 Text(title)
-                    .font(AppTypography.h4)
+                    .font(AppTypography.h3)
                     .foregroundStyle(AppColors.destructive)
 
                 if let description = description {
                     Text(description)
-                        .font(AppTypography.caption)
+                        .font(AppTypography.body)
                         .foregroundStyle(AppColors.textSecondaryAccessible)
                         .multilineTextAlignment(.center)
                 }
@@ -167,7 +170,7 @@ struct EmptyStateView: View {
                         Text(actionTitle)
                     }
                 }
-                .secondaryButton()
+                .primaryButton()
                 .padding(.top, AppSpacing.sm)
             }
         }

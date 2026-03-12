@@ -55,7 +55,7 @@ struct HeroSection: View {
             IconView(
                 source: iconSource ?? .sfSymbol("tag.fill"),
                 style: .circle(
-                    size: AppIconSize.largeButton,
+                    size: AppIconSize.ultra,
                     tint: .monochrome(Color(hex: colorHex)),
                     backgroundColor: AppColors.surface
                 )
@@ -63,7 +63,7 @@ struct HeroSection: View {
         } else if #available(iOS 18.0, *) {
             IconView(source: iconSource, style: .glassHero())
         } else {
-            IconView(source: iconSource, size: AppIconSize.largeButton)
+            IconView(source: iconSource, size: AppIconSize.ultra)
         }
     }
 }

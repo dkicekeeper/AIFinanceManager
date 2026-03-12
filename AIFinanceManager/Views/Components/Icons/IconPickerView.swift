@@ -132,7 +132,7 @@ private struct IconButton: View {
                     tint: .monochrome(isSelected ? .white : AppColors.textPrimary)
                 )
             )
-            .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+            .frame(width: AppIconSize.mega, height: AppIconSize.mega)
             .background(isSelected ? AppColors.accent : AppColors.surface)
             .clipShape(.rect(cornerRadius: AppRadius.lg))
         }
@@ -274,7 +274,7 @@ private struct LogoItemButton: View {
                 source: item.iconSource,
                 size: AppIconSize.xxxl
             )
-            .frame(width: AppIconSize.coin, height: AppIconSize.coin)
+            .frame(width: AppIconSize.mega, height: AppIconSize.mega)
             .background(isSelected ? AppColors.accent.opacity(0.1) : AppColors.surface)
             .clipShape(.rect(cornerRadius: AppRadius.lg))
             .overlay(
