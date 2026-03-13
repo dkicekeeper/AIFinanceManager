@@ -47,13 +47,13 @@ extension TransactionEntity {
 /// `willSave()` runs on CoreData's background queue — DateFormatter is NOT
 /// thread-safe and the old shared static instance was a data-race P0.
 enum TransactionSectionKeyFormatter: Sendable {
-    private nonisolated(unsafe) static let calendar: Calendar = {
+    private nonisolated static let calendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = .current
         return cal
     }()
 
-    static func string(from date: Date) -> String {
+    nonisolated static func string(from date: Date) -> String {
         let comps = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", comps.year ?? 0, comps.month ?? 0, comps.day ?? 0)
     }

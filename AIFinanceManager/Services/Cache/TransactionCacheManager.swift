@@ -33,7 +33,7 @@ import Foundation
 /// In-memory cache for read-only UI display operations.
 /// Write/mutation caching is handled by TransactionStore + CoreData aggregate services.
 /// This class is @MainActor-compatible (not marked @MainActor; callers ensure main-thread use).
-class TransactionCacheManager {
+nonisolated class TransactionCacheManager {
 
     // MARK: - Date Parsing Cache (for display performance)
 

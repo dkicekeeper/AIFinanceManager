@@ -14,7 +14,7 @@ struct BudgetProgress {
     let percentage: Double  // 0-100+
     let isOverBudget: Bool
 
-    init(budgetAmount: Double, spent: Double) {
+    nonisolated init(budgetAmount: Double, spent: Double) {
         self.budgetAmount = budgetAmount
         self.spent = spent
         self.remaining = budgetAmount - spent

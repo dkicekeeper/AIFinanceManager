@@ -11,19 +11,19 @@ import CoreData
 import os
 
 /// Protocol for account repository operations
-protocol AccountRepositoryProtocol {
-    func loadAccounts() -> [Account]
-    func saveAccounts(_ accounts: [Account])
-    func saveAccountsSync(_ accounts: [Account]) throws
-    func updateAccountBalance(accountId: String, balance: Double)
-    func updateAccountBalances(_ balances: [String: Double])
+protocol AccountRepositoryProtocol: Sendable {
+    nonisolated func loadAccounts() -> [Account]
+    nonisolated func saveAccounts(_ accounts: [Account])
+    nonisolated func saveAccountsSync(_ accounts: [Account]) throws
+    nonisolated func updateAccountBalance(accountId: String, balance: Double)
+    nonisolated func updateAccountBalances(_ balances: [String: Double])
     /// Synchronously (awaited) persist multiple balances — safe to call from async context.
-    func updateAccountBalancesSync(_ balances: [String: Double]) async
-    func loadAllAccountBalances() -> [String: Double]
+    nonisolated func updateAccountBalancesSync(_ balances: [String: Double]) async
+    nonisolated func loadAllAccountBalances() -> [String: Double]
 }
 
 /// CoreData implementation of AccountRepositoryProtocol
-nonisolated final class AccountRepository: AccountRepositoryProtocol {
+nonisolated final class AccountRepository: AccountRepositoryProtocol, @unchecked Sendable {
 
     private static let logger = Logger(subsystem: "AIFinanceManager", category: "AccountRepository")
     private let stack: CoreDataStack

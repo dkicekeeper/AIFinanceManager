@@ -19,7 +19,7 @@
 import Foundation
 
 /// Thread-safe LRU insights cache. @unchecked Sendable — internal state protected by NSLock.
-final class InsightsCache: @unchecked Sendable {
+nonisolated final class InsightsCache: @unchecked Sendable {
     // MARK: - Types
 
     private struct CacheEntry {

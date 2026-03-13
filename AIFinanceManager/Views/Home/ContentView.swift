@@ -147,9 +147,6 @@ struct ContentView: View {
                 let filterStart  = filterRange.start
                 let filterEnd    = filterRange.end
                 let currency     = viewModel.appSettings.baseCurrency
-                // Pre-format dates on @MainActor — DateFormatter is not Sendable.
-                let startStr = ContentView.summaryDateFormatter.string(from: filterStart)
-                let endStr   = ContentView.summaryDateFormatter.string(from: filterEnd)
 
                 // Phase 40: All transactions in memory — always use SummaryCalculator directly.
                 let summary = await Task.detached(priority: .userInitiated) {
@@ -175,8 +172,9 @@ struct ContentView: View {
                 homeState.wallpaperImageName = nil
                 guard let name = targetName else { return }
 
-                let screenSize  = UIScreen.main.bounds.size
-                let scale       = UIScreen.main.scale
+                let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+                let screenSize  = windowScene?.screen.bounds.size ?? CGSize(width: 390, height: 844)
+                let scale       = windowScene?.screen.scale ?? 3.0
                 let fileURL     = FileManager.default
                     .urls(for: .documentDirectory, in: .userDomainMask)[0]
                     .appendingPathComponent(name)
@@ -387,7 +385,7 @@ struct ContentView: View {
 
     /// Decodes `fileURL` into a UIImage downsampled to `screenSize × scale` pixels.
     /// Returns nil if the file cannot be read or decoded.
-    private static func downsampleWallpaper(
+    private nonisolated static func downsampleWallpaper(
         at fileURL: URL,
         screenSize: CGSize,
         scale: CGFloat

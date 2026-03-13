@@ -18,10 +18,10 @@ extension CategoryRuleEntity {
         return NSFetchRequest<CategoryRuleEntity>(entityName: "CategoryRuleEntity")
     }
 
-    @NSManaged public var id: String?
-    @NSManaged public var pattern: String?
-    @NSManaged public var category: String?
-    @NSManaged public var isEnabled: Bool
+    @NSManaged public nonisolated var id: String?
+    @NSManaged public nonisolated var pattern: String?
+    @NSManaged public nonisolated var category: String?
+    @NSManaged public nonisolated var isEnabled: Bool
 
 }
 

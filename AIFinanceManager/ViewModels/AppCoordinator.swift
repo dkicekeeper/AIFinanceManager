@@ -303,7 +303,7 @@ class AppCoordinator {
         // 4. Generate recurring transactions in background (non-blocking)
         Task(priority: .background) { [weak self] in
             guard let self else { return }
-            await self.transactionsViewModel.generateRecurringTransactions()
+            self.transactionsViewModel.generateRecurringTransactions()
         }
 
         // 5. Load settings (only if fast path hasn't already loaded them)
@@ -366,6 +366,7 @@ class AppCoordinator {
 
         let stack = CoreDataStack.shared
         let context = stack.newBackgroundContext()
+        let completedKey = Self.backfillCompletedKey
 
         await context.perform {
             // Check: are there any records without a section key?
@@ -380,7 +381,7 @@ class AppCoordinator {
                 // All records already have dateSectionKey — set the flag so future
                 // launches skip this background-context round-trip entirely.
                 // UserDefaults.set() is thread-safe; no main-queue dispatch needed.
-                UserDefaults.standard.set(true, forKey: Self.backfillCompletedKey)
+                UserDefaults.standard.set(true, forKey: completedKey)
                 return
             }
 
@@ -406,7 +407,7 @@ class AppCoordinator {
             if (try? context.save()) != nil {
                 // Mark complete so the next launch skips this entirely.
                 // UserDefaults.set() is thread-safe; call directly on the background queue.
-                UserDefaults.standard.set(true, forKey: Self.backfillCompletedKey)
+                UserDefaults.standard.set(true, forKey: completedKey)
             }
         }
     }

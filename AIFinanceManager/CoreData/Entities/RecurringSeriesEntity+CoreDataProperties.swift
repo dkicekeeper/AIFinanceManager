@@ -18,23 +18,23 @@ extension RecurringSeriesEntity {
         return NSFetchRequest<RecurringSeriesEntity>(entityName: "RecurringSeriesEntity")
     }
 
-    @NSManaged public var id: String?
-    @NSManaged public var isActive: Bool
-    @NSManaged public var amount: NSDecimalNumber?
-    @NSManaged public var currency: String?
-    @NSManaged public var category: String?
-    @NSManaged public var subcategory: String?
-    @NSManaged public var descriptionText: String?
-    @NSManaged public var frequency: String?
-    @NSManaged public var startDate: Date?
-    @NSManaged public var lastGeneratedDate: Date?
-    @NSManaged public var kind: String?
-    @NSManaged public var brandLogo: String?
-    @NSManaged public var brandId: String?
-    @NSManaged public var status: String?
-    @NSManaged public var account: AccountEntity?
-    @NSManaged public var transactions: NSSet?
-    @NSManaged public var occurrences: NSSet?
+    @NSManaged public nonisolated var id: String?
+    @NSManaged public nonisolated var isActive: Bool
+    @NSManaged public nonisolated var amount: NSDecimalNumber?
+    @NSManaged public nonisolated var currency: String?
+    @NSManaged public nonisolated var category: String?
+    @NSManaged public nonisolated var subcategory: String?
+    @NSManaged public nonisolated var descriptionText: String?
+    @NSManaged public nonisolated var frequency: String?
+    @NSManaged public nonisolated var startDate: Date?
+    @NSManaged public nonisolated var lastGeneratedDate: Date?
+    @NSManaged public nonisolated var kind: String?
+    @NSManaged public nonisolated var brandLogo: String?
+    @NSManaged public nonisolated var brandId: String?
+    @NSManaged public nonisolated var status: String?
+    @NSManaged public nonisolated var account: AccountEntity?
+    @NSManaged public nonisolated var transactions: NSSet?
+    @NSManaged public nonisolated var occurrences: NSSet?
 
 }
 
@@ -42,16 +42,16 @@ extension RecurringSeriesEntity {
 extension RecurringSeriesEntity {
 
     @objc(addTransactionsObject:)
-    @NSManaged public func addToTransactions(_ value: TransactionEntity)
+    @NSManaged public nonisolated func addToTransactions(_ value: TransactionEntity)
 
     @objc(removeTransactionsObject:)
-    @NSManaged public func removeFromTransactions(_ value: TransactionEntity)
+    @NSManaged public nonisolated func removeFromTransactions(_ value: TransactionEntity)
 
     @objc(addTransactions:)
-    @NSManaged public func addToTransactions(_ values: NSSet)
+    @NSManaged public nonisolated func addToTransactions(_ values: NSSet)
 
     @objc(removeTransactions:)
-    @NSManaged public func removeFromTransactions(_ values: NSSet)
+    @NSManaged public nonisolated func removeFromTransactions(_ values: NSSet)
 
 }
 
@@ -59,16 +59,16 @@ extension RecurringSeriesEntity {
 extension RecurringSeriesEntity {
 
     @objc(addOccurrencesObject:)
-    @NSManaged public func addToOccurrences(_ value: RecurringOccurrenceEntity)
+    @NSManaged public nonisolated func addToOccurrences(_ value: RecurringOccurrenceEntity)
 
     @objc(removeOccurrencesObject:)
-    @NSManaged public func removeFromOccurrences(_ value: RecurringOccurrenceEntity)
+    @NSManaged public nonisolated func removeFromOccurrences(_ value: RecurringOccurrenceEntity)
 
     @objc(addOccurrences:)
-    @NSManaged public func addToOccurrences(_ values: NSSet)
+    @NSManaged public nonisolated func addToOccurrences(_ values: NSSet)
 
     @objc(removeOccurrences:)
-    @NSManaged public func removeFromOccurrences(_ values: NSSet)
+    @NSManaged public nonisolated func removeFromOccurrences(_ values: NSSet)
 
 }
 

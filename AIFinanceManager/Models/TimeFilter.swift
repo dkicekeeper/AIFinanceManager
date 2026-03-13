@@ -44,10 +44,10 @@ enum TimeFilterPreset: String, CaseIterable, Codable {
         }
     }
     
-    func dateRange() -> (start: Date, end: Date) {
+    nonisolated func dateRange() -> (start: Date, end: Date) {
         let calendar = Calendar.current
         let now = Date()
-        
+
         switch self {
         case .today:
             let start = calendar.startOfDay(for: now)
@@ -117,7 +117,7 @@ struct TimeFilter: Codable, Equatable, Hashable {
     var startDate: Date
     var endDate: Date
     
-    init(preset: TimeFilterPreset, startDate: Date? = nil, endDate: Date? = nil) {
+    nonisolated init(preset: TimeFilterPreset, startDate: Date? = nil, endDate: Date? = nil) {
         self.preset = preset
         
         if preset == .custom, let start = startDate, let end = endDate {
@@ -130,7 +130,7 @@ struct TimeFilter: Codable, Equatable, Hashable {
         }
     }
     
-    func dateRange() -> (start: Date, end: Date) {
+    nonisolated func dateRange() -> (start: Date, end: Date) {
         return (startDate, endDate)
     }
     
@@ -162,7 +162,7 @@ struct TimeFilter: Codable, Equatable, Hashable {
     /// Stable string key for use in caches keyed by time filter.
     /// For preset filters this is just the preset rawValue.
     /// For custom ranges, includes the date interval so different ranges get distinct keys.
-    var stableCacheKey: String {
+    nonisolated var stableCacheKey: String {
         if preset == .custom {
             return "custom_\(Int(startDate.timeIntervalSince1970))_\(Int(endDate.timeIntervalSince1970))"
         }

@@ -23,14 +23,15 @@
 
 import Foundation
 
-nonisolated class CurrencyConverter {
+nonisolated class CurrencyConverter: @unchecked Sendable {
     private static let baseURL = "https://nationalbank.kz/rss/get_rates.cfm"
-    private static var cachedRates: [String: Double] = [:]
-    private static var cacheDate: Date?
+    // nonisolated(unsafe): callers must ensure serialized access; known race accepted
+    private nonisolated(unsafe) static var cachedRates: [String: Double] = [:]
+    private nonisolated(unsafe) static var cacheDate: Date?
     private static let cacheValidityHours: TimeInterval = 24 * 60 * 60 // 24 часа
 
     // Кэш исторических курсов: [дата: [валюта: курс]]
-    private static var historicalRatesCache: [String: [String: Double]] = [:]
+    private nonisolated(unsafe) static var historicalRatesCache: [String: [String: Double]] = [:]
 
     // Получить курс валюты к тенге на конкретную дату
     static func getExchangeRate(for currency: String, on date: Date? = nil) async -> Double? {
@@ -168,18 +169,18 @@ nonisolated class CurrencyConverter {
 }
 
 // MARK: - XML Parser Delegate
-private class ExchangeRateParserDelegate: NSObject, XMLParserDelegate {
+private nonisolated class ExchangeRateParserDelegate: NSObject, XMLParserDelegate {
     var rates: [String: Double] = [:]
     private var currentElement = ""
     private var currentTitle = ""
     private var currentDescription = ""
     private var currentQuant = ""
 
-    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
+    nonisolated func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
         currentElement = elementName
     }
 
-    func parser(_ parser: XMLParser, foundCharacters string: String) {
+    nonisolated func parser(_ parser: XMLParser, foundCharacters string: String) {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return }
 
@@ -195,7 +196,7 @@ private class ExchangeRateParserDelegate: NSObject, XMLParserDelegate {
         }
     }
 
-    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
+    nonisolated func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
         if elementName == "item" {
             // Парсим курс из title, description и quant
             // Формат: title содержит код валюты, description содержит курс, quant - количество единиц

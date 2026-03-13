@@ -108,7 +108,7 @@ class AccountRankingService {
         }
 
         #if DEBUG
-        let groupStartTime = CFAbsoluteTimeGetCurrent()
+        _ = CFAbsoluteTimeGetCurrent()
         #endif
 
         // ✅ PERFORMANCE: Pre-group транзакции по accountId (O(n) вместо O(n*m))
@@ -124,7 +124,7 @@ class AccountRankingService {
 
 
         #if DEBUG
-        let mapStartTime = CFAbsoluteTimeGetCurrent()
+        _ = CFAbsoluteTimeGetCurrent()
         #endif
 
         // Ранжируем каждый счет
@@ -142,7 +142,7 @@ class AccountRankingService {
 
 
         #if DEBUG
-        let sortStartTime = CFAbsoluteTimeGetCurrent()
+        _ = CFAbsoluteTimeGetCurrent()
         #endif
 
         // Сортируем: сначала по manual order, затем по score

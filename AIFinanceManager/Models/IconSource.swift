@@ -13,6 +13,44 @@ enum IconSource: Codable, Equatable, Hashable {
     case bankLogo(BankLogo)         // Локальный банковский логотип из Assets
     case brandService(String)       // Логотип бренда через logo.dev API
 
+    // Explicit Codable implementation with nonisolated to avoid MainActor isolation warnings.
+    // Format matches Swift's synthesis: {"sfSymbol": {"_0": "name"}} etc.
+    private enum CodingKeys: String, CodingKey {
+        case sfSymbol, bankLogo, brandService
+    }
+    private enum AssocCodingKeys: String, CodingKey { case _0 }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if container.contains(.sfSymbol) {
+            let nested = try container.nestedContainer(keyedBy: AssocCodingKeys.self, forKey: .sfSymbol)
+            self = .sfSymbol(try nested.decode(String.self, forKey: ._0))
+        } else if container.contains(.bankLogo) {
+            let nested = try container.nestedContainer(keyedBy: AssocCodingKeys.self, forKey: .bankLogo)
+            self = .bankLogo(try nested.decode(BankLogo.self, forKey: ._0))
+        } else if container.contains(.brandService) {
+            let nested = try container.nestedContainer(keyedBy: AssocCodingKeys.self, forKey: .brandService)
+            self = .brandService(try nested.decode(String.self, forKey: ._0))
+        } else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown IconSource case"))
+        }
+    }
+
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .sfSymbol(let name):
+            var nested = container.nestedContainer(keyedBy: AssocCodingKeys.self, forKey: .sfSymbol)
+            try nested.encode(name, forKey: ._0)
+        case .bankLogo(let logo):
+            var nested = container.nestedContainer(keyedBy: AssocCodingKeys.self, forKey: .bankLogo)
+            try nested.encode(logo, forKey: ._0)
+        case .brandService(let name):
+            var nested = container.nestedContainer(keyedBy: AssocCodingKeys.self, forKey: .brandService)
+            try nested.encode(name, forKey: ._0)
+        }
+    }
+
     /// Строковый идентификатор для сохранения (legacy compatibility)
     var displayIdentifier: String {
         switch self {

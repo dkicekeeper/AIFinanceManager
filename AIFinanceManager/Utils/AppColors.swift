@@ -53,17 +53,17 @@ enum AppColors {
     // MARK: Interactive Colors
 
     /// Accent color (для выделений, selections)
-    static let accent = Color.indigo
+    nonisolated static let accent = Color.indigo
 
     /// Destructive actions
-    static let destructive = Color.red
+    nonisolated static let destructive = Color.red
 
     /// Success/positive — используй для UI-состояний (кнопки, индикаторы).
     /// Для финансового дохода используй `income`.
-    static let success = Color.green
+    nonisolated static let success = Color.green
 
     /// Warning
-    static let warning = Color.orange
+    nonisolated static let warning = Color.orange
 
     // MARK: Static Colors
 
@@ -89,10 +89,10 @@ enum AppColors {
     // MARK: Status Colors (explicit aliases)
 
     /// Active status (alias for success)
-    static let statusActive = success
+    nonisolated static let statusActive = success
 
     /// Paused status (alias for warning)
-    static let statusPaused = warning
+    nonisolated static let statusPaused = warning
 
     /// Archived / inactive status
     static let statusArchived = Color(.systemGray)

@@ -16,16 +16,17 @@ struct CategoryBudgetService {
     // MARK: - Dependencies
 
     let currencyService: TransactionCurrencyService?
-    let appSettings: AppSettings?
+    let baseCurrency: String?
 
     // MARK: - Initialization
 
     init(
         currencyService: TransactionCurrencyService? = nil,
-        appSettings: AppSettings? = nil
+        appSettings: AppSettings? = nil,
+        baseCurrency: String? = nil
     ) {
         self.currencyService = currencyService
-        self.appSettings = appSettings
+        self.baseCurrency = baseCurrency ?? appSettings?.baseCurrency
     }
 
     // MARK: - Public Methods
@@ -35,7 +36,7 @@ struct CategoryBudgetService {
     ///   - category: The category to calculate progress for
     ///   - transactions: All transactions to analyze (used as fallback)
     /// - Returns: BudgetProgress if category has budget, nil otherwise
-    func budgetProgress(for category: CustomCategory, transactions: [Transaction]) -> BudgetProgress? {
+    nonisolated func budgetProgress(for category: CustomCategory, transactions: [Transaction]) -> BudgetProgress? {
         // Only expense categories can have budgets
         guard let budgetAmount = category.budgetAmount,
               category.type == .expense else { return nil }
@@ -49,7 +50,7 @@ struct CategoryBudgetService {
     /// Calculate spent amount for a category in the current budget period.
     ///
     /// Phase 40: Always O(N) scan — all transactions are in memory, cache removed.
-    func calculateSpent(for category: CustomCategory, transactions: [Transaction]) -> Double {
+    nonisolated func calculateSpent(for category: CustomCategory, transactions: [Transaction]) -> Double {
         let periodStart = budgetPeriodStart(for: category)
         let periodEnd = Date()
 
@@ -66,13 +67,13 @@ struct CategoryBudgetService {
                 return transactionDate >= periodStart && transactionDate <= periodEnd
             }
             .reduce(0) { sum, transaction in
-                // Convert to base currency if possible
-                if let currencyService = currencyService, let appSettings = appSettings {
-                    let amountInBaseCurrency = currencyService.getConvertedAmountOrCompute(
-                        transaction: transaction,
-                        to: appSettings.baseCurrency
-                    )
-                    return sum + amountInBaseCurrency
+                // Convert to base currency if possible (nonisolated fallback path)
+                if let base = baseCurrency {
+                    if transaction.currency == base {
+                        return sum + transaction.amount
+                    } else {
+                        return sum + (transaction.convertedAmount ?? transaction.amount)
+                    }
                 } else {
                     // Fallback: use amount without conversion
                     return sum + transaction.amount
@@ -83,7 +84,7 @@ struct CategoryBudgetService {
     /// Calculate budget period start date for a category.
     /// - Parameter category: The category to calculate period start for
     /// - Returns: Start date of current budget period
-    func budgetPeriodStart(for category: CustomCategory) -> Date {
+    nonisolated func budgetPeriodStart(for category: CustomCategory) -> Date {
         guard category.budgetStartDate != nil else { return Date() }
 
         let calendar = Calendar.current

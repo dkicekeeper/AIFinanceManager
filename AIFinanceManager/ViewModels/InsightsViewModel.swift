@@ -26,7 +26,7 @@ import os
 final class InsightsViewModel {
     // MARK: - Logger
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsViewModel")
+    private nonisolated static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsViewModel")
 
     // MARK: - Dependencies
 
@@ -347,11 +347,14 @@ final class InsightsViewModel {
             guard !Task.isCancelled else { return }
 
             // Show the current granularity immediately — user sees real data, not zeros
+            let phase1Insights = newInsights
+            let phase1Points   = newPoints
+            let phase1Totals   = newTotals
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                self.precomputedInsights     = newInsights
-                self.precomputedPeriodPoints = newPoints
-                self.precomputedTotals       = newTotals
+                self.precomputedInsights     = phase1Insights
+                self.precomputedPeriodPoints = phase1Points
+                self.precomputedTotals       = phase1Totals
                 self.applyPrecomputed(for: self.currentGranularity)
                 Self.logger.debug("🔧 [InsightsVM] Phase 1 done — .\(priorityGranularity.rawValue, privacy: .public) shown early")
             }
@@ -414,11 +417,14 @@ final class InsightsViewModel {
             // Hop back to MainActor for the final UI write.
             // Use self.currentGranularity (not the captured `priorityGranularity`) so that if the
             // user switched granularity while the background task was running, we show the right data.
+            let finalInsights = newInsights
+            let finalPoints   = newPoints
+            let finalTotals   = newTotals
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                self.precomputedInsights     = newInsights
-                self.precomputedPeriodPoints = newPoints
-                self.precomputedTotals       = newTotals
+                self.precomputedInsights     = finalInsights
+                self.precomputedPeriodPoints = finalPoints
+                self.precomputedTotals       = finalTotals
                 self.healthScore             = computedHealthScore
                 self.applyPrecomputed(for: self.currentGranularity)
                 Self.logger.debug("🔧 [InsightsVM] Background recompute END — total \(totalMs)ms — UI updated for .\(self.currentGranularity.rawValue, privacy: .public)")

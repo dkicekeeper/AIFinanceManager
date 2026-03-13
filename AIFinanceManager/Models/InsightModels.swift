@@ -275,7 +275,7 @@ struct FinancialHealthScore {
 
 extension FinancialHealthScore {
     /// Returns a placeholder when there is not enough data to compute a score.
-    static func unavailable() -> FinancialHealthScore {
+    nonisolated static func unavailable() -> FinancialHealthScore {
         FinancialHealthScore(
             score: 0,
             grade: String(localized: "insights.healthGrade.needsAttention"),

@@ -18,9 +18,9 @@ extension TransactionSubcategoryLinkEntity {
         return NSFetchRequest<TransactionSubcategoryLinkEntity>(entityName: "TransactionSubcategoryLinkEntity")
     }
 
-    @NSManaged public var id: String?
-    @NSManaged public var transactionId: String?
-    @NSManaged public var subcategoryId: String?
+    @NSManaged public nonisolated var id: String?
+    @NSManaged public nonisolated var transactionId: String?
+    @NSManaged public nonisolated var subcategoryId: String?
 
 }
 
