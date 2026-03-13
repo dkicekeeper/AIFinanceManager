@@ -165,6 +165,10 @@ AIFinanceManager/
 - `Task {}` inside `@MainActor` class inherits MainActor — `Task { @MainActor in }` is redundant
 - `Task { @MainActor in }` IS needed inside nonisolated closures, audio callbacks
 - **DataSnapshot pattern**: capture MainActor-isolated data into `Sendable` struct before `Task.detached`, pass through nonisolated computation chain (see `InsightsService.DataSnapshot`)
+- **Modifier order**: access modifier ALWAYS first — `private nonisolated func`, `private nonisolated(unsafe) var`. NEVER `nonisolated private` or `nonisolated(unsafe) private`
+- **`@NSManaged` order**: `@NSManaged public nonisolated var` — attribute first, access level second, `nonisolated` third
+- **Sendable types in iOS 26 SDK**: `DateFormatter`, `Logger`, `Calendar`, `NumberFormatter` are all `Sendable` — use plain `nonisolated static let`, NOT `nonisolated(unsafe) static let`
+- **`nonisolated(unsafe)`** only for mutable `static var` / stored properties with no actor protection — always add a comment explaining the accepted race
 
 #### CoreData Entity Mutations
 All CoreData entity property mutations MUST be wrapped in `context.perform { }`:
@@ -187,6 +191,9 @@ func updateAccount(_ entity: AccountEntity, balance: Double) {
 - Mark actor request types as `Sendable`
 - Use `@Sendable` for completion closures
 - Use `@unchecked Sendable` for singletons with internal synchronization
+- Repository classes use `nonisolated final class … @unchecked Sendable` — safe because all mutations go through `context.performAndWait`
+- `CoreDataStack.newBackgroundContext()` must be `nonisolated` — repositories call it from nonisolated context
+- Model struct `init` and computed properties accessed from nonisolated services need `nonisolated`
 
 ```swift
 // ✅ Example: BalanceUpdateRequest
@@ -379,7 +386,9 @@ New file needed?
 - **Making an `@Observable` property reactive**: remove `@ObservationIgnored`, change to `private(set) var`; in the observing View add `.onChange(of: vm.property) { ... }`.
 - **Cross-file extension access control**: `private` is file-scoped — extensions in OTHER files can't access it. Shared helpers → `internal` (no modifier); same file only → `private`.
 - **Extension file imports are not inherited**: Each file needs its own `import os`, `import CoreData`, etc.
-- **`DateFormatter` is not Sendable** — declare as `@MainActor private static let`; format strings on MainActor before `Task.detached`; pass `String`, not the formatter.
+- **`DateFormatter` thread-safety**: on iOS 26+ target `DateFormatter` is `Sendable` — use `nonisolated static let`. On older targets: `@MainActor private static let`; format strings on MainActor before `Task.detached`; pass `String`, not the formatter.
+- **`internal(set) var` on internal properties** — redundant (default is already internal), generates compiler warning; just use `var`
+- **`defer` at end of scope** — generates "execution is not deferred" warning; replace with direct inline assignment
 - **`Group {}` in `@ViewBuilder` computed var is unnecessary** — add `@ViewBuilder` and remove `Group`.
 - **PreAggregatedData "piggyback" pattern**: Add fields to `PreAggregatedData.build()` O(N) loop — never add separate O(N) loops when one already exists.
 - **`filterService.filterByTimeRange` is expensive** (~16μs/tx due to DateFormatter): use `txDateMap` inline filter when available.
@@ -560,6 +569,6 @@ Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `do
 
 ---
 
-**Last Updated**: 2026-03-10
+**Last Updated**: 2026-03-13
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns; `SWIFT_STRICT_CONCURRENCY = minimal`; `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`
