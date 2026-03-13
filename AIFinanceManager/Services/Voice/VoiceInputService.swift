@@ -49,6 +49,12 @@ class VoiceInputService: NSObject {
     private var finalTranscription: String = ""
     private var isStopping: Bool = false // Флаг для предотвращения множественных вызовов stop
 
+    // MARK: - Audio Level (for wave visualization)
+
+    /// Shared amplitude reference. Audio tap writes to `.value` on main thread;
+    /// Metal renderer reads it directly every frame — bypasses SwiftUI update cycle.
+    let amplitudeRef: AudioLevelRef = AudioLevelRef()
+
     // MARK: - Voice Activity Detection
 
     /// Silence detector for automatic stop
@@ -224,6 +230,25 @@ class VoiceInputService: NSObject {
         inputNode.installTap(onBus: 0, bufferSize: VoiceInputConstants.audioBufferSize, format: recordingFormat) { [weak self] buffer, _ in
             // Send buffer to speech recognition
             recognitionRequest.append(buffer)
+
+            // Compute RMS amplitude for wave visualization
+            let rms: Float = {
+                guard let data = buffer.floatChannelData?[0] else { return 0 }
+                let n = Int(buffer.frameLength)
+                guard n > 0 else { return 0 }
+                var sum: Float = 0
+                for i in 0..<n { sum += data[i] * data[i] }
+                return sqrt(sum / Float(n))
+            }()
+            // Normalize: typical speech peaks ~0.05–0.3 raw RMS → map to 0.2–1.0 range
+            let targetLevel = min(rms * 8.0, 1.0)
+            // Write to ref on main thread — renderer reads it directly, no SwiftUI hop needed
+            let ref = self?.amplitudeRef
+            DispatchQueue.main.async {
+                guard let ref else { return }
+                // Exponential smoothing: fast attack (~45%), slow decay
+                ref.value = ref.value * 0.55 + max(targetLevel, 0.15) * 0.45
+            }
 
             // Analyze for silence detection if VAD is enabled
             if let self = self, self.isVADEnabled, let detector = self.silenceDetector {

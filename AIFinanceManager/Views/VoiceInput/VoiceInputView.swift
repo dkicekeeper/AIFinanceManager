@@ -144,7 +144,7 @@ struct VoiceInputView: View {
     @ViewBuilder
     private var waveSection: some View {
         if voiceService.isRecording {
-            SiriWaveRecordingView()
+            SiriWaveRecordingView(amplitudeRef: voiceService.amplitudeRef)
                 .padding(.bottom, AppSpacing.xl)
         }
     }

@@ -2,30 +2,27 @@
 //  SiriWaveView.swift
 //  AIFinanceManager
 //
-//  Created on 2026-01-19
+//  Aurora-style Metal wave (Phase 50).
+//  Uses SiriWaveMetalView (MTKView + SiriWaveShader.metal) for GPU rendering.
+//  Falls back to SwiftUI Canvas if Metal is unavailable.
 //
 
 import SwiftUI
+import Metal
 
-/// Siri-like wave animation for recording indicator
-/// Uses Canvas for smooth, performant animation
+// MARK: - SiriWaveView
+
+/// Single Metal-backed Aurora wave.
+/// `amplitude` maps the old 0–60 range; internally normalized to 0–1.
 struct SiriWaveView: View {
 
-    // MARK: - Properties
-
-    /// Amplitude of the wave (height)
     let amplitude: Double
-
-    /// Frequency of the wave (number of peaks)
-    let frequency: Double
-
-    /// Color of the wave
-    let color: Color
-
-    /// Animation speed (duration for one full cycle in seconds)
-    let animationSpeed: Double
-
-    // MARK: - Initialization
+    /// Kept for API compatibility; not used in Metal path.
+    var color: Color = AppColors.accent
+    /// Kept for API compatibility; not used in Metal path.
+    var frequency: Double = 4
+    /// Kept for API compatibility; not used in Metal path.
+    var animationSpeed: Double = 1.5
 
     init(
         amplitude: Double = 30,
@@ -39,139 +36,86 @@ struct SiriWaveView: View {
         self.animationSpeed = animationSpeed
     }
 
-    // MARK: - Body
-
     var body: some View {
+        waveContent
+    }
+
+    @ViewBuilder
+    private var waveContent: some View {
+        if MTLCreateSystemDefaultDevice() != nil {
+            let ref = AudioLevelRef()
+            let _ = { ref.value = Float(amplitude / 60.0).clamped(to: 0.1...1.0) }()
+            SiriWaveMetalView(amplitudeRef: ref, isPaused: AppAnimation.isReduceMotionEnabled)
+        } else {
+            canvasFallback
+        }
+    }
+
+    // Simple Canvas fallback for cases where Metal isn't available
+    private var canvasFallback: some View {
         TimelineView(.periodic(from: .now, by: 0.016)) { timeline in
-            Canvas { context, size in
-                // Calculate phase based on current time
+            Canvas { ctx, size in
                 let elapsed = timeline.date.timeIntervalSince1970
-                let currentPhase = (elapsed * 2 * .pi / animationSpeed).truncatingRemainder(dividingBy: 2 * .pi)
-                
-                let path = createWavePath(size: size, phase: currentPhase)
-                context.stroke(
-                    path,
-                    with: .color(color),
-                    style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
-                )
+                let phase = (elapsed * 2 * .pi / animationSpeed).truncatingRemainder(dividingBy: 2 * .pi)
+                var path = Path()
+                let mid = size.height / 2
+                path.move(to: CGPoint(x: 0, y: mid))
+                for x in stride(from: 0.0, through: size.width, by: 1.0) {
+                    let y = mid + sin(x / size.width * frequency * 2 * .pi + phase) * amplitude
+                    path.addLine(to: CGPoint(x: x, y: y))
+                }
+                ctx.stroke(path, with: .color(color),
+                           style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
             }
         }
     }
-
-    // MARK: - Private Methods
-
-    /// Create wave path for Canvas
-    /// - Parameters:
-    ///   - size: Canvas size
-    ///   - phase: Current animation phase
-    /// - Returns: Path representing the wave
-    private func createWavePath(size: CGSize, phase: Double) -> Path {
-        var path = Path()
-
-        let width = size.width
-        let height = size.height
-        let midY = height / 2
-
-        path.move(to: CGPoint(x: 0, y: midY))
-
-        // Generate smooth wave using sine function
-        for x in stride(from: 0, through: width, by: 1) {
-            let relativeX = x / width
-            let sine = sin((relativeX * frequency * 2 * .pi) + phase)
-            let y = midY + (sine * amplitude)
-
-            path.addLine(to: CGPoint(x: x, y: y))
-        }
-
-        return path
-    }
 }
 
-// MARK: - Multi-Wave View
+// MARK: - SiriWaveRecordingView
 
-/// Recording indicator with multiple overlapping waves (like Siri)
+/// Aurora recording indicator.
+/// Pass `amplitudeRef` from `VoiceInputService` — renderer reads `.value` directly every frame.
 struct SiriWaveRecordingView: View {
 
-    // MARK: - Animation State
-
-    @State private var isAnimating = false
-
-    // MARK: - Body
+    var amplitudeRef: AudioLevelRef
 
     var body: some View {
-        ZStack {
-            // Background wave (slower, lighter)
-            SiriWaveView(
-                amplitude: 20,
-                frequency: 3,
-                color: AppColors.accent.opacity(0.3),
-                animationSpeed: 2.0
-            )
-            .frame(height: 80)
-
-            // Middle wave (medium speed)
-            SiriWaveView(
-                amplitude: 25,
-                frequency: 4,
-                color: AppColors.accent.opacity(0.6),
-                animationSpeed: 1.5
-            )
-            .frame(height: 80)
-
-            // Foreground wave (faster, more opaque)
-            SiriWaveView(
-                amplitude: 30,
-                frequency: 5,
-                color: AppColors.accent,
-                animationSpeed: 1.2
-            )
-            .frame(height: 80)
-
-            // Recording text
-            VStack {
-                Spacer()
-                Text(String(localized: "voice.recording"))
-                    .font(AppTypography.bodyEmphasis)
-                    .foregroundStyle(AppColors.accent)
-                    .opacity(isAnimating ? 0.5 : 1.0)
-                    .animation(
-                        AppAnimation.isReduceMotionEnabled
-                            ? nil
-                            : .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
-                        value: isAnimating
-                    )
-            }
-        }
-        .frame(height: 100)
-        .onAppear {
-            isAnimating = true
-        }
+        SiriWaveMetalView(
+            amplitudeRef: amplitudeRef,
+            isPaused: AppAnimation.isReduceMotionEnabled
+        )
+        .frame(height: 80)
     }
 }
 
-// MARK: - Preview
+// MARK: - Float helper
+
+private extension Float {
+    func clamped(to range: ClosedRange<Float>) -> Float {
+        Swift.max(range.lowerBound, Swift.min(range.upperBound, self))
+    }
+}
+
+// MARK: - Previews
 
 #Preview("Single Wave") {
     VStack(spacing: 40) {
-        Text("Single Wave")
+        Text("Aurora Wave")
             .font(AppTypography.bodyEmphasis)
 
-        SiriWaveView(
-            amplitude: 30,
-            frequency: 4,
-            color: .blue
-        )
-        .frame(height: 80)
-        .padding()
+        SiriWaveView(amplitude: 30, frequency: 4, color: .blue)
+            .frame(height: 80)
     }
 }
 
 #Preview("Recording Indicator") {
-    VStack(spacing: 40) {
-        Text("Siri-like Recording")
+    let ref = AudioLevelRef()
+    ref.value = 0.7
+    return VStack(spacing: 40) {
+        Text("Aurora Recording")
             .font(AppTypography.bodyEmphasis)
 
-        SiriWaveRecordingView()
+        SiriWaveRecordingView(amplitudeRef: ref)
             .padding()
     }
 }
