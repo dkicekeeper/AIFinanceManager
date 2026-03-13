@@ -13,7 +13,7 @@ struct CategoryGridView: View {
     let baseCurrency: String
     let gridColumns: Int?
     let onCategoryTap: (String, TransactionType) -> Void
-    let emptyStateAction: (() -> Void)?
+    let emptyStateAction: (@Sendable () -> Void)?
     var sourceNamespace: Namespace.ID? = nil
 
     // MARK: - Body
@@ -31,35 +31,11 @@ struct CategoryGridView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        Group {
-            if let action = emptyStateAction {
-                Button(action: {
-                    HapticManager.light()
-                    action()
-                }) {
-                    VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                        HStack {
-                            Text(String(localized: "categories.expenseCategories", defaultValue: "Expense Categories"))
-                                .font(AppTypography.h3)
-                                .foregroundStyle(.primary)
-                        }
-
-                        EmptyStateView(
-                            title: String(localized: "emptyState.noCategories", defaultValue: "No categories"),
-                            style: .compact
-                        )
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .cardStyle(radius: AppRadius.xl)
-                }
-                .buttonStyle(.bounce)
-            } else {
-                EmptyStateView(
-                    title: String(localized: "emptyState.noCategories", defaultValue: "No categories"),
-                    style: .compact
-                )
-            }
-        }
+        EmptyCardView(
+            sectionTitle: String(localized: "categories.expenseCategories", defaultValue: "Expense Categories"),
+            emptyTitle: String(localized: "emptyState.noCategories", defaultValue: "No categories"),
+            action: emptyStateAction
+        )
     }
 
     // MARK: - Category Grid

@@ -44,21 +44,10 @@ struct TransactionsSummaryCard: View {
 
     // MARK: - Empty State
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.lg) {
-            HStack {
-                Text(String(localized: "analytics.history"))
-                    .font(AppTypography.h3)
-                    .foregroundStyle(.primary)
-            }
-
-            EmptyStateView(
-                title: String(localized: "emptyState.noTransactions"),
-                style: .compact
-            )
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(AppSpacing.lg)
-        .cardStyle()
+        EmptyCardView(
+            sectionTitle: String(localized: "analytics.history"),
+            emptyTitle: String(localized: "emptyState.noTransactions")
+        )
     }
 
     // MARK: - Loaded State

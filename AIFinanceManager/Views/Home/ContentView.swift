@@ -241,7 +241,12 @@ struct ContentView: View {
     private var accountsSection: some View {
         let nonLoanAccounts = accountsViewModel.accounts.filter { !$0.isLoan }
         if nonLoanAccounts.isEmpty {
-            EmptyAccountsPrompt(onAddAccount: { showingAddAccount = true })
+            EmptyCardView(
+                sectionTitle: String(localized: "accounts.title"),
+                emptyTitle: String(localized: "emptyState.noAccounts"),
+                action: { showingAddAccount = true }
+            )
+            .screenPadding()
         } else {
             AccountsCarousel(
                 accounts: nonLoanAccounts,
