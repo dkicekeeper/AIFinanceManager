@@ -53,7 +53,7 @@ struct EmptyCardView: View {
                 style: .compact
             )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
         .padding(AppSpacing.lg)
         .cardStyle()
         .accessibilityElement(children: .combine)

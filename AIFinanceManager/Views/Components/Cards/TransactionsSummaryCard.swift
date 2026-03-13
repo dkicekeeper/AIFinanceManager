@@ -40,7 +40,6 @@ struct TransactionsSummaryCard: View {
                     .transition(.opacity)
             }
         }
-        .frame(minHeight: AppSize.analyticsCardHeight)
         .animation(AppAnimation.gentleSpring, value: isEmpty)
         .animation(AppAnimation.gentleSpring, value: summary != nil)
     }
@@ -76,7 +75,7 @@ struct TransactionsSummaryCard: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
         .padding(AppSpacing.lg)
         .cardStyle()
     }
@@ -92,8 +91,7 @@ struct TransactionsSummaryCard: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: AppSize.analyticsCardHeight)
-        .cardStyle(radius: AppRadius.xl)
+        .cardStyle()
         .accessibilityElement(children: .combine)
     }
 }
