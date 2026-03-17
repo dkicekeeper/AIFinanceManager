@@ -445,6 +445,7 @@
 "subscription.basicInfo" = "Основная информация";
 "subscription.namePlaceholder" = "Название подписки";
 "subscription.reminders" = "Напоминания";
+"subscription.scheduleSection" = "Расписание";
 "subscription.newTitle" = "Новая подписка";
 "subscription.editTitle" = "Редактировать подписку";
 

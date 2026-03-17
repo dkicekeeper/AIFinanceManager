@@ -445,6 +445,7 @@
 "subscription.basicInfo" = "Basic Information";
 "subscription.namePlaceholder" = "Subscription Name";
 "subscription.reminders" = "Reminders";
+"subscription.scheduleSection" = "Schedule";
 "subscription.newTitle" = "New Subscription";
 "subscription.editTitle" = "Edit Subscription";
 

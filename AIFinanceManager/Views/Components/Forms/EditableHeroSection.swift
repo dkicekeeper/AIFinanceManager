@@ -44,6 +44,7 @@ struct EditableHeroSection: View {
     let titlePlaceholder: String
     let config: HeroConfig
     let currencies: [String]
+    let baseCurrency: String
     /// When set, the icon renders as a tinted circle (e.g. for categories).
     /// When nil, the icon renders as a glass hero (e.g. for accounts, subscriptions).
     let iconTintColor: String?
@@ -63,7 +64,8 @@ struct EditableHeroSection: View {
         iconTintColor: String? = nil,
         titlePlaceholder: String,
         config: HeroConfig = HeroConfig(),
-        currencies: [String] = ["USD", "EUR", "KZT", "RUB", "GBP"]
+        currencies: [String] = ["USD", "EUR", "KZT", "RUB", "GBP"],
+        baseCurrency: String = ""
     ) {
         self._iconSource = iconSource
         self._title = title
@@ -73,6 +75,7 @@ struct EditableHeroSection: View {
         self.titlePlaceholder = titlePlaceholder
         self.config = config
         self.currencies = currencies
+        self.baseCurrency = baseCurrency
     }
 
     // MARK: - Body
@@ -152,7 +155,8 @@ struct EditableHeroSection: View {
             if config.showCurrency {
                 CurrencySelectorView(
                     selectedCurrency: $currency,
-                    availableCurrencies: currencies
+                    availableCurrencies: currencies,
+                    baseCurrency: baseCurrency
                 )
             }
         }

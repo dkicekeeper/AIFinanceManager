@@ -128,13 +128,7 @@ struct TransactionEditView: View {
                             }
                         }
 
-                        // 4. Recurring
-                        MenuPickerRow(
-                            title: String(localized: "quickAdd.makeRecurring"),
-                            selection: $bindableCoordinator.formData.recurring
-                        )
-
-                        // 5. Description
+                        // 4. Description
                         FormTextField(
                             text: $bindableCoordinator.formData.descriptionText,
                             placeholder: String(localized: "transactionForm.descriptionPlaceholder"),
@@ -191,6 +185,9 @@ struct TransactionEditView: View {
                 }
                 .accessibilityLabel(String(localized: "button.close"))
             }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                recurringMenuButton
+            }
             ToolbarItem(placement: .confirmationAction) {
                 Button {
                     coordinator.save { dismiss() }
@@ -201,6 +198,35 @@ struct TransactionEditView: View {
                 .disabled(!coordinator.canSave)
                 .accessibilityLabel(String(localized: "button.save"))
             }
+        }
+    }
+
+    private var recurringMenuButton: some View {
+        let isActive = coordinator.formData.recurring != .never
+        return Menu {
+            Button {
+                coordinator.formData.recurring = .never
+            } label: {
+                if coordinator.formData.recurring == .never {
+                    Label(String(localized: "recurring.never"), systemImage: "checkmark")
+                } else {
+                    Text(String(localized: "recurring.never"))
+                }
+            }
+            ForEach(RecurringFrequency.allCases, id: \.self) { freq in
+                Button {
+                    coordinator.formData.recurring = .frequency(freq)
+                } label: {
+                    if coordinator.formData.recurring == .frequency(freq) {
+                        Label(freq.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(freq.displayName)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "repeat")
+                .foregroundStyle(isActive ? Color.accentColor : Color.primary)
         }
     }
 

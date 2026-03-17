@@ -19,7 +19,7 @@ struct SubscriptionEditView: View {
     @State private var description: String = ""
     @State private var amountText: String = ""
     @State private var currency: String = "USD"
-    @State private var selectedCategory: String? = nil
+    @State private var selectedCategory: String = "Subscriptions"
     @State private var selectedAccountId: String? = nil
     @State private var selectedFrequency: RecurringFrequency = .monthly
     @State private var startDate: Date = Date()
@@ -31,7 +31,7 @@ struct SubscriptionEditView: View {
     @State private var availableCategories: [String] = []
 
     private func computeAvailableCategories() -> [String] {
-        var categories: Set<String> = []
+        var categories: Set<String> = ["Subscriptions"]
         for customCategory in transactionsViewModel.customCategories where customCategory.type == .expense {
             categories.insert(customCategory.name)
         }
@@ -39,9 +39,6 @@ struct SubscriptionEditView: View {
             if !tx.category.isEmpty && tx.category != "Uncategorized" {
                 categories.insert(tx.category)
             }
-        }
-        if categories.isEmpty {
-            categories.insert("Uncategorized")
         }
         return Array(categories).sortedByCustomOrder(
             customCategories: transactionsViewModel.customCategories,
@@ -68,7 +65,8 @@ struct SubscriptionEditView: View {
                         balance: $amountText,
                         currency: $currency,
                         titlePlaceholder: String(localized: "subscription.namePlaceholder"),
-                        config: .subscriptionHero
+                        config: .subscriptionHero,
+                        baseCurrency: transactionsViewModel.appSettings.baseCurrency
                     )
                     
                     // Validation Error
@@ -91,18 +89,8 @@ struct SubscriptionEditView: View {
                         )
                     }
                     
-                    // Category Selector
-                    CategorySelectorView(
-                        categories: availableCategories,
-                        type: .expense,
-                        customCategories: transactionsViewModel.customCategories,
-                        selectedCategory: $selectedCategory,
-                        warningMessage: selectedCategory == nil ?
-                        String(localized: "category.selectCategory") : nil
-                    )
-
-                    // Schedule & reminders
-                    FormSection(header: String(localized: "subscription.scheduleSection", defaultValue: "Schedule")) {
+                    // Schedule, category & reminders
+                    FormSection(header: String(localized: "subscription.scheduleSection")) {
                         MenuPickerRow(
                             icon: "arrow.triangle.2.circlepath",
                             title: String(localized: "common.frequency"),
@@ -114,6 +102,14 @@ struct SubscriptionEditView: View {
                             icon: "calendar",
                             title: String(localized: "common.startDate"),
                             selection: $startDate
+                        )
+                        Divider()
+
+                        MenuPickerRow(
+                            icon: "tag",
+                            title: String(localized: "subscriptions.category"),
+                            selection: $selectedCategory,
+                            options: availableCategories.map { (label: $0, value: $0) }
                         )
                         Divider()
 
@@ -133,7 +129,7 @@ struct SubscriptionEditView: View {
                 description = subscription.description
                 amountText = NSDecimalNumber(decimal: subscription.amount).stringValue
                 currency = subscription.currency
-                selectedCategory = subscription.category.isEmpty ? nil : subscription.category
+                selectedCategory = subscription.category.isEmpty ? "Subscriptions" : subscription.category
                 selectedAccountId = subscription.accountId
                 selectedFrequency = subscription.frequency
                 if let date = DateFormatters.dateFormatter.date(from: subscription.startDate) {
@@ -143,16 +139,13 @@ struct SubscriptionEditView: View {
                 reminder = ReminderOption.from(offsets: subscription.reminderOffsets ?? [])
             } else {
                 currency = transactionsViewModel.appSettings.baseCurrency
-                if !availableCategories.isEmpty {
-                    selectedCategory = availableCategories[0]
-                }
                 // Set first account as default
                 if !transactionsViewModel.accounts.isEmpty {
                     selectedAccountId = transactionsViewModel.accounts[0].id
                 }
             }
         }
-        .sheet(isPresented: $showingNotificationPermission) {
+        .sheet(isPresented: $showingNotificationPermission, onDismiss: { dismiss() }) {
             NotificationPermissionView(
                 onAllow: {
                     await NotificationPermissionManager.shared.requestAuthorization()
@@ -168,7 +161,7 @@ struct SubscriptionEditView: View {
         // Prevent double-tap
         guard !isSaving else { return }
 
-        // Validate required fields: description, amount, category, and account
+        // Validate required fields: description, amount, and account
         guard !description.isEmpty else {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 validationError = String(localized: "error.subscriptionNameRequired")
@@ -186,14 +179,6 @@ struct SubscriptionEditView: View {
             return
         }
 
-        guard let category = selectedCategory, !category.isEmpty else {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                validationError = String(localized: "error.categoryRequired")
-            }
-            HapticManager.error()
-            return
-        }
-
         guard let accountId = selectedAccountId, !accountId.isEmpty else {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 validationError = String(localized: "error.accountRequired")
@@ -204,20 +189,6 @@ struct SubscriptionEditView: View {
 
         validationError = nil
 
-        // Check if we should request notification permissions
-        // Only ask when creating a new subscription with reminders
-        if subscription == nil && reminder != .none {
-            Task {
-                let manager = NotificationPermissionManager.shared
-                await manager.checkAuthorizationStatus()
-
-                if manager.shouldRequestPermission {
-                    // Show permission request sheet
-                    showingNotificationPermission = true
-                }
-            }
-        }
-
         let dateFormatter = DateFormatters.dateFormatter
         let dateString = dateFormatter.string(from: startDate)
 
@@ -226,7 +197,7 @@ struct SubscriptionEditView: View {
             isActive: subscription?.isActive ?? true,
             amount: amount,
             currency: currency,
-            category: category,
+            category: selectedCategory,
             subcategory: nil,
             description: description,
             accountId: accountId,
@@ -243,6 +214,15 @@ struct SubscriptionEditView: View {
         isSaving = true
 
         Task {
+            // Check notification permission before saving so we can decide
+            // whether to show the permission sheet instead of calling dismiss() directly.
+            var needsPermissionSheet = false
+            if subscription == nil && reminder != .none {
+                let manager = NotificationPermissionManager.shared
+                await manager.checkAuthorizationStatus()
+                needsPermissionSheet = manager.shouldRequestPermission
+            }
+
             do {
                 if subscription == nil {
                     try await transactionStore.createSeries(series)
@@ -250,7 +230,13 @@ struct SubscriptionEditView: View {
                     try await transactionStore.updateSeries(series)
                 }
                 HapticManager.success()
-                dismiss()
+
+                if needsPermissionSheet {
+                    // Show the sheet; dismiss() is called via sheet's onDismiss.
+                    showingNotificationPermission = true
+                } else {
+                    dismiss()
+                }
             } catch {
                 isSaving = false
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {

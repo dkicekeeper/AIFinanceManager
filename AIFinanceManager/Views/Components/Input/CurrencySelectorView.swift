@@ -10,13 +10,18 @@ import SwiftUI
 struct CurrencySelectorView: View {
     @Binding var selectedCurrency: String
     let availableCurrencies: [String]
-    
+    /// Base (home) currency. When set, the chip is highlighted only when
+    /// the selected currency differs from the base — i.e. a foreign currency is in use.
+    let baseCurrency: String
+
     init(
         selectedCurrency: Binding<String>,
-        availableCurrencies: [String] = ["KZT", "USD", "EUR", "RUB", "GBP"]
+        availableCurrencies: [String] = ["KZT", "USD", "EUR", "RUB", "GBP"],
+        baseCurrency: String = ""
     ) {
         self._selectedCurrency = selectedCurrency
         self.availableCurrencies = availableCurrencies
+        self.baseCurrency = baseCurrency
     }
     
     var body: some View {
@@ -41,7 +46,9 @@ struct CurrencySelectorView: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: AppIconSize.sm))
             }
-            .filterChipStyle(isSelected: !availableCurrencies.isEmpty && selectedCurrency != availableCurrencies.first)
+            .filterChipStyle(isSelected: !baseCurrency.isEmpty
+                ? selectedCurrency != baseCurrency
+                : !availableCurrencies.isEmpty && selectedCurrency != availableCurrencies.first)
         }
     }
 }
