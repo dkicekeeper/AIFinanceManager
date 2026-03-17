@@ -10,6 +10,18 @@ import Foundation
 import SwiftUI
 import Observation
 
+// MARK: - HomeBackgroundMode
+
+/// Режим фона главного экрана.
+/// - `none` — стандартный системный фон (по умолчанию)
+/// - `gradient` — цветные орбы на основе топ-категорий расходов
+/// - `wallpaper` — пользовательское фото
+enum HomeBackgroundMode: String, Codable, CaseIterable, Sendable {
+    case none
+    case gradient
+    case wallpaper
+}
+
 /// Application settings model
 /// Enhanced with validation, defaults, and factory methods
 /// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
@@ -20,6 +32,8 @@ class AppSettings: Codable {
 
     var baseCurrency: String
     var wallpaperImageName: String?
+    /// Активный режим фона главного экрана.
+    var homeBackgroundMode: HomeBackgroundMode
 
     // MARK: - Constants
 
@@ -37,10 +51,12 @@ class AppSettings: Codable {
 
     init(
         baseCurrency: String = defaultCurrency,
-        wallpaperImageName: String? = nil
+        wallpaperImageName: String? = nil,
+        homeBackgroundMode: HomeBackgroundMode = .none
     ) {
         self.baseCurrency = baseCurrency
         self.wallpaperImageName = wallpaperImageName
+        self.homeBackgroundMode = homeBackgroundMode
     }
 
     // MARK: - Codable
@@ -48,18 +64,22 @@ class AppSettings: Codable {
     enum CodingKeys: String, CodingKey {
         case baseCurrency
         case wallpaperImageName
+        case homeBackgroundMode
     }
 
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         baseCurrency = try container.decode(String.self, forKey: .baseCurrency)
         wallpaperImageName = try container.decodeIfPresent(String.self, forKey: .wallpaperImageName)
+        // Backward-compatible: old saves without this key default to .none
+        homeBackgroundMode = (try? container.decodeIfPresent(HomeBackgroundMode.self, forKey: .homeBackgroundMode)) ?? .none
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(baseCurrency, forKey: .baseCurrency)
         try container.encodeIfPresent(wallpaperImageName, forKey: .wallpaperImageName)
+        try container.encode(homeBackgroundMode, forKey: .homeBackgroundMode)
     }
 
     // MARK: - Factory Methods

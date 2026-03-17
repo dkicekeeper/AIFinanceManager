@@ -178,6 +178,18 @@ final class SettingsViewModel {
         await setLoading(false)
     }
 
+    /// Update home background mode.
+    /// Switching away from .wallpaper does NOT delete the saved photo —
+    /// the user can always switch back without re-picking.
+    func updateBackgroundMode(_ mode: HomeBackgroundMode) async {
+        settings.homeBackgroundMode = mode
+        do {
+            try await storageService.saveSettings(settings)
+        } catch {
+            await showError(error.localizedDescription)
+        }
+    }
+
     // MARK: - Export/Import Operations
 
     /// Export all data to CSV

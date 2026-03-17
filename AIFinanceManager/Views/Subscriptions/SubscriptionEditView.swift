@@ -19,7 +19,7 @@ struct SubscriptionEditView: View {
     @State private var description: String = ""
     @State private var amountText: String = ""
     @State private var currency: String = "USD"
-    @State private var selectedCategory: String = "Subscriptions"
+    @State private var selectedCategory: String = ""
     @State private var selectedAccountId: String? = nil
     @State private var selectedFrequency: RecurringFrequency = .monthly
     @State private var startDate: Date = Date()
@@ -31,7 +31,7 @@ struct SubscriptionEditView: View {
     @State private var availableCategories: [String] = []
 
     private func computeAvailableCategories() -> [String] {
-        var categories: Set<String> = ["Subscriptions"]
+        var categories: Set<String> = []
         for customCategory in transactionsViewModel.customCategories where customCategory.type == .expense {
             categories.insert(customCategory.name)
         }
@@ -39,6 +39,9 @@ struct SubscriptionEditView: View {
             if !tx.category.isEmpty && tx.category != "Uncategorized" {
                 categories.insert(tx.category)
             }
+        }
+        if categories.isEmpty {
+            categories.insert("Uncategorized")
         }
         return Array(categories).sortedByCustomOrder(
             customCategories: transactionsViewModel.customCategories,
@@ -129,7 +132,7 @@ struct SubscriptionEditView: View {
                 description = subscription.description
                 amountText = NSDecimalNumber(decimal: subscription.amount).stringValue
                 currency = subscription.currency
-                selectedCategory = subscription.category.isEmpty ? "Subscriptions" : subscription.category
+                selectedCategory = subscription.category.isEmpty ? (availableCategories.first ?? "") : subscription.category
                 selectedAccountId = subscription.accountId
                 selectedFrequency = subscription.frequency
                 if let date = DateFormatters.dateFormatter.date(from: subscription.startDate) {
@@ -139,6 +142,7 @@ struct SubscriptionEditView: View {
                 reminder = ReminderOption.from(offsets: subscription.reminderOffsets ?? [])
             } else {
                 currency = transactionsViewModel.appSettings.baseCurrency
+                selectedCategory = availableCategories.first ?? ""
                 // Set first account as default
                 if !transactionsViewModel.accounts.isEmpty {
                     selectedAccountId = transactionsViewModel.accounts[0].id

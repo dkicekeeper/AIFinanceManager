@@ -120,30 +120,23 @@ struct SettingsView: View {
         SettingsGeneralSection(
             selectedCurrency: settingsViewModel.settings.baseCurrency,
             availableCurrencies: AppSettings.availableCurrencies,
-            hasWallpaper: settingsViewModel.currentWallpaper != nil,
+            currentBackgroundMode: settingsViewModel.settings.homeBackgroundMode,
+            wallpaperImage: settingsViewModel.currentWallpaper,
             selectedPhoto: $selectedPhoto,
             onCurrencyChange: { newCurrency in
-                Task {
-                    await settingsViewModel.updateBaseCurrency(newCurrency)
-                }
+                Task { await settingsViewModel.updateBaseCurrency(newCurrency) }
+            },
+            onBackgroundModeChange: { newMode in
+                Task { await settingsViewModel.updateBackgroundMode(newMode) }
             },
             onPhotoChange: { newItem in
-
-                guard let newItem = newItem else {
-                    return
-                }
-
-                guard let data = try? await newItem.loadTransferable(type: Data.self) else {
-                    return
-                }
-
-                guard let image = UIImage(data: data) else {
-                    return
-                }
-
+                guard let newItem else { return }
+                guard let data = try? await newItem.loadTransferable(type: Data.self) else { return }
+                guard let image = UIImage(data: data) else { return }
                 await settingsViewModel.selectWallpaper(image)
-
-                // Reset selectedPhoto to allow selecting the same image again if needed
+                // Switching to wallpaper mode when a photo is picked
+                await settingsViewModel.updateBackgroundMode(.wallpaper)
+                // Reset so the same image can be re-selected
                 selectedPhoto = nil
             },
             onWallpaperRemove: {

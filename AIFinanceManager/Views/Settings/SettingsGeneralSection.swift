@@ -4,21 +4,25 @@
 //
 //  Created on 2026-02-04
 //  Settings Refactoring Phase 3 - UI Components
+//  Updated: HomeBackgroundPicker replaces WallpaperPickerRow
 //
 
 import SwiftUI
 import PhotosUI
 
-/// Props-based General section for Settings
-/// Single Responsibility: Group general settings (currency, wallpaper)
+/// Props-based General section for Settings.
+/// Groups currency picker + Apple-style home background picker.
 struct SettingsGeneralSection: View {
+
     // MARK: - Props
 
     let selectedCurrency: String
     let availableCurrencies: [String]
-    let hasWallpaper: Bool
+    let currentBackgroundMode: HomeBackgroundMode
+    let wallpaperImage: UIImage?
     @Binding var selectedPhoto: PhotosPickerItem?
     let onCurrencyChange: (String) -> Void
+    let onBackgroundModeChange: (HomeBackgroundMode) -> Void
     let onPhotoChange: (PhotosPickerItem?) async -> Void
     let onWallpaperRemove: () async -> Void
 
@@ -64,13 +68,24 @@ struct SettingsGeneralSection: View {
                 }
             }
             .padding(.vertical, AppSpacing.xs)
+        }
 
-            WallpaperPickerRow(
-                hasWallpaper: hasWallpaper,
+        // Background picker in its own section for visual breathing room
+        Section(header: SettingsSectionHeaderView(
+            title: String(localized: "settings.background", defaultValue: "Background")
+        )) {
+            HomeBackgroundPicker(
+                currentMode: currentBackgroundMode,
+                wallpaperImage: wallpaperImage,
                 selectedPhoto: $selectedPhoto,
+                onModeSelect: onBackgroundModeChange,
                 onPhotoChange: onPhotoChange,
-                onRemove: onWallpaperRemove
+                onWallpaperRemove: onWallpaperRemove
             )
+            .listRowInsets(EdgeInsets(top: AppSpacing.sm,
+                                      leading: 0,
+                                      bottom: AppSpacing.sm,
+                                      trailing: 0))
         }
     }
 }
@@ -80,15 +95,18 @@ struct SettingsGeneralSection: View {
 #Preview {
     struct PreviewWrapper: View {
         @State private var selectedPhoto: PhotosPickerItem? = nil
+        @State private var mode: HomeBackgroundMode = .none
 
         var body: some View {
             List {
                 SettingsGeneralSection(
                     selectedCurrency: "KZT",
                     availableCurrencies: ["KZT", "USD", "EUR", "RUB"],
-                    hasWallpaper: true,
+                    currentBackgroundMode: mode,
+                    wallpaperImage: nil,
                     selectedPhoto: $selectedPhoto,
                     onCurrencyChange: { _ in },
+                    onBackgroundModeChange: { mode = $0 },
                     onPhotoChange: { _ in },
                     onWallpaperRemove: {}
                 )

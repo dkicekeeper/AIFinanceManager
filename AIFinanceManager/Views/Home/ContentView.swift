@@ -120,7 +120,7 @@ struct ContentView: View {
                 .environment(timeFilterManager)
                 .navigationTransition(.zoom(sourceID: account.id, in: accountNamespace))
             }
-            .background { wallpaperBackground }
+            .background { homeBackground }
             .toolbar { toolbarContent }
             .sheet(isPresented: $showingTimeFilter) { timeFilterSheet }
             .sheet(isPresented: $showingAddAccount) { addAccountSheet }
@@ -271,9 +271,7 @@ struct ContentView: View {
             TransactionsSummaryCard(
                 summary: homeState.cachedSummary,
                 currency: viewModel.appSettings.baseCurrency,
-                isEmpty: transactionStore.transactions.isEmpty,
-                categoryWeights: homeState.cachedCategoryWeights,
-                customCategories: coordinator.categoriesViewModel.customCategories
+                isEmpty: transactionStore.transactions.isEmpty
             )
         }
         .buttonStyle(.bounce)
@@ -345,13 +343,32 @@ struct ContentView: View {
 
     // MARK: - Overlays & Backgrounds
 
+    /// Renders the correct full-screen background based on the user's chosen mode.
     @ViewBuilder
-    private var wallpaperBackground: some View {
-        if let wallpaperImage = homeState.wallpaperImage {
-            Image(uiImage: wallpaperImage)
-                .resizable()
-                .scaledToFill()
-                .ignoresSafeArea(.all, edges: .all)
+    private var homeBackground: some View {
+        switch viewModel.appSettings.homeBackgroundMode {
+        case .none:
+            // No background — system default
+            EmptyView()
+
+        case .gradient:
+            // Category orbs fill the full screen behind all Liquid Glass cards.
+            // Opacity kept low so the glass layer remains legible.
+            CategoryGradientBackground(
+                weights: homeState.cachedCategoryWeights,
+                customCategories: coordinator.categoriesViewModel.customCategories
+            )
+            .opacity(0.35)
+            .ignoresSafeArea(.all, edges: .all)
+            .animation(AppAnimation.gentleSpring, value: homeState.cachedCategoryWeights)
+
+        case .wallpaper:
+            if let wallpaperImage = homeState.wallpaperImage {
+                Image(uiImage: wallpaperImage)
+                    .resizable()
+                    .scaledToFill()
+                    .ignoresSafeArea(.all, edges: .all)
+            }
         }
     }
 
