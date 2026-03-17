@@ -96,14 +96,14 @@ struct EditableHeroSection: View {
                 text: $title,
                 placeholder: titlePlaceholder
             )
-            .padding(.horizontal, AppSpacing.lg)
+            .screenPadding()
 
             // Balance (if enabled)
             if config.showBalance {
                 balanceView
             }
         }
-        .padding(.vertical, AppSpacing.xl)
+        .padding(.vertical, AppSpacing.lg)
         .sheet(isPresented: $showingIconPicker) {
             IconPickerView(selectedSource: $iconSource, allowLogos: config.allowLogos)
         }

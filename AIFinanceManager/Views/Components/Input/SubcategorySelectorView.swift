@@ -12,14 +12,15 @@ struct SubcategorySelectorView: View {
     let categoryId: String?
     @Binding var selectedSubcategoryIds: Set<String>
     let onSearchTap: () -> Void
-    
+    var onReorderTap: (() -> Void)?
+
     private var availableSubcategories: [Subcategory] {
         guard let categoryId = categoryId else { return [] }
         let linkedSubcategories = categoriesViewModel.getSubcategoriesForCategory(categoryId)
-        
+
         // Добавляем выбранные подкатегории, которые могут быть не привязаны к категории
         let selectedSubcategories = categoriesViewModel.subcategories.filter { selectedSubcategoryIds.contains($0.id) }
-        
+
         // Объединяем и убираем дубликаты
         var allSubcategories = linkedSubcategories
         for selected in selectedSubcategories {
@@ -27,10 +28,10 @@ struct SubcategorySelectorView: View {
                 allSubcategories.append(selected)
             }
         }
-        
+
         return allSubcategories
     }
-    
+
     var body: some View {
         if !availableSubcategories.isEmpty {
             UniversalCarousel(config: .filter) {
@@ -50,13 +51,23 @@ struct SubcategorySelectorView: View {
                     )
                 }
 
-                // Кнопка поиска справа
+                // Кнопка поиска
                 Button(action: onSearchTap) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: AppIconSize.sm))
                 }
                 .filterChipStyle()
                 .accessibilityLabel(String(localized: "transactionForm.searchSubcategories"))
+
+                // Кнопка сортировки
+                if let onReorderTap {
+                    Button(action: onReorderTap) {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: AppIconSize.sm))
+                    }
+                    .filterChipStyle()
+                    .accessibilityLabel(String(localized: "subcategory.reorder"))
+                }
             }
         } else {
             // Если нет подкатегорий, показываем только кнопку поиска на всю ширину
@@ -77,14 +88,14 @@ struct SubcategorySelectorView: View {
 #Preview {
     @Previewable @State var selectedIds: Set<String> = []
     let coordinator = AppCoordinator()
-    
+
     return VStack {
         SubcategorySelectorView(
             categoriesViewModel: coordinator.categoriesViewModel,
             categoryId: nil,
             selectedSubcategoryIds: $selectedIds,
-            onSearchTap: {
-            }
+            onSearchTap: {},
+            onReorderTap: {}
         )
     }
     .padding()

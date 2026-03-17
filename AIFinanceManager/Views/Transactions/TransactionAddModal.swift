@@ -25,6 +25,7 @@ struct TransactionAddModal: View {
     @State private var isSaving = false
     @State private var showingSubcategorySearch = false
     @State private var subcategorySearchText = ""
+    @State private var showingSubcategoryReorder = false
     @State private var showingCategoryHistory = false
 
     @Namespace private var historyNamespace
@@ -69,6 +70,16 @@ struct TransactionAddModal: View {
                 formContent
                     .sheet(isPresented: $showingSubcategorySearch) {
                         subcategorySearchSheet
+                    }
+                    .sheet(isPresented: $showingSubcategoryReorder) {
+                        if let categoryId {
+                            SubcategoryReorderView(
+                                categoriesViewModel: coordinator.categoriesViewModel,
+                                categoryId: categoryId
+                            )
+                            .presentationDetents([.medium])
+                            .presentationDragIndicator(.visible)
+                        }
                     }
             }
             .navigationTitle("")
@@ -137,13 +148,16 @@ struct TransactionAddModal: View {
                     )
                 }
 
-                if !coordinator.availableSubcategories().isEmpty {
+                if categoryId != nil {
                     SubcategorySelectorView(
                         categoriesViewModel: coordinator.categoriesViewModel,
                         categoryId: categoryId,
                         selectedSubcategoryIds: $bindableCoordinator.formData.subcategoryIds,
                         onSearchTap: {
                             showingSubcategorySearch = true
+                        },
+                        onReorderTap: {
+                            showingSubcategoryReorder = true
                         }
                     )
                 }

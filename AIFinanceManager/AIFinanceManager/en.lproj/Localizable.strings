@@ -302,10 +302,14 @@
 "category.tapToSelect" = "Tap to select";
 "category.subcategories" = "Subcategories";
 "category.addSubcategory" = "Add subcategory";
+"category.manageSubcategories" = "Manage Subcategories";
 
 // MARK: - Subcategories Management
 "subcategory.new" = "New Subcategory";
 "subcategory.namePlaceholder" = "Subcategory name";
+"subcategory.usageCount" = "Used %d times";
+"subcategory.notUsed" = "Not used yet";
+"subcategory.reorder" = "Subcategories";
 
 // MARK: - Subcategory Search (2026-02-25)
 "subcategorySearch.titleSingle" = "Select Subcategory";

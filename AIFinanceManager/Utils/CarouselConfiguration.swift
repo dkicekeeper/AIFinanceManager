@@ -41,6 +41,19 @@ struct CarouselConfiguration {
     /// Animation used for auto-scroll behavior (nil = no animation)
     let scrollAnimation: Animation?
 
+    // MARK: - Scroll Target Properties
+
+    /// Scroll snapping behavior (.none = free scroll, .viewAligned = snap to items)
+    let snapBehavior: SnapBehavior
+
+    /// Scroll snap behavior options
+    enum SnapBehavior {
+        /// Free scrolling — no snapping
+        case none
+        /// Snaps to the nearest child view boundary after scroll ends
+        case viewAligned
+    }
+
     // MARK: - Initializer
 
     init(
@@ -49,7 +62,8 @@ struct CarouselConfiguration {
         verticalPadding: CGFloat = 0,
         showsIndicators: Bool = false,
         clipDisabled: Bool = true,
-        scrollAnimation: Animation? = nil
+        scrollAnimation: Animation? = nil,
+        snapBehavior: SnapBehavior = .none
     ) {
         self.spacing = spacing
         self.horizontalPadding = horizontalPadding
@@ -57,6 +71,7 @@ struct CarouselConfiguration {
         self.showsIndicators = showsIndicators
         self.clipDisabled = clipDisabled
         self.scrollAnimation = scrollAnimation
+        self.snapBehavior = snapBehavior
     }
 }
 
@@ -74,7 +89,8 @@ extension CarouselConfiguration {
         verticalPadding: AppSpacing.xs,
         showsIndicators: false,
         clipDisabled: true,
-        scrollAnimation: .easeInOut(duration: 0.3)
+        scrollAnimation: .easeInOut(duration: 0.3),
+        snapBehavior: .viewAligned
     )
 
     /// Compact carousel configuration
@@ -117,7 +133,8 @@ extension CarouselConfiguration {
         verticalPadding: AppSpacing.xs,
         showsIndicators: false,
         clipDisabled: true,
-        scrollAnimation: nil
+        scrollAnimation: nil,
+        snapBehavior: .viewAligned
     )
 
     /// CSV preview carousel configuration

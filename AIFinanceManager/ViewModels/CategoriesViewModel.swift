@@ -227,6 +227,10 @@ class CategoriesViewModel {
         return subcategoryCoordinator.getSubcategoriesForCategory(categoryId)
     }
 
+    func reorderSubcategories(categoryId: String, orderedSubcategoryIds: [String]) {
+        subcategoryCoordinator.reorderSubcategories(categoryId: categoryId, orderedSubcategoryIds: orderedSubcategoryIds)
+    }
+
     // MARK: - Transaction-Subcategory Links
 
     func getSubcategoriesForTransaction(_ transactionId: String) -> [Subcategory] {
@@ -253,6 +257,29 @@ class CategoriesViewModel {
 
     func saveTransactionSubcategoryLinks() {
         subcategoryCoordinator.saveTransactionSubcategoryLinks()
+    }
+
+    // MARK: - Subcategory Statistics
+
+    func subcategoryUsageCount(for subcategoryId: String) -> Int {
+        transactionSubcategoryLinks.filter { $0.subcategoryId == subcategoryId }.count
+    }
+
+    func subcategoryLastUsedDate(for subcategoryId: String) -> Date? {
+        let linkedTransactionIds = Set(
+            transactionSubcategoryLinks
+                .filter { $0.subcategoryId == subcategoryId }
+                .map { $0.transactionId }
+        )
+        guard !linkedTransactionIds.isEmpty else { return nil }
+
+        let latestDateString = transactionStore?.transactions
+            .filter { linkedTransactionIds.contains($0.id) }
+            .map { $0.date }
+            .max()
+
+        guard let dateString = latestDateString else { return nil }
+        return DateFormatters.dateFormatter.date(from: dateString)
     }
 
     // MARK: - Batch Operations

@@ -199,6 +199,11 @@ struct InsightsView: View {
                     granularity: insightsViewModel.currentGranularity
                 )
                 .screenPadding()
+                .scrollTransition(.animated(.easeOut)) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0)
+                        .offset(y: phase.isIdentity ? 0 : 20)
+                }
 
                 InsightsSectionView(
                     category: .income,
@@ -208,6 +213,11 @@ struct InsightsView: View {
                     granularity: insightsViewModel.currentGranularity
                 )
                 .screenPadding()
+                .scrollTransition(.animated(.easeOut)) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0)
+                        .offset(y: phase.isIdentity ? 0 : 20)
+                }
 
                 InsightsSectionView(
                     category: .budget,
@@ -217,6 +227,11 @@ struct InsightsView: View {
                     granularity: insightsViewModel.currentGranularity
                 )
                 .screenPadding()
+                .scrollTransition(.animated(.easeOut)) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0)
+                        .offset(y: phase.isIdentity ? 0 : 20)
+                }
 
                 InsightsSectionView(
                     category: .recurring,
@@ -226,6 +241,11 @@ struct InsightsView: View {
                     granularity: insightsViewModel.currentGranularity
                 )
                 .screenPadding()
+                .scrollTransition(.animated(.easeOut)) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0)
+                        .offset(y: phase.isIdentity ? 0 : 20)
+                }
 
                 InsightsSectionView(
                     category: .cashFlow,
@@ -235,6 +255,11 @@ struct InsightsView: View {
                     granularity: insightsViewModel.currentGranularity
                 )
                 .screenPadding()
+                .scrollTransition(.animated(.easeOut)) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0)
+                        .offset(y: phase.isIdentity ? 0 : 20)
+                }
 
                 InsightsSectionView(
                     category: .wealth,
@@ -244,6 +269,11 @@ struct InsightsView: View {
                     granularity: insightsViewModel.currentGranularity
                 )
                 .screenPadding()
+                .scrollTransition(.animated(.easeOut)) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0)
+                        .offset(y: phase.isIdentity ? 0 : 20)
+                }
 
                 InsightsSectionView(
                     category: .savings,
@@ -253,6 +283,11 @@ struct InsightsView: View {
                     granularity: insightsViewModel.currentGranularity
                 )
                 .screenPadding()
+                .scrollTransition(.animated(.easeOut)) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0)
+                        .offset(y: phase.isIdentity ? 0 : 20)
+                }
 
                 InsightsSectionView(
                     category: .forecasting,
@@ -262,6 +297,11 @@ struct InsightsView: View {
                     granularity: insightsViewModel.currentGranularity
                 )
                 .screenPadding()
+                .scrollTransition(.animated(.easeOut)) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0)
+                        .offset(y: phase.isIdentity ? 0 : 20)
+                }
             }
 
         } else {

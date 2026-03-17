@@ -123,6 +123,9 @@ struct TransactionEditView: View {
                                     selectedSubcategoryIds: $bindableCoordinator.formData.selectedSubcategoryIds,
                                     onSearchTap: {
                                         withAnimation { coordinator.formData.showingSubcategorySearch = true }
+                                    },
+                                    onReorderTap: {
+                                        coordinator.formData.showingSubcategoryReorder = true
                                     }
                                 )
                             }
@@ -159,6 +162,16 @@ struct TransactionEditView: View {
                 }
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $bindableCoordinator.formData.showingSubcategoryReorder) {
+                if let categoryId = coordinator.categoryId {
+                    SubcategoryReorderView(
+                        categoriesViewModel: coordinator.categoriesViewModel,
+                        categoryId: categoryId
+                    )
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+                }
             }
             .onChange(of: coordinator.formData.selectedAccountId) { _, _ in
                 coordinator.updateCurrencyForSelectedAccount()

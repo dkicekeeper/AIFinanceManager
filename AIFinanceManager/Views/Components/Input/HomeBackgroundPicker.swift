@@ -69,7 +69,9 @@ struct HomeBackgroundPicker: View {
             }
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.sm)
+            .scrollTargetLayout()
         }
+        .scrollTargetBehavior(.viewAligned)
         .animation(AppAnimation.gentleSpring, value: currentMode)
     }
 

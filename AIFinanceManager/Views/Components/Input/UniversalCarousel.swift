@@ -102,15 +102,31 @@ struct UniversalCarousel<Content: View>: View {
     // MARK: - Private Views
 
     /// Base ScrollView without an accessibility container label.
+    @ViewBuilder
     private var baseScrollView: some View {
-        ScrollView(.horizontal, showsIndicators: config.showsIndicators) {
-            HStack(spacing: config.spacing) {
-                content()
+        switch config.snapBehavior {
+        case .viewAligned:
+            ScrollView(.horizontal, showsIndicators: config.showsIndicators) {
+                HStack(spacing: config.spacing) {
+                    content()
+                }
+                .padding(.horizontal, config.horizontalPadding)
+                .padding(.vertical, config.verticalPadding)
+                .scrollTargetLayout()
             }
-            .padding(.horizontal, config.horizontalPadding)
-            .padding(.vertical, config.verticalPadding)
+            .scrollTargetBehavior(.viewAligned)
+            .scrollClipDisabled(config.clipDisabled)
+
+        case .none:
+            ScrollView(.horizontal, showsIndicators: config.showsIndicators) {
+                HStack(spacing: config.spacing) {
+                    content()
+                }
+                .padding(.horizontal, config.horizontalPadding)
+                .padding(.vertical, config.verticalPadding)
+            }
+            .scrollClipDisabled(config.clipDisabled)
         }
-        .scrollClipDisabled(config.clipDisabled)
     }
 
     /// ScrollView with optional VoiceOver container label applied.

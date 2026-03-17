@@ -302,10 +302,14 @@
 "category.tapToSelect" = "Нажмите для выбора";
 "category.subcategories" = "Подкатегории";
 "category.addSubcategory" = "Добавить подкатегорию";
+"category.manageSubcategories" = "Управление подкатегориями";
 
 // MARK: - Subcategories Management
 "subcategory.new" = "Новая подкатегория";
 "subcategory.namePlaceholder" = "Название подкатегории";
+"subcategory.usageCount" = "Использовано %d раз";
+"subcategory.notUsed" = "Ещё не использовалась";
+"subcategory.reorder" = "Подкатегории";
 
 // MARK: - Subcategory Search (2026-02-25)
 "subcategorySearch.titleSingle" = "Выберите подкатегорию";

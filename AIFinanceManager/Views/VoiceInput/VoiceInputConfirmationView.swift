@@ -26,6 +26,7 @@ struct VoiceInputConfirmationView: View {
     @State private var selectedSubcategoryNames: Set<String>
     @State private var selectedSubcategoryIds: Set<String> = []
     @State private var showingSubcategorySearch = false
+    @State private var showingSubcategoryReorder = false
     @State private var noteText: String
     
     @State private var accountWarning: String?
@@ -151,6 +152,9 @@ struct VoiceInputConfirmationView: View {
                             selectedSubcategoryIds: $selectedSubcategoryIds,
                             onSearchTap: {
                                 showingSubcategorySearch = true
+                            },
+                            onReorderTap: {
+                                showingSubcategoryReorder = true
                             }
                         )
                     }
@@ -197,6 +201,17 @@ struct VoiceInputConfirmationView: View {
                         searchText: .constant("")
                     )
                     .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .sheet(isPresented: $showingSubcategoryReorder) {
+                if let categoryName = selectedCategoryName,
+                   let category = categoriesViewModel.customCategories.first(where: { $0.name == categoryName }) {
+                    SubcategoryReorderView(
+                        categoriesViewModel: categoriesViewModel,
+                        categoryId: category.id
+                    )
+                    .presentationDetents([.medium])
                     .presentationDragIndicator(.visible)
                 }
             }

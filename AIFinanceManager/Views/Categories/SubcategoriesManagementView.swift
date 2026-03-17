@@ -28,10 +28,14 @@ struct SubcategoriesManagementView: View {
             } else {
                 List {
                     ForEach(categoriesViewModel.subcategories) { subcategory in
+                        let usageCount = categoriesViewModel.subcategoryUsageCount(for: subcategory.id)
+                        let lastUsed = categoriesViewModel.subcategoryLastUsedDate(for: subcategory.id)
                         SubcategoryManagementRow(
                             subcategory: subcategory,
+                            usageCount: usageCount,
+                            lastUsedDate: lastUsed,
                             onEdit: { editingSubcategory = subcategory },
-                            onDelete: { 
+                            onDelete: {
                                 HapticManager.warning()
                                 categoriesViewModel.deleteSubcategory(subcategory.id)
                             }
@@ -85,18 +89,39 @@ struct SubcategoriesManagementView: View {
 
 struct SubcategoryManagementRow: View {
     let subcategory: Subcategory
+    let usageCount: Int
+    let lastUsedDate: Date?
     let onEdit: () -> Void
     let onDelete: () -> Void
-    
+
+    private nonisolated static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+
     var body: some View {
         Button {
             HapticManager.selection()
             onEdit()
         } label: {
-            HStack {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 Text(subcategory.name)
                     .font(AppTypography.body)
-                Spacer()
+                HStack(spacing: AppSpacing.sm) {
+                    if usageCount > 0 {
+                        Text(String(format: String(localized: "subcategory.usageCount"), usageCount))
+                        if let lastUsed = lastUsedDate {
+                            Text("·")
+                            Text(Self.dateFormatter.string(from: lastUsed))
+                        }
+                    } else {
+                        Text(String(localized: "subcategory.notUsed"))
+                    }
+                }
+                .font(AppTypography.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .buttonStyle(.plain)
@@ -178,9 +203,11 @@ struct SubcategoryEditView: View {
     ]
     
     return List {
-        ForEach(sampleSubcategories) { subcategory in
+        ForEach(Array(sampleSubcategories.enumerated()), id: \.element.id) { index, subcategory in
             SubcategoryManagementRow(
                 subcategory: subcategory,
+                usageCount: [5, 12, 0, 3][index],
+                lastUsedDate: index == 2 ? nil : Date().addingTimeInterval(Double(-index) * 86400),
                 onEdit: {},
                 onDelete: {}
             )

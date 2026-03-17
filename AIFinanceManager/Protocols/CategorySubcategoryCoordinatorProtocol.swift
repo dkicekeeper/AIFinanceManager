@@ -53,8 +53,14 @@ protocol CategorySubcategoryCoordinatorProtocol {
 
     /// Get all subcategories linked to a category
     /// - Parameter categoryId: Category ID
-    /// - Returns: Array of linked subcategories
+    /// - Returns: Array of linked subcategories sorted by sortOrder
     func getSubcategoriesForCategory(_ categoryId: String) -> [Subcategory]
+
+    /// Reorder subcategories within a category
+    /// - Parameters:
+    ///   - categoryId: Category ID
+    ///   - orderedSubcategoryIds: Subcategory IDs in desired order
+    func reorderSubcategories(categoryId: String, orderedSubcategoryIds: [String])
 
     // MARK: - Transaction-Subcategory Links
 

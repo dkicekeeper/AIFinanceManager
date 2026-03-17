@@ -21,7 +21,7 @@ struct BudgetSettingsSection: View {
                 // Budget Amount
                 UniversalRow(
                     config: .standard,
-                    leadingIcon: .sfSymbol("banknote", color: AppColors.textPrimary, size: AppIconSize.lg)
+                    leadingIcon: .sfSymbol("banknote", color: AppColors.accent, size: AppIconSize.lg)
                 ) {
                     Text(String(localized: "budget.amount"))
                         .font(AppTypography.body)
@@ -54,7 +54,7 @@ struct BudgetSettingsSection: View {
                     // Reset Day
                     UniversalRow(
                         config: .standard,
-                        leadingIcon: .sfSymbol("arrow.clockwise", color: AppColors.textPrimary, size: AppIconSize.lg)
+                        leadingIcon: .sfSymbol("arrow.clockwise", color: AppColors.accent, size: AppIconSize.lg)
                     ) {
                         Stepper(
                             String(localized: "budget_reset_day") + " \(resetDay)",

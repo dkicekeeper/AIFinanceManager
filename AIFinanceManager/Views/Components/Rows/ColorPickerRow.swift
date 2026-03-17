@@ -33,10 +33,10 @@ struct ColorPickerRow: View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             // Title
             if !title.isEmpty {
-                Text(title)
-                    .font(AppTypography.bodySmall)
-                    .foregroundStyle(AppColors.textSecondary)
-                    .textCase(.uppercase)
+                SectionHeaderView(
+                    String(title),
+                    style: .default
+                )
             }
 
             // Color swatches using UniversalCarousel
@@ -81,7 +81,7 @@ private struct ColorSwatch: View {
 
                     Image(systemName: "checkmark")
                         .font(.system(size: AppIconSize.md, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppColors.staticWhite)
                 }
             }
         }

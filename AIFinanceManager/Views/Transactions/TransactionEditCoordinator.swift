@@ -26,6 +26,7 @@ struct EditTransactionFormData {
 
     // UI-only state
     var showingSubcategorySearch: Bool = false
+    var showingSubcategoryReorder: Bool = false
     var subcategorySearchText: String = ""
     var showingRecurringDisableDialog: Bool = false
 }

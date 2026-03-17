@@ -19,7 +19,7 @@ struct CategoryEditView: View {
     @State private var name: String = ""
     @State private var selectedIconSource: IconSource? = .sfSymbol("banknote.fill")
     @State private var selectedColor: String = "#3b82f6"
-    @State private var showingSubcategoryPicker = false
+    @State private var showingSubcategoryManager = false
     @State private var validationError: String? = nil
 
     // Budget fields (only for expense categories)
@@ -87,53 +87,33 @@ struct CategoryEditView: View {
 
                     // Subcategories Section (edit mode only)
                     if let category = category {
-                        FormSection(header: String(localized: "category.subcategories")) {
-                            ForEach(linkedSubcategories) { subcategory in
-                                UniversalRow(config: .standard) {
-                                    Text(subcategory.name)
-                                        .font(AppTypography.body)
-                                        .foregroundStyle(AppColors.textPrimary)
-                                } trailing: {
-                                    Button(action: {
-                                        HapticManager.light()
-                                        categoriesViewModel.unlinkSubcategoryFromCategory(subcategoryId: subcategory.id, categoryId: category.id)
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundStyle(AppColors.destructive)
-                                    }
-                                }
-                                Divider()
-                            }
-
-                            UniversalRow(config: .standard, leadingIcon: .sfSymbol("plus.circle.fill", color: AppColors.accent)) {
-                                Text(String(localized: "category.addSubcategory"))
+//                        FormSection(header: String(localized: "category.subcategories")) {
+                            UniversalRow(
+                                config: .standard,
+                                leadingIcon: .sfSymbol("list.bullet", color: AppColors.accent)
+                            ) {
+                                Text(String(localized: "category.manageSubcategories"))
                                     .font(AppTypography.body)
-                                    .foregroundStyle(AppColors.accent)
+                                    .foregroundStyle(AppColors.textPrimary)
+                            } trailing: {
+                                Text("\(linkedSubcategories.count)")
+                                    .font(AppTypography.body)
+                                    .foregroundStyle(AppColors.textSecondary)
                             }
                             .actionRow {
                                 HapticManager.light()
-                                showingSubcategoryPicker = true
+                                showingSubcategoryManager = true
                             }
-                        }
+//                        }
                     }
                 }
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.top, AppSpacing.md)
+                .screenPadding()
             }
         }
-        .sheet(isPresented: $showingSubcategoryPicker) {
-            SubcategorySearchView(
+        .sheet(isPresented: $showingSubcategoryManager) {
+            SubcategoryReorderView(
                 categoriesViewModel: categoriesViewModel,
-                categoryId: category?.id ?? "",
-                selectedSubcategoryIds: .constant([]),
-                searchText: .constant(""),
-                selectionMode: .single,
-                onSingleSelect: { subcategoryId in
-                    if let categoryId = category?.id {
-                        categoriesViewModel.linkSubcategoryToCategory(subcategoryId: subcategoryId, categoryId: categoryId)
-                    }
-                    showingSubcategoryPicker = false
-                }
+                categoryId: category?.id ?? ""
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)

@@ -173,11 +173,32 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
     func getSubcategoriesForCategory(_ categoryId: String) -> [Subcategory] {
         guard let delegate = delegate else { return [] }
 
-        let linkedSubcategoryIds = delegate.categorySubcategoryLinks
+        let links = delegate.categorySubcategoryLinks
             .filter { $0.categoryId == categoryId }
-            .map { $0.subcategoryId }
+            .sorted { $0.sortOrder < $1.sortOrder }
 
-        return delegate.subcategories.filter { linkedSubcategoryIds.contains($0.id) }
+        let orderedIds = links.map { $0.subcategoryId }
+        let subcategoryMap = Dictionary(uniqueKeysWithValues: delegate.subcategories.map { ($0.id, $0) })
+
+        return orderedIds.compactMap { subcategoryMap[$0] }
+    }
+
+    func reorderSubcategories(categoryId: String, orderedSubcategoryIds: [String]) {
+        guard let delegate = delegate else { return }
+
+        for (index, subcategoryId) in orderedSubcategoryIds.enumerated() {
+            if let linkIndex = delegate.categorySubcategoryLinks.firstIndex(where: {
+                $0.categoryId == categoryId && $0.subcategoryId == subcategoryId
+            }) {
+                delegate.categorySubcategoryLinks[linkIndex].sortOrder = index
+            }
+        }
+
+        if let transactionStore = delegate.transactionStore {
+            transactionStore.updateCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+        } else {
+            repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
+        }
     }
 
     // MARK: - Transaction-Subcategory Links

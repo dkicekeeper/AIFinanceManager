@@ -24,6 +24,11 @@ struct AccountsCarousel: View {
                     balanceCoordinator: balanceCoordinator,
                     namespace: namespace
                 )
+                .scrollTransition(.animated(.easeOut(duration: 0.3))) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0.75)
+                        .scaleEffect(phase.isIdentity ? 1 : 0.95)
+                }
                 .id(account.id)
             }
         }
