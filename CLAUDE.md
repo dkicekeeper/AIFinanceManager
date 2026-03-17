@@ -1,5 +1,19 @@
 # AIFinanceManager - Project Guide for Claude
 
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools directly.
+
+Available gstack skills:
+- `/plan-ceo-review` — review plan from a CEO/product perspective
+- `/plan-eng-review` — review plan from an engineering perspective
+- `/review` — code review
+- `/ship` — ship a feature end-to-end
+- `/browse` — web browsing (use this instead of chrome MCP tools)
+- `/qa` — QA testing
+- `/setup-browser-cookies` — configure browser session cookies
+- `/retro` — run a retrospective
+
 ## Quick Start
 
 ```bash
