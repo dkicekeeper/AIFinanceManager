@@ -216,15 +216,36 @@ nonisolated final class SupabaseLogoProvider: LogoProvider {
 
         // 1. displayName ("Kaspi", "Yandex Go")
         if let displayName = entry?.displayName {
-            candidates.append(IndexActor.normalize(displayName))
+            let normalized = IndexActor.normalize(displayName)
+            candidates.append(normalized)
+
+            // 2. displayName without common suffixes ("Eurasian Bank" → "eurasian")
+            let stripped = Self.stripCommonSuffixes(normalized)
+            if stripped != normalized {
+                candidates.append(stripped)
+            }
         }
 
         // 3. Domain base ("kaspi" from "kaspi.kz")
         let domainBase = domain.split(separator: ".").first.map(String.init) ?? domain
-        candidates.append(IndexActor.normalize(domainBase))
+        let normalizedBase = IndexActor.normalize(domainBase)
+        candidates.append(normalizedBase)
 
-        // 4. Full domain normalized ("kaspikz")
+        // 4. Domain base without suffixes ("bereke" from "berekebank")
+        let strippedBase = Self.stripCommonSuffixes(normalizedBase)
+        if strippedBase != normalizedBase {
+            candidates.append(strippedBase)
+        }
+
+        // 5. Full domain normalized ("kaspikz")
         candidates.append(IndexActor.normalize(domain))
+
+        // 6. Aliases
+        if let aliases = entry?.aliases {
+            for alias in aliases {
+                candidates.append(IndexActor.normalize(alias))
+            }
+        }
 
         // Deduplicate
         var seen = Set<String>()
@@ -238,6 +259,26 @@ nonisolated final class SupabaseLogoProvider: LogoProvider {
         }
 
         return nil
+    }
+
+    // MARK: - Helpers
+
+    /// Strip common prefixes/suffixes from normalized names to improve matching.
+    /// "eurasianbank" → "eurasian", "bankcentercredit" → "centercredit"
+    /// Works on already-normalized (lowercased, no separators) strings.
+    private static let commonAffixes = ["bank", "kz", "ru", "com"]
+
+    private static func stripCommonSuffixes(_ normalized: String) -> String {
+        var result = normalized
+        for affix in commonAffixes {
+            if result.hasSuffix(affix) && result.count > affix.count {
+                result = String(result.dropLast(affix.count))
+            }
+            if result.hasPrefix(affix) && result.count > affix.count {
+                result = String(result.dropFirst(affix.count))
+            }
+        }
+        return result
     }
 
     // MARK: - Download
