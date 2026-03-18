@@ -2,68 +2,56 @@
 //  BrandLogoView.swift
 //  AIFinanceManager
 //
-//  Created on 2024
+//  SwiftUI component for displaying brand logos via provider chain
 //
 
 import SwiftUI
 
-/// SwiftUI компонент для отображения логотипа бренда с загрузкой из logo.dev
+/// Displays a brand logo loaded through the LogoService provider chain.
+/// No longer uses AsyncImage — relies entirely on the chain result.
+/// Uses .task(id:) for automatic cancellation on brandName change.
 struct BrandLogoView: View {
     let brandName: String?
     let size: CGFloat
-    
-    @State private var logoURL: URL?
-    @State private var cachedImage: UIImage?
+
+    @State private var logoImage: UIImage?
     @State private var isLoading = false
-    
+
     init(brandName: String?, size: CGFloat = 32) {
         self.brandName = brandName
         self.size = size
     }
-    
+
     var body: some View {
         Group {
-            if let cachedImage = cachedImage {
-                Image(uiImage: cachedImage)
+            if let logoImage {
+                Image(uiImage: logoImage)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: size, height: size)
                     .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
-            } else if let url = logoURL {
-                // Используем AsyncImage для быстрого отображения, пока LogoService кеширует
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(width: size, height: size)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: size, height: size)
-                            .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
-                    case .failure(_):
-                        // Fallback: SF Symbol
-                        fallbackIcon
-                    @unknown default:
-                        fallbackIcon
-                    }
-                }
+            } else if isLoading {
+                ProgressView()
+                    .frame(width: size, height: size)
             } else {
-                // Fallback: SF Symbol (если нет URL)
                 fallbackIcon
             }
         }
-        .onAppear {
-            updateURL()
-            loadLogoIfNeeded()
-        }
-        .onChange(of: brandName) { _, _ in
-            updateURL()
-            loadLogoIfNeeded()
+        .task(id: brandName) {
+            guard let brandName,
+                  !brandName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                logoImage = nil
+                isLoading = false
+                return
+            }
+
+            isLoading = true
+            let image = await LogoService.shared.logoImage(brandName: brandName)
+            logoImage = image
+            isLoading = false
         }
     }
-    
+
     private var fallbackIcon: some View {
         Image(systemName: "creditcard")
             .font(.system(size: size * 0.6))
@@ -72,41 +60,12 @@ struct BrandLogoView: View {
             .background(AppColors.secondaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
     }
-    
-    private func updateURL() {
-        guard let brandName = brandName,
-              !brandName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              LogoDevConfig.isAvailable else {
-            logoURL = nil
-            cachedImage = nil
-            return
-        }
-        
-        logoURL = LogoDevConfig.logoURL(for: brandName)
-    }
-
-    private func loadLogoIfNeeded() {
-        guard let brandName = brandName,
-              !brandName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              LogoDevConfig.isAvailable else {
-            return
-        }
-
-        guard !isLoading else { return }
-        isLoading = true
-
-        Task { @MainActor in
-            let image = try? await LogoService.shared.logoImage(brandName: brandName)
-            cachedImage = image
-            isLoading = false
-        }
-    }
 }
 
 #Preview {
     VStack(spacing: 20) {
-        BrandLogoView(brandName: "Netflix", size: 40)
-        BrandLogoView(brandName: "Spotify", size: 32)
+        BrandLogoView(brandName: "netflix.com", size: 40)
+        BrandLogoView(brandName: "spotify.com", size: 32)
         BrandLogoView(brandName: nil, size: 32)
     }
     .padding()
