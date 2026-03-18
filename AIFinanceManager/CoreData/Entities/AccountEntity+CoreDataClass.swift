@@ -25,9 +25,6 @@ extension AccountEntity {
         if let data = iconSourceData,
            let decoded = try? JSONDecoder().decode(IconSource.self, from: data) {
             iconSource = decoded
-        } else if let logoString = logo, let bankLogo = BankLogo(rawValue: logoString), bankLogo != .none {
-            // Fallback: Migrate from old logo field to iconSource (backward compatibility)
-            iconSource = .bankLogo(bankLogo)
         } else {
             iconSource = nil
         }
@@ -92,12 +89,7 @@ extension AccountEntity {
             entity.iconSourceData = nil
         }
 
-        // Keep logo field for backward compatibility
-        if case .bankLogo(let bankLogo) = account.iconSource {
-            entity.logo = bankLogo.rawValue
-        } else {
-            entity.logo = BankLogo.none.rawValue
-        }
+        entity.logo = nil
 
         entity.isDeposit = account.isDeposit
         entity.isLoan = account.isLoan

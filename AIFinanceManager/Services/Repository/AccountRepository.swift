@@ -218,11 +218,7 @@ nonisolated final class AccountRepository: AccountRepositoryProtocol, @unchecked
                     existing.iconSourceData = nil
                 }
 
-                if case .bankLogo(let bankLogo) = account.iconSource {
-                    existing.logo = bankLogo.rawValue
-                } else {
-                    existing.logo = BankLogo.none.rawValue
-                }
+                existing.logo = nil
 
                 existing.isDeposit = account.isDeposit
                 existing.isLoan = account.isLoan

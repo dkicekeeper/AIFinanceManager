@@ -28,9 +28,7 @@ extension RecurringSeriesEntity {
         // brandId may carry an "sf:" prefix for sfSymbol icons — decode via IconSource.from(displayIdentifier:).
         // Legacy brandId values without a recognised prefix fall back to .brandService.
         let iconSource: IconSource?
-        if let logoString = brandLogo, let bankLogo = BankLogo(rawValue: logoString), bankLogo != .none {
-            iconSource = .bankLogo(bankLogo)
-        } else if let brandId = brandId, !brandId.isEmpty {
+        if let brandId = brandId, !brandId.isEmpty {
             iconSource = IconSource.from(displayIdentifier: brandId) ?? .brandService(brandId)
         } else {
             iconSource = nil
@@ -74,9 +72,6 @@ extension RecurringSeriesEntity {
         // sfSymbol uses the "sf:<name>" prefix in brandId so the name survives a CoreData round-trip.
         if let iconSource = series.iconSource {
             switch iconSource {
-            case .bankLogo(let bankLogo):
-                entity.brandLogo = bankLogo.rawValue
-                entity.brandId = nil
             case .brandService(let brandId):
                 entity.brandLogo = nil
                 entity.brandId = brandId

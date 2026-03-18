@@ -281,9 +281,6 @@ nonisolated final class RecurringRepository: RecurringRepositoryProtocol, @unche
         // sfSymbol uses the "sf:<name>" prefix in brandId so the name survives a CoreData round-trip.
         if let iconSource = item.iconSource {
             switch iconSource {
-            case .bankLogo(let bankLogo):
-                entity.brandLogo = bankLogo.rawValue
-                entity.brandId = nil
             case .brandService(let brandId):
                 entity.brandLogo = nil
                 entity.brandId = brandId

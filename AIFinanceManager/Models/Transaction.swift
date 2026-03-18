@@ -442,7 +442,7 @@ struct Account: Identifiable, Codable, Equatable, Hashable {
     let id: String
     var name: String
     var currency: String
-    var iconSource: IconSource? // Unified icon/logo source (SF Symbol, BankLogo, logo.dev)
+    var iconSource: IconSource? // Unified icon/logo source (SF Symbol, brand service)
     var depositInfo: DepositInfo? // Опциональная информация о депозите (nil для обычных счетов)
     var loanInfo: LoanInfo? // Опциональная информация о кредите/рассрочке (nil для обычных счетов)
     var createdDate: Date?
@@ -481,8 +481,6 @@ struct Account: Identifiable, Codable, Equatable, Hashable {
         // Migration: try new iconSource field first, fallback to old bankLogo
         if let savedIconSource = try container.decodeIfPresent(IconSource.self, forKey: .iconSource) {
             iconSource = savedIconSource
-        } else if let oldBankLogo = try container.decodeIfPresent(BankLogo.self, forKey: .bankLogo) {
-            iconSource = oldBankLogo != .none ? .bankLogo(oldBankLogo) : nil
         } else {
             iconSource = nil
         }

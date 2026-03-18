@@ -34,7 +34,7 @@ struct RecurringSeries: Identifiable, Codable, Equatable, Hashable {
     
     // Subscription-specific fields
     var kind: RecurringSeriesKind
-    var iconSource: IconSource? // Unified icon/logo source (SF Symbol, BankLogo, logo.dev)
+    var iconSource: IconSource? // Unified icon/logo source (SF Symbol, brand service)
     var reminderOffsets: [Int]? // Days before charge (e.g., [1, 3, 7, 30])
     var status: SubscriptionStatus? // For subscriptions: active/paused/archived
     
@@ -116,9 +116,11 @@ struct RecurringSeries: Identifiable, Codable, Equatable, Hashable {
         if let savedIconSource = try container.decodeIfPresent(IconSource.self, forKey: .iconSource) {
             iconSource = savedIconSource
         } else {
-            let oldBrandLogo = try container.decodeIfPresent(BankLogo.self, forKey: .brandLogo)
-            let oldBrandId = try container.decodeIfPresent(String.self, forKey: .brandId)
-            iconSource = IconSource.migrate(bankLogo: oldBrandLogo, brandId: oldBrandId, brandName: nil)
+            if let oldBrandId = try container.decodeIfPresent(String.self, forKey: .brandId), !oldBrandId.isEmpty {
+                iconSource = IconSource.from(displayIdentifier: oldBrandId) ?? .brandService(oldBrandId)
+            } else {
+                iconSource = nil
+            }
         }
 
         reminderOffsets = try container.decodeIfPresent([Int].self, forKey: .reminderOffsets)
