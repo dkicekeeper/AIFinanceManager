@@ -273,32 +273,23 @@ struct IconView: View {
             }
         }
 
-        // Применяем padding если задан (используем effectivePadding)
-        let viewWithPadding = Group {
-            if let padding = effectivePadding {
-                viewWithBackground.padding(padding)
-            } else {
-                viewWithBackground
-            }
-        }
-
         // Применяем форму с обрезкой контента ТОЛЬКО для изображений (не SF Symbols)
         let viewWithShape = Group {
             if shouldClipContent {
                 // Для изображений (bank logo, brand logo) - обрезаем по форме
                 switch style.shape {
                 case .circle:
-                    viewWithPadding
+                    viewWithBackground
                         .clipShape(Circle())
                         .contentShape(Circle())
 
                 case .roundedSquare(let radius):
-                    viewWithPadding
+                    viewWithBackground
                         .clipShape(RoundedRectangle(cornerRadius: radius))
                         .contentShape(RoundedRectangle(cornerRadius: radius))
 
                 case .square:
-                    viewWithPadding
+                    viewWithBackground
                         .clipShape(Rectangle())
                         .contentShape(Rectangle())
                 }
@@ -306,15 +297,15 @@ struct IconView: View {
                 // Для SF Symbols - только contentShape для tap area
                 switch style.shape {
                 case .circle:
-                    viewWithPadding
+                    viewWithBackground
                         .contentShape(Circle())
 
                 case .roundedSquare(let radius):
-                    viewWithPadding
+                    viewWithBackground
                         .contentShape(RoundedRectangle(cornerRadius: radius))
 
                 case .square:
-                    viewWithPadding
+                    viewWithBackground
                         .contentShape(Rectangle())
                 }
             }

@@ -137,6 +137,7 @@ struct TransactionEditView: View {
                             placeholder: String(localized: "transactionForm.descriptionPlaceholder"),
                             style: .multiline(min: 2, max: 6)
                         )
+                        .screenPadding()
                     }
                     .animation(AppAnimation.gentleSpring, value: coordinator.errorMessage)
                 }
