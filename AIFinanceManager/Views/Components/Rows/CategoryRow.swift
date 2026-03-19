@@ -41,8 +41,14 @@ struct CategoryRow: View {
                             )
                         }
 
-                        // Иконка
-                        IconView(source: category.iconSource, size: AppIconSize.xxl)
+                        // Иконка с цветом категории
+                        IconView(
+                            source: category.iconSource,
+                            style: .circle(
+                                size: AppIconSize.xxl,
+                                tint: .monochrome(category.color)
+                            )
+                        )
                     }
 
                     // Название и бюджет

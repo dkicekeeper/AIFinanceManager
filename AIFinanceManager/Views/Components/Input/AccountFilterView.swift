@@ -18,12 +18,23 @@ struct AccountFilterView: View {
         accounts.sortedByOrder()
     }
 
+    private var regularAccounts: [Account] {
+        sortedAccounts.filter { !$0.isDeposit && !$0.isLoan }
+    }
+
+    private var depositAccounts: [Account] {
+        sortedAccounts.filter { $0.isDeposit }
+    }
+
+    private var loanAccounts: [Account] {
+        sortedAccounts.filter { $0.isLoan }
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppSpacing.sm) {
-                    // "All Accounts" option
-                    UniversalRow(config: .sheetList) {
+            List {
+                Section {
+                    UniversalRow(config: .settings) {
                         Text(String(localized: "filter.allAccounts"))
                             .font(AppTypography.h4)
                             .fontWeight(.medium)
@@ -38,49 +49,27 @@ struct AccountFilterView: View {
                         selectedAccountId = nil
                         dismiss()
                     }
+                }
 
-                    Divider()
-                        .padding(.leading, AppSpacing.lg)
+                if !regularAccounts.isEmpty {
+                    accountSection(
+                        title: String(localized: "account.type.regular", defaultValue: "Счета"),
+                        accounts: regularAccounts
+                    )
+                }
 
-                    // Account list
-                    ForEach(Array(sortedAccounts.enumerated()), id: \.element.id) { index, account in
-                        let balance = balanceCoordinator?.balances[account.id] ?? 0
+                if !depositAccounts.isEmpty {
+                    accountSection(
+                        title: String(localized: "account.type.deposit", defaultValue: "Депозиты"),
+                        accounts: depositAccounts
+                    )
+                }
 
-                        UniversalRow(
-                            config: .sheetList,
-                            leadingIcon: .custom(
-                                source: account.iconSource,
-                                style: .roundedSquare(size: AppIconSize.xl)
-                            )
-                        ) {
-                            HStack(spacing: 0) {
-                                Text(account.name)
-                                    .font(AppTypography.h4)
-                                    .fontWeight(.medium)
-                                
-                                Spacer()
-                                
-                                Text(Formatting.formatCurrencySmart(balance, currency: account.currency))
-                                    .font(AppTypography.h4)
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
-                        } trailing: {
-                            if selectedAccountId == account.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(AppColors.accent)
-                            }
-                        }
-                        .selectableRow(isSelected: selectedAccountId == account.id) {
-                            HapticManager.selection()
-                            selectedAccountId = account.id
-                            dismiss()
-                        }
-
-                        if index < sortedAccounts.count - 1 {
-                            Divider()
-                                .padding(.leading, AppSpacing.lg)
-                        }
-                    }
+                if !loanAccounts.isEmpty {
+                    accountSection(
+                        title: String(localized: "account.type.loan", defaultValue: "Кредиты"),
+                        accounts: loanAccounts
+                    )
                 }
             }
             .navigationTitle(String(localized: "filter.accounts", defaultValue: "Счета"))
@@ -95,6 +84,48 @@ struct AccountFilterView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Account Section
+
+    private func accountSection(title: String, accounts: [Account]) -> some View {
+        Section {
+            ForEach(accounts) { account in
+                let balance = balanceCoordinator?.balances[account.id] ?? 0
+
+                UniversalRow(
+                    config: .settings,
+                    leadingIcon: .custom(
+                        source: account.iconSource,
+                        style: .roundedSquare(size: AppIconSize.xl)
+                    )
+                ) {
+                    HStack(spacing: 0) {
+                        Text(account.name)
+                            .font(AppTypography.h4)
+                            .fontWeight(.medium)
+
+                        Spacer()
+
+                        Text(Formatting.formatCurrencySmart(balance, currency: account.currency))
+                            .font(AppTypography.h4)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                } trailing: {
+                    if selectedAccountId == account.id {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(AppColors.accent)
+                    }
+                }
+                .selectableRow(isSelected: selectedAccountId == account.id) {
+                    HapticManager.selection()
+                    selectedAccountId = account.id
+                    dismiss()
+                }
+            }
+        } header: {
+            SectionHeaderView(title)
         }
     }
 }

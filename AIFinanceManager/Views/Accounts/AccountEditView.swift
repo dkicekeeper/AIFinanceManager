@@ -60,8 +60,8 @@ struct AccountEditView: View {
         .onAppear {
             if let account = account {
                 name = account.name
-                // Use initialBalance for editing (for manual accounts)
-                let balanceValue = account.initialBalance ?? 0
+                // Show current balance (not initialBalance) so user sees real value
+                let balanceValue = account.balance
                 balanceText = AmountFormatter.format(Decimal(balanceValue))
                 currency = account.currency
                 selectedIconSource = account.iconSource

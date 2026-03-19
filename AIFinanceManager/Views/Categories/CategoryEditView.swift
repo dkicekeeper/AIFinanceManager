@@ -48,7 +48,7 @@ struct CategoryEditView: View {
             onCancel: onCancel
         ) {
             ScrollView {
-                VStack(spacing: AppSpacing.lg) {
+                VStack(spacing: AppSpacing.xxl) {
                     // Hero Section with Icon and Name
                     EditableHeroSection(
                         iconSource: $selectedIconSource,

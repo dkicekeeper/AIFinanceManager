@@ -86,6 +86,11 @@ struct UniversalCarousel<Content: View>: View {
             // ScrollViewReader version for auto-scroll support
             ScrollViewReader { proxy in
                 scrollViewContent
+                    .onAppear {
+                        guard let id = scrollBinding.wrappedValue else { return }
+                        // Immediate scroll without animation on initial appear
+                        proxy.scrollTo(id, anchor: .center)
+                    }
                     .onChange(of: scrollBinding.wrappedValue) { _, newId in
                         guard let newId else { return }
                         withAnimation(config.scrollAnimation) {

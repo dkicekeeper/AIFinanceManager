@@ -60,7 +60,7 @@ struct SubcategoryReorderView: View {
                                     }
                                 }
                                 .font(AppTypography.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppColors.textSecondary)
                             }
                         }
                         .onMove(perform: moveSubcategory)

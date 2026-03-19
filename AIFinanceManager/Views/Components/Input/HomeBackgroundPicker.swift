@@ -40,38 +40,33 @@ struct HomeBackgroundPicker: View {
 
     // MARK: - Layout constants
 
-    private let cardWidth: CGFloat  = 100
     private let cardHeight: CGFloat = 168   // ~9:16 phone aspect ratio
 
     // MARK: - Body
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: AppSpacing.md) {
-                ForEach(HomeBackgroundMode.allCases, id: \.self) { mode in
-                    if mode == .wallpaper {
-                        // Wallpaper card — tap always opens photo picker
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            modeCard(mode)
-                        }
-                        .onChange(of: selectedPhoto) { _, newItem in
-                            guard newItem != nil else { return }
-                            onModeSelect(.wallpaper)
-                            Task { await onPhotoChange(newItem) }
-                        }
-                    } else {
-                        Button { onModeSelect(mode) } label: {
-                            modeCard(mode)
-                        }
-                        .buttonStyle(.plain)
+        VStack(spacing: AppSpacing.md) {
+            ForEach(HomeBackgroundMode.allCases, id: \.self) { mode in
+                if mode == .wallpaper {
+                    // Wallpaper card — tap always opens photo picker
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        modeCard(mode)
                     }
+                    .onChange(of: selectedPhoto) { _, newItem in
+                        guard newItem != nil else { return }
+                        onModeSelect(.wallpaper)
+                        Task { await onPhotoChange(newItem) }
+                    }
+                } else {
+                    Button { onModeSelect(mode) } label: {
+                        modeCard(mode)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, AppSpacing.lg)
-            .padding(.vertical, AppSpacing.sm)
-            .scrollTargetLayout()
         }
-        .scrollTargetBehavior(.viewAligned)
+        .padding(.horizontal, AppSpacing.lg)
+        .padding(.vertical, AppSpacing.sm)
         .animation(AppAnimation.gentleSpring, value: currentMode)
     }
 
@@ -80,36 +75,40 @@ struct HomeBackgroundPicker: View {
     private func modeCard(_ mode: HomeBackgroundMode) -> some View {
         let isSelected = currentMode == mode
 
-        return VStack(spacing: AppSpacing.xs) {
-            // Card artwork + selection chrome
+        return HStack(spacing: AppSpacing.md) {
+            // Card artwork thumbnail
             ZStack(alignment: .topTrailing) {
                 modeArtwork(mode)
-                    .frame(width: cardWidth, height: cardHeight)
-                    .clipShape(.rect(cornerRadius: AppRadius.xl))
+                    .frame(width: 80, height: 120)
+                    .clipShape(.rect(cornerRadius: AppRadius.lg))
 
                 // Checkmark badge — top-trailing
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: AppIconSize.md, weight: .semibold))
+                        .font(.system(size: AppIconSize.sm, weight: .semibold))
                         .foregroundStyle(.white)
                         .background(Circle().fill(AppColors.accent).padding(-2))
-                        .padding(AppSpacing.sm)
+                        .padding(AppSpacing.xs)
                 }
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.xl)
-                    .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: 3)
-            )
-            .animation(AppAnimation.contentSpring, value: isSelected)
 
-            // Label below the card — always readable
+            // Label to the right
             Text(mode.localizedTitle)
-                .font(AppTypography.caption)
-                .foregroundStyle(isSelected ? AppColors.accent : AppColors.textSecondary)
-                .frame(width: cardWidth)
-                .multilineTextAlignment(.center)
-                .animation(AppAnimation.contentSpring, value: isSelected)
+                .font(AppTypography.body)
+                .foregroundStyle(isSelected ? AppColors.accent : AppColors.textPrimary)
+
+            Spacer()
         }
+        .padding(AppSpacing.md)
+        .background {
+            RoundedRectangle(cornerRadius: AppRadius.xl)
+                .fill(Color(.secondarySystemGroupedBackground))
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.xl)
+                .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: 3)
+        )
+        .animation(AppAnimation.contentSpring, value: isSelected)
         .accessibilityLabel(mode.localizedTitle)
         .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
     }
@@ -157,25 +156,22 @@ struct HomeBackgroundPicker: View {
             }
 
         case .wallpaper:
-            // Photo thumbnail or placeholder; blurred when blur mode is on
-            Group {
-                if let image = wallpaperImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Rectangle()
-                        .fill(Color(.secondarySystemGroupedBackground))
-                        .overlay(
-                            Image(systemName: "photo")
-                                .font(.system(size: 40, weight: .ultraLight))
-                                .foregroundStyle(Color(.tertiaryLabel))
-                        )
-                }
+            // Photo thumbnail or placeholder; blur only applied to real photos
+            if let image = wallpaperImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .blur(radius: blurWallpaper ? 8 : 0, opaque: true)
+                    .animation(AppAnimation.gentleSpring, value: blurWallpaper)
+            } else {
+                Rectangle()
+                    .fill(Color(.tertiarySystemGroupedBackground))
+                    .overlay(
+                        Image(systemName: "photo")
+                            .font(.system(size: 28, weight: .ultraLight))
+                            .foregroundStyle(Color(.tertiaryLabel))
+                    )
             }
-            // opaque: true prevents transparent blur edges within the card bounds
-            .blur(radius: blurWallpaper ? 8 : 0, opaque: true)
-            .animation(AppAnimation.gentleSpring, value: blurWallpaper)
         }
     }
 }

@@ -94,7 +94,7 @@ struct SubscriptionCalendarView: View {
                 FormattedAmountText(
                     amount: NSDecimalNumber(decimal: total).doubleValue,
                     currency: baseCurrency,
-                    fontSize: AppTypography.bodyEmphasis,
+                    fontSize: AppTypography.h4,
                     color: AppColors.textPrimary
                 )
                 .animation(.easeInOut(duration: AppAnimation.standard), value: isExpanded)
@@ -118,7 +118,7 @@ struct SubscriptionCalendarView: View {
         LazyVGrid(columns: columns, spacing: 0) {
             ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                 Text(symbol)
-                    .font(AppTypography.bodySmall)
+                    .font(AppTypography.body)
                     .fontWeight(.semibold)
                     .foregroundStyle(AppColors.textSecondary)
                     .frame(height: 20)
@@ -202,9 +202,9 @@ struct SubscriptionCalendarView: View {
 
         return VStack(spacing: AppSpacing.xs) {
             Text("\(calendar.component(.day, from: date))")
-                .font(isToday ? AppTypography.bodySmall.weight(.semibold) : AppTypography.bodySmall)
+                .font(isToday ? AppTypography.body.weight(.semibold) : AppTypography.body)
                 .foregroundStyle(isToday ? AppColors.accent : AppColors.textPrimary)
-                .frame(width: 32, height: 32)
+                .frame(width: 48, height: 48)
                 .background(isToday ? AppColors.accent.opacity(0.1) : Color.clear)
                 .clipShape(Circle())
                 .animation(.easeInOut(duration: AppAnimation.fast), value: isToday)
@@ -231,7 +231,7 @@ struct SubscriptionCalendarView: View {
                 Spacer().frame(height: AppIconSize.md)
             }
         }
-        .frame(height: 60)
+        .frame(height: 64)
     }
 
     private func logoView(for sub: RecurringSeries, size: CGFloat) -> some View {

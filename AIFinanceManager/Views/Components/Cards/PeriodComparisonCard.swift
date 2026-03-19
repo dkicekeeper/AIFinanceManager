@@ -3,7 +3,7 @@
 //  AIFinanceManager
 //
 //  Period-over-period comparison card (current vs previous).
-//  Extracted from CategoryDeepDiveView.comparisonSection — Phase 26.
+//  Extracted from InsightDeepDiveView.comparisonSection — Phase 26.
 //
 
 import SwiftUI

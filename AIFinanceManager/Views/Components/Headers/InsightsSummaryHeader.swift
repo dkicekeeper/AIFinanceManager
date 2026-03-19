@@ -23,7 +23,7 @@ struct InsightsSummaryHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
-            InsightsTotalsRow(
+            InsightsTotalsCard(
                 income: totalIncome,
                 expenses: totalExpenses,
                 netFlow: netFlow,

@@ -350,12 +350,12 @@ struct InsightsView: View {
     /// Builds the correct InsightDetailView variant depending on category.
     /// Spending insights get category drill-down; all others are read-only.
     /// @ViewBuilder enables conditional branches with different generic specialisations
-    /// (InsightDetailView<CategoryDeepDiveView> vs InsightDetailView<Never>) without AnyView.
+    /// (InsightDetailView<InsightDeepDiveView> vs InsightDetailView<Never>) without AnyView.
     @ViewBuilder
     private func insightDetailView(for insight: Insight) -> some View {
         if insight.category == .spending {
             InsightDetailView(insight: insight, currency: insightsViewModel.baseCurrency) { item in
-                CategoryDeepDiveView(
+                InsightDeepDiveView(
                     categoryName: item.categoryName,
                     color: item.color,
                     iconSource: item.iconSource,

@@ -48,10 +48,10 @@ struct CategoryFilterView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // "All Categories" option
-                    UniversalRow(config: .sheetList) {
+            List {
+                // "All Categories" option
+                Section {
+                    UniversalRow(config: .settings) {
                         Text(String(localized: "categoryFilter.allCategories"))
                             .font(AppTypography.h4)
                             .fontWeight(.medium)
@@ -67,32 +67,32 @@ struct CategoryFilterView: View {
                         selectedIncomeCategories.removeAll()
                         selectedDeletedCategories.removeAll()
                     }
+                }
 
-                    // MARK: - Expense Categories
+                // MARK: - Expense Categories
+                categorySection(
+                    title: String(localized: "transactionType.expense"),
+                    categories: activeExpenseCategories,
+                    emptyText: String(localized: "categoryFilter.noExpenseCategories"),
+                    selected: $selectedExpenseCategories
+                )
+
+                // MARK: - Income Categories
+                categorySection(
+                    title: String(localized: "transactionType.income"),
+                    categories: activeIncomeCategories,
+                    emptyText: String(localized: "categoryFilter.noIncomeCategories"),
+                    selected: $selectedIncomeCategories
+                )
+
+                // MARK: - Deleted Categories
+                if !deletedCategories.isEmpty {
                     categorySection(
-                        title: String(localized: "transactionType.expense"),
-                        categories: activeExpenseCategories,
-                        emptyText: String(localized: "categoryFilter.noExpenseCategories"),
-                        selected: $selectedExpenseCategories
+                        title: String(localized: "categoryFilter.deletedCategories"),
+                        categories: deletedCategories,
+                        emptyText: nil,
+                        selected: $selectedDeletedCategories
                     )
-
-                    // MARK: - Income Categories
-                    categorySection(
-                        title: String(localized: "transactionType.income"),
-                        categories: activeIncomeCategories,
-                        emptyText: String(localized: "categoryFilter.noIncomeCategories"),
-                        selected: $selectedIncomeCategories
-                    )
-
-                    // MARK: - Deleted Categories
-                    if !deletedCategories.isEmpty {
-                        categorySection(
-                            title: String(localized: "categoryFilter.deletedCategories"),
-                            categories: deletedCategories,
-                            emptyText: nil,
-                            selected: $selectedDeletedCategories
-                        )
-                    }
                 }
             }
             .navigationTitle(String(localized: "navigation.categoryFilter"))
@@ -129,43 +129,35 @@ struct CategoryFilterView: View {
 
     // MARK: - Category Section
 
-    @ViewBuilder
     private func categorySection(
         title: String,
         categories: [String],
         emptyText: String?,
         selected: Binding<Set<String>>
     ) -> some View {
-        SectionHeaderView(title, style: .compact)
-            .padding(.top, AppSpacing.lg)
-            .padding(.bottom, AppSpacing.sm)
-
-        if categories.isEmpty {
-            if let emptyText {
-                Text(emptyText)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, AppSpacing.lg)
-                    .padding(.vertical, AppSpacing.sm)
-            }
-        } else {
-            ForEach(Array(categories.enumerated()), id: \.element) { index, category in
-                categoryRow(
-                    category: category,
-                    isSelected: selected.wrappedValue.contains(category)
-                ) {
-                    HapticManager.selection()
-                    if selected.wrappedValue.contains(category) {
-                        selected.wrappedValue.remove(category)
-                    } else {
-                        selected.wrappedValue.insert(category)
+        Section {
+            if categories.isEmpty {
+                if let emptyText {
+                    Text(emptyText)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                ForEach(categories, id: \.self) { category in
+                    categoryRow(
+                        category: category,
+                        isSelected: selected.wrappedValue.contains(category)
+                    ) {
+                        HapticManager.selection()
+                        if selected.wrappedValue.contains(category) {
+                            selected.wrappedValue.remove(category)
+                        } else {
+                            selected.wrappedValue.insert(category)
+                        }
                     }
                 }
-
-                if index < categories.count - 1 {
-                    Divider()
-                        .padding(.leading, AppSpacing.lg)
-                }
             }
+        } header: {
+            SectionHeaderView(title)
         }
     }
 
@@ -176,7 +168,7 @@ struct CategoryFilterView: View {
         let iconConfig = iconConfig(for: category)
 
         UniversalRow(
-            config: .sheetList,
+            config: .settings,
             leadingIcon: iconConfig
         ) {
             Text(category)

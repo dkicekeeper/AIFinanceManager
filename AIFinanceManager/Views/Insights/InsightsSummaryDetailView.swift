@@ -59,7 +59,7 @@ struct InsightsSummaryDetailView: View {
     // MARK: - Period Totals
 
     private var periodTotalsSection: some View {
-        InsightsTotalsRow(
+        InsightsTotalsCard(
             income: totalIncome,
             expenses: totalExpenses,
             netFlow: netFlow,

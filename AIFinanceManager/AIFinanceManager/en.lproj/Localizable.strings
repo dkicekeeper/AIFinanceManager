@@ -86,8 +86,8 @@
 "settings.baseCurrency" = "Base Currency";
 "settings.wallpaper" = "Home Wallpaper";
 "settings.background" = "Background";
-"settings.background.none" = "None";
-"settings.background.gradient" = "Gradient";
+"settings.background.none" = "No Background";
+"settings.background.gradient" = "Expense Colors";
 "settings.background.photo" = "Photo";
 "settings.background.blurWallpaper" = "Blur Wallpaper";
 "settings.background.removePhoto" = "Remove Photo";

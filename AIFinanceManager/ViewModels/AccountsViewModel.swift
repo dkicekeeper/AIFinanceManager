@@ -86,20 +86,40 @@ class AccountsViewModel {
     }
     
     func updateAccount(_ account: Account) {
-        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-            let oldInitialBalance = accounts[index].initialBalance ?? 0
+        guard let index = accounts.firstIndex(where: { $0.id == account.id }) else { return }
+        let oldAccount = accounts[index]
 
-            // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
-            transactionStore?.updateAccount(account)
+        // AccountEditView passes the desired balance as account.initialBalance
+        let desiredBalance = account.initialBalance ?? oldAccount.balance
+        let balanceChanged = abs(desiredBalance - oldAccount.balance) > 0.001
 
-            // NEW: Update BalanceCoordinator if initialBalance changed
-            let newInitialBalance = account.initialBalance ?? 0
-            if let coordinator = balanceCoordinator, abs(oldInitialBalance - newInitialBalance) > 0.001 {
-                Task {
-                    await coordinator.setInitialBalance(newInitialBalance, for: account.id)
-                    await coordinator.markAsManual(account.id)
-                }
+        if balanceChanged, let coordinator = balanceCoordinator, let store = transactionStore {
+            // Back-calculate correct initialBalance: initialBalance = desiredBalance - Σ(transactions)
+            let engine = BalanceCalculationEngine()
+            let correctInitialBalance = engine.calculateInitialBalance(
+                currentBalance: desiredBalance,
+                accountId: account.id,
+                accountCurrency: account.currency,
+                transactions: store.transactions
+            )
+
+            var corrected = account
+            corrected.initialBalance = correctInitialBalance
+            corrected.shouldCalculateFromTransactions = false
+            store.updateAccount(corrected)
+
+            Task {
+                await coordinator.setInitialBalance(correctInitialBalance, for: account.id)
+                await coordinator.markAsManual(account.id)
+                await coordinator.recalculateAccounts(
+                    [account.id],
+                    accounts: store.accounts,
+                    transactions: store.transactions
+                )
             }
+        } else {
+            // No balance change — just update name/currency/icon
+            transactionStore?.updateAccount(account)
         }
     }
 

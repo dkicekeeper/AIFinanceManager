@@ -50,7 +50,12 @@ struct LoansListView: View {
                 EmptyStateView(
                     icon: "creditcard",
                     title: String(localized: "loan.emptyTitle", defaultValue: "No Loans"),
-                    description: String(localized: "loan.emptyDescription", defaultValue: "Add your credits and installments to track payments and progress")
+                    description: String(localized: "loan.emptyDescription", defaultValue: "Add your credits and installments to track payments and progress"),
+                    actionTitle: String(localized: "loan.addLoan", defaultValue: "Add Loan"),
+                    action: {
+                        HapticManager.light()
+                        showingAddLoan = true
+                    }
                 )
             } else {
                 ScrollView {

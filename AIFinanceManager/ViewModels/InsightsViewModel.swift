@@ -229,7 +229,7 @@ final class InsightsViewModel {
         let currentEnd   = currentGranularity.periodEnd(for: currentKey)
         let currentFilter = TimeFilter(preset: .custom, startDate: currentStart, endDate: currentEnd)
 
-        // Previous bucket — for the comparison card in CategoryDeepDiveView.
+        // Previous bucket — for the comparison card in InsightDeepDiveView.
         let prevKey   = currentGranularity.previousPeriodKey
         let prevStart = currentGranularity.periodStart(for: prevKey)
         let prevEnd   = currentStart   // prev bucket ends where current bucket begins

@@ -91,7 +91,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
         Group {
             switch insight.detailData {
             case .categoryBreakdown(let items):
-                DonutChart(slices: DonutSlice.from(items))
+                DonutChart(slices: DonutSlice.from(items), showLegend: false)
             case .periodTrend(let points):
                 // Phase 18 — granularity-aware chart.
                 // Phase 30 — different chart type per insight.type.
@@ -125,7 +125,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
                 EmptyView()
             }
         }
-//        .screenPadding()
+        .screenPadding()
     }
 
     // P22: LazyVStack eliminates upfront layout of all budget rows
@@ -170,23 +170,23 @@ struct InsightDetailView<CategoryDestination: View>: View {
 
     private func categoryDetailList(_ items: [CategoryBreakdownItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            SectionHeaderView(String(localized: "insights.breakdown"), style: .large)
+//            SectionHeaderView(String(localized: "insights.breakdown"), style: .default)
 
             ForEach(items) { item in
                 categoryRow(item)
             }
         }
+        .screenPadding()
     }
 
     @ViewBuilder
     private func categoryRow(_ item: CategoryBreakdownItem) -> some View {
         let rowContent = HStack(spacing: AppSpacing.md) {
-            Circle()
-                .fill(item.color)
-                .frame(width: 12, height: 12)
-
             if let iconSource = item.iconSource {
-                IconView(source: iconSource, size: AppIconSize.lg)
+                IconView(
+                    source: iconSource,
+                    style: .circle(size: AppIconSize.xl, tint: .monochrome(item.color))
+                )
             }
 
             VStack(alignment: .leading, spacing: AppSpacing.xxs) {
@@ -219,7 +219,6 @@ struct InsightDetailView<CategoryDestination: View>: View {
             }
         }
         .padding(.vertical, AppSpacing.sm)
-        .screenPadding()
 
         // P9: drill-down destination — generic CategoryDestination, no AnyView type erasure
         if let tapHandler = _onCategoryTap {

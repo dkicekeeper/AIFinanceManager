@@ -26,15 +26,11 @@ struct TimeFilterView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // MARK: - Presets
-                    SectionHeaderView(String(localized: "timeFilter.presets", defaultValue: "Пресеты"), style: .compact)
-                        .padding(.top, AppSpacing.md)
-                        .padding(.bottom, AppSpacing.sm)
-
-                    ForEach(Array(presetOptions.enumerated()), id: \.element) { index, preset in
-                        UniversalRow(config: .sheetList) {
+            List {
+                // MARK: - Presets
+                Section {
+                    ForEach(presetOptions, id: \.self) { preset in
+                        UniversalRow(config: .settings) {
                             Text(preset.localizedName)
                                 .font(AppTypography.h4)
                                 .fontWeight(.regular)
@@ -49,19 +45,14 @@ struct TimeFilterView: View {
                             filterManager.setPreset(preset)
                             dismiss()
                         }
-
-                        if index < presetOptions.count - 1 {
-                            Divider()
-                                .padding(.leading, AppSpacing.lg)
-                        }
                     }
+                } header: {
+                    SectionHeaderView(String(localized: "timeFilter.presets", defaultValue: "Пресеты"))
+                }
 
-                    // MARK: - Custom Range
-                    SectionHeaderView(String(localized: "timeFilter.customRange", defaultValue: "Свой период"), style: .compact)
-                        .padding(.top, AppSpacing.lg)
-                        .padding(.bottom, AppSpacing.sm)
-
-                    UniversalRow(config: .sheetList) {
+                // MARK: - Custom Range
+                Section {
+                    UniversalRow(config: .settings) {
                         VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                             Text(String(localized: "timeFilter.customPeriod", defaultValue: "Пользовательский период"))
                                 .font(AppTypography.h4)
@@ -82,6 +73,8 @@ struct TimeFilterView: View {
                         selectedPreset = .custom
                         showingCustomPicker = true
                     }
+                } header: {
+                    SectionHeaderView(String(localized: "timeFilter.customRange", defaultValue: "Свой период"))
                 }
             }
             .navigationTitle(String(localized: "timeFilter.title", defaultValue: "Фильтр по времени"))
