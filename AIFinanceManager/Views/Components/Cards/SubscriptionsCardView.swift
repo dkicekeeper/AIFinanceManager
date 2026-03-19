@@ -40,9 +40,10 @@ struct SubscriptionsCardView: View {
                 } else {
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {
                         if isLoadingTotal {
-                            // Fix #13: skeleton instead of ProgressView — seamless visual
-                            // continuity with the outer skeleton; no spinner flash after it lifts.
-                            SkeletonView(width: 120, height: 20)
+                            Text("0000.00")
+                                .font(AppTypography.h2)
+                                .fontWeight(.bold)
+                                .redacted(reason: .placeholder)
                         } else {
                             FormattedAmountText(
                                 amount: totalAmount,

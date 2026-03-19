@@ -60,8 +60,7 @@ struct TransactionEditView: View {
                         // Hero: category icon + name (or transfer icon)
                         HeroSection(
                             iconSource: heroIconSource,
-                            title: heroTitle,
-                            colorHex: heroCategory?.colorHex
+                            title: heroTitle
                         )
 
                         // Error banner

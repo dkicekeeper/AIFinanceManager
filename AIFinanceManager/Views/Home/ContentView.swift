@@ -214,31 +214,15 @@ struct ContentView: View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
                 accountsSection
-                    .skeletonLoading(isLoading: !coordinator.isFastPathDone) {
-                        AccountsCarouselSkeleton()
-                    }
+                    .contentReveal(isReady: coordinator.isFastPathDone)
                 historyNavigationLink
-                    .skeletonLoading(isLoading: !coordinator.isFullyInitialized) {
-                        // .screenPadding() mirrors the one inside historyNavigationLink —
-                        // SkeletonLoadingModifier shows skeleton XOR real content, never both.
-                        SectionCardSkeleton()
-                            .screenPadding()
-                    }
+                    .contentReveal(isReady: coordinator.isFullyInitialized)
                 subscriptionsNavigationLink
-                    .skeletonLoading(isLoading: !coordinator.isFullyInitialized) {
-                        SectionCardSkeleton()
-                            .screenPadding()
-                    }
+                    .contentReveal(isReady: coordinator.isFullyInitialized, delay: 0.05)
                 loansNavigationLink
-                    .skeletonLoading(isLoading: !coordinator.isFullyInitialized) {
-                        SectionCardSkeleton()
-                            .screenPadding()
-                    }
+                    .contentReveal(isReady: coordinator.isFullyInitialized, delay: 0.1)
                 categoriesSection
-                    .skeletonLoading(isLoading: !coordinator.isFastPathDone) {
-                        SectionCardSkeleton()
-                            .screenPadding()
-                    }
+                    .contentReveal(isReady: coordinator.isFastPathDone, delay: 0.05)
                 errorSection
             }
             .padding(.vertical, AppSpacing.md)
@@ -468,43 +452,6 @@ struct ContentView: View {
 // MARK: - Skeleton Components
 
 /// Accounts carousel skeleton: 3 cards (200×120) in horizontal scroll.
-private struct AccountsCarouselSkeleton: View {
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: AppSpacing.md) {
-                ForEach(0..<3, id: \.self) { _ in
-                    SkeletonView(height: 120, cornerRadius: AppRadius.md)
-                        .frame(width: 200)
-                }
-            }
-            .padding(.horizontal, AppSpacing.lg)
-            .padding(.vertical, AppSpacing.xs)
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-/// Generic section card skeleton: icon circle + 2 text lines.
-/// Used for TransactionsSummaryCard, SubscriptionsCard, and QuickAdd skeletons.
-private struct SectionCardSkeleton: View {
-    var body: some View {
-        HStack(spacing: AppSpacing.md) {
-            SkeletonView(width: 36, height: 36, cornerRadius: AppRadius.circle)
-            VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                SkeletonView(width: 140, height: 14)
-                SkeletonView(width: 100, height: 12, cornerRadius: AppRadius.xs)
-            }
-            Spacer()
-        }
-        .padding(AppSpacing.md)
-        .frame(maxWidth: .infinity, minHeight: 72)
-        // Fix #10: use design token instead of raw Color(.secondarySystemGroupedBackground)
-        .background(AppColors.secondaryBackground)
-        .clipShape(.rect(cornerRadius: AppRadius.md))
-        .accessibilityHidden(true)
-    }
-}
-
 // MARK: - Preview
 
 #Preview {

@@ -41,23 +41,6 @@ enum AppAnimation {
     /// response 0.55 + damping 0.72 = smooth bar expansion with slight bounce.
     static let progressBarSpring = Animation.spring(response: 0.55, dampingFraction: 0.72)
 
-    // MARK: - Skeleton Loading
-
-    /// Shimmer sweep duration (left-to-right single pass)
-    static let shimmerDuration: Double = 1.4
-
-    /// SkeletonLoadingModifier spring response (skeleton ↔ content transition)
-    static let skeletonResponse: Double = 0.4
-
-    /// Scale value for skeleton entrance/exit transition
-    static let skeletonScale: CGFloat = 0.97
-
-    /// Opacity of shimmer highlight in dark mode
-    static let shimmerOpacityDark: CGFloat = 0.15
-
-    /// Opacity of shimmer highlight in light mode
-    static let shimmerOpacityLight: CGFloat = 0.6
-
     // MARK: - MessageBanner
 
     /// Banner entrance spring response
@@ -154,12 +137,6 @@ enum AppAnimation {
             : spring
     }
 
-    /// Продолжительность shimmer-анимации с учётом Reduce Motion.
-    /// Когда Reduce Motion включён — возвращает 0, что эффективно останавливает shimmer.
-    /// Используй в `SkeletonLoadingModifier` вместо прямого `shimmerDuration`.
-    static var adaptiveShimmerDuration: Double {
-        UIAccessibility.isReduceMotionEnabled ? 0 : shimmerDuration
-    }
 }
 
 // MARK: - Interactive Button Style

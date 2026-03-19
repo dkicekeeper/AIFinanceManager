@@ -34,8 +34,8 @@ struct InsightsView: View {
                 }
             }
             .padding(.vertical, AppSpacing.md)
-            // Note: no outer animation needed — each section's SkeletonLoadingModifier
-            // owns its own spring animation, preventing compositing conflicts.
+            // Note: no outer animation needed — each section's ContentRevealModifier
+            // owns its own opacity animation, preventing compositing conflicts.
         }
         .navigationTitle(String(localized: "insights.title"))
         .navigationBarTitleDisplayMode(.large)
@@ -135,19 +135,14 @@ struct InsightsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .skeletonLoading(isLoading: insightsViewModel.isLoading) {
-            InsightsSummaryHeaderSkeleton()
-                .padding(.horizontal, AppSpacing.lg)
-        }
+        .contentReveal(isReady: !insightsViewModel.isLoading)
     }
 
     // MARK: - Filter Section
 
     private var insightsFilterSection: some View {
         categoryFilterCarousel
-            .skeletonLoading(isLoading: insightsViewModel.isLoading) {
-                InsightsFilterCarouselSkeleton()
-            }
+            .contentReveal(isReady: !insightsViewModel.isLoading, delay: 0.05)
     }
 
     // MARK: - Content Sections
@@ -157,16 +152,7 @@ struct InsightsView: View {
         // isLoading). While loading, filteredInsights is empty, so insightSections resolves to
         // the "no insights" empty view — this is discarded in favour of the skeleton. Accepted trade-off.
         insightSections
-            .skeletonLoading(isLoading: insightsViewModel.isLoading) {
-                // 3 placeholder cards — intentionally fewer than the 8 actual section count
-                // to keep skeleton height compact and avoid jarring layout shift on reveal.
-                VStack(spacing: AppSpacing.md) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        InsightCardSkeleton()
-                    }
-                }
-                .padding(.horizontal, AppSpacing.lg)
-            }
+            .contentReveal(isReady: !insightsViewModel.isLoading, delay: 0.1)
     }
 
     // MARK: - Insight Sections

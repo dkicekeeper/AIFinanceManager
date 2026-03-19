@@ -95,6 +95,7 @@ struct TransactionsSummaryCard: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+        .padding(AppSpacing.lg)
         .cardStyle()
         .accessibilityElement(children: .combine)
     }

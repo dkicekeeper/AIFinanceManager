@@ -34,19 +34,7 @@ struct InsightsSummaryHeader: View {
             if let hs = healthScore {
                 HealthScoreBadge(score: hs)
             }
-
-            // Mini trend chart.
-            // Using cardBackground (not cardStyle) so clipShape doesn't cut Charts layers.
-//            if periodDataPoints.count >= 2 {
-//                PeriodIncomeExpenseChart(
-//                    dataPoints: periodDataPoints,
-//                    currency: currency,
-//                    granularity: periodDataPoints.first?.granularity ?? .month,
-//                    mode: .compact
-//                )
-//            }
         }
-        .cardStyle(radius: AppRadius.xl)
         .onAppear {
             Self.logger.debug("📊 [SummaryHeader] RENDER — income=\(String(format: "%.0f", totalIncome), privacy: .public), expenses=\(String(format: "%.0f", totalExpenses), privacy: .public), net=\(String(format: "%.0f", netFlow), privacy: .public) \(currency, privacy: .public), pts=\(periodDataPoints.count)")
         }

@@ -66,8 +66,7 @@ AIFinanceManager/
 │   │   ├── Input/       # Interactive input (AmountInput, CategoryGrid, Carousel, …)
 │   │   ├── Charts/      # Data visualization (DonutChart, PeriodBarChart, …)
 │   │   ├── Headers/     # Section headers and hero displays (HeroSection, …)
-│   │   ├── Feedback/    # Banners, badges, status (MessageBanner, StatusBadge, …)
-│   │   └── Skeleton/    # Loading states (SkeletonView, SkeletonLoadingModifier)
+│   │   └── Feedback/    # Banners, badges, status, content reveal (MessageBanner, StatusBadge, ContentRevealModifier)
 │   ├── Accounts/        # Account management views
 │   ├── Transactions/    # Transaction views
 │   ├── Categories/      # Category views
@@ -117,7 +116,7 @@ AIFinanceManager/
 - Located at: `AIFinanceManager/ViewModels/AppCoordinator.swift`
 - Provides: Repository, all ViewModels, Stores, and Coordinators
 - Two-phase startup: `initializeFastPath()` loads accounts+categories (<50ms) → UI visible instantly; full 19k-transaction load runs in background via `initialize()`
-- Observable flags `isFastPathDone` / `isFullyInitialized` drive per-section skeleton display
+- Observable flags `isFastPathDone` / `isFullyInitialized` drive per-section content reveal (staggered fade-in via `ContentRevealModifier`)
 
 #### TransactionStore
 - **THE** single source of truth for transactions, accounts, and categories
@@ -178,7 +177,7 @@ AIFinanceManager/
 - CoreData v6 model (`depositInfoData`, `isLoan`, `loanInfoData` on AccountEntity, `recurringSeriesId` String on `TransactionEntity`)
 - Old aggregate entities (`MonthlyAggregateEntity`, `CategoryAggregateEntity`) remain in `.xcdatamodeld` but are not read/written
 - ContentView reactivity via `.task(id: SummaryTrigger)` — no manual `onChange` chains
-- Per-element skeleton loading during initialization (`SkeletonLoadingModifier`)
+- Per-element staggered fade-in during initialization (`ContentRevealModifier` — preserves view identity, no layout recalc spike)
 - `IconSource` has 2 cases: `.sfSymbol(String)` and `.brandService(String)`. `displayIdentifier` produces `"sf:\(name)"` / `"brand:\(name)"` format; `from(displayIdentifier:)` decodes it
 - **⚠️ BankLogo enum deleted** — all logos go through provider chain via `.brandService(domain)`
 

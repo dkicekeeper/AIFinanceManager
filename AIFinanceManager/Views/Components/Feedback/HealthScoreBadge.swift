@@ -37,6 +37,8 @@ struct HealthScoreBadge: View {
                 .background(score.gradeColor.opacity(0.12))
                 .clipShape(Capsule())
         }
+        .padding(AppSpacing.lg)
+        .cardStyle()
     }
 }
 

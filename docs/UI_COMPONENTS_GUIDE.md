@@ -27,7 +27,7 @@ All tokens live in `Utils/`. Never use raw values — always reference the token
 |-------|-------|---------|
 | `backgroundPrimary` | `.systemBackground` | Screen backgrounds |
 | `surface` / `cardBackground` | `.secondarySystemBackground` | Card fill (pre-iOS 26 fallback) |
-| `secondaryBackground` | `.systemGray5` | Secondary surfaces, skeleton fill |
+| `secondaryBackground` | `.systemGray5` | Secondary surfaces, card backgrounds |
 | `textPrimary` | `.primary` | Main text |
 | `textSecondary` | `.secondary` | Subtitles, metadata |
 | `textSecondaryAccessible` | Custom adaptive | WCAG AA 4.5:1 secondary text |
@@ -544,27 +544,27 @@ BudgetProgressCircle(progress: 0.75, size: AppIconSize.categoryIcon, isOverBudge
 
 ---
 
-### Skeleton / Loading Components
+### Content Reveal (Loading Transitions)
 
-#### `SkeletonView`
-Base shimmer block.
-
-```swift
-SkeletonView(width: 120, height: 16, cornerRadius: AppRadius.sm)
-```
-
-#### `.skeletonLoading(isLoading:skeleton:)`
-Swaps between real content and skeleton with spring transition.
+#### `.contentReveal(isReady:delay:)`
+Fades content in when `isReady` becomes true. Preserves view identity (no `if/else` branching).
+Optional `delay` staggers multiple sections for a smooth cascading reveal.
 
 ```swift
-RealContentView()
-    .skeletonLoading(isLoading: !isReady) {
-        SkeletonView(height: 44)
-    }
+// Single section
+accountsSection
+    .contentReveal(isReady: coordinator.isFastPathDone)
+
+// Staggered reveal — sections fade in 50ms apart
+historySection
+    .contentReveal(isReady: coordinator.isFullyInitialized)
+subscriptionsSection
+    .contentReveal(isReady: coordinator.isFullyInitialized, delay: 0.05)
+loansSection
+    .contentReveal(isReady: coordinator.isFullyInitialized, delay: 0.1)
 ```
 
-#### Pre-built Skeletons
-`InsightsSummaryHeaderSkeleton`, `InsightsFilterCarouselSkeleton`, `InsightCardSkeleton` — for Insights view loading state.
+**Why not skeletons?** The previous `SkeletonLoadingModifier` used `if/else` branching which destroyed view identity — causing shimmer animation failures, UI jerk on content reveal, and layout recalculation spikes when multiple sections materialized simultaneously. `ContentRevealModifier` keeps content always in the hierarchy (just invisible) and uses simple opacity fade.
 
 ---
 

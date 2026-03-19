@@ -439,8 +439,8 @@ final class InsightsViewModel {
     ///   - `onAppear()` (back-navigation cache HIT)
     ///   - `loadInsightsBackground()` Phase-1 and Phase-2 MainActor writes
     ///
-    /// Views with explicit `.animation(_:value:)` modifiers (e.g. SkeletonLoadingModifier's
-    /// spring transition) override this transaction for their specific tracked value — their
+    /// Views with explicit `.animation(_:value:)` modifiers (e.g. ContentRevealModifier's
+    /// opacity transition) override this transaction for their specific tracked value — their
     /// animations fire normally. Only background implicit transitions are suppressed.
     private func applyPrecomputed(for granularity: InsightGranularity) {
         withTransaction(SwiftUI.Transaction(animation: nil)) {

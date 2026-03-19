@@ -124,8 +124,7 @@ struct TransactionAddModal: View {
             VStack(spacing: AppSpacing.lg) {
                 HeroSection(
                     iconSource: categoryData?.iconSource,
-                    title: coordinator.formData.category,
-                    colorHex: categoryData?.colorHex
+                    title: coordinator.formData.category
                 )
 
                 AmountInputView(
