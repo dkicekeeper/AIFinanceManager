@@ -170,8 +170,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
 
     private func categoryDetailList(_ items: [CategoryBreakdownItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            SectionHeaderView(String(localized: "insights.breakdown"), style: .insights)
-                .screenPadding()
+            SectionHeaderView(String(localized: "insights.breakdown"), style: .large)
 
             ForEach(items) { item in
                 categoryRow(item)
@@ -235,8 +234,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
 
     private func recurringDetailList(_ items: [RecurringInsightItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            SectionHeaderView(String(localized: "insights.breakdown"), style: .insights)
-                .screenPadding()
+            SectionHeaderView(String(localized: "insights.breakdown"), style: .large)
 
             ForEach(items) { item in
                 HStack(spacing: AppSpacing.md) {
@@ -281,8 +279,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
     // P10: Single unified function replacing monthlyDetailList + periodDetailList.
     private func periodBreakdownList(_ points: [BreakdownPoint]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            SectionHeaderView(String(localized: "insights.monthlyBreakdown"), style: .insights)
-                .screenPadding()
+            SectionHeaderView(String(localized: "insights.monthlyBreakdown"), style: .large)
 
             ForEach(points.reversed(), id: \.label) { point in
                 PeriodBreakdownRow(
@@ -298,8 +295,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
 
     private func accountDetailList(_ accounts: [AccountInsightItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            SectionHeaderView(String(localized: "insights.wealth.accounts"), style: .insights)
-                .screenPadding()
+            SectionHeaderView(String(localized: "insights.wealth.accounts"), style: .large)
 
             ForEach(accounts) { account in
                 HStack(spacing: AppSpacing.md) {
@@ -339,8 +335,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
     /// Phase 30: Dormant accounts detail list — shows each account with last activity date and balance.
     private func dormantAccountDetailList(_ accounts: [AccountInsightItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            SectionHeaderView(String(localized: "insights.dormant.accounts"), style: .insights)
-                .screenPadding()
+            SectionHeaderView(String(localized: "insights.dormant.accounts"), style: .large)
 
             ForEach(accounts) { account in
                 HStack(spacing: AppSpacing.md) {

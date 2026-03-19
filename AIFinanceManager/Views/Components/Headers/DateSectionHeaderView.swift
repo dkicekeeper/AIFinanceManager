@@ -27,7 +27,7 @@ struct DateSectionHeaderView: View {
 
     var body: some View {
         HStack {
-            SectionHeaderView(dateKey, style: .emphasized)
+            SectionHeaderView(dateKey)
 
             Spacer()
 

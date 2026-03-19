@@ -137,8 +137,6 @@ struct CategoryFilterView: View {
         selected: Binding<Set<String>>
     ) -> some View {
         SectionHeaderView(title, style: .compact)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, AppSpacing.lg)
             .padding(.top, AppSpacing.lg)
             .padding(.bottom, AppSpacing.sm)
 

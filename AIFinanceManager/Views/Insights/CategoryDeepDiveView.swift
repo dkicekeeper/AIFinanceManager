@@ -77,8 +77,7 @@ struct CategoryDeepDiveView: View {
 
     private var subcategorySection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            SectionHeaderView(String(localized: "insights.subcategories"), style: .insights)
-                .screenPadding()
+            SectionHeaderView(String(localized: "insights.subcategories"), style: .large)
 
             DonutChart(
                 slices: DonutSlice.from(subcategories, baseColor: color),
@@ -121,7 +120,7 @@ struct CategoryDeepDiveView: View {
         let previousLabel = gran.periodLabel(for: gran.previousPeriodKey)
         let currentAmount = subcategories.reduce(0.0) { $0 + $1.amount }
         return VStack(alignment: .leading, spacing: AppSpacing.md) {
-            SectionHeaderView(String(localized: "insights.periodComparison"), style: .insights)
+            SectionHeaderView(String(localized: "insights.periodComparison"), style: .large)
             PeriodComparisonCard(
                 currentLabel: currentLabel,
                 currentAmount: currentAmount,
@@ -130,8 +129,8 @@ struct CategoryDeepDiveView: View {
                 currency: currency,
                 isExpenseContext: true
             )
+            .screenPadding()
         }
-        .screenPadding()
     }
 
     // MARK: - Data Loading
@@ -222,7 +221,7 @@ private struct CategoryDeepDivePreview: View {
 
                 // Comparison card (mock: current Feb vs Jan)
                 VStack(alignment: .leading, spacing: AppSpacing.md) {
-                    SectionHeaderView(String(localized: "insights.periodComparison"), style: .insights)
+                    SectionHeaderView(String(localized: "insights.periodComparison"), style: .large)
                     PeriodComparisonCard(
                         currentLabel: "Feb 2026",
                         currentAmount: subcategories.reduce(0.0) { $0 + $1.amount },
@@ -231,8 +230,8 @@ private struct CategoryDeepDivePreview: View {
                         currency: "KZT",
                         isExpenseContext: true
                     )
+                    .screenPadding()
                 }
-                .screenPadding()
             }
             .padding(.vertical, AppSpacing.md)
         }

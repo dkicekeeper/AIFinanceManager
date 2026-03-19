@@ -37,9 +37,7 @@ struct InsightsSectionView: View {
     var body: some View {
         if !insights.isEmpty {
             VStack(alignment: .leading, spacing: AppSpacing.md) {
-                SectionHeaderView(category.displayName, style: .insights)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .screenPadding()
+                SectionHeaderView(category.displayName, style: .large)
 
                 // ALL cards use compact mini-charts
                 ForEach(insights) { insight in

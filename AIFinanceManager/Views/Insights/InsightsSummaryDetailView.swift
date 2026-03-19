@@ -73,8 +73,8 @@ struct InsightsSummaryDetailView: View {
 
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            SectionHeaderView(String(localized: "insights.cashFlowTrend"), style: .insights)
-                .padding([.horizontal, .top], AppSpacing.lg)
+            SectionHeaderView(String(localized: "insights.cashFlowTrend"), style: .large)
+                .padding(.top, AppSpacing.lg)
 
             PeriodBarChart(
                 dataPoints: periodDataPoints,
@@ -91,8 +91,7 @@ struct InsightsSummaryDetailView: View {
 
     private var periodListSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            SectionHeaderView(String(localized: "insights.monthlyBreakdown"), style: .insights)
-                .screenPadding()
+            SectionHeaderView(String(localized: "insights.monthlyBreakdown"), style: .large)
 
             ForEach(periodDataPoints.reversed()) { point in
                 PeriodBreakdownRow(

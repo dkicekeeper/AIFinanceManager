@@ -536,7 +536,7 @@ Current branch: `main`
 - **Services/Transactions/**: Transaction filtering, grouping, pagination
 - **Services/Balance/**: Balance calculations, updates, caching
 - **Services/Categories/**: Category budgets, CRUD operations
-- **Services/CSV/**: CSV import/export coordination (see CSV Round-Trip Rules below)
+- **Services/CSV/**: CSV import/export coordination (see CSV Export/Import Round-Trip Rules above)
 - **Services/Voice/**: Voice input parsing and services
 - **Services/Import/**: PDF and statement text parsing
 - **Services/Cache/**: Caching coordinators and managers
@@ -596,11 +596,16 @@ When unsure about architecture decisions:
 
 ## Reference Docs
 
-The `docs/` directory contains 200+ historical analysis and implementation docs from past sessions.
-Key references: `docs/PROJECT_BIBLE.md`, `docs/ARCHITECTURE_FINAL_STATE.md`, `docs/COMPONENT_INVENTORY.md`
+Active references in `docs/`:
+- `docs/UI_COMPONENTS_GUIDE.md` — design system tokens, components, decision trees, padding contract
+- `docs/INSIGHTS_METRICS_REFERENCE.md` — per-metric reference for InsightsService (formulas, granularity, data sources)
+- `docs/CORE_DATA_AUDIT_2026_03_12.md` — CoreData threading audit (23 fixes, rationale for patterns)
+- `docs/SWIFT_CONCURRENCY_AUDIT_2026_03_12.md` — Swift Concurrency audit (527→0 warnings)
+
+Historical docs (301 files) archived to `docs/archive/`.
 
 ---
 
-**Last Updated**: 2026-03-13
+**Last Updated**: 2026-03-19
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns; `SWIFT_STRICT_CONCURRENCY = minimal`; `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`

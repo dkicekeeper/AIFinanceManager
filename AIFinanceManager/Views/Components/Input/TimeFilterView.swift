@@ -30,8 +30,6 @@ struct TimeFilterView: View {
                 VStack(spacing: 0) {
                     // MARK: - Presets
                     SectionHeaderView(String(localized: "timeFilter.presets", defaultValue: "Пресеты"), style: .compact)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, AppSpacing.lg)
                         .padding(.top, AppSpacing.md)
                         .padding(.bottom, AppSpacing.sm)
 
@@ -60,8 +58,6 @@ struct TimeFilterView: View {
 
                     // MARK: - Custom Range
                     SectionHeaderView(String(localized: "timeFilter.customRange", defaultValue: "Свой период"), style: .compact)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, AppSpacing.lg)
                         .padding(.top, AppSpacing.lg)
                         .padding(.bottom, AppSpacing.sm)
 

@@ -9,28 +9,25 @@
 import SwiftUI
 
 /// Unified section header component with 3 style variants
-/// - `.default`: Standard list/settings sections (uppercase, secondary color)
-/// - `.emphasized`: Form sections with glass background (semibold, primary color)
-/// - `.compact`: Picker categories (small, uppercase, secondary color)
+/// - `.default`: Standard section header (bodyEmphasis, primary color). Used in forms, date groups, cards.
+/// - `.compact`: Small uppercase label (bodySmall, secondary color, with horizontal padding). Used in filters, pickers.
+/// - `.large`: Page-level section title (h3, primary color, optional icon, with horizontal padding). Used in insights.
 struct SectionHeaderView: View {
     let title: String
     /// Optional SF Symbol name shown to the left of the title (accent color).
-    /// Currently used only with `.insights` style.
+    /// Currently used only with `.large` style.
     var systemImage: String? = nil
     let style: Style
 
     enum Style {
-        /// Standard list/settings section header (uppercase, secondary color)
+        /// Standard section header (bodyEmphasis, primary color)
         case `default`
 
-        /// Emphasized form section header (semibold, primary color)
-        case emphasized
-
-        /// Compact picker category header (small, uppercase)
+        /// Small uppercase label with horizontal padding (bodySmall, secondary color)
         case compact
 
-        /// Insights section title (h3, primary color, optional icon)
-        case insights
+        /// Page-level section title with horizontal padding (h3, primary color, optional icon)
+        case large
     }
 
     init(_ title: String, systemImage: String? = nil, style: Style = .default) {
@@ -43,12 +40,10 @@ struct SectionHeaderView: View {
         switch style {
         case .default:
             defaultStyle
-        case .emphasized:
-            emphasizedStyle
         case .compact:
             compactStyle
-        case .insights:
-            insightsStyle
+        case .large:
+            largeStyle
         }
     }
 
@@ -60,21 +55,16 @@ struct SectionHeaderView: View {
             .foregroundStyle(AppColors.textPrimary)
     }
 
-    private var emphasizedStyle: some View {
-        Text(title)
-            .font(AppTypography.bodySmall)
-            .fontWeight(.semibold)
-            .foregroundStyle(AppColors.textPrimary)
-    }
-
     private var compactStyle: some View {
         Text(title)
-            .font(AppTypography.caption)
+            .font(AppTypography.bodySmall)
             .foregroundStyle(AppColors.textSecondary)
             .textCase(.uppercase)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, AppSpacing.lg)
     }
 
-    private var insightsStyle: some View {
+    private var largeStyle: some View {
         HStack(spacing: AppSpacing.md) {
             if let icon = systemImage {
                 Image(systemName: icon)
@@ -84,6 +74,8 @@ struct SectionHeaderView: View {
                 .font(AppTypography.h3)
                 .foregroundStyle(AppColors.textPrimary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, AppSpacing.lg)
     }
 }
 
@@ -107,29 +99,6 @@ struct SectionHeaderView: View {
     }
 }
 
-#Preview("Emphasized Style") {
-    VStack(alignment: .leading, spacing: AppSpacing.lg) {
-        SectionHeaderView(
-            String(localized: "subscription.basicInfo"),
-            style: .emphasized
-        )
-        .padding(.horizontal, AppSpacing.lg)
-
-        VStack(spacing: 0) {
-            TextField("Name", text: .constant("Netflix"))
-                .padding(AppSpacing.md)
-
-            Divider()
-
-            TextField("Amount", text: .constant("9.99"))
-                .padding(AppSpacing.md)
-        }
-        .background(AppColors.surface)
-        .clipShape(.rect(cornerRadius: AppRadius.md))
-    }
-    .padding()
-}
-
 #Preview("Compact Style") {
     ScrollView {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
@@ -137,7 +106,6 @@ struct SectionHeaderView: View {
                 String(localized: "iconPicker.frequentlyUsed"),
                 style: .compact
             )
-            .padding(.horizontal, AppSpacing.lg)
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible()), count: 4),
@@ -155,6 +123,16 @@ struct SectionHeaderView: View {
     }
 }
 
+#Preview("Large Style") {
+    ScrollView {
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
+            SectionHeaderView("Cash Flow Trend", style: .large)
+            SectionHeaderView("Monthly Breakdown", systemImage: "chart.bar", style: .large)
+        }
+        .padding(.vertical, AppSpacing.lg)
+    }
+}
+
 #Preview("All Styles Comparison") {
     VStack(alignment: .leading, spacing: AppSpacing.xxl) {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
@@ -164,15 +142,15 @@ struct SectionHeaderView: View {
         }
 
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text("Emphasized Style")
-                .font(AppTypography.h4)
-            SectionHeaderView("Form Section", style: .emphasized)
-        }
-
-        VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Text("Compact Style")
                 .font(AppTypography.h4)
             SectionHeaderView("Category Header", style: .compact)
+        }
+
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Text("Large Style")
+                .font(AppTypography.h4)
+            SectionHeaderView("Insights Section", style: .large)
         }
     }
     .padding()

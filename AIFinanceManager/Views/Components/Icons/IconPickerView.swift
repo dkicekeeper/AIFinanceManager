@@ -89,7 +89,6 @@ private struct IconsTabView: View {
                 ForEach(iconCategories, id: \.0) { category in
                     VStack(alignment: .leading, spacing: AppSpacing.lg) {
                         SectionHeaderView(category.0, style: .compact)
-                            .padding(.horizontal, AppSpacing.lg)
 
                         LazyVGrid(
                             columns: Array(repeating: GridItem(.flexible(), spacing: AppSpacing.lg), count: 5),
@@ -201,7 +200,6 @@ private struct LogoCategorySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {
             SectionHeaderView(title, style: .compact)
-                .padding(.horizontal, AppSpacing.lg)
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: AppSpacing.lg), count: 5),
