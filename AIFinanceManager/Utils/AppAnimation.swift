@@ -51,6 +51,24 @@ enum AppAnimation {
     /// Delay increment per facepile icon (each icon delays by `index * facepileStagger`).
     static let facepileStagger: Double = 0.06
 
+    /// Breathing animation for packed circle idle state.
+    /// 3% scale oscillation, Reduce Motion-aware.
+    static let breathingScale: CGFloat = 1.03
+
+    /// Base duration for breathing cycle (each circle offsets by +0.4s per index).
+    static let breathingBaseDuration: Double = 3.0
+
+    /// Per-index duration offset for desynchronized breathing.
+    static let breathingStagger: Double = 0.4
+
+    /// Reduce-Motion-aware breathing animation factory.
+    static func breathingAnimation(index: Int) -> Animation {
+        isReduceMotionEnabled
+            ? .linear(duration: 0)
+            : .easeInOut(duration: breathingBaseDuration + Double(index) * breathingStagger)
+                .repeatForever(autoreverses: true)
+    }
+
     /// Content reveal animation — for staggered section fade-in during initialization.
     static let contentRevealAnimation = Animation.easeOut(duration: 0.35)
 
