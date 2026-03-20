@@ -60,9 +60,10 @@ struct AmountDigitDisplay: View {
     var cursorHeight: CGFloat = AppSize.cursorHeight
 
     /// Clean digit string — no space characters, stable positions for `.numericText()`.
+    /// Preserves leading minus for negative amounts.
     private var displayAmount: String {
         let cleaned = AmountInputFormatting.cleanAmountString(rawAmount)
-        if cleaned.isEmpty { return "0" }
+        if cleaned.isEmpty || cleaned == "-" { return "0" }
         guard let decimal = Decimal(string: cleaned), decimal != 0 else { return "0" }
         return cleaned
     }
@@ -73,9 +74,13 @@ struct AmountDigitDisplay: View {
         let raw = displayAmount
         var result = AttributedString(raw)
 
+        // Skip leading minus when computing group boundaries
+        let isNegative = raw.hasPrefix("-")
+        let digitStart = isNegative ? raw.index(after: raw.startIndex) : raw.startIndex
+
         // Find integer part length (before decimal point)
         let integerEnd = raw.firstIndex(of: ".") ?? raw.endIndex
-        let integerCount = raw.distance(from: raw.startIndex, to: integerEnd)
+        let integerCount = raw.distance(from: digitStart, to: integerEnd)
 
         guard integerCount > 3 else { return result }
 
@@ -83,7 +88,8 @@ struct AmountDigitDisplay: View {
 
         // Add kern after characters that precede a group boundary.
         // For "1234567" (count=7): kern after index 0 and 3 → "1 234 567"
-        var attrIndex = result.startIndex
+        // Start from digitStart to skip the minus sign in AttributedString
+        var attrIndex = isNegative ? result.index(afterCharacter: result.startIndex) : result.startIndex
         for charIndex in 0..<integerCount {
             let nextIndex = result.index(afterCharacter: attrIndex)
             if charIndex < integerCount - 1 && (integerCount - charIndex - 1) % 3 == 0 {

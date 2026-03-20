@@ -89,11 +89,17 @@ class AccountsViewModel {
         guard let index = accounts.firstIndex(where: { $0.id == account.id }) else { return }
         let oldAccount = accounts[index]
 
-        // AccountEditView passes the desired balance as account.initialBalance
-        let desiredBalance = account.initialBalance ?? oldAccount.balance
-        let balanceChanged = abs(desiredBalance - oldAccount.balance) > 0.001
+        // Detect balance change by comparing initialBalance fields.
+        // When AccountEditView edits the balance, it sets initialBalance to the desired current balance.
+        // When balance wasn't edited, the existing account is copied with original initialBalance preserved.
+        let newInitial = account.initialBalance ?? 0
+        let oldInitial = oldAccount.initialBalance ?? 0
+        let balanceChanged = abs(newInitial - oldInitial) > 0.001
 
         if balanceChanged, let coordinator = balanceCoordinator, let store = transactionStore {
+            // account.initialBalance here = desired CURRENT balance (from the edit view text field)
+            let desiredBalance = account.initialBalance ?? oldAccount.balance
+
             // Back-calculate correct initialBalance: initialBalance = desiredBalance - Σ(transactions)
             let engine = BalanceCalculationEngine()
             let correctInitialBalance = engine.calculateInitialBalance(

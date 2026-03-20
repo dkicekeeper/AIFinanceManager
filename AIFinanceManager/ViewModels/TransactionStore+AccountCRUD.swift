@@ -103,6 +103,23 @@ extension TransactionStore {
         }
     }
 
+    // MARK: - Account Reordering
+
+    /// Update display order for accounts without triggering balance recalculation.
+    /// Only mutates `order` field — balances, names, and all other fields are preserved.
+    func reorderAccounts(_ orderedIds: [String]) {
+        var orderMap = [String: Int]()
+        for (index, id) in orderedIds.enumerated() {
+            orderMap[id] = index
+            if let accountIndex = accounts.firstIndex(where: { $0.id == id }) {
+                accounts[accountIndex].order = index
+            }
+        }
+
+        persistAccountsToRepository()
+        AccountOrderManager.shared.setOrders(orderMap)
+    }
+
     // MARK: - Account Persistence
 
     /// Persist accounts to repository

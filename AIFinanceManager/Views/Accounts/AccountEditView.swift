@@ -17,13 +17,20 @@ struct AccountEditView: View {
 
     @State private var name: String = ""
     @State private var balanceText: String = ""
+    @State private var initialBalanceText: String = "" // snapshot of balanceText set on appear — detects user edits
     @State private var currency: String = "USD"
     @State private var selectedIconSource: IconSource? = nil
     @State private var validationError: String? = nil
 
     private var parsedBalance: Double {
         if balanceText.isEmpty { return 0.0 }
-        return Double(balanceText.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        guard let decimal = AmountFormatter.parse(balanceText) else { return 0.0 }
+        return NSDecimalNumber(decimal: decimal).doubleValue
+    }
+
+    /// True when user actually edited the balance text field (not just format→parse round-trip)
+    private var balanceWasEdited: Bool {
+        balanceText != initialBalanceText
     }
 
     var body: some View {
@@ -61,8 +68,9 @@ struct AccountEditView: View {
             if let account = account {
                 name = account.name
                 // Show current balance (not initialBalance) so user sees real value
-                let balanceValue = account.balance
-                balanceText = AmountFormatter.format(Decimal(balanceValue))
+                let formatted = AmountFormatter.format(Decimal(account.balance))
+                balanceText = formatted
+                initialBalanceText = formatted
                 currency = account.currency
                 selectedIconSource = account.iconSource
             } else {
@@ -88,15 +96,27 @@ struct AccountEditView: View {
         // Clear validation error
         validationError = nil
 
-        let newAccount = Account(
-            id: account?.id ?? UUID().uuidString,
-            name: name,
-            currency: currency,
-            iconSource: selectedIconSource,
-            shouldCalculateFromTransactions: false,
-            initialBalance: parsedBalance,
-            order: account?.order  // Preserve existing order when editing
-        )
+        let newAccount: Account
+        if let existing = account, !balanceWasEdited {
+            // Balance not edited — copy existing account and update only non-balance fields.
+            // This preserves exact initialBalance and balance, preventing spurious recalculation
+            // from format→parse precision loss or minus-sign stripping.
+            var updated = existing
+            updated.name = name
+            updated.currency = currency
+            updated.iconSource = selectedIconSource
+            newAccount = updated
+        } else {
+            newAccount = Account(
+                id: account?.id ?? UUID().uuidString,
+                name: name,
+                currency: currency,
+                iconSource: selectedIconSource,
+                shouldCalculateFromTransactions: account?.shouldCalculateFromTransactions ?? false,
+                initialBalance: parsedBalance,
+                order: account?.order
+            )
+        }
 
         HapticManager.success()
         onSave(newAccount)

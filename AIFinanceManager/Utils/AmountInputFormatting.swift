@@ -36,10 +36,12 @@ enum AmountInputFormatting {
 
     /// Normalises the decimal separator and strips all non-numeric characters.
     /// Single source of truth — used for both keyboard input and clipboard paste.
+    /// Preserves a leading minus sign for negative balances.
     static func cleanAmountString(_ text: String) -> String {
-        text
-            .replacingOccurrences(of: ",", with: ".")
-            .filter { $0.isNumber || $0 == "." }
+        let normalized = text.replacingOccurrences(of: ",", with: ".")
+        let hasLeadingMinus = normalized.first == "-"
+        let digits = normalized.filter { $0.isNumber || $0 == "." }
+        return hasLeadingMinus ? "-" + digits : digits
     }
 
     // MARK: - Display Formatting

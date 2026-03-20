@@ -37,18 +37,11 @@ struct AccountsManagementView: View {
     // MARK: - Methods
 
     private func moveAccount(from source: IndexSet, to destination: Int) {
-        var updatedAccounts = sortedAccounts
-        updatedAccounts.move(fromOffsets: source, toOffset: destination)
+        var reordered = sortedAccounts
+        reordered.move(fromOffsets: source, toOffset: destination)
 
-        // Update order for all accounts
-        for (index, account) in updatedAccounts.enumerated() {
-            var updatedAccount = account
-            updatedAccount.order = index
-            accountsViewModel.updateAccount(updatedAccount)
-        }
-
-        // Invalidate caches to ensure the new order is reflected everywhere
-        transactionsViewModel.invalidateCaches()
+        // Only update order — bypass AccountsViewModel.updateAccount which triggers balance recalc
+        transactionStore.reorderAccounts(reordered.map(\.id))
 
         HapticManager.selection()
     }
