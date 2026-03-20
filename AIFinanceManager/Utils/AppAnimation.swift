@@ -69,6 +69,56 @@ enum AppAnimation {
                 .repeatForever(autoreverses: true)
     }
 
+    // MARK: - Gradient Background Orbs
+
+    /// Breathing scale range for gradient orbs — weight=1.0 → 1.15, weight=0.4 → 1.05.
+    static func orbBreathScale(weight: CGFloat) -> CGFloat {
+        1.0 + (0.05 + weight * 0.10)
+    }
+
+    /// Breathing duration for gradient orbs — weight=1.0 → 4s, weight=0.4 → 7s.
+    /// Heavier categories breathe faster (more visual prominence).
+    static func orbBreathDuration(weight: CGFloat) -> Double {
+        7.0 - weight * 3.0
+    }
+
+    /// Drift radius for gradient orbs. Back layer drifts less than front layer.
+    static func orbDriftRadius(isBackLayer: Bool) -> CGFloat {
+        isBackLayer ? 15 : 25
+    }
+
+    /// Drift duration per orb — randomised per index to prevent synchronisation.
+    /// Base 8s + index offset creates lava lamp desynchronisation.
+    static func orbDriftDuration(index: Int) -> Double {
+        8.0 + Double(index) * 1.2
+    }
+
+    /// Opacity for gradient orbs — weight=1.0 → 0.45, weight=0.4 → 0.25.
+    static func orbOpacity(weight: CGFloat) -> Double {
+        0.25 + Double(weight) * 0.20
+    }
+
+    /// Blur radius per layer. Back layer = deeper blur (farther), front = sharper (closer).
+    static func orbBlur(isBackLayer: Bool) -> CGFloat {
+        isBackLayer ? 60 : 35
+    }
+
+    /// Reduce-Motion-aware orb breathing animation factory.
+    static func orbBreathAnimation(weight: CGFloat) -> Animation {
+        isReduceMotionEnabled
+            ? .linear(duration: 0)
+            : .easeInOut(duration: orbBreathDuration(weight: weight))
+                .repeatForever(autoreverses: true)
+    }
+
+    /// Reduce-Motion-aware orb drift animation factory.
+    static func orbDriftAnimation(index: Int) -> Animation {
+        isReduceMotionEnabled
+            ? .linear(duration: 0)
+            : .easeInOut(duration: orbDriftDuration(index: index))
+                .repeatForever(autoreverses: true)
+    }
+
     /// Content reveal animation — for staggered section fade-in during initialization.
     static let contentRevealAnimation = Animation.easeOut(duration: 0.35)
 
