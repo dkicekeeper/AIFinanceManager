@@ -70,8 +70,15 @@ struct SubscriptionsCardView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             if !subscriptions.isEmpty {
-                StaticSubscriptionIconsView(subscriptions: subscriptions)
-                    .frame(width: AppSize.subscriptionCardWidth, alignment: .top)
+                PackedCircleIconsView(
+                    items: subscriptions.map { sub in
+                        PackedCircleItem(
+                            id: sub.id,
+                            iconSource: sub.iconSource,
+                            amount: (sub.amount as NSDecimalNumber).doubleValue
+                        )
+                    }
+                )
             }
         }
         .animation(AppAnimation.gentleSpring, value: subscriptions.isEmpty)
