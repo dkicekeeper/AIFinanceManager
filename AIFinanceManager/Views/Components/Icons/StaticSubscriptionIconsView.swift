@@ -31,7 +31,7 @@ struct StaticSubscriptionIconsView: View {
                     size: iconSize,
                     borderWidth: borderWidth,
                     zIndex: Double(maxVisible - index),
-                    animationDelay: Double(index) * 0.06
+                    animationDelay: Double(index) * AppAnimation.facepileStagger
                 )
                 .zIndex(Double(maxVisible - index))
             }
@@ -42,7 +42,7 @@ struct StaticSubscriptionIconsView: View {
                     size: iconSize,
                     borderWidth: borderWidth,
                     zIndex: 0,
-                    animationDelay: Double(visible.count) * 0.06
+                    animationDelay: Double(visible.count) * AppAnimation.facepileStagger
                 )
                 .zIndex(0)
             }
@@ -59,8 +59,6 @@ private struct SubscriptionFacepileIcon: View {
     let zIndex: Double
     let animationDelay: Double
 
-    @State private var appeared = false
-
     private var iconStyle: IconStyle {
         switch subscription.iconSource {
         case .sfSymbol:
@@ -74,15 +72,7 @@ private struct SubscriptionFacepileIcon: View {
         IconView(source: subscription.iconSource, style: iconStyle)
             .overlay(Circle().stroke(.background, lineWidth: borderWidth))
             .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
-            .scaleEffect(appeared ? 1 : 0.5)
-            .opacity(appeared ? 1 : 0)
-            .animation(
-                AppAnimation.isReduceMotionEnabled
-                    ? .linear(duration: 0)
-                    : .spring(response: 0.4, dampingFraction: 0.7).delay(animationDelay),
-                value: appeared
-            )
-            .task { appeared = true }
+            .staggeredEntrance(delay: animationDelay)
     }
 }
 
@@ -95,8 +85,6 @@ private struct OverflowBadge: View {
     let zIndex: Double
     let animationDelay: Double
 
-    @State private var appeared = false
-
     var body: some View {
         ZStack {
             Circle()
@@ -108,15 +96,7 @@ private struct OverflowBadge: View {
         .frame(width: size, height: size)
         .overlay(Circle().stroke(.background, lineWidth: borderWidth))
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-        .scaleEffect(appeared ? 1 : 0.5)
-        .opacity(appeared ? 1 : 0)
-        .animation(
-            AppAnimation.isReduceMotionEnabled
-                ? .linear(duration: 0)
-                : .spring(response: 0.4, dampingFraction: 0.7).delay(animationDelay),
-            value: appeared
-        )
-        .task { appeared = true }
+        .staggeredEntrance(delay: animationDelay)
     }
 }
 

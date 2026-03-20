@@ -35,6 +35,7 @@ struct LoansCardView: View {
                         ),
                         style: .compact
                     )
+                    .transition(.opacity)
                 } else {
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {
                         FormattedAmountText(
@@ -49,6 +50,7 @@ struct LoansCardView: View {
                             .font(AppTypography.bodySmall)
                             .foregroundStyle(AppColors.textPrimary)
                     }
+                    .transition(.opacity)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -58,6 +60,7 @@ struct LoansCardView: View {
                     .frame(width: AppSize.subscriptionCardWidth, alignment: .top)
             }
         }
+        .animation(AppAnimation.gentleSpring, value: loans.isEmpty)
         .padding(AppSpacing.lg)
         .cardStyle()
     }
@@ -97,7 +100,7 @@ private struct LoanFacepileIconsView: View {
                     loan: loan,
                     size: iconSize,
                     borderWidth: borderWidth,
-                    animationDelay: Double(index) * 0.06
+                    animationDelay: Double(index) * AppAnimation.facepileStagger
                 )
                 .zIndex(Double(maxVisible - index))
             }
@@ -106,7 +109,7 @@ private struct LoanFacepileIconsView: View {
                     count: overflowCount,
                     size: iconSize,
                     borderWidth: borderWidth,
-                    animationDelay: Double(visible.count) * 0.06
+                    animationDelay: Double(visible.count) * AppAnimation.facepileStagger
                 )
                 .zIndex(0)
             }
@@ -119,8 +122,6 @@ private struct LoanFacepileIcon: View {
     let size: CGFloat
     let borderWidth: CGFloat
     let animationDelay: Double
-
-    @State private var appeared = false
 
     private var iconStyle: IconStyle {
         switch loan.iconSource {
@@ -135,15 +136,7 @@ private struct LoanFacepileIcon: View {
         IconView(source: loan.iconSource, style: iconStyle)
             .overlay(Circle().stroke(.background, lineWidth: borderWidth))
             .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
-            .scaleEffect(appeared ? 1 : 0.5)
-            .opacity(appeared ? 1 : 0)
-            .animation(
-                AppAnimation.isReduceMotionEnabled
-                    ? .linear(duration: 0)
-                    : .spring(response: 0.4, dampingFraction: 0.7).delay(animationDelay),
-                value: appeared
-            )
-            .task { appeared = true }
+            .staggeredEntrance(delay: animationDelay)
     }
 }
 
@@ -152,8 +145,6 @@ private struct LoanOverflowBadge: View {
     let size: CGFloat
     let borderWidth: CGFloat
     let animationDelay: Double
-
-    @State private var appeared = false
 
     var body: some View {
         ZStack {
@@ -165,15 +156,7 @@ private struct LoanOverflowBadge: View {
         .frame(width: size, height: size)
         .overlay(Circle().stroke(.background, lineWidth: borderWidth))
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-        .scaleEffect(appeared ? 1 : 0.5)
-        .opacity(appeared ? 1 : 0)
-        .animation(
-            AppAnimation.isReduceMotionEnabled
-                ? .linear(duration: 0)
-                : .spring(response: 0.4, dampingFraction: 0.7).delay(animationDelay),
-            value: appeared
-        )
-        .task { appeared = true }
+        .staggeredEntrance(delay: animationDelay)
     }
 }
 

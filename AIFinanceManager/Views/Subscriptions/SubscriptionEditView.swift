@@ -167,7 +167,7 @@ struct SubscriptionEditView: View {
 
         // Validate required fields: description, amount, and account
         guard !description.isEmpty else {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(AppAnimation.contentSpring) {
                 validationError = String(localized: "error.subscriptionNameRequired")
             }
             HapticManager.error()
@@ -176,7 +176,7 @@ struct SubscriptionEditView: View {
 
         guard let amount = Decimal(string: amountText.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: " ", with: "")),
               amount > 0 else {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(AppAnimation.contentSpring) {
                 validationError = String(localized: "error.invalidAmount")
             }
             HapticManager.error()
@@ -184,7 +184,7 @@ struct SubscriptionEditView: View {
         }
 
         guard let accountId = selectedAccountId, !accountId.isEmpty else {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(AppAnimation.contentSpring) {
                 validationError = String(localized: "error.accountRequired")
             }
             HapticManager.error()
@@ -243,7 +243,7 @@ struct SubscriptionEditView: View {
                 }
             } catch {
                 isSaving = false
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(AppAnimation.contentSpring) {
                     validationError = error.localizedDescription
                 }
                 HapticManager.error()

@@ -141,7 +141,7 @@ struct CategoryEditView: View {
     private func saveCategory() {
         // Validate name
         guard !name.isEmpty else {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(AppAnimation.contentSpring) {
                 validationError = String(localized: "error.categoryNameRequired")
             }
             HapticManager.error()

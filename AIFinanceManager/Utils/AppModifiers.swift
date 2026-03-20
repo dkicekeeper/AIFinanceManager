@@ -30,6 +30,7 @@ extension View {
                     ? .regular.tint(AppColors.accent.opacity(0.2)).interactive()
                     : .regular.interactive()
                 )
+                .animation(AppAnimation.contentSpring, value: isSelected)
         } else {
             self
                 .font(AppTypography.bodySmall.weight(.medium))
@@ -42,6 +43,7 @@ extension View {
                     : AppColors.secondaryBackground,
                     in: RoundedRectangle(cornerRadius: AppRadius.xl)
                 )
+                .animation(AppAnimation.contentSpring, value: isSelected)
         }
     }
 
@@ -82,6 +84,42 @@ extension View {
     /// Card padding (внутренний padding карточек)
     func cardContentPadding() -> some View {
         self.padding(AppSpacing.cardPadding)
+    }
+}
+
+// MARK: - Staggered Entrance Modifier
+
+/// Animates a view's entrance with scale + opacity, typically used for facepile icons.
+/// Triggers once on first appearance. Respects Reduce Motion accessibility setting.
+///
+/// ```swift
+/// IconView(source: account.iconSource, style: iconStyle)
+///     .staggeredEntrance(delay: Double(index) * AppAnimation.facepileStagger)
+/// ```
+struct StaggeredEntranceModifier: ViewModifier {
+    let delay: Double
+
+    @State private var appeared = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(appeared ? 1 : AppAnimation.facepileHiddenScale)
+            .opacity(appeared ? 1 : 0)
+            .animation(
+                AppAnimation.isReduceMotionEnabled
+                    ? .linear(duration: 0)
+                    : AppAnimation.facepileSpring.delay(delay),
+                value: appeared
+            )
+            .task { appeared = true }
+    }
+}
+
+extension View {
+    /// Animates entrance with scale + opacity spring, with optional stagger delay.
+    /// - Parameter delay: Delay before animation starts (use `Double(index) * AppAnimation.facepileStagger` for facepiles).
+    func staggeredEntrance(delay: Double = 0) -> some View {
+        modifier(StaggeredEntranceModifier(delay: delay))
     }
 }
 

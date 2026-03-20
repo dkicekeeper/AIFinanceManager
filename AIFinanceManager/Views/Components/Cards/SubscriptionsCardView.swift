@@ -37,27 +37,34 @@ struct SubscriptionsCardView: View {
 
                 if subscriptions.isEmpty {
                     EmptyStateView(title: String(localized: "emptyState.noActiveSubscriptions"), style: .compact)
+                        .transition(.opacity)
                 } else {
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                        if isLoadingTotal {
-                            Text("0000.00")
-                                .font(AppTypography.h2)
-                                .fontWeight(.bold)
-                                .redacted(reason: .placeholder)
-                        } else {
-                            FormattedAmountText(
-                                amount: totalAmount,
-                                currency: baseCurrency,
-                                fontSize: AppTypography.h2,
-                                fontWeight: .bold,
-                                color: AppColors.textPrimary
-                            )
+                        ZStack {
+                            if isLoadingTotal {
+                                Text("0000.00")
+                                    .font(AppTypography.h2)
+                                    .fontWeight(.bold)
+                                    .redacted(reason: .placeholder)
+                                    .transition(.opacity)
+                            } else {
+                                FormattedAmountText(
+                                    amount: totalAmount,
+                                    currency: baseCurrency,
+                                    fontSize: AppTypography.h2,
+                                    fontWeight: .bold,
+                                    color: AppColors.textPrimary
+                                )
+                                .transition(.opacity)
+                            }
                         }
+                        .animation(AppAnimation.gentleSpring, value: isLoadingTotal)
 
                         Text(String(format: String(localized: "subscriptions.activeCount"), subscriptions.count))
                             .font(AppTypography.bodySmall)
                             .foregroundStyle(AppColors.textPrimary)
                     }
+                    .transition(.opacity)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -67,6 +74,7 @@ struct SubscriptionsCardView: View {
                     .frame(width: AppSize.subscriptionCardWidth, alignment: .top)
             }
         }
+        .animation(AppAnimation.gentleSpring, value: subscriptions.isEmpty)
         .padding(AppSpacing.lg)
         .cardStyle()
         // Fix #3: replaced two separate `onChange + unstructured Task {}` blocks with a single

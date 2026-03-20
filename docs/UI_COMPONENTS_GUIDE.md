@@ -124,13 +124,19 @@ All use Inter variable font with Dynamic Type scaling:
 | Token | Type | Use For |
 |-------|------|---------|
 | `spring` | response:0.3 damping:0.6 | Bounce effects |
-| `contentSpring` | response:0.3 damping:0.7 | Content transitions, toggles |
-| `gentleSpring` | response:0.4 damping:0.8 | Smooth value animations, amounts |
+| `contentSpring` | response:0.3 damping:0.7 | Content transitions, toggles, validation errors |
+| `gentleSpring` | response:0.4 damping:0.8 | Smooth value animations, amounts, empty↔loaded |
+| `heroSpring` | response:0.6 damping:0.7 | Hero icon entrance (slower, dramatic) |
+| `facepileSpring` | response:0.4 damping:0.7 | Staggered facepile icon pop-in |
+| `progressBarSpring` | response:0.55 damping:0.72 | Animated bar width changes |
+| `contentRevealAnimation` | easeOut(0.35) | Section fade-in during initialization |
 | `fast` | 0.1s | Button press |
 | `standard` | 0.25s | State changes |
 | `slow` | 0.35s | Modals |
 | `chartAppearAnimation` | spring(0.55, 0.82) | Chart entrance |
 | `chartUpdateAnimation` | spring(0.5, 0.85) | Chart data updates |
+
+**Magic numbers:** `facepileHiddenScale` (0.5), `facepileStagger` (0.06s per icon), `chartHiddenScale` (0.94).
 
 All have Reduce Motion-aware variants (`adaptiveSpring`, `fastAnimation`, etc.) that return `.linear(duration: 0)` when enabled.
 
@@ -145,11 +151,13 @@ All have Reduce Motion-aware variants (`adaptiveSpring`, `fastAnimation`, etc.) 
 | Modifier | Effect | When to Use |
 |----------|--------|-------------|
 | `.cardStyle(radius:)` | Liquid Glass (iOS 26+) or `.ultraThinMaterial` card background. Default radius: `AppRadius.xl` (20pt) | Every card container in detail/list views |
-| `.filterChipStyle(isSelected:)` | Glass chip styling with accent tint when selected | Filter buttons, `UniversalFilterButton` |
+| `.filterChipStyle(isSelected:)` | Glass chip styling with accent tint when selected. Animated selection transition | Filter buttons, `UniversalFilterButton` |
 | `.screenPadding()` | `.padding(.horizontal, AppSpacing.pageHorizontal)` (16pt) | Screen-level horizontal insets |
 | `.cardContentPadding()` | `.padding(AppSpacing.cardPadding)` (12pt) | Internal card content padding |
 | `.futureTransactionStyle(isFuture:)` | `.opacity(0.55)` when future | Planned/future transaction rows |
-| `.chartAppear(delay:)` | Scale(0.94→1.0) + opacity entrance animation | Outermost chart container |
+| `.chartAppear(delay:)` | Scale(0.94→1.0) + opacity entrance from bottom | Outermost chart container, scrollable list cards |
+| `.staggeredEntrance(delay:)` | Scale(0.5→1.0) + opacity pop-in with spring | Facepile icons, overlapping avatar stacks |
+| `.contentReveal(isReady:delay:)` | Opacity fade-in when ready | Staggered section reveals during initialization |
 
 ### Button Styles (`AppButton`)
 
@@ -566,6 +574,18 @@ loansSection
 
 **Why not skeletons?** The previous `SkeletonLoadingModifier` used `if/else` branching which destroyed view identity — causing shimmer animation failures, UI jerk on content reveal, and layout recalculation spikes when multiple sections materialized simultaneously. `ContentRevealModifier` keeps content always in the hierarchy (just invisible) and uses simple opacity fade.
 
+#### `.staggeredEntrance(delay:)`
+Animates view entrance with scale + opacity pop-in. Used for facepile icon stacks.
+
+```swift
+ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+    IconView(source: item.iconSource, style: iconStyle)
+        .staggeredEntrance(delay: Double(index) * AppAnimation.facepileStagger)
+}
+```
+
+Used in: `StaticSubscriptionIconsView`, `LoanFacepileIconsView`.
+
 ---
 
 ## 4. View Patterns
@@ -893,4 +913,4 @@ All primary entity edit views (`Account`, `Subscription`, `Category`, `Deposit`,
 
 ---
 
-*Last Updated: 2026-03-10*
+*Last Updated: 2026-03-20*

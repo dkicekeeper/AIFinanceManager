@@ -496,10 +496,47 @@ Generic row with `IconConfig` leading icons. Presets: `.standard`, `.settings`, 
 - `AppColors.swift` — semantic colors + `CategoryColors` palette (pre-computed hex→Color)
 - `AppSpacing.swift` — `AppSpacing`, `AppRadius` (xs/compact/sm/md/lg/xl/circle), `AppIconSize`, `AppSize`
 - `AppTypography.swift` — `AppTypography` (Inter variable font). `bodyEmphasis` for emphasized body text (18pt medium)
-- `AppAnimation.swift` — `AppAnimation` constants (`contentSpring`, `gentleSpring`, `spring`), `BounceButtonStyle`
-- `AppModifiers.swift` — View style extensions (`cardStyle`, `filterChipStyle`, `futureTransactionStyle`, `chartAppear`)
+- `AppAnimation.swift` — `AppAnimation` constants (`contentSpring`, `gentleSpring`, `spring`, `facepileSpring`, `contentRevealAnimation`), `BounceButtonStyle`
+- `AppModifiers.swift` — View style extensions (`cardStyle`, `filterChipStyle`, `futureTransactionStyle`, `chartAppear`, `staggeredEntrance`)
 - `AppButton.swift` — `PrimaryButtonStyle`, `SecondaryButtonStyle`
 - `AppEmptyState.swift` — empty state view component
+
+### Animation Guidelines
+
+#### Animation Token Usage — Never Use Hardcoded Springs
+All animations must use `AppAnimation` constants. Never use inline `.spring(response:dampingFraction:)`.
+
+| Context | Token |
+|---------|-------|
+| Validation errors, content toggles | `AppAnimation.contentSpring` |
+| Amount changes, state transitions | `AppAnimation.gentleSpring` |
+| Facepile icon entrance | `AppAnimation.facepileSpring` |
+| Chart entrance (opacity+scale) | `AppAnimation.chartAppearAnimation` |
+| Chart data updates | `AppAnimation.chartUpdateAnimation` |
+| Section fade-in on init | `AppAnimation.contentRevealAnimation` |
+| Progress bar expansion | `AppAnimation.progressBarSpring` |
+| Bounce effects | `AppAnimation.spring` |
+
+#### Animation Modifiers
+- **`.staggeredEntrance(delay:)`** — scale(0.5→1.0) + opacity pop-in. Use for facepile icons, overlapping avatar stacks. Delay per icon: `Double(index) * AppAnimation.facepileStagger`.
+- **`.chartAppear(delay:)`** — scale(0.94→1.0) + opacity from bottom. Use for chart containers and card entrances in scrollable lists.
+- **`.contentReveal(isReady:delay:)`** — opacity fade-in. Use for staggered section reveals during initialization (home, insights).
+- **`.filterChipStyle(isSelected:)`** — includes animated selection transition via `contentSpring`.
+
+#### Card State Transitions (empty↔loaded)
+Cards with empty/loaded states must animate the transition:
+```swift
+if items.isEmpty {
+    EmptyStateView(...).transition(.opacity)
+} else {
+    loadedContent.transition(.opacity)
+}
+// Outside the conditional:
+.animation(AppAnimation.gentleSpring, value: items.isEmpty)
+```
+
+#### Reduce Motion
+All decorative animations respect `UIAccessibility.isReduceMotionEnabled`. Use `AppAnimation.isReduceMotionEnabled` to check. Reduce Motion-aware variants (`adaptiveSpring`, `fastAnimation`, etc.) return `.linear(duration: 0)` when enabled.
 
 ## Testing
 
@@ -605,6 +642,6 @@ Historical docs (301 files) archived to `docs/archive/`.
 
 ---
 
-**Last Updated**: 2026-03-19
+**Last Updated**: 2026-03-20
 **iOS Target**: 26.0+ (requires Xcode 26+ beta)
 **Swift Version**: 5.0 project setting; Swift 6 patterns; `SWIFT_STRICT_CONCURRENCY = minimal`; `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`

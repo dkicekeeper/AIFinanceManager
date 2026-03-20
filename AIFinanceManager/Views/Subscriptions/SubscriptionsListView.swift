@@ -34,6 +34,7 @@ struct SubscriptionsListView: View {
                         subscriptions: transactionStore.subscriptions,
                         baseCurrency: transactionsViewModel.appSettings.baseCurrency
                     )
+                    .chartAppear()
                     .screenPadding()
                 }
 
@@ -101,7 +102,7 @@ struct SubscriptionsListView: View {
     
     private var subscriptionsList: some View {
         VStack(spacing: AppSpacing.md) {
-            ForEach(transactionStore.subscriptions) { subscription in
+            ForEach(Array(transactionStore.subscriptions.enumerated()), id: \.element.id) { index, subscription in
                 let nextChargeDate = transactionStore.nextChargeDate(for: subscription.id)
 
                 NavigationLink(value: subscription) {
@@ -112,6 +113,7 @@ struct SubscriptionsListView: View {
                     .matchedTransitionSource(id: subscription.id, in: subscriptionNamespace)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .chartAppear(delay: Double(index) * 0.05)
             }
         }
     }

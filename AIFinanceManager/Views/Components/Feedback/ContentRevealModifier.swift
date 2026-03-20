@@ -21,7 +21,7 @@ struct ContentRevealModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(isVisible ? 1 : 0)
-            .animation(.easeOut(duration: 0.35), value: isVisible)
+            .animation(AppAnimation.contentRevealAnimation, value: isVisible)
             .onChange(of: isReady) { _, ready in
                 guard ready, !isVisible else { return }
                 revealAfterDelay()

@@ -46,7 +46,7 @@ struct ImportTransactionPreviewView: View {
                             selectedAccountId: accountMapping[transaction.id],
                             availableAccounts: accountsViewModel.accounts.filter { $0.currency == transaction.currency },
                             onToggle: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                                withAnimation(AppAnimation.spring) {
                                     if selectedTransactions.contains(transaction.id) {
                                         selectedTransactions.remove(transaction.id)
                                         accountMapping.removeValue(forKey: transaction.id)
@@ -69,7 +69,7 @@ struct ImportTransactionPreviewView: View {
                 // Action buttons — Select All / Deselect All
                 HStack(spacing: AppSpacing.md) {
                     Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        withAnimation(AppAnimation.spring) {
                             selectedTransactions = Set(transactions.map { $0.id })
                             for transaction in transactions {
                                 if let account = accountsViewModel.accounts.first(where: { $0.currency == transaction.currency }) {
@@ -88,7 +88,7 @@ struct ImportTransactionPreviewView: View {
                     .accessibilityLabel(String(localized: "transactionPreview.selectAll"))
 
                     Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        withAnimation(AppAnimation.spring) {
                             selectedTransactions.removeAll()
                             accountMapping.removeAll()
                         }

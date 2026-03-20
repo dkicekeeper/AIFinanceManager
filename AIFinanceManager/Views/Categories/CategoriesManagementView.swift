@@ -107,6 +107,7 @@ struct CategoriesManagementView: View {
                 .environment(\.editMode, isReordering ? .constant(.active) : .constant(.inactive))
             }
         }
+        .animation(AppAnimation.contentSpring, value: selectedType)
         .navigationTitle(String(localized: "navigation.categories"))
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

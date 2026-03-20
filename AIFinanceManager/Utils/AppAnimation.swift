@@ -41,6 +41,19 @@ enum AppAnimation {
     /// response 0.55 + damping 0.72 = smooth bar expansion with slight bounce.
     static let progressBarSpring = Animation.spring(response: 0.55, dampingFraction: 0.72)
 
+    /// Facepile entrance spring — for staggered icon pop-in animations.
+    /// response 0.4 + damping 0.7 = visible pop with smooth settle.
+    static let facepileSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
+
+    /// Starting scale for facepile icon entrance (grows from this to 1.0).
+    static let facepileHiddenScale: CGFloat = 0.5
+
+    /// Delay increment per facepile icon (each icon delays by `index * facepileStagger`).
+    static let facepileStagger: Double = 0.06
+
+    /// Content reveal animation — for staggered section fade-in during initialization.
+    static let contentRevealAnimation = Animation.easeOut(duration: 0.35)
+
     // MARK: - MessageBanner
 
     /// Banner entrance spring response
