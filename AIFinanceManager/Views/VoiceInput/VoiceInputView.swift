@@ -264,13 +264,14 @@ struct RecordingIndicatorView: View {
 }
 
 #Preview {
+    let coordinator = AppCoordinator()
     VoiceInputView(
         voiceService: VoiceInputService(),
         onComplete: { _ in },
         parser: VoiceInputParser(
-            categoriesViewModel: CategoriesViewModel(),
-            accountsViewModel: AccountsViewModel(),
-            transactionsViewModel: TransactionsViewModel()
+            categoriesViewModel: coordinator.categoriesViewModel,
+            accountsViewModel: coordinator.accountsViewModel,
+            transactionsViewModel: coordinator.transactionsViewModel
         )
     )
 }

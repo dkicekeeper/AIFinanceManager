@@ -281,7 +281,7 @@ struct TransactionEditView: View {
         category: "Food",
         accountId: "acc-kaspi"
     )
-    return NavigationStack {
+    NavigationStack {
         TransactionEditView(
             transaction: sampleTransaction,
             transactionsViewModel: coordinator.transactionsViewModel,
@@ -290,7 +290,7 @@ struct TransactionEditView: View {
             transactionStore: coordinator.transactionStore,
             accounts: mockAccounts,
             customCategories: coordinator.categoriesViewModel.customCategories,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
     }
     .environment(coordinator.transactionStore)
@@ -311,7 +311,7 @@ struct TransactionEditView: View {
         category: "Salary",
         accountId: "acc-halyk"
     )
-    return NavigationStack {
+    NavigationStack {
         TransactionEditView(
             transaction: sampleTransaction,
             transactionsViewModel: coordinator.transactionsViewModel,
@@ -320,7 +320,7 @@ struct TransactionEditView: View {
             transactionStore: coordinator.transactionStore,
             accounts: mockAccounts,
             customCategories: coordinator.categoriesViewModel.customCategories,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
     }
     .environment(coordinator.transactionStore)

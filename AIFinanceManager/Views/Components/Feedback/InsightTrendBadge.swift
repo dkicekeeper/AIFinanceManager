@@ -36,24 +36,24 @@ struct InsightTrendBadge: View {
 
     var body: some View {
         if style == .changeIndicator {
-            VStack(spacing: AppSpacing.xxs) {
+            VStack(spacing: AppSpacing.xs) {
                 Image(systemName: trend.trendIcon)
                 if let percent = trend.changePercent {
                     Text(String(format: "%+.1f%%", percent))
-                        .font(AppTypography.captionEmphasis)
+                        .font(AppTypography.bodyEmphasis)
                 }
             }
             .foregroundStyle(effectiveColor)
         } else {
-            HStack(spacing: AppSpacing.xxs) {
+            HStack(spacing: AppSpacing.xs) {
                 Image(systemName: trend.trendIcon)
                     .font(style == .pill
-                          ? AppTypography.caption.weight(.bold)
-                          : AppTypography.bodySmall)
+                          ? AppTypography.bodyEmphasis
+                          : AppTypography.bodyEmphasis)
 
                 if let percent = trend.changePercent {
                     Text(String(format: "%+.1f%%", percent))
-                        .font(style == .pill ? AppTypography.caption : AppTypography.bodySmall)
+                        .font(style == .pill ? AppTypography.bodyEmphasis : AppTypography.bodyEmphasis)
                         .fontWeight(.semibold)
                 }
             }
@@ -73,7 +73,7 @@ private struct PillModifier: ViewModifier {
         if isActive {
             content
                 .padding(.horizontal, AppSpacing.sm)
-                .padding(.vertical, AppSpacing.xxs)
+                .padding(.vertical, AppSpacing.xs)
                 .background(color.opacity(0.12))
                 .clipShape(Capsule())
         } else {

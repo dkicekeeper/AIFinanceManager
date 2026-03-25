@@ -171,7 +171,7 @@ struct CategoryEditView: View {
 #Preview("Category Edit View - New") {
     let coordinator = AppCoordinator()
 
-    return CategoryEditView(
+    CategoryEditView(
         categoriesViewModel: coordinator.categoriesViewModel,
         transactionsViewModel: coordinator.transactionsViewModel,
         category: nil,
@@ -194,7 +194,7 @@ struct CategoryEditView: View {
         budgetResetDay: 1
     )
 
-    return CategoryEditView(
+    CategoryEditView(
         categoriesViewModel: coordinator.categoriesViewModel,
         transactionsViewModel: coordinator.transactionsViewModel,
         category: sampleCategory,

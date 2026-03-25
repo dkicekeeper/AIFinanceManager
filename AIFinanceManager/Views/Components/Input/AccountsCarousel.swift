@@ -61,7 +61,7 @@ struct AccountsCarousel: View {
                     initialBalance: 250000
                 )
             ],
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
+            balanceCoordinator: coordinator.balanceCoordinator,
             namespace: ns
         )
     }

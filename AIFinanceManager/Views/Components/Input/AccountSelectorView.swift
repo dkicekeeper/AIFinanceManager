@@ -82,7 +82,7 @@ struct AccountSelectorView: View {
             selectedAccountId: $selectedAccountId,
             emptyStateMessage: nil,
             warningMessage: nil,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
 
         AccountSelectorView(
@@ -90,7 +90,7 @@ struct AccountSelectorView: View {
             selectedAccountId: $selectedAccountId,
             emptyStateMessage: "No accounts available",
             warningMessage: nil,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
 
         AccountSelectorView(
@@ -100,7 +100,7 @@ struct AccountSelectorView: View {
             selectedAccountId: $selectedAccountId,
             emptyStateMessage: nil,
             warningMessage: "Please select an account",
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
     }
     .padding()

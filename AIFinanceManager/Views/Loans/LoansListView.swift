@@ -294,12 +294,51 @@ struct LoansListView: View {
 
 #Preview("Loans List") {
     let coordinator = AppCoordinator()
+    let sampleLoans: [Account] = [
+        Account(
+            id: "preview-loan-1",
+            name: "Car Loan",
+            currency: "KZT",
+            iconSource: .brandService("halykbank.kz"),
+            loanInfo: LoanInfo(
+                bankName: "Halyk Bank",
+                loanType: .annuity,
+                originalPrincipal: 5_000_000,
+                remainingPrincipal: 3_500_000,
+                interestRateAnnual: 18.5,
+                termMonths: 36,
+                startDate: "2025-06-01",
+                paymentDay: 15,
+                paymentsMade: 9
+            ),
+            initialBalance: 3_500_000
+        ),
+        Account(
+            id: "preview-loan-2",
+            name: "iPhone Installment",
+            currency: "KZT",
+            iconSource: .brandService("kaspi.kz"),
+            loanInfo: LoanInfo(
+                bankName: "Kaspi Bank",
+                loanType: .installment,
+                originalPrincipal: 600_000,
+                remainingPrincipal: 400_000,
+                interestRateAnnual: 0,
+                termMonths: 12,
+                startDate: "2026-01-15",
+                paymentDay: 15,
+                paymentsMade: 2
+            ),
+            initialBalance: 400_000
+        )
+    ]
+    let _ = sampleLoans.forEach { coordinator.transactionStore.addAccount($0) }
 
     NavigationStack {
         LoansListView(
             loansViewModel: coordinator.loansViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
         .environment(coordinator)
         .environment(coordinator.transactionStore)
@@ -313,7 +352,7 @@ struct LoansListView: View {
         LoansListView(
             loansViewModel: coordinator.loansViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
         .environment(coordinator)
         .environment(coordinator.transactionStore)

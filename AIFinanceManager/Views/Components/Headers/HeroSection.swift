@@ -17,7 +17,7 @@ struct HeroSection: View {
     let iconSource: IconSource?
     let title: String
 
-    @State private var iconScale: CGFloat = 0.8
+    @State private var iconScale: CGFloat = 0
 
     var body: some View {
         VStack(spacing: AppSpacing.md) {

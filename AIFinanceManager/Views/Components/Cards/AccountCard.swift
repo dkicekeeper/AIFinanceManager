@@ -49,10 +49,10 @@ struct AccountCard: View {
 #Preview("Account Card") {
     @Previewable @Namespace var ns
     let coordinator = AppCoordinator()
-    return NavigationStack {
+    NavigationStack {
         AccountCard(
             account: Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000),
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
+            balanceCoordinator: coordinator.balanceCoordinator,
             namespace: ns
         )
         .padding()

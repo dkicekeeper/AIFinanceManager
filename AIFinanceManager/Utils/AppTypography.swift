@@ -47,7 +47,7 @@ enum AppTypography {
     /// Body Emphasis — акцентированный body (18pt medium).
     /// Отличается от `body` ВЕСОМ (medium vs regular), не размером.
     /// Используй для: названия строк, лейблы кнопок, section subheaders.
-    static let bodyEmphasis = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.medium)
+    static let bodyEmphasis = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.semibold)
 
     /// Body - Default text (18pt regular, scales with body)
     static let body = Font.custom(AppInterFont.family, size: 18, relativeTo: .body).weight(.regular)
@@ -61,7 +61,7 @@ enum AppTypography {
     static let caption = Font.custom(AppInterFont.family, size: 14, relativeTo: .caption).weight(.regular)
 
     /// Caption Emphasis - Important helper text (14pt medium, scales with caption)
-    static let captionEmphasis = Font.custom(AppInterFont.family, size: 14, relativeTo: .caption).weight(.medium)
+    static let captionEmphasis = Font.custom(AppInterFont.family, size: 14, relativeTo: .caption).weight(.semibold)
 
     /// Caption 2 - Very small text (12pt regular, scales with caption2).
     /// Примечание: системный iOS caption2 = 11pt; наши 12pt намеренно выше минимума.

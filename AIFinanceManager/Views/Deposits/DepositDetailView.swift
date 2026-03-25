@@ -335,7 +335,7 @@ struct DepositDetailView: View {
         DepositDetailView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
+            balanceCoordinator: coordinator.balanceCoordinator,
             accountId: coordinator.depositsViewModel.deposits.first?.id ?? "test"
         )
         .environment(coordinator)
@@ -351,7 +351,7 @@ struct DepositDetailView: View {
         DepositDetailView(
             depositsViewModel: coordinator.depositsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
+            balanceCoordinator: coordinator.balanceCoordinator,
             accountId: "non-existent"
         )
         .environment(coordinator)

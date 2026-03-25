@@ -568,13 +568,32 @@ struct LoanDetailView: View {
 
 #Preview("Loan Detail") {
     let coordinator = AppCoordinator()
+    let sampleLoan = Account(
+        id: "preview-loan",
+        name: "Car Loan",
+        currency: "KZT",
+        iconSource: .brandService("halykbank.kz"),
+        loanInfo: LoanInfo(
+            bankName: "Halyk Bank",
+            loanType: .annuity,
+            originalPrincipal: 5_000_000,
+            remainingPrincipal: 3_500_000,
+            interestRateAnnual: 18.5,
+            termMonths: 36,
+            startDate: "2025-06-01",
+            paymentDay: 15,
+            paymentsMade: 9
+        ),
+        initialBalance: 3_500_000
+    )
+    let _ = coordinator.transactionStore.addAccount(sampleLoan)
 
     NavigationStack {
         LoanDetailView(
             loansViewModel: coordinator.loansViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
-            accountId: coordinator.loansViewModel.loans.first?.id ?? "test"
+            balanceCoordinator: coordinator.balanceCoordinator,
+            accountId: "preview-loan"
         )
         .environment(coordinator)
         .environment(coordinator.transactionStore)
@@ -589,7 +608,7 @@ struct LoanDetailView: View {
         LoanDetailView(
             loansViewModel: coordinator.loansViewModel,
             transactionsViewModel: coordinator.transactionsViewModel,
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!,
+            balanceCoordinator: coordinator.balanceCoordinator,
             accountId: "non-existent"
         )
         .environment(coordinator)

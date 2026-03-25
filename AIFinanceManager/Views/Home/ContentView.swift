@@ -455,8 +455,10 @@ struct ContentView: View {
 // MARK: - Preview
 
 #Preview {
+    let coordinator = AppCoordinator()
     ContentView()
         .environment(TimeFilterManager())
-        .environment(AppCoordinator())
+        .environment(coordinator)
+        .environment(coordinator.transactionStore)
         .environment(HomePersistentState())
 }

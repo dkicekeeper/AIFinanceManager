@@ -50,18 +50,18 @@ struct AccountRadioButton: View {
 #Preview {
     let coordinator = AppCoordinator()
 
-    return HStack {
+    HStack {
         AccountRadioButton(
             account: Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000),
             isSelected: false,
             onTap: {},
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
         AccountRadioButton(
             account: Account(name: "Savings", currency: "USD", iconSource: nil, initialBalance: 5000),
             isSelected: true,
             onTap: {},
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
     }
     .padding()

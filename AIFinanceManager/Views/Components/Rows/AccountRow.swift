@@ -125,7 +125,7 @@ struct AccountRow: View {
             account: sampleAccount,
             onEdit: {},
             onDelete: {},
-            balanceCoordinator: coordinator.accountsViewModel.balanceCoordinator!
+            balanceCoordinator: coordinator.balanceCoordinator
         )
         .padding(.horizontal)
         .padding(.vertical, AppSpacing.xs)
