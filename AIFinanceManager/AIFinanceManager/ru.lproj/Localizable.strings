@@ -990,6 +990,12 @@
 "settings.experiments" = "Эксперименты";
 "settings.notificationDebug" = "Отладка уведомлений";
 
+// MARK: - Settings (About)
+"settings.about" = "О приложении";
+"settings.privacyPolicy" = "Политика конфиденциальности";
+"settings.termsOfUse" = "Условия использования";
+"settings.version" = "Версия";
+
 // MARK: - Voice (extras)
 "voice.openSettings" = "Открыть Настройки";
 

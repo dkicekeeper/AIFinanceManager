@@ -990,6 +990,12 @@
 "settings.experiments" = "Experiments";
 "settings.notificationDebug" = "Notification Debug";
 
+// MARK: - Settings (About)
+"settings.about" = "About";
+"settings.privacyPolicy" = "Privacy Policy";
+"settings.termsOfUse" = "Terms of Use";
+"settings.version" = "Version";
+
 // MARK: - Voice (extras)
 "voice.openSettings" = "Open Settings";
 

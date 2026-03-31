@@ -130,7 +130,7 @@ enum CirclePackingLayout {
                 let dist = cx * cx + cy * cy
                 if dist < bestDist {
                     bestDist = dist
-                    bestPos = (cx, cy)
+                    bestPos = (x: CGFloat(cx), y: CGFloat(cy))
                 }
             }
         }

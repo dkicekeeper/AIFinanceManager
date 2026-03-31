@@ -59,6 +59,7 @@ struct SettingsView: View {
                 dataManagementSection
                 exportImportSection
                 experimentsSection
+                aboutSection
                 dangerZoneSection
             }
             .navigationTitle(String(localized: "settings.title"))
@@ -193,6 +194,29 @@ struct SettingsView: View {
                 Label(String(localized: "settings.notificationDebug"), systemImage: "bell.badge")
             }
             #endif
+        }
+    }
+
+    // MARK: - About Section
+
+    private var aboutSection: some View {
+        Section(header: Text(String(localized: "settings.about"))) {
+            if let url = URL(string: "https://dauletkydrali.github.io/AIFinanceManager/privacy-policy.html") {
+                Link(destination: url) {
+                    Label(String(localized: "settings.privacyPolicy"), systemImage: "hand.raised")
+                }
+            }
+            if let url = URL(string: "https://dauletkydrali.github.io/AIFinanceManager/terms-of-use.html") {
+                Link(destination: url) {
+                    Label(String(localized: "settings.termsOfUse"), systemImage: "doc.text")
+                }
+            }
+            HStack {
+                Text(String(localized: "settings.version"))
+                Spacer()
+                Text("\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
+                    .foregroundStyle(AppColors.textSecondary)
+            }
         }
     }
 
