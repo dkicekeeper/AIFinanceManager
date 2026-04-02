@@ -31,18 +31,18 @@
 /* Begin PBXFileReference section */
 		AA0001002F477D4A0010A953 /* Inter-VariableFont_opsz,wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-VariableFont_opsz,wght.ttf"; sourceTree = "<group>"; };
 		AA0002002F477D4A0010A953 /* Inter-Italic-VariableFont_opsz,wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Italic-VariableFont_opsz,wght.ttf"; sourceTree = "<group>"; };
-		D62A09912F0D7B0D004AF1FA /* AIFinanceManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIFinanceManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D62A099E2F0D7B0E004AF1FA /* AIFinanceManagerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AIFinanceManagerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		D62A09A82F0D7B0E004AF1FA /* AIFinanceManagerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AIFinanceManagerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D62A09912F0D7B0D004AF1FA /* Tenra.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tenra.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D62A099E2F0D7B0E004AF1FA /* TenraTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TenraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D62A09A82F0D7B0E004AF1FA /* TenraUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TenraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		D6DFB38A2F0E6253005C3348 /* Exceptions for "AIFinanceManager" folder in "AIFinanceManager" target */ = {
+		D6DFB38A2F0E6253005C3348 /* Exceptions for "AIFinanceManager" folder in "Tenra" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = D62A09902F0D7B0D004AF1FA /* AIFinanceManager */;
+			target = D62A09902F0D7B0D004AF1FA /* Tenra */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -50,7 +50,7 @@
 		D62A09932F0D7B0D004AF1FA /* AIFinanceManager */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				D6DFB38A2F0E6253005C3348 /* Exceptions for "AIFinanceManager" folder in "AIFinanceManager" target */,
+				D6DFB38A2F0E6253005C3348 /* Exceptions for "AIFinanceManager" folder in "Tenra" target */,
 			);
 			path = AIFinanceManager;
 			sourceTree = "<group>";
@@ -106,9 +106,9 @@
 		D62A09922F0D7B0D004AF1FA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D62A09912F0D7B0D004AF1FA /* AIFinanceManager.app */,
-				D62A099E2F0D7B0E004AF1FA /* AIFinanceManagerTests.xctest */,
-				D62A09A82F0D7B0E004AF1FA /* AIFinanceManagerUITests.xctest */,
+				D62A09912F0D7B0D004AF1FA /* Tenra.app */,
+				D62A099E2F0D7B0E004AF1FA /* TenraTests.xctest */,
+				D62A09A82F0D7B0E004AF1FA /* TenraUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -125,9 +125,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		D62A09902F0D7B0D004AF1FA /* AIFinanceManager */ = {
+		D62A09902F0D7B0D004AF1FA /* Tenra */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D62A09B22F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "AIFinanceManager" */;
+			buildConfigurationList = D62A09B22F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "Tenra" */;
 			buildPhases = (
 				D62A098D2F0D7B0D004AF1FA /* Sources */,
 				D62A098E2F0D7B0D004AF1FA /* Frameworks */,
@@ -140,16 +140,16 @@
 			fileSystemSynchronizedGroups = (
 				D62A09932F0D7B0D004AF1FA /* AIFinanceManager */,
 			);
-			name = AIFinanceManager;
+			name = Tenra;
 			packageProductDependencies = (
 			);
 			productName = AIFinanceManager;
-			productReference = D62A09912F0D7B0D004AF1FA /* AIFinanceManager.app */;
+			productReference = D62A09912F0D7B0D004AF1FA /* Tenra.app */;
 			productType = "com.apple.product-type.application";
 		};
-		D62A099D2F0D7B0E004AF1FA /* AIFinanceManagerTests */ = {
+		D62A099D2F0D7B0E004AF1FA /* TenraTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D62A09B52F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "AIFinanceManagerTests" */;
+			buildConfigurationList = D62A09B52F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "TenraTests" */;
 			buildPhases = (
 				D62A099A2F0D7B0E004AF1FA /* Sources */,
 				D62A099B2F0D7B0E004AF1FA /* Frameworks */,
@@ -163,16 +163,16 @@
 			fileSystemSynchronizedGroups = (
 				D62A09A12F0D7B0E004AF1FA /* AIFinanceManagerTests */,
 			);
-			name = AIFinanceManagerTests;
+			name = TenraTests;
 			packageProductDependencies = (
 			);
 			productName = AIFinanceManagerTests;
-			productReference = D62A099E2F0D7B0E004AF1FA /* AIFinanceManagerTests.xctest */;
+			productReference = D62A099E2F0D7B0E004AF1FA /* TenraTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		D62A09A72F0D7B0E004AF1FA /* AIFinanceManagerUITests */ = {
+		D62A09A72F0D7B0E004AF1FA /* TenraUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D62A09B82F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "AIFinanceManagerUITests" */;
+			buildConfigurationList = D62A09B82F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "TenraUITests" */;
 			buildPhases = (
 				D62A09A42F0D7B0E004AF1FA /* Sources */,
 				D62A09A52F0D7B0E004AF1FA /* Frameworks */,
@@ -186,11 +186,11 @@
 			fileSystemSynchronizedGroups = (
 				D62A09AB2F0D7B0E004AF1FA /* AIFinanceManagerUITests */,
 			);
-			name = AIFinanceManagerUITests;
+			name = TenraUITests;
 			packageProductDependencies = (
 			);
 			productName = AIFinanceManagerUITests;
-			productReference = D62A09A82F0D7B0E004AF1FA /* AIFinanceManagerUITests.xctest */;
+			productReference = D62A09A82F0D7B0E004AF1FA /* TenraUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -216,7 +216,7 @@
 					};
 				};
 			};
-			buildConfigurationList = D62A098C2F0D7B0D004AF1FA /* Build configuration list for PBXProject "AIFinanceManager" */;
+			buildConfigurationList = D62A098C2F0D7B0D004AF1FA /* Build configuration list for PBXProject "Tenra" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -231,9 +231,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				D62A09902F0D7B0D004AF1FA /* AIFinanceManager */,
-				D62A099D2F0D7B0E004AF1FA /* AIFinanceManagerTests */,
-				D62A09A72F0D7B0E004AF1FA /* AIFinanceManagerUITests */,
+				D62A09902F0D7B0D004AF1FA /* Tenra */,
+				D62A099D2F0D7B0E004AF1FA /* TenraTests */,
+				D62A09A72F0D7B0E004AF1FA /* TenraUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -291,12 +291,12 @@
 /* Begin PBXTargetDependency section */
 		D62A09A02F0D7B0E004AF1FA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D62A09902F0D7B0D004AF1FA /* AIFinanceManager */;
+			target = D62A09902F0D7B0D004AF1FA /* Tenra */;
 			targetProxy = D62A099F2F0D7B0E004AF1FA /* PBXContainerItemProxy */;
 		};
 		D62A09AA2F0D7B0E004AF1FA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D62A09902F0D7B0D004AF1FA /* AIFinanceManager */;
+			target = D62A09902F0D7B0D004AF1FA /* Tenra */;
 			targetProxy = D62A09A92F0D7B0E004AF1FA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -507,7 +507,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AIFinanceManager.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AIFinanceManager";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tenra.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tenra";
 			};
 			name = Debug;
 		};
@@ -529,7 +529,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AIFinanceManager.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AIFinanceManager";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tenra.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tenra";
 			};
 			name = Release;
 		};
@@ -578,7 +578,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		D62A098C2F0D7B0D004AF1FA /* Build configuration list for PBXProject "AIFinanceManager" */ = {
+		D62A098C2F0D7B0D004AF1FA /* Build configuration list for PBXProject "Tenra" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D62A09B02F0D7B0E004AF1FA /* Debug */,
@@ -587,7 +587,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D62A09B22F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "AIFinanceManager" */ = {
+		D62A09B22F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "Tenra" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D62A09B32F0D7B0E004AF1FA /* Debug */,
@@ -596,7 +596,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D62A09B52F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "AIFinanceManagerTests" */ = {
+		D62A09B52F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "TenraTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D62A09B62F0D7B0E004AF1FA /* Debug */,
@@ -605,7 +605,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D62A09B82F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "AIFinanceManagerUITests" */ = {
+		D62A09B82F0D7B0E004AF1FA /* Build configuration list for PBXNativeTarget "TenraUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D62A09B92F0D7B0E004AF1FA /* Debug */,
