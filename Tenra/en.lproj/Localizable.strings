@@ -1032,3 +1032,8 @@
 "alert.disableSync.title" = "Disable iCloud Sync?";
 "alert.disableSync.message" = "Data will only be stored locally on this device.";
 "alert.disableSync.confirm" = "Disable";
+
+// Backup errors
+"error.backup.noActiveStore" = "No active database found";
+"error.backup.copyFailed" = "Failed to copy backup";
+"error.backup.incompatibleVersion" = "Backup version is incompatible";

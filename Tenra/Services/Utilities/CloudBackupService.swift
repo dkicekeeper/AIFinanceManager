@@ -22,15 +22,16 @@ nonisolated final class CloudBackupService: @unchecked Sendable {
         self.coreDataStack = coreDataStack
     }
 
-    // MARK: - Ubiquity Container
+    // MARK: - Backups Directory
 
-    /// Returns the Backups directory in the iCloud ubiquity container, or nil if iCloud is unavailable.
+    /// Returns the Backups directory in the app's Documents folder.
+    /// Uses local storage — no iCloud Documents entitlement required.
     private func backupsDirectoryURL() -> URL? {
-        guard let ubiquityURL = FileManager.default.url(forUbiquityContainerIdentifier: "iCloud.dakacom.Tenra") else {
-            CloudBackupService.logger.warning("iCloud ubiquity container not available")
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            CloudBackupService.logger.warning("Documents directory not available")
             return nil
         }
-        let backupsDir = ubiquityURL.appendingPathComponent("Backups", isDirectory: true)
+        let backupsDir = documentsURL.appendingPathComponent("Backups", isDirectory: true)
         if !FileManager.default.fileExists(atPath: backupsDir.path) {
             try? FileManager.default.createDirectory(at: backupsDir, withIntermediateDirectories: true)
         }
@@ -97,7 +98,7 @@ nonisolated final class CloudBackupService: @unchecked Sendable {
             transactionCount: transactionCount,
             accountCount: accountCount,
             categoryCount: categoryCount,
-            modelVersion: "v6",
+            modelVersion: "v7",
             fileSize: fileSize,
             appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
         )
@@ -182,16 +183,6 @@ nonisolated final class CloudBackupService: @unchecked Sendable {
         guard let sourceURL = backupStoreURL,
               fm.fileExists(atPath: sourceURL.path) else {
             throw CoreDataStack.CloudBackupError.noActiveStore
-        }
-
-        // Ensure file is downloaded from iCloud
-        if !fm.isUbiquitousItem(at: sourceURL) || !FileManager.default.fileExists(atPath: sourceURL.path) {
-            try fm.startDownloadingUbiquitousItem(at: sourceURL)
-            // Wait for download — simple polling with timeout
-            let deadline = Date().addingTimeInterval(60)
-            while !fm.fileExists(atPath: sourceURL.path) && Date() < deadline {
-                try await Task.sleep(for: .milliseconds(500))
-            }
         }
 
         // Swap the store

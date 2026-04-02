@@ -26,10 +26,9 @@ final class CloudSyncViewModel {
     var successMessage: String?
     var errorMessage: String?
 
-    var isSyncEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") }
-        set {
-            UserDefaults.standard.set(newValue, forKey: "iCloudSyncEnabled")
+    var isSyncEnabled: Bool = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
+        didSet {
+            UserDefaults.standard.set(isSyncEnabled, forKey: "iCloudSyncEnabled")
         }
     }
 
@@ -75,7 +74,7 @@ final class CloudSyncViewModel {
     func toggleSync() async {
         if isSyncEnabled {
             // Turning OFF — confirm first (handled by view alert)
-            disableSync()
+            await disableSync()
         } else {
             await enableSync()
         }
@@ -99,8 +98,9 @@ final class CloudSyncViewModel {
             stack.reloadContainer()
         }.value
 
-        // Check if CloudKit container actually loaded (fallback resets the flag)
+        // Check if CloudKit container actually loaded (fallback resets the UserDefaults flag)
         guard UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") else {
+            isSyncEnabled = false  // sync stored property with UserDefaults (fallback set it to false)
             syncState = .error("CoreData model is not yet CloudKit-compatible")
             CloudSyncViewModel.logger.error("CloudKit container failed to load — sync disabled automatically")
             return
@@ -117,27 +117,27 @@ final class CloudSyncViewModel {
         settingsService.startListening()
         settingsService.pushAllToCloud()
 
+        syncState = .idle
+
         CloudSyncViewModel.logger.info("iCloud sync enabled")
     }
 
-    func disableSync() {
+    func disableSync() async {
         isSyncEnabled = false
         syncState = .disabled
         syncService.stopMonitoring()
         settingsService.stopListening()
 
-        // Reload container off main thread + reload data
+        // Reload container off main thread — awaited so enableSync() won't race
         let stack = coreDataStack
-        Task {
-            await Task.detached {
-                stack.reloadContainer()
-            }.value
+        await Task.detached {
+            stack.reloadContainer()
+        }.value
 
-            if let coordinator = self.appCoordinator {
-                try? await coordinator.transactionStore.loadData()
-                coordinator.syncTransactionStoreToViewModels(batchMode: true)
-                await coordinator.balanceCoordinator.registerAccounts(coordinator.transactionStore.accounts)
-            }
+        if let coordinator = appCoordinator {
+            try? await coordinator.transactionStore.loadData()
+            coordinator.syncTransactionStoreToViewModels(batchMode: true)
+            await coordinator.balanceCoordinator.registerAccounts(coordinator.transactionStore.accounts)
         }
 
         CloudSyncViewModel.logger.info("iCloud sync disabled")

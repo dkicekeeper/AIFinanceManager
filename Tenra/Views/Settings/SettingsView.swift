@@ -107,7 +107,7 @@ struct SettingsView: View {
             isPresented: $showingDisableSyncConfirmation
         ) {
             Button(String(localized: "alert.disableSync.confirm"), role: .destructive) {
-                cloudSyncViewModel.disableSync()
+                Task { await cloudSyncViewModel.disableSync() }
             }
             Button(String(localized: "alert.deleteAllData.cancel"), role: .cancel) {}
         } message: {

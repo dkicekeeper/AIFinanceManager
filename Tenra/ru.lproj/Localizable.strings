@@ -1032,3 +1032,8 @@
 "alert.disableSync.title" = "Отключить синхронизацию?";
 "alert.disableSync.message" = "Данные будут храниться только на этом устройстве.";
 "alert.disableSync.confirm" = "Отключить";
+
+// Backup errors
+"error.backup.noActiveStore" = "Активная база данных не найдена";
+"error.backup.copyFailed" = "Не удалось скопировать резервную копию";
+"error.backup.incompatibleVersion" = "Версия резервной копии несовместима";

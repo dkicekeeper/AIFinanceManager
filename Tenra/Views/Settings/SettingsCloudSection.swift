@@ -92,32 +92,32 @@ struct SettingsCloudSection: View {
 
     private var statusIcon: String {
         switch syncState {
-        case .synced: return "checkmark.icloud"
+        case .idle, .synced: return "checkmark.icloud"
         case .syncing, .initialSync: return "arrow.triangle.2.circlepath.icloud"
         case .error: return "exclamationmark.icloud"
         case .noAccount: return "person.crop.circle.badge.exclamationmark"
-        default: return "icloud"
+        case .disabled: return "icloud"
         }
     }
 
     private var statusColor: Color {
         switch syncState {
-        case .synced: return AppColors.success
+        case .idle, .synced: return AppColors.success
         case .syncing, .initialSync: return AppColors.accent
         case .error: return AppColors.destructive
         case .noAccount: return AppColors.warning
-        default: return AppColors.textSecondary
+        case .disabled: return AppColors.textSecondary
         }
     }
 
     private var statusText: String {
         switch syncState {
-        case .synced: return String(localized: "settings.cloud.status.synced")
+        case .idle, .synced: return String(localized: "settings.cloud.status.synced")
         case .syncing: return String(localized: "settings.cloud.status.syncing")
         case .initialSync: return String(localized: "settings.cloud.status.initialSync")
         case .error(let message): return "\(String(localized: "settings.cloud.status.error")): \(message)"
         case .noAccount: return String(localized: "settings.cloud.status.noAccount")
-        default: return String(localized: "settings.cloud.status.disabled")
+        case .disabled: return String(localized: "settings.cloud.status.disabled")
         }
     }
 
@@ -134,7 +134,9 @@ struct SettingsCloudSection: View {
             return subtitle
         case .initialSync:
             return String(localized: "settings.cloud.status.initialSyncMessage")
-        default:
+        case .idle:
+            return nil
+        case .syncing, .error, .noAccount, .disabled:
             return nil
         }
     }

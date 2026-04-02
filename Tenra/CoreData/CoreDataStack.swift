@@ -402,9 +402,9 @@ final class CoreDataStack: @unchecked Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .noActiveStore: return "No active persistent store"
-            case .copyFailed(let error): return "Failed to copy backup: \(error.localizedDescription)"
-            case .incompatibleVersion(let version): return "Backup model version \(version) is incompatible"
+            case .noActiveStore: return String(localized: "error.backup.noActiveStore")
+            case .copyFailed(let error): return String(localized: "error.backup.copyFailed") + ": \(error.localizedDescription)"
+            case .incompatibleVersion(let version): return String(localized: "error.backup.incompatibleVersion") + " (\(version))"
             }
         }
     }
