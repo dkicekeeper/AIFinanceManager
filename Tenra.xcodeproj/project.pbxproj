@@ -41,7 +41,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				Tenra.entitlements,
 			);
 			target = D62A09902F0D7B0D004AF1FA /* Tenra */;
 		};
