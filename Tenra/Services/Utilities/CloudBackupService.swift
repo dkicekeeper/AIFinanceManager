@@ -11,9 +11,9 @@ import Foundation
 import CoreData
 import os
 
-final class CloudBackupService: @unchecked Sendable {
+nonisolated final class CloudBackupService: @unchecked Sendable {
 
-    private static let logger = Logger(subsystem: "Tenra", category: "CloudBackupService")
+    private nonisolated static let logger = Logger(subsystem: "Tenra", category: "CloudBackupService")
 
     private let coreDataStack: CoreDataStack
     private let maxBackups = 5
@@ -143,7 +143,7 @@ final class CloudBackupService: @unchecked Sendable {
     // MARK: - Restore Backup
 
     /// Current model version — must match backup to allow restore
-    private static let currentModelVersion = "v6"
+    private nonisolated static let currentModelVersion = "v6"
 
     /// Restores a backup by swapping the persistent store.
     /// Rejects backups with incompatible model versions.
