@@ -26,12 +26,14 @@ struct SettingsView: View {
     let transactionStore: TransactionStore
     let depositsViewModel: DepositsViewModel
     let loansViewModel: LoansViewModel
+    let cloudSyncViewModel: CloudSyncViewModel
 
     // MARK: - State
 
     @State private var showingResetConfirmation = false
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
+    @State private var showingDisableSyncConfirmation = false
 
     // MARK: - Body
 
@@ -56,6 +58,7 @@ struct SettingsView: View {
         ZStack(alignment: .top) {
             List {
                 generalSection
+                cloudSection
                 dataManagementSection
                 exportImportSection
                 experimentsSection
@@ -98,6 +101,17 @@ struct SettingsView: View {
             Button(String(localized: "alert.deleteAllData.cancel"), role: .cancel) {}
         } message: {
             Text(String(localized: "alert.deleteAllData.message"))
+        }
+        .alert(
+            String(localized: "alert.disableSync.title"),
+            isPresented: $showingDisableSyncConfirmation
+        ) {
+            Button(String(localized: "alert.disableSync.confirm"), role: .destructive) {
+                cloudSyncViewModel.disableSync()
+            }
+            Button(String(localized: "alert.deleteAllData.cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "alert.disableSync.message"))
         }
         .sheet(isPresented: $showingExportSheet) {
             ExportActivityView(transactionsViewModel: transactionsViewModel)
@@ -220,6 +234,27 @@ struct SettingsView: View {
         }
     }
 
+    private var cloudSection: some View {
+        SettingsCloudSection(
+            isSyncEnabled: cloudSyncViewModel.isSyncEnabled,
+            syncState: cloudSyncViewModel.syncState,
+            storageUsed: cloudSyncViewModel.storageUsed,
+            onToggleSync: { enabled in
+                if enabled {
+                    Task { await cloudSyncViewModel.enableSync() }
+                } else {
+                    showingDisableSyncConfirmation = true
+                }
+            },
+            backupsDestination: CloudBackupsView(
+                cloudSyncViewModel: cloudSyncViewModel,
+                transactionCount: transactionsViewModel.allTransactions.count,
+                accountCount: accountsViewModel.accounts.count,
+                categoryCount: categoriesViewModel.customCategories.count
+            )
+        )
+    }
+
     private var dangerZoneSection: some View {
         SettingsDangerZoneSection(
             onResetData: {
@@ -241,7 +276,8 @@ struct SettingsView: View {
             categoriesViewModel: coordinator.categoriesViewModel,
             transactionStore: coordinator.transactionStore,
             depositsViewModel: coordinator.depositsViewModel,
-            loansViewModel: coordinator.loansViewModel
+            loansViewModel: coordinator.loansViewModel,
+            cloudSyncViewModel: coordinator.cloudSyncViewModel
         )
     }
 }
