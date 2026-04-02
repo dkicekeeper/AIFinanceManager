@@ -1004,3 +1004,31 @@
 "pdf.error.noTextFound" = "Не удалось извлечь текст из PDF. Возможно, документ повреждён или пуст.";
 "pdf.error.unsupportedFormat" = "Неподдерживаемый формат PDF.";
 "pdf.error.ocr %@" = "Ошибка при распознавании текста: %@";
+
+// MARK: - iCloud Sync
+"settings.cloud" = "iCloud";
+"settings.cloud.sync" = "Синхронизация iCloud";
+"settings.cloud.status.synced" = "Синхронизировано";
+"settings.cloud.status.syncing" = "Синхронизация...";
+"settings.cloud.status.initialSync" = "Первая синхронизация";
+"settings.cloud.status.initialSyncMessage" = "Это может занять несколько минут";
+"settings.cloud.status.error" = "Ошибка синхронизации";
+"settings.cloud.status.disabled" = "Отключено";
+"settings.cloud.status.noAccount" = "Войдите в iCloud в Настройках";
+"settings.cloud.lastSync" = "Последняя: %@";
+"settings.cloud.changes" = "%d отправлено · %d получено";
+"settings.cloud.backups" = "Резервные копии";
+"settings.cloud.createBackup" = "Создать резервную копию";
+"settings.cloud.backupCreated" = "Резервная копия создана";
+"settings.cloud.restore" = "Восстановить";
+"settings.cloud.restoreSuccess" = "Данные восстановлены";
+"settings.cloud.delete" = "Удалить";
+"settings.cloud.storage" = "Хранилище";
+"settings.cloud.storageUsed" = "%@ из %@";
+"settings.cloud.backupMetadata" = "%d счетов · %d транзакций · %@";
+"alert.restore.title" = "Восстановить данные?";
+"alert.restore.message" = "Все текущие данные будут заменены копией от %@.";
+"alert.restore.confirm" = "Восстановить";
+"alert.disableSync.title" = "Отключить синхронизацию?";
+"alert.disableSync.message" = "Данные будут храниться только на этом устройстве.";
+"alert.disableSync.confirm" = "Отключить";

@@ -1004,3 +1004,31 @@
 "pdf.error.noTextFound" = "Could not extract text from PDF. The document may be corrupted or empty.";
 "pdf.error.unsupportedFormat" = "Unsupported PDF format.";
 "pdf.error.ocr %@" = "Text recognition error: %@";
+
+// MARK: - iCloud Sync
+"settings.cloud" = "iCloud";
+"settings.cloud.sync" = "iCloud Sync";
+"settings.cloud.status.synced" = "Synced";
+"settings.cloud.status.syncing" = "Syncing...";
+"settings.cloud.status.initialSync" = "Initial Sync";
+"settings.cloud.status.initialSyncMessage" = "This may take several minutes";
+"settings.cloud.status.error" = "Sync Error";
+"settings.cloud.status.disabled" = "Disabled";
+"settings.cloud.status.noAccount" = "Sign in to iCloud in Settings";
+"settings.cloud.lastSync" = "Last sync: %@";
+"settings.cloud.changes" = "%d sent · %d received";
+"settings.cloud.backups" = "Backups";
+"settings.cloud.createBackup" = "Create Backup";
+"settings.cloud.backupCreated" = "Backup created successfully";
+"settings.cloud.restore" = "Restore";
+"settings.cloud.restoreSuccess" = "Data restored successfully";
+"settings.cloud.delete" = "Delete";
+"settings.cloud.storage" = "Storage";
+"settings.cloud.storageUsed" = "%@ of %@";
+"settings.cloud.backupMetadata" = "%d accounts · %d transactions · %@";
+"alert.restore.title" = "Restore Backup?";
+"alert.restore.message" = "All current data will be replaced with the backup from %@.";
+"alert.restore.confirm" = "Restore";
+"alert.disableSync.title" = "Disable iCloud Sync?";
+"alert.disableSync.message" = "Data will only be stored locally on this device.";
+"alert.disableSync.confirm" = "Disable";
