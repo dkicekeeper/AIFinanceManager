@@ -1,6 +1,6 @@
 //
 //  UniversalFilterButton.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Universal filter button component supporting both Button and Menu modes
 //  Phase 14: Consolidates FilterChip, CategoryFilterButton, and AccountFilterMenu

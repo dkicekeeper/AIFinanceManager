@@ -13,14 +13,14 @@
 ### Task 1: Create `EmptyCardView.swift`
 
 **Files:**
-- Create: `AIFinanceManager/Views/Components/Cards/EmptyCardView.swift`
+- Create: `Tenra/Views/Components/Cards/EmptyCardView.swift`
 
 **Step 1: Create the file**
 
 ```swift
 //
 //  EmptyCardView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Universal card component for section empty states.
 //  Shows a section title + compact empty message, optionally tappable.
@@ -102,7 +102,7 @@ struct EmptyCardView: View {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -20
 ```
 
@@ -113,7 +113,7 @@ Expected: no errors.
 ### Task 2: Migrate `ContentView.swift` — replace `EmptyAccountsPrompt`
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Home/ContentView.swift:244`
+- Modify: `Tenra/Views/Home/ContentView.swift:244`
 
 **Step 1: Replace the call site**
 
@@ -136,7 +136,7 @@ EmptyCardView(
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -20
 ```
 
@@ -147,12 +147,12 @@ Expected: no errors.
 ### Task 3: Delete `EmptyAccountsPrompt.swift`
 
 **Files:**
-- Delete: `AIFinanceManager/Views/Components/Feedback/EmptyAccountsPrompt.swift`
+- Delete: `Tenra/Views/Components/Feedback/EmptyAccountsPrompt.swift`
 
 **Step 1: Verify no remaining call sites**
 
 ```bash
-grep -r "EmptyAccountsPrompt" AIFinanceManager/ --include="*.swift"
+grep -r "EmptyAccountsPrompt" Tenra/ --include="*.swift"
 ```
 
 Expected: no output (zero matches).
@@ -160,14 +160,14 @@ Expected: no output (zero matches).
 **Step 2: Delete the file**
 
 ```bash
-rm AIFinanceManager/Views/Components/Feedback/EmptyAccountsPrompt.swift
+rm Tenra/Views/Components/Feedback/EmptyAccountsPrompt.swift
 ```
 
 **Step 3: Build**
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -20
 ```
 
@@ -178,7 +178,7 @@ Expected: no errors.
 ### Task 4: Migrate `TransactionsSummaryCard.swift` — replace `emptyState` var
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Cards/TransactionsSummaryCard.swift`
+- Modify: `Tenra/Views/Components/Cards/TransactionsSummaryCard.swift`
 
 **Step 1: Replace the `emptyState` private var**
 
@@ -219,7 +219,7 @@ private var emptyState: some View {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -20
 ```
 
@@ -230,7 +230,7 @@ Expected: no errors.
 ### Task 5: Migrate `CategoryGridView.swift` — replace action variant
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Input/CategoryGridView.swift`
+- Modify: `Tenra/Views/Components/Input/CategoryGridView.swift`
 
 **Step 1: Replace the action variant in `emptyState` var**
 
@@ -285,7 +285,7 @@ private var emptyState: some View {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -20
 ```
 
@@ -299,7 +299,7 @@ Expected: no errors.
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -20
 ```
 
@@ -308,7 +308,7 @@ Expected: no output.
 **Step 2: Verify no leftover references**
 
 ```bash
-grep -r "EmptyAccountsPrompt" AIFinanceManager/ --include="*.swift"
+grep -r "EmptyAccountsPrompt" Tenra/ --include="*.swift"
 ```
 
 Expected: no output.
@@ -317,11 +317,11 @@ Expected: no output.
 
 ```bash
 git add \
-  AIFinanceManager/Views/Components/Cards/EmptyCardView.swift \
-  AIFinanceManager/Views/Home/ContentView.swift \
-  AIFinanceManager/Views/Components/Cards/TransactionsSummaryCard.swift \
-  AIFinanceManager/Views/Components/Input/CategoryGridView.swift
-git rm AIFinanceManager/Views/Components/Feedback/EmptyAccountsPrompt.swift
+  Tenra/Views/Components/Cards/EmptyCardView.swift \
+  Tenra/Views/Home/ContentView.swift \
+  Tenra/Views/Components/Cards/TransactionsSummaryCard.swift \
+  Tenra/Views/Components/Input/CategoryGridView.swift
+git rm Tenra/Views/Components/Feedback/EmptyAccountsPrompt.swift
 git commit -m "refactor: replace duplicate card empty states with EmptyCardView
 
 - Add EmptyCardView to Views/Components/Cards/ — section title + compact

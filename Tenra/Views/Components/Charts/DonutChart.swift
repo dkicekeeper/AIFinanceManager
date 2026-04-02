@@ -1,6 +1,6 @@
 //
 //  DonutChart.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 43 (chart merge): Unified donut (ring) chart component.
 //  Replaces two structurally identical components:

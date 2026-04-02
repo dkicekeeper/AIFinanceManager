@@ -1,6 +1,6 @@
 //
 //  TransactionCategoryPickerCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Coordinator for TransactionCategoryPickerView.
 //  Manages the reactive category list and navigation state (category → AddTransactionModal).

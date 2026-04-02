@@ -60,15 +60,15 @@
 ## 📋 Файлы
 
 ### Новые файлы:
-1. `AIFinanceManager/Services/DepositInterestService.swift` - сервис расчета процентов
-2. `AIFinanceManager/Views/DepositEditView.swift` - редактирование депозита
-3. `AIFinanceManager/Views/DepositDetailView.swift` - детальная страница депозита
+1. `Tenra/Services/DepositInterestService.swift` - сервис расчета процентов
+2. `Tenra/Views/DepositEditView.swift` - редактирование депозита
+3. `Tenra/Views/DepositDetailView.swift` - детальная страница депозита
 
 ### Измененные файлы:
-1. `AIFinanceManager/Models/Transaction.swift` - добавлены типы транзакций и модель депозита
-2. `AIFinanceManager/ViewModels/TransactionsViewModel.swift` - методы для депозитов
-3. `AIFinanceManager/Views/AccountsManagementView.swift` - создание депозитов
-4. `AIFinanceManager/Views/ContentView.swift` - навигация к депозитам
+1. `Tenra/Models/Transaction.swift` - добавлены типы транзакций и модель депозита
+2. `Tenra/ViewModels/TransactionsViewModel.swift` - методы для депозитов
+3. `Tenra/Views/AccountsManagementView.swift` - создание депозитов
+4. `Tenra/Views/ContentView.swift` - навигация к депозитам
 
 ## 🎯 Acceptance Criteria
 

@@ -1,6 +1,6 @@
 //
 //  DatePickerRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Simplified date picker row - inline style only
 //  For button-based selection, use DateButtonsView directly

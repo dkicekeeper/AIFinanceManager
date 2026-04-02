@@ -354,8 +354,8 @@ private func performAutoScroll(proxy: ScrollViewProxy) async {
 ### Build Status: ✅ SUCCESS
 
 ```bash
-xcodebuild -project AIFinanceManager.xcodeproj \
-  -scheme AIFinanceManager \
+xcodebuild -project Tenra.xcodeproj \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
   build
 

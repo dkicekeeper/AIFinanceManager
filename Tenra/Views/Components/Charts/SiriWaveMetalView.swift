@@ -1,6 +1,6 @@
 //
 //  SiriWaveMetalView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  MTKView renderer + UIViewRepresentable wrapper for the Aurora wave shader.
 //

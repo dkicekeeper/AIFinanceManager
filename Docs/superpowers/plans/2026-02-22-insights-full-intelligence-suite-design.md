@@ -292,32 +292,32 @@ All computations use existing services:
 
 ### Phase 1 (Priority: High)
 Files to modify:
-- `AIFinanceManager/Models/InsightModels.swift` — add InsightType cases + FinancialHealthScore struct skeleton
-- `AIFinanceManager/Services/Insights/InsightsService.swift` — implement 5 stub generators + generateSavingsInsights()
-- `AIFinanceManager/ViewModels/InsightsViewModel.swift` — add savingsInsights computed property
-- `AIFinanceManager/Views/Insights/InsightsView.swift` — add savings section
+- `Tenra/Models/InsightModels.swift` — add InsightType cases + FinancialHealthScore struct skeleton
+- `Tenra/Services/Insights/InsightsService.swift` — implement 5 stub generators + generateSavingsInsights()
+- `Tenra/ViewModels/InsightsViewModel.swift` — add savingsInsights computed property
+- `Tenra/Views/Insights/InsightsView.swift` — add savings section
 
 ### Phase 2 (Priority: Medium)
 Files to modify:
-- `AIFinanceManager/Models/InsightModels.swift` — add forecasting InsightType cases
-- `AIFinanceManager/Services/Insights/InsightsService.swift` — implement generateForecastingInsights() + income source breakdown + velocity
-- `AIFinanceManager/ViewModels/InsightsViewModel.swift` — add forecastingInsights property
-- `AIFinanceManager/Views/Insights/InsightsView.swift` — add forecasting section
+- `Tenra/Models/InsightModels.swift` — add forecasting InsightType cases
+- `Tenra/Services/Insights/InsightsService.swift` — implement generateForecastingInsights() + income source breakdown + velocity
+- `Tenra/ViewModels/InsightsViewModel.swift` — add forecastingInsights property
+- `Tenra/Views/Insights/InsightsView.swift` — add forecasting section
 
 ### Phase 3 (Priority: Normal)
 Files to modify:
-- `AIFinanceManager/Models/InsightModels.swift` — FinancialHealthScore struct
-- `AIFinanceManager/Services/Insights/InsightsService.swift` — computeHealthScore() + behavioral generators
-- `AIFinanceManager/ViewModels/InsightsViewModel.swift` — healthScore property
-- `AIFinanceManager/Views/Insights/Components/InsightsSummaryHeader.swift` — add health score display
+- `Tenra/Models/InsightModels.swift` — FinancialHealthScore struct
+- `Tenra/Services/Insights/InsightsService.swift` — computeHealthScore() + behavioral generators
+- `Tenra/ViewModels/InsightsViewModel.swift` — healthScore property
+- `Tenra/Views/Insights/Components/InsightsSummaryHeader.swift` — add health score display
 
 ---
 
 ## Verification
 
 After each phase:
-1. Build: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro'`
-2. Run unit tests: `xcodebuild test -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:AIFinanceManagerTests`
+1. Build: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro'`
+2. Run unit tests: `xcodebuild test -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:TenraTests`
 3. Manual verification in simulator:
    - Open Insights tab → confirm new sections appear
    - Check granularity picker works with new categories

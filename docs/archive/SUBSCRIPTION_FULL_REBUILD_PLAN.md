@@ -788,9 +788,9 @@ func getPlannedTransactions(for seriesId: String) -> [Transaction] {
 
 3. ✅ Create backup of current files
    ```bash
-   cp -r AIFinanceManager/ViewModels/SubscriptionsViewModel.swift \
+   cp -r Tenra/ViewModels/SubscriptionsViewModel.swift \
          Docs/backup/SubscriptionsViewModel_before_phase9.swift
-   cp -r AIFinanceManager/Services/Recurring/ \
+   cp -r Tenra/Services/Recurring/ \
          Docs/backup/Recurring_before_phase9/
    ```
 
@@ -894,12 +894,12 @@ class RecurringCacheService {
 - Invalidate all, verify empty
 
 #### Задача 1.2: Unit Tests для RecurringCacheService (2 часа)
-**Файл:** `AIFinanceManagerTests/RecurringCacheServiceTests.swift`
+**Файл:** `TenraTests/RecurringCacheServiceTests.swift`
 
 **Что тестировать:**
 ```swift
 import XCTest
-@testable import AIFinanceManager
+@testable import Tenra
 
 @MainActor
 final class RecurringCacheServiceTests: XCTestCase {
@@ -1369,11 +1369,11 @@ func nextChargeDate(for subscriptionId: String) -> Date? {
 ```
 
 #### Задача 3.3: Тесты для кэша в coordinator (1 час)
-**Файл:** `AIFinanceManagerTests/RecurringTransactionCoordinatorCacheTests.swift`
+**Файл:** `TenraTests/RecurringTransactionCoordinatorCacheTests.swift`
 
 ```swift
 import XCTest
-@testable import AIFinanceManager
+@testable import Tenra
 
 @MainActor
 final class RecurringTransactionCoordinatorCacheTests: XCTestCase {
@@ -2084,11 +2084,11 @@ enum RecurringTransactionError: LocalizedError {
 **Цель:** Comprehensive tests, обновить PROJECT_BIBLE.md
 
 #### Задача 8.1: Integration Tests (2 часа)
-**Файл:** `AIFinanceManagerTests/RecurringTransactionIntegrationTests.swift`
+**Файл:** `TenraTests/RecurringTransactionIntegrationTests.swift`
 
 ```swift
 import XCTest
-@testable import AIFinanceManager
+@testable import Tenra
 
 @MainActor
 final class RecurringTransactionIntegrationTests: XCTestCase {

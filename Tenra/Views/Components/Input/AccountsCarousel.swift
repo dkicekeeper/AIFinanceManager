@@ -1,6 +1,6 @@
 //
 //  AccountsCarousel.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Horizontal scrollable carousel of account cards
 //

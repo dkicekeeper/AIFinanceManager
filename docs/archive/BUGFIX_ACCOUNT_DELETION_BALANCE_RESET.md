@@ -239,11 +239,11 @@ func registerAccounts(_ accounts: [Account]) async {
 
 ### Связанные файлы
 
-- `AIFinanceManager/Services/Balance/BalanceCoordinator.swift` - **ОСНОВНОЕ ИСПРАВЛЕНИЕ** - сохранение балансов при перерегистрации
-- `AIFinanceManager/Services/CoreDataRepository.swift` - профилактическое исправление методов сохранения
-- `AIFinanceManager/ViewModels/AccountsViewModel.swift` - вызывает `syncInitialBalancesToCoordinator()`
-- `AIFinanceManager/ViewModels/TransactionStore.swift` - вызывает `persistAccounts()`
-- `AIFinanceManager/CoreData/Entities/AccountEntity+CoreDataClass.swift` - конвертация между моделями
+- `Tenra/Services/Balance/BalanceCoordinator.swift` - **ОСНОВНОЕ ИСПРАВЛЕНИЕ** - сохранение балансов при перерегистрации
+- `Tenra/Services/CoreDataRepository.swift` - профилактическое исправление методов сохранения
+- `Tenra/ViewModels/AccountsViewModel.swift` - вызывает `syncInitialBalancesToCoordinator()`
+- `Tenra/ViewModels/TransactionStore.swift` - вызывает `persistAccounts()`
+- `Tenra/CoreData/Entities/AccountEntity+CoreDataClass.swift` - конвертация между моделями
 
 ## Хронология исправления
 
@@ -387,12 +387,12 @@ Account Deleted
 
 ### Связанные файлы (Оптимизация)
 
-- `AIFinanceManager/ViewModels/AppCoordinator.swift` - удален `recalculateAll()` при инициализации
-- `AIFinanceManager/Services/Balance/BalanceCoordinator.swift` - добавлены `persistBalance()` и `persistBalances()`
-- `AIFinanceManager/Services/CoreDataRepository.swift` - добавлены `updateAccountBalance()` и `updateAccountBalances()`
-- `AIFinanceManager/Services/DataRepositoryProtocol.swift` - расширен протокол методами обновления балансов
-- `AIFinanceManager/Services/UserDefaultsRepository.swift` - добавлены заглушки для протокола
-- `AIFinanceManager/Services/CSV/CSVImportCoordinator.swift` - добавлен `recalculateAll()` после завершения импорта
+- `Tenra/ViewModels/AppCoordinator.swift` - удален `recalculateAll()` при инициализации
+- `Tenra/Services/Balance/BalanceCoordinator.swift` - добавлены `persistBalance()` и `persistBalances()`
+- `Tenra/Services/CoreDataRepository.swift` - добавлены `updateAccountBalance()` и `updateAccountBalances()`
+- `Tenra/Services/DataRepositoryProtocol.swift` - расширен протокол методами обновления балансов
+- `Tenra/Services/UserDefaultsRepository.swift` - добавлены заглушки для протокола
+- `Tenra/Services/CSV/CSVImportCoordinator.swift` - добавлен `recalculateAll()` после завершения импорта
 
 Дата оптимизации: 2026-02-10
 

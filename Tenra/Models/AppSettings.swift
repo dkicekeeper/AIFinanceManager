@@ -1,6 +1,6 @@
 //
 //  AppSettings.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //  Enhanced: 2026-02-04 (Settings Refactoring Phase 1)

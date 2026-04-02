@@ -1,6 +1,6 @@
 //
 //  CategoriesManagementView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 import os.log
 
-private let logger = Logger(subsystem: "AIFinanceManager", category: "CategoriesManagementView")
+private let logger = Logger(subsystem: "Tenra", category: "CategoriesManagementView")
 
 struct CategoriesManagementView: View {
     let categoriesViewModel: CategoriesViewModel

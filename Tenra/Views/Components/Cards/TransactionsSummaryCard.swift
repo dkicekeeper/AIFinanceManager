@@ -1,6 +1,6 @@
 //
 //  TransactionsSummaryCard.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified transactions summary card with empty state handling.
 //  Gradient background is now rendered at ContentView level (homeBackground),

@@ -44,10 +44,10 @@ score: 4/4 must-haves verified
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `AIFinanceManagerTests/Services/DepositInterestServiceTests.swift` | 6+ Swift Testing tests for DepositInterestService (TEST-01) | VERIFIED | 202 lines, 6 `@Test` functions, `import Testing`, no `import XCTest`, calls `DepositInterestService.calculateInterestToToday` 7 times |
-| `AIFinanceManagerTests/Services/CategoryBudgetServiceTests.swift` | 8+ Swift Testing tests for CategoryBudgetService (TEST-02) | VERIFIED | 181 lines, 8 `@Test` functions, `import Testing`, no `import XCTest`, calls `service.budgetProgress` 7 times + `budgetPeriodStart` once |
-| `AIFinanceManagerTests/Services/Transactions/RecurringTransactionGeneratorTests.swift` | 6+ Swift Testing tests for RecurringTransactionGenerator (TEST-03) | VERIFIED | 287 lines, 6 `@Test` functions, `import Testing`, no `import XCTest`, calls `generator.generateTransactions` 5 times across 6 tests |
-| `AIFinanceManagerTests/CoreDataRoundTripTests.swift` | 6+ Swift Testing tests for CoreData round-trip (TEST-04) | VERIFIED | 307 lines, 6 `@Test` functions, `import Testing`, `import CoreData`, `NSInMemoryStoreType`, UUID store URLs, `.serialized` suite |
+| `TenraTests/Services/DepositInterestServiceTests.swift` | 6+ Swift Testing tests for DepositInterestService (TEST-01) | VERIFIED | 202 lines, 6 `@Test` functions, `import Testing`, no `import XCTest`, calls `DepositInterestService.calculateInterestToToday` 7 times |
+| `TenraTests/Services/CategoryBudgetServiceTests.swift` | 8+ Swift Testing tests for CategoryBudgetService (TEST-02) | VERIFIED | 181 lines, 8 `@Test` functions, `import Testing`, no `import XCTest`, calls `service.budgetProgress` 7 times + `budgetPeriodStart` once |
+| `TenraTests/Services/Transactions/RecurringTransactionGeneratorTests.swift` | 6+ Swift Testing tests for RecurringTransactionGenerator (TEST-03) | VERIFIED | 287 lines, 6 `@Test` functions, `import Testing`, no `import XCTest`, calls `generator.generateTransactions` 5 times across 6 tests |
+| `TenraTests/CoreDataRoundTripTests.swift` | 6+ Swift Testing tests for CoreData round-trip (TEST-04) | VERIFIED | 307 lines, 6 `@Test` functions, `import Testing`, `import CoreData`, `NSInMemoryStoreType`, UUID store URLs, `.serialized` suite |
 
 ### Key Link Verification
 
@@ -82,9 +82,9 @@ Scanned all four test files for: `TODO`, `FIXME`, `XXX`, `PLACEHOLDER`, `XCTest`
 
 #### 1. Full Test Suite Pass Verification
 
-**Test:** Run the full AIFinanceManagerTests suite on iPhone 17 Pro simulator:
+**Test:** Run the full TenraTests suite on iPhone 17 Pro simulator:
 ```
-xcodebuild test -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:AIFinanceManagerTests 2>&1 | grep -E "Test Suite|passed|failed|error:" | tail -30
+xcodebuild test -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:TenraTests 2>&1 | grep -E "Test Suite|passed|failed|error:" | tail -30
 ```
 **Expected:** All 4 new test suites appear with "passed"; `DepositInterestServiceTests` (6 tests), `CategoryBudgetServiceTests` (8 tests), `RecurringTransactionGeneratorTests` (6 tests), `CoreDataRoundTripTests` (6 tests) all pass.
 **Why human:** Cannot run xcodebuild in this environment. The git commit log confirms all files exist (`d543c16`, `f86d073`, `a7c9020`), and prior SUMMARY files document passing runs, but a live build+test confirms no regressions from subsequent commits.

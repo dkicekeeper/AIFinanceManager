@@ -1,6 +1,6 @@
 //
 //  CSVImporter.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //
@@ -19,7 +19,7 @@ struct CSVFile {
 }
 
 nonisolated class CSVImporter {
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CSVImporter")
+    private static let logger = Logger(subsystem: "Tenra", category: "CSVImporter")
 
     static func parseCSV(from url: URL) throws -> CSVFile {
         

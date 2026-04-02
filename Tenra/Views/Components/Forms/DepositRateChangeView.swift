@@ -1,6 +1,6 @@
 //
 //  DepositRateChangeView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable deposit rate change component
 //

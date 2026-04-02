@@ -1,6 +1,6 @@
 //
 //  HistoryView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //  Optimized on 2026-01-27 (Phase 2: Decomposition)
@@ -10,7 +10,7 @@
 import SwiftUI
 import os
 
-private let historyLogger = Logger(subsystem: "AIFinanceManager", category: "HistoryView")
+private let historyLogger = Logger(subsystem: "Tenra", category: "HistoryView")
 
 struct HistoryView: View {
     // MARK: - Dependencies

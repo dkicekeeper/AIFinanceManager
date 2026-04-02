@@ -1,6 +1,6 @@
 //
 //  InsightsAggregationTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Unit tests for InsightsService static aggregation helpers:
 //    - computeMonthlyTotals
@@ -14,7 +14,7 @@
 
 import Testing
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 // MARK: - Test Fixtures
 

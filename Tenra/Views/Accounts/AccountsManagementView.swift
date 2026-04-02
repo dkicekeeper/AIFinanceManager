@@ -1,6 +1,6 @@
 //
 //  AccountsManagementView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //
@@ -27,7 +27,7 @@ struct AccountsManagementView: View {
         transactionsViewModel.appSettings.baseCurrency
     }
 
-    private let logger = Logger(subsystem: "AIFinanceManager", category: "AccountsManagementView")
+    private let logger = Logger(subsystem: "Tenra", category: "AccountsManagementView")
 
     // Filtered and sorted accounts (loans excluded — managed in dedicated Loans section)
     private var sortedAccounts: [Account] {

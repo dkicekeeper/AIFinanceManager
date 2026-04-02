@@ -13,7 +13,7 @@
 ### Task 1: Add animation tokens to AppAnimation.swift
 
 **Files:**
-- Modify: `AIFinanceManager/Utils/AppAnimation.swift`
+- Modify: `Tenra/Utils/AppAnimation.swift`
 
 **Step 1: Add gradient orb tokens after the breathing section (after line 70)**
 
@@ -71,13 +71,13 @@ static func orbDriftAnimation(index: Int) -> Animation {
 
 **Step 2: Build and verify no errors**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Utils/AppAnimation.swift
+git add Tenra/Utils/AppAnimation.swift
 git commit -m "feat: add gradient orb animation tokens to AppAnimation"
 ```
 
@@ -86,7 +86,7 @@ git commit -m "feat: add gradient orb animation tokens to AppAnimation"
 ### Task 2: Create AnimatedOrbView private sub-view
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift`
+- Modify: `Tenra/Views/Components/Cards/CategoryGradientBackground.swift`
 
 **Step 1: Add the private AnimatedOrbView struct before CategoryGradientBackground's body**
 
@@ -158,13 +158,13 @@ private struct AnimatedOrbView: View {
 
 **Step 2: Build and verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors (AnimatedOrbView exists but isn't used yet)
 
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift
+git add Tenra/Views/Components/Cards/CategoryGradientBackground.swift
 git commit -m "feat: add AnimatedOrbView private sub-view for gradient background"
 ```
 
@@ -173,7 +173,7 @@ git commit -m "feat: add AnimatedOrbView private sub-view for gradient backgroun
 ### Task 3: Rewrite CategoryGradientBackground body with 2-layer animation
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift`
+- Modify: `Tenra/Views/Components/Cards/CategoryGradientBackground.swift`
 
 **Step 1: Replace the body property with animated 2-layer version**
 
@@ -280,13 +280,13 @@ private func staticOrbs(
 
 **Step 2: Build and verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift
+git add Tenra/Views/Components/Cards/CategoryGradientBackground.swift
 git commit -m "feat: animated gradient background with 2-layer depth and breathing/drift"
 ```
 
@@ -297,7 +297,7 @@ git commit -m "feat: animated gradient background with 2-layer depth and breathi
 The single `isAnimating` bool drives both breath and drift with the same timing. We need separate animation timings for each.
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift` (AnimatedOrbView only)
+- Modify: `Tenra/Views/Components/Cards/CategoryGradientBackground.swift` (AnimatedOrbView only)
 
 **Step 1: Split animation state into two bools**
 
@@ -350,13 +350,13 @@ var body: some View {
 
 **Step 3: Build and verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift
+git add Tenra/Views/Components/Cards/CategoryGradientBackground.swift
 git commit -m "fix: separate breath and drift animation timings for gradient orbs"
 ```
 
@@ -365,7 +365,7 @@ git commit -m "fix: separate breath and drift animation timings for gradient orb
 ### Task 5: Visual tuning pass — try blendMode variants
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift`
+- Modify: `Tenra/Views/Components/Cards/CategoryGradientBackground.swift`
 
 **Step 1: Run on simulator and visually compare**
 
@@ -383,7 +383,7 @@ The `orbOpacity` range (0.25–0.45) and blur radii (35/60) may need tuning once
 **Step 3: Commit final tuning**
 
 ```bash
-git add AIFinanceManager/Utils/AppAnimation.swift AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift
+git add Tenra/Utils/AppAnimation.swift Tenra/Views/Components/Cards/CategoryGradientBackground.swift
 git commit -m "style: tune gradient orb blend mode and opacity values"
 ```
 
@@ -392,14 +392,14 @@ git commit -m "style: tune gradient orb blend mode and opacity values"
 ### Task 6: Update file header comments
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift` (header comment, lines 1-9)
+- Modify: `Tenra/Views/Components/Cards/CategoryGradientBackground.swift` (header comment, lines 1-9)
 
 **Step 1: Update the file header to reflect new behavior**
 
 ```swift
 //
 //  CategoryGradientBackground.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Animated blurred colour orbs as the home screen gradient background.
 //  Each orb maps to a top expense category; its size, brightness, and
@@ -412,6 +412,6 @@ git commit -m "style: tune gradient orb blend mode and opacity values"
 **Step 2: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift
+git add Tenra/Views/Components/Cards/CategoryGradientBackground.swift
 git commit -m "docs: update CategoryGradientBackground header for animated behavior"
 ```

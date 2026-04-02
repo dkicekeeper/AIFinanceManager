@@ -1,6 +1,6 @@
 //
 //  TransactionsViewModel.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 2 Refactoring Complete: 2026-02-01
 //  Reduction: 1,501 → ~600 lines (-60%)

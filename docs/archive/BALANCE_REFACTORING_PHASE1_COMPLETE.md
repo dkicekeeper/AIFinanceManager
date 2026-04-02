@@ -8,7 +8,7 @@
 
 ## 📋 Executive Summary
 
-Выполнен **полный рефакторинг системы управления балансами** в AIFinanceManager.
+Выполнен **полный рефакторинг системы управления балансами** в Tenra.
 Создана новая архитектура **BalanceCoordinator System** с единой точкой входа для всех операций с балансами.
 
 ### Что было создано:
@@ -434,17 +434,17 @@ Button("Delete") {
 ### Созданные файлы:
 
 ```
-AIFinanceManager/Services/Balance/
+Tenra/Services/Balance/
 ├── BalanceStore.swift                     (280 LOC)
 ├── BalanceCalculationEngine.swift         (420 LOC)
 ├── BalanceUpdateQueue.swift               (220 LOC)
 ├── BalanceCacheManager.swift              (280 LOC)
 └── BalanceCoordinator.swift               (520 LOC)
 
-AIFinanceManager/Protocols/
+Tenra/Protocols/
 └── BalanceCoordinatorProtocol.swift       (140 LOC)
 
-AIFinanceManagerTests/Balance/
+TenraTests/Balance/
 ├── BalanceStoreTests.swift                (220 LOC)
 └── BalanceCalculationEngineTests.swift    (380 LOC)
 ```

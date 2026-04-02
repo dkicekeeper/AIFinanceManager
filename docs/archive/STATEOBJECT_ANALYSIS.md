@@ -10,7 +10,7 @@
    ```
    ✅ **Правильно**: ContentView владеет экземпляром ViewModel
 
-2. **AIFinanceManagerApp** - создает `TimeFilterManager` как `@StateObject`
+2. **TenraApp** - создает `TimeFilterManager` как `@StateObject`
    ```swift
    @StateObject private var timeFilterManager = TimeFilterManager()
    ```
@@ -23,7 +23,7 @@
 ### Текущая архитектура передачи данных
 
 ```
-AIFinanceManagerApp
+TenraApp
   └─ @StateObject timeFilterManager (EnvironmentObject)
   
 ContentView
@@ -43,7 +43,7 @@ ContentView
 - **@StateObject**: 3 места
   - `ContentView.viewModel` (TransactionsViewModel) ✅
   - `ContentView.voiceService` (VoiceInputService) ✅
-  - `AIFinanceManagerApp.timeFilterManager` (TimeFilterManager) ✅
+  - `TenraApp.timeFilterManager` (TimeFilterManager) ✅
 
 - **@ObservedObject**: 31+ мест
   - Все дочерние views, которые получают ViewModel через параметры ✅

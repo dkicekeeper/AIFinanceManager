@@ -217,7 +217,7 @@ ScrollView(.horizontal, showsIndicators: false) {
 ### Phase 1: Создание компонентов (2-3 часа)
 
 #### 1.1. AmountInputView
-**Файл:** `AIFinanceManager/Views/Components/AmountInputView.swift`
+**Файл:** `Tenra/Views/Components/AmountInputView.swift`
 
 **Функционал:**
 - Большой центрированный текст суммы
@@ -236,7 +236,7 @@ struct AmountInputView: View {
 ```
 
 #### 1.2. CurrencySelectorView
-**Файл:** `AIFinanceManager/Views/Components/CurrencySelectorView.swift`
+**Файл:** `Tenra/Views/Components/CurrencySelectorView.swift`
 
 **Функционал:**
 - Горизонтальный ScrollView с FilterChip

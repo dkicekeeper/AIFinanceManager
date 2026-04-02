@@ -1,6 +1,6 @@
 //
 //  DepositInterestService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Service for calculating deposit interest accrual and posting
 //

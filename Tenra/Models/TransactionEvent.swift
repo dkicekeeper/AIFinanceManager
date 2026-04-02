@@ -1,6 +1,6 @@
 //
 //  TransactionEvent.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-05
 //  Refactoring Phase 0: Event Sourcing Model

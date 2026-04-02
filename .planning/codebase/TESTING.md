@@ -19,9 +19,9 @@
 ```bash
 # Run all tests
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:AIFinanceManagerTests
+  -only-testing:TenraTests
 
 # Watch mode (not built into Xcode CLI, use IDE)
 # In Xcode: Cmd+U to run all tests
@@ -33,12 +33,12 @@ xcodebuild test \
 ## Test File Organization
 
 **Location:**
-- Mirror source structure in `AIFinanceManagerTests/`
-- `AIFinanceManagerTests/Utils/` → `AIFinanceManager/Utils/` files
-- `AIFinanceManagerTests/Services/` → `AIFinanceManager/Services/` files
-- `AIFinanceManagerTests/ViewModels/` → `AIFinanceManager/ViewModels/` files
-- `AIFinanceManagerTests/Balance/` → `AIFinanceManager/Services/Balance/` files
-- `AIFinanceManagerTests/Models/` → `AIFinanceManager/Models/` files
+- Mirror source structure in `TenraTests/`
+- `TenraTests/Utils/` → `Tenra/Utils/` files
+- `TenraTests/Services/` → `Tenra/Services/` files
+- `TenraTests/ViewModels/` → `Tenra/ViewModels/` files
+- `TenraTests/Balance/` → `Tenra/Services/Balance/` files
+- `TenraTests/Models/` → `Tenra/Models/` files
 
 **Naming:**
 - Test struct/class: `TargetNameTests` or `TargetNameTests`
@@ -47,7 +47,7 @@ xcodebuild test \
 
 **Test Discovery:**
 ```
-AIFinanceManagerTests/
+TenraTests/
 ├── Utils/
 │   ├── AmountFormatterTests.swift
 │   ├── FormattingTests.swift
@@ -67,7 +67,7 @@ AIFinanceManagerTests/
 │   └── TransactionPaginationControllerTests.swift
 ├── Models/
 │   └── TimeFilterTests.swift
-└── AIFinanceManagerTests.swift (root/shared)
+└── TenraTests.swift (root/shared)
 ```
 
 ## Test Structure
@@ -75,7 +75,7 @@ AIFinanceManagerTests/
 **Suite Organization (Swift Testing):**
 ```swift
 import Testing
-@testable import AIFinanceManager
+@testable import Tenra
 
 struct AmountFormatterTests {  // Struct, not class
     // Tests as methods with @Test attribute
@@ -90,7 +90,7 @@ struct AmountFormatterTests {  // Struct, not class
 **Suite Organization (XCTest):**
 ```swift
 import XCTest
-@testable import AIFinanceManager
+@testable import Tenra
 
 @MainActor
 final class TransactionStoreTests: XCTestCase {
@@ -292,7 +292,7 @@ override func setUpWithError() throws {
 **Current Coverage Status:**
 - 13 test files across main domains (Utils, Services, ViewModels, Balance, Models)
 - Focused on business logic (repositories, parsers, calculations)
-- UI tests present: `AIFinanceManagerUITests/` directory exists but empty/stub
+- UI tests present: `TenraUITests/` directory exists but empty/stub
 - No automated coverage reporting
 
 ## Test Types
@@ -310,7 +310,7 @@ override func setUpWithError() throws {
 - **Approach:** Setup test data, call public APIs, verify state + side effects (mock call counts)
 
 **E2E/Functional Tests:**
-- **Framework:** XCTest UI tests in `AIFinanceManagerUITests/` (placeholder directory)
+- **Framework:** XCTest UI tests in `TenraUITests/` (placeholder directory)
 - **Status:** Not used/implemented
 - **Example:** Would test full flow: open app → add transaction → verify UI update
 
@@ -386,13 +386,13 @@ func testParsingPerformance() {
 ```bash
 # Run single test class
 xcodebuild test \
-  -scheme AIFinanceManager \
-  -only-testing:AIFinanceManagerTests/TransactionStoreTests
+  -scheme Tenra \
+  -only-testing:TenraTests/TransactionStoreTests
 
 # Run single test method (XCTest)
 xcodebuild test \
-  -scheme AIFinanceManager \
-  -only-testing:AIFinanceManagerTests/TransactionStoreTests/testAddTransaction_Success
+  -scheme Tenra \
+  -only-testing:TenraTests/TransactionStoreTests/testAddTransaction_Success
 ```
 
 ---

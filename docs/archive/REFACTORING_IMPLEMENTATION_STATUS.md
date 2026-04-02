@@ -52,7 +52,7 @@
 - ✅ Added TransactionStore to AppCoordinator
 - ✅ Initialize TransactionStore in init()
 - ✅ Load data in initialize()
-- ✅ Added to @EnvironmentObject in AIFinanceManagerApp
+- ✅ Added to @EnvironmentObject in TenraApp
 - ✅ Localization (EN + RU) для TransactionStore errors
 
 **В процессе:**
@@ -74,7 +74,7 @@
 | Файл | Изменения | Статус |
 |------|-----------|--------|
 | ViewModels/AppCoordinator.swift | +12 строк | ✅ Done |
-| AIFinanceManagerApp.swift | +1 строка | ✅ Done |
+| TenraApp.swift | +1 строка | ✅ Done |
 | en.lproj/Localizable.strings | +9 keys | ✅ Done |
 | ru.lproj/Localizable.strings | +9 keys | ✅ Done |
 

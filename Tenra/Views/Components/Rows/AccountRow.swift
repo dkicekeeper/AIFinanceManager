@@ -1,6 +1,6 @@
 //
 //  AccountRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable account row component for displaying accounts in lists
 //

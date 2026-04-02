@@ -1,6 +1,6 @@
 //
 //  CategoryColorWeight.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Lightweight value type representing a single category's
 //  proportional weight in total expenses — used to drive the

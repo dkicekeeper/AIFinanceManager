@@ -1,6 +1,6 @@
 //
 //  SettingsHomeBackgroundView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Dedicated page for home screen background settings.
 //  Mode cards (with inline photo picking for wallpaper) + blur toggle.

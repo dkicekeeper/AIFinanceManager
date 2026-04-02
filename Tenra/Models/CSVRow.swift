@@ -1,6 +1,6 @@
 //
 //  CSVRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-03
 //  CSV Import Refactoring Phase 1

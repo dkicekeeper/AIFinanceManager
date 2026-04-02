@@ -1,6 +1,6 @@
 //
 //  SettingsView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //  Refactored: 2026-02-04 Phase 2 (CSV Migration)

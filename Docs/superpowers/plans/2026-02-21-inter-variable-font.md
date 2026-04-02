@@ -45,7 +45,7 @@ INTER_BUILD        = "AA0003002F477D4A0010A953"
 INTER_ITALIC_BUILD = "AA0004002F477D4A0010A953"
 FONTS_GROUP_UUID   = "D69F99D72F477D4A0010A953"
 RESOURCES_UUID     = "D62A098F2F0D7B0D004AF1FA"
-PBXPROJ            = "AIFinanceManager.xcodeproj/project.pbxproj"
+PBXPROJ            = "Tenra.xcodeproj/project.pbxproj"
 
 with open(PBXPROJ) as f:
     content = f.read()
@@ -142,7 +142,7 @@ git commit -m "chore(fonts): add project.pbxproj migration script for Inter vari
 ## Task 2: Run the migration script
 
 **Files:**
-- Modify: `AIFinanceManager.xcodeproj/project.pbxproj` (via script)
+- Modify: `Tenra.xcodeproj/project.pbxproj` (via script)
 
 **Step 1: Run the script**
 
@@ -158,19 +158,19 @@ Expected output:
 ```
 
 If the script prints a non-zero Overpass count or raises an AssertionError, check that:
-- The UUIDs `D69F99D72F477D4A0010A953` (Fonts group) and `D62A098F2F0D7B0D004AF1FA` (Resources) are still correct — verify with `grep -n "Fonts \*/ = {" AIFinanceManager.xcodeproj/project.pbxproj`
+- The UUIDs `D69F99D72F477D4A0010A953` (Fonts group) and `D62A098F2F0D7B0D004AF1FA` (Resources) are still correct — verify with `grep -n "Fonts \*/ = {" Tenra.xcodeproj/project.pbxproj`
 - The exact indentation strings in steps 4 and 5 match the live file — print the affected block and compare
 
 **Step 2: Spot-check the result**
 
 ```bash
-grep "Inter" AIFinanceManager.xcodeproj/project.pbxproj
+grep "Inter" Tenra.xcodeproj/project.pbxproj
 ```
 
 Expected: 8 lines — 2 PBXBuildFile, 2 PBXFileReference, 2 PBXGroup children, 2 PBXResourcesBuildPhase.
 
 ```bash
-grep "Overpass" AIFinanceManager.xcodeproj/project.pbxproj
+grep "Overpass" Tenra.xcodeproj/project.pbxproj
 ```
 
 Expected: no output.
@@ -178,7 +178,7 @@ Expected: no output.
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager.xcodeproj/project.pbxproj
+git add Tenra.xcodeproj/project.pbxproj
 git commit -m "chore(fonts): migrate project.pbxproj from 18 Overpass static to 2 Inter variable"
 ```
 
@@ -187,7 +187,7 @@ git commit -m "chore(fonts): migrate project.pbxproj from 18 Overpass static to 
 ## Task 3: Update Info.plist — register Inter fonts
 
 **Files:**
-- Modify: `AIFinanceManager/Info.plist` (lines 47–53)
+- Modify: `Tenra/Info.plist` (lines 47–53)
 
 **Step 1: Replace UIAppFonts array**
 
@@ -214,7 +214,7 @@ Replace with:
 **Step 2: Verify no Overpass remains in Info.plist**
 
 ```bash
-grep "Overpass" AIFinanceManager/Info.plist
+grep "Overpass" Tenra/Info.plist
 ```
 
 Expected: no output.
@@ -222,7 +222,7 @@ Expected: no output.
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Info.plist
+git add Tenra/Info.plist
 git commit -m "chore(fonts): update UIAppFonts — register Inter variable font files"
 ```
 
@@ -231,7 +231,7 @@ git commit -m "chore(fonts): update UIAppFonts — register Inter variable font 
 ## Task 4: Update AppTheme.swift — replace AppOverpassFont with AppInterFont
 
 **Files:**
-- Modify: `AIFinanceManager/Utils/AppTheme.swift` (lines 150–221)
+- Modify: `Tenra/Utils/AppTheme.swift` (lines 150–221)
 
 **Step 1: Replace the private font namespace (lines 150–159)**
 
@@ -399,7 +399,7 @@ enum AppTypography {
 **Step 3: Verify no AppOverpassFont references remain**
 
 ```bash
-grep -rn "AppOverpassFont\|Overpass" AIFinanceManager/
+grep -rn "AppOverpassFont\|Overpass" Tenra/
 ```
 
 Expected: no output.
@@ -407,7 +407,7 @@ Expected: no output.
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Utils/AppTheme.swift
+git add Tenra/Utils/AppTheme.swift
 git commit -m "feat(typography): migrate AppTypography from Overpass static to Inter variable font"
 ```
 
@@ -419,7 +419,7 @@ git commit -m "feat(typography): migrate AppTypography from Overpass static to I
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | tail -20
 ```
@@ -494,9 +494,9 @@ git commit -m "feat(fonts): replace Overpass (18 static) with Inter variable fon
 | Step | Action | Files changed |
 |------|--------|---------------|
 | Task 1 | Write migration script | `Scripts/migrate_fonts.py` |
-| Task 2 | Patch project.pbxproj | `AIFinanceManager.xcodeproj/project.pbxproj` |
-| Task 3 | Register fonts in Info.plist | `AIFinanceManager/Info.plist` |
-| Task 4 | Update AppTypography | `AIFinanceManager/Utils/AppTheme.swift` |
+| Task 2 | Patch project.pbxproj | `Tenra.xcodeproj/project.pbxproj` |
+| Task 3 | Register fonts in Info.plist | `Tenra/Info.plist` |
+| Task 4 | Update AppTypography | `Tenra/Utils/AppTheme.swift` |
 | Task 5 | Build verification | — |
 | Task 6 | Remove Overpass files | `Fonts/Overpass-*.ttf` (deleted) |
 

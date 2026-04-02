@@ -1,6 +1,6 @@
 //
 //  SiriWaveView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Aurora-style Metal wave (Phase 50).
 //  Uses SiriWaveMetalView (MTKView + SiriWaveShader.metal) for GPU rendering.

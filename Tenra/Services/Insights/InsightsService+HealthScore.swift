@@ -1,6 +1,6 @@
 //
 //  InsightsService+HealthScore.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
 //  Responsible for: composite financial health score (0-100, 5 weighted components).

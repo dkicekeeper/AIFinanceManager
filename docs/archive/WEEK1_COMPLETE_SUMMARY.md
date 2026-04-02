@@ -126,7 +126,7 @@
 
 1. ✅ CoreDataRepository - SaveCoordinator integration
 2. ✅ CoreDataStack - migration support
-3. ✅ AIFinanceManager.xcdatamodel - 9 unique constraints
+3. ✅ Tenra.xcdatamodel - 9 unique constraints
 4. ✅ AccountsViewModel - Protocol + sync save
 5. ✅ CategoriesViewModel - sync save
 6. ✅ SubscriptionsViewModel - notifications + async save

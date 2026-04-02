@@ -1,6 +1,6 @@
 //
 //  InsightTrendBadge.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Trend indicator badge for Insights cards and detail headers.
 //  Extracted from InsightsCardView (pill) and InsightDetailView (inline) — Phase 26.

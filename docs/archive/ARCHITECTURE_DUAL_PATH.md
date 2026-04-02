@@ -213,7 +213,7 @@ UI refresh
 
 **Supporting:**
 - ✅ `ViewModels/AppCoordinator.swift` - DI setup
-- ✅ `AIFinanceManagerApp.swift` - Environment injection
+- ✅ `TenraApp.swift` - Environment injection
 
 ### LEGACY Architecture (Pre-Phase 7)
 

@@ -66,14 +66,14 @@ Views/Insights/
 ### Task 1: Move files to `Components/` via git + update Xcode project
 
 **Files:**
-- Create dir: `AIFinanceManager/Views/Insights/Components/`
+- Create dir: `Tenra/Views/Insights/Components/`
 - Move: 3 root-level components + 6 section files + 4 chart files
 - Move: `CategoryDeepDiveView.swift` from `Sections/` to root
 
 **Step 1: Move files in the filesystem**
 
 ```bash
-cd /Users/dauletk/Documents/GitHub/AIFinanceManager/AIFinanceManager/Views/Insights
+cd /Users/dauletk/Documents/GitHub/Tenra/Tenra/Views/Insights
 mkdir -p Components
 
 # Move root-level components
@@ -107,11 +107,11 @@ rmdir Sections Charts
 File paths in `project.pbxproj` must be updated. Run this Python script:
 
 ```bash
-cd /Users/dauletk/Documents/GitHub/AIFinanceManager
+cd /Users/dauletk/Documents/GitHub/Tenra
 python3 - <<'EOF'
 import re, pathlib
 
-pbxproj = pathlib.Path("AIFinanceManager.xcodeproj/project.pbxproj")
+pbxproj = pathlib.Path("Tenra.xcodeproj/project.pbxproj")
 text = pbxproj.read_text()
 
 moves = {
@@ -140,7 +140,7 @@ for old, new in moves.items():
 
 pbxproj.write_text(text)
 print(f"Updated {sum(1 for o,n in moves.items() if o in pbxproj.read_text() == False)} paths")
-print("Done. Verify with: xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | tail -5")
+print("Done. Verify with: xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | tail -5")
 EOF
 ```
 
@@ -150,7 +150,7 @@ EOF
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" | head -20
 ```
@@ -162,7 +162,7 @@ If you see `error: no such file`, re-run the Python script or fix paths manually
 **Step 4: Commit**
 
 ```bash
-cd /Users/dauletk/Documents/GitHub/AIFinanceManager
+cd /Users/dauletk/Documents/GitHub/Tenra
 git add -A
 git commit -m "$(cat <<'EOF'
 refactor(insights): restructure folders — Sections/ + Charts/ → Components/
@@ -185,17 +185,17 @@ EOF
 ### Task 2: Extract `InsightsSectionHeader` component
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/InsightsSectionHeader.swift`
+- Create: `Tenra/Views/Insights/Components/InsightsSectionHeader.swift`
 - Modify (after this task): every `*InsightsSection.swift` that still has `private var sectionHeader`
 
 **Step 1: Create the component file**
 
-Write to `AIFinanceManager/Views/Insights/Components/InsightsSectionHeader.swift`:
+Write to `Tenra/Views/Insights/Components/InsightsSectionHeader.swift`:
 
 ```swift
 //
 //  InsightsSectionHeader.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable section header for all Insights sections.
 //  Displays InsightCategory icon (accent) and localised display name.
@@ -235,7 +235,7 @@ struct InsightsSectionHeader: View {
 
 **Step 2: Add the new file to the Xcode project**
 
-In Xcode: File → Add Files to "AIFinanceManager" → select `InsightsSectionHeader.swift` → ensure target checkbox is checked.
+In Xcode: File → Add Files to "Tenra" → select `InsightsSectionHeader.swift` → ensure target checkbox is checked.
 
 OR: update `project.pbxproj` with the UUID-based entry (prefer Xcode GUI for new files).
 
@@ -243,7 +243,7 @@ OR: update `project.pbxproj` with the UUID-based entry (prefer Xcode GUI for new
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" | head -5
 ```
@@ -253,8 +253,8 @@ Expected: `BUILD SUCCEEDED`
 **Step 4: Commit**
 
 ```bash
-cd /Users/dauletk/Documents/GitHub/AIFinanceManager
-git add AIFinanceManager/Views/Insights/Components/InsightsSectionHeader.swift
+cd /Users/dauletk/Documents/GitHub/Tenra
+git add Tenra/Views/Insights/Components/InsightsSectionHeader.swift
 git commit -m "$(cat <<'EOF'
 feat(insights): add InsightsSectionHeader component
 
@@ -271,16 +271,16 @@ EOF
 ### Task 3: Create `InsightsSectionView` generic unified section component
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/InsightsSectionView.swift`
+- Create: `Tenra/Views/Insights/Components/InsightsSectionView.swift`
 
 **Step 1: Create the component**
 
-Write to `AIFinanceManager/Views/Insights/Components/InsightsSectionView.swift`:
+Write to `Tenra/Views/Insights/Components/InsightsSectionView.swift`:
 
 ```swift
 //
 //  InsightsSectionView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Universal parameterised section view for Insights.
 //  Replaces: IncomeInsightsSection, BudgetInsightsSection, RecurringInsightsSection,
@@ -427,7 +427,7 @@ Same as Task 2, Step 2 — add via Xcode File menu or project navigator.
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" | head -5
 ```
@@ -437,8 +437,8 @@ Expected: `BUILD SUCCEEDED`
 **Step 4: Commit**
 
 ```bash
-cd /Users/dauletk/Documents/GitHub/AIFinanceManager
-git add AIFinanceManager/Views/Insights/Components/InsightsSectionView.swift
+cd /Users/dauletk/Documents/GitHub/Tenra
+git add Tenra/Views/Insights/Components/InsightsSectionView.swift
 git commit -m "$(cat <<'EOF'
 feat(insights): add InsightsSectionView — unified generic section component
 
@@ -459,7 +459,7 @@ EOF
 ### Task 4: Update `InsightsView.insightSections` to use `InsightsSectionView`
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/InsightsView.swift`
+- Modify: `Tenra/Views/Insights/InsightsView.swift`
 
 **Step 1: Read the file**
 
@@ -577,7 +577,7 @@ Find and replace the entire `private var insightSections: some View` property (c
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" | head -5
 ```
@@ -589,8 +589,8 @@ If `InsightsSectionView` is unresolved, the new file wasn't added to the Xcode t
 **Step 4: Commit**
 
 ```bash
-cd /Users/dauletk/Documents/GitHub/AIFinanceManager
-git add AIFinanceManager/Views/Insights/InsightsView.swift
+cd /Users/dauletk/Documents/GitHub/Tenra
+git add Tenra/Views/Insights/InsightsView.swift
 git commit -m "$(cat <<'EOF'
 refactor(insights): replace 6 InsightsSection calls with InsightsSectionView in InsightsView
 
@@ -627,7 +627,7 @@ In Xcode Project Navigator: select each file → Delete → "Move to Trash".
 OR remove filesystem + pbxproj references:
 
 ```bash
-cd /Users/dauletk/Documents/GitHub/AIFinanceManager/AIFinanceManager/Views/Insights/Components
+cd /Users/dauletk/Documents/GitHub/Tenra/Tenra/Views/Insights/Components
 git rm SpendingInsightsSection.swift
 git rm IncomeInsightsSection.swift
 git rm BudgetInsightsSection.swift
@@ -642,7 +642,7 @@ Then remove their `PBXBuildFile` + `PBXFileReference` entries from `project.pbxp
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" | head -10
 ```
@@ -652,7 +652,7 @@ Expected: `BUILD SUCCEEDED` — if `SpendingInsightsSection` is still referenced
 **Step 3: Commit**
 
 ```bash
-cd /Users/dauletk/Documents/GitHub/AIFinanceManager
+cd /Users/dauletk/Documents/GitHub/Tenra
 git add -A
 git commit -m "$(cat <<'EOF'
 refactor(insights): delete 6 obsolete *InsightsSection files
@@ -678,17 +678,17 @@ After all tasks, confirm:
 ```bash
 # Final build
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED"
 
 # Confirm no old section types remain in codebase
 grep -r "SpendingInsightsSection\|IncomeInsightsSection\|BudgetInsightsSection\|RecurringInsightsSection\|CashFlowInsightsSection\|WealthInsightsSection" \
-  AIFinanceManager/Views/ --include="*.swift"
+  Tenra/Views/ --include="*.swift"
 # Expected: no output (all types deleted)
 
 # Confirm new structure exists
-ls AIFinanceManager/Views/Insights/Components/
+ls Tenra/Views/Insights/Components/
 # Expected: InsightsSectionHeader.swift, InsightsSectionView.swift,
 #           InsightsSummaryHeader.swift, InsightsCardView.swift,
 #           InsightsGranularityPicker.swift, and chart files

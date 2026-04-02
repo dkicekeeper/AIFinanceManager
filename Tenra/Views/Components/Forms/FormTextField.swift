@@ -1,6 +1,6 @@
 //
 //  FormTextField.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Enhanced text field with error states, help text, and validation
 //  Replaces DescriptionTextField with more features

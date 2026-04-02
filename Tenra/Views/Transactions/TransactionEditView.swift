@@ -1,6 +1,6 @@
 //
 //  TransactionEditView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //  Phase 16 (2026-02-17): Refactored to TransactionEditCoordinator pattern.

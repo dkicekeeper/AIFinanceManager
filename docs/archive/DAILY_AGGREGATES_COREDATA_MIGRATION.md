@@ -2,7 +2,7 @@
 
 ## ⚠️ MANUAL STEP REQUIRED
 
-**Файл:** `AIFinanceManager.xcdatamodeld`
+**Файл:** `Tenra.xcdatamodeld`
 **Entity:** `CategoryAggregateEntity`
 **Действие:** Добавить новый атрибут `day`
 
@@ -12,7 +12,7 @@
 
 ### 1. Открой CoreData модель в Xcode
 
-1. В Xcode найди файл: `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld`
+1. В Xcode найди файл: `Tenra/CoreData/Tenra.xcdatamodeld`
 2. Кликни на него → откроется визуальный редактор CoreData
 
 ### 2. Найди CategoryAggregateEntity
@@ -80,7 +80,7 @@ let options = [
 ### 1. Build проекта
 
 ```bash
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 ```
 
 **Ожидается:** ✅ BUILD SUCCEEDED

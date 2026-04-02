@@ -1,6 +1,6 @@
 //
 //  InsightsSectionView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Universal parameterised section view for Insights.
 //  Replaces: IncomeInsightsSection, BudgetInsightsSection, RecurringInsightsSection,

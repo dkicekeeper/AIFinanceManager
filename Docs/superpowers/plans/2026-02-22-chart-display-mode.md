@@ -15,14 +15,14 @@
 ## Task 1: Create `ChartDisplayMode` enum
 
 **Files:**
-- Create: `AIFinanceManager/Utils/ChartDisplayMode.swift`
+- Create: `Tenra/Utils/ChartDisplayMode.swift`
 
 **Step 1: Create the file**
 
 ```swift
 //
 //  ChartDisplayMode.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 25: Replaces `compact: Bool` across all Insights chart components.
 //
@@ -46,7 +46,7 @@ enum ChartDisplayMode {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "(BUILD|error:)"
 ```
@@ -56,8 +56,8 @@ Expected: `** BUILD SUCCEEDED **`
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/AIFinanceManager.xcodeproj/project.pbxproj \
-        AIFinanceManager/Utils/ChartDisplayMode.swift
+git add Tenra/Tenra.xcodeproj/project.pbxproj \
+        Tenra/Utils/ChartDisplayMode.swift
 git commit -m "feat(charts): add ChartDisplayMode enum — Phase 25"
 ```
 
@@ -71,7 +71,7 @@ git commit -m "feat(charts): add ChartDisplayMode enum — Phase 25"
 ## Task 2: Migrate `CashFlowChart.swift` (3 structs)
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Components/CashFlowChart.swift`
+- Modify: `Tenra/Views/Insights/Components/CashFlowChart.swift`
 
 **Step 1: Update `CashFlowChart` struct**
 
@@ -116,7 +116,7 @@ Then rename every `compact` reference inside `WealthChart.body` to `isCompact`.
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "(BUILD|error:)"
 ```
@@ -131,7 +131,7 @@ The build may succeed if no file currently passes `compact:` to these three stru
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Insights/Components/CashFlowChart.swift
+git add Tenra/Views/Insights/Components/CashFlowChart.swift
 git commit -m "refactor(charts): migrate CashFlowChart/PeriodCashFlowChart/WealthChart to ChartDisplayMode"
 ```
 
@@ -140,7 +140,7 @@ git commit -m "refactor(charts): migrate CashFlowChart/PeriodCashFlowChart/Wealt
 ## Task 3: Migrate `IncomeExpenseChart.swift` (2 structs)
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Components/IncomeExpenseChart.swift`
+- Modify: `Tenra/Views/Insights/Components/IncomeExpenseChart.swift`
 
 **Step 1: Update `IncomeExpenseChart` struct**
 
@@ -172,7 +172,7 @@ Rename every `compact` reference in body to `isCompact`.
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "(BUILD|error:)"
 ```
@@ -180,7 +180,7 @@ xcodebuild build \
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Insights/Components/IncomeExpenseChart.swift
+git add Tenra/Views/Insights/Components/IncomeExpenseChart.swift
 git commit -m "refactor(charts): migrate IncomeExpenseChart/PeriodIncomeExpenseChart to ChartDisplayMode"
 ```
 
@@ -189,7 +189,7 @@ git commit -m "refactor(charts): migrate IncomeExpenseChart/PeriodIncomeExpenseC
 ## Task 4: Migrate `SpendingTrendChart.swift`
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Components/SpendingTrendChart.swift`
+- Modify: `Tenra/Views/Insights/Components/SpendingTrendChart.swift`
 
 **Step 1: Update `SpendingTrendChart` struct**
 
@@ -208,7 +208,7 @@ Rename every `compact` reference in body to `isCompact`.
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "(BUILD|error:)"
 ```
@@ -216,7 +216,7 @@ xcodebuild build \
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Insights/Components/SpendingTrendChart.swift
+git add Tenra/Views/Insights/Components/SpendingTrendChart.swift
 git commit -m "refactor(charts): migrate SpendingTrendChart to ChartDisplayMode"
 ```
 
@@ -225,7 +225,7 @@ git commit -m "refactor(charts): migrate SpendingTrendChart to ChartDisplayMode"
 ## Task 5: Migrate `CategoryBreakdownChart.swift`
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Components/CategoryBreakdownChart.swift`
+- Modify: `Tenra/Views/Insights/Components/CategoryBreakdownChart.swift`
 
 **Step 1: Update `CategoryBreakdownChart` struct**
 
@@ -244,7 +244,7 @@ Rename every `compact` reference in body to `isCompact`.
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "(BUILD|error:)"
 ```
@@ -252,7 +252,7 @@ xcodebuild build \
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Insights/Components/CategoryBreakdownChart.swift
+git add Tenra/Views/Insights/Components/CategoryBreakdownChart.swift
 git commit -m "refactor(charts): migrate CategoryBreakdownChart to ChartDisplayMode"
 ```
 
@@ -261,12 +261,12 @@ git commit -m "refactor(charts): migrate CategoryBreakdownChart to ChartDisplayM
 ## Task 6: Fix all call sites
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Components/InsightsCardView.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightsView.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightDetailView.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightsSummaryDetailView.swift`
-- Modify: `AIFinanceManager/Views/Insights/Components/InsightsSummaryHeader.swift`
-- Modify: `AIFinanceManager/Views/Insights/CategoryDeepDiveView.swift`
+- Modify: `Tenra/Views/Insights/Components/InsightsCardView.swift`
+- Modify: `Tenra/Views/Insights/InsightsView.swift`
+- Modify: `Tenra/Views/Insights/InsightDetailView.swift`
+- Modify: `Tenra/Views/Insights/InsightsSummaryDetailView.swift`
+- Modify: `Tenra/Views/Insights/Components/InsightsSummaryHeader.swift`
+- Modify: `Tenra/Views/Insights/CategoryDeepDiveView.swift`
 
 **Step 1: InsightsCardView.swift — 4 call sites (compact: true → mode: .compact)**
 
@@ -355,7 +355,7 @@ SpendingTrendChart(dataPoints: monthlyTrend, currency: "KZT", mode: .full)
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "(BUILD|error:)"
 ```
@@ -364,7 +364,7 @@ Expected: `** BUILD SUCCEEDED **`
 
 If there are remaining `compact:` label errors, grep for them:
 ```bash
-grep -rn "compact:" AIFinanceManager/Views/Insights/ --include="*.swift"
+grep -rn "compact:" Tenra/Views/Insights/ --include="*.swift"
 ```
 Expected: no output (all replaced).
 
@@ -372,12 +372,12 @@ Expected: no output (all replaced).
 
 ```bash
 git add \
-  AIFinanceManager/Views/Insights/Components/InsightsCardView.swift \
-  AIFinanceManager/Views/Insights/InsightsView.swift \
-  AIFinanceManager/Views/Insights/InsightDetailView.swift \
-  AIFinanceManager/Views/Insights/InsightsSummaryDetailView.swift \
-  AIFinanceManager/Views/Insights/Components/InsightsSummaryHeader.swift \
-  AIFinanceManager/Views/Insights/CategoryDeepDiveView.swift
+  Tenra/Views/Insights/Components/InsightsCardView.swift \
+  Tenra/Views/Insights/InsightsView.swift \
+  Tenra/Views/Insights/InsightDetailView.swift \
+  Tenra/Views/Insights/InsightsSummaryDetailView.swift \
+  Tenra/Views/Insights/Components/InsightsSummaryHeader.swift \
+  Tenra/Views/Insights/CategoryDeepDiveView.swift
 git commit -m "refactor(charts): update all call sites to ChartDisplayMode — Phase 25 complete"
 ```
 
@@ -389,7 +389,7 @@ git commit -m "refactor(charts): update all call sites to ChartDisplayMode — P
 
 ```bash
 xcodebuild clean build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "(BUILD|error:|warning: )" | head -20
 ```
@@ -400,8 +400,8 @@ Expected: `** BUILD SUCCEEDED **`, zero errors, minimal warnings (pre-existing o
 
 ```bash
 grep -rn "compact:" \
-  AIFinanceManager/Views/Insights/ \
-  AIFinanceManager/Utils/ \
+  Tenra/Views/Insights/ \
+  Tenra/Utils/ \
   --include="*.swift"
 ```
 
@@ -411,7 +411,7 @@ Expected: **no output**.
 
 ```bash
 grep -rn "ChartDisplayMode\|mode: \.\(compact\|full\)" \
-  AIFinanceManager/Views/Insights/ \
+  Tenra/Views/Insights/ \
   --include="*.swift"
 ```
 

@@ -1,6 +1,6 @@
 //
 //  TransactionFormService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Service for transaction form validation and processing.
 //  Extracted from AddTransactionModal to follow Single Responsibility Principle.

@@ -1,6 +1,6 @@
 //
 //  ExpenseIncomeProgressBar.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Progress bar component showing expense and income amounts
 //

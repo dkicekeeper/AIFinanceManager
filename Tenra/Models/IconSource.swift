@@ -1,6 +1,6 @@
 //
 //  IconSource.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified icon/logo source model for all entities
 //

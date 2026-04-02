@@ -310,7 +310,7 @@ try await transactionStore.transfer(
 
 **Setup (unchanged from Phase 7.0):**
 10. ViewModels/AppCoordinator.swift
-11. AIFinanceManagerTests/TransactionStoreTests.swift
+11. TenraTests/TransactionStoreTests.swift
 
 **Documentation:**
 12. Docs/MIGRATION_STATUS_QUICKADD.md
@@ -333,7 +333,7 @@ try await transactionStore.transfer(
    - Solution: Move async code outside, use MainActor.run only for UI updates
 
 2. **@EnvironmentObject availability** - Must be available in parent view
-   - Solution: Already injected in AIFinanceManagerApp.swift
+   - Solution: Already injected in TenraApp.swift
 
 3. **Error handling in SwiftUI** - State management for alerts
    - Solution: @State variables + .alert modifier

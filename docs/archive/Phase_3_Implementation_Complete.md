@@ -474,7 +474,7 @@ The TransactionsViewModel is now a **clean coordinator** that delegates to speci
 ## Files Modified in Phase 3
 
 ```
-AIFinanceManager/ViewModels/
+Tenra/ViewModels/
 └── TransactionsViewModel.swift
     ├── transactionsFilteredByTime() - migrated to filterService
     ├── transactionsFilteredByTimeAndCategory() - migrated to filterService

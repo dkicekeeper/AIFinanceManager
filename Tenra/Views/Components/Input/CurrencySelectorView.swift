@@ -1,6 +1,6 @@
 //
 //  CurrencySelectorView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Currency selector using Menu picker style
 //

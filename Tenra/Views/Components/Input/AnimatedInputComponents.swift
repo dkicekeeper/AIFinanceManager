@@ -1,6 +1,6 @@
 //
 //  AnimatedInputComponents.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created: Phase 16 - AnimatedHeroInput
 //

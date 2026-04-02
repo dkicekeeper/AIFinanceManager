@@ -465,7 +465,7 @@ git checkout -b feature/history-view-optimization
 ### Шаг 2: Начать с Phase 1
 ```bash
 # Создать новый файл
-touch AIFinanceManager/Views/History/DateSectionExpensesCache.swift
+touch Tenra/Views/History/DateSectionExpensesCache.swift
 
 # Открыть в Xcode и начать реализацию
 ```
@@ -485,7 +485,7 @@ touch AIFinanceManager/Views/History/DateSectionExpensesCache.swift
 ## 📚 Связанные Документы
 
 - [Детальный анализ HistoryView](./HistoryView_Analysis_Report.md)
-- [Design System Guide](../AIFinanceManager/Utils/AppTheme.swift)
+- [Design System Guide](../Tenra/Utils/AppTheme.swift)
 - [TransactionsViewModel Optimization Plan](./TransactionsViewModel_Optimization_Plan.md)
 
 ---

@@ -1,6 +1,6 @@
 //
 //  TransactionsViewModel+Queries.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Query, filtering, and cache management extracted from TransactionsViewModel.
 //  Phase C: File split for maintainability.

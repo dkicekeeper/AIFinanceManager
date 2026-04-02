@@ -1,6 +1,6 @@
 //
 //  InsightsService+CashFlow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
 //  Responsible for: net cash flow trend, best/worst period, projected balance from recurring.

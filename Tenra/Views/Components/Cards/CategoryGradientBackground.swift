@@ -1,6 +1,6 @@
 //
 //  CategoryGradientBackground.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Animated blurred colour orbs as the home screen gradient background.
 //  Each orb maps to a top expense category; its size, brightness, and

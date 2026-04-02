@@ -1,6 +1,6 @@
 //
 //  CirclePackingLayout.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Pure geometry: packs circles into a rectangular container.
 //  No SwiftUI dependency — input diameters, output (x, y) positions.

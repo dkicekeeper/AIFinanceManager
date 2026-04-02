@@ -187,7 +187,7 @@ UI shows updated balance ✅
 ## ✅ Build Verification
 
 ```bash
-xcodebuild -scheme AIFinanceManager -destination 'generic/platform=iOS' build
+xcodebuild -scheme Tenra -destination 'generic/platform=iOS' build
 
 Result: ✅ BUILD SUCCEEDED
 ```

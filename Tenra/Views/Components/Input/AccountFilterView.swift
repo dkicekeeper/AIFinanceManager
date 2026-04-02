@@ -1,6 +1,6 @@
 //
 //  AccountFilterView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Account filter sheet for HistoryView
 //

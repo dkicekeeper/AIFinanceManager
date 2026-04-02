@@ -256,7 +256,7 @@ Reusable Components
 
 **Build Command:**
 ```bash
-cd /Users/dauletkydrali/Documents/GitHub/AIFinanceManager
+cd /Users/dauletkydrali/Documents/GitHub/Tenra
 # Clean
 Cmd+Shift+K
 # Build

@@ -109,19 +109,19 @@ TransactionsViewModel is still large (1970 lines). Consider splitting into:
 ## 📝 Files Modified
 
 **New Files:**
-- `AIFinanceManager/Views/Components/AccountCard.swift`
-- `AIFinanceManager/Views/Components/FilterChip.swift`
-- `AIFinanceManager/Views/Components/DateSectionHeader.swift`
-- `AIFinanceManager/Views/Components/CategoryChip.swift`
-- `AIFinanceManager/Views/Components/CardContainer.swift`
-- `AIFinanceManager/Views/HistoryViewComponents.swift`
-- `AIFinanceManager/Views/TransactionCardComponents.swift`
+- `Tenra/Views/Components/AccountCard.swift`
+- `Tenra/Views/Components/FilterChip.swift`
+- `Tenra/Views/Components/DateSectionHeader.swift`
+- `Tenra/Views/Components/CategoryChip.swift`
+- `Tenra/Views/Components/CardContainer.swift`
+- `Tenra/Views/HistoryViewComponents.swift`
+- `Tenra/Views/TransactionCardComponents.swift`
 
 **Modified Files:**
-- `AIFinanceManager/Views/HistoryView.swift`
-- `AIFinanceManager/Views/ContentView.swift`
-- `AIFinanceManager/Views/QuickAddTransactionView.swift`
-- `AIFinanceManager/Views/AccountActionView.swift`
+- `Tenra/Views/HistoryView.swift`
+- `Tenra/Views/ContentView.swift`
+- `Tenra/Views/QuickAddTransactionView.swift`
+- `Tenra/Views/AccountActionView.swift`
 
 ## ✅ Testing Checklist
 

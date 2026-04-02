@@ -1,6 +1,6 @@
 //
 //  AppEmptyState.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Консистентный empty state / error state компонент
 //

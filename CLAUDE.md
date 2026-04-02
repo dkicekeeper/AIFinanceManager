@@ -1,4 +1,4 @@
-# AIFinanceManager - Project Guide for Claude
+# Tenra - Project Guide for Claude
 
 ## gstack
 
@@ -18,30 +18,30 @@ Available gstack skills:
 
 ```bash
 # Open project (requires Xcode 26+ beta)
-open AIFinanceManager.xcodeproj
+open Tenra.xcodeproj
 
 # Build via CLI
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 
 # Run unit tests
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:AIFinanceManagerTests
+  -only-testing:TenraTests
 
 # Available destinations (Xcode 26 beta): iPhone 17 Pro (iOS 26.2), iPhone Air, iPhone 16e
 # Physical device: name:Dkicekeeper 17
 
 # Quickly isolate build errors (skip swiftc log noise)
-xcodebuild build -scheme AIFinanceManager \
+xcodebuild build -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30
 ```
 
 ## Project Overview
 
-AIFinanceManager is a native iOS finance management application built with SwiftUI and CoreData. The app helps users track accounts, transactions, budgets, deposits, and recurring payments with a modern, user-friendly interface.
+Tenra is a native iOS finance management application built with SwiftUI and CoreData. The app helps users track accounts, transactions, budgets, deposits, and recurring payments with a modern, user-friendly interface.
 
 **Tech Stack:**
 - SwiftUI (iOS 26+ with Liquid Glass adoption)
@@ -53,7 +53,7 @@ AIFinanceManager is a native iOS finance management application built with Swift
 ## Project Structure
 
 ```
-AIFinanceManager/
+Tenra/
 ├── Models/              # CoreData entities and business models
 ├── ViewModels/          # Observable view models (@MainActor)
 │   └── Balance/         # Balance calculation helpers
@@ -113,7 +113,7 @@ AIFinanceManager/
 #### AppCoordinator
 - Central dependency injection point
 - Manages all ViewModels and their dependencies
-- Located at: `AIFinanceManager/ViewModels/AppCoordinator.swift`
+- Located at: `Tenra/ViewModels/AppCoordinator.swift`
 - Provides: Repository, all ViewModels, Stores, and Coordinators
 - Two-phase startup: `initializeFastPath()` loads accounts+categories (<50ms) → UI visible instantly; full 19k-transaction load runs in background via `initialize()`
 - Observable flags `isFastPathDone` / `isFullyInitialized` drive per-section content reveal (staggered fade-in via `ContentRevealModifier`)
@@ -540,8 +540,8 @@ All decorative animations respect `UIAccessibility.isReduceMotionEnabled`. Use `
 
 ## Testing
 
-- Unit tests: `AIFinanceManagerTests/`
-- UI tests: `AIFinanceManagerUITests/`
+- Unit tests: `TenraTests/`
+- UI tests: `TenraUITests/`
 - Test ViewModels with mock repositories
 - Test CoreData operations with in-memory stores
 

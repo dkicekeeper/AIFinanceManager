@@ -74,7 +74,7 @@
 ## 📝 Localization Files Location
 
 ```
-AIFinanceManager/AIFinanceManager/
+Tenra/Tenra/
 ├── en.lproj/
 │   └── Localizable.strings (216 keys)
 └── ru.lproj/

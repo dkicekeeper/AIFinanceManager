@@ -1,6 +1,6 @@
 //
 //  CoreDataRepository.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //
@@ -15,7 +15,7 @@ import os
 /// Delegates operations to specialized repositories for better separation of concerns
 nonisolated final class CoreDataRepository: DataRepositoryProtocol, @unchecked Sendable {
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CoreDataRepository")
+    private static let logger = Logger(subsystem: "Tenra", category: "CoreDataRepository")
 
     // MARK: - Properties
 

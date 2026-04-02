@@ -1,6 +1,6 @@
 //
 //  TransactionCategoryPickerView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Category grid for creating transactions.
 //  Tap a category → opens TransactionAddModal.

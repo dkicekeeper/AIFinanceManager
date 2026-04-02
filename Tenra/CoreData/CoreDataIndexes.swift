@@ -1,6 +1,6 @@
 //
 //  CoreDataIndexes.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Core Data Indexes configuration
 //  Используется для программного добавления индексов, если GUI в Xcode недоступен

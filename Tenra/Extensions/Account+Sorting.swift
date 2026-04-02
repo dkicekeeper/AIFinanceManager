@@ -1,6 +1,6 @@
 //
 //  Account+Sorting.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Extension for sorting accounts by custom order
 //

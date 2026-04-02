@@ -106,7 +106,7 @@
 ## Data Persistence Strategy
 
 **Primary: CoreData**
-- Location: `AIFinanceManager.xcdatamodeld` with 3 schema versions (`AIFinanceManager v3.xcdatamodel`)
+- Location: `Tenra.xcdatamodeld` with 3 schema versions (`Tenra v3.xcdatamodel`)
 - Entities: TransactionEntity, AccountEntity, CustomCategoryEntity, RecurringSeriesEntity, DepositEntity (and related aggregate entities)
 - Features:
   - One-to-many relationships (Account → Transactions, Category → Transactions)

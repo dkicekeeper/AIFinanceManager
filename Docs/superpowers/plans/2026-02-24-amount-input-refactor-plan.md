@@ -15,7 +15,7 @@
 ## Task 1: Clean up `AnimatedInputComponents.swift` — remove `AnimatedDigit`, fix `AnimatedTitleChar`
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/AnimatedInputComponents.swift`
+- Modify: `Tenra/Views/Components/AnimatedInputComponents.swift`
 
 This file is shared. We clean it first so Tasks 2 and 3 can remove their `AnimatedDigit` usage without compile errors.
 
@@ -122,10 +122,10 @@ struct AnimatedTitleChar: View {
 
 **Step 5: Verify file compiles**
 
-Build target `AIFinanceManager`:
+Build target `Tenra`:
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -139,7 +139,7 @@ Actually, at this point Tasks 2 and 3 haven't removed their `AnimatedDigit` call
 **Step 6: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/AnimatedInputComponents.swift
+git add Tenra/Views/Components/AnimatedInputComponents.swift
 git commit -m "refactor(animation): replace AnimatedDigit with contentTransition, fix AnimatedTitleChar wobble
 
 - Remove AnimatedDigit (replaced by .contentTransition(.numericText()) at call sites)
@@ -157,7 +157,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ## Task 2: Refactor `AmountInputView.swift`
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Transactions/Components/AmountInputView.swift`
+- Modify: `Tenra/Views/Transactions/Components/AmountInputView.swift`
 
 This is the primary target. Read the full file before editing.
 
@@ -394,7 +394,7 @@ Delete these 4 method bodies entirely:
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -406,7 +406,7 @@ Expected: `Build succeeded` (AmountInputView compiles; AnimatedAmountInput still
 **Step 15: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Transactions/Components/AmountInputView.swift
+git add Tenra/Views/Transactions/Components/AmountInputView.swift
 git commit -m "refactor(AmountInputView): contentTransition + design system font + critical bug fixes
 
 - Replace ForEach/AnimatedDigit with Text + .contentTransition(.numericText())
@@ -428,7 +428,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ## Task 3: Refactor `AnimatedAmountInput.swift`
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/AnimatedAmountInput.swift`
+- Modify: `Tenra/Views/Components/AnimatedAmountInput.swift`
 
 Same bug patterns as Task 2. Contains two structs: `AnimatedAmountInput` and `AnimatedTitleInput`.
 Only `AnimatedAmountInput` uses `AnimatedDigit`. `AnimatedTitleInput` uses `AnimatedTitleChar` (already fixed in Task 1).
@@ -658,7 +658,7 @@ Delete only:
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -671,7 +671,7 @@ Expected: `Build succeeded` — all 3 files now compile cleanly, no `AnimatedDig
 
 ```bash
 grep -rn "AnimatedDigit\|ContainerWidthKey\|Overpass-Bold\|previousCharacter\|conversionTask\|updateConvertedAmountDebounced\|updateAnimatedCharacters" \
-  AIFinanceManager --include="*.swift"
+  Tenra --include="*.swift"
 ```
 
 Expected: **zero results**. If any remain, fix them before committing.
@@ -681,7 +681,7 @@ Expected: **zero results**. If any remain, fix them before committing.
 **Step 13: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/AnimatedAmountInput.swift
+git add Tenra/Views/Components/AnimatedAmountInput.swift
 git commit -m "refactor(AnimatedAmountInput): contentTransition + static formatters + design system font
 
 - Replace ForEach/AnimatedDigit with Text + .contentTransition(.numericText())
@@ -705,7 +705,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|warning:|Build succeeded"
 ```
@@ -716,13 +716,13 @@ Expected: `Build succeeded`. Warnings for other parts of the codebase are accept
 
 ```
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:AIFinanceManagerTests \
+  -only-testing:TenraTests \
   2>&1 | grep -E "error:|Test Suite.*passed|Test Suite.*failed"
 ```
 
-Expected: `Test Suite 'AIFinanceManagerTests' passed` — no regressions.
+Expected: `Test Suite 'TenraTests' passed` — no regressions.
 
 **Step 3: Verify previews compile**
 

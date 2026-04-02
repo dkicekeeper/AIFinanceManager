@@ -32,7 +32,7 @@
 **Impact:** Removes one blocking step from startup critical path
 
 **Files:**
-- Modify: `AIFinanceManager/ViewModels/AppCoordinator.swift:232`
+- Modify: `Tenra/ViewModels/AppCoordinator.swift:232`
 
 **Step 1: Remove the blocking call from `initialize()`**
 
@@ -59,7 +59,7 @@ Task.detached(priority: .background) { [weak self] in
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|warning:|BUILD"
 ```
@@ -68,7 +68,7 @@ Expected: `BUILD SUCCEEDED`
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/ViewModels/AppCoordinator.swift
+git add Tenra/ViewModels/AppCoordinator.swift
 git commit -m "perf(startup): defer generateRecurringTransactions to background task (Phase 28-F)"
 ```
 
@@ -81,7 +81,7 @@ git commit -m "perf(startup): defer generateRecurringTransactions to background 
 **Impact:** User sees the app UI in <100ms regardless of data load time
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Home/ContentView.swift`
+- Modify: `Tenra/Views/Home/ContentView.swift`
 
 **Step 1: Understand current blocking pattern**
 
@@ -189,7 +189,7 @@ private var loadingOverlay: some View {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -198,9 +198,9 @@ Expected: `BUILD SUCCEEDED`
 **Step 6: Commit**
 
 ```bash
-git add AIFinanceManager/ViewModels/AppCoordinator.swift \
-        AIFinanceManager/ViewModels/TransactionStore.swift \
-        AIFinanceManager/Views/Home/ContentView.swift
+git add Tenra/ViewModels/AppCoordinator.swift \
+        Tenra/ViewModels/TransactionStore.swift \
+        Tenra/Views/Home/ContentView.swift
 git commit -m "perf(startup): progressive UI — show home screen instantly via fast-path init (Phase 28-A)"
 ```
 
@@ -222,8 +222,8 @@ entities.map { $0.toTransaction() }        // fault 19k objects on main thread
 ```
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Repository/TransactionRepository.swift:42-77`
-- Modify: `AIFinanceManager/ViewModels/TransactionStore.swift:182-210`
+- Modify: `Tenra/Services/Repository/TransactionRepository.swift:42-77`
+- Modify: `Tenra/ViewModels/TransactionStore.swift:182-210`
 
 **Step 1: Change `loadTransactions` to use background context**
 
@@ -311,7 +311,7 @@ func loadData() async throws {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -321,17 +321,17 @@ Expected: `BUILD SUCCEEDED` — no concurrency errors because `repository` is `@
 
 ```bash
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  -only-testing:AIFinanceManagerTests \
+  -only-testing:TenraTests \
   2>&1 | grep -E "Test.*passed|Test.*failed|BUILD"
 ```
 
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Repository/TransactionRepository.swift \
-        AIFinanceManager/ViewModels/TransactionStore.swift
+git add Tenra/Services/Repository/TransactionRepository.swift \
+        Tenra/ViewModels/TransactionStore.swift
 git commit -m "perf(startup): move CoreData fetch to background context — unblock MainActor (Phase 28-B)"
 ```
 
@@ -355,8 +355,8 @@ await balanceCoordinator.registerAccounts(
 ```
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Balance/BalanceCoordinator.swift:82-128`
-- Modify: `AIFinanceManager/ViewModels/AppCoordinator.swift` (initialize method)
+- Modify: `Tenra/Services/Balance/BalanceCoordinator.swift:82-128`
+- Modify: `Tenra/ViewModels/AppCoordinator.swift` (initialize method)
 
 **Step 1: Add fast-path to `registerAccounts`**
 
@@ -461,7 +461,7 @@ Task(priority: .utility) { [weak self] in
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -469,7 +469,7 @@ xcodebuild build \
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Balance/BalanceCoordinator.swift
+git add Tenra/Services/Balance/BalanceCoordinator.swift
 git commit -m "perf(startup): two-phase balance registration — instant display then background recalc (Phase 28-D)"
 ```
 
@@ -482,9 +482,9 @@ git commit -m "perf(startup): two-phase balance registration — instant display
 **Impact:** Foundation for Task 6. Provides O(1) insert/update instead of O(3N) full-table-scan
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Core/DataRepositoryProtocol.swift`
-- Modify: `AIFinanceManager/Services/Repository/TransactionRepository.swift`
-- Modify: `AIFinanceManager/Services/Repository/CoreDataRepository.swift`
+- Modify: `Tenra/Services/Core/DataRepositoryProtocol.swift`
+- Modify: `Tenra/Services/Repository/TransactionRepository.swift`
+- Modify: `Tenra/Services/Repository/CoreDataRepository.swift`
 
 **Step 1: Add methods to `DataRepositoryProtocol`**
 
@@ -633,7 +633,7 @@ func batchInsertTransactions(_ transactions: [Transaction]) {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -641,9 +641,9 @@ xcodebuild build \
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Core/DataRepositoryProtocol.swift \
-        AIFinanceManager/Services/Repository/TransactionRepository.swift \
-        AIFinanceManager/Services/Repository/CoreDataRepository.swift
+git add Tenra/Services/Core/DataRepositoryProtocol.swift \
+        Tenra/Services/Repository/TransactionRepository.swift \
+        Tenra/Services/Repository/CoreDataRepository.swift
 git commit -m "feat(repository): add insertTransaction, updateTransactionFields, batchInsertTransactions — O(1)/O(N) targeted persist (Phase 28-C prep)"
 ```
 
@@ -663,7 +663,7 @@ git commit -m "feat(repository): add insertTransaction, updateTransactionFields,
 - Series events: keep `saveRecurringSeries` / `saveRecurringOccurrences` (small datasets)
 
 **Files:**
-- Modify: `AIFinanceManager/ViewModels/TransactionStore.swift:1056-1070`
+- Modify: `Tenra/ViewModels/TransactionStore.swift:1056-1070`
 
 **Step 1: Replace `persist()` with `persistIncremental(_ event:)`**
 
@@ -736,7 +736,7 @@ Note: `apply()` signature stays `async throws` since `updateBalances` still uses
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -745,16 +745,16 @@ xcodebuild build \
 
 ```bash
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  -only-testing:AIFinanceManagerTests \
+  -only-testing:TenraTests \
   2>&1 | grep -E "passed|failed|BUILD"
 ```
 
 **Step 6: Commit**
 
 ```bash
-git add AIFinanceManager/ViewModels/TransactionStore.swift
+git add Tenra/ViewModels/TransactionStore.swift
 git commit -m "perf(store): replace saveTransactions O(3N) with persistIncremental O(1) per mutation (Phase 28-C)"
 ```
 
@@ -769,8 +769,8 @@ git commit -m "perf(store): replace saveTransactions O(3N) with persistIncrement
 **Problem:** After `batchInsertTransactions` writes directly to SQLite via `NSBatchInsertRequest`, the `viewContext` doesn't automatically see the new entities. We need to merge them.
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Repository/TransactionRepository.swift` (batchInsertTransactions)
-- Modify: `AIFinanceManager/CoreData/CoreDataStack.swift` (add merge helper)
+- Modify: `Tenra/Services/Repository/TransactionRepository.swift` (batchInsertTransactions)
+- Modify: `Tenra/CoreData/CoreDataStack.swift` (add merge helper)
 
 **Step 1: Add `mergeChangesFromBatchOperation` helper to `CoreDataStack`**
 
@@ -836,7 +836,7 @@ func batchInsertTransactions(_ transactions: [Transaction]) {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -852,17 +852,17 @@ Run on simulator, import a CSV file with 500+ transactions. Verify:
 
 ```bash
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  -only-testing:AIFinanceManagerTests \
+  -only-testing:TenraTests \
   2>&1 | grep -E "passed|failed|BUILD"
 ```
 
 **Step 6: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Repository/TransactionRepository.swift \
-        AIFinanceManager/CoreData/CoreDataStack.swift
+git add Tenra/Services/Repository/TransactionRepository.swift \
+        Tenra/CoreData/CoreDataStack.swift
 git commit -m "perf(import): NSBatchInsertRequest + viewContext merge for CSV bulk import (Phase 28-G)"
 ```
 

@@ -141,7 +141,7 @@ Task {
 
 ### Infrastructure
 10. ViewModels/AppCoordinator.swift
-11. AIFinanceManagerTests/TransactionStoreTests.swift
+11. TenraTests/TransactionStoreTests.swift
 
 ### Documentation (Created)
 12. Docs/MIGRATION_STATUS_QUICKADD.md
@@ -417,10 +417,10 @@ Documentation: 11 files total (+7 new)
 **Quick Restart Commands:**
 ```bash
 # Build
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 
 # Run tests
-xcodebuild test -scheme AIFinanceManager
+xcodebuild test -scheme Tenra
 
 # Check status
 git status
@@ -460,7 +460,7 @@ git status
 
 **Runtime Errors:**
 - Check Console.app for TransactionStore debug output
-- Verify TransactionStore injected in AIFinanceManagerApp.swift
+- Verify TransactionStore injected in TenraApp.swift
 - Check for nil optionals in error messages
 
 **Testing Issues:**

@@ -1,4 +1,4 @@
-# Roadmap: AIFinanceManager — Tech Debt & Safety Milestone
+# Roadmap: Tenra — Tech Debt & Safety Milestone
 
 ## Overview
 

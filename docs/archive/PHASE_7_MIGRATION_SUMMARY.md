@@ -143,7 +143,7 @@ private func updateBalances(for event: TransactionEvent) {
 
 ### Setup/Tests
 8. ✅ `ViewModels/AppCoordinator.swift` - TransactionStore init
-9. ✅ `AIFinanceManagerTests/TransactionStoreTests.swift` - Test fix
+9. ✅ `TenraTests/TransactionStoreTests.swift` - Test fix
 
 ### Documentation
 10. ✅ `Docs/MIGRATION_STATUS_QUICKADD.md` - Detailed migration status

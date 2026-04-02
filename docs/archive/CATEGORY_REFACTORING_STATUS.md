@@ -170,7 +170,7 @@ func setCategoriesViewModel(_ categoriesViewModel: CategoriesViewModel) {
 
 ### Build Verification ✅
 ```bash
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 # Result: BUILD SUCCEEDED
 ```
 

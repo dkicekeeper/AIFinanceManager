@@ -16,7 +16,7 @@ Verify clean build baseline:
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" | tail -5
 ```
@@ -28,19 +28,19 @@ Expected: `BUILD SUCCEEDED`
 ## Task 1: Create subdirectory structure
 
 **Files:**
-- Create directories inside `AIFinanceManager/Views/Components/`
+- Create directories inside `Tenra/Views/Components/`
 
 **Step 1: Create all 9 subdirectories**
 
 ```bash
-cd AIFinanceManager/Views/Components
+cd Tenra/Views/Components
 mkdir -p Cards Rows Forms Icons Input Charts Headers Feedback Skeleton
 ```
 
 **Step 2: Verify directories exist**
 
 ```bash
-ls AIFinanceManager/Views/Components/
+ls Tenra/Views/Components/
 ```
 
 Expected: `Cards  Charts  Feedback  Forms  Headers  Icons  Input  Rows  Skeleton` (plus existing .swift files)
@@ -48,7 +48,7 @@ Expected: `Cards  Charts  Feedback  Forms  Headers  Icons  Input  Rows  Skeleton
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/
+git add Tenra/Views/Components/
 git commit -m "chore: create Components/ subdirectory structure"
 ```
 
@@ -72,7 +72,7 @@ git commit -m "chore: create Components/ subdirectory structure"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Cards
 
 mv $BASE/Components/AnalyticsCard.swift $DEST/
@@ -88,7 +88,7 @@ mv $BASE/Transactions/Components/TransactionCardComponents.swift $DEST/
 **Step 2: Verify**
 
 ```bash
-ls AIFinanceManager/Views/Components/Cards/
+ls Tenra/Views/Components/Cards/
 ```
 
 Expected: 8 `.swift` files
@@ -97,7 +97,7 @@ Expected: 8 `.swift` files
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -132,7 +132,7 @@ git commit -m "refactor: move card components to Components/Cards/"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Rows
 
 mv $BASE/Components/ColorPickerRow.swift $DEST/
@@ -150,7 +150,7 @@ mv $BASE/Insights/Components/PeriodBreakdownRow.swift $DEST/
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -181,7 +181,7 @@ git commit -m "refactor: move row components to Components/Rows/"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Forms
 
 mv $BASE/Components/BudgetSettingsSection.swift $DEST/
@@ -195,7 +195,7 @@ mv $BASE/Components/FormTextField.swift $DEST/
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -225,7 +225,7 @@ git commit -m "refactor: move form components to Components/Forms/"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Icons
 
 mv $BASE/Components/IconPickerView.swift $DEST/
@@ -238,7 +238,7 @@ mv $BASE/Subscriptions/Components/StaticSubscriptionIconsView.swift $DEST/
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -277,7 +277,7 @@ git commit -m "refactor: move icon components to Components/Icons/"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Input
 
 mv $BASE/Components/AnimatedAmountInput.swift $DEST/
@@ -299,7 +299,7 @@ mv $BASE/Subscriptions/Components/SubscriptionCalendarView.swift $DEST/
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -330,7 +330,7 @@ git commit -m "refactor: move input components to Components/Input/"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Charts
 
 mv $BASE/Components/BudgetProgressCircle.swift $DEST/
@@ -344,7 +344,7 @@ mv $BASE/Insights/Components/PeriodLineChart.swift $DEST/
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -375,7 +375,7 @@ git commit -m "refactor: move chart components to Components/Charts/"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Headers
 
 mv $BASE/Components/DateSectionHeaderView.swift $DEST/
@@ -389,7 +389,7 @@ mv $BASE/Insights/Components/InsightsSummaryHeader.swift $DEST/
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -422,7 +422,7 @@ git commit -m "refactor: move header components to Components/Headers/"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Feedback
 
 mv $BASE/Components/HighlightedText.swift $DEST/
@@ -438,7 +438,7 @@ mv $BASE/Subscriptions/Components/NotificationPermissionView.swift $DEST/
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -467,7 +467,7 @@ git commit -m "refactor: move feedback components to Components/Feedback/"
 **Step 1: Move files**
 
 ```bash
-BASE=AIFinanceManager/Views
+BASE=Tenra/Views
 DEST=$BASE/Components/Skeleton
 
 mv $BASE/Components/InsightsSkeletonComponents.swift $DEST/
@@ -479,7 +479,7 @@ mv $BASE/Components/SkeletonView.swift $DEST/
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:" | head -20
 ```
@@ -502,18 +502,18 @@ After all moves, the old `Components/` subdirectory folders inside feature folde
 **Step 1: Check for empty directories**
 
 ```bash
-find AIFinanceManager/Views/Insights/Components \
-     AIFinanceManager/Views/Transactions/Components \
-     AIFinanceManager/Views/Subscriptions/Components \
+find Tenra/Views/Insights/Components \
+     Tenra/Views/Transactions/Components \
+     Tenra/Views/Subscriptions/Components \
      -type d 2>/dev/null
 ```
 
 If these directories exist and are empty, remove them:
 
 ```bash
-rmdir AIFinanceManager/Views/Insights/Components 2>/dev/null
-rmdir AIFinanceManager/Views/Transactions/Components 2>/dev/null
-rmdir AIFinanceManager/Views/Subscriptions/Components 2>/dev/null
+rmdir Tenra/Views/Insights/Components 2>/dev/null
+rmdir Tenra/Views/Transactions/Components 2>/dev/null
+rmdir Tenra/Views/Subscriptions/Components 2>/dev/null
 ```
 
 > Note: `rmdir` only removes empty directories — safe to run even if there are remaining files.
@@ -521,10 +521,10 @@ rmdir AIFinanceManager/Views/Subscriptions/Components 2>/dev/null
 **Step 2: Verify what remains in Views/**
 
 ```bash
-find AIFinanceManager/Views -name "*.swift" | grep "/Components/" | sort
+find Tenra/Views -name "*.swift" | grep "/Components/" | sort
 ```
 
-Expected: all paths begin with `AIFinanceManager/Views/Components/Cards/`, `.../Rows/`, etc. No paths should contain `Insights/Components/`, `Transactions/Components/`, or `Subscriptions/Components/`.
+Expected: all paths begin with `Tenra/Views/Components/Cards/`, `.../Rows/`, etc. No paths should contain `Insights/Components/`, `Transactions/Components/`, or `Subscriptions/Components/`.
 
 **Step 3: Commit**
 
@@ -579,7 +579,7 @@ git commit -m "docs: update CLAUDE.md with Components/ subdirectory structure"
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 \
   | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" | tail -5
 ```
@@ -590,9 +590,9 @@ Expected: `BUILD SUCCEEDED`
 
 ```bash
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing:AIFinanceManagerTests 2>&1 \
+  -only-testing:TenraTests 2>&1 \
   | grep -E "error:|Test Suite.*passed|Test Suite.*failed" | tail -5
 ```
 

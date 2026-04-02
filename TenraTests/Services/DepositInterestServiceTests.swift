@@ -1,6 +1,6 @@
 //
 //  DepositInterestServiceTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Unit tests for DepositInterestService.calculateInterestToToday (pure, no CoreData).
 //  TEST-01
@@ -8,7 +8,7 @@
 
 import Testing
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 @Suite("DepositInterestService")
 struct DepositInterestServiceTests {

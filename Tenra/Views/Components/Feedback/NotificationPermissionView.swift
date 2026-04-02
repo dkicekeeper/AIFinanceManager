@@ -1,6 +1,6 @@
 //
 //  NotificationPermissionView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-14
 //  Purpose: Request notification permissions for subscription reminders

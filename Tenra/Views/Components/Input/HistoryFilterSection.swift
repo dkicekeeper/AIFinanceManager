@@ -1,6 +1,6 @@
 //
 //  HistoryFilterSection.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Filter section component for HistoryView
 //  Phase 14: Migrated to UniversalFilterButton

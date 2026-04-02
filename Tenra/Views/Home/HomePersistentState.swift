@@ -1,6 +1,6 @@
 //
 //  HomePersistentState.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Persistent UI state for the Home screen that survives tab-bar reconstruction.
 //  When the user taps +/× in MainTabView, the conditional tab declarations cause

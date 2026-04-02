@@ -15,18 +15,18 @@
 ### Task 1: Fix nested `context.perform` in BudgetSpendingCacheService
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Categories/BudgetSpendingCacheService.swift`
-- Test: `AIFinanceManagerTests/Services/BudgetSpendingCacheServiceTests.swift` (CREATE)
+- Modify: `Tenra/Services/Categories/BudgetSpendingCacheService.swift`
+- Test: `TenraTests/Services/BudgetSpendingCacheServiceTests.swift` (CREATE)
 
 **Background:** `incrementSpent()` and `performRebuild()` call `context.perform { }` inside an already-active `await context.perform { }` block. In Swift Concurrency, nested `perform` on the same serial queue can deadlock or produce undefined ordering. Entity mutations are already safe to call directly inside `await context.perform { }`.
 
 **Step 1: Create failing test**
 
-Create `AIFinanceManagerTests/Services/BudgetSpendingCacheServiceTests.swift`:
+Create `TenraTests/Services/BudgetSpendingCacheServiceTests.swift`:
 
 ```swift
 import Testing
-@testable import AIFinanceManager
+@testable import Tenra
 
 @MainActor
 struct BudgetSpendingCacheServiceTests {
@@ -46,7 +46,7 @@ struct BudgetSpendingCacheServiceTests {
 }
 ```
 
-Run: `xcodebuild test -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:AIFinanceManagerTests/BudgetSpendingCacheServiceTests`
+Run: `xcodebuild test -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:TenraTests/BudgetSpendingCacheServiceTests`
 Expected: PASS (smoke test)
 
 **Step 2: Fix `incrementSpent()` — remove inner `context.perform`**
@@ -143,7 +143,7 @@ await context.perform {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -152,8 +152,8 @@ Expected: `Build succeeded`
 **Step 6: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Categories/BudgetSpendingCacheService.swift \
-        AIFinanceManagerTests/Services/BudgetSpendingCacheServiceTests.swift
+git add Tenra/Services/Categories/BudgetSpendingCacheService.swift \
+        TenraTests/Services/BudgetSpendingCacheServiceTests.swift
 git commit -m "fix(coredata): remove nested context.perform anti-patterns in BudgetSpendingCacheService
 
 Nested context.perform inside await context.perform on the same serial queue
@@ -168,7 +168,7 @@ Fixes: incrementSpent(), performRebuild(), invalidate()"
 ### Task 2: Fix nested `context.perform` in RecurringRepository
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Repository/RecurringRepository.swift`
+- Modify: `Tenra/Services/Repository/RecurringRepository.swift`
 
 **Background:** `updateRecurringSeriesEntity()` is a `nonisolated` helper called from inside `context.perform { }` in `saveRecurringSeries()`. It wraps all mutations in an async `context.perform { }` — making mutations fire-and-forget while the outer context is still performing, creating a race condition.
 
@@ -219,7 +219,7 @@ nonisolated func updateRecurringSeriesEntity(_ entity: RecurringSeriesEntity, fr
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -228,7 +228,7 @@ Expected: `Build succeeded`
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Repository/RecurringRepository.swift
+git add Tenra/Services/Repository/RecurringRepository.swift
 git commit -m "fix(coredata): remove nested context.perform in updateRecurringSeriesEntity
 
 The helper is always called from within an active context.perform block.
@@ -241,18 +241,18 @@ ordering relative to the outer save."
 ### Task 3: Move `loadAllAccountBalances()` to background + partial fetch
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Repository/AccountRepository.swift`
-- Test: `AIFinanceManagerTests/Services/AccountRepositoryTests.swift` (CREATE)
+- Modify: `Tenra/Services/Repository/AccountRepository.swift`
+- Test: `TenraTests/Services/AccountRepositoryTests.swift` (CREATE)
 
 **Background:** `loadAllAccountBalances()` uses `stack.viewContext` (main thread) and fetches full `AccountEntity` objects, but only needs `id` and `balance`. Using `resultType = .dictionaryResultType` + `propertiesToFetch` is faster: no `NSManagedObject` created, no faulting, and it runs on a background context.
 
 **Step 1: Write failing test (verifies the method returns correct data)**
 
-Create `AIFinanceManagerTests/Services/AccountRepositoryTests.swift`:
+Create `TenraTests/Services/AccountRepositoryTests.swift`:
 
 ```swift
 import Testing
-@testable import AIFinanceManager
+@testable import Tenra
 
 // Note: We test via MockRepository since CoreData tests require
 // in-memory store setup. The repository unit tests here verify
@@ -353,7 +353,7 @@ func loadCategoryRules() -> [CategoryRule] {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -362,9 +362,9 @@ Expected: `Build succeeded`
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Repository/AccountRepository.swift \
-        AIFinanceManager/Services/Repository/CategoryRepository.swift \
-        AIFinanceManagerTests/Services/AccountRepositoryTests.swift
+git add Tenra/Services/Repository/AccountRepository.swift \
+        Tenra/Services/Repository/CategoryRepository.swift \
+        TenraTests/Services/AccountRepositoryTests.swift
 git commit -m "perf(coredata): move main-thread reads to background + partial fetch
 
 loadAllAccountBalances: dictionaryResultType + propertiesToFetch [id, balance]
@@ -379,7 +379,7 @@ Prevents potential MainActor stalls during balance reads at launch."
 ### Task 4: Fix N+1 in `RecurringRepository.saveRecurringSeries()`
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Repository/RecurringRepository.swift`
+- Modify: `Tenra/Services/Repository/RecurringRepository.swift`
 
 **Background:** `saveRecurringSeries()` calls `fetchAccountSync(id:)` once per series item — producing N `SELECT * WHERE id = ?` queries. `TransactionRepository.saveTransactionsSync()` already has the correct pattern: pre-fetch all accounts into a dictionary.
 
@@ -448,7 +448,7 @@ Also remove the `fetchAccountSync` call from `updateRecurringSeriesEntity()` sin
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -457,7 +457,7 @@ Expected: `Build succeeded`
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Repository/RecurringRepository.swift
+git add Tenra/Services/Repository/RecurringRepository.swift
 git commit -m "perf(coredata): fix N+1 in saveRecurringSeries() with pre-fetched accountDict
 
 Previously called fetchAccountSync() once per series item (N SELECT queries).
@@ -470,7 +470,7 @@ Matches the pattern already used in TransactionRepository.saveTransactionsSync()
 ### Task 5: Replace `saveCategoryRules()` delete-all + recreate with NSBatchDeleteRequest
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Repository/CategoryRepository.swift`
+- Modify: `Tenra/Services/Repository/CategoryRepository.swift`
 
 **Background:** On every save, ALL rules are fetched, ALL deleted, ALL recreated — O(3N) even for a single change. NSBatchDeleteRequest bypasses NSManagedObject lifecycle for faster bulk delete.
 
@@ -544,7 +544,7 @@ func saveCategoryRules(_ rules: [CategoryRule]) {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -553,7 +553,7 @@ Expected: `Build succeeded`
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Repository/CategoryRepository.swift
+git add Tenra/Services/Repository/CategoryRepository.swift
 git commit -m "perf(coredata): replace saveCategoryRules delete-all+recreate with NSBatchDeleteRequest
 
 Old: fetch all (O(N)) → delete each (O(N)) → create each (O(N)) = O(3N)
@@ -570,11 +570,11 @@ objectIDs into viewContext via mergeChanges(fromRemoteContextSave:)."
 ### Task 6: Add `fetchBatchSize` across all repositories
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Repository/AccountRepository.swift`
-- Modify: `AIFinanceManager/Services/Repository/CategoryRepository.swift`
-- Modify: `AIFinanceManager/Services/Repository/RecurringRepository.swift`
-- Modify: `AIFinanceManager/Services/Categories/CategoryAggregateService.swift`
-- Modify: `AIFinanceManager/Services/Balance/MonthlyAggregateService.swift`
+- Modify: `Tenra/Services/Repository/AccountRepository.swift`
+- Modify: `Tenra/Services/Repository/CategoryRepository.swift`
+- Modify: `Tenra/Services/Repository/RecurringRepository.swift`
+- Modify: `Tenra/Services/Categories/CategoryAggregateService.swift`
+- Modify: `Tenra/Services/Balance/MonthlyAggregateService.swift`
 
 **Background:** Without `fetchBatchSize`, CoreData loads all entity attribute data into memory immediately. With `fetchBatchSize = N`, CoreData loads N rows at a time as faults are fired — dramatically reducing peak memory for large result sets.
 
@@ -624,7 +624,7 @@ request.fetchBatchSize = 200
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -633,11 +633,11 @@ Expected: `Build succeeded`
 **Step 7: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Repository/AccountRepository.swift \
-        AIFinanceManager/Services/Repository/CategoryRepository.swift \
-        AIFinanceManager/Services/Repository/RecurringRepository.swift \
-        AIFinanceManager/Services/Categories/CategoryAggregateService.swift \
-        AIFinanceManager/Services/Balance/MonthlyAggregateService.swift
+git add Tenra/Services/Repository/AccountRepository.swift \
+        Tenra/Services/Repository/CategoryRepository.swift \
+        Tenra/Services/Repository/RecurringRepository.swift \
+        Tenra/Services/Categories/CategoryAggregateService.swift \
+        Tenra/Services/Balance/MonthlyAggregateService.swift
 git commit -m "perf(coredata): add fetchBatchSize to all repositories and aggregate services
 
 Without fetchBatchSize CoreData materializes all rows immediately.
@@ -652,8 +652,8 @@ recurring=100-200, occurrences=200, aggregates=200."
 ### Task 7: Add Persistent History cleanup to CoreDataStack
 
 **Files:**
-- Modify: `AIFinanceManager/CoreData/CoreDataStack.swift`
-- Modify: `AIFinanceManager/ViewModels/AppCoordinator.swift`
+- Modify: `Tenra/CoreData/CoreDataStack.swift`
+- Modify: `Tenra/ViewModels/AppCoordinator.swift`
 
 **Background:** `NSPersistentHistoryTrackingKey = true` creates a history table that grows unboundedly without scheduled cleanup. A weekly cleanup of history older than 7 days prevents database bloat.
 
@@ -680,7 +680,7 @@ func purgeHistory(olderThan days: Int = 7) {
 
 If there's no `logger` in CoreDataStack, add at the top of the class:
 ```swift
-private let logger = Logger(subsystem: "AIFinanceManager", category: "CoreDataStack")
+private let logger = Logger(subsystem: "Tenra", category: "CoreDataStack")
 ```
 
 **Step 2: Schedule cleanup in AppCoordinator**
@@ -699,7 +699,7 @@ Task(priority: .background) { [weak self] in
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -708,8 +708,8 @@ Expected: `Build succeeded`
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/CoreData/CoreDataStack.swift \
-        AIFinanceManager/ViewModels/AppCoordinator.swift
+git add Tenra/CoreData/CoreDataStack.swift \
+        Tenra/ViewModels/AppCoordinator.swift
 git commit -m "fix(coredata): add persistent history cleanup to prevent DB bloat
 
 NSPersistentHistoryTrackingKey=true creates unbounded history table.
@@ -722,14 +722,14 @@ Prevents ZTRANSACTION/ZHISTORY tables from growing indefinitely."
 ### Task 8: Remove `spotlightIndexingEnabled` from `CategoryAggregateEntity.day`
 
 **Files:**
-- Modify: `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/AIFinanceManager.xcdatamodel/contents`
+- Modify: `Tenra/CoreData/Tenra.xcdatamodeld/Tenra.xcdatamodel/contents`
 
 **Background:** The `day` attribute on `CategoryAggregateEntity` has `spotlightIndexingEnabled="YES"`. This triggers CoreData to build a Spotlight search index for aggregate data — completely useless for financial aggregates and wastes background CPU/storage.
 
 **Step 1: Open the xcdatamodel contents file**
 
 The file path is:
-`AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/AIFinanceManager.xcdatamodel/contents`
+`Tenra/CoreData/Tenra.xcdatamodeld/Tenra.xcdatamodel/contents`
 
 Find the `CategoryAggregateEntity` entity, then find the `day` attribute. It will look like:
 
@@ -751,7 +751,7 @@ Change to:
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -760,7 +760,7 @@ Expected: `Build succeeded`
 **Step 4: Commit**
 
 ```bash
-git add "AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/AIFinanceManager.xcdatamodel/contents"
+git add "Tenra/CoreData/Tenra.xcdatamodeld/Tenra.xcdatamodel/contents"
 git commit -m "fix(coredata): remove unintentional spotlightIndexingEnabled from CategoryAggregateEntity.day
 
 Financial aggregate data should not appear in Spotlight search.
@@ -772,9 +772,9 @@ This flag caused unnecessary background indexing on every aggregate write."
 ### Task 9: Create `TransactionPaginationController` with NSFetchedResultsController
 
 **Files:**
-- Create: `AIFinanceManager/ViewModels/TransactionPaginationController.swift`
-- Modify: `AIFinanceManager/ViewModels/AppCoordinator.swift`
-- Test: `AIFinanceManagerTests/ViewModels/TransactionPaginationControllerTests.swift` (CREATE)
+- Create: `Tenra/ViewModels/TransactionPaginationController.swift`
+- Modify: `Tenra/ViewModels/AppCoordinator.swift`
+- Test: `TenraTests/ViewModels/TransactionPaginationControllerTests.swift` (CREATE)
 
 **Background:** TransactionStore holds all 19k+ transactions in `var transactions: [Transaction]`. The new `TransactionPaginationController` uses `NSFetchedResultsController` with `fetchBatchSize = 50` — only loaded (visible) rows are in memory. The controller is `@Observable` so SwiftUI views update automatically.
 
@@ -782,7 +782,7 @@ This flag caused unnecessary background indexing on every aggregate write."
 
 `NSFetchedResultsController` needs `sectionNameKeyPath` to group by day. Add a transient property to TransactionEntity extension.
 
-Create `AIFinanceManager/CoreData/TransactionEntity+SectionKey.swift`:
+Create `Tenra/CoreData/TransactionEntity+SectionKey.swift`:
 
 ```swift
 import CoreData
@@ -814,7 +814,7 @@ enum TransactionSectionKeyFormatter {
 
 **Step 2: Create `TransactionPaginationController.swift`**
 
-Create `AIFinanceManager/ViewModels/TransactionPaginationController.swift`:
+Create `Tenra/ViewModels/TransactionPaginationController.swift`:
 
 ```swift
 import Foundation
@@ -851,7 +851,7 @@ final class TransactionPaginationController: NSObject {
     // MARK: - Private
     @ObservationIgnored private var frc: NSFetchedResultsController<TransactionEntity>?
     @ObservationIgnored private let stack: CoreDataStack
-    @ObservationIgnored private let logger = Logger(subsystem: "AIFinanceManager", category: "TransactionPaginationController")
+    @ObservationIgnored private let logger = Logger(subsystem: "Tenra", category: "TransactionPaginationController")
 
     // MARK: - Init
     init(stack: CoreDataStack) {
@@ -970,11 +970,11 @@ struct TransactionSection: Identifiable {
 
 **Step 3: Write test for TransactionPaginationController**
 
-Create `AIFinanceManagerTests/ViewModels/TransactionPaginationControllerTests.swift`:
+Create `TenraTests/ViewModels/TransactionPaginationControllerTests.swift`:
 
 ```swift
 import Testing
-@testable import AIFinanceManager
+@testable import Tenra
 
 @MainActor
 struct TransactionPaginationControllerTests {
@@ -1004,9 +1004,9 @@ struct TransactionPaginationControllerTests {
 
 ```bash
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  -only-testing:AIFinanceManagerTests/TransactionPaginationControllerTests \
+  -only-testing:TenraTests/TransactionPaginationControllerTests \
   2>&1 | grep -E "Test (passed|failed)|error:"
 ```
 Expected: All tests passed.
@@ -1030,7 +1030,7 @@ transactionPaginationController.setup()
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -1039,10 +1039,10 @@ Expected: `Build succeeded`
 **Step 7: Commit**
 
 ```bash
-git add AIFinanceManager/CoreData/TransactionEntity+SectionKey.swift \
-        AIFinanceManager/ViewModels/TransactionPaginationController.swift \
-        AIFinanceManager/ViewModels/AppCoordinator.swift \
-        AIFinanceManagerTests/ViewModels/TransactionPaginationControllerTests.swift
+git add Tenra/CoreData/TransactionEntity+SectionKey.swift \
+        Tenra/ViewModels/TransactionPaginationController.swift \
+        Tenra/ViewModels/AppCoordinator.swift \
+        TenraTests/ViewModels/TransactionPaginationControllerTests.swift
 git commit -m "feat(coredata): add TransactionPaginationController with NSFetchedResultsController
 
 fetchBatchSize=50: only visible rows materialized in memory (vs all 19k).
@@ -1057,8 +1057,8 @@ AppCoordinator owns and initializes the controller."
 ### Task 10: Wire Transaction list views to use TransactionPaginationController
 
 **Files:**
-- Modify: Views in `AIFinanceManager/Views/History/` (identify which file renders the main transaction list)
-- Modify: `AIFinanceManager/Views/Home/ContentView.swift` (if it shows transactions)
+- Modify: Views in `Tenra/Views/History/` (identify which file renders the main transaction list)
+- Modify: `Tenra/Views/Home/ContentView.swift` (if it shows transactions)
 
 **Background:** After creating `TransactionPaginationController`, transaction list views must be updated to consume `sections` from it instead of computing from `TransactionStore.transactions`.
 
@@ -1067,12 +1067,12 @@ AppCoordinator owns and initializes the controller."
 Run this to find transaction list rendering views:
 
 ```bash
-grep -rl "transactions\." AIFinanceManager/Views/ | grep -v ".xcodeproj"
+grep -rl "transactions\." Tenra/Views/ | grep -v ".xcodeproj"
 ```
 
 Also check:
 ```bash
-grep -rl "TransactionRow\|transactionList\|historyList" AIFinanceManager/Views/
+grep -rl "TransactionRow\|transactionList\|historyList" Tenra/Views/
 ```
 
 **Step 2: Update the history view to use paginationController**
@@ -1116,7 +1116,7 @@ HistoryView(paginationController: coordinator.transactionPaginationController)
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -1125,7 +1125,7 @@ Expected: `Build succeeded`
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Views/History/ AIFinanceManager/Views/Home/ContentView.swift
+git add Tenra/Views/History/ Tenra/Views/Home/ContentView.swift
 git commit -m "feat(ui): wire history view to TransactionPaginationController
 
 History view now renders from FRC sections instead of TransactionStore.transactions.
@@ -1140,8 +1140,8 @@ Search/filter updates are forwarded to paginationController properties."
 ### Task 11: TransactionStore windowing strategy
 
 **Files:**
-- Modify: `AIFinanceManager/ViewModels/TransactionStore.swift`
-- Modify: `AIFinanceManager/Services/Repository/TransactionRepository.swift`
+- Modify: `Tenra/ViewModels/TransactionStore.swift`
+- Modify: `Tenra/Services/Repository/TransactionRepository.swift`
 
 **Background:** At 100k transactions, keeping all in memory is unsustainable. TransactionStore should load only a rolling window (last 3 months) for business logic (balance calculations, recurring). Insights use aggregate services (already Phase 22). FRC (Task 9) handles the full list in UI.
 
@@ -1182,7 +1182,7 @@ func loadData() async throws {
 Run:
 ```bash
 grep -n "transactionStore\.transactions\|store\.transactions" \
-  AIFinanceManager/Services/*/InsightsService.swift
+  Tenra/Services/*/InsightsService.swift
 ```
 
 If any `store.transactions` references remain in InsightsService, replace them with calls to `CategoryAggregateService.fetchRange()` or `MonthlyAggregateService.fetchRange()` (Phase 22 services).
@@ -1191,7 +1191,7 @@ If any `store.transactions` references remain in InsightsService, replace them w
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -1200,7 +1200,7 @@ Expected: `Build succeeded`
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/ViewModels/TransactionStore.swift
+git add Tenra/ViewModels/TransactionStore.swift
 git commit -m "perf(coredata): TransactionStore windowing — load last 3 months only
 
 At 100k+ transactions, loading all into memory is unsustainable.
@@ -1214,21 +1214,21 @@ FRC (TransactionPaginationController) provides full history in UI."
 ### Task 12: Add CoreData Model v2 with improved indexes
 
 **Files:**
-- Create: New `AIFinanceManager v2.xcdatamodeld` model version (via Xcode Editor menu)
+- Create: New `Tenra v2.xcdatamodeld` model version (via Xcode Editor menu)
 
 **Background:** Add two new compound indexes to `TransactionEntity` for multi-currency Insights queries. This requires a new model version (lightweight migration).
 
 **Step 1: Create new model version in Xcode**
 
 In Xcode:
-1. Select `AIFinanceManager.xcdatamodeld` in the Project Navigator
+1. Select `Tenra.xcdatamodeld` in the Project Navigator
 2. Editor menu → Add Model Version...
-3. Name: `AIFinanceManager v2`
-4. Based on: `AIFinanceManager` (current version)
+3. Name: `Tenra v2`
+4. Based on: `Tenra` (current version)
 
 **Step 2: Add `byCurrencyDateIndex` to TransactionEntity**
 
-In `AIFinanceManager v2.xcdatamodeld`:
+In `Tenra v2.xcdatamodeld`:
 1. Select `TransactionEntity`
 2. Add Fetch Index: `byCurrencyDateIndex`
    - Property: `currency` (Ascending)
@@ -1243,7 +1243,7 @@ Add Fetch Index: `byTypeCurrencyDateIndex`
 
 **Step 4: Set v2 as the current model version**
 
-In Xcode, select `AIFinanceManager.xcdatamodeld` → Inspector → Current Version → `AIFinanceManager v2`
+In Xcode, select `Tenra.xcdatamodeld` → Inspector → Current Version → `Tenra v2`
 
 **Step 5: Verify automatic migration works**
 
@@ -1258,7 +1258,7 @@ Lightweight migration (index-only change) is automatic — no mapping model need
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -1267,7 +1267,7 @@ Expected: `Build succeeded`
 **Step 7: Commit**
 
 ```bash
-git add "AIFinanceManager/CoreData/"
+git add "Tenra/CoreData/"
 git commit -m "feat(coredata): add model v2 with multi-currency indexes
 
 New indexes on TransactionEntity:
@@ -1288,9 +1288,9 @@ All changes are testable via:
 ```bash
 # Run full test suite
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  -only-testing:AIFinanceManagerTests \
+  -only-testing:TenraTests \
   2>&1 | grep -E "Test (passed|failed|Suite)|error:"
 ```
 

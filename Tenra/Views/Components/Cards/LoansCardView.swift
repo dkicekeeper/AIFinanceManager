@@ -1,6 +1,6 @@
 //
 //  LoansCardView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Summary card for Home screen showing total debt,
 //  monthly payment, and active loans count.

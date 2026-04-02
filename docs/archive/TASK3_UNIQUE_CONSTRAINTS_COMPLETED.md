@@ -17,7 +17,7 @@
 
 ### 1. Обновлена Core Data модель
 
-**Файл:** `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/AIFinanceManager.xcdatamodel/contents`
+**Файл:** `Tenra/CoreData/Tenra.xcdatamodeld/Tenra.xcdatamodel/contents`
 
 Добавлены unique constraints для **9 entities:**
 
@@ -239,7 +239,7 @@ try! context.save()  // ✅ Merge policy обновит tx1, не создаст
 
 1. **Откатить изменения в модели:**
 ```bash
-git checkout HEAD -- AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/
+git checkout HEAD -- Tenra/CoreData/Tenra.xcdatamodeld/
 ```
 
 2. **Удалить базу данных:**
@@ -291,7 +291,7 @@ try? resetAllData()
 ## 🔗 Связанные файлы
 
 ### Изменены:
-- ✅ `AIFinanceManager.xcdatamodeld/contents` - добавлены constraints
+- ✅ `Tenra.xcdatamodeld/contents` - добавлены constraints
 - ✅ `CoreDataStack.swift` - миграция настроена
 - ✅ `CoreDataRepository.swift` - комментарии обновлены
 

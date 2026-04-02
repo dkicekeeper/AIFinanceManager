@@ -562,7 +562,7 @@ Swift Actor для сериализации операций с балансам
 
 ### 7. Добавлены интеграционные тесты
 
-**Файл:** `AIFinanceManagerTests/BalanceCalculationTests.swift`
+**Файл:** `TenraTests/BalanceCalculationTests.swift`
 
 Тесты покрывают:
 - Базовую функциональность BalanceCalculationService

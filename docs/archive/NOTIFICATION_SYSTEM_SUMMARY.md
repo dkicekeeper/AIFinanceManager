@@ -23,7 +23,7 @@
 
 | Файл | Изменения |
 |------|-----------|
-| `AIFinanceManagerApp.swift` | Подключен AppDelegate через `@UIApplicationDelegateAdaptor` |
+| `TenraApp.swift` | Подключен AppDelegate через `@UIApplicationDelegateAdaptor` |
 | `Notification+Extensions.swift` | Добавлены 2 новых Notification.Name |
 | `SubscriptionNotificationScheduler.swift` | Исправлен алгоритм расчета даты, добавлена проверка разрешений, улучшена обработка ошибок |
 | `SubscriptionEditView.swift` | Добавлен запрос разрешений при создании подписки |

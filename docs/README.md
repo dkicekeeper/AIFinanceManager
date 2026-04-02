@@ -1,4 +1,4 @@
-# AIFinanceManager — Documentation
+# Tenra — Documentation
 
 ## Active Reference Docs
 

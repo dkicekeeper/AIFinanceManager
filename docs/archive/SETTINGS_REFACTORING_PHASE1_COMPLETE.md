@@ -20,7 +20,7 @@
 ### 1. Protocols (5 files) — Protocol-Oriented Design
 
 ```
-AIFinanceManager/Protocols/Settings/
+Tenra/Protocols/Settings/
 ├── SettingsStorageServiceProtocol.swift (45 LOC)
 ├── SettingsValidationServiceProtocol.swift (50 LOC)
 ├── WallpaperManagementServiceProtocol.swift (95 LOC)
@@ -38,7 +38,7 @@ Total: 250 LOC
 ### 2. Services (5 files) — Implementation Layer
 
 ```
-AIFinanceManager/Services/Settings/
+Tenra/Services/Settings/
 ├── SettingsStorageService.swift (100 LOC)
 ├── SettingsValidationService.swift (65 LOC)
 ├── WallpaperManagementService.swift (180 LOC)

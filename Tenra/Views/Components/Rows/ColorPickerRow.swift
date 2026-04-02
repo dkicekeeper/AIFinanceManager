@@ -1,6 +1,6 @@
 //
 //  ColorPickerRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable color picker with preset palette
 //  Used for category customization

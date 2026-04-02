@@ -1,6 +1,6 @@
 //
 //  MenuPickerRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable menu picker row with icon, title, and compact menu selection
 //  Universal component for all single-select scenarios

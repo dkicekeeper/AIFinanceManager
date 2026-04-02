@@ -199,7 +199,7 @@ Features:
 ## 📚 Files Modified
 
 ### Core Data
-- `AIFinanceManager.xcdatamodeld/contents` - Core Data model
+- `Tenra.xcdatamodeld/contents` - Core Data model
 - `CoreDataStack.swift` - Core Data stack setup
 - `CoreDataIndexes.swift` - Performance indexes
 

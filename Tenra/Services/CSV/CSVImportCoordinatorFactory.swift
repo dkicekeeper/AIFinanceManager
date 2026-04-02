@@ -1,6 +1,6 @@
 //
 //  CSVImportCoordinatorFactory.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Simplified CSV Import Architecture - Phase 11
 //  Removed CSVStorageCoordinator dependency

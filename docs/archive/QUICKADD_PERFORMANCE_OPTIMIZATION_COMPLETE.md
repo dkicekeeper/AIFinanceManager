@@ -272,8 +272,8 @@ struct TimeFilter: Codable, Equatable, Hashable {
 
 ### Build Verification
 ```bash
-xcodebuild -project AIFinanceManager.xcodeproj \
-  -scheme AIFinanceManager \
+xcodebuild -project Tenra.xcodeproj \
+  -scheme Tenra \
   -destination 'generic/platform=iOS' \
   build CODE_SIGNING_ALLOWED=NO
 

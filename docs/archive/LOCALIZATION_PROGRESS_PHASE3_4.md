@@ -13,7 +13,7 @@
 Добавлены accessibility labels для всех критичных интерактивных элементов, улучшая поддержку VoiceOver и других assistive technologies.
 
 #### 1. ✅ Floating Action Buttons (ContentView.swift)
-**Файл**: `AIFinanceManager/Views/ContentView.swift`
+**Файл**: `Tenra/Views/ContentView.swift`
 
 **Добавлено**:
 ```swift
@@ -33,7 +33,7 @@
 ---
 
 #### 2. ✅ Toolbar Items (ContentView.swift)
-**Файл**: `AIFinanceManager/Views/ContentView.swift`
+**Файл**: `Tenra/Views/ContentView.swift`
 
 **Добавлено**:
 ```swift
@@ -53,7 +53,7 @@
 #### 3. ✅ Custom Components
 
 ##### FilterChip.swift
-**Файл**: `AIFinanceManager/Views/Components/FilterChip.swift`
+**Файл**: `Tenra/Views/Components/FilterChip.swift`
 
 **Добавлено** (lines 34-35):
 ```swift
@@ -66,7 +66,7 @@
 ---
 
 ##### AccountCard.swift
-**Файл**: `AIFinanceManager/Views/Components/AccountCard.swift`
+**Файл**: `Tenra/Views/Components/AccountCard.swift`
 
 **Добавлено** (lines 33-34):
 ```swift
@@ -91,7 +91,7 @@
 
 ### Phase 4: Info.plist Configuration ✅
 
-#### Файл: `AIFinanceManager/Info.plist`
+#### Файл: `Tenra/Info.plist`
 
 **Добавлено** (lines 5-11):
 ```xml
@@ -322,8 +322,8 @@
 ## 📚 Файлы с изменениями (Phase 3 & 4)
 
 ### Локализация:
-1. `AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings` (+8 keys, total 173)
-2. `AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings` (+8 keys, total 173)
+1. `Tenra/Tenra/en.lproj/Localizable.strings` (+8 keys, total 173)
+2. `Tenra/Tenra/ru.lproj/Localizable.strings` (+8 keys, total 173)
 
 ### Код:
 1. ✅ `Views/ContentView.swift` (accessibility для floating buttons + toolbar)

@@ -1,6 +1,6 @@
 //
 //  CoreDataStack.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //
@@ -14,7 +14,7 @@ import os
 /// Core Data Stack - Singleton for managing Core Data
 final class CoreDataStack: @unchecked Sendable {
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CoreDataStack")
+    private static let logger = Logger(subsystem: "Tenra", category: "CoreDataStack")
 
     // MARK: - Singleton
 
@@ -110,7 +110,7 @@ final class CoreDataStack: @unchecked Sendable {
             return existing
         }
 
-        let container = NSPersistentContainer(name: "AIFinanceManager")
+        let container = NSPersistentContainer(name: "Tenra")
 
         // Configure container
         let description = container.persistentStoreDescriptions.first
@@ -331,7 +331,7 @@ extension NSManagedObjectContext {
                     try self.save()
                 }
             } catch {
-                Logger(subsystem: "AIFinanceManager", category: "CoreDataStack").error("Error in performAndSave: \(error)")
+                Logger(subsystem: "Tenra", category: "CoreDataStack").error("Error in performAndSave: \(error)")
             }
         }
     }

@@ -1,6 +1,6 @@
 //
 //  AppSpacing.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Spatial tokens: spacing, corner radii, icon sizes, container sizes.
 //

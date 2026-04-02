@@ -1,6 +1,6 @@
 //
 //  CustomCategory+Sorting.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Extension for sorting categories by custom order
 //

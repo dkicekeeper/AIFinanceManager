@@ -82,7 +82,7 @@ class AppCoordinator {
 2. Framework imports (UIKit, SwiftUI, Combine, Charts)
 3. Observation framework (`import Observation`)
 4. OS/logging (`import os`)
-5. Local project imports (`@testable import AIFinanceManager`)
+5. Local project imports (`@testable import Tenra`)
 
 **Path Aliases:**
 - No custom path aliases detected
@@ -139,7 +139,7 @@ do {
 **Pattern:**
 - Create static logger in `@Observable` classes:
   ```swift
-  @ObservationIgnored private let logger = Logger(subsystem: "AIFinanceManager", category: "ComponentName")
+  @ObservationIgnored private let logger = Logger(subsystem: "Tenra", category: "ComponentName")
   ```
 - Use `.debug()`, `.info()`, `.error()` log levels
 - Performance profiling via `PerformanceProfiler.start/end()` (#if DEBUG blocks)

@@ -2,7 +2,7 @@
 
 ## 📋 Краткое Резюме Анализа
 
-**Файл:** `AIFinanceManager/Views/HistoryView.swift`
+**Файл:** `Tenra/Views/HistoryView.swift`
 **Текущий размер:** 370 строк
 **Дата анализа:** 2026-01-27
 

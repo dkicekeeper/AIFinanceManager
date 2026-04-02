@@ -1,7 +1,7 @@
 # TransactionsViewModel - Анализ и План Оптимизации
 
 ## Обзор
-**Файл:** `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл:** `Tenra/ViewModels/TransactionsViewModel.swift`
 **Размер:** ~2717 строк
 **Дата анализа:** 2026-01-27
 

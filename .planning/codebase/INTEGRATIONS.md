@@ -30,7 +30,7 @@
 
 **Databases:**
 - CoreData with SQLite backend
-  - Location: `AIFinanceManager.xcdatamodeld`
+  - Location: `Tenra.xcdatamodeld`
   - Persistence: SQLite file in app's Documents directory
   - Schema versions: 3 (v1, v2, v3 with no active migrations required)
   - Entities:

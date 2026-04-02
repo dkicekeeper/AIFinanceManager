@@ -1,6 +1,6 @@
 //
 //  CategoryDisplayDataMapper.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Maps categories to display data with totals and budget information.
 //  Extracted from QuickAddTransactionView to follow Single Responsibility Principle.

@@ -1,6 +1,6 @@
 //
 //  NotificationPermissionManager.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-14
 //  Purpose: Manage notification permissions and authorization status

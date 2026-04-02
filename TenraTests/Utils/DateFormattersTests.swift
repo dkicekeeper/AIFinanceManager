@@ -1,13 +1,13 @@
 //
 //  DateFormattersTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Created on 2024
 //
 
 import Testing
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 struct DateFormattersTests {
     

@@ -1,6 +1,6 @@
 //
 //  InsightsService+Recurring.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
 //  Responsible for: recurring cost totals, subscription growth, duplicate subscription detection.

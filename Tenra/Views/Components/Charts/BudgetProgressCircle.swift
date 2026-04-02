@@ -1,6 +1,6 @@
 //
 //  BudgetProgressCircle.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 33.1: Extracted from CategoryChip + CategoryRow to eliminate duplication
 //  A circular progress ring that visualises budget consumption.

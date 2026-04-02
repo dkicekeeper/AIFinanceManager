@@ -1,6 +1,6 @@
 //
 //  TransactionFilterService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-01-27
 //  Part of Phase 2: TransactionsViewModel Decomposition

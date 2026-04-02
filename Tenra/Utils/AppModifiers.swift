@@ -1,6 +1,6 @@
 //
 //  AppModifiers.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  SwiftUI view modifiers for consistent styling across the app.
 //

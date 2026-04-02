@@ -1,6 +1,6 @@
 //
 //  CategoryChip.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable category chip/button component
 //

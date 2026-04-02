@@ -32,7 +32,7 @@ struct AmountDisplayConfiguration {
 }
 ```
 
-**Расположение:** `AIFinanceManager/Utils/AmountDisplayConfiguration.swift`
+**Расположение:** `Tenra/Utils/AmountDisplayConfiguration.swift`
 
 #### 2. **FormattedAmountText.swift**
 Универсальный SwiftUI компонент для отображения сумм:
@@ -49,7 +49,7 @@ struct FormattedAmountText: View {
 }
 ```
 
-**Расположение:** `AIFinanceManager/Views/Shared/Components/FormattedAmountText.swift`
+**Расположение:** `Tenra/Views/Shared/Components/FormattedAmountText.swift`
 
 **Особенности:**
 - Автоматически скрывает дробную часть для целых чисел
@@ -76,7 +76,7 @@ struct FormattedAmountView: View {
 }
 ```
 
-**Расположение:** `AIFinanceManager/Views/Transactions/Components/FormattedAmountView.swift`
+**Расположение:** `Tenra/Views/Transactions/Components/FormattedAmountView.swift`
 
 #### 4. **Formatting.swift** *(REFACTORED)*
 Добавлен новый метод `formatCurrencySmart()`:
@@ -88,7 +88,7 @@ static func formatCurrencySmart(
 ) -> String
 ```
 
-**Расположение:** `AIFinanceManager/Utils/Formatting.swift`
+**Расположение:** `Tenra/Utils/Formatting.swift`
 
 **Изменения:**
 - ✅ Старый метод `formatCurrency()` сохранен для обратной совместимости
@@ -127,7 +127,7 @@ static func formatCurrencySmart(
 ### Обновленные тесты
 
 #### FormattingTests.swift
-**Расположение:** `AIFinanceManagerTests/FormattingTests.swift`
+**Расположение:** `TenraTests/FormattingTests.swift`
 
 Добавлены новые тесты:
 ```swift
@@ -145,7 +145,7 @@ func testCurrencySymbol()
 ```
 
 #### AmountFormatterTests.swift
-**Расположение:** `AIFinanceManagerTests/AmountFormatterTests.swift`
+**Расположение:** `TenraTests/AmountFormatterTests.swift`
 
 Существующие тесты остались без изменений - все работает как раньше.
 

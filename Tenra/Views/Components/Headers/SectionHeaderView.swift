@@ -1,6 +1,6 @@
 //
 //  SectionHeaderView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified section header component with consistent styling across the app
 //  Replaces: SettingsSectionHeaderView, inline headers, category headers

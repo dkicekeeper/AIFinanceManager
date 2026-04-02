@@ -541,7 +541,7 @@ struct TransactionCard: View {
 **Причина:** Не добавили `.environmentObject()` в parent view
 
 **Решение:**
-В `AIFinanceManagerApp.swift` или parent view:
+В `TenraApp.swift` или parent view:
 ```swift
 ContentView()
     .environmentObject(coordinator.transactionStore)

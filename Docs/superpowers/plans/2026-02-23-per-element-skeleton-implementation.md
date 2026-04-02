@@ -13,7 +13,7 @@
 ## Task 1: Fix SkeletonView.swift shimmer
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/SkeletonView.swift`
+- Modify: `Tenra/Views/Components/SkeletonView.swift`
 
 **Step 1: Apply the three shimmer fixes**
 
@@ -51,7 +51,7 @@ phase = 1.5
 
 **Step 2: Verify the diff looks correct**
 
-Run: `grep -n "phase\|opacity\|blendMode" AIFinanceManager/Views/Components/SkeletonView.swift`
+Run: `grep -n "phase\|opacity\|blendMode" Tenra/Views/Components/SkeletonView.swift`
 
 Expected output — should show `phase: CGFloat = -0.5`, `white.opacity(0.5)`, `phase = 1.5`, NO `blendMode` line:
 ```
@@ -63,7 +63,7 @@ Expected output — should show `phase: CGFloat = -0.5`, `white.opacity(0.5)`, `
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/SkeletonView.swift
+git add Tenra/Views/Components/SkeletonView.swift
 git commit -m "fix(skeleton): fix shimmer visibility — phase -0.5→1.5, opacity 0.5, remove blendMode"
 ```
 
@@ -72,14 +72,14 @@ git commit -m "fix(skeleton): fix shimmer visibility — phase -0.5→1.5, opaci
 ## Task 2: Create SkeletonLoadingModifier.swift
 
 **Files:**
-- Create: `AIFinanceManager/Views/Components/SkeletonLoadingModifier.swift`
+- Create: `Tenra/Views/Components/SkeletonLoadingModifier.swift`
 
 **Step 1: Create the file**
 
 ```swift
 //
 //  SkeletonLoadingModifier.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Universal per-element skeleton loading modifier (Phase 30)
 
@@ -121,14 +121,14 @@ extension View {
 
 **Step 2: Verify it builds**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
 
 Expected: `** BUILD SUCCEEDED **`
 
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/SkeletonLoadingModifier.swift
+git add Tenra/Views/Components/SkeletonLoadingModifier.swift
 git commit -m "feat(skeleton): add universal SkeletonLoadingModifier for per-element skeleton loading"
 ```
 
@@ -137,7 +137,7 @@ git commit -m "feat(skeleton): add universal SkeletonLoadingModifier for per-ele
 ## Task 3: AppCoordinator — add fastPathDone + fullyInitialized
 
 **Files:**
-- Modify: `AIFinanceManager/ViewModels/AppCoordinator.swift`
+- Modify: `Tenra/ViewModels/AppCoordinator.swift`
 
 **Step 1: Add two new observable output properties after line 51**
 
@@ -199,14 +199,14 @@ New:
 
 **Step 4: Verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
 
 Expected: `** BUILD SUCCEEDED **`
 
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/ViewModels/AppCoordinator.swift
+git add Tenra/ViewModels/AppCoordinator.swift
 git commit -m "feat(coordinator): add fastPathDone + fullyInitialized observable loading stage outputs"
 ```
 
@@ -215,7 +215,7 @@ git commit -m "feat(coordinator): add fastPathDone + fullyInitialized observable
 ## Task 4: Update ContentView — per-section skeleton loading
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Home/ContentView.swift`
+- Modify: `Tenra/Views/Home/ContentView.swift`
 
 This task has 4 sub-steps: (a) remove `isInitializing`, (b) update `body` ZStack → direct, (c) update `mainContent`, (d) replace `initializeIfNeeded`, (e) remove `loadingOverlay`, (f) add private skeleton structs.
 
@@ -380,14 +380,14 @@ private struct SectionCardSkeleton: View {
 
 **Step 7: Verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
 
 Expected: `** BUILD SUCCEEDED **`
 
 **Step 8: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Home/ContentView.swift
+git add Tenra/Views/Home/ContentView.swift
 git commit -m "feat(content): per-element skeleton loading — remove isInitializing, add skeletonLoading on 4 sections"
 ```
 
@@ -396,28 +396,28 @@ git commit -m "feat(content): per-element skeleton loading — remove isInitiali
 ## Task 5: Delete ContentViewSkeleton.swift
 
 **Files:**
-- Delete: `AIFinanceManager/Views/Components/ContentViewSkeleton.swift`
+- Delete: `Tenra/Views/Components/ContentViewSkeleton.swift`
 
 **Step 1: Remove the file from Xcode project and disk**
 
-Run: `rm AIFinanceManager/Views/Components/ContentViewSkeleton.swift`
+Run: `rm Tenra/Views/Components/ContentViewSkeleton.swift`
 
 Then open Xcode and remove the reference (or use xcodebuild to verify it's no longer referenced):
 
-Run: `grep -r "ContentViewSkeleton" AIFinanceManager/`
+Run: `grep -r "ContentViewSkeleton" Tenra/`
 
 Expected: **no output** (no remaining references)
 
 **Step 2: Verify build still succeeds**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
 
 Expected: `** BUILD SUCCEEDED **`
 
 Note: If build fails with "file not found in project", you need to remove the file reference from the `.xcodeproj`. Run:
 ```bash
 # Check if file is still referenced in pbxproj
-grep -n "ContentViewSkeleton" AIFinanceManager.xcodeproj/project.pbxproj
+grep -n "ContentViewSkeleton" Tenra.xcodeproj/project.pbxproj
 ```
 If referenced, remove those lines from `project.pbxproj`. The file has one `/* ContentViewSkeleton.swift */` line in the Build Sources section and one in the file references section — both need removal.
 
@@ -433,8 +433,8 @@ git commit -m "feat(skeleton): delete ContentViewSkeleton.swift — replaced by 
 ## Task 6: Rename InsightsSkeleton.swift → InsightsSkeletonComponents.swift
 
 **Files:**
-- Delete: `AIFinanceManager/Views/Components/InsightsSkeleton.swift`
-- Create: `AIFinanceManager/Views/Components/InsightsSkeletonComponents.swift`
+- Delete: `Tenra/Views/Components/InsightsSkeleton.swift`
+- Create: `Tenra/Views/Components/InsightsSkeletonComponents.swift`
 
 **Step 1: Create InsightsSkeletonComponents.swift**
 
@@ -448,7 +448,7 @@ Write the new file — key changes vs InsightsSkeleton.swift:
 ```swift
 //
 //  InsightsSkeletonComponents.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Per-element skeleton components for InsightsView (Phase 30)
 //  Replaces InsightsSkeleton.swift — components are now used independently via .skeletonLoading
@@ -546,11 +546,11 @@ struct InsightCardSkeleton: View {
 
 **Step 2: Delete InsightsSkeleton.swift**
 
-Run: `rm AIFinanceManager/Views/Components/InsightsSkeleton.swift`
+Run: `rm Tenra/Views/Components/InsightsSkeleton.swift`
 
 **Step 3: Check for any remaining InsightsSkeleton references**
 
-Run: `grep -r "InsightsSkeleton\b" AIFinanceManager/`
+Run: `grep -r "InsightsSkeleton\b" Tenra/`
 
 Expected output: only the `InsightsSkeleton()` reference in `InsightsView.swift:loadingView` — which will be removed in Task 7.
 
@@ -558,12 +558,12 @@ Expected output: only the `InsightsSkeleton()` reference in `InsightsView.swift:
 
 If needed, remove `InsightsSkeleton.swift` reference and add `InsightsSkeletonComponents.swift` to the project. Verify:
 ```bash
-grep -n "InsightsSkeleton" AIFinanceManager.xcodeproj/project.pbxproj
+grep -n "InsightsSkeleton" Tenra.xcodeproj/project.pbxproj
 ```
 
 **Step 5: Verify build (expect 1 error for InsightsSkeleton() in InsightsView — ok, fixed in Task 7)**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | grep -E "error:|BUILD"`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | grep -E "error:|BUILD"`
 
 Expected: Build error about `InsightsSkeleton` in InsightsView (expected — fixed next task). `InsightsSummaryHeaderSkeleton`, `InsightCardSkeleton`, `InsightsFilterCarouselSkeleton` should resolve fine.
 
@@ -579,7 +579,7 @@ git commit -m "feat(skeleton): rename InsightsSkeleton→InsightsSkeletonCompone
 ## Task 7: Update InsightsView — per-section skeleton loading
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/InsightsView.swift`
+- Modify: `Tenra/Views/Insights/InsightsView.swift`
 
 **Step 1: Restructure the body VStack**
 
@@ -696,14 +696,14 @@ private var loadingView: some View {
 
 **Step 6: Verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5`
 
 Expected: `** BUILD SUCCEEDED **`
 
 **Step 7: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Insights/InsightsView.swift
+git add Tenra/Views/Insights/InsightsView.swift
 git commit -m "feat(insights): per-element skeleton loading — insightsSummaryHeaderSection + insightsFilterSection + insightsSectionsSection"
 ```
 
@@ -748,17 +748,17 @@ git commit -m "docs: update CLAUDE.md with Phase 30 per-element skeleton loading
 
 After all 8 tasks are complete:
 
-1. Run full build: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -3`
+1. Run full build: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -3`
    - Expected: `** BUILD SUCCEEDED **`
 
 2. Check no old references remain:
    ```bash
-   grep -r "ContentViewSkeleton\|InsightsSkeleton()\|isInitializing\|loadingOverlay\|initializeIfNeeded" AIFinanceManager/
+   grep -r "ContentViewSkeleton\|InsightsSkeleton()\|isInitializing\|loadingOverlay\|initializeIfNeeded" Tenra/
    ```
    Expected: **no output**
 
 3. Check new components exist:
    ```bash
-   grep -r "skeletonLoading\|fastPathDone\|fullyInitialized" AIFinanceManager/ | grep -v ".xcodeproj"
+   grep -r "skeletonLoading\|fastPathDone\|fullyInitialized" Tenra/ | grep -v ".xcodeproj"
    ```
    Expected: multiple matches in ContentView.swift, InsightsView.swift, AppCoordinator.swift

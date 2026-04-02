@@ -1,6 +1,6 @@
 //
 //  CategoryFilterView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable category filter component for HistoryView
 //

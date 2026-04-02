@@ -3,7 +3,7 @@
 ## ✅ Что сделано
 
 ### 1. Создан TransactionPaginationManager
-**Файл**: `AIFinanceManager/Managers/TransactionPaginationManager.swift`
+**Файл**: `Tenra/Managers/TransactionPaginationManager.swift`
 
 Менеджер пагинации для эффективной загрузки больших списков транзакций:
 
@@ -13,7 +13,7 @@
 - **Оптимизация памяти**: В памяти только видимые транзакции, остальные хранятся в кеше
 
 ### 2. Интегрирована пагинация в HistoryView
-**Файл**: `AIFinanceManager/Views/HistoryView.swift`
+**Файл**: `Tenra/Views/HistoryView.swift`
 
 Изменения:
 - Добавлен `@StateObject private var paginationManager` для управления пагинацией
@@ -125,10 +125,10 @@ PerformanceProfiler.end("HistoryView.updateCachedTransactions")
 ## 📝 Изменения в коде
 
 ### Новые файлы:
-- `AIFinanceManager/Managers/TransactionPaginationManager.swift` - менеджер пагинации
+- `Tenra/Managers/TransactionPaginationManager.swift` - менеджер пагинации
 
 ### Измененные файлы:
-- `AIFinanceManager/Views/HistoryView.swift`:
+- `Tenra/Views/HistoryView.swift`:
   - Добавлен `@StateObject paginationManager`
   - Изменен `transactionsList` для работы с пагинацией
   - Добавлен `.onAppear` на секции для подгрузки

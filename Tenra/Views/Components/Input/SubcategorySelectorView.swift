@@ -1,6 +1,6 @@
 //
 //  SubcategorySelectorView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Horizontal scrollable subcategory selector with FilterChip style
 //

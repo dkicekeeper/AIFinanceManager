@@ -1,6 +1,6 @@
 //
 //  LoansListView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  List view displaying all loans and installments with progress,
 //  next payment info, and navigation to detail/edit views.
@@ -20,7 +20,7 @@ struct LoansListView: View {
     @State private var showingPayAll = false
     @State private var selectedFilter: LoanFilter = .all
 
-    private let logger = Logger(subsystem: "AIFinanceManager", category: "LoansListView")
+    private let logger = Logger(subsystem: "Tenra", category: "LoansListView")
 
     enum LoanFilter: String, CaseIterable {
         case all

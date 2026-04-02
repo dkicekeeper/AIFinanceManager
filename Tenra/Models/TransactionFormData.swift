@@ -1,6 +1,6 @@
 //
 //  TransactionFormData.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified form data model for transaction creation and editing
 //

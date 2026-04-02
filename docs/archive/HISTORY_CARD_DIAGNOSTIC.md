@@ -9,7 +9,7 @@
 
 ### Расположение кода
 
-**File**: `AIFinanceManager/Views/ContentView.swift`
+**File**: `Tenra/Views/ContentView.swift`
 
 **Проблемный метод**: `analyticsCard` (строки 481-513)
 

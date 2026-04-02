@@ -1,6 +1,6 @@
 //
 //  SupabaseLogoProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Fetches logos from Supabase Storage with auto-indexing.
 //  Lists bucket contents once, builds fuzzy index, matches by normalized name.
@@ -18,7 +18,7 @@ import os
 nonisolated final class SupabaseLogoProvider: LogoProvider {
     let name = "supabase"
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "SupabaseLogoProvider")
+    private static let logger = Logger(subsystem: "Tenra", category: "SupabaseLogoProvider")
 
     private static let session: URLSession = {
         let config = URLSessionConfiguration.default

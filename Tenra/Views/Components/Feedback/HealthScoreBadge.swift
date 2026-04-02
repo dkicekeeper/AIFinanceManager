@@ -1,6 +1,6 @@
 //
 //  HealthScoreBadge.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Financial health score row: heart icon + score + grade capsule.
 //  Extracted from InsightsSummaryHeader — Phase 26.

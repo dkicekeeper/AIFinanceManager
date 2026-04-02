@@ -17,14 +17,14 @@
 ### Task 1: Create SupabaseLogoProvider
 
 **Files:**
-- Create: `AIFinanceManager/Services/Core/SupabaseLogoProvider.swift`
+- Create: `Tenra/Services/Core/SupabaseLogoProvider.swift`
 
 - [ ] **Step 1: Create the provider**
 
 ```swift
 //
 //  SupabaseLogoProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Fetches logos from Supabase Storage public bucket
 //
@@ -86,7 +86,7 @@ Add key `SUPABASE_LOGOS_BASE_URL` with empty string value (user will fill in the
 
 - [ ] **Step 3: Update LogoService chain**
 
-In `AIFinanceManager/Services/Core/LogoService.swift`, replace the providers array:
+In `Tenra/Services/Core/LogoService.swift`, replace the providers array:
 
 ```swift
 // Old:
@@ -108,12 +108,12 @@ private let providers: [any LogoProvider] = [
 
 - [ ] **Step 4: Build and verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Core/SupabaseLogoProvider.swift AIFinanceManager/Services/Core/LogoService.swift AIFinanceManager/Info.plist
+git add Tenra/Services/Core/SupabaseLogoProvider.swift Tenra/Services/Core/LogoService.swift Tenra/Info.plist
 git commit -m "feat: add SupabaseLogoProvider as first in chain
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
@@ -126,7 +126,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 2: Simplify IconSource (remove .bankLogo case)
 
 **Files:**
-- Modify: `AIFinanceManager/Models/IconSource.swift`
+- Modify: `Tenra/Models/IconSource.swift`
 
 - [ ] **Step 1: Remove .bankLogo case and all related code**
 
@@ -135,7 +135,7 @@ Replace entire `IconSource.swift` with:
 ```swift
 //
 //  IconSource.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified icon/logo source model for all entities
 //
@@ -204,7 +204,7 @@ Note: `migrate()` method deleted entirely — no users, no migration needed.
 - [ ] **Step 2: Commit (will NOT build yet — many files still reference .bankLogo)**
 
 ```bash
-git add AIFinanceManager/Models/IconSource.swift
+git add Tenra/Models/IconSource.swift
 git commit -m "refactor: remove IconSource.bankLogo case, simplify to 2 cases
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
@@ -215,7 +215,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 3: Simplify ServiceLogoEntry + Delete legacy ServiceLogo enum
 
 **Files:**
-- Modify: `AIFinanceManager/Models/ServiceLogo.swift`
+- Modify: `Tenra/Models/ServiceLogo.swift`
 
 - [ ] **Step 1: Remove bankLogo field from ServiceLogoEntry**
 
@@ -265,7 +265,7 @@ func registryServices() -> [ServiceLogoEntry] {
 - [ ] **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Models/ServiceLogo.swift
+git add Tenra/Models/ServiceLogo.swift
 git commit -m "refactor: remove ServiceLogoEntry.bankLogo field, delete legacy ServiceLogo enum
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
@@ -276,7 +276,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 4: Update IconView (remove .bankLogo branch)
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Icons/IconView.swift`
+- Modify: `Tenra/Views/Components/Icons/IconView.swift`
 
 - [ ] **Step 1: Update convenience init**
 
@@ -348,7 +348,7 @@ Remove the bank logo example from the top-level doc comment (lines ~22-24).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Icons/IconView.swift
+git add Tenra/Views/Components/Icons/IconView.swift
 git commit -m "refactor: remove .bankLogo branch from IconView
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
@@ -359,12 +359,12 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 5: Update IconStyle + UniversalRow + component views
 
 **Files:**
-- Modify: `AIFinanceManager/Models/IconStyle.swift`
-- Modify: `AIFinanceManager/Views/Components/Rows/UniversalRow.swift`
-- Modify: `AIFinanceManager/Views/Components/Icons/StaticSubscriptionIconsView.swift`
-- Modify: `AIFinanceManager/Views/Components/Cards/LoansCardView.swift`
-- Modify: `AIFinanceManager/Views/Components/Forms/LoanPayAllView.swift`
-- Modify: `AIFinanceManager/Views/Components/Icons/IconPickerView.swift`
+- Modify: `Tenra/Models/IconStyle.swift`
+- Modify: `Tenra/Views/Components/Rows/UniversalRow.swift`
+- Modify: `Tenra/Views/Components/Icons/StaticSubscriptionIconsView.swift`
+- Modify: `Tenra/Views/Components/Cards/LoansCardView.swift`
+- Modify: `Tenra/Views/Components/Forms/LoanPayAllView.swift`
+- Modify: `Tenra/Views/Components/Icons/IconPickerView.swift`
 
 - [ ] **Step 1: Rename IconStyle factory methods**
 
@@ -432,12 +432,12 @@ Note: `LogoItem` is now trivially a wrapper but kept for compatibility with `Log
 - [ ] **Step 7: Commit**
 
 ```bash
-git add AIFinanceManager/Models/IconStyle.swift \
-  AIFinanceManager/Views/Components/Rows/UniversalRow.swift \
-  AIFinanceManager/Views/Components/Icons/StaticSubscriptionIconsView.swift \
-  AIFinanceManager/Views/Components/Cards/LoansCardView.swift \
-  AIFinanceManager/Views/Components/Forms/LoanPayAllView.swift \
-  AIFinanceManager/Views/Components/Icons/IconPickerView.swift
+git add Tenra/Models/IconStyle.swift \
+  Tenra/Views/Components/Rows/UniversalRow.swift \
+  Tenra/Views/Components/Icons/StaticSubscriptionIconsView.swift \
+  Tenra/Views/Components/Cards/LoansCardView.swift \
+  Tenra/Views/Components/Forms/LoanPayAllView.swift \
+  Tenra/Views/Components/Icons/IconPickerView.swift
 git commit -m "refactor: rename bankLogo styles, remove .bankLogo from component views
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
@@ -450,12 +450,12 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 6: Clean CoreData entities and repositories
 
 **Files:**
-- Modify: `AIFinanceManager/CoreData/Entities/AccountEntity+CoreDataClass.swift`
-- Modify: `AIFinanceManager/CoreData/Entities/RecurringSeriesEntity+CoreDataClass.swift`
-- Modify: `AIFinanceManager/Services/Repository/AccountRepository.swift`
-- Modify: `AIFinanceManager/Services/Repository/RecurringRepository.swift`
-- Modify: `AIFinanceManager/Models/Transaction.swift`
-- Modify: `AIFinanceManager/Models/RecurringTransaction.swift`
+- Modify: `Tenra/CoreData/Entities/AccountEntity+CoreDataClass.swift`
+- Modify: `Tenra/CoreData/Entities/RecurringSeriesEntity+CoreDataClass.swift`
+- Modify: `Tenra/Services/Repository/AccountRepository.swift`
+- Modify: `Tenra/Services/Repository/RecurringRepository.swift`
+- Modify: `Tenra/Models/Transaction.swift`
+- Modify: `Tenra/Models/RecurringTransaction.swift`
 
 - [ ] **Step 1: Update AccountEntity+CoreDataClass.swift**
 
@@ -563,12 +563,12 @@ if let oldBrandId = try container.decodeIfPresent(String.self, forKey: .brandId)
 - [ ] **Step 7: Commit**
 
 ```bash
-git add AIFinanceManager/CoreData/Entities/AccountEntity+CoreDataClass.swift \
-  AIFinanceManager/CoreData/Entities/RecurringSeriesEntity+CoreDataClass.swift \
-  AIFinanceManager/Services/Repository/AccountRepository.swift \
-  AIFinanceManager/Services/Repository/RecurringRepository.swift \
-  AIFinanceManager/Models/Transaction.swift \
-  AIFinanceManager/Models/RecurringTransaction.swift
+git add Tenra/CoreData/Entities/AccountEntity+CoreDataClass.swift \
+  Tenra/CoreData/Entities/RecurringSeriesEntity+CoreDataClass.swift \
+  Tenra/Services/Repository/AccountRepository.swift \
+  Tenra/Services/Repository/RecurringRepository.swift \
+  Tenra/Models/Transaction.swift \
+  Tenra/Models/RecurringTransaction.swift
 git commit -m "refactor: remove BankLogo from CoreData entities and repositories
 
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
@@ -581,24 +581,24 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 ### Task 7: Delete files and assets
 
 **Files:**
-- Delete: `AIFinanceManager/Services/Core/LocalLogoProvider.swift`
-- Delete: `AIFinanceManager/Utils/BankLogo.swift`
-- Delete: `AIFinanceManager/Utils/BrandLogoDisplayHelper.swift`
+- Delete: `Tenra/Services/Core/LocalLogoProvider.swift`
+- Delete: `Tenra/Utils/BankLogo.swift`
+- Delete: `Tenra/Utils/BrandLogoDisplayHelper.swift`
 - Delete: All bank imagesets from `Assets.xcassets`
 
 - [ ] **Step 1: Delete the 3 Swift files**
 
 ```bash
-rm AIFinanceManager/Services/Core/LocalLogoProvider.swift
-rm AIFinanceManager/Utils/BankLogo.swift
-rm AIFinanceManager/Utils/BrandLogoDisplayHelper.swift
+rm Tenra/Services/Core/LocalLogoProvider.swift
+rm Tenra/Utils/BankLogo.swift
+rm Tenra/Utils/BrandLogoDisplayHelper.swift
 ```
 
 - [ ] **Step 2: Delete all bank imagesets from Assets**
 
 ```bash
 # Delete all bank logo imagesets (44 directories)
-cd AIFinanceManager/Assets.xcassets
+cd Tenra/Assets.xcassets
 # List to confirm:
 ls -d *.imageset | head -50
 # Delete all imagesets (they are ALL bank logos — the only non-imageset items are AccentColor.colorset and AppIcon.appiconset)
@@ -673,14 +673,14 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 
 - [ ] **Step 1: Full build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 2: Grep for any remaining BankLogo references**
 
 ```bash
-grep -rn "BankLogo" AIFinanceManager/ --include="*.swift" | head -30
-grep -rn "\.bankLogo" AIFinanceManager/ --include="*.swift" | head -30
-grep -rn "bankLogoView" AIFinanceManager/ --include="*.swift" | head -30
+grep -rn "BankLogo" Tenra/ --include="*.swift" | head -30
+grep -rn "\.bankLogo" Tenra/ --include="*.swift" | head -30
+grep -rn "bankLogoView" Tenra/ --include="*.swift" | head -30
 ```
 
 All should return 0 results. Fix any stragglers.
@@ -688,7 +688,7 @@ All should return 0 results. Fix any stragglers.
 - [ ] **Step 3: Grep for stale bankLogo style references**
 
 ```bash
-grep -rn "\.bankLogo(" AIFinanceManager/ --include="*.swift" | head -30
+grep -rn "\.bankLogo(" Tenra/ --include="*.swift" | head -30
 ```
 
 Should return 0. If `IconStyle` still has old names, fix.
@@ -696,7 +696,7 @@ Should return 0. If `IconStyle` still has old names, fix.
 - [ ] **Step 4: Check warnings in new code**
 
 ```bash
-xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "warning:" | grep -iE "(Supabase|bankLogo|BankLogo|LocalLogo|BrandLogoDisplay)" | head -20
+xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "warning:" | grep -iE "(Supabase|bankLogo|BankLogo|LocalLogo|BrandLogoDisplay)" | head -20
 ```
 
 - [ ] **Step 5: Final commit if any fixes needed**

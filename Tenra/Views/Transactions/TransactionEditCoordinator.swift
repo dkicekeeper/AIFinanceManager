@@ -1,6 +1,6 @@
 //
 //  TransactionEditCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 16 (2026-02-17): Coordinator for TransactionEditView.
 //  Consolidates 12 @State variables into a single @Observable coordinator,

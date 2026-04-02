@@ -1,6 +1,6 @@
 //
 //  CategoryEntityRoundTripTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  CoreData round-trip tests for CustomCategoryEntity:
 //    - Scalar fields (id, name, type, colorHex)
@@ -16,7 +16,7 @@
 import Testing
 import CoreData
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 @Suite("CategoryEntity Round-Trip Tests", .serialized)
 struct CategoryEntityRoundTripTests {
@@ -24,7 +24,7 @@ struct CategoryEntityRoundTripTests {
     // MARK: - In-Memory Container
 
     private func makeContainer() throws -> NSPersistentContainer {
-        let container = NSPersistentContainer(name: "AIFinanceManager")
+        let container = NSPersistentContainer(name: "Tenra")
         let desc = NSPersistentStoreDescription()
         desc.type = NSInMemoryStoreType
         desc.url = URL(string: "memory://\(UUID().uuidString)")

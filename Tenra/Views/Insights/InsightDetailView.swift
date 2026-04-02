@@ -1,6 +1,6 @@
 //
 //  InsightDetailView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 23: UI fixes
 //  - P9: viewModel replaced with onCategoryTap closure — SRP, no full ViewModel dependency
@@ -18,7 +18,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
     /// Nil = no drill-down chevron shown. Generic over CategoryDestination avoids AnyView type erasure.
     private let _onCategoryTap: ((CategoryBreakdownItem) -> CategoryDestination)?
 
-    private var logger: Logger { Logger(subsystem: "AIFinanceManager", category: "InsightDetailView") }
+    private var logger: Logger { Logger(subsystem: "Tenra", category: "InsightDetailView") }
 
     // MARK: - Init (with drill-down)
     init(

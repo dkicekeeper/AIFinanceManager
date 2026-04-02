@@ -1,13 +1,13 @@
 //
-//  AIFinanceManagerUITestsLaunchTests.swift
-//  AIFinanceManagerUITests
+//  TenraUITestsLaunchTests.swift
+//  TenraUITests
 //
 //  Created by Daulet Kydrali on 06.01.2026.
 //
 
 import XCTest
 
-final class AIFinanceManagerUITestsLaunchTests: XCTestCase {
+final class TenraUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

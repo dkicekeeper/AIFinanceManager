@@ -1,13 +1,13 @@
 //
 //  FormattingTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Created on 2024
 //  REFACTORED 2026-02-11: Added tests for smart decimal handling
 //
 
 import Testing
-@testable import AIFinanceManager
+@testable import Tenra
 
 struct FormattingTests {
 

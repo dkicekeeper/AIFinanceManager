@@ -1,6 +1,6 @@
 //
 //  IconView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified icon and logo display component with full Design System integration
 //  Created: 2026-02-12

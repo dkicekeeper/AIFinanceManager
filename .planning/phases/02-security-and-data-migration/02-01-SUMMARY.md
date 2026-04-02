@@ -20,7 +20,7 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - AIFinanceManager/CoreData/CoreDataStack.swift
+    - Tenra/CoreData/CoreDataStack.swift
 
 key-decisions:
   - "FileProtectionType.complete chosen (financial data; file inaccessible while device is locked — strongest iOS protection class)"
@@ -60,7 +60,7 @@ Each task was committed atomically:
 1. **Task 1: Add NSFileProtectionComplete to CoreData store description and reset path** - `38ef46d` (feat)
 
 ## Files Created/Modified
-- `AIFinanceManager/CoreData/CoreDataStack.swift` - Two changes: file protection option on store description (primary creation path) and on store re-addition in resetAllData()
+- `Tenra/CoreData/CoreDataStack.swift` - Two changes: file protection option on store description (primary creation path) and on store re-addition in resetAllData()
 
 ## Decisions Made
 - Used `FileProtectionType.complete` (not `.completeUnlessOpen` or `.completeUntilFirstUserAuthentication`) — financial data warrants the strictest protection class; file is inaccessible until user unlocks device

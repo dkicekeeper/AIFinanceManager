@@ -197,7 +197,7 @@ init(repository: DataRepositoryProtocol? = nil) {
 ### Компиляция
 
 ```bash
-xcodebuild -scheme AIFinanceManager clean build
+xcodebuild -scheme Tenra clean build
 ```
 
 **Результат**: ✅ **BUILD SUCCEEDED**
@@ -205,8 +205,8 @@ xcodebuild -scheme AIFinanceManager clean build
 ### Изменения
 
 ```
- AIFinanceManager/ViewModels/AppCoordinator.swift |  10 +-
- AIFinanceManager/Views/ContentView.swift         |  32 +-
+ Tenra/ViewModels/AppCoordinator.swift |  10 +-
+ Tenra/Views/ContentView.swift         |  32 +-
  HISTORY_CARD_DIAGNOSTIC.md                       | 465 +++++++++++++++
  3 files changed, 478 insertions(+), 29 deletions(-)
 ```

@@ -1,6 +1,6 @@
 //
 //  AccountRankingService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Intelligent account ranking service with adaptive category-based suggestions
 //

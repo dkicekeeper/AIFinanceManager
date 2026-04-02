@@ -163,7 +163,7 @@ subscriptionsViewModel.createSubscription(...)
 ## 🏗️ Структура проекта
 
 ```
-AIFinanceManager/
+Tenra/
 ├── ViewModels/
 │   ├── TransactionsViewModel.swift    # Транзакции
 │   ├── AccountsViewModel.swift        # Счета

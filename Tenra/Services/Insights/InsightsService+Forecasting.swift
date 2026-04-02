@@ -1,6 +1,6 @@
 //
 //  InsightsService+Forecasting.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
 //  Responsible for: spending forecast, balance runway, year-over-year, income seasonality,

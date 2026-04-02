@@ -1,6 +1,6 @@
 //
 //  ImportTransactionPreviewView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Final step of the PDF/CSV import flow: review parsed transactions,
 //  select which ones to import, assign accounts, and confirm.

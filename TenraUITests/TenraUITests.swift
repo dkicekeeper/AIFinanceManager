@@ -1,13 +1,13 @@
 //
-//  AIFinanceManagerUITests.swift
-//  AIFinanceManagerUITests
+//  TenraUITests.swift
+//  TenraUITests
 //
 //  Created by Daulet Kydrali on 06.01.2026.
 //
 
 import XCTest
 
-final class AIFinanceManagerUITests: XCTestCase {
+final class TenraUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

@@ -231,12 +231,12 @@ Row 4: Create Account "Freedom" → Save 3 accounts (duplicate!)
 ## 📝 Related Files
 
 ### Modified
-- `AIFinanceManager/Services/CoreDataRepository.swift` - All save methods
+- `Tenra/Services/CoreDataRepository.swift` - All save methods
 
 ### Related
-- `AIFinanceManager/Services/CSVImportService.swift` - Import logic
-- `AIFinanceManager/Services/CSVImporter.swift` - CSV parsing
-- `AIFinanceManager/CoreData/` - Core Data model and entities
+- `Tenra/Services/CSVImportService.swift` - Import logic
+- `Tenra/Services/CSVImporter.swift` - CSV parsing
+- `Tenra/CoreData/` - Core Data model and entities
 
 ---
 

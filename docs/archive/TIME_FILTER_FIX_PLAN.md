@@ -35,7 +35,7 @@
 
 ### Phase 1: TransactionCacheManager.swift ✨
 
-**Файл:** `AIFinanceManager/Services/TransactionCacheManager.swift`
+**Файл:** `Tenra/Services/TransactionCacheManager.swift`
 
 **Что меняем:**
 
@@ -129,7 +129,7 @@ func invalidateAll() {
 
 ### Phase 2: TransactionQueryService.swift ✨
 
-**Файл:** `AIFinanceManager/Services/Transactions/TransactionQueryService.swift`
+**Файл:** `Tenra/Services/Transactions/TransactionQueryService.swift`
 
 **Метод `getCategoryExpenses()` (lines 93-120):**
 
@@ -196,7 +196,7 @@ func getCategoryExpenses(
 
 ### Phase 3: TransactionsViewModel.swift 🧹
 
-**Файл:** `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл:** `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Метод `categoryExpenses()` (lines 355-380):**
 

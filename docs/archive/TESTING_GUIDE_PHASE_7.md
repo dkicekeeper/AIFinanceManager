@@ -10,12 +10,12 @@
 ## 🧪 Pre-requisites
 
 ### Build Status
-- [x] Build succeeds: `xcodebuild -scheme AIFinanceManager build`
+- [x] Build succeeds: `xcodebuild -scheme Tenra build`
 - [x] Unit tests pass: 18/18 TransactionStore tests
 - [ ] No console errors on app launch
 
 ### Environment Setup
-1. Launch AIFinanceManager in iOS Simulator
+1. Launch Tenra in iOS Simulator
 2. Ensure you have at least 1 account created
 3. Ensure you have at least 1 custom category created
 4. Keep Console.app open to monitor debug output
@@ -446,7 +446,7 @@ Verify currency conversion works in add/update operations.
 **Debug:**
 - Check console for error
 - Verify `@EnvironmentObject var transactionStore` in View
-- Check AIFinanceManagerApp.swift has `.environmentObject(coordinator.transactionStore)`
+- Check TenraApp.swift has `.environmentObject(coordinator.transactionStore)`
 
 #### Issue: App crashes on operation
 **Possible Causes:**

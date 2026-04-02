@@ -19,7 +19,7 @@
 
 ### 1. CoreDataRepository создан
 
-**Файл**: `AIFinanceManager/Services/CoreDataRepository.swift`
+**Файл**: `Tenra/Services/CoreDataRepository.swift`
 
 **Реализовано**:
 - ✅ `loadTransactions()` / `saveTransactions()` - работа с Core Data
@@ -34,7 +34,7 @@
 
 ### 2. DataMigrationService создан
 
-**Файл**: `AIFinanceManager/Services/DataMigrationService.swift`
+**Файл**: `Tenra/Services/DataMigrationService.swift`
 
 **Функции**:
 - `isMigrationNeeded()` - проверка, нужна ли миграция
@@ -339,7 +339,7 @@ let batchSize = 1000 // Вместо 500
 
 - [CORE_DATA_MODEL_INSTRUCTIONS.md](./CORE_DATA_MODEL_INSTRUCTIONS.md) - Фаза 1
 - [CORE_DATA_MIGRATION_PLAN.md](./CORE_DATA_MIGRATION_PLAN.md) - Общий план
-- [CoreDataStack.swift](./AIFinanceManager/CoreData/CoreDataStack.swift) - Основной стек
+- [CoreDataStack.swift](./Tenra/CoreData/CoreDataStack.swift) - Основной стек
 
 ---
 

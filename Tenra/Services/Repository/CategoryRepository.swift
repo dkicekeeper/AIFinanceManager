@@ -1,6 +1,6 @@
 //
 //  CategoryRepository.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //
@@ -33,7 +33,7 @@ protocol CategoryRepositoryProtocol: Sendable {
 /// CoreData implementation of CategoryRepositoryProtocol
 nonisolated final class CategoryRepository: CategoryRepositoryProtocol, @unchecked Sendable {
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CategoryRepository")
+    private static let logger = Logger(subsystem: "Tenra", category: "CategoryRepository")
 
     private let stack: CoreDataStack
     private let saveCoordinator: CoreDataSaveCoordinator

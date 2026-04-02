@@ -14,7 +14,7 @@
 **Время:** 4 часа
 
 ```swift
-// File: AIFinanceManager/Services/CoreDataSaveCoordinator.swift
+// File: Tenra/Services/CoreDataSaveCoordinator.swift
 
 import Foundation
 import CoreData
@@ -100,13 +100,13 @@ func testConcurrentSaves() async throws {
 **Скрипт для автоматического удаления:**
 ```bash
 # Backup files first
-find AIFinanceManager/ViewModels -name "*ViewModel.swift" -exec cp {} {}.backup \;
+find Tenra/ViewModels -name "*ViewModel.swift" -exec cp {} {}.backup \;
 
 # Remove objectWillChange.send() calls
-find AIFinanceManager/ViewModels -name "*ViewModel.swift" -exec sed -i '' '/objectWillChange\.send()/d' {} \;
+find Tenra/ViewModels -name "*ViewModel.swift" -exec sed -i '' '/objectWillChange\.send()/d' {} \;
 
 # Run tests to verify
-xcodebuild test -scheme AIFinanceManager
+xcodebuild test -scheme Tenra
 ```
 
 ---
@@ -117,7 +117,7 @@ xcodebuild test -scheme AIFinanceManager
 
 **Шаги:**
 
-1. Открыть `AIFinanceManager.xcdatamodeld` в Xcode
+1. Открыть `Tenra.xcdatamodeld` в Xcode
 2. Для каждой Entity добавить constraint:
 
 **TransactionEntity:**
@@ -212,7 +212,7 @@ extension AccountsViewModel: AccountBalanceServiceProtocol {
 **Время:** 3 часа
 
 ```swift
-// File: AIFinanceManager/ViewModels/TransactionsViewModel.swift
+// File: Tenra/ViewModels/TransactionsViewModel.swift
 
 // ❌ БЫЛО
 func deleteTransaction(_ transaction: Transaction) {
@@ -265,7 +265,7 @@ func testDeleteTransactionUpdatesBalance() async throws {
 **Время:** 4 часа
 
 ```swift
-// File: AIFinanceManager/ViewModels/SubscriptionsViewModel.swift
+// File: Tenra/ViewModels/SubscriptionsViewModel.swift
 
 func updateRecurringSeries(_ series: RecurringSeries) {
     guard let index = recurringSeries.firstIndex(where: { $0.id == series.id }) else {
@@ -299,7 +299,7 @@ func updateRecurringSeries(_ series: RecurringSeries) {
 ```
 
 ```swift
-// File: AIFinanceManager/ViewModels/TransactionsViewModel.swift
+// File: Tenra/ViewModels/TransactionsViewModel.swift
 
 init() {
     // ...
@@ -347,7 +347,7 @@ private func regenerateRecurringTransactions(for seriesId: String) {
 **Время:** 3 часа
 
 ```swift
-// File: AIFinanceManager/Services/CSVImportService.swift
+// File: Tenra/Services/CSVImportService.swift
 
 struct TransactionFingerprint: Hashable {
     let date: String
@@ -521,7 +521,7 @@ class TransactionsViewModel: ObservableObject {
 **Время:** 1 день
 
 ```swift
-// File: AIFinanceManager/ViewModels/TransactionsViewModel.swift
+// File: Tenra/ViewModels/TransactionsViewModel.swift
 
 // ❌ БЫЛО: Пересчет при каждом добавлении
 func addTransaction(_ transaction: Transaction) {
@@ -580,7 +580,7 @@ func importTransactions(_ transactions: [Transaction]) {
 
 **Структура:**
 ```
-AIFinanceManager/
+Tenra/
   ViewModels/
     Transactions/
       TransactionsCoordinator.swift           (200 строк)
@@ -647,13 +647,13 @@ AIFinanceManager/
 
 ```bash
 # Run all tests
-xcodebuild test -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 15'
 
 # Run specific test suite
-xcodebuild test -scheme AIFinanceManager -only-testing:AIFinanceManagerTests/ViewModelTests
+xcodebuild test -scheme Tenra -only-testing:TenraTests/ViewModelTests
 
 # Performance tests
-xcodebuild test -scheme AIFinanceManager -only-testing:AIFinanceManagerTests/PerformanceTests
+xcodebuild test -scheme Tenra -only-testing:TenraTests/PerformanceTests
 ```
 
 ---

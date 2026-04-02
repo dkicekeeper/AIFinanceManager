@@ -43,7 +43,7 @@ This document provides a comprehensive technical audit of the AI Finance Manager
 
 ### 1. God Object Anti-Pattern ⚠️
 
-**Location**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Location**: `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Metrics**:
 - **Lines of Code**: 2,486 lines
@@ -103,7 +103,7 @@ class TransactionsViewModel: ObservableObject {
 
 **Structure**:
 ```
-AIFinanceManager/
+Tenra/
 ├── Models/              ✅ Well-defined data structures
 │   ├── Transaction.swift
 │   ├── Account.swift
@@ -180,7 +180,7 @@ private func saveTransactions() {
 
 **Files Modified**:
 ```
-AIFinanceManager/
+Tenra/
 ├── en.lproj/Localizable.strings (216 keys)
 ├── ru.lproj/Localizable.strings (216 keys)
 └── Info.plist (CFBundleLocalizations: en, ru)
@@ -326,7 +326,7 @@ private func updateCachedData() {
 
 **Proposed Test Structure**:
 ```
-AIFinanceManagerTests/
+TenraTests/
 ├── ViewModelTests/
 │   ├── TransactionsViewModelTests.swift
 │   ├── AccountsViewModelTests.swift

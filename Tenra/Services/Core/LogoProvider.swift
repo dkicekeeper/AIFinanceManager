@@ -1,6 +1,6 @@
 //
 //  LogoProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Waterfall chain protocol for logo fetching
 //

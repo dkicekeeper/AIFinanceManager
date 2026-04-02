@@ -60,7 +60,7 @@
 - ✅ `TransactionPreviewView.swift`
 
 ### 4. App Integration ✅
-- ✅ `AIFinanceManagerApp.swift` - создает AppCoordinator
+- ✅ `TenraApp.swift` - создает AppCoordinator
 
 ### 5. Services обновлены ✅
 - ✅ `CSVImportService.swift` - использует CategoriesViewModel

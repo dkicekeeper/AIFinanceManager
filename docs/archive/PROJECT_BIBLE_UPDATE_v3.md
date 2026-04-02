@@ -15,7 +15,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  AIFinanceManagerApp (@main)                            │
+│  TenraApp (@main)                            │
 │    └── ContentView                                      │
 │         ├── @EnvironmentObject TimeFilterManager        │
 │         ├── @EnvironmentObject AppCoordinator           │

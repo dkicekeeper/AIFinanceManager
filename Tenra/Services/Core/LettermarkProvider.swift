@@ -1,6 +1,6 @@
 //
 //  LettermarkProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Generates lettermark icons with deterministic colors
 //

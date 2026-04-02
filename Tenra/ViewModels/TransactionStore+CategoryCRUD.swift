@@ -1,6 +1,6 @@
 //
 //  TransactionStore+CategoryCRUD.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Category and Subcategory CRUD operations extracted from TransactionStore.
 //  Phase C: File split for maintainability.

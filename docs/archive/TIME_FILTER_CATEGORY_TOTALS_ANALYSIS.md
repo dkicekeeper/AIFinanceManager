@@ -510,7 +510,7 @@ func getCategoryExpenses(
 
 ### Phase 1: Обновление TransactionCacheManager ✨
 
-**Файл:** `AIFinanceManager/Services/TransactionCacheManager.swift`
+**Файл:** `Tenra/Services/TransactionCacheManager.swift`
 
 **Изменения:**
 
@@ -526,7 +526,7 @@ func getCategoryExpenses(
 
 ### Phase 2: Обновление TransactionQueryService ✨
 
-**Файл:** `AIFinanceManager/Services/Transactions/TransactionQueryService.swift`
+**Файл:** `Tenra/Services/Transactions/TransactionQueryService.swift`
 
 **Изменения:**
 
@@ -541,7 +541,7 @@ func getCategoryExpenses(
 
 ### Phase 3: Очистка TransactionsViewModel ✨
 
-**Файл:** `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл:** `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Изменения:**
 

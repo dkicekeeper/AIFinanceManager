@@ -10,7 +10,7 @@
 
 ### ✅ Fix 1: BalanceCoordinator.processAddTransaction()
 
-**Файл:** `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`
+**Файл:** `Tenra/Services/Balance/BalanceCoordinator.swift`
 **Строка:** 462-467
 
 **Проблема:** Target account обрабатывался с `isSource` по умолчанию (true), что приводило к вычитанию вместо добавления.
@@ -33,7 +33,7 @@ let newBalance = engine.applyTransaction(
 
 ### ✅ Fix 2: BalanceCoordinator.processRemoveTransaction()
 
-**Файл:** `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`
+**Файл:** `Tenra/Services/Balance/BalanceCoordinator.swift`
 **Строка:** 499-504
 
 **Проблема:** При удалении transfer, target account обрабатывался с `isSource=true`, что неправильно реверсило операцию.
@@ -56,7 +56,7 @@ let newBalance = engine.revertTransaction(
 
 ### ✅ Fix 3: AccountOperationServiceProtocol
 
-**Файл:** `AIFinanceManager/Protocols/AccountOperationServiceProtocol.swift`
+**Файл:** `Tenra/Protocols/AccountOperationServiceProtocol.swift`
 **Строки:** 16-40
 
 **Изменения:**
@@ -72,7 +72,7 @@ let newBalance = engine.revertTransaction(
 
 ### ✅ Fix 4: AccountOperationService.transfer()
 
-**Файл:** `AIFinanceManager/Services/Transactions/AccountOperationService.swift`
+**Файл:** `Tenra/Services/Transactions/AccountOperationService.swift`
 **Строки:** 18-101
 
 **Проблема:** Метод напрямую модифицировал балансы через `deduct()` и `add()`, обходя BalanceCoordinator.
@@ -116,7 +116,7 @@ saveCallback()
 
 ### ✅ Fix 5: TransactionsViewModel.transfer()
 
-**Файл:** `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл:** `Tenra/ViewModels/TransactionsViewModel.swift`
 **Строки:** 346-362
 
 **Изменения:**

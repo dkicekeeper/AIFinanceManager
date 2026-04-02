@@ -5,12 +5,12 @@
 ## Directory Layout
 
 ```
-AIFinanceManager/
-├── AIFinanceManager/                  # Localization folder (en.lproj, ru.lproj)
+Tenra/
+├── Tenra/                  # Localization folder (en.lproj, ru.lproj)
 ├── Assets.xcassets/                   # Image assets (bank logos, app icon, colors, icons)
 ├── CoreData/
 │   ├── Entities/                      # Auto-generated CoreData entity classes (12 entities)
-│   ├── AIFinanceManager.xcdatamodeld/ # CoreData schema definition
+│   ├── Tenra.xcdatamodeld/ # CoreData schema definition
 │   └── CoreDataStack.swift            # Core Data initialization & lifecycle management
 ├── Debug/                             # Debug configuration and utilities
 ├── Extensions/                        # Swift extensions (6 files: Date, Double, String, etc.)
@@ -57,9 +57,9 @@ AIFinanceManager/
 │   ├── Subscriptions/                 # Subscription/recurring views
 │   ├── Transactions/                  # Transaction add/edit/detail
 │   └── VoiceInput/                    # Voice input UI
-└── AIFinanceManagerApp.swift          # App entry point (@main)
+└── TenraApp.swift          # App entry point (@main)
 
-AIFinanceManagerTests/                # Unit tests
+TenraTests/                # Unit tests
 ├── ViewModels/                        # ViewModel tests
 ├── Balance/                           # Balance calculation tests
 ├── Utils/                             # Utility & formatter tests
@@ -69,15 +69,15 @@ AIFinanceManagerTests/                # Unit tests
 
 ## Directory Purposes
 
-**AIFinanceManager (Top Level):**
+**Tenra (Top Level):**
 - Purpose: Main app target source code
 - Contains: All view, model, service, and persistence code
-- Entry point: `AIFinanceManager.swift` (@main app)
+- Entry point: `Tenra.swift` (@main app)
 
 **CoreData/:**
 - Purpose: Core Data persistence infrastructure
 - Contains: `CoreDataStack.swift` (singleton, thread-safe), auto-generated entity classes, schema
-- Key file: `AIFinanceManager.xcdatamodeld` (defines 12 entities: Transaction, Account, Category, Subcategory, RecurringSeries, RecurringOccurrence, etc.)
+- Key file: `Tenra.xcdatamodeld` (defines 12 entities: Transaction, Account, Category, Subcategory, RecurringSeries, RecurringOccurrence, etc.)
 - Entity generation: Auto-generated from .xcdatamodeld (edit schema in Xcode, regenerate entities)
 
 **Models/:**
@@ -144,36 +144,36 @@ AIFinanceManagerTests/                # Unit tests
 - Purpose: Debug utilities and configuration
 - Contains: Debug helpers, logging utilities
 
-**AIFinanceManagerTests/:**
+**TenraTests/:**
 - Purpose: Unit tests
 - Organization: Mirrors source structure (ViewModels/, Services/, Models/, Utils/)
 - Coverage: Repository tests, balance calculation tests, amount formatter tests, model tests
-- Pattern: Test files use `@testable import AIFinanceManager`
+- Pattern: Test files use `@testable import Tenra`
 
 ## Key File Locations
 
 **Entry Points:**
-- `AIFinanceManager/AIFinanceManagerApp.swift`: App entry point (@main), CoreData pre-warm orchestration
-- `AIFinanceManager/Views/Home/MainTabView.swift`: Tab bar navigation (Home, Transactions, Categories, Insights, Subscriptions, Settings)
-- `AIFinanceManager/Views/Home/ContentView.swift`: Home screen (account summary, quick-add)
+- `Tenra/TenraApp.swift`: App entry point (@main), CoreData pre-warm orchestration
+- `Tenra/Views/Home/MainTabView.swift`: Tab bar navigation (Home, Transactions, Categories, Insights, Subscriptions, Settings)
+- `Tenra/Views/Home/ContentView.swift`: Home screen (account summary, quick-add)
 
 **Configuration:**
-- `AIFinanceManager/CoreData/CoreDataStack.swift`: Core Data stack initialization, store management, lifecycle
-- `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/`: CoreData schema (12 entities)
-- `AIFinanceManager/ViewModels/AppCoordinator.swift`: Dependency injection, ViewModel initialization
+- `Tenra/CoreData/CoreDataStack.swift`: Core Data stack initialization, store management, lifecycle
+- `Tenra/CoreData/Tenra.xcdatamodeld/`: CoreData schema (12 entities)
+- `Tenra/ViewModels/AppCoordinator.swift`: Dependency injection, ViewModel initialization
 
 **Core Logic:**
-- `AIFinanceManager/ViewModels/TransactionStore.swift`: Single source of truth (transactions, accounts, categories, recurring data)
-- `AIFinanceManager/Services/Core/DataRepositoryProtocol.swift`: Persistence abstraction protocol
-- `AIFinanceManager/Services/Repository/CoreDataRepository.swift`: Facade delegating to specialized repos
-- `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`: Balance calculation coordination
-- `AIFinanceManager/Services/Insights/InsightsService.swift`: Financial insights computation (main + 9 extensions)
+- `Tenra/ViewModels/TransactionStore.swift`: Single source of truth (transactions, accounts, categories, recurring data)
+- `Tenra/Services/Core/DataRepositoryProtocol.swift`: Persistence abstraction protocol
+- `Tenra/Services/Repository/CoreDataRepository.swift`: Facade delegating to specialized repos
+- `Tenra/Services/Balance/BalanceCoordinator.swift`: Balance calculation coordination
+- `Tenra/Services/Insights/InsightsService.swift`: Financial insights computation (main + 9 extensions)
 
 **Testing:**
-- `AIFinanceManagerTests/Services/AccountRepositoryTests.swift`: Repository persistence tests
-- `AIFinanceManagerTests/Utils/AmountFormatterTests.swift`: Formatter tests
-- `AIFinanceManagerTests/Balance/BalanceCalculationTests.swift`: Balance calculation tests
-- `AIFinanceManagerTests/ViewModels/TransactionStoreTests.swift`: TransactionStore tests
+- `TenraTests/Services/AccountRepositoryTests.swift`: Repository persistence tests
+- `TenraTests/Utils/AmountFormatterTests.swift`: Formatter tests
+- `TenraTests/Balance/BalanceCalculationTests.swift`: Balance calculation tests
+- `TenraTests/ViewModels/TransactionStoreTests.swift`: TransactionStore tests
 
 ## Naming Conventions
 
@@ -199,7 +199,7 @@ AIFinanceManagerTests/                # Unit tests
 - **Primary code:** `Services/[DomainName]/[FeatureName]Service.swift` (business logic)
 - **ViewModel:** `ViewModels/[FeatureName]ViewModel.swift` (if UI state needed)
 - **Views:** `Views/[FeatureName]/[Purpose]View.swift` (SwiftUI UI)
-- **Tests:** `AIFinanceManagerTests/Services/[FeatureName]Tests.swift`
+- **Tests:** `TenraTests/Services/[FeatureName]Tests.swift`
 
 **New Transaction-Related Feature:**
 - Use existing `TransactionStore` for state (no new store needed)

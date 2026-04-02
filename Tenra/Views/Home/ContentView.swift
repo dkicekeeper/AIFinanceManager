@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Home screen - main entry point of the app
 //  Refactored: 2026-02-01 - Full rebuild with SRP, optimized state management, and component extraction
@@ -10,7 +10,7 @@ import SwiftUI
 import os
 import ImageIO
 
-private let cvLogger = Logger(subsystem: "AIFinanceManager", category: "ContentView")
+private let cvLogger = Logger(subsystem: "Tenra", category: "ContentView")
 
 // MARK: - HomeDestination
 

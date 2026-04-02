@@ -1,6 +1,6 @@
 //
 //  TransactionDisplayHelper.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 16 (2026-02-17): Centralized display logic for transactions.
 //  Eliminates duplication between TransactionCard and other transaction display components.

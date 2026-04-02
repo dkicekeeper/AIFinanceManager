@@ -1,6 +1,6 @@
 //
 //  AppButton.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Consistent button styles
 //

@@ -1,4 +1,4 @@
-# Requirements: AIFinanceManager — Tech Debt & Safety Milestone
+# Requirements: Tenra — Tech Debt & Safety Milestone
 
 **Defined:** 2026-03-02
 **Core Value:** Точный учёт финансов с мгновенным откликом — приложение не должно терять данные, зависать или давать неверные цифры.

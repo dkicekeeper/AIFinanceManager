@@ -1,6 +1,6 @@
 //
 //  CSVImportCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Simplified CSV Import Architecture - Phase 11
 //  Removed CSVStorageCoordinator - direct TransactionStore interaction
@@ -22,7 +22,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
     // Phase 37: converter removed — convertRow() merged into EntityMappingServiceProtocol.
     // Use mapper.convertRow(...) directly.
     private let cache: ImportCacheManager
-    private let logger = Logger(subsystem: "AIFinanceManager", category: "CSVImportCoordinator")
+    private let logger = Logger(subsystem: "Tenra", category: "CSVImportCoordinator")
 
     // MARK: - Initialization
 

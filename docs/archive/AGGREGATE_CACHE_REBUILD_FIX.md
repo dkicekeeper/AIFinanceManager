@@ -150,7 +150,7 @@
 
 ### Phase 1: TransactionStorageCoordinator.swift ✅
 
-**Файл:** `AIFinanceManager/Services/Transactions/TransactionStorageCoordinator.swift`
+**Файл:** `Tenra/Services/Transactions/TransactionStorageCoordinator.swift`
 
 **Lines 65-95 (внутри `loadFromStorage()`):**
 
@@ -196,7 +196,7 @@ await MainActor.run { [weak self] in
 
 ### Phase 2: TransactionStorageCoordinatorProtocol.swift ✅
 
-**Файл:** `AIFinanceManager/Protocols/TransactionStorageCoordinatorProtocol.swift`
+**Файл:** `Tenra/Protocols/TransactionStorageCoordinatorProtocol.swift`
 
 **Lines 53-59:**
 
@@ -218,7 +218,7 @@ func rebuildAggregateCacheAfterImport() async  // ← Добавлено
 
 ### Phase 3: CacheCoordinator.swift ✅
 
-**Файл:** `AIFinanceManager/Services/Transactions/CacheCoordinator.swift`
+**Файл:** `Tenra/Services/Transactions/CacheCoordinator.swift`
 
 **Method 1: rebuildAggregates() - Lines 80-86:**
 
@@ -273,7 +273,7 @@ await MainActor.run { [weak self] in
 
 ### Phase 4: CacheCoordinator.swift - Race Condition Fix ✅
 
-**Файл:** `AIFinanceManager/Services/Transactions/CacheCoordinator.swift`
+**Файл:** `Tenra/Services/Transactions/CacheCoordinator.swift`
 
 **Method 1: rebuildAggregates() - Lines 63-90:**
 
@@ -357,7 +357,7 @@ Combine publisher реагирует на изменение `allTransactions` �
 
 ### Phase 5: TransactionQueryService.swift - Empty Result Fix ✅
 
-**Файл:** `AIFinanceManager/Services/Transactions/TransactionQueryService.swift`
+**Файл:** `Tenra/Services/Transactions/TransactionQueryService.swift`
 
 **Method: getCategoryExpenses() - Lines 93-125:**
 
@@ -417,7 +417,7 @@ func getCategoryExpenses(...) -> [String: CategoryExpense] {
 ### Compilation ✅
 
 ```bash
-xcodebuild -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17' build
+xcodebuild -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 **Result:** `** BUILD SUCCEEDED **`

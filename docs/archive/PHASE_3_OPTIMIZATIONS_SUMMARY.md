@@ -4,9 +4,9 @@
 
 ### 1. Отложенная загрузка при старте
 **Файлы**:
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
-- `AIFinanceManager/ViewModels/AppCoordinator.swift`
-- `AIFinanceManager/Views/ContentView.swift`
+- `Tenra/ViewModels/TransactionsViewModel.swift`
+- `Tenra/ViewModels/AppCoordinator.swift`
+- `Tenra/Views/ContentView.swift`
 
 **Проблема**: `TransactionsViewModel.init()` синхронно загружал все данные из UserDefaults в главном потоке, блокируя запуск приложения на 2-4 секунды.
 
@@ -25,7 +25,7 @@
 ---
 
 ### 2. Фоновые вычисления summary
-**Файл**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл**: `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Проблема**: Метод `summary()` выполнял тяжелые вычисления синхронно:
 - Проход по всем отфильтрованным транзакциям
@@ -48,7 +48,7 @@
 ---
 
 ### 3. Дебаунсинг фильтров
-**Файл**: `AIFinanceManager/Views/HistoryView.swift`
+**Файл**: `Tenra/Views/HistoryView.swift`
 
 **Проблема**: Каждое изменение фильтра счета или категории немедленно вызывало `updateCachedTransactions()`, что при быстром переключении фильтров приводило к множественным пересчетам.
 
@@ -66,7 +66,7 @@
 ---
 
 ### 4. Оптимизация generateRecurringTransactions
-**Файл**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл**: `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Проблема**: 
 - Метод вызывался при каждом запуске приложения
@@ -87,8 +87,8 @@
 
 ### 5. Прогрессивная загрузка со скелетонами
 **Файлы**:
-- `AIFinanceManager/Views/Components/SkeletonView.swift` (новый)
-- `AIFinanceManager/Views/ContentView.swift`
+- `Tenra/Views/Components/SkeletonView.swift` (новый)
+- `Tenra/Views/ContentView.swift`
 
 **Проблема**: Во время загрузки данных пользователь видел простой `ProgressView` или белый экран, что создавало ощущение "зависшего" приложения.
 
@@ -256,25 +256,25 @@ PerformanceProfiler: summary.computation.background - 300ms
 ## 📝 Изменения в коде
 
 ### Новые файлы:
-- `AIFinanceManager/Views/Components/SkeletonView.swift` - компоненты skeleton loading
+- `Tenra/Views/Components/SkeletonView.swift` - компоненты skeleton loading
 
 ### Измененные файлы:
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift`:
+- `Tenra/ViewModels/TransactionsViewModel.swift`:
   - Изменен `init()` - убрана синхронная загрузка
   - Добавлен `loadDataAsync()` - асинхронная загрузка данных
   - Изменен `summary()` - возврат кеша + фоновые вычисления
   - Добавлен `computeSummary()` - приватный метод для фоновых вычислений
   - Оптимизирован `generateRecurringTransactions()` - добавлена проверка и логирование
 
-- `AIFinanceManager/ViewModels/AppCoordinator.swift`:
+- `Tenra/ViewModels/AppCoordinator.swift`:
   - Добавлен `initialize()` - централизованная асинхронная инициализация
 
-- `AIFinanceManager/Views/ContentView.swift`:
+- `Tenra/Views/ContentView.swift`:
   - Добавлен `@State private var isInitializing` - флаг загрузки
   - Добавлен `.task {}` - асинхронная инициализация при первом появлении
   - Заменен `ProgressView` на `MainScreenLoadingView` - skeleton loader
 
-- `AIFinanceManager/Views/HistoryView.swift`:
+- `Tenra/Views/HistoryView.swift`:
   - Добавлен `@State private var filterTask` - задача для дебаунсинга
   - Изменены `.onChange` для `selectedAccountFilter` и `selectedCategories` - дебаунсинг 150ms
 

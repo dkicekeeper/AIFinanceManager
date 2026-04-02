@@ -1,6 +1,6 @@
 //
 //  BudgetProgressRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Full budget progress row: icon + name + BudgetProgressBar + spent/budget amounts.
 //  Extracted from InsightDetailView.budgetChartSection — Phase 26.

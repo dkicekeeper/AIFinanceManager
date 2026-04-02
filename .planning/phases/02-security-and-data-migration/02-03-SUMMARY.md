@@ -18,7 +18,7 @@ tech-stack:
 
 key-files:
   created:
-    - AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/AIFinanceManager_v2_to_v3.xcmappingmodel/contents
+    - Tenra/CoreData/Tenra.xcdatamodeld/Tenra_v2_to_v3.xcmappingmodel/contents
   modified: []
 
 key-decisions:
@@ -48,7 +48,7 @@ completed: 2026-03-03
 - **Files modified:** 1
 
 ## Accomplishments
-- Created `AIFinanceManager_v2_to_v3.xcmappingmodel/contents` inside the `.xcdatamodeld` bundle
+- Created `Tenra_v2_to_v3.xcmappingmodel/contents` inside the `.xcdatamodeld` bundle
 - Mapped all 11 v2 entities to their v3 counterparts using `NSMigrationCopyEntityMigrationPolicy`
 - `TransactionEntity` mapping explicitly maps `dateSectionKey` via `$source.dateSectionKey` expression; CoreData applies `defaultValueString=""` when source is nil (attribute was transient in v2)
 - No Swift code changes needed — `CoreDataStack` already has both migration flags enabled
@@ -62,7 +62,7 @@ Each task was committed atomically:
 2. **Task 2: Verify mapping model compiles in Xcode build** - `a78e7d3` (feat, human-approved checkpoint)
 
 ## Files Created/Modified
-- `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/AIFinanceManager_v2_to_v3.xcmappingmodel/contents` - Explicit CoreData mapping model XML, 22 lines, 11 entity mappings
+- `Tenra/CoreData/Tenra.xcdatamodeld/Tenra_v2_to_v3.xcmappingmodel/contents` - Explicit CoreData mapping model XML, 22 lines, 11 entity mappings
 
 ## Decisions Made
 - Use `$source.dateSectionKey` NSExpression directly — the `??` nil-coalescing operator is not valid NSExpression syntax and causes a `mapc` compiler error. CoreData applies `defaultValueString=""` from the destination entity definition automatically when source value is nil.
@@ -79,7 +79,7 @@ None.
 None - no external service configuration required.
 
 ## Self-Check: PASSED
-- `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/AIFinanceManager_v2_to_v3.xcmappingmodel/contents` — exists (created in Task 1, commit 99e5ae6)
+- `Tenra/CoreData/Tenra.xcdatamodeld/Tenra_v2_to_v3.xcmappingmodel/contents` — exists (created in Task 1, commit 99e5ae6)
 - Commit `99e5ae6` exists (Task 1 mapping model creation)
 - Commit `a78e7d3` exists (Task 2 human-approved build verification)
 - DATA-01 requirement fulfilled

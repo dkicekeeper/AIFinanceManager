@@ -1,6 +1,6 @@
 //
 //  GoogleFaviconProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Fetches favicons from Google's favicon service
 //

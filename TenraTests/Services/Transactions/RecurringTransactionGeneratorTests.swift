@@ -1,6 +1,6 @@
 //
 //  RecurringTransactionGeneratorTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Tests for RecurringTransactionGenerator edge cases:
 //  - Month-end date clamping (Jan 31 → Feb 28/29)
@@ -14,7 +14,7 @@
 
 import Testing
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 @Suite("RecurringTransactionGenerator Edge Cases")
 struct RecurringTransactionGeneratorTests {

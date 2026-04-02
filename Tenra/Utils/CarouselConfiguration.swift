@@ -1,6 +1,6 @@
 //
 //  CarouselConfiguration.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created: 2026-02-16
 //  Configuration presets for UniversalCarousel component

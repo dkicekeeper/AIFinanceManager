@@ -24,7 +24,7 @@ On app restart:
 ## 🔍 Technical Analysis
 
 ### Code Location
-`AIFinanceManager/Services/Transactions/RecurringTransactionService.swift:141-198`
+`Tenra/Services/Transactions/RecurringTransactionService.swift:141-198`
 
 ### Before (Problematic Code)
 ```swift

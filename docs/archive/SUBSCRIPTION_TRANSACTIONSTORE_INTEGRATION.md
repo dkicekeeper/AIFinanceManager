@@ -824,15 +824,15 @@ Total: 1 layer, ~1400 LOC (generator + store)
 ### 1. Backup files
 ```bash
 mkdir -p Docs/backup/aggressive
-cp AIFinanceManager/ViewModels/TransactionStore.swift Docs/backup/aggressive/
-cp AIFinanceManager/ViewModels/SubscriptionsViewModel.swift Docs/backup/aggressive/
-cp -r AIFinanceManager/Services/Recurring/ Docs/backup/aggressive/Recurring/
+cp Tenra/ViewModels/TransactionStore.swift Docs/backup/aggressive/
+cp Tenra/ViewModels/SubscriptionsViewModel.swift Docs/backup/aggressive/
+cp -r Tenra/Services/Recurring/ Docs/backup/aggressive/Recurring/
 ```
 
 ### 2. Start with ФАЗА 1
 ```bash
 # Open TransactionStore.swift
-open AIFinanceManager/ViewModels/TransactionStore.swift
+open Tenra/ViewModels/TransactionStore.swift
 
 # Add @Published properties для recurring data
 # Add RecurringTransactionEvent cases
@@ -841,7 +841,7 @@ open AIFinanceManager/ViewModels/TransactionStore.swift
 
 ### 3. Test after each phase
 ```bash
-xcodebuild test -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
 ---

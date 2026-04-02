@@ -278,7 +278,7 @@ UnifiedCache  BalanceCoord  CoreData
 ## ✅ Build Verification
 
 ```bash
-xcodebuild -scheme AIFinanceManager -destination 'generic/platform=iOS' build \
+xcodebuild -scheme Tenra -destination 'generic/platform=iOS' build \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 
 Result: ✅ BUILD SUCCEEDED

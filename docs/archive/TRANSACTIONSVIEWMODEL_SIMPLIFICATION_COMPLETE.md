@@ -88,7 +88,7 @@ Build: ✅ SUCCESS
 - [x] File size reduced from 2,472 to 2,075 lines
 
 ### 3. Build Verification ✅
-- [x] Build command: `xcodebuild -scheme AIFinanceManager -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build`
+- [x] Build command: `xcodebuild -scheme Tenra -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build`
 - [x] Build result: **BUILD SUCCEEDED** ✅
 - [x] No compilation errors ✅
 - [x] No warnings related to removed methods ✅
@@ -220,12 +220,12 @@ ViewModels (1,357 lines total)
 
 ### Backup Location:
 ```
-/Users/dauletkydrali/Documents/AIFinanceManager/AIFinanceManager/ViewModels/TransactionsViewModel.swift.backup
+/Users/dauletkydrali/Documents/Tenra/Tenra/ViewModels/TransactionsViewModel.swift.backup
 ```
 
 ### Restore Command (if needed):
 ```bash
-cd /Users/dauletkydrali/Documents/AIFinanceManager/AIFinanceManager/ViewModels
+cd /Users/dauletkydrali/Documents/Tenra/Tenra/ViewModels
 cp TransactionsViewModel.swift.backup TransactionsViewModel.swift
 ```
 

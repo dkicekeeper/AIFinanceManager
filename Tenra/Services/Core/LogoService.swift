@@ -1,6 +1,6 @@
 //
 //  LogoService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Central logo service using waterfall provider chain
 //

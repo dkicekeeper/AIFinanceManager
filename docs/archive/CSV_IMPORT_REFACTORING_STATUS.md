@@ -96,8 +96,8 @@ Services/CSV/CSVImportCoordinator.swift
 
 **Modified Files:**
 ```
-AIFinanceManager/en.lproj/Localizable.strings (+45 keys)
-AIFinanceManager/ru.lproj/Localizable.strings (+45 keys)
+Tenra/en.lproj/Localizable.strings (+45 keys)
+Tenra/ru.lproj/Localizable.strings (+45 keys)
 ```
 
 ---

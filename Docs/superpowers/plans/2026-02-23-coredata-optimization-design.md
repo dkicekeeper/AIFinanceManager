@@ -271,7 +271,7 @@ Task(priority: .background) {
 
 **Problem:** In the xcdatamodel, `CategoryAggregateEntity.day` has `spotlightIndexingEnabled="YES"`. This triggers CoreData to build a Spotlight index for aggregate data — completely useless for financial aggregates and wastes system resources.
 
-**Fix:** Open `AIFinanceManager.xcdatamodeld`, select `CategoryAggregateEntity` → `day` attribute → uncheck "Index in Spotlight". Lightweight migration, no new model version needed.
+**Fix:** Open `Tenra.xcdatamodeld`, select `CategoryAggregateEntity` → `day` attribute → uncheck "Index in Spotlight". Lightweight migration, no new model version needed.
 
 ---
 
@@ -338,7 +338,7 @@ Add to `TransactionEntity` in CoreData model (new model version required):
 
 ### C4. CoreData Model Version 2
 
-Create `AIFinanceManager v2.xcdatamodeld` for:
+Create `Tenra v2.xcdatamodeld` for:
 1. Remove `spotlightIndexingEnabled` from `CategoryAggregateEntity.day`
 2. Add `byCurrencyDateIndex` and `byTypeCurrencyDateIndex` on `TransactionEntity`
 3. Lightweight migration (no NSMappingModel needed — only index changes)
@@ -402,13 +402,13 @@ Model versions enable controlled migrations without data loss. Always increment 
 - `CoreData/CoreDataStack.swift` (B3)
 - `ViewModels/AppCoordinator.swift` (B2, B3)
 - `ViewModels/TransactionPaginationController.swift` (B2, NEW)
-- `AIFinanceManager.xcdatamodeld` (B4)
+- `Tenra.xcdatamodeld` (B4)
 - Transaction list views in `Views/History/` (B2)
 
 **Phase C:**
 - `ViewModels/TransactionStore.swift` (C1)
 - `Services/Repository/AccountRepository.swift` (C2)
-- `AIFinanceManager v2.xcdatamodeld` (C3, C4, NEW)
+- `Tenra v2.xcdatamodeld` (C3, C4, NEW)
 
 ---
 

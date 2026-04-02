@@ -1,6 +1,6 @@
 //
 //  ChartDisplayMode.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 25: Replaces `compact: Bool` across all Insights chart components.
 //

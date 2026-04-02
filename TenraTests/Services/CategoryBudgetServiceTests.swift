@@ -1,6 +1,6 @@
 //
 //  CategoryBudgetServiceTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Unit tests for CategoryBudgetService.budgetProgress, budgetPeriodStart, calculateSpent.
 //  TEST-02
@@ -8,7 +8,7 @@
 
 import Testing
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 @Suite("CategoryBudgetService")
 struct CategoryBudgetServiceTests {

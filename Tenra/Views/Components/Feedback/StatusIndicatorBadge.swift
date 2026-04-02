@@ -1,6 +1,6 @@
 //
 //  StatusIndicatorBadge.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 33.2: Extracted from SubscriptionCard to be reusable across the app.
 //  Shows a coloured SF Symbol icon for a given entity status.

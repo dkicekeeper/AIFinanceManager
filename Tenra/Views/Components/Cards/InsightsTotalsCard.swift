@@ -1,6 +1,6 @@
 //
 //  InsightsTotalsCard.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Three-column income / expenses / net-flow summary card.
 //  Extracted from InsightsSummaryHeader (summaryItem) and

@@ -1,6 +1,6 @@
 //
 //  BudgetProgressBar.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable horizontal budget progress bar with over-budget state.
 //  Extracted from InsightsCardView and InsightDetailView (Phase 26).

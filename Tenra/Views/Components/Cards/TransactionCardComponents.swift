@@ -1,6 +1,6 @@
 //
 //  TransactionCardComponents.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Extracted components from TransactionCard for better modularity
 //

@@ -1,6 +1,6 @@
 //
 //  TransactionRepository.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //
@@ -30,7 +30,7 @@ protocol TransactionRepositoryProtocol: Sendable {
 /// CoreData implementation of TransactionRepositoryProtocol
 nonisolated final class TransactionRepository: TransactionRepositoryProtocol, @unchecked Sendable {
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "TransactionRepository")
+    private static let logger = Logger(subsystem: "Tenra", category: "TransactionRepository")
 
     private let stack: CoreDataStack
     private let saveCoordinator: CoreDataSaveCoordinator

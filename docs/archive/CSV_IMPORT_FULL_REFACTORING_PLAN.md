@@ -2191,7 +2191,7 @@ let statistics = await coordinator.importTransactions(
 ### Файловая структура (после рефакторинга)
 
 ```
-AIFinanceManager/
+Tenra/
 ├── Protocols/
 │   ├── CSVParsingServiceProtocol.swift (30 LOC)
 │   ├── CSVValidationServiceProtocol.swift (40 LOC)

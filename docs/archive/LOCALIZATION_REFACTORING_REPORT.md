@@ -12,8 +12,8 @@
 ### 1. ✅ Создана инфраструктура локализации
 
 **Файлы созданы:**
-- `AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings` (английский)
-- `AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings` (русский)
+- `Tenra/Tenra/en.lproj/Localizable.strings` (английский)
+- `Tenra/Tenra/ru.lproj/Localizable.strings` (русский)
 
 **Добавлено локализационных ключей**: **150+** ключей в каждом языке
 

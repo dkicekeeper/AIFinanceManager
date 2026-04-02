@@ -1,6 +1,6 @@
 //
 //  TransactionStore+Recurring.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-09
 //  Phase 9: Aggressive Integration - Recurring Operations
@@ -15,7 +15,7 @@ import os
 // MARK: - Recurring CRUD Operations
 
 extension TransactionStore {
-    private static let recurringLogger = Logger(subsystem: "AIFinanceManager", category: "TransactionStore.Recurring")
+    private static let recurringLogger = Logger(subsystem: "Tenra", category: "TransactionStore.Recurring")
 
     /// Computed properties for recurring data
 

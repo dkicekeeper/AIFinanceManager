@@ -23,11 +23,11 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - "AIFinanceManager/ViewModels/TransactionsViewModel.swift — recurring section rewired to TransactionStore"
-    - "AIFinanceManager/Services/Cache/TransactionCacheManager.swift — stale comment removed"
+    - "Tenra/ViewModels/TransactionsViewModel.swift — recurring section rewired to TransactionStore"
+    - "Tenra/Services/Cache/TransactionCacheManager.swift — stale comment removed"
   deleted:
-    - "AIFinanceManager/Services/Transactions/RecurringTransactionService.swift — 559 LOC deleted"
-    - "AIFinanceManager/Protocols/RecurringTransactionServiceProtocol.swift — 85 LOC deleted"
+    - "Tenra/Services/Transactions/RecurringTransactionService.swift — 559 LOC deleted"
+    - "Tenra/Protocols/RecurringTransactionServiceProtocol.swift — 85 LOC deleted"
 
 key-decisions:
   - "Delete RecurringTransactionService entirely rather than partial fix — deadlock risk too high for targeted patch on @MainActor"
@@ -74,10 +74,10 @@ Each task was committed atomically:
 **Plan metadata:** (docs commit follows)
 
 ## Files Created/Modified
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift` — Removed `recurringService` and `recurringGenerator` properties; replaced all 8 recurring call sites with `TransactionStore` async wrappers; removed `RecurringTransactionServiceDelegate` extension conformance; emptied both notification handlers; removed stale cache invalidation from `cleanupDeletedAccount()`
-- `AIFinanceManager/Services/Cache/TransactionCacheManager.swift` — Removed stale comment referencing deleted `RecurringTransactionServiceDelegate`
-- `AIFinanceManager/Services/Transactions/RecurringTransactionService.swift` — DELETED (559 LOC)
-- `AIFinanceManager/Protocols/RecurringTransactionServiceProtocol.swift` — DELETED (85 LOC)
+- `Tenra/ViewModels/TransactionsViewModel.swift` — Removed `recurringService` and `recurringGenerator` properties; replaced all 8 recurring call sites with `TransactionStore` async wrappers; removed `RecurringTransactionServiceDelegate` extension conformance; emptied both notification handlers; removed stale cache invalidation from `cleanupDeletedAccount()`
+- `Tenra/Services/Cache/TransactionCacheManager.swift` — Removed stale comment referencing deleted `RecurringTransactionServiceDelegate`
+- `Tenra/Services/Transactions/RecurringTransactionService.swift` — DELETED (559 LOC)
+- `Tenra/Protocols/RecurringTransactionServiceProtocol.swift` — DELETED (85 LOC)
 
 ## Decisions Made
 - Both notification handlers (`.recurringSeriesCreated` and `.recurringSeriesChanged`) emptied to no-ops rather than wiring new generation calls — `TransactionStore.createSeries()` and `updateSeries()` already generate transactions internally; re-triggering from `TransactionsViewModel` was redundant duplication
@@ -91,7 +91,7 @@ Each task was committed atomically:
 - **Found during:** Task 2 (post-deletion grep sweep)
 - **Issue:** `TransactionCacheManager.swift` had a comment `// These properties exist only for legacy RecurringTransactionServiceDelegate compatibility.` referencing the now-deleted protocol
 - **Fix:** Removed the stale comment line; kept the `@available(*, deprecated)` marker on the property itself
-- **Files modified:** `AIFinanceManager/Services/Cache/TransactionCacheManager.swift`
+- **Files modified:** `Tenra/Services/Cache/TransactionCacheManager.swift`
 - **Verification:** `grep -r "RecurringTransactionServiceDelegate"` returns 0 matches
 - **Committed in:** `7fb684e` (Task 2 commit)
 

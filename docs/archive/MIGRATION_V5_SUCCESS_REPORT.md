@@ -29,7 +29,7 @@
 ✅ [CORE_DATA] CoreDataStack initialized
 ```
 
-**SQLite база данных**: `AIFinanceManager.sqlite`
+**SQLite база данных**: `Tenra.sqlite`
 
 ### 2. Все Entity загружаются из Core Data
 
@@ -193,7 +193,7 @@
 ### Core Data Stack
 
 ```
-Location: /var/mobile/Containers/Data/Application/.../AIFinanceManager.sqlite
+Location: /var/mobile/Containers/Data/Application/.../Tenra.sqlite
 Type: SQLite
 Status: ✅ Loaded successfully
 ```
@@ -341,7 +341,7 @@ let controller = NSFetchedResultsController(
 
 Синхронизация между устройствами:
 ```swift
-let container = NSPersistentCloudKitContainer(name: "AIFinanceManager")
+let container = NSPersistentCloudKitContainer(name: "Tenra")
 ```
 
 #### 3. Миграция AppSettings (низкий приоритет)

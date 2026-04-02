@@ -226,7 +226,7 @@ error.accountRequired
 ## 📁 Final File Structure
 
 ```
-AIFinanceManager/
+Tenra/
 ├── Views/Shared/Components/
 │   ├── ✅ SectionHeaderView.swift
 │   ├── ✅ DateSectionHeaderView.swift
@@ -249,7 +249,7 @@ AIFinanceManager/
 ├── Utils/
 │   └── ✅ AppTheme.swift (added sectionHeader token)
 │
-├── AIFinanceManager/
+├── Tenra/
 │   ├── ru.lproj/
 │   │   └── ✅ Localizable.strings (+18 keys)
 │   └── en.lproj/

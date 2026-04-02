@@ -4,7 +4,7 @@
 
 ### 1.1 Модель Account
 
-**Файл**: `AIFinanceManager/Models/Transaction.swift` (строки 145-183)
+**Файл**: `Tenra/Models/Transaction.swift` (строки 145-183)
 
 **Текущая структура**:
 ```swift
@@ -25,7 +25,7 @@ struct Account: Identifiable, Codable, Equatable {
 
 ### 1.2 Модель Transaction
 
-**Файл**: `AIFinanceManager/Models/Transaction.swift` (строки 16-121)
+**Файл**: `Tenra/Models/Transaction.swift` (строки 16-121)
 
 **Текущая структура**:
 ```swift
@@ -58,7 +58,7 @@ enum TransactionType: String, Codable {
 
 ### 1.3 Storage слой
 
-**Файл**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл**: `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Механизм хранения**:
 - **UserDefaults** + **JSON encoding/decoding**
@@ -76,7 +76,7 @@ enum TransactionType: String, Codable {
 
 ### 1.4 ViewModel
 
-**Файл**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл**: `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Структура**:
 - `@MainActor class TransactionsViewModel: ObservableObject`
@@ -97,17 +97,17 @@ enum TransactionType: String, Codable {
 ### 1.5 UI компоненты
 
 **Список счетов**:
-- `AIFinanceManager/Views/ContentView.swift` - главный экран с `AccountCard`
-- `AIFinanceManager/Views/Components/AccountCard.swift` - компонент карточки счета
-- `AIFinanceManager/Views/AccountsManagementView.swift` - управление счетами
+- `Tenra/Views/ContentView.swift` - главный экран с `AccountCard`
+- `Tenra/Views/Components/AccountCard.swift` - компонент карточки счета
+- `Tenra/Views/AccountsManagementView.swift` - управление счетами
 
 **История транзакций**:
-- `AIFinanceManager/Views/HistoryView.swift` - общий список транзакций
+- `Tenra/Views/HistoryView.swift` - общий список транзакций
 - Фильтрация по `accountId` происходит через `transaction.accountId`
 
 ### 1.6 BankLogo
 
-**Файл**: `AIFinanceManager/Utils/BankLogo.swift`
+**Файл**: `Tenra/Utils/BankLogo.swift`
 
 **Структура**:
 - Enum `BankLogo: String, Codable, CaseIterable`
@@ -136,21 +136,21 @@ enum TransactionType: String, Codable {
 ### 2.2 Карта изменений файлов
 
 #### Новые файлы:
-1. `AIFinanceManager/Models/Deposit.swift` - модель депозита (опционально, если выносим в отдельную структуру)
-2. `AIFinanceManager/Services/DepositInterestService.swift` - сервис расчета процентов
-3. `AIFinanceManager/Views/DepositDetailView.swift` - детальная страница депозита
-4. `AIFinanceManager/Views/DepositEditView.swift` - создание/редактирование депозита
-5. `AIFinanceManager/Views/DepositInterestRateHistoryView.swift` - история ставок (опционально)
+1. `Tenra/Models/Deposit.swift` - модель депозита (опционально, если выносим в отдельную структуру)
+2. `Tenra/Services/DepositInterestService.swift` - сервис расчета процентов
+3. `Tenra/Views/DepositDetailView.swift` - детальная страница депозита
+4. `Tenra/Views/DepositEditView.swift` - создание/редактирование депозита
+5. `Tenra/Views/DepositInterestRateHistoryView.swift` - история ставок (опционально)
 
 #### Изменяемые файлы:
 
 **Модели**:
-- `AIFinanceManager/Models/Transaction.swift`
+- `Tenra/Models/Transaction.swift`
   - Добавить новые типы в `TransactionType`: `depositTopUp`, `depositWithdrawal`, `depositInterestAccrual`
   - ИЛИ использовать существующие типы (`income` для пополнения, `expense` для снятия) + специальную категорию
 
 **ViewModel**:
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+- `Tenra/ViewModels/TransactionsViewModel.swift`
   - Добавить `@Published var deposits: [Deposit]` (если отдельная модель)
   - ИЛИ расширить методы работы с accounts для поддержки депозитов
   - Добавить методы: `addDeposit`, `updateDeposit`, `deleteDeposit`
@@ -159,13 +159,13 @@ enum TransactionType: String, Codable {
   - Добавить сохранение/загрузку депозитов в `saveToStorage()`/`loadFromStorage()`
 
 **UI**:
-- `AIFinanceManager/Views/ContentView.swift` - отображение депозитов как карточек счетов
-- `AIFinanceManager/Views/Components/AccountCard.swift` - поддержка отображения депозита (проценты на сегодня, дата начисления)
-- `AIFinanceManager/Views/AccountsManagementView.swift` - добавить создание депозитов
-- `AIFinanceManager/Views/HistoryView.swift` - транзакции депозитов уже будут в общей истории (через accountId)
+- `Tenra/Views/ContentView.swift` - отображение депозитов как карточек счетов
+- `Tenra/Views/Components/AccountCard.swift` - поддержка отображения депозита (проценты на сегодня, дата начисления)
+- `Tenra/Views/AccountsManagementView.swift` - добавить создание депозитов
+- `Tenra/Views/HistoryView.swift` - транзакции депозитов уже будут в общей истории (через accountId)
 
 **Сервисы**:
-- `AIFinanceManager/Services/DepositInterestService.swift` (новый) - логика расчета процентов
+- `Tenra/Services/DepositInterestService.swift` (новый) - логика расчета процентов
 
 ### 2.3 Детальная структура данных
 

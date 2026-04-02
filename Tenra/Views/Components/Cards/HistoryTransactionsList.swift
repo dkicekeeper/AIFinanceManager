@@ -1,6 +1,6 @@
 //
 //  HistoryTransactionsList.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-01-27
 //  Part of Phase 2: HistoryView Decomposition
@@ -15,7 +15,7 @@ import SwiftUI
 import os
 import QuartzCore
 
-private let listLogger = Logger(subsystem: "AIFinanceManager", category: "HistoryList")
+private let listLogger = Logger(subsystem: "Tenra", category: "HistoryList")
 
 /// Displays FRC-backed list of transactions with date sections.
 /// Section keys from the FRC are "YYYY-MM-DD"; `displayDateKey(_:)` converts

@@ -1,6 +1,6 @@
 //
 //  CoreDataRoundTripTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  TEST-04: CoreData round-trip integration test
 //  Verifies that TransactionEntity saved to an in-memory NSPersistentContainer
@@ -12,7 +12,7 @@
 import Testing
 import CoreData
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 // MARK: - Suite
 
@@ -28,7 +28,7 @@ struct CoreDataRoundTripTests {
     /// Uses the same NSManagedObjectModel as production (loaded from app bundle).
     /// Each call gets a fresh, independent store.
     private func makeInMemoryContainer() throws -> NSPersistentContainer {
-        let container = NSPersistentContainer(name: "AIFinanceManager")
+        let container = NSPersistentContainer(name: "Tenra")
         let description = NSPersistentStoreDescription()
         description.type = NSInMemoryStoreType
         // Use a unique URL to guarantee store isolation between parallel test runs.

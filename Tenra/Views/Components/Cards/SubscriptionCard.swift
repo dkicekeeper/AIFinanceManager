@@ -1,6 +1,6 @@
 //
 //  SubscriptionCard.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable subscription card component
 //

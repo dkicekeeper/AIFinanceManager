@@ -1,6 +1,6 @@
 //
 //  IconPickerView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified icon/logo picker with segmented control for all entities
 //

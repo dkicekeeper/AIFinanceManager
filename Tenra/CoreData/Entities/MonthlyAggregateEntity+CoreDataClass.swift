@@ -1,6 +1,6 @@
 //
 //  MonthlyAggregateEntity+CoreDataClass.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 22: Monthly income/expense aggregate for persistent chart data.
 //

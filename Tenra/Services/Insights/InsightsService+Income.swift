@@ -1,6 +1,6 @@
 //
 //  InsightsService+Income.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
 //  Responsible for: income growth (MoM / period-over-period), income vs expense ratio.

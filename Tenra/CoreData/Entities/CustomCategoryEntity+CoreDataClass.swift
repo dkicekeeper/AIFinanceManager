@@ -1,6 +1,6 @@
 //
 //  CustomCategoryEntity+CoreDataClass.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created by Daulet K on 23.01.2026.
 //

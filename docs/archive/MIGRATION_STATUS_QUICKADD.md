@@ -112,7 +112,7 @@ if let transactionStore = transactionStore {
 ---
 
 ### 9. TransactionStoreTests - Updated
-**Файл:** `AIFinanceManagerTests/TransactionStoreTests.swift`
+**Файл:** `TenraTests/TransactionStoreTests.swift`
 
 **Изменения:**
 - ✅ Убран параметр `currencyConverter` из init TransactionStore
@@ -155,7 +155,7 @@ if let transactionStore = transactionStore {
 
 ### Сборка
 ```bash
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 # ** BUILD SUCCEEDED **
 ```
 

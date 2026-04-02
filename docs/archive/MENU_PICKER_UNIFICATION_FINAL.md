@@ -228,7 +228,7 @@ enum ReminderOption: Hashable {
 ## 📁 Финальная структура файлов
 
 ```
-AIFinanceManager/
+Tenra/
 ├── Views/Shared/Components/
 │   ├── ✅ MenuPickerRow.swift (ГЛАВНЫЙ - 240 строк)
 │   │   └── Generic<T: Hashable> для ВСЕХ pickers

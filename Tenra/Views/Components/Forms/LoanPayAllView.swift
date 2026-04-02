@@ -1,6 +1,6 @@
 //
 //  LoanPayAllView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  View for paying all monthly loan payments at once
 //  from a selected source bank account.

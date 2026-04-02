@@ -1,6 +1,6 @@
 //
 //  LoanEarlyRepaymentView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  View for making early repayments on loans.
 //  Shows impact on remaining term or monthly payment.

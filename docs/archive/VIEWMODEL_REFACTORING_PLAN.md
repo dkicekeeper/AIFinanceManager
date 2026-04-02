@@ -514,7 +514,7 @@ class AppCoordinator: ObservableObject {
 **Solution 2**: Inject in Environment
 ```swift
 @main
-struct AIFinanceManagerApp: App {
+struct TenraApp: App {
     @StateObject private var coordinator = AppCoordinator()
 
     var body: some Scene {

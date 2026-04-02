@@ -1,6 +1,6 @@
 //
 //  EditSheetContainer.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Generic wrapper for modal edit-form sheets.
 //  Extracts the repeated NavigationView → Form → toolbar(xmark / checkmark) shell

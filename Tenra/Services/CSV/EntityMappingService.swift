@@ -1,6 +1,6 @@
 //
 //  EntityMappingService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Simplified CSV Import Architecture - Phase 11
 //  Works ONLY with TransactionStore (Single Source of Truth)

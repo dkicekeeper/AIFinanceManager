@@ -1,6 +1,6 @@
 //
 //  CategoryCRUDServiceProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Protocol for category CRUD operations
 //  Extracted from CategoriesViewModel for better separation of concerns

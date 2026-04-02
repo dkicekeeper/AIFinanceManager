@@ -23,7 +23,7 @@
 
 ### 2. BankLogo.image() метод
 - **Статус:** ❌ УДАЛЕН
-- **Файл:** `AIFinanceManager/Utils/BankLogo.swift`
+- **Файл:** `Tenra/Utils/BankLogo.swift`
 - **Код:** ~40 строк удалено
 - **Причина:** Вся логика отображения перенесена в `IconView`
 

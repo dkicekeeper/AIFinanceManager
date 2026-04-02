@@ -2,16 +2,16 @@
 
 ## Шаг 1: Создание Data Model файла
 
-1. **Открыть Xcode проект** `AIFinanceManager.xcodeproj`
+1. **Открыть Xcode проект** `Tenra.xcodeproj`
 
 2. **Создать новый файл**:
    - File → New → File... (⌘N)
    - В разделе "Core Data" выбрать **"Data Model"**
-   - Имя файла: `AIFinanceManager`
-   - Сохранить в: `AIFinanceManager/CoreData/`
-   - ✅ Убедиться, что файл добавлен в target "AIFinanceManager"
+   - Имя файла: `Tenra`
+   - Сохранить в: `Tenra/CoreData/`
+   - ✅ Убедиться, что файл добавлен в target "Tenra"
 
-Это создаст файл `AIFinanceManager.xcdatamodeld`
+Это создаст файл `Tenra.xcdatamodeld`
 
 ---
 
@@ -19,12 +19,12 @@
 
 ### 2.1. Добавить Entity
 
-1. Открыть `AIFinanceManager.xcdatamodeld`
+1. Открыть `Tenra.xcdatamodeld`
 2. Нажать **"Add Entity"** (кнопка + внизу)
 3. Назвать: `TransactionEntity`
 4. В инспекторе справа:
    - **Class**: `TransactionEntity`
-   - **Module**: `AIFinanceManager`
+   - **Module**: `Tenra`
    - **Codegen**: **Manual/None** (мы создадим классы сами)
 
 ### 2.2. Добавить Attributes
@@ -175,7 +175,7 @@
    - Назвать: `CustomCategoryEntity`
    - В инспекторе справа:
      - **Class**: `CustomCategoryEntity`
-     - **Module**: `AIFinanceManager`
+     - **Module**: `Tenra`
      - **Codegen**: **Manual/None**
 
 2. **Добавить Attributes**:
@@ -198,7 +198,7 @@
    - Назвать: `CategoryRuleEntity`
    - В инспекторе справа:
      - **Class**: `CategoryRuleEntity`
-     - **Module**: `AIFinanceManager`
+     - **Module**: `Tenra`
      - **Codegen**: **Manual/None**
 
 2. **Добавить Attributes**:
@@ -220,7 +220,7 @@
    - Назвать: `SubcategoryEntity`
    - В инспекторе справа:
      - **Class**: `SubcategoryEntity`
-     - **Module**: `AIFinanceManager`
+     - **Module**: `Tenra`
      - **Codegen**: **Manual/None**
 
 2. **Добавить Attributes**:
@@ -259,10 +259,10 @@
 
 1. Выбрать все Entity (⌘+Click)
 2. Editor → Create NSManagedObject Subclass...
-3. Выбрать модель: `AIFinanceManager`
+3. Выбрать модель: `Tenra`
 4. Выбрать все Entity
-5. Сохранить в: `AIFinanceManager/CoreData/Entities/`
-6. ✅ Убедиться, что в target "AIFinanceManager"
+5. Сохранить в: `Tenra/CoreData/Entities/`
+6. ✅ Убедиться, что в target "Tenra"
 
 Xcode создаст файлы:
 - `TransactionEntity+CoreDataClass.swift`
@@ -321,7 +321,7 @@ extension TransactionEntity {
 
 ### 8.1. Проверить в редакторе
 
-1. Открыть `AIFinanceManager.xcdatamodeld`
+1. Открыть `Tenra.xcdatamodeld`
 2. Убедиться, что:
    - ✅ Все Entity созданы
    - ✅ Все Attributes имеют правильные типы
@@ -333,7 +333,7 @@ extension TransactionEntity {
 
 ```bash
 # В терминале или в Xcode (⌘+B)
-xcodebuild -scheme AIFinanceManager -configuration Debug
+xcodebuild -scheme Tenra -configuration Debug
 ```
 
 Если есть ошибки - исправить.
@@ -402,7 +402,7 @@ func initialize() async {
 
 ## ✅ Checklist
 
-- [x] Создан файл `AIFinanceManager.xcdatamodeld`
+- [x] Создан файл `Tenra.xcdatamodeld`
 - [x] Создана Entity `TransactionEntity` со всеми attributes
 - [x] Создана Entity `AccountEntity` со всеми attributes
 - [x] Создана Entity `RecurringSeriesEntity` со всеми attributes
@@ -452,7 +452,7 @@ func initialize() async {
 ~/Library/Developer/CoreSimulator/Devices/[DEVICE_ID]/data/Containers/Data/Application/[APP_ID]/Library/Application Support/
 
 # Открыть в DB Browser for SQLite
-open -a "DB Browser for SQLite" AIFinanceManager.sqlite
+open -a "DB Browser for SQLite" Tenra.sqlite
 ```
 
 ### Performance Tips

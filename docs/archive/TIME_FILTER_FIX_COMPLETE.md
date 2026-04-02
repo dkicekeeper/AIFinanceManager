@@ -24,7 +24,7 @@
 
 ### Phase 1: TransactionCacheManager.swift ✅
 
-**Файл:** `AIFinanceManager/Services/TransactionCacheManager.swift`
+**Файл:** `Tenra/Services/TransactionCacheManager.swift`
 
 **Изменения:**
 
@@ -61,7 +61,7 @@
 
 ### Phase 2: TransactionQueryService.swift ✅
 
-**Файл:** `AIFinanceManager/Services/Transactions/TransactionQueryService.swift`
+**Файл:** `Tenra/Services/Transactions/TransactionQueryService.swift`
 
 **Изменения:**
 
@@ -91,7 +91,7 @@ cacheManager.setCachedCategoryExpenses(result, for: timeFilter)
 
 ### Phase 3: TransactionsViewModel.swift ✅
 
-**Файл:** `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл:** `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Изменения:**
 
@@ -227,7 +227,7 @@ return categoryExpensesCache[key]
 ### Compilation ✅
 
 ```bash
-xcodebuild -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17' clean build
+xcodebuild -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17' clean build
 ```
 
 **Result:** `** BUILD SUCCEEDED **`

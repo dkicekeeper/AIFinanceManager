@@ -456,7 +456,7 @@ let statistics = await coordinator.importTransactions(
 ## Files Created
 
 ```
-AIFinanceManager/
+Tenra/
 ├── Protocols/
 │   ├── CSVParsingServiceProtocol.swift ✨
 │   ├── CSVValidationServiceProtocol.swift ✨

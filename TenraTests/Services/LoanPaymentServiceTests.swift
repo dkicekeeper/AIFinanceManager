@@ -1,6 +1,6 @@
 //
 //  LoanPaymentServiceTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Unit tests for LoanPaymentService — annuity formula, payment breakdown,
 //  amortization schedule, progress helpers. All tests are pure (no CoreData).
@@ -9,7 +9,7 @@
 
 import Testing
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 @Suite("LoanPaymentService Tests")
 struct LoanPaymentServiceTests {

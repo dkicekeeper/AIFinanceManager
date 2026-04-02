@@ -22,10 +22,10 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - AIFinanceManager/Services/Transactions/TransactionQueryService.swift
+    - Tenra/Services/Transactions/TransactionQueryService.swift
   deleted:
-    - AIFinanceManager/Services/CSV/TransactionConverterService.swift
-    - AIFinanceManager/Protocols/TransactionConverterServiceProtocol.swift
+    - Tenra/Services/CSV/TransactionConverterService.swift
+    - Tenra/Protocols/TransactionConverterServiceProtocol.swift
 
 key-decisions:
   - "Use @MainActor private static let (not nonisolated(unsafe)) for DateFormatter on @MainActor classes — matches CLAUDE.md rule and eliminates data race risk"
@@ -59,8 +59,8 @@ completed: 2026-03-02
 ## Accomplishments
 
 - Fixed SAFE-03: `TransactionQueryService.dateFormatter` now declared `@MainActor private static let` — eliminates the `nonisolated(unsafe)` suppression that hid a potential data race warning without preventing it
-- Fixed CLN-01: Deleted `AIFinanceManager/Services/CSV/TransactionConverterService.swift` (tombstone, no body)
-- Fixed CLN-02: Deleted `AIFinanceManager/Protocols/TransactionConverterServiceProtocol.swift` (tombstone, no body)
+- Fixed CLN-01: Deleted `Tenra/Services/CSV/TransactionConverterService.swift` (tombstone, no body)
+- Fixed CLN-02: Deleted `Tenra/Protocols/TransactionConverterServiceProtocol.swift` (tombstone, no body)
 - Confirmed neither tombstone file was referenced in `project.pbxproj` or any active Swift source (only historical comments in `EntityMappingService.swift` and `CSVImportCoordinatorFactory.swift`)
 - Full build passed with zero errors after both tasks
 
@@ -75,9 +75,9 @@ Each task was committed atomically:
 
 ## Files Created/Modified
 
-- `AIFinanceManager/Services/Transactions/TransactionQueryService.swift` — Changed `nonisolated(unsafe) private static let dateFormatter` to `@MainActor private static let dateFormatter`; updated comment to explain the correct isolation reason
-- `AIFinanceManager/Services/CSV/TransactionConverterService.swift` — DELETED (was empty tombstone)
-- `AIFinanceManager/Protocols/TransactionConverterServiceProtocol.swift` — DELETED (was empty tombstone)
+- `Tenra/Services/Transactions/TransactionQueryService.swift` — Changed `nonisolated(unsafe) private static let dateFormatter` to `@MainActor private static let dateFormatter`; updated comment to explain the correct isolation reason
+- `Tenra/Services/CSV/TransactionConverterService.swift` — DELETED (was empty tombstone)
+- `Tenra/Protocols/TransactionConverterServiceProtocol.swift` — DELETED (was empty tombstone)
 
 ## Decisions Made
 
@@ -104,7 +104,7 @@ None — no external service configuration required.
 
 ## Self-Check: PASSED
 
-- FOUND: `AIFinanceManager/Services/Transactions/TransactionQueryService.swift` exists and contains `@MainActor private static let dateFormatter`
+- FOUND: `Tenra/Services/Transactions/TransactionQueryService.swift` exists and contains `@MainActor private static let dateFormatter`
 - FOUND (deleted): `TransactionConverterService.swift` does not exist
 - FOUND (deleted): `TransactionConverterServiceProtocol.swift` does not exist
 - FOUND: commit `b904e16` (Task 1)

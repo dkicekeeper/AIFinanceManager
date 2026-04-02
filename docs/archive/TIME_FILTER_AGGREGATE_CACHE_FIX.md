@@ -479,7 +479,7 @@ CategoryAggregate stores:
 
 ### Build Status
 ```bash
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 ```
 **Result:** ✅ **BUILD SUCCEEDED**
 

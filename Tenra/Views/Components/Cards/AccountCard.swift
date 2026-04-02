@@ -1,6 +1,6 @@
 //
 //  AccountCard.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable account card component
 //

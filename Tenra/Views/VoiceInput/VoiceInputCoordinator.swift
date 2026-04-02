@@ -1,6 +1,6 @@
 //
 //  VoiceInputCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Voice input flow coordinator - handles voice recording and confirmation
 //  Extracted from ContentView for Single Responsibility Principle

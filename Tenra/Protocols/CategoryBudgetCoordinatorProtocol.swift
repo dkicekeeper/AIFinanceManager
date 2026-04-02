@@ -1,6 +1,6 @@
 //
 //  CategoryBudgetCoordinatorProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Protocol for category budget management with pre-aggregated cache
 //  Optimized version of CategoryBudgetService

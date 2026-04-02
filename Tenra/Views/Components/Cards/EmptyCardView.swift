@@ -1,6 +1,6 @@
 //
 //  EmptyCardView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Universal card component for section empty states.
 //  Shows a section title + compact empty message, optionally tappable.

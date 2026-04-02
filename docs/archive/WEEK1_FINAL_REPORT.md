@@ -65,7 +65,7 @@
 - ✅ Search by id: O(n) → O(log n) (+90%)
 - ✅ Data integrity: 95% → 100%
 
-**Файлы:** AIFinanceManager.xcdatamodel, CoreDataStack.swift
+**Файлы:** Tenra.xcdatamodel, CoreDataStack.swift
 
 ---
 
@@ -231,7 +231,7 @@
 6. ✅ TransactionsViewModel.swift - DI, observers, regeneration
 7. ✅ DepositsViewModel.swift - (no changes needed)
 8. ✅ AppCoordinator.swift - DI setup
-9. ✅ AIFinanceManager.xcdatamodel - 9 unique constraints
+9. ✅ Tenra.xcdatamodel - 9 unique constraints
 10. ✅ CSVImportService.swift - fingerprint detection
 11. ✅ CSVColumnMapping.swift - enhanced ImportResult
 12. ✅ CSVImportResultView.swift - UI for duplicates

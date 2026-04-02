@@ -1,6 +1,6 @@
 //
 //  CategoryRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable category row component for displaying categories in lists
 //

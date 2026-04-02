@@ -271,10 +271,10 @@ self.transactionStore = TransactionStore(
 )
 ```
 
-**AIFinanceManagerApp injection:**
+**TenraApp injection:**
 ```swift
 @main
-struct AIFinanceManagerApp: App {
+struct TenraApp: App {
     @StateObject private var coordinator = AppCoordinator()
 
     var body: some Scene {
@@ -459,7 +459,7 @@ struct CachedCategoryExpense { ... }
 15. `Views/Transactions/TransactionPreviewView.swift`
 
 ### Tests (1 file)
-16. `AIFinanceManagerTests/TransactionStoreTests.swift`
+16. `TenraTests/TransactionStoreTests.swift`
 
 ### Documentation (10+ files)
 17. `MIGRATION_STATUS_QUICKADD.md`
@@ -538,7 +538,7 @@ Benefits:
 ### Immediate: Manual Testing (HIGH PRIORITY)
 
 **Рекомендуется сделать СЕЙЧАС:**
-1. Build приложение: `xcodebuild -scheme AIFinanceManager build`
+1. Build приложение: `xcodebuild -scheme Tenra build`
 2. Следовать `TESTING_GUIDE_PHASE_7.md`
 3. Протестировать все 8 Test Cases:
    - Add transaction (QuickAdd)

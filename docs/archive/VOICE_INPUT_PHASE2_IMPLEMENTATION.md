@@ -16,7 +16,7 @@
 
 #### Создан новый файл: `SilenceDetector.swift`
 
-**Местоположение:** `AIFinanceManager/Services/Audio/SilenceDetector.swift`
+**Местоположение:** `Tenra/Services/Audio/SilenceDetector.swift`
 
 **Основная функциональность:**
 
@@ -359,7 +359,7 @@ Net Change:          +250 lines
 ### Build Status
 
 ```
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 ** BUILD SUCCEEDED **
 ```
 

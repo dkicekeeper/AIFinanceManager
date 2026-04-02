@@ -108,13 +108,13 @@ Task {
 
 ```bash
 # Build
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 
 # Run tests
-xcodebuild test -scheme AIFinanceManager
+xcodebuild test -scheme Tenra
 
 # Check TODO comments
-grep -r "TODO.*Balance" AIFinanceManager/
+grep -r "TODO.*Balance" Tenra/
 ```
 
 ---

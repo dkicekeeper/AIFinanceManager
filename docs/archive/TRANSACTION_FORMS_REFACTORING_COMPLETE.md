@@ -21,7 +21,7 @@
 ### Phase 1: Создание компонентов ✅
 
 #### 1.1. AmountInputView
-**Файл:** `AIFinanceManager/Views/Components/AmountInputView.swift`
+**Файл:** `Tenra/Views/Components/AmountInputView.swift`
 
 **Реализовано:**
 - ✅ Большой центрированный текст суммы (56pt, bold, rounded)
@@ -38,7 +38,7 @@
 - Автоматическое форматирование при вводе
 
 #### 1.2. CurrencySelectorView
-**Файл:** `AIFinanceManager/Views/Components/CurrencySelectorView.swift`
+**Файл:** `Tenra/Views/Components/CurrencySelectorView.swift`
 
 **Реализовано:**
 - ✅ Горизонтальный ScrollView с FilterChip
@@ -223,16 +223,16 @@ AmountInputView(
 
 ## 📁 Созданные файлы
 
-1. ✅ `AIFinanceManager/Views/Components/AmountInputView.swift` (150+ строк)
-2. ✅ `AIFinanceManager/Views/Components/CurrencySelectorView.swift` (40+ строк)
+1. ✅ `Tenra/Views/Components/AmountInputView.swift` (150+ строк)
+2. ✅ `Tenra/Views/Components/CurrencySelectorView.swift` (40+ строк)
 
 ## 📝 Обновленные файлы
 
-1. ✅ `AIFinanceManager/Views/VoiceInputConfirmationView.swift`
-2. ✅ `AIFinanceManager/Views/AccountActionView.swift`
-3. ✅ `AIFinanceManager/Views/EditTransactionView.swift`
-4. ✅ `AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings`
-5. ✅ `AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings`
+1. ✅ `Tenra/Views/VoiceInputConfirmationView.swift`
+2. ✅ `Tenra/Views/AccountActionView.swift`
+3. ✅ `Tenra/Views/EditTransactionView.swift`
+4. ✅ `Tenra/Tenra/en.lproj/Localizable.strings`
+5. ✅ `Tenra/Tenra/ru.lproj/Localizable.strings`
 
 ---
 

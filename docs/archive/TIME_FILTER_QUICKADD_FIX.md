@@ -228,7 +228,7 @@ Consider making QuickAddCoordinator use @EnvironmentObject directly instead of @
 
 ### Build Status
 ```bash
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 ```
 **Result:** ✅ **BUILD SUCCEEDED**
 

@@ -1,6 +1,6 @@
 //
 //  AppTypography.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Typography tokens using Inter variable font.
 //

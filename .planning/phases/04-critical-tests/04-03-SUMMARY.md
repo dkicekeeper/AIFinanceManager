@@ -6,7 +6,7 @@ tags: [coredata, swift-testing, in-memory-store, round-trip, serialized-suite]
 
 requires:
   - phase: 04-critical-tests
-    provides: existing test infrastructure (Swift Testing, AIFinanceManagerTests target)
+    provides: existing test infrastructure (Swift Testing, TenraTests target)
 
 provides:
   - CoreData round-trip integration test (TEST-04) — 6 tests covering TransactionEntity save/reload cycle
@@ -24,7 +24,7 @@ tech-stack:
 
 key-files:
   created:
-    - AIFinanceManagerTests/CoreDataRoundTripTests.swift
+    - TenraTests/CoreDataRoundTripTests.swift
   modified: []
 
 key-decisions:
@@ -72,7 +72,7 @@ Each task was committed atomically:
 _Note: TDD task — RED phase showed flaky failures due to parallel test contamination; GREEN phase fixed with .serialized trait + unique store URLs_
 
 ## Files Created/Modified
-- `AIFinanceManagerTests/CoreDataRoundTripTests.swift` - 6 round-trip tests for TransactionEntity; uses NSInMemoryStoreType with .serialized suite trait and UUID store URLs for isolation
+- `TenraTests/CoreDataRoundTripTests.swift` - 6 round-trip tests for TransactionEntity; uses NSInMemoryStoreType with .serialized suite trait and UUID store URLs for isolation
 
 ## Decisions Made
 - `.serialized` suite trait chosen to prevent NSInMemoryStoreType contamination between parallel tests — Swift Testing parallelizes by default and `NSInMemoryStoreType` containers with the same name share backing stores, causing random test failures
@@ -85,9 +85,9 @@ _Note: TDD task — RED phase showed flaky failures due to parallel test contami
 
 **1. [Rule 1 - Bug] Fixed NSInMemoryStoreType parallel test contamination**
 - **Found during:** Task 1 (CoreData round-trip tests) — tests were failing non-deterministically
-- **Issue:** Swift Testing runs tests in parallel by default. Multiple `NSPersistentContainer(name: "AIFinanceManager")` instances with `NSInMemoryStoreType` and no explicit store URL shared the same backing store. Tests inserting different entities saw each other's data; count assertions (`count == 1`, `count == 3`) were non-deterministic.
+- **Issue:** Swift Testing runs tests in parallel by default. Multiple `NSPersistentContainer(name: "Tenra")` instances with `NSInMemoryStoreType` and no explicit store URL shared the same backing store. Tests inserting different entities saw each other's data; count assertions (`count == 1`, `count == 3`) were non-deterministic.
 - **Fix:** Added `@Suite(.serialized)` trait + unique `description.url = URL(string: "memory://\(UUID().uuidString)")` per container. Also replaced `await MainActor.run { try ... }` with `performAndWait` for cleaner synchronous threading.
-- **Files modified:** `AIFinanceManagerTests/CoreDataRoundTripTests.swift`
+- **Files modified:** `TenraTests/CoreDataRoundTripTests.swift`
 - **Verification:** All 6 tests pass consistently across multiple runs
 - **Committed in:** `a7c9020` (Task 1 commit)
 
@@ -109,7 +109,7 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
-- FOUND: `AIFinanceManagerTests/CoreDataRoundTripTests.swift`
+- FOUND: `TenraTests/CoreDataRoundTripTests.swift`
 - FOUND: `.planning/phases/04-critical-tests/04-03-SUMMARY.md`
 - FOUND: commit `a7c9020`
 

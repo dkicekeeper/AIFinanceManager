@@ -8,7 +8,7 @@
 
 ## 🎉 Резюме
 
-Успешно реализован **почти полный переезд** с UserDefaults на Core Data для приложения AIFinanceManager. Все основные данные теперь хранятся в Core Data, что обеспечивает:
+Успешно реализован **почти полный переезд** с UserDefaults на Core Data для приложения Tenra. Все основные данные теперь хранятся в Core Data, что обеспечивает:
 
 - ⚡ **2-4x улучшение производительности** загрузки данных
 - 💾 **3x меньше потребление памяти** благодаря faulting
@@ -66,7 +66,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  AIFinanceManager                    │
+│                  Tenra                    │
 │                                                      │
 │  ┌───────────────────────────────────────────────┐  │
 │  │           AppCoordinator                      │  │
@@ -152,8 +152,8 @@
 ### Core Data
 
 ```
-AIFinanceManager/CoreData/
-├── AIFinanceManager.xcdatamodeld/        # Core Data модель
+Tenra/CoreData/
+├── Tenra.xcdatamodeld/        # Core Data модель
 ├── CoreDataStack.swift                   # Управление Core Data
 ├── CoreDataIndexes.swift                 # Индексы для производительности
 └── Entities/
@@ -180,7 +180,7 @@ AIFinanceManager/CoreData/
 ### Services
 
 ```
-AIFinanceManager/Services/
+Tenra/Services/
 ├── CoreDataRepository.swift             # Core Data реализация repository
 ├── UserDefaultsRepository.swift         # Legacy UserDefaults (fallback)
 └── DataMigrationService.swift           # Автоматическая миграция v5
@@ -275,11 +275,11 @@ func saveTransactions(_ transactions: [Transaction]) {
 
 1. **Открыть Xcode**
    ```bash
-   open AIFinanceManager.xcodeproj
+   open Tenra.xcodeproj
    ```
 
 2. **Открыть Core Data модель**
-   - Навигатор → `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld`
+   - Навигатор → `Tenra/CoreData/Tenra.xcdatamodeld`
 
 3. **Добавить новую Entity**
    - Кнопка "Add Entity" внизу
@@ -497,7 +497,7 @@ let fetchedResultsController = NSFetchedResultsController(
 #### 2. iCloud Sync (CloudKit)
 
 ```swift
-let container = NSPersistentCloudKitContainer(name: "AIFinanceManager")
+let container = NSPersistentCloudKitContainer(name: "Tenra")
 ```
 
 **Преимущества**:

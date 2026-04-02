@@ -28,18 +28,18 @@
 
 **Problem:** `CoreDataStack.persistentContainer` is a `lazy var`. Its `loadPersistentStores()` call runs synchronously on MainActor inside `AppCoordinator.init()` when first touched via `CoreDataRepository()`. This blocks the render thread 2-4s before any frame appears.
 
-**Fix:** Fire a `Task.detached` from AppDelegate to touch `persistentContainer` in the background before `AppCoordinator` is created. Make `AIFinanceManagerApp.coordinator` optional so the app shows a blank system background while the container warms.
+**Fix:** Fire a `Task.detached` from AppDelegate to touch `persistentContainer` in the background before `AppCoordinator` is created. Make `TenraApp.coordinator` optional so the app shows a blank system background while the container warms.
 
 **Files:**
-- Modify: `AIFinanceManager/CoreData/CoreDataStack.swift`
-- Modify: `AIFinanceManager/AppDelegate.swift`
-- Modify: `AIFinanceManager/AIFinanceManagerApp.swift`
+- Modify: `Tenra/CoreData/CoreDataStack.swift`
+- Modify: `Tenra/AppDelegate.swift`
+- Modify: `Tenra/TenraApp.swift`
 
 ---
 
 ### Step 1: Add `preWarm()` to CoreDataStack
 
-Open `AIFinanceManager/CoreData/CoreDataStack.swift`. After the `deinit` block (after line ~36), add this method in the `MARK: - Persistent Container` section, immediately before the `lazy var persistentContainer`:
+Open `Tenra/CoreData/CoreDataStack.swift`. After the `deinit` block (after line ~36), add this method in the `MARK: - Persistent Container` section, immediately before the `lazy var persistentContainer`:
 
 ```swift
 // MARK: - Pre-Warm
@@ -56,7 +56,7 @@ func preWarm() {
 
 ### Step 2: Call `preWarm()` as first line of AppDelegate
 
-Open `AIFinanceManager/AppDelegate.swift`. Add `CoreDataStack.shared.preWarm()` as the very first statement inside `application(_:didFinishLaunchingWithOptions:)`, before everything else:
+Open `Tenra/AppDelegate.swift`. Add `CoreDataStack.shared.preWarm()` as the very first statement inside `application(_:didFinishLaunchingWithOptions:)`, before everything else:
 
 ```swift
 func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
@@ -66,14 +66,14 @@ func application(_ application: UIApplication, didFinishLaunchingWithOptions lau
     // ... rest unchanged
 ```
 
-### Step 3: Make coordinator optional in AIFinanceManagerApp
+### Step 3: Make coordinator optional in TenraApp
 
-Open `AIFinanceManager/AIFinanceManagerApp.swift`. Replace the entire file content:
+Open `Tenra/TenraApp.swift`. Replace the entire file content:
 
 ```swift
 //
-//  AIFinanceManagerApp.swift
-//  AIFinanceManager
+//  TenraApp.swift
+//  Tenra
 //
 //  Created by Daulet Kydrali on 06.01.2026.
 //
@@ -84,7 +84,7 @@ Open `AIFinanceManager/AIFinanceManagerApp.swift`. Replace the entire file conte
 import SwiftUI
 
 @main
-struct AIFinanceManagerApp: App {
+struct TenraApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var timeFilterManager = TimeFilterManager()
     @State private var coordinator: AppCoordinator? = nil
@@ -121,7 +121,7 @@ struct AIFinanceManagerApp: App {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | tail -20
 ```
@@ -132,9 +132,9 @@ Expected: `BUILD SUCCEEDED` with no new errors.
 
 ```bash
 git add \
-  AIFinanceManager/CoreData/CoreDataStack.swift \
-  AIFinanceManager/AppDelegate.swift \
-  AIFinanceManager/AIFinanceManagerApp.swift
+  Tenra/CoreData/CoreDataStack.swift \
+  Tenra/AppDelegate.swift \
+  Tenra/TenraApp.swift
 git commit -m "$(cat <<'EOF'
 perf(launch): pre-warm CoreData on background thread before AppCoordinator init (Fix A)
 
@@ -156,19 +156,19 @@ EOF
 **Fix:** Remove `@MainActor` from the `InsightsService` class declaration. Make `InsightsCache` thread-safe by replacing its `@MainActor` isolation with an `NSLock` and `@unchecked Sendable`. Mark with explicit `@MainActor` any `InsightsService` methods that still need it (methods that directly read from `transactionStore`).
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Insights/InsightsCache.swift`
-- Modify: `AIFinanceManager/Services/Insights/InsightsService.swift`
+- Modify: `Tenra/Services/Insights/InsightsCache.swift`
+- Modify: `Tenra/Services/Insights/InsightsService.swift`
 
 ---
 
 ### Step 1: De-isolate InsightsCache — replace @MainActor with NSLock
 
-Open `AIFinanceManager/Services/Insights/InsightsCache.swift`. Replace the entire file:
+Open `Tenra/Services/Insights/InsightsCache.swift`. Replace the entire file:
 
 ```swift
 //
 //  InsightsCache.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 17: Financial Insights Feature
 //  In-memory LRU cache with TTL for computed insights.
@@ -284,7 +284,7 @@ final class InsightsCache: @unchecked Sendable {
 
 ### Step 2: Remove @MainActor from InsightsService class declaration
 
-Open `AIFinanceManager/Services/Insights/InsightsService.swift`. Find line ~18-19:
+Open `Tenra/Services/Insights/InsightsService.swift`. Find line ~18-19:
 
 ```swift
 @MainActor
@@ -307,7 +307,7 @@ Search for all methods that directly access `transactionStore.transactions`, `tr
 
 ```bash
 grep -n "transactionStore\.\|budgetService\." \
-  AIFinanceManager/Services/Insights/InsightsService.swift | head -30
+  Tenra/Services/Insights/InsightsService.swift | head -30
 ```
 
 Any method that accesses these `@MainActor`-isolated properties must be marked `@MainActor`. Add the annotation to those method signatures. The `computeGranularities(...)` and `generateAllInsights(granularity:transactions:...)` overloads — which accept pre-built arrays as parameters — do NOT need `@MainActor`.
@@ -318,7 +318,7 @@ Check `TransactionCacheManager` too — it's passed to `computeGranularities`:
 
 ```bash
 grep -n "class TransactionCacheManager\|@MainActor\|Sendable" \
-  AIFinanceManager/Services/Cache/TransactionCacheManager.swift | head -10
+  Tenra/Services/Cache/TransactionCacheManager.swift | head -10
 ```
 
 If `TransactionCacheManager` is `@MainActor` and not `Sendable`, add `@unchecked Sendable` to it as well (its cache dictionary is only written on MainActor anyway; background threads only read `getFilteredCache`/`getSummaryCache` which are also `@MainActor`, so the lock isn't needed there — just the conformance marker).
@@ -327,7 +327,7 @@ If `TransactionCacheManager` is `@MainActor` and not `Sendable`, add `@unchecked
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|warning:" | grep -v "$(pwd)/docs" | head -40
 ```
@@ -341,8 +341,8 @@ Fix any errors. Common patterns:
 
 ```bash
 git add \
-  AIFinanceManager/Services/Insights/InsightsCache.swift \
-  AIFinanceManager/Services/Insights/InsightsService.swift
+  Tenra/Services/Insights/InsightsCache.swift \
+  Tenra/Services/Insights/InsightsService.swift
 # Add any other files touched for Sendable conformance
 git commit -m "$(cat <<'EOF'
 perf(analytics): de-isolate InsightsService from @MainActor (Fix C)
@@ -366,19 +366,19 @@ EOF
 **Fix:** Extract summary computation into a new `nonisolated static func` in a new `SummaryCalculator` enum. Currency conversion is done directly from `tx.convertedAmount` (the same value `TransactionCurrencyService` caches), so no `@MainActor` service is needed. `ContentView.updateSummary()` dispatches via `Task.detached`.
 
 **Files:**
-- Create: `AIFinanceManager/Services/Transactions/SummaryCalculator.swift`
-- Modify: `AIFinanceManager/Views/Home/ContentView.swift`
+- Create: `Tenra/Services/Transactions/SummaryCalculator.swift`
+- Modify: `Tenra/Views/Home/ContentView.swift`
 
 ---
 
 ### Step 1: Create SummaryCalculator.swift
 
-Create new file `AIFinanceManager/Services/Transactions/SummaryCalculator.swift`:
+Create new file `Tenra/Services/Transactions/SummaryCalculator.swift`:
 
 ```swift
 //
 //  SummaryCalculator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 31 Fix B: Pure off-thread summary computation.
 //  Called from ContentView via Task.detached to keep MainActor free during
@@ -452,13 +452,13 @@ enum SummaryCalculator {
 
 > **Note on `DateFormatters`:** The project uses a `DateFormatters` utility enum/class with a static `dateFormatter`. Check where it is defined:
 > ```bash
-> grep -r "DateFormatters" AIFinanceManager/ --include="*.swift" -l
+> grep -r "DateFormatters" Tenra/ --include="*.swift" -l
 > ```
 > If the formatter is `@MainActor`-isolated, use `ISO8601DateFormatter()` inline instead. If it is `nonisolated` or a plain static, use it as above.
 
 ### Step 2: Update ContentView.updateSummary() to use Task.detached
 
-Open `AIFinanceManager/Views/Home/ContentView.swift`. Find the `updateSummary()` function. It currently looks something like:
+Open `Tenra/Views/Home/ContentView.swift`. Find the `updateSummary()` function. It currently looks something like:
 
 ```swift
 private func updateSummary() {
@@ -498,7 +498,7 @@ private func updateSummary() {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:" | head -20
 ```
@@ -509,8 +509,8 @@ Expected: no errors. The `TransactionsSummaryCard` already shows `ProgressView()
 
 ```bash
 git add \
-  AIFinanceManager/Services/Transactions/SummaryCalculator.swift \
-  AIFinanceManager/Views/Home/ContentView.swift
+  Tenra/Services/Transactions/SummaryCalculator.swift \
+  Tenra/Views/Home/ContentView.swift
 git commit -m "$(cat <<'EOF'
 perf(home): compute summary off MainActor with SummaryCalculator (Fix B)
 
@@ -532,13 +532,13 @@ EOF
 **Fix:** Pass `dateRange: nil` to `repo.loadTransactions()` so the rebuild always uses full history, bypassing the window.
 
 **Files:**
-- Modify: `AIFinanceManager/ViewModels/AppCoordinator.swift`
+- Modify: `Tenra/ViewModels/AppCoordinator.swift`
 
 ---
 
 ### Step 1: Locate the aggregate rebuild task in AppCoordinator.initialize()
 
-Open `AIFinanceManager/ViewModels/AppCoordinator.swift`. Find the `Task.detached(priority: .background)` block that calls `categoryAggregateService.rebuild` and `monthlyAggregateService.rebuild`. It currently reads:
+Open `Tenra/ViewModels/AppCoordinator.swift`. Find the `Task.detached(priority: .background)` block that calls `categoryAggregateService.rebuild` and `monthlyAggregateService.rebuild`. It currently reads:
 
 ```swift
 Task.detached(priority: .background) {
@@ -579,8 +579,8 @@ Task.detached(priority: .background) { [weak self] in
 
 > **Check `loadTransactions` signature:** Run:
 > ```bash
-> grep -n "func loadTransactions" AIFinanceManager/Services/Repository/*.swift \
->   AIFinanceManager/Services/Core/DataRepositoryProtocol.swift
+> grep -n "func loadTransactions" Tenra/Services/Repository/*.swift \
+>   Tenra/Services/Core/DataRepositoryProtocol.swift
 > ```
 > Confirm the parameter name is `dateRange:` and the method is `nonisolated` (callable from background). If it's `async`, add `await`. If it returns `[Transaction]`, use it directly. If it's `throws`, add `try?`.
 
@@ -588,7 +588,7 @@ Task.detached(priority: .background) { [weak self] in
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:" | head -20
 ```
@@ -596,7 +596,7 @@ xcodebuild build \
 ### Step 4: Commit
 
 ```bash
-git add AIFinanceManager/ViewModels/AppCoordinator.swift
+git add Tenra/ViewModels/AppCoordinator.swift
 git commit -m "$(cat <<'EOF'
 perf(aggregates): rebuild from full transaction history not windowed store
 
@@ -618,14 +618,14 @@ EOF
 **Fix:** Remove Phase B from `registerAccounts`. `AppCoordinator.initialize()` calls `registerAccounts(accounts, transactions: transactionStore.transactions)` — change it to `registerAccounts(accounts)` (Phase A only).
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`
-- Modify: `AIFinanceManager/ViewModels/AppCoordinator.swift`
+- Modify: `Tenra/Services/Balance/BalanceCoordinator.swift`
+- Modify: `Tenra/ViewModels/AppCoordinator.swift`
 
 ---
 
 ### Step 1: Remove Phase B recalculation from BalanceCoordinator
 
-Open `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`. Find the `registerAccounts` method. After the Phase A block (lines ~86-115 that set `self.balances`), delete everything from the `// ── Phase B` comment through the closing `}` of the `Task(priority: .utility)` block. The method should end right after:
+Open `Tenra/Services/Balance/BalanceCoordinator.swift`. Find the `registerAccounts` method. After the Phase A block (lines ~86-115 that set `self.balances`), delete everything from the `// ── Phase B` comment through the closing `}` of the `Task(priority: .utility)` block. The method should end right after:
 
 ```swift
         // Publish immediately — UI shows balances with zero startup delay.
@@ -650,13 +650,13 @@ func registerAccounts(_ accounts: [Account]) async {
 If `BalanceCoordinatorProtocol` has this method, update the protocol signature too:
 
 ```bash
-grep -n "registerAccounts" AIFinanceManager/Protocols/*.swift \
-  AIFinanceManager/Services/Balance/BalanceCoordinator.swift
+grep -n "registerAccounts" Tenra/Protocols/*.swift \
+  Tenra/Services/Balance/BalanceCoordinator.swift
 ```
 
 ### Step 2: Update AppCoordinator.initialize() call site
 
-Open `AIFinanceManager/ViewModels/AppCoordinator.swift`. Find the `registerAccounts` call in `initialize()` (currently passing `transactions: transactionStore.transactions`):
+Open `Tenra/ViewModels/AppCoordinator.swift`. Find the `registerAccounts` call in `initialize()` (currently passing `transactions: transactionStore.transactions`):
 
 ```swift
 await balanceCoordinator.registerAccounts(
@@ -675,7 +675,7 @@ await balanceCoordinator.registerAccounts(transactionStore.accounts)
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:" | head -20
 ```
@@ -683,15 +683,15 @@ xcodebuild build \
 Fix any call sites that still pass the `transactions:` label. Search:
 
 ```bash
-grep -rn "registerAccounts" AIFinanceManager/ --include="*.swift"
+grep -rn "registerAccounts" Tenra/ --include="*.swift"
 ```
 
 ### Step 4: Commit
 
 ```bash
 git add \
-  AIFinanceManager/Services/Balance/BalanceCoordinator.swift \
-  AIFinanceManager/ViewModels/AppCoordinator.swift
+  Tenra/Services/Balance/BalanceCoordinator.swift \
+  Tenra/ViewModels/AppCoordinator.swift
 git commit -m "$(cat <<'EOF'
 perf(balance): remove Phase B recalculation from registerAccounts
 
@@ -720,7 +720,7 @@ EOF
 | `computePeriodDataPoints` (allTime/year) | raw transactions | `MonthlyAggregateService.fetchRange()` |
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Insights/InsightsService.swift`
+- Modify: `Tenra/Services/Insights/InsightsService.swift`
 
 ---
 
@@ -728,7 +728,7 @@ EOF
 
 ```bash
 grep -n "accountDormancy\|spendingVelocity\|incomeSourceBreakdown\|computePeriodDataPoints\|allTime\|year" \
-  AIFinanceManager/Services/Insights/InsightsService.swift | head -30
+  Tenra/Services/Insights/InsightsService.swift | head -30
 ```
 
 ### Step 2: Read the current generator implementations
@@ -739,8 +739,8 @@ For each of the four generators, read the 10-20 lines that currently iterate `al
 
 ```bash
 grep -n "func fetch\|func rebuild\|func fetchRange\|func fetchLast\|lastTransactionDate\|monthly" \
-  AIFinanceManager/Services/Categories/CategoryAggregateService.swift \
-  AIFinanceManager/Services/Balance/MonthlyAggregateService.swift | head -30
+  Tenra/Services/Categories/CategoryAggregateService.swift \
+  Tenra/Services/Balance/MonthlyAggregateService.swift | head -30
 ```
 
 ### Step 4: Update each generator
@@ -767,7 +767,7 @@ The exact replacement depends on what API the aggregate services expose. If the 
 Check how `InsightsService` is initialized:
 
 ```bash
-grep -n "InsightsService(" AIFinanceManager/ -r --include="*.swift"
+grep -n "InsightsService(" Tenra/ -r --include="*.swift"
 ```
 
 If `categoryAggregateService` and `monthlyAggregateService` are not already injected, add them as initializer parameters and update the call site in `AppCoordinator`.
@@ -776,7 +776,7 @@ If `categoryAggregateService` and `monthlyAggregateService` are not already inje
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:" | head -20
 ```
@@ -784,7 +784,7 @@ xcodebuild build \
 ### Step 7: Commit
 
 ```bash
-git add AIFinanceManager/Services/Insights/InsightsService.swift
+git add Tenra/Services/Insights/InsightsService.swift
 # Add any service files with new aggregate methods
 git commit -m "$(cat <<'EOF'
 feat(insights): migrate 4 generators from raw transactions to aggregate services
@@ -807,13 +807,13 @@ EOF
 **Fix:** Set `windowMonths = 3`. In-memory transactions drop from ~19k to ~1-2k; all O(N) operations become ~10-15× faster.
 
 **Files:**
-- Modify: `AIFinanceManager/ViewModels/TransactionStore.swift`
+- Modify: `Tenra/ViewModels/TransactionStore.swift`
 
 ---
 
 ### Step 1: Change windowMonths to 3
 
-Open `AIFinanceManager/ViewModels/TransactionStore.swift`. Find line ~180:
+Open `Tenra/ViewModels/TransactionStore.swift`. Find line ~180:
 
 ```swift
 private let windowMonths: Int = 0  // disabled — see blockers above
@@ -829,7 +829,7 @@ private let windowMonths: Int = 3
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:" | head -20
 ```
@@ -846,7 +846,7 @@ On simulator with test data (or the physical device):
 ### Step 4: Commit
 
 ```bash
-git add AIFinanceManager/ViewModels/TransactionStore.swift
+git add Tenra/ViewModels/TransactionStore.swift
 git commit -m "$(cat <<'EOF'
 perf(store): enable transaction windowing (windowMonths = 3)
 

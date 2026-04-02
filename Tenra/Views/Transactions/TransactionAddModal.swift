@@ -1,6 +1,6 @@
 //
 //  TransactionAddModal.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Modal form for adding a transaction from the category picker grid.
 //  Refactored to use TransactionAddCoordinator for business logic.

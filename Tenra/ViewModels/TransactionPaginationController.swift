@@ -1,6 +1,6 @@
 //
 //  TransactionPaginationController.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-23
 //  Task 9: Paginated, sectioned transaction access via NSFetchedResultsController
@@ -112,7 +112,7 @@ final class TransactionPaginationController: NSObject {
     @ObservationIgnored private var frc: NSFetchedResultsController<TransactionEntity>?
     @ObservationIgnored private let stack: CoreDataStack
     @ObservationIgnored private let logger = Logger(
-        subsystem: "AIFinanceManager",
+        subsystem: "Tenra",
         category: "TransactionPaginationController"
     )
     /// When true, individual filter property didSet observers skip scheduleFilterUpdate.

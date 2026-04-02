@@ -1,5 +1,5 @@
 # Design Tokens Migration Guide
-## AIFinanceManager — Руководство по миграции на дизайн-токены
+## Tenra — Руководство по миграции на дизайн-токены
 
 > **Дата:** 2026-01-29
 > **Версия:** 1.0
@@ -589,13 +589,13 @@ Rectangle()
 ### 2. Используй поиск по всему проекту
 ```bash
 # Найти все .cornerRadius(10)
-grep -r "\.cornerRadius(10)" AIFinanceManager/Views/
+grep -r "\.cornerRadius(10)" Tenra/Views/
 
 # Найти все .frame(width: 40
-grep -r "frame(width: 40" AIFinanceManager/Views/
+grep -r "frame(width: 40" Tenra/Views/
 
 # Найти все .padding(8)
-grep -r "\.padding(8)" AIFinanceManager/Views/
+grep -r "\.padding(8)" Tenra/Views/
 ```
 
 ### 3. Тестируй визуально после каждого изменения

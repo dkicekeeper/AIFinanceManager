@@ -1,6 +1,6 @@
 //
 //  TransactionStore+Computed.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Computed properties, caching, and calculation methods extracted from TransactionStore.
 //  Phase C: File split for maintainability.

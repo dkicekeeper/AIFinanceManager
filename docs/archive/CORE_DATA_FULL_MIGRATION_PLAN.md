@@ -67,8 +67,8 @@
    - Сравнить количество записей
 
 **Файлы**:
-- `AIFinanceManager/Services/CoreDataRepository.swift`
-- `AIFinanceManager/Services/DataMigrationService.swift`
+- `Tenra/Services/CoreDataRepository.swift`
+- `Tenra/Services/DataMigrationService.swift`
 
 **Время**: ~1-2 часа
 
@@ -140,7 +140,7 @@
 **Рекомендация**: Вариант A (relationships)
 
 **Файлы**:
-- `AIFinanceManager.xcdatamodeld/contents`
+- `Tenra.xcdatamodeld/contents`
 - `CustomCategoryEntity+CoreDataClass.swift`
 - `TransactionEntity+CoreDataClass.swift`
 - `SubcategoryEntity+CoreDataClass.swift`
@@ -190,7 +190,7 @@
    - Установить relationships с RecurringSeries
 
 **Файлы**:
-- `AIFinanceManager.xcdatamodeld/contents`
+- `Tenra.xcdatamodeld/contents`
 - `RecurringOccurrenceEntity+CoreDataClass.swift`
 - `RecurringOccurrenceEntity+CoreDataProperties.swift`
 - `CoreDataRepository.swift`
@@ -258,7 +258,7 @@
 - Если цель - **оптимизация производительности** → Вариант B
 
 **Файлы** (если Вариант A):
-- `AIFinanceManager.xcdatamodeld/contents`
+- `Tenra.xcdatamodeld/contents`
 - `AppSettingsEntity+CoreDataClass.swift`
 - `AppSettings.swift`
 - `TimeFilterManager.swift`
@@ -434,8 +434,8 @@
 - [CORE_DATA_PHASE2_COMPLETE.md](./CORE_DATA_PHASE2_COMPLETE.md) - Фаза 2
 - [CORE_DATA_MIGRATION_COMPLETE.md](./CORE_DATA_MIGRATION_COMPLETE.md) - Результаты миграции v2
 - [CORE_DATA_INTEGRATION_COMPLETE.md](./CORE_DATA_INTEGRATION_COMPLETE.md) - Интеграция Core Data
-- [CoreDataRepository.swift](./AIFinanceManager/Services/CoreDataRepository.swift) - Repository
-- [DataMigrationService.swift](./AIFinanceManager/Services/DataMigrationService.swift) - Migration
+- [CoreDataRepository.swift](./Tenra/Services/CoreDataRepository.swift) - Repository
+- [DataMigrationService.swift](./Tenra/Services/DataMigrationService.swift) - Migration
 
 ---
 

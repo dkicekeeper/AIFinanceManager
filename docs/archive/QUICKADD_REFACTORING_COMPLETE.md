@@ -70,7 +70,7 @@ QuickAddTransactionView.swift and AddTransactionModal.swift have been **complete
 ## 📂 NEW FILE STRUCTURE
 
 ```
-AIFinanceManager/
+Tenra/
 ├── Models/
 │   ├── CategoryDisplayData.swift ✨ NEW (48 lines)
 │   │   └── Unified model for category display in grid/list

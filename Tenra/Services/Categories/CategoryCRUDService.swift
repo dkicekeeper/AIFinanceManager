@@ -1,6 +1,6 @@
 //
 //  CategoryCRUDService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Service for category CRUD operations
 //  Extracted from CategoriesViewModel for better separation of concerns

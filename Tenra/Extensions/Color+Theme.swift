@@ -1,6 +1,6 @@
 //
 //  Color+Theme.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-15
 //

@@ -1,6 +1,6 @@
 //
 //  IconStyle.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified icon styling configuration with full Design System integration
 //  Created: 2026-02-12

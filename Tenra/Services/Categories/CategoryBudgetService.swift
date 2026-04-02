@@ -1,6 +1,6 @@
 //
 //  CategoryBudgetService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Service for category budget calculations and progress tracking.
 //  Extracted from CategoriesViewModel for better separation of concerns.

@@ -145,7 +145,7 @@
 ## ✅ BUILD VERIFICATION
 
 ```bash
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 ```
 
 **Result:**

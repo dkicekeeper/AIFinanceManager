@@ -23,11 +23,11 @@ tech-stack:
 
 key-files:
   created:
-    - AIFinanceManager/ViewModels/RecurringStore.swift
+    - Tenra/ViewModels/RecurringStore.swift
   modified:
-    - AIFinanceManager/ViewModels/TransactionStore.swift
-    - AIFinanceManager/ViewModels/TransactionStore+Recurring.swift
-    - AIFinanceManager/ViewModels/AppCoordinator.swift
+    - Tenra/ViewModels/TransactionStore.swift
+    - Tenra/ViewModels/TransactionStore+Recurring.swift
+    - Tenra/ViewModels/AppCoordinator.swift
 
 key-decisions:
   - "Computed forwarders on TransactionStore (not AppCoordinator storage) — views already access recurring data via transactionStore.recurringSeries; no callsite changes needed"
@@ -72,10 +72,10 @@ Each task was committed atomically:
 **Plan metadata:** _(to be added by final commit)_
 
 ## Files Created/Modified
-- `AIFinanceManager/ViewModels/RecurringStore.swift` - New: @Observable @MainActor class owning recurring state + mutation helpers + save/invalidate delegates
-- `AIFinanceManager/ViewModels/TransactionStore.swift` - Removed 5 stored recurring properties; added recurringStore dep + 5 computed forwarders; updated init, loadData, updateState, generateAndAddTransactions, persistIncremental, persist, finishImport
-- `AIFinanceManager/ViewModels/TransactionStore+Recurring.swift` - invalidateCache delegates to recurringStore.invalidateCacheFor
-- `AIFinanceManager/ViewModels/AppCoordinator.swift` - Creates RecurringStore before TransactionStore, passes it in init
+- `Tenra/ViewModels/RecurringStore.swift` - New: @Observable @MainActor class owning recurring state + mutation helpers + save/invalidate delegates
+- `Tenra/ViewModels/TransactionStore.swift` - Removed 5 stored recurring properties; added recurringStore dep + 5 computed forwarders; updated init, loadData, updateState, generateAndAddTransactions, persistIncremental, persist, finishImport
+- `Tenra/ViewModels/TransactionStore+Recurring.swift` - invalidateCache delegates to recurringStore.invalidateCacheFor
+- `Tenra/ViewModels/AppCoordinator.swift` - Creates RecurringStore before TransactionStore, passes it in init
 
 ## Decisions Made
 - Computed forwarders on TransactionStore (not AppCoordinator storage): views already access recurring data via `transactionStore.recurringSeries`; no callsite changes needed anywhere in the codebase
@@ -105,7 +105,7 @@ None — no external service configuration required.
 
 ## Self-Check: PASSED
 
-- RecurringStore.swift: FOUND at `AIFinanceManager/ViewModels/RecurringStore.swift`
+- RecurringStore.swift: FOUND at `Tenra/ViewModels/RecurringStore.swift`
 - 03-02-SUMMARY.md: FOUND at `.planning/phases/03-performance/03-02-SUMMARY.md`
 - Commit df3c868: FOUND (feat: create RecurringStore.swift)
 - Commit b163169: FOUND (refactor: wire TransactionStore to delegate through RecurringStore)

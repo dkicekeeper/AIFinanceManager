@@ -26,7 +26,7 @@
 
 ### 4. Backup ✅ (1 minute)
 - [x] Created backup: `TransactionsViewModel.swift.backup`
-- [x] Backup location: `/Users/dauletkydrali/Documents/AIFinanceManager/AIFinanceManager/ViewModels/TransactionsViewModel.swift.backup`
+- [x] Backup location: `/Users/dauletkydrali/Documents/Tenra/Tenra/ViewModels/TransactionsViewModel.swift.backup`
 
 **Total preparation time**: ~19 minutes
 

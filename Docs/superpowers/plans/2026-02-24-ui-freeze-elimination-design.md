@@ -73,7 +73,7 @@ is created, so SQLite is open by the time init() runs.
 **Files changed:**
 - `CoreData/CoreDataStack.swift` — add `preWarm()` method
 - `AppDelegate.swift` — call `CoreDataStack.shared.preWarm()` as first line of `didFinishLaunchingWithOptions`
-- `AIFinanceManagerApp.swift` — make `coordinator` optional (`AppCoordinator? = nil`), create it after pre-warm completes via `.task`; show `Color(.systemBackground).ignoresSafeArea()` while nil
+- `TenraApp.swift` — make `coordinator` optional (`AppCoordinator? = nil`), create it after pre-warm completes via `.task`; show `Color(.systemBackground).ignoresSafeArea()` while nil
 
 ```swift
 // CoreDataStack
@@ -89,7 +89,7 @@ func application(...) -> Bool {
     // ...
 }
 
-// AIFinanceManagerApp
+// TenraApp
 @State private var coordinator: AppCoordinator? = nil
 
 var body: some Scene {

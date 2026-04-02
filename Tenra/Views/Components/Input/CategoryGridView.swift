@@ -1,6 +1,6 @@
 //
 //  CategoryGridView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable category grid component with adaptive columns.
 //  Displays categories with totals and budget information.

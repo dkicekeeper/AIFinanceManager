@@ -1,6 +1,6 @@
 //
 //  InlineStatusText.swift
-//  AIFinanceManager
+//  Tenra
 //
 
 import SwiftUI

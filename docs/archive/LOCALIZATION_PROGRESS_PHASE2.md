@@ -325,8 +325,8 @@ Other Banks
 ## 📚 Файлы с изменениями
 
 ### Локализация:
-1. `AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings` (165+ keys)
-2. `AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings` (165+ keys)
+1. `Tenra/Tenra/en.lproj/Localizable.strings` (165+ keys)
+2. `Tenra/Tenra/ru.lproj/Localizable.strings` (165+ keys)
 
 ### Код (локализованные файлы):
 1. ✅ `Models/TimeFilter.swift`

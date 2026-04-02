@@ -1,6 +1,6 @@
 //
 //  InsightsSummaryHeader.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 23: P7 — switched from MonthlyDataPoint to PeriodDataPoint.
 //  Eliminates per-render .map { $0.asMonthlyDataPoint() } allocation in InsightsView.body.
@@ -19,7 +19,7 @@ struct InsightsSummaryHeader: View {
     /// Phase 24: optional financial health score shown as a compact badge.
     var healthScore: FinancialHealthScore? = nil
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsSummaryHeader")
+    private static let logger = Logger(subsystem: "Tenra", category: "InsightsSummaryHeader")
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.lg) {

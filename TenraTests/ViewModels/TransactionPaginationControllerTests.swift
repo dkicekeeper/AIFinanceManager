@@ -1,6 +1,6 @@
 //
 //  TransactionPaginationControllerTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Created on 2026-02-23
 //  Task 9: Unit tests for TransactionPaginationController supporting types
@@ -13,7 +13,7 @@
 import Testing
 import Foundation
 import CoreData
-@testable import AIFinanceManager
+@testable import Tenra
 
 // MARK: - TransactionSectionKeyFormatter Tests
 

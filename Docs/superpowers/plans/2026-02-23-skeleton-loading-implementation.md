@@ -15,7 +15,7 @@
 ## Task 1: Rewrite SkeletonView.swift
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/SkeletonView.swift` (full rewrite)
+- Modify: `Tenra/Views/Components/SkeletonView.swift` (full rewrite)
 
 ### Step 1: Replace file content
 
@@ -24,7 +24,7 @@ Replace the entire file with:
 ```swift
 //
 //  SkeletonView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Skeleton loading base component with shimmer animation (Phase 29)
 
@@ -101,7 +101,7 @@ struct SkeletonView: View {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|warning:|BUILD"
 ```
@@ -111,7 +111,7 @@ Expected: `BUILD SUCCEEDED` — no errors.
 ### Step 3: Commit
 
 ```bash
-git add AIFinanceManager/Views/Components/SkeletonView.swift
+git add Tenra/Views/Components/SkeletonView.swift
 git commit -m "feat(skeleton): SkeletonShimmerModifier + rewritten SkeletonView (Phase 29)"
 ```
 
@@ -120,14 +120,14 @@ git commit -m "feat(skeleton): SkeletonShimmerModifier + rewritten SkeletonView 
 ## Task 2: Create ContentViewSkeleton.swift
 
 **Files:**
-- Create: `AIFinanceManager/Views/Components/ContentViewSkeleton.swift`
+- Create: `Tenra/Views/Components/ContentViewSkeleton.swift`
 
 ### Step 1: Create the file
 
 ```swift
 //
 //  ContentViewSkeleton.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Skeleton loading screen for ContentView — mirrors home screen layout (Phase 29)
 
@@ -209,7 +209,7 @@ private struct ContentSectionCardSkeleton: View {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -219,7 +219,7 @@ Expected: `BUILD SUCCEEDED`.
 ### Step 3: Commit
 
 ```bash
-git add AIFinanceManager/Views/Components/ContentViewSkeleton.swift
+git add Tenra/Views/Components/ContentViewSkeleton.swift
 git commit -m "feat(skeleton): ContentViewSkeleton — home screen layout (Phase 29)"
 ```
 
@@ -228,14 +228,14 @@ git commit -m "feat(skeleton): ContentViewSkeleton — home screen layout (Phase
 ## Task 3: Create InsightsSkeleton.swift
 
 **Files:**
-- Create: `AIFinanceManager/Views/Components/InsightsSkeleton.swift`
+- Create: `Tenra/Views/Components/InsightsSkeleton.swift`
 
 ### Step 1: Create the file
 
 ```swift
 //
 //  InsightsSkeleton.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Skeleton loading screen for InsightsView — mirrors analytics layout (Phase 29)
 
@@ -354,7 +354,7 @@ private struct InsightCardSkeleton: View {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -364,7 +364,7 @@ Expected: `BUILD SUCCEEDED`.
 ### Step 3: Commit
 
 ```bash
-git add AIFinanceManager/Views/Components/InsightsSkeleton.swift
+git add Tenra/Views/Components/InsightsSkeleton.swift
 git commit -m "feat(skeleton): InsightsSkeleton — analytics screen layout (Phase 29)"
 ```
 
@@ -373,7 +373,7 @@ git commit -m "feat(skeleton): InsightsSkeleton — analytics screen layout (Pha
 ## Task 4: Integrate ContentViewSkeleton into ContentView
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Home/ContentView.swift` — replace `loadingOverlay` body
+- Modify: `Tenra/Views/Home/ContentView.swift` — replace `loadingOverlay` body
 
 **Context:** `loadingOverlay` is a `@ViewBuilder private var` at lines 173-192. It currently shows a small top-aligned capsule with `ProgressView`. Replace it with a full-screen skeleton. The existing `.overlay { loadingOverlay }` call site stays unchanged.
 
@@ -422,7 +422,7 @@ private var loadingOverlay: some View {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -432,7 +432,7 @@ Expected: `BUILD SUCCEEDED`.
 ### Step 3: Commit
 
 ```bash
-git add AIFinanceManager/Views/Home/ContentView.swift
+git add Tenra/Views/Home/ContentView.swift
 git commit -m "feat(skeleton): integrate ContentViewSkeleton into ContentView (Phase 29)"
 ```
 
@@ -441,7 +441,7 @@ git commit -m "feat(skeleton): integrate ContentViewSkeleton into ContentView (P
 ## Task 5: Integrate InsightsSkeleton into InsightsView
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/InsightsView.swift` (or wherever InsightsView.swift lives — find with Glob) — replace `loadingView` body
+- Modify: `Tenra/Views/Insights/InsightsView.swift` (or wherever InsightsView.swift lives — find with Glob) — replace `loadingView` body
 
 **Context:** `loadingView` is a `private var` at lines 238-248. It's referenced conditionally at lines 27-28 via `if insightsViewModel.isLoading { loadingView }`. Replace the property body only.
 
@@ -493,7 +493,7 @@ Ensure it's inside a container that has animation. If not already wrapped, add `
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|BUILD"
 ```
@@ -503,7 +503,7 @@ Expected: `BUILD SUCCEEDED`.
 ### Step 4: Commit
 
 ```bash
-git add AIFinanceManager/Views/Insights/InsightsView.swift
+git add Tenra/Views/Insights/InsightsView.swift
 git commit -m "feat(skeleton): integrate InsightsSkeleton into InsightsView (Phase 29)"
 ```
 

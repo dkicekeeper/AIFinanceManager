@@ -1,6 +1,6 @@
 //
 //  LoanRateChangeView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Rate change view for loans (mirrors DepositRateChangeView pattern)
 //

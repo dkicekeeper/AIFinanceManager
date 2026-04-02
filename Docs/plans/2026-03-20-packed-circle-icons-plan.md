@@ -13,7 +13,7 @@
 ### Task 1: Add breathing animation token to AppAnimation
 
 **Files:**
-- Modify: `AIFinanceManager/Utils/AppAnimation.swift` (after line 52, facepile section)
+- Modify: `Tenra/Utils/AppAnimation.swift` (after line 52, facepile section)
 
 **Step 1: Add the token**
 
@@ -41,13 +41,13 @@ static func breathingAnimation(index: Int) -> Animation {
 
 **Step 2: Build to verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Utils/AppAnimation.swift
+git add Tenra/Utils/AppAnimation.swift
 git commit -m "feat: add breathing animation tokens to AppAnimation"
 ```
 
@@ -56,14 +56,14 @@ git commit -m "feat: add breathing animation tokens to AppAnimation"
 ### Task 2: Create CirclePackingLayout (pure geometry, no SwiftUI)
 
 **Files:**
-- Create: `AIFinanceManager/Views/Components/Icons/CirclePackingLayout.swift`
+- Create: `Tenra/Views/Components/Icons/CirclePackingLayout.swift`
 
 **Step 1: Write CirclePackingLayout**
 
 ```swift
 //
 //  CirclePackingLayout.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Pure geometry: packs circles into a rectangular container.
 //  No SwiftUI dependency — input diameters, output (x, y) positions.
@@ -250,13 +250,13 @@ enum CirclePackingLayout {
 
 **Step 2: Build to verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Icons/CirclePackingLayout.swift
+git add Tenra/Views/Components/Icons/CirclePackingLayout.swift
 git commit -m "feat: add circle packing layout algorithm"
 ```
 
@@ -265,14 +265,14 @@ git commit -m "feat: add circle packing layout algorithm"
 ### Task 3: Create PackedCircleIconsView
 
 **Files:**
-- Create: `AIFinanceManager/Views/Components/Icons/PackedCircleIconsView.swift`
+- Create: `Tenra/Views/Components/Icons/PackedCircleIconsView.swift`
 
 **Step 1: Write PackedCircleIconsView**
 
 ```swift
 //
 //  PackedCircleIconsView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Packed circle layout for subscription/loan icon display.
 //  Circle size reflects item cost; circles are tightly packed without overlap.
@@ -501,13 +501,13 @@ private struct PackedOverflowBadge: View {
 
 **Step 2: Build to verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Icons/PackedCircleIconsView.swift
+git add Tenra/Views/Components/Icons/PackedCircleIconsView.swift
 git commit -m "feat: add PackedCircleIconsView with packed circle layout"
 ```
 
@@ -516,7 +516,7 @@ git commit -m "feat: add PackedCircleIconsView with packed circle layout"
 ### Task 4: Wire up SubscriptionsCardView
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Cards/SubscriptionsCardView.swift` (lines 72-74)
+- Modify: `Tenra/Views/Components/Cards/SubscriptionsCardView.swift` (lines 72-74)
 
 **Step 1: Replace StaticSubscriptionIconsView with PackedCircleIconsView**
 
@@ -547,13 +547,13 @@ Note: Remove the `.frame(width:)` — `PackedCircleIconsView` manages its own fr
 
 **Step 2: Build to verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Cards/SubscriptionsCardView.swift
+git add Tenra/Views/Components/Cards/SubscriptionsCardView.swift
 git commit -m "feat: use PackedCircleIconsView in SubscriptionsCardView"
 ```
 
@@ -562,7 +562,7 @@ git commit -m "feat: use PackedCircleIconsView in SubscriptionsCardView"
 ### Task 5: Wire up LoansCardView and delete old facepile
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Cards/LoansCardView.swift`
+- Modify: `Tenra/Views/Components/Cards/LoansCardView.swift`
 
 **Step 1: Replace loanIcons computed property**
 
@@ -616,13 +616,13 @@ Keep the `Decimal.toDouble()` extension (lines 163-169) — it's still used by `
 
 **Step 4: Build to verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Cards/LoansCardView.swift
+git add Tenra/Views/Components/Cards/LoansCardView.swift
 git commit -m "feat: use PackedCircleIconsView in LoansCardView, delete old facepile"
 ```
 
@@ -631,22 +631,22 @@ git commit -m "feat: use PackedCircleIconsView in LoansCardView, delete old face
 ### Task 6: Delete StaticSubscriptionIconsView
 
 **Files:**
-- Delete: `AIFinanceManager/Views/Components/Icons/StaticSubscriptionIconsView.swift`
+- Delete: `Tenra/Views/Components/Icons/StaticSubscriptionIconsView.swift`
 
 **Step 1: Verify no other references exist**
 
-Run: `grep -r "StaticSubscriptionIconsView" AIFinanceManager/ --include="*.swift" -l`
+Run: `grep -r "StaticSubscriptionIconsView" Tenra/ --include="*.swift" -l`
 Expected: Only `StaticSubscriptionIconsView.swift` itself (already replaced in SubscriptionsCardView)
 
 **Step 2: Delete the file**
 
 ```bash
-rm AIFinanceManager/Views/Components/Icons/StaticSubscriptionIconsView.swift
+rm Tenra/Views/Components/Icons/StaticSubscriptionIconsView.swift
 ```
 
 **Step 3: Build to verify**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors
 
 **Step 4: Commit**

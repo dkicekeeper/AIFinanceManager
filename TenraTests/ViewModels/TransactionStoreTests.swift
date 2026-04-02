@@ -1,6 +1,6 @@
 //
 //  TransactionStoreTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Created on 2026-02-05
 //  Unit tests for TransactionStore
@@ -14,7 +14,7 @@
 #if false
 
 import XCTest
-@testable import AIFinanceManager
+@testable import Tenra
 
 @MainActor
 final class TransactionStoreTests: XCTestCase {

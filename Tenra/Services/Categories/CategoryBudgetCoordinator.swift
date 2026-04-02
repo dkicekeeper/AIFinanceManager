@@ -1,6 +1,6 @@
 //
 //  CategoryBudgetCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Optimized service for category budget management with pre-aggregated cache
 //  Replaces CategoryBudgetService with O(1) budget lookups

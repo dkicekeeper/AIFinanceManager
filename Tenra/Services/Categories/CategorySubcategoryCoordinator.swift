@@ -1,6 +1,6 @@
 //
 //  CategorySubcategoryCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Service for managing subcategories and their links to categories/transactions
 //  Extracted from CategoriesViewModel for better separation of concerns

@@ -1,7 +1,7 @@
 # HistoryView.swift - Анализ и План Оптимизации
 
 **Дата анализа:** 2026-01-27
-**Файл:** `AIFinanceManager/Views/HistoryView.swift`
+**Файл:** `Tenra/Views/HistoryView.swift`
 **Строк кода:** 370
 
 ---

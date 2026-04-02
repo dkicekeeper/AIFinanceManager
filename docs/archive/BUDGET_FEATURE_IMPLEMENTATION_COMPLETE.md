@@ -18,7 +18,7 @@ Budget management has been successfully implemented and integrated into the cate
 ### What Was Built:
 
 #### 1. Data Model Extensions ✅
-- **File**: `AIFinanceManager/Models/CustomCategory.swift`
+- **File**: `Tenra/Models/CustomCategory.swift`
 - **Changes**:
   - Added `budgetAmount: Double?` (optional budget amount)
   - Added `budgetPeriod: BudgetPeriod` enum (weekly/monthly/yearly)
@@ -27,7 +27,7 @@ Budget management has been successfully implemented and integrated into the cate
   - ✅ Backward compatible encoding/decoding
 
 #### 2. New Model: BudgetProgress ✅
-- **File**: `AIFinanceManager/Models/BudgetProgress.swift`
+- **File**: `Tenra/Models/BudgetProgress.swift`
 - **Purpose**: Calculate and represent budget progress
 - **Fields**:
   - `budgetAmount: Double` - Total budget
@@ -37,7 +37,7 @@ Budget management has been successfully implemented and integrated into the cate
   - `isOverBudget: Bool` - Whether budget exceeded
 
 #### 3. ViewModel Methods ✅
-- **File**: `AIFinanceManager/ViewModels/CategoriesViewModel.swift`
+- **File**: `Tenra/ViewModels/CategoriesViewModel.swift`
 - **New Methods**:
   ```swift
   func setBudget(for:amount:period:resetDay:)     // Set or update budget
@@ -68,8 +68,8 @@ Budget management has been successfully implemented and integrated into the cate
 
 #### 5. Localization ✅
 - **Files**:
-  - `AIFinanceManager/en.lproj/Localizable.strings`
-  - `AIFinanceManager/ru.lproj/Localizable.strings`
+  - `Tenra/en.lproj/Localizable.strings`
+  - `Tenra/ru.lproj/Localizable.strings`
 - **New Keys**:
   - `budget_amount` - Budget Amount / Сумма бюджета
   - `budget_period` - Period / Период
@@ -138,34 +138,34 @@ Budget management has been successfully implemented and integrated into the cate
 
 ### New Files (3 files):
 
-1. **`AIFinanceManager/Models/BudgetProgress.swift`** (24 lines)
+1. **`Tenra/Models/BudgetProgress.swift`** (24 lines)
    - Struct for budget progress calculation
    - Used by CategoriesViewModel
 
-2. **`AIFinanceManager/Views/Components/CategoryChipWithBudget.swift`** (103 lines)
+2. **`Tenra/Views/Components/CategoryChipWithBudget.swift`** (103 lines)
    - Category chip with stroke progress indicator
    - Used in CategoriesManagementView
 
-3. **`AIFinanceManager/Views/SetBudgetSheet.swift`** (130 lines)
+3. **`Tenra/Views/SetBudgetSheet.swift`** (130 lines)
    - Sheet for setting/editing budgets
    - Full localization and accessibility
 
 ### Modified Files (4 files):
 
-1. **`AIFinanceManager/Models/CustomCategory.swift`**
+1. **`Tenra/Models/CustomCategory.swift`**
    - Added 4 budget fields
    - Updated init, encoder, decoder
    - Total changes: ~30 lines
 
-2. **`AIFinanceManager/ViewModels/CategoriesViewModel.swift`**
+2. **`Tenra/ViewModels/CategoriesViewModel.swift`**
    - Added 5 budget methods
    - Total changes: ~85 lines
 
-3. **`AIFinanceManager/en.lproj/Localizable.strings`**
+3. **`Tenra/en.lproj/Localizable.strings`**
    - Added 14 budget strings
    - Total changes: ~15 lines
 
-4. **`AIFinanceManager/ru.lproj/Localizable.strings`**
+4. **`Tenra/ru.lproj/Localizable.strings`**
    - Added 14 budget strings
    - Total changes: ~15 lines
 

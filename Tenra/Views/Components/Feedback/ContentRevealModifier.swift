@@ -1,6 +1,6 @@
 //
 //  ContentRevealModifier.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Lightweight modifier that fades content in when data is ready.
 //  Replaces SkeletonLoadingModifier — preserves view identity (no if/else branching).

@@ -7,7 +7,7 @@
 **Сброс разрешений** (для чистого теста):
 ```bash
 # На симуляторе
-xcrun simctl privacy booted reset notifications com.yourapp.AIFinanceManager
+xcrun simctl privacy booted reset notifications com.yourapp.Tenra
 
 # Или просто удалить и переустановить приложение
 ```

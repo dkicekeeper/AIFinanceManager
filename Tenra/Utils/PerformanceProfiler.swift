@@ -1,6 +1,6 @@
 //
 //  PerformanceProfiler.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //
@@ -8,7 +8,7 @@
 import Foundation
 import os
 
-private let perfLogger = Logger(subsystem: "AIFinanceManager", category: "Performance")
+private let perfLogger = Logger(subsystem: "Tenra", category: "Performance")
 
 /// Простой профилировщик производительности для debug режима
 #if DEBUG

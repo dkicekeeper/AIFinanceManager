@@ -1,6 +1,6 @@
 //
 //  FormattedAmountView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-01-30
 //  Formatted amount display with separate opacity for decimal part

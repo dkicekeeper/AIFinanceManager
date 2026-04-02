@@ -1,6 +1,6 @@
 //
 //  PDFImportCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  PDF import flow coordinator - handles file picker, OCR, and CSV preview
 //  Extracted from ContentView for Single Responsibility Principle

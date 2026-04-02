@@ -1,6 +1,6 @@
 //
 //  HeroSection.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Read-only hero display for views that need icon + title context
 //  without editing (e.g. AddTransactionModal, EditTransactionView).

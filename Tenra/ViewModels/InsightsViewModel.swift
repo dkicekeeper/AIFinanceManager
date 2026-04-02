@@ -1,6 +1,6 @@
 //
 //  InsightsViewModel.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 23: Insights Performance & UI fixes
 //  - 23-A: All heavy computation offloaded to background thread via Task.detached
@@ -26,7 +26,7 @@ import os
 final class InsightsViewModel {
     // MARK: - Logger
 
-    private nonisolated static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsViewModel")
+    private nonisolated static let logger = Logger(subsystem: "Tenra", category: "InsightsViewModel")
 
     // MARK: - Dependencies
 

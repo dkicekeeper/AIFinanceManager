@@ -1,6 +1,6 @@
 //
 //  InsightsCardView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 17: Financial Insights Feature
 //  Reusable insight card with mini-chart, metric, and trend indicator

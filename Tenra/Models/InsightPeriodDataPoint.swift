@@ -1,6 +1,6 @@
 //
 //  InsightPeriodDataPoint.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 18: Financial Insights — Universal period data point
 //  Replaces MonthlyDataPoint for insight charts. Supports any granularity

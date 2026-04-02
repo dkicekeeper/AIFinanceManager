@@ -48,7 +48,7 @@
 - [x] `CSVImportService` обновлен
 
 ### App Integration
-- [x] `AIFinanceManagerApp` обновлен
+- [x] `TenraApp` обновлен
 - [x] `AppCoordinator` интегрирован
 
 ### Code Quality
@@ -88,14 +88,14 @@
 
 ```bash
 # Найти все использования deprecated методов
-grep -r "\.addAccount\|\.addCategory\|\.createSubscription\|\.addDeposit" AIFinanceManager/Views/
+grep -r "\.addAccount\|\.addCategory\|\.createSubscription\|\.addDeposit" Tenra/Views/
 ```
 
 ### Проверьте использование новых ViewModels:
 
 ```bash
 # Найти все использования новых ViewModels
-grep -r "accountsViewModel\|categoriesViewModel\|subscriptionsViewModel\|depositsViewModel" AIFinanceManager/Views/
+grep -r "accountsViewModel\|categoriesViewModel\|subscriptionsViewModel\|depositsViewModel" Tenra/Views/
 ```
 
 ---

@@ -253,7 +253,7 @@ categoriesViewModel.linkSubcategories(to: created.id)  // ← guaranteed
 ### Build Status
 
 ```bash
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 
 Phase 1: ✅ BUILD SUCCEEDED
 Phase 2: ✅ BUILD SUCCEEDED

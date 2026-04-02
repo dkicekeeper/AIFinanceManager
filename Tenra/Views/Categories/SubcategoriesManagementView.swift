@@ -1,6 +1,6 @@
 //
 //  SubcategoriesManagementView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Management view for subcategories
 //

@@ -1,6 +1,6 @@
 //
 //  AppDelegate.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-14
 //  Purpose: Handle notification delegation and automatic rescheduling

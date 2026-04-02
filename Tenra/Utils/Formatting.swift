@@ -1,6 +1,6 @@
 //
 //  Formatting.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //  REFACTORED 2026-02-11: Added smart decimal handling with AmountDisplayConfiguration

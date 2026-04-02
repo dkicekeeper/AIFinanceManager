@@ -1,6 +1,6 @@
 //
 //  TransactionAddCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Coordinator for TransactionAddModal.
 //  Handles transaction creation with form validation and currency conversion.

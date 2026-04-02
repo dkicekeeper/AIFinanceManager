@@ -259,7 +259,7 @@ Net Change:          +235 lines
 ### Build Status
 
 ```
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 ** BUILD SUCCEEDED **
 ```
 

@@ -1387,7 +1387,7 @@ private struct DatePickerSheet: View {
 
 ### New Component Files
 ```
-AIFinanceManager/Views/Shared/Components/
+Tenra/Views/Shared/Components/
 ├── SectionHeaderView.swift                    [NEW]
 ├── DateSectionHeaderView.swift                [NEW - specialized variant]
 ├── ReminderPickerView.swift                   [NEW]
@@ -1402,33 +1402,33 @@ AIFinanceManager/Views/Shared/Components/
 
 ### Updated Files
 ```
-AIFinanceManager/Utils/
+Tenra/Utils/
 └── AppTheme.swift                             [UPDATE - add semantic tokens]
 
-AIFinanceManager/Views/Subscriptions/
+Tenra/Views/Subscriptions/
 ├── SubscriptionEditView.swift                 [UPDATE - use new components]
 └── Components/
     └── NotificationPermissionView.swift       [UPDATE - if needed]
 
-AIFinanceManager/Views/Categories/
+Tenra/Views/Categories/
 └── CategoryEditView.swift                     [UPDATE]
 
-AIFinanceManager/Views/Accounts/
+Tenra/Views/Accounts/
 └── AccountEditView.swift                      [UPDATE]
 
-AIFinanceManager/Views/Deposits/
+Tenra/Views/Deposits/
 ├── DepositEditView.swift                      [UPDATE]
 └── Components/
     ├── DepositRateChangeView.swift            [UPDATE]
     └── DepositTransferView.swift              [UPDATE]
 
-AIFinanceManager/Views/Settings/Components/
+Tenra/Views/Settings/Components/
 └── SettingsSectionHeaderView.swift            [DEPRECATE - replace with SectionHeaderView]
 
-AIFinanceManager/Views/History/Components/
+Tenra/Views/History/Components/
 └── DateSectionHeader.swift                    [UPDATE - use new DateSectionHeaderView]
 
-AIFinanceManager/Views/Shared/Components/
+Tenra/Views/Shared/Components/
 ├── DateButtonsView.swift                      [UPDATE - localization]
 ├── RecurringToggleView.swift                  [UPDATE - use FrequencyPickerView]
 └── DescriptionTextField.swift                 [DEPRECATE - replace with FormTextField]

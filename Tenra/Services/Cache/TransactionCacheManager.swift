@@ -1,6 +1,6 @@
 //
 //  TransactionCacheManager.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  PURPOSE (Phase 36+): READ-ONLY display cache. Do NOT use for write operations.
 //

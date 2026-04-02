@@ -1,6 +1,6 @@
 //
 //  DepositDetailView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Detail view for deposit accounts
 //
@@ -34,7 +34,7 @@ struct DepositDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Namespace private var depositActionNamespace
 
-    private let logger = Logger(subsystem: "AIFinanceManager", category: "DepositDetailView")
+    private let logger = Logger(subsystem: "Tenra", category: "DepositDetailView")
 
     private var account: Account? {
         depositsViewModel.getDeposit(by: accountId)

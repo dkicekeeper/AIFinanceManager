@@ -1,4 +1,4 @@
-# 🤖 Руководство по интеграции ML в AIFinanceManager
+# 🤖 Руководство по интеграции ML в Tenra
 
 **Дата:** 2026-01-18
 **Версия:** 1.0
@@ -72,7 +72,7 @@ return category
 ### Шаг 1: Проверка готовности данных
 
 ```swift
-import AIFinanceManager
+import Tenra
 
 // В вашем коде (например, в Settings или Debug menu)
 let transactions = transactionsViewModel.allTransactions
@@ -146,7 +146,7 @@ description,category,amount,type
 
 7. **Экспортируйте модель:**
    - Output → `CategoryClassifier.mlmodel`
-   - Копируйте в проект: `AIFinanceManager/Services/ML/Models/`
+   - Копируйте в проект: `Tenra/Services/ML/Models/`
 
 ---
 
@@ -155,7 +155,7 @@ description,category,amount,type
 ### Шаг 1: Добавьте .mlmodel в Xcode
 
 1. Перетащите `CategoryClassifier.mlmodel` в Xcode
-2. Target Membership: ✅ AIFinanceManager
+2. Target Membership: ✅ Tenra
 3. Xcode автоматически скомпилирует в `.mlmodelc`
 
 ### Шаг 2: Проверьте работу

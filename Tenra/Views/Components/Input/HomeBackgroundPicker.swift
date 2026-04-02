@@ -1,6 +1,6 @@
 //
 //  HomeBackgroundPicker.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Apple Wallpaper-style mode picker for the home screen background.
 //  Three cards in a horizontal scroll — None / Gradient / Photo.

@@ -264,8 +264,8 @@ UniversalFilterButton(
 - ✅ `Views/History/Components/HistoryFilterSection.swift` (+40 lines, more readable)
 - ✅ `Views/Categories/Components/SubcategorySelectorView.swift` (FilterChip → UniversalFilterButton)
 - ✅ `Utils/LocalizedRowKeys.swift` (+3 filter keys)
-- ✅ `AIFinanceManager/en.lproj/Localizable.strings` (+3 entries)
-- ✅ `AIFinanceManager/ru.lproj/Localizable.strings` (+3 entries)
+- ✅ `Tenra/en.lproj/Localizable.strings` (+3 entries)
+- ✅ `Tenra/ru.lproj/Localizable.strings` (+3 entries)
 - ✅ `CLAUDE.md` (Phase 14 documentation)
 
 ### Deleted:

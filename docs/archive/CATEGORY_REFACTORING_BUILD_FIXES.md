@@ -10,7 +10,7 @@
 
 ### Error 1: LRUCache.swift - Ambiguous `max` reference
 
-**File:** `/AIFinanceManager/Utils/LRUCache.swift:50`
+**File:** `/Tenra/Utils/LRUCache.swift:50`
 
 **Error:**
 ```
@@ -39,7 +39,7 @@ init(capacity: Int) {
 
 ### Error 2: CategoriesViewModel.swift - CategoryCRUDDelegate protocol violation
 
-**File:** `/AIFinanceManager/ViewModels/CategoriesViewModel.swift:289`
+**File:** `/Tenra/ViewModels/CategoriesViewModel.swift:289`
 
 **Error:**
 ```
@@ -120,7 +120,7 @@ delegate.updateCategories(newCategories)
 
 ### Error 3: CategoriesViewModel.swift - CategoryBudgetDelegate protocol violation
 
-**File:** `/AIFinanceManager/ViewModels/CategoriesViewModel.swift:303`
+**File:** `/Tenra/ViewModels/CategoriesViewModel.swift:303`
 
 **Error:**
 ```
@@ -265,7 +265,7 @@ Reverted to `CategoryAggregateCache()` - optimization deferred until protocol cr
 
 ### Build Status
 ```bash
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 ```
 
 **Result:** ✅ **BUILD SUCCEEDED** (Verified 2026-02-01)

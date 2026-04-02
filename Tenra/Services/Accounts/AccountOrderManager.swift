@@ -1,6 +1,6 @@
 //
 //  AccountOrderManager.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Manages account display order in UserDefaults
 //  Separates UI preferences from business data

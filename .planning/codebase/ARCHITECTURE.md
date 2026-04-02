@@ -19,22 +19,22 @@
 
 **Presentation (Views):**
 - Purpose: SwiftUI user interface and navigation
-- Location: `AIFinanceManager/Views/`
+- Location: `Tenra/Views/`
 - Contains: Feature views, view coordinators, components, shared UI elements
 - Depends on: ViewModels, AppCoordinator, Models (value types)
 - Used by: End users; observable to state changes in ViewModels
 
 **State Management (ViewModels):**
 - Purpose: UI state management and business logic orchestration
-- Location: `AIFinanceManager/ViewModels/`
+- Location: `Tenra/ViewModels/`
 - Contains: `@Observable @MainActor` classes like `AppCoordinator`, `TransactionStore`, `TransactionsViewModel`, `AccountsViewModel`, `InsightsViewModel`, `CategoriesViewModel`
-- Key coordinator: `AppCoordinator` (`AIFinanceManager/ViewModels/AppCoordinator.swift`) — central DI container initializing all ViewModels, Stores, and Coordinators
+- Key coordinator: `AppCoordinator` (`Tenra/ViewModels/AppCoordinator.swift`) — central DI container initializing all ViewModels, Stores, and Coordinators
 - Depends on: Repository (DataRepositoryProtocol), Services (Balance, Import, etc.), Models
 - Used by: Views (via @Environment)
 
 **Business Logic (Services):**
 - Purpose: Domain-specific operations and computations
-- Location: `AIFinanceManager/Services/`
+- Location: `Tenra/Services/`
 - Contains: Transaction filtering, balance calculations, category management, CSV import, voice input, PDF parsing, recurring transaction generation, insights computation, caching
 - Patterns: Facade coordinators (BalanceCoordinator), value-based calculations (BalanceCalculationEngine), validation services, generator services
 - Depends on: Repository, Models
@@ -42,9 +42,9 @@
 
 **Data Persistence (Repository):**
 - Purpose: Abstract CoreData access; provide clean data interface to upper layers
-- Location: `AIFinanceManager/Services/Repository/` and `AIFinanceManager/Services/Core/`
-- Core Protocol: `DataRepositoryProtocol` (`AIFinanceManager/Services/Core/DataRepositoryProtocol.swift`) — defines all persistence operations
-- Facade: `CoreDataRepository` (`AIFinanceManager/Services/Repository/CoreDataRepository.swift`) — delegates to specialized repos
+- Location: `Tenra/Services/Repository/` and `Tenra/Services/Core/`
+- Core Protocol: `DataRepositoryProtocol` (`Tenra/Services/Core/DataRepositoryProtocol.swift`) — defines all persistence operations
+- Facade: `CoreDataRepository` (`Tenra/Services/Repository/CoreDataRepository.swift`) — delegates to specialized repos
 - Specialized Repositories:
   - `TransactionRepository` — transaction CRUD, batch insert, field updates
   - `AccountRepository` — account management, balance updates
@@ -55,23 +55,23 @@
 
 **Data Models (Models + CoreData Entities):**
 - Purpose: Domain object definitions and value types
-- Location: `AIFinanceManager/Models/` (value types) and `AIFinanceManager/CoreData/Entities/` (CoreData entities)
+- Location: `Tenra/Models/` (value types) and `Tenra/CoreData/Entities/` (CoreData entities)
 - Value Types: `Transaction`, `Account`, `CustomCategory`, `Subcategory`, `RecurringSeries`, `RecurringOccurrence`, `InsightModels`, `TimeFilter`, etc.
 - CoreData Entities: `TransactionEntity`, `AccountEntity`, `CustomCategoryEntity`, `SubcategoryEntity`, `RecurringSeriesEntity`, `RecurringOccurrenceEntity`, etc. (auto-generated from `.xcdatamodeld`)
 - Pattern: Value models are Codable, Equatable, Identifiable; repositories map CoreData entities ↔ value models
 
 **Persistence Infrastructure:**
 - Purpose: Core Data stack management and initialization
-- Location: `AIFinanceManager/CoreData/`
+- Location: `Tenra/CoreData/`
 - Contains: `CoreDataStack` (singleton, thread-safe via `NSLock`), `.xcdatamodeld` schema, entity auto-generation, `CoreDataSaveCoordinator`
 - Features: Pre-warm initialization (off-MainActor), store reset notification broadcast, automatic save on app lifecycle events
-- Entry: `AIFinanceManager/AIFinanceManagerApp.swift` pre-warms CoreData, then creates AppCoordinator
+- Entry: `Tenra/TenraApp.swift` pre-warms CoreData, then creates AppCoordinator
 
 ## Data Flow
 
 **Initialization Flow:**
 
-1. **App Launch** (`AIFinanceManager/AIFinanceManagerApp.swift`)
+1. **App Launch** (`Tenra/TenraApp.swift`)
    - AppDelegate started
    - CoreDataStack.preWarm() called (background thread) — touches persistentContainer to load stores
    - MainTabView waits for CoreDataStack initialization
@@ -158,7 +158,7 @@
 
 **TransactionStore (SSOT):**
 - Purpose: Single source of truth for all transaction-domain data
-- Location: `AIFinanceManager/ViewModels/TransactionStore.swift` (1383 LOC, needs splitting in future)
+- Location: `Tenra/ViewModels/TransactionStore.swift` (1383 LOC, needs splitting in future)
 - State: transactions[], accounts[], categories[], subcategories[], recurringSeries[], recurringOccurrences[]
 - Methods: add(), update(), delete(), transfer(), generateRecurringTransactions(), addBatch()
 - Event-driven: TransactionStoreEvent enum (.added, .updated, .deleted, .batchAdded)
@@ -167,7 +167,7 @@
 
 **BalanceCoordinator (Balance SSOT):**
 - Purpose: Single entry point for balance calculations and updates
-- Location: `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`
+- Location: `Tenra/Services/Balance/BalanceCoordinator.swift`
 - Composed of: BalanceStore (account registration), BalanceCalculationEngine (computation logic)
 - State: balances: [String: Double] (observable)
 - Methods: registerAccounts(), updateForTransaction(), updateForTransactions()
@@ -175,27 +175,27 @@
 
 **DataRepositoryProtocol:**
 - Purpose: Abstract persistence interface
-- Location: `AIFinanceManager/Services/Core/DataRepositoryProtocol.swift`
+- Location: `Tenra/Services/Core/DataRepositoryProtocol.swift`
 - Methods: loadTransactions(), saveTransactions(), insertTransaction(), updateTransactionFields(), batchInsertTransactions(), deleteTransactionImmediately(), and similar for accounts/categories/recurring/etc.
 - Implementation: CoreDataRepository (facade) + 4 specialized repos (Transaction, Account, Category, Recurring)
 
 **AppCoordinator (DI Container):**
 - Purpose: Central dependency injection, initialization orchestration
-- Location: `AIFinanceManager/ViewModels/AppCoordinator.swift`
+- Location: `Tenra/ViewModels/AppCoordinator.swift`
 - Dependencies: repository (DataRepositoryProtocol), all ViewModels, transactionStore, balanceCoordinator, transactionPaginationController
 - Observable: isFastPathDone, isFullyInitialized (drive per-section skeleton display)
 - Lifecycle: created after CoreData pre-warm; calls initialize() to load data
 
 **TimeFilterManager (UI State):**
 - Purpose: Shared time filter state across tabs (Home, History, Insights, Categories)
-- Location: `AIFinanceManager/ViewModels/TimeFilterManager.swift`
+- Location: `Tenra/ViewModels/TimeFilterManager.swift`
 - Type: @Observable @MainActor
 - State: currentFilter: TimeFilter (week/month/quarter/year/allTime/custom)
 - Allows filter selection to affect all tabs simultaneously
 
 **InsightsService:**
 - Purpose: Financial insights computation (spending, income, budgets, recurring, cash flow, wealth, savings, forecasting, health score)
-- Location: `AIFinanceManager/Services/Insights/InsightsService.swift` (782 LOC main + 9 extensions)
+- Location: `Tenra/Services/Insights/InsightsService.swift` (782 LOC main + 9 extensions)
 - Architecture: Split into 10 domain files (main + 9 extensions: Spending, Income, Budget, Recurring, CashFlow, Wealth, Savings, Forecasting, HealthScore)
 - Generators accept PreAggregatedData? and use O(1) dictionary lookups instead of O(N) scans
 - Returns: InsightResult (insights: [InsightType], metadata: metadata)
@@ -203,17 +203,17 @@
 ## Entry Points
 
 **App Launch:**
-- Location: `AIFinanceManager/AIFinanceManagerApp.swift`
+- Location: `Tenra/TenraApp.swift`
 - Triggers: @main struct initialization on app start
 - Responsibilities: Set up AppDelegate, create MainTabView, manage CoreData pre-warm, coordinate AppCoordinator creation
 
 **Main Tab View (Root Navigation):**
-- Location: `AIFinanceManager/Views/Home/MainTabView.swift`
+- Location: `Tenra/Views/Home/MainTabView.swift`
 - Triggers: Displayed when coordinator becomes non-nil
 - Responsibilities: Tab bar navigation (Home, Transactions, Categories, Insights, Subscriptions, Settings)
 
 **Home Screen (Primary Destination):**
-- Location: `AIFinanceManager/Views/Home/ContentView.swift`
+- Location: `Tenra/Views/Home/ContentView.swift`
 - Triggers: Opens on app launch
 - Responsibilities: Display summary card, account cards, quick-add button, navigation to History/Subscriptions/Account detail
 
@@ -259,11 +259,11 @@
 
 **Logging:**
 - Framework: `os.Logger` (Apple's unified logging)
-- Usage: Subsystem = "AIFinanceManager", category = domain/class name
+- Usage: Subsystem = "Tenra", category = domain/class name
 - Examples:
-  - `AppCoordinator`: subsystem "AIFinanceManager", category "AppCoordinator"
-  - `TransactionStore`: subsystem "AIFinanceManager", category "TransactionStore"
-  - `CoreDataStack`: subsystem "AIFinanceManager", category "CoreDataStack"
+  - `AppCoordinator`: subsystem "Tenra", category "AppCoordinator"
+  - `TransactionStore`: subsystem "Tenra", category "TransactionStore"
+  - `CoreDataStack`: subsystem "Tenra", category "CoreDataStack"
 - Levels: .debug (detailed), .info (milestones), .error (failures)
 - Performance: `PerformanceProfiler.swift` (#if DEBUG, 30+ call sites for startup/view render metrics)
 

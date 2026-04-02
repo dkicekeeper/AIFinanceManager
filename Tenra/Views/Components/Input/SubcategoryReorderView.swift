@@ -1,6 +1,6 @@
 //
 //  SubcategoryReorderView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified sheet for reordering and managing subcategories within a category.
 //  Supports drag-to-reorder, swipe-to-unlink, and adding new subcategories.

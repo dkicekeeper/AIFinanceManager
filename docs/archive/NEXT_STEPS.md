@@ -20,11 +20,11 @@
 
 #### Шаг 1: Открыть Xcode
 ```bash
-open AIFinanceManager.xcodeproj
+open Tenra.xcodeproj
 ```
 
 #### Шаг 2: Открыть Core Data модель
-Навигатор → `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld`
+Навигатор → `Tenra/CoreData/Tenra.xcdatamodeld`
 
 #### Шаг 3: Добавить новую Entity
 1. Кликнуть "Add Entity" (внизу окна)

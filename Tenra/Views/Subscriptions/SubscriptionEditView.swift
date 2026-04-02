@@ -1,6 +1,6 @@
 //
 //  SubscriptionEditView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Migrated to hero-style UI (Phase 16 - 2026-02-16)
 //  Uses EditableHeroSection with EditSheetContainer and beautiful animations

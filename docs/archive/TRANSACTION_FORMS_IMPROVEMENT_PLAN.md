@@ -21,7 +21,7 @@
 ### Phase 1: Создание компонентов (2-3 часа)
 
 #### Задача 1.1: AmountInputView
-**Файл:** `AIFinanceManager/Views/Components/AmountInputView.swift`
+**Файл:** `Tenra/Views/Components/AmountInputView.swift`
 
 **Требования:**
 - Большой центрированный текст (56-64pt)
@@ -64,7 +64,7 @@ struct AmountInputView: View {
 ---
 
 #### Задача 1.2: CurrencySelectorView
-**Файл:** `AIFinanceManager/Views/Components/CurrencySelectorView.swift`
+**Файл:** `Tenra/Views/Components/CurrencySelectorView.swift`
 
 **Требования:**
 - Горизонтальный ScrollView
@@ -101,8 +101,8 @@ struct CurrencySelectorView: View {
 #### Задача 2.1: Добавить ключи локализации
 
 **Файлы:**
-- `AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings`
-- `AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings`
+- `Tenra/Tenra/en.lproj/Localizable.strings`
+- `Tenra/Tenra/ru.lproj/Localizable.strings`
 
 **Новые ключи:**
 
@@ -143,7 +143,7 @@ struct CurrencySelectorView: View {
 ### Phase 3: Рефакторинг VoiceInputConfirmationView (1 час)
 
 #### Задача 3.1: Заменить ввод суммы
-**Файл:** `AIFinanceManager/Views/VoiceInputConfirmationView.swift`
+**Файл:** `Tenra/Views/VoiceInputConfirmationView.swift`
 
 **Изменения:**
 - Удалить `TextField` и `Picker` для валюты (строки 94-128)
@@ -181,7 +181,7 @@ Section(header: Text(String(localized: "transaction.amount"))) {
 ### Phase 4: Рефакторинг AccountActionView (1.5 часа)
 
 #### Задача 4.1: Локализация
-**Файл:** `AIFinanceManager/Views/AccountActionView.swift`
+**Файл:** `Tenra/Views/AccountActionView.swift`
 
 **Изменения:**
 - Заменить все хардкод строки на `String(localized:)`
@@ -213,7 +213,7 @@ Section(header: Text(String(localized: "transaction.amount"))) {
 ### Phase 5: Рефакторинг EditTransactionView (1.5 часа)
 
 #### Задача 5.1: Локализация
-**Файл:** `AIFinanceManager/Views/EditTransactionView.swift`
+**Файл:** `Tenra/Views/EditTransactionView.swift`
 
 **Изменения:**
 - Заменить все хардкод строки (английские и русские)

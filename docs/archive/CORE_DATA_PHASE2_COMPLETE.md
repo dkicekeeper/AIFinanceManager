@@ -9,7 +9,7 @@
 
 ### 1. CoreDataRepository ✅
 
-**Файл**: `AIFinanceManager/Services/CoreDataRepository.swift` (330+ строк)
+**Файл**: `Tenra/Services/CoreDataRepository.swift` (330+ строк)
 
 **Реализованные методы**:
 
@@ -42,7 +42,7 @@
 
 ### 2. DataMigrationService ✅
 
-**Файл**: `AIFinanceManager/Services/DataMigrationService.swift` (200+ строк)
+**Файл**: `Tenra/Services/DataMigrationService.swift` (200+ строк)
 
 **Функциональность**:
 
@@ -68,7 +68,7 @@
 
 ### 3. Интеграция в AppCoordinator ✅
 
-**Файл**: `AIFinanceManager/ViewModels/AppCoordinator.swift`
+**Файл**: `Tenra/ViewModels/AppCoordinator.swift`
 
 **Изменения**:
 
@@ -280,9 +280,9 @@ UserDefaults.standard.removeObject(forKey: "coreDataMigrationCompleted_v1")
 - [CORE_DATA_MODEL_INSTRUCTIONS.md](./CORE_DATA_MODEL_INSTRUCTIONS.md) - Фаза 1
 - [CORE_DATA_PHASE2_INSTRUCTIONS.md](./CORE_DATA_PHASE2_INSTRUCTIONS.md) - Подробные инструкции
 - [CORE_DATA_MIGRATION_PLAN.md](./CORE_DATA_MIGRATION_PLAN.md) - Общий план
-- [CoreDataStack.swift](./AIFinanceManager/CoreData/CoreDataStack.swift) - Core Data Stack
-- [CoreDataRepository.swift](./AIFinanceManager/Services/CoreDataRepository.swift) - Repository
-- [DataMigrationService.swift](./AIFinanceManager/Services/DataMigrationService.swift) - Migration
+- [CoreDataStack.swift](./Tenra/CoreData/CoreDataStack.swift) - Core Data Stack
+- [CoreDataRepository.swift](./Tenra/Services/CoreDataRepository.swift) - Repository
+- [DataMigrationService.swift](./Tenra/Services/DataMigrationService.swift) - Migration
 
 ---
 

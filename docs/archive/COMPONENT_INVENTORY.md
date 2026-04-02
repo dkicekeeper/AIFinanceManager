@@ -1,5 +1,5 @@
 # COMPONENT_INVENTORY.md
-## AIFinanceManager — Полный реестр UI-компонентов
+## Tenra — Полный реестр UI-компонентов
 
 > **Дата создания:** 2026-01-28
 > **Последнее обновление:** 2026-02-15 — Phase 9 Complete + UI Components Refactoring
@@ -58,7 +58,7 @@
 
 ## 1. Shared Components (24) — Переиспользуемые
 
-**Расположение:** `/AIFinanceManager/Views/Shared/Components/`
+**Расположение:** `/Tenra/Views/Shared/Components/`
 
 ### Cards & Display
 | Component | File | Responsibility | Status |
@@ -112,7 +112,7 @@
 
 ## 2. Settings Components (13)
 
-**Расположение:** `/AIFinanceManager/Views/Settings/Components/`
+**Расположение:** `/Tenra/Views/Settings/Components/`
 
 | Component | File | Responsibility | Status |
 |-----------|------|----------------|--------|
@@ -134,7 +134,7 @@
 
 ## 3. Categories Components (8)
 
-**Расположение:** `/AIFinanceManager/Views/Categories/Components/`
+**Расположение:** `/Tenra/Views/Categories/Components/`
 
 ### Display & Selection
 | Component | File | Responsibility | Props | Actions | Used In |
@@ -160,7 +160,7 @@
 
 ## 4. Accounts Components (7)
 
-**Расположение:** `/AIFinanceManager/Views/Accounts/Components/`
+**Расположение:** `/Tenra/Views/Accounts/Components/`
 
 | Component | File | Responsibility | Type | Status |
 |-----------|------|----------------|------|--------|
@@ -176,7 +176,7 @@
 
 ## 5. Transactions Components (5)
 
-**Расположение:** `/AIFinanceManager/Views/Transactions/Components/`
+**Расположение:** `/Tenra/Views/Transactions/Components/`
 
 | Component | File | Responsibility | Props | Status |
 |-----------|------|----------------|-------|--------|
@@ -190,7 +190,7 @@
 
 ## 6. Subscriptions Components (4)
 
-**Расположение:** `/AIFinanceManager/Views/Subscriptions/Components/`
+**Расположение:** `/Tenra/Views/Subscriptions/Components/`
 
 | Component | File | Responsibility | Props | Status |
 |-----------|------|----------------|-------|--------|
@@ -203,7 +203,7 @@
 
 ## 7. History Components (3)
 
-**Расположение:** `/AIFinanceManager/Views/History/Components/`
+**Расположение:** `/Tenra/Views/History/Components/`
 
 | Component | File | Responsibility | Props | Status |
 |-----------|------|----------------|-------|--------|
@@ -215,7 +215,7 @@
 
 ## 8. Deposits Components (2)
 
-**Расположение:** `/AIFinanceManager/Views/Deposits/Components/`
+**Расположение:** `/Tenra/Views/Deposits/Components/`
 
 | Component | File | Responsibility | Status |
 |-----------|------|----------------|--------|
@@ -226,7 +226,7 @@
 
 ## 9. VoiceInput Components (1)
 
-**Расположение:** `/AIFinanceManager/Views/VoiceInput/Components/`
+**Расположение:** `/Tenra/Views/VoiceInput/Components/`
 
 | Component | File | Responsibility | Props | Status |
 |-----------|------|----------------|-------|--------|
@@ -236,7 +236,7 @@
 
 ## 10. Root Components (1)
 
-**Расположение:** `/AIFinanceManager/Views/Components/`
+**Расположение:** `/Tenra/Views/Components/`
 
 | Component | File | Responsibility | Status |
 |-----------|------|----------------|--------|

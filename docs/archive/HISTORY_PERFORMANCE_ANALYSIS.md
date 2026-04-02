@@ -1,5 +1,5 @@
 # Анализ производительности истории транзакций
-## AIFinanceManager - HistoryView Performance Deep Dive
+## Tenra - HistoryView Performance Deep Dive
 
 **Дата анализа:** 2026-02-01
 **Анализированный функционал:** История транзакций (HistoryView, из категории расходов, из счёта)

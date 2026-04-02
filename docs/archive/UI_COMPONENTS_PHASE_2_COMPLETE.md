@@ -311,7 +311,7 @@ FormSection(header: "Section Title", style: .card) {
 ## 📁 Complete File Structure
 
 ```
-AIFinanceManager/Views/Shared/Components/
+Tenra/Views/Shared/Components/
 ├── Phase 1: Core Components
 │   ├── SectionHeaderView.swift                    ✅
 │   ├── DateSectionHeaderView.swift                ✅

@@ -1,6 +1,6 @@
 //
 //  SettingsSectionHeaderView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-04
 //  Settings Refactoring Phase 3 - UI Components

@@ -1,6 +1,6 @@
 //
 //  InsightGranularity.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 18: Financial Insights — Granularity-based time filter
 //  Replaces TimeFilter in the Insights module.

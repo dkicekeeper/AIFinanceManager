@@ -1,6 +1,6 @@
 //
 //  SegmentedPickerView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable segmented picker component
 //

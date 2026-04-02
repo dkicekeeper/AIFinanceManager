@@ -1,6 +1,6 @@
 //
 //  InsightsView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 23: Insights Performance & UI fixes
 //  - P7: InsightsSummaryHeader now receives PeriodDataPoint directly (no per-render conversion)

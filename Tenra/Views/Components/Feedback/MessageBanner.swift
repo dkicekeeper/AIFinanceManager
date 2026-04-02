@@ -1,6 +1,6 @@
 //
 //  MessageBanner.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-16
 //  Phase 15: Universal Message Banner Component

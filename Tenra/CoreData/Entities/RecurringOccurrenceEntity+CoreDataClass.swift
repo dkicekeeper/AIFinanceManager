@@ -1,6 +1,6 @@
 //
 //  RecurringOccurrenceEntity+CoreDataClass.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //

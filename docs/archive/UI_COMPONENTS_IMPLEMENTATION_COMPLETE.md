@@ -325,7 +325,7 @@ All section headers now use `AppTypography.sectionHeader` for consistency.
 
 ### New Components
 ```
-AIFinanceManager/Views/Shared/Components/
+Tenra/Views/Shared/Components/
 ├── SectionHeaderView.swift                    ✅ NEW
 ├── DateSectionHeaderView.swift                ✅ NEW
 ├── ReminderPickerView.swift                   ✅ NEW
@@ -335,13 +335,13 @@ AIFinanceManager/Views/Shared/Components/
 
 ### Updated Files
 ```
-AIFinanceManager/Utils/
+Tenra/Utils/
 └── AppTheme.swift                             ✅ UPDATED (added sectionHeader token)
 
-AIFinanceManager/Views/Shared/Components/
+Tenra/Views/Shared/Components/
 └── DateButtonsView.swift                      ✅ UPDATED (localization)
 
-AIFinanceManager/AIFinanceManager/
+Tenra/Tenra/
 ├── ru.lproj/Localizable.strings               ✅ UPDATED (+10 keys)
 └── en.lproj/Localizable.strings               ✅ UPDATED (+10 keys)
 ```

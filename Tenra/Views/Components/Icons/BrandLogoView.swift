@@ -1,6 +1,6 @@
 //
 //  BrandLogoView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  SwiftUI component for displaying brand logos via provider chain
 //

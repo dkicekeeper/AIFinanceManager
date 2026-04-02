@@ -116,9 +116,9 @@ Weight mapping per level:
 | File | Change |
 |------|--------|
 | `Fonts/` directory | Remove 18 Overpass .ttf; add 2 Inter .ttf |
-| `AIFinanceManager/Info.plist` | Update UIAppFonts array |
-| `AIFinanceManager/Utils/AppTheme.swift` | Replace AppOverpassFont → AppInterFont, update AppTypography |
-| `AIFinanceManager.xcodeproj/project.pbxproj` | Update font file references and build files |
+| `Tenra/Info.plist` | Update UIAppFonts array |
+| `Tenra/Utils/AppTheme.swift` | Replace AppOverpassFont → AppInterFont, update AppTypography |
+| `Tenra.xcodeproj/project.pbxproj` | Update font file references and build files |
 
 ## Prerequisites (Manual Step)
 

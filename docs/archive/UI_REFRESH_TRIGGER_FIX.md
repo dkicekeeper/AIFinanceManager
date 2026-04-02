@@ -149,15 +149,15 @@ UI Updates  ✅
 
 ## Files Modified
 
-1. **AIFinanceManager/ViewModels/TransactionsViewModel.swift**
+1. **Tenra/ViewModels/TransactionsViewModel.swift**
    - Added `@Published var dataRefreshTrigger: UUID = UUID()`
    - Updated `notifyDataChanged()` to change trigger instead of array
 
-2. **AIFinanceManager/Views/Transactions/QuickAddCoordinator.swift**
+2. **Tenra/Views/Transactions/QuickAddCoordinator.swift**
    - Updated `setupBindings()` to observe `$dataRefreshTrigger`
    - Added trigger UUID to debug logs
 
-3. **AIFinanceManager/Views/Home/ContentView.swift**
+3. **Tenra/Views/Home/ContentView.swift**
    - Updated `summaryUpdatePublisher` to observe `$dataRefreshTrigger`
    - Changed from `Publishers.Merge` to `Publishers.Merge3` to include new trigger
    - This ensures home screen updates when aggregate cache rebuilds

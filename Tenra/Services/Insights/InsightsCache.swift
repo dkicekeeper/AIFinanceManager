@@ -1,6 +1,6 @@
 //
 //  InsightsCache.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 17: Financial Insights Feature
 //  In-memory LRU cache with TTL for computed insights.

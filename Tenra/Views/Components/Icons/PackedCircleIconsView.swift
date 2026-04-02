@@ -1,6 +1,6 @@
 //
 //  PackedCircleIconsView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Packed circle layout for subscription/loan icon display.
 //  Circle size reflects item cost; circles are tightly packed without overlap.

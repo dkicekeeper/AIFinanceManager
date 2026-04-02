@@ -27,7 +27,7 @@
 **Build verification command** (run after every task):
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | tail -5
 ```
@@ -57,9 +57,9 @@ ZStack(alignment: .leading) {
 ```
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/BudgetProgressBar.swift`
-- Modify: `AIFinanceManager/Views/Insights/Components/InsightsCardView.swift` (lines 150-163)
-- Modify: `AIFinanceManager/Views/Insights/InsightDetailView.swift` (lines 143-155)
+- Create: `Tenra/Views/Insights/Components/BudgetProgressBar.swift`
+- Modify: `Tenra/Views/Insights/Components/InsightsCardView.swift` (lines 150-163)
+- Modify: `Tenra/Views/Insights/InsightDetailView.swift` (lines 143-155)
 
 ---
 
@@ -68,7 +68,7 @@ ZStack(alignment: .leading) {
 ```swift
 //
 //  BudgetProgressBar.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable horizontal budget progress bar with over-budget state.
 //  Extracted from InsightsCardView and InsightDetailView (Phase 26).
@@ -148,14 +148,14 @@ BudgetProgressBar(
 
 **Step 4: Build verify**
 ```bash
-xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5
+xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro' 2>&1 | tail -5
 ```
 
 **Step 5: Commit**
 ```bash
-git add AIFinanceManager/Views/Insights/Components/BudgetProgressBar.swift \
-        AIFinanceManager/Views/Insights/Components/InsightsCardView.swift \
-        AIFinanceManager/Views/Insights/InsightDetailView.swift
+git add Tenra/Views/Insights/Components/BudgetProgressBar.swift \
+        Tenra/Views/Insights/Components/InsightsCardView.swift \
+        Tenra/Views/Insights/InsightDetailView.swift
 git commit -m "refactor(insights): extract BudgetProgressBar component — Phase 26"
 ```
 
@@ -170,9 +170,9 @@ git commit -m "refactor(insights): extract BudgetProgressBar component — Phase
 - `InsightsSummaryDetailView.periodListSection` — строки ForEach + `Divider()` после каждой + `minWidth: 80` у label
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/PeriodBreakdownRow.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightDetailView.swift` (func periodBreakdownList)
-- Modify: `AIFinanceManager/Views/Insights/InsightsSummaryDetailView.swift` (var periodListSection)
+- Create: `Tenra/Views/Insights/Components/PeriodBreakdownRow.swift`
+- Modify: `Tenra/Views/Insights/InsightDetailView.swift` (func periodBreakdownList)
+- Modify: `Tenra/Views/Insights/InsightsSummaryDetailView.swift` (var periodListSection)
 
 ---
 
@@ -181,7 +181,7 @@ git commit -m "refactor(insights): extract BudgetProgressBar component — Phase
 ```swift
 //
 //  PeriodBreakdownRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Single period row showing net flow + income/expenses breakdown.
 //  Extracted from InsightDetailView and InsightsSummaryDetailView (Phase 26).
@@ -323,9 +323,9 @@ private var periodListSection: some View {
 
 **Step 5: Commit**
 ```bash
-git add AIFinanceManager/Views/Insights/Components/PeriodBreakdownRow.swift \
-        AIFinanceManager/Views/Insights/InsightDetailView.swift \
-        AIFinanceManager/Views/Insights/InsightsSummaryDetailView.swift
+git add Tenra/Views/Insights/Components/PeriodBreakdownRow.swift \
+        Tenra/Views/Insights/InsightDetailView.swift \
+        Tenra/Views/Insights/InsightsSummaryDetailView.swift
 git commit -m "refactor(insights): extract PeriodBreakdownRow component — Phase 26"
 ```
 
@@ -340,9 +340,9 @@ git commit -m "refactor(insights): extract PeriodBreakdownRow component — Phas
 - `CategoryDeepDiveView.subcategorySection` lines 143-155
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/AmountWithPercentage.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightDetailView.swift`
-- Modify: `AIFinanceManager/Views/Insights/CategoryDeepDiveView.swift`
+- Create: `Tenra/Views/Insights/Components/AmountWithPercentage.swift`
+- Modify: `Tenra/Views/Insights/InsightDetailView.swift`
+- Modify: `Tenra/Views/Insights/CategoryDeepDiveView.swift`
 
 ---
 
@@ -351,7 +351,7 @@ git commit -m "refactor(insights): extract PeriodBreakdownRow component — Phas
 ```swift
 //
 //  AmountWithPercentage.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Trailing VStack with formatted amount + percentage caption.
 //  Extracted from InsightDetailView and CategoryDeepDiveView (Phase 26).
@@ -429,9 +429,9 @@ AmountWithPercentage(
 
 **Step 5: Commit**
 ```bash
-git add AIFinanceManager/Views/Insights/Components/AmountWithPercentage.swift \
-        AIFinanceManager/Views/Insights/InsightDetailView.swift \
-        AIFinanceManager/Views/Insights/CategoryDeepDiveView.swift
+git add Tenra/Views/Insights/Components/AmountWithPercentage.swift \
+        Tenra/Views/Insights/InsightDetailView.swift \
+        Tenra/Views/Insights/CategoryDeepDiveView.swift
 git commit -m "refactor(insights): extract AmountWithPercentage component — Phase 26"
 ```
 
@@ -446,9 +446,9 @@ git commit -m "refactor(insights): extract AmountWithPercentage component — Ph
 - `InsightsSummaryDetailView.totalItem` × 3 uses (lines 63-84) — identical pattern
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/InsightsTotalsRow.swift`
-- Modify: `AIFinanceManager/Views/Insights/Components/InsightsSummaryHeader.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightsSummaryDetailView.swift`
+- Create: `Tenra/Views/Insights/Components/InsightsTotalsRow.swift`
+- Modify: `Tenra/Views/Insights/Components/InsightsSummaryHeader.swift`
+- Modify: `Tenra/Views/Insights/InsightsSummaryDetailView.swift`
 
 ---
 
@@ -457,7 +457,7 @@ git commit -m "refactor(insights): extract AmountWithPercentage component — Ph
 ```swift
 //
 //  InsightsTotalsRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Three-column income / expenses / net-flow summary row.
 //  Extracted from InsightsSummaryHeader (summaryItem) and
@@ -563,9 +563,9 @@ private var periodTotalsSection: some View {
 
 **Step 5: Commit**
 ```bash
-git add AIFinanceManager/Views/Insights/Components/InsightsTotalsRow.swift \
-        AIFinanceManager/Views/Insights/Components/InsightsSummaryHeader.swift \
-        AIFinanceManager/Views/Insights/InsightsSummaryDetailView.swift
+git add Tenra/Views/Insights/Components/InsightsTotalsRow.swift \
+        Tenra/Views/Insights/Components/InsightsSummaryHeader.swift \
+        Tenra/Views/Insights/InsightsSummaryDetailView.swift
 git commit -m "refactor(insights): extract InsightsTotalsRow component — Phase 26"
 ```
 
@@ -582,9 +582,9 @@ git commit -m "refactor(insights): extract InsightsTotalsRow component — Phase
 - icon + `%+.1f%%` — colored foreground, no background, semibold weight
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/InsightTrendBadge.swift`
-- Modify: `AIFinanceManager/Views/Insights/Components/InsightsCardView.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightDetailView.swift`
+- Create: `Tenra/Views/Insights/Components/InsightTrendBadge.swift`
+- Modify: `Tenra/Views/Insights/Components/InsightsCardView.swift`
+- Modify: `Tenra/Views/Insights/InsightDetailView.swift`
 
 ---
 
@@ -593,7 +593,7 @@ git commit -m "refactor(insights): extract InsightsTotalsRow component — Phase
 ```swift
 //
 //  InsightTrendBadge.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Trend indicator badge for Insights cards and detail headers.
 //  Extracted from InsightsCardView (pill) and InsightDetailView (inline) — Phase 26.
@@ -695,7 +695,7 @@ if let trend = insight.trend {
 
 **Step 4: Check for View.if extension**
 ```bash
-grep -r "func \`if\`" AIFinanceManager/Extensions/
+grep -r "func \`if\`" Tenra/Extensions/
 ```
 If found: remove the private extension from InsightTrendBadge.swift.
 
@@ -703,9 +703,9 @@ If found: remove the private extension from InsightTrendBadge.swift.
 
 **Step 6: Commit**
 ```bash
-git add AIFinanceManager/Views/Insights/Components/InsightTrendBadge.swift \
-        AIFinanceManager/Views/Insights/Components/InsightsCardView.swift \
-        AIFinanceManager/Views/Insights/InsightDetailView.swift
+git add Tenra/Views/Insights/Components/InsightTrendBadge.swift \
+        Tenra/Views/Insights/Components/InsightsCardView.swift \
+        Tenra/Views/Insights/InsightDetailView.swift
 git commit -m "refactor(insights): extract InsightTrendBadge component — Phase 26"
 ```
 
@@ -716,8 +716,8 @@ git commit -m "refactor(insights): extract InsightTrendBadge component — Phase
 **What:** Extract the complete budget detail row (icon + name + `BudgetProgressBar` + spent/budget/daysLeft amounts) from its private `budgetChartSection` in `InsightDetailView`. This row is self-contained enough to be a standalone component and benefits from the `BudgetProgressBar` already extracted in Task 1.
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/BudgetProgressRow.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightDetailView.swift`
+- Create: `Tenra/Views/Insights/Components/BudgetProgressRow.swift`
+- Modify: `Tenra/Views/Insights/InsightDetailView.swift`
 
 ---
 
@@ -726,7 +726,7 @@ git commit -m "refactor(insights): extract InsightTrendBadge component — Phase
 ```swift
 //
 //  BudgetProgressRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Full budget progress row: icon + name + BudgetProgressBar + spent/budget amounts.
 //  Extracted from InsightDetailView.budgetChartSection — Phase 26.
@@ -815,8 +815,8 @@ private func budgetChartSection(_ items: [BudgetInsightItem]) -> some View {
 
 **Step 4: Commit**
 ```bash
-git add AIFinanceManager/Views/Insights/Components/BudgetProgressRow.swift \
-        AIFinanceManager/Views/Insights/InsightDetailView.swift
+git add Tenra/Views/Insights/Components/BudgetProgressRow.swift \
+        Tenra/Views/Insights/InsightDetailView.swift
 git commit -m "refactor(insights): extract BudgetProgressRow component — Phase 26"
 ```
 
@@ -832,10 +832,10 @@ git commit -m "refactor(insights): extract BudgetProgressRow component — Phase
 - `CategoryDeepDiveView.swift`: `trendSection`, `subcategorySection`, `comparisonSection`
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/SectionHeaderView.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightDetailView.swift`
-- Modify: `AIFinanceManager/Views/Insights/InsightsSummaryDetailView.swift`
-- Modify: `AIFinanceManager/Views/Insights/CategoryDeepDiveView.swift`
+- Modify: `Tenra/Views/Components/SectionHeaderView.swift`
+- Modify: `Tenra/Views/Insights/InsightDetailView.swift`
+- Modify: `Tenra/Views/Insights/InsightsSummaryDetailView.swift`
+- Modify: `Tenra/Views/Insights/CategoryDeepDiveView.swift`
 
 ---
 
@@ -898,10 +898,10 @@ SectionHeaderView(String(localized: "insights.spendingTrend"), style: .insights)
 
 **Step 6: Commit**
 ```bash
-git add AIFinanceManager/Views/Components/SectionHeaderView.swift \
-        AIFinanceManager/Views/Insights/InsightDetailView.swift \
-        AIFinanceManager/Views/Insights/InsightsSummaryDetailView.swift \
-        AIFinanceManager/Views/Insights/CategoryDeepDiveView.swift
+git add Tenra/Views/Components/SectionHeaderView.swift \
+        Tenra/Views/Insights/InsightDetailView.swift \
+        Tenra/Views/Insights/InsightsSummaryDetailView.swift \
+        Tenra/Views/Insights/CategoryDeepDiveView.swift
 git commit -m "refactor(insights): replace inline section titles with SectionHeaderView(.insights) — Phase 26"
 ```
 
@@ -912,8 +912,8 @@ git commit -m "refactor(insights): replace inline section titles with SectionHea
 **What:** Extract `CategoryDeepDiveView.comparisonSection` into a standalone component. Single location now, but the MoM comparison pattern is core to Insights and will likely appear in Phase 27+ analytics.
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/PeriodComparisonCard.swift`
-- Modify: `AIFinanceManager/Views/Insights/CategoryDeepDiveView.swift`
+- Create: `Tenra/Views/Insights/Components/PeriodComparisonCard.swift`
+- Modify: `Tenra/Views/Insights/CategoryDeepDiveView.swift`
 
 ---
 
@@ -922,7 +922,7 @@ git commit -m "refactor(insights): replace inline section titles with SectionHea
 ```swift
 //
 //  PeriodComparisonCard.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Period-over-period comparison card (current vs previous).
 //  Extracted from CategoryDeepDiveView.comparisonSection — Phase 26.
@@ -1066,8 +1066,8 @@ private var comparisonSection: some View {
 
 **Step 4: Commit**
 ```bash
-git add AIFinanceManager/Views/Insights/Components/PeriodComparisonCard.swift \
-        AIFinanceManager/Views/Insights/CategoryDeepDiveView.swift
+git add Tenra/Views/Insights/Components/PeriodComparisonCard.swift \
+        Tenra/Views/Insights/CategoryDeepDiveView.swift
 git commit -m "refactor(insights): extract PeriodComparisonCard component — Phase 26"
 ```
 
@@ -1078,8 +1078,8 @@ git commit -m "refactor(insights): extract PeriodComparisonCard component — Ph
 **What:** Extract `InsightsSummaryHeader.healthScoreBadge(_:)` private function to a standalone component. Currently single location, but `FinancialHealthScore` may surface in Settings / AccountDetail in future phases.
 
 **Files:**
-- Create: `AIFinanceManager/Views/Insights/Components/HealthScoreBadge.swift`
-- Modify: `AIFinanceManager/Views/Insights/Components/InsightsSummaryHeader.swift`
+- Create: `Tenra/Views/Insights/Components/HealthScoreBadge.swift`
+- Modify: `Tenra/Views/Insights/Components/InsightsSummaryHeader.swift`
 
 ---
 
@@ -1088,7 +1088,7 @@ git commit -m "refactor(insights): extract PeriodComparisonCard component — Ph
 ```swift
 //
 //  HealthScoreBadge.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Financial health score row: heart icon + score + grade capsule.
 //  Extracted from InsightsSummaryHeader — Phase 26.
@@ -1144,8 +1144,8 @@ Delete the private `healthScoreBadge(_:)` function.
 
 **Step 4: Commit**
 ```bash
-git add AIFinanceManager/Views/Insights/Components/HealthScoreBadge.swift \
-        AIFinanceManager/Views/Insights/Components/InsightsSummaryHeader.swift
+git add Tenra/Views/Insights/Components/HealthScoreBadge.swift \
+        Tenra/Views/Insights/Components/InsightsSummaryHeader.swift
 git commit -m "refactor(insights): extract HealthScoreBadge component — Phase 26"
 ```
 
@@ -1156,7 +1156,7 @@ git commit -m "refactor(insights): extract HealthScoreBadge component — Phase 
 **Build:**
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|warning:|SUCCEEDED|FAILED"
 ```
@@ -1165,7 +1165,7 @@ xcodebuild build \
 
 **New files created (9):**
 ```
-AIFinanceManager/Views/Insights/Components/
+Tenra/Views/Insights/Components/
 ├── BudgetProgressBar.swift       ← Task 1
 ├── PeriodBreakdownRow.swift      ← Task 2
 ├── AmountWithPercentage.swift    ← Task 3
@@ -1174,7 +1174,7 @@ AIFinanceManager/Views/Insights/Components/
 ├── BudgetProgressRow.swift       ← Task 6
 ├── PeriodComparisonCard.swift    ← Task 8
 └── HealthScoreBadge.swift        ← Task 9
-AIFinanceManager/Views/Components/
+Tenra/Views/Components/
 └── SectionHeaderView.swift       ← Task 7 (modified, not new)
 ```
 

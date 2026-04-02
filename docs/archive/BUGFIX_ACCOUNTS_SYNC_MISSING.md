@@ -55,7 +55,7 @@ But during runtime (after subscription creation):
 
 ## The Fix
 
-**File**: `AIFinanceManager/ViewModels/AppCoordinator.swift`
+**File**: `Tenra/ViewModels/AppCoordinator.swift`
 
 Added observer for `transactionStore.$accounts` in `setupTransactionStoreObserver()`:
 

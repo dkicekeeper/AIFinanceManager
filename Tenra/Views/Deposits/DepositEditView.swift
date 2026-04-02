@@ -1,6 +1,6 @@
 //
 //  DepositEditView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  View for creating and editing deposits
 //

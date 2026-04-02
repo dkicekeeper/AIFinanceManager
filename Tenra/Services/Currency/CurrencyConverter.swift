@@ -1,6 +1,6 @@
 //
 //  CurrencyConverter.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  PURPOSE: Live / historical exchange-rate fetching from the National Bank of Kazakhstan.
 //

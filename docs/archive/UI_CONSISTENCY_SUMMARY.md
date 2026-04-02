@@ -2,7 +2,7 @@
 
 ## 📊 Overview
 
-**Project:** AIFinanceManager
+**Project:** Tenra
 **Date:** January 2026
 **Consistency Score:** 62% → **90%** (+28%)
 **Status:** ✅ COMPLETE

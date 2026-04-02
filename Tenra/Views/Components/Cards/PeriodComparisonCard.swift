@@ -1,6 +1,6 @@
 //
 //  PeriodComparisonCard.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Period-over-period comparison card (current vs previous).
 //  Extracted from InsightDeepDiveView.comparisonSection — Phase 26.

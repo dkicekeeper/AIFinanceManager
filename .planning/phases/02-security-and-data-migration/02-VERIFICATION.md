@@ -41,11 +41,11 @@ human_verification:
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `AIFinanceManager/CoreData/CoreDataStack.swift` | Persistent store description with `NSPersistentStoreFileProtectionKey` | VERIFIED | 2 occurrences: line 119 (container setup) + line 269 (resetAllData) |
-| `AIFinanceManager/Utils/AmountFormatter.swift` | `static func validate(_:)` checking upper bound 999,999,999.99 | VERIFIED | Line 114; substantive implementation, not a stub |
-| `AIFinanceManager/Views/Transactions/AddTransactionCoordinator.swift` | Upper-bound guard calling `AmountFormatter.validate()` with `.amountExceedsMaximum` error | VERIFIED | Line 262; wired to `ValidationError` enum |
-| `AIFinanceManager/Protocols/TransactionFormServiceProtocol.swift` | `ValidationError.amountExceedsMaximum` case with user-visible string | VERIFIED | Lines 29 and 40-44; localised string present |
-| `AIFinanceManager/CoreData/CoreDataStack.swift` (migration flags) | `NSMigratePersistentStoresAutomaticallyOption` + `NSInferMappingModelAutomaticallyOption` both `true` | VERIFIED | Lines 123-124; both flags confirmed; broken xcmappingmodel removed; `find . -name "*.xcmappingmodel"` returns nothing |
+| `Tenra/CoreData/CoreDataStack.swift` | Persistent store description with `NSPersistentStoreFileProtectionKey` | VERIFIED | 2 occurrences: line 119 (container setup) + line 269 (resetAllData) |
+| `Tenra/Utils/AmountFormatter.swift` | `static func validate(_:)` checking upper bound 999,999,999.99 | VERIFIED | Line 114; substantive implementation, not a stub |
+| `Tenra/Views/Transactions/AddTransactionCoordinator.swift` | Upper-bound guard calling `AmountFormatter.validate()` with `.amountExceedsMaximum` error | VERIFIED | Line 262; wired to `ValidationError` enum |
+| `Tenra/Protocols/TransactionFormServiceProtocol.swift` | `ValidationError.amountExceedsMaximum` case with user-visible string | VERIFIED | Lines 29 and 40-44; localised string present |
+| `Tenra/CoreData/CoreDataStack.swift` (migration flags) | `NSMigratePersistentStoresAutomaticallyOption` + `NSInferMappingModelAutomaticallyOption` both `true` | VERIFIED | Lines 123-124; both flags confirmed; broken xcmappingmodel removed; `find . -name "*.xcmappingmodel"` returns nothing |
 
 ### Key Link Verification
 
@@ -79,7 +79,7 @@ No blocker or warning anti-patterns remain. The broken xcmappingmodel that cause
 
 ### Re-verification Summary
 
-**Previous gap (DATA-01):** The hand-authored `AIFinanceManager_v2_to_v3.xcmappingmodel` had two defects — wrong internal filename (`contents` instead of `xcmapping.xml`) and wrong placement inside the `.xcdatamodeld` bundle — meaning `mapc` never ran and no `.cdm` file appeared in the built app bundle.
+**Previous gap (DATA-01):** The hand-authored `Tenra_v2_to_v3.xcmappingmodel` had two defects — wrong internal filename (`contents` instead of `xcmapping.xml`) and wrong placement inside the `.xcdatamodeld` bundle — meaning `mapc` never ran and no `.cdm` file appeared in the built app bundle.
 
 **Fix applied:** The broken xcmappingmodel was removed entirely. `CoreDataStack.swift` already had both `NSMigratePersistentStoresAutomaticallyOption` and `NSInferMappingModelAutomaticallyOption` set to `true` at lines 123-124. The v2-to-v3 schema change (dateSectionKey attribute promoted from transient to persistent; deprecated aggregate entities left unchanged between versions) is fully lightweight-migration-compatible. CoreData infers the mapping automatically, which is more reliable and removes the risk of a malformed explicit model causing migration to fail at runtime.
 
@@ -91,7 +91,7 @@ No blocker or warning anti-patterns remain. The broken xcmappingmodel that cause
 - `grep "validate\b" AmountFormatter.swift` — line 114: function present (SEC-02 regression check passed)
 - `grep amountExceedsMaximum AddTransactionCoordinator.swift` — line 262: wired (SEC-02 regression check passed)
 - `find . -name "*.xcmappingmodel"` — no output; broken file is gone
-- `ls AIFinanceManager/CoreData/` — contains `AIFinanceManager.xcdatamodeld`, `CoreDataIndexes.swift`, `CoreDataStack.swift`, `Entities/`, `TransactionEntity+SectionKey.swift`; no xcmappingmodel present
+- `ls Tenra/CoreData/` — contains `Tenra.xcdatamodeld`, `CoreDataIndexes.swift`, `CoreDataStack.swift`, `Entities/`, `TransactionEntity+SectionKey.swift`; no xcmappingmodel present
 - Build result: `** BUILD SUCCEEDED **`
 
 All 5/5 must-haves verified. Phase goal achieved.

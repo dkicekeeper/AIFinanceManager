@@ -10,7 +10,7 @@
 
 ### 1. CLAUDE.md (NEW)
 **Статус:** ✅ Created
-**Расположение:** `/AIFinanceManager/CLAUDE.md`
+**Расположение:** `/Tenra/CLAUDE.md`
 
 **Содержание:**
 - Project overview and tech stack

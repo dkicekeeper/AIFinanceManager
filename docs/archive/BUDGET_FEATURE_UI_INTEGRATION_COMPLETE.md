@@ -166,7 +166,7 @@ budgetProgress: categoriesViewModel.budgetProgress(
 
 ### Build Command:
 ```bash
-xcodebuild -scheme AIFinanceManager \
+xcodebuild -scheme Tenra \
   -sdk iphonesimulator \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
   build
@@ -402,12 +402,12 @@ xcodebuild -scheme AIFinanceManager \
 2. `BUDGET_FEATURE_UI_INTEGRATION_COMPLETE.md` - This file (integration report)
 
 ### Related Files:
-- `AIFinanceManager/Models/CustomCategory.swift` - Budget data model
-- `AIFinanceManager/Models/BudgetProgress.swift` - Progress calculation
-- `AIFinanceManager/ViewModels/CategoriesViewModel.swift` - Budget methods
-- `AIFinanceManager/Views/CategoriesManagementView.swift` - Budget UI
-- `AIFinanceManager/Views/SetBudgetSheet.swift` - Budget configuration
-- `AIFinanceManager/Views/Components/CategoryChipWithBudget.swift` - Progress chip
+- `Tenra/Models/CustomCategory.swift` - Budget data model
+- `Tenra/Models/BudgetProgress.swift` - Progress calculation
+- `Tenra/ViewModels/CategoriesViewModel.swift` - Budget methods
+- `Tenra/Views/CategoriesManagementView.swift` - Budget UI
+- `Tenra/Views/SetBudgetSheet.swift` - Budget configuration
+- `Tenra/Views/Components/CategoryChipWithBudget.swift` - Progress chip
 
 ---
 

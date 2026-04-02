@@ -31,7 +31,7 @@
 
 **Действия:**
 ```bash
-rm AIFinanceManager/Views/Shared/Components/FrequencyPickerView.swift
+rm Tenra/Views/Shared/Components/FrequencyPickerView.swift
 ```
 
 **Обновить комментарий в SubscriptionEditView.swift:**
@@ -94,7 +94,7 @@ extension MenuPickerRow where T == ReminderOption {
 ```swift
 //
 //  ReminderOption.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reminder selection enum for subscriptions
 //
@@ -183,7 +183,7 @@ subscription.reminderOffsets = reminder.asOffsets
 #### 2.4. Удалить ReminderPickerView.swift
 
 ```bash
-rm AIFinanceManager/Views/Shared/Components/ReminderPickerView.swift
+rm Tenra/Views/Shared/Components/ReminderPickerView.swift
 ```
 
 **Время:** 20 минут
@@ -231,7 +231,7 @@ MenuPickerRow(
 #### 3.2. Удалить BaseCurrencyPickerRow.swift
 
 ```bash
-rm AIFinanceManager/Views/Settings/Components/BaseCurrencyPickerRow.swift
+rm Tenra/Views/Settings/Components/BaseCurrencyPickerRow.swift
 ```
 
 **Время:** 15 минут

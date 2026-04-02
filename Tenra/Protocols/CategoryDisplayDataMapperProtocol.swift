@@ -1,6 +1,6 @@
 //
 //  CategoryDisplayDataMapperProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Protocol for mapping categories to display data
 //

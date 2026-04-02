@@ -1,6 +1,6 @@
 //
 //  TabViews.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  NavigationStack wrappers for each tab in MainTabView.
 //  Each wrapper owns its NavigationStack so navigation state

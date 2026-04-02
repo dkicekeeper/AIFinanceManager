@@ -16,9 +16,9 @@ Layer 3: AccountCard sheet → navigation push + Liquid Glass glassEffectID morp
 ## Task 1 — Hashable conformance for 3 models
 
 **Files:**
-- Modify: `AIFinanceManager/Models/InsightModels.swift` (line 14)
-- Modify: `AIFinanceManager/Models/Transaction.swift` (line 238)
-- Modify: `AIFinanceManager/Models/RecurringTransaction.swift` (line 21)
+- Modify: `Tenra/Models/InsightModels.swift` (line 14)
+- Modify: `Tenra/Models/Transaction.swift` (line 238)
+- Modify: `Tenra/Models/RecurringTransaction.swift` (line 21)
 
 **Why:** `NavigationLink(value:)` requires the value type to conform to `Hashable`.
 
@@ -60,7 +60,7 @@ struct RecurringSeries: Identifiable, Codable, Equatable, Hashable {
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -68,9 +68,9 @@ Expected: `Build succeeded`. If Hashable synthesis fails on a nested type, add `
 
 **Step 5: Commit**
 ```bash
-git add AIFinanceManager/Models/InsightModels.swift \
-        AIFinanceManager/Models/Transaction.swift \
-        AIFinanceManager/Models/RecurringTransaction.swift
+git add Tenra/Models/InsightModels.swift \
+        Tenra/Models/Transaction.swift \
+        Tenra/Models/RecurringTransaction.swift
 git commit -m "feat(models): add Hashable conformance to Insight, Account, RecurringSeries"
 ```
 
@@ -79,8 +79,8 @@ git commit -m "feat(models): add Hashable conformance to Insight, Account, Recur
 ## Task 2 — InsightsView: @Namespace + navigationDestination + zoom transitions
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/InsightsView.swift`
-- Modify: `AIFinanceManager/Views/Insights/Components/InsightsSectionView.swift`
+- Modify: `Tenra/Views/Insights/InsightsView.swift`
+- Modify: `Tenra/Views/Insights/Components/InsightsSectionView.swift`
 
 **Goal:** Convert all `NavigationLink(destination: InsightDetailView(...))` calls to value-based navigation with a zoom transition. There are TWO sites: inside `InsightsSectionView`'s ForEach, and inside `InsightsView.insightSections`'s filtered ForEach.
 
@@ -237,7 +237,7 @@ NavigationLink(value: insight) {
 ### Step 5: Build
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -245,8 +245,8 @@ Expected: `Build succeeded`.
 
 ### Step 6: Commit
 ```bash
-git add AIFinanceManager/Views/Insights/InsightsView.swift \
-        AIFinanceManager/Views/Insights/Components/InsightsSectionView.swift
+git add Tenra/Views/Insights/InsightsView.swift \
+        Tenra/Views/Insights/Components/InsightsSectionView.swift
 git commit -m "feat(insights): value-based NavigationLink + zoom transition from insight cards"
 ```
 
@@ -255,7 +255,7 @@ git commit -m "feat(insights): value-based NavigationLink + zoom transition from
 ## Task 3 — SubscriptionsListView: @Namespace + value-based nav + zoom
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Subscriptions/SubscriptionsListView.swift`
+- Modify: `Tenra/Views/Subscriptions/SubscriptionsListView.swift`
 
 **Goal:** Convert the `NavigationLink(destination:)` inside the subscriptions ForEach to value-based with a zoom transition.
 
@@ -316,13 +316,13 @@ NavigationLink(value: subscription) {
 ### Step 3: Build and commit
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
 
 ```bash
-git add AIFinanceManager/Views/Subscriptions/SubscriptionsListView.swift
+git add Tenra/Views/Subscriptions/SubscriptionsListView.swift
 git commit -m "feat(subscriptions): value-based NavigationLink + zoom transition from subscription cards"
 ```
 
@@ -331,7 +331,7 @@ git commit -m "feat(subscriptions): value-based NavigationLink + zoom transition
 ## Task 4 — ContentView: NavigationStack(path:) + HomeDestination
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Home/ContentView.swift`
+- Modify: `Tenra/Views/Home/ContentView.swift`
 
 **Goal:** Replace `NavigationStack` with `NavigationStack(path:)`, convert the two `NavigationLink(destination:)` to value-based, and add `navigationDestination(for: HomeDestination.self)`.
 
@@ -423,13 +423,13 @@ private var subscriptionsNavigationLink: some View {
 ### Step 6: Build and commit
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
 
 ```bash
-git add AIFinanceManager/Views/Home/ContentView.swift
+git add Tenra/Views/Home/ContentView.swift
 git commit -m "feat(home): NavigationStack(path:) + HomeDestination enum for programmatic navigation"
 ```
 
@@ -440,10 +440,10 @@ git commit -m "feat(home): NavigationStack(path:) + HomeDestination enum for pro
 This is the largest change. Four files modified.
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Accounts/Components/AccountCard.swift`
-- Modify: `AIFinanceManager/Views/Accounts/Components/AccountsCarousel.swift`
-- Modify: `AIFinanceManager/Views/Home/ContentView.swift`
-- Modify: `AIFinanceManager/Views/Accounts/AccountActionView.swift`
+- Modify: `Tenra/Views/Accounts/Components/AccountCard.swift`
+- Modify: `Tenra/Views/Accounts/Components/AccountsCarousel.swift`
+- Modify: `Tenra/Views/Home/ContentView.swift`
+- Modify: `Tenra/Views/Accounts/AccountActionView.swift`
 
 **Goal:**
 - Remove `.sheet(item: $selectedAccount)` from ContentView
@@ -732,17 +732,17 @@ This invisible anchor creates the glass morphing connection between the source c
 ### Step 5: Build
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
 
 ### Step 6: Commit
 ```bash
-git add AIFinanceManager/Views/Accounts/Components/AccountCard.swift \
-        AIFinanceManager/Views/Accounts/Components/AccountsCarousel.swift \
-        AIFinanceManager/Views/Home/ContentView.swift \
-        AIFinanceManager/Views/Accounts/AccountActionView.swift
+git add Tenra/Views/Accounts/Components/AccountCard.swift \
+        Tenra/Views/Accounts/Components/AccountsCarousel.swift \
+        Tenra/Views/Home/ContentView.swift \
+        Tenra/Views/Accounts/AccountActionView.swift
 git commit -m "feat(accounts): sheet → navigation + zoom transition + glassEffectID morphing"
 ```
 
@@ -751,7 +751,7 @@ git commit -m "feat(accounts): sheet → navigation + zoom transition + glassEff
 ## Task 6 — CSVEntityMappingView: value-based NavigationLink
 
 **Files:**
-- Modify: `AIFinanceManager/Views/CSV/CSVEntityMappingView.swift`
+- Modify: `Tenra/Views/CSV/CSVEntityMappingView.swift`
 
 **Goal:** Replace 3 inline `NavigationLink(destination:)` with a typed enum + `navigationDestination(for:)`.
 
@@ -863,13 +863,13 @@ Note: The Bindings for `accountMappings` and `categoryMappings` are captured in 
 ### Step 4: Build and commit
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
 
 ```bash
-git add AIFinanceManager/Views/CSV/CSVEntityMappingView.swift
+git add Tenra/Views/CSV/CSVEntityMappingView.swift
 git commit -m "feat(csv): value-based NavigationLink with CSVMappingDestination enum"
 ```
 
@@ -880,7 +880,7 @@ git commit -m "feat(csv): value-based NavigationLink with CSVMappingDestination 
 **Step 1: Full clean build**
 ```bash
 xcodebuild clean build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "error:|warning:|Build succeeded"
 ```

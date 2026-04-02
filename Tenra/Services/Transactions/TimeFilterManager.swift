@@ -1,6 +1,6 @@
 //
 //  TimeFilterManager.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //
@@ -13,7 +13,7 @@ import os
 @Observable
 @MainActor
 class TimeFilterManager {
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "TimeFilterManager")
+    private static let logger = Logger(subsystem: "Tenra", category: "TimeFilterManager")
 
     var currentFilter: TimeFilter {
         didSet {

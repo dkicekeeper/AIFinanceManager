@@ -1,7 +1,7 @@
 # Отчет: Анализ миграции UserDefaults → Core Data
 
 **Дата**: 23 января 2026
-**Проект**: AIFinanceManager
+**Проект**: Tenra
 **Задача**: Полный анализ использования UserDefaults и статус миграции на Core Data
 
 ---
@@ -78,7 +78,7 @@
 ### Используемый репозиторий
 
 ```swift
-// AIFinanceManager/ViewModels/AppCoordinator.swift:37
+// Tenra/ViewModels/AppCoordinator.swift:37
 init(repository: DataRepositoryProtocol = CoreDataRepository()) {
     self.repository = repository
     // Все ViewModels используют CoreDataRepository
@@ -114,7 +114,7 @@ init(repository: DataRepositoryProtocol = CoreDataRepository()) {
 ### Процесс миграции
 
 ```swift
-// AIFinanceManager/Services/DataMigrationService.swift
+// Tenra/Services/DataMigrationService.swift
 
 class DataMigrationService {
     private let migrationCompletedKey = "coreDataMigrationCompleted_v5"
@@ -206,7 +206,7 @@ protocol DataRepositoryProtocol {
 
 ### CoreDataRepository
 
-**Файл**: `AIFinanceManager/Services/CoreDataRepository.swift`
+**Файл**: `Tenra/Services/CoreDataRepository.swift`
 
 **Особенности**:
 - ✅ Использует `CoreDataStack.shared`
@@ -222,7 +222,7 @@ protocol DataRepositoryProtocol {
 
 ### 1. TransactionEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/TransactionEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/TransactionEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -249,7 +249,7 @@ protocol DataRepositoryProtocol {
 
 ### 2. AccountEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/AccountEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/AccountEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -278,7 +278,7 @@ protocol DataRepositoryProtocol {
 
 ### 3. RecurringSeriesEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/RecurringSeriesEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/RecurringSeriesEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -309,7 +309,7 @@ protocol DataRepositoryProtocol {
 
 ### 4. RecurringOccurrenceEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/RecurringOccurrenceEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/RecurringOccurrenceEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -328,7 +328,7 @@ protocol DataRepositoryProtocol {
 
 ### 5. CustomCategoryEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/CustomCategoryEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/CustomCategoryEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -347,7 +347,7 @@ protocol DataRepositoryProtocol {
 
 ### 6. CategoryRuleEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/CategoryRuleEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/CategoryRuleEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -361,7 +361,7 @@ protocol DataRepositoryProtocol {
 
 ### 7. SubcategoryEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/SubcategoryEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/SubcategoryEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -374,7 +374,7 @@ protocol DataRepositoryProtocol {
 
 ### 8. CategorySubcategoryLinkEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/CategorySubcategoryLinkEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/CategorySubcategoryLinkEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -387,7 +387,7 @@ protocol DataRepositoryProtocol {
 
 ### 9. TransactionSubcategoryLinkEntity
 
-**Файл**: `AIFinanceManager/CoreData/Entities/TransactionSubcategoryLinkEntity+CoreDataClass.swift`
+**Файл**: `Tenra/CoreData/Entities/TransactionSubcategoryLinkEntity+CoreDataClass.swift`
 
 **Свойства**:
 ```swift
@@ -845,7 +845,7 @@ func resetAllData() throws {
 
 ### 1. UserDefaultsRepository (Legacy)
 
-**Файл**: `AIFinanceManager/Services/UserDefaultsRepository.swift`
+**Файл**: `Tenra/Services/UserDefaultsRepository.swift`
 
 **Назначение**: Старая реализация хранилища, используется как:
 - Fallback при ошибках Core Data
@@ -868,7 +868,7 @@ private let storageKeyTransactionSubcategoryLinks = "transactionSubcategoryLinks
 
 ### 2. AppSettings
 
-**Файл**: `AIFinanceManager/Models/AppSettings.swift:42-56`
+**Файл**: `Tenra/Models/AppSettings.swift:42-56`
 
 ```swift
 class AppSettings: ObservableObject, Codable {
@@ -901,7 +901,7 @@ class AppSettings: ObservableObject, Codable {
 
 ### 3. TimeFilterManager
 
-**Файл**: `AIFinanceManager/Managers/TimeFilterManager.swift:20-49`
+**Файл**: `Tenra/Managers/TimeFilterManager.swift:20-49`
 
 ```swift
 @MainActor
@@ -934,7 +934,7 @@ class TimeFilterManager: ObservableObject {
 
 ### 4. DataMigrationService
 
-**Файл**: `AIFinanceManager/Services/DataMigrationService.swift:24-31`
+**Файл**: `Tenra/Services/DataMigrationService.swift:24-31`
 
 ```swift
 private let migrationCompletedKey = "coreDataMigrationCompleted_v5"
@@ -1045,7 +1045,7 @@ repository.saveCategories(customCategories)
 
 #### 4. Добавить индексы в Core Data
 
-**Файл**: `AIFinanceManager.xcdatamodeld`
+**Файл**: `Tenra.xcdatamodeld`
 
 **Рекомендации**:
 ```swift
@@ -1076,7 +1076,7 @@ func batchUpdate(_ batchUpdate: NSBatchUpdateRequest)
 
 Если нужна синхронизация между устройствами:
 ```swift
-let container = NSPersistentCloudKitContainer(name: "AIFinanceManager")
+let container = NSPersistentCloudKitContainer(name: "Tenra")
 ```
 
 ---

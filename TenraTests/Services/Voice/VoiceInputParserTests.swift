@@ -1,6 +1,6 @@
 //
 //  VoiceInputParserTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Created on 2026-01-18
 //
@@ -13,7 +13,7 @@
 #if false
 
 import XCTest
-@testable import AIFinanceManager
+@testable import Tenra
 
 final class VoiceInputParserTests: XCTestCase {
     var parser: VoiceInputParser!

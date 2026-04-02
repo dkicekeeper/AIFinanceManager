@@ -1,6 +1,6 @@
 //
-//  AIFinanceManagerApp.swift
-//  AIFinanceManager
+//  TenraApp.swift
+//  Tenra
 //
 //  Created by Daulet Kydrali on 06.01.2026.
 //
@@ -11,7 +11,7 @@
 import SwiftUI
 
 @main
-struct AIFinanceManagerApp: App {
+struct TenraApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var timeFilterManager = TimeFilterManager()
     @State private var coordinator: AppCoordinator? = nil

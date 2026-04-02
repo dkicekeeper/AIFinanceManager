@@ -26,8 +26,8 @@ Followed by fallback to O(N) scan of **15,646 transactions**.
 **Fix:** Replace the compound OR predicate with a single range predicate using year/month boundary comparisons. This reduces the predicate to 7 nodes regardless of date range.
 
 **Files:**
-- `AIFinanceManager/Services/Categories/CategoryAggregateService.swift` — `fetchRange()` lines 169–237
-- `AIFinanceManager/Services/Balance/MonthlyAggregateService.swift` — `fetchFor()` lines 176–215
+- `Tenra/Services/Categories/CategoryAggregateService.swift` — `fetchRange()` lines 169–237
+- `Tenra/Services/Balance/MonthlyAggregateService.swift` — `fetchFor()` lines 176–215
 
 ---
 
@@ -42,15 +42,15 @@ Followed by fallback to O(N) scan of **15,646 transactions**.
 - **Part B:** Mark `generateAllInsights(granularity:)` as `nonisolated` and pre-fetch CoreData data on `@MainActor` before the loop. The granularity computations themselves are pure array operations that do not need the main actor.
 
 **Files:**
-- `AIFinanceManager/Services/Insights/InsightsService.swift`
-- `AIFinanceManager/ViewModels/InsightsViewModel.swift`
+- `Tenra/Services/Insights/InsightsService.swift`
+- `Tenra/ViewModels/InsightsViewModel.swift`
 
 ---
 
 ## Task 1: Fix CategoryAggregateService.fetchRange() — range predicate
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Categories/CategoryAggregateService.swift`
+- Modify: `Tenra/Services/Categories/CategoryAggregateService.swift`
 
 **What to change:** Replace lines 173–205 (the `months` enumeration + OR predicate construction) with a range predicate. Keep the in-memory aggregation by category unchanged.
 
@@ -144,7 +144,7 @@ Build and run. The SQLite error should be gone. The log `⚡️ [Insights] Categ
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Categories/CategoryAggregateService.swift
+git add Tenra/Services/Categories/CategoryAggregateService.swift
 git commit -m "fix(insights): replace OR-per-month predicate with range predicate in CategoryAggregateService
 
 Fixes SQLite 'Expression tree too large' crash for date ranges > ~80 months.
@@ -158,7 +158,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ## Task 2: Fix MonthlyAggregateService.fetchFor() — same range predicate fix
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Balance/MonthlyAggregateService.swift`
+- Modify: `Tenra/Services/Balance/MonthlyAggregateService.swift`
 
 **What to change:** `fetchFor(yearMonths:currency:)` has the identical OR-per-month bug. Additionally, `fetchRange(from:to:currency:)` in this service builds a `yearMonths` array before calling `fetchFor` — this intermediate step is no longer needed.
 
@@ -249,7 +249,7 @@ Build and run. No more SQLite errors for `generateIncomeSeasonality` (5-year win
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Balance/MonthlyAggregateService.swift
+git add Tenra/Services/Balance/MonthlyAggregateService.swift
 git commit -m "fix(insights): replace OR-per-month predicate with range predicate in MonthlyAggregateService
 
 Same fix as CategoryAggregateService. Eliminates 'Expression tree too large'
@@ -263,8 +263,8 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ## Task 3: Hoist firstDate computation — eliminate 5× O(N) scan
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Insights/InsightsService.swift`
-- Modify: `AIFinanceManager/ViewModels/InsightsViewModel.swift`
+- Modify: `Tenra/Services/Insights/InsightsService.swift`
+- Modify: `Tenra/ViewModels/InsightsViewModel.swift`
 
 **Problem:** `generateAllInsights(granularity:)` lines 1172–1174 compute `firstDate` by scanning and parsing dates for ALL transactions on every granularity call:
 
@@ -335,8 +335,8 @@ Build. The only behavior change is 5× → 1× date scan. Insights output should
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Insights/InsightsService.swift \
-        AIFinanceManager/ViewModels/InsightsViewModel.swift
+git add Tenra/Services/Insights/InsightsService.swift \
+        Tenra/ViewModels/InsightsViewModel.swift
 git commit -m "perf(insights): hoist firstDate computation out of per-granularity loop
 
 Was: 5 × O(N) date-parse scans (one per granularity)
@@ -350,8 +350,8 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ## Task 4: Move generateAllInsights off @MainActor — eliminate main thread blocking
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Insights/InsightsService.swift`
-- Modify: `AIFinanceManager/ViewModels/InsightsViewModel.swift`
+- Modify: `Tenra/Services/Insights/InsightsService.swift`
+- Modify: `Tenra/ViewModels/InsightsViewModel.swift`
 
 **Problem:** `InsightsService` is `@MainActor`. Calling `await service.generateAllInsights(granularity:)` from `Task.detached` hops to the main actor and runs the entire computation (array filtering, statistics, insight building) synchronously on the main thread. With 5 granularities this blocks the main thread for 500ms+.
 
@@ -516,8 +516,8 @@ Build and run. The log should show all 5 granularities computing without main ac
 **Step 8: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Insights/InsightsService.swift \
-        AIFinanceManager/ViewModels/InsightsViewModel.swift
+git add Tenra/Services/Insights/InsightsService.swift \
+        Tenra/ViewModels/InsightsViewModel.swift
 git commit -m "perf(insights): move generateAllInsights computation off @MainActor
 
 Pre-fetch all CoreData aggregates in one pass on @MainActor before
@@ -534,7 +534,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 > **Prerequisite:** Task 4 must be complete (generateAllInsights must be nonisolated).
 
 **Files:**
-- Modify: `AIFinanceManager/ViewModels/InsightsViewModel.swift`
+- Modify: `Tenra/ViewModels/InsightsViewModel.swift`
 
 **What to change:** Replace the sequential `for gran in InsightGranularity.allCases` loop with `withTaskGroup` to compute all 5 granularities concurrently.
 
@@ -587,7 +587,7 @@ await withTaskGroup(of: GranResult?.self) { group in
 **Commit:**
 
 ```bash
-git add AIFinanceManager/ViewModels/InsightsViewModel.swift
+git add Tenra/ViewModels/InsightsViewModel.swift
 git commit -m "perf(insights): parallelize 5 granularity computations with withTaskGroup
 
 Was: sequential for-loop (each granularity waits for previous to finish)
@@ -625,7 +625,7 @@ After each task, verify in the iOS Simulator:
 Build command:
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E '(error:|warning:|BUILD)'
 ```

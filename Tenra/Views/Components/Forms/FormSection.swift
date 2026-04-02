@@ -1,6 +1,6 @@
 //
 //  FormSection.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable wrapper for form sections with header/footer support
 //  Reduces boilerplate in edit views

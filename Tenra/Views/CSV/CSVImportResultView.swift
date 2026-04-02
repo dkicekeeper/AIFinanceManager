@@ -1,6 +1,6 @@
 //
 //  CSVImportResultView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //  Refactored: 2026-02-03 (Phase 4 - ImportStatistics + Props + Callbacks)

@@ -35,7 +35,7 @@
 
 ### 2. CoreDataRepository - RecurringOccurrences ✅
 
-**Файл**: `AIFinanceManager/Services/CoreDataRepository.swift`
+**Файл**: `Tenra/Services/CoreDataRepository.swift`
 
 **Реализованные методы**:
 
@@ -61,7 +61,7 @@ func saveRecurringOccurrences(_ occurrences: [RecurringOccurrence])
 
 ### 3. DataMigrationService - миграция RecurringOccurrences ✅
 
-**Файл**: `AIFinanceManager/Services/DataMigrationService.swift`
+**Файл**: `Tenra/Services/DataMigrationService.swift`
 
 **Изменения**:
 
@@ -195,7 +195,7 @@ func removeFromOccurrences(_ values: NSSet)
 
 **ВАЖНО**: Необходимо добавить RecurringOccurrenceEntity в Core Data модель через Xcode:
 
-1. Открыть `AIFinanceManager.xcdatamodeld` в Xcode
+1. Открыть `Tenra.xcdatamodeld` в Xcode
 2. Добавить новую Entity "RecurringOccurrenceEntity"
 3. Добавить attributes:
    - `id` (String, optional)
@@ -329,8 +329,8 @@ UserDefaults.standard.removeObject(forKey: "coreDataMigrationCompleted_v5")
 - [CORE_DATA_FULL_MIGRATION_PLAN.md](./CORE_DATA_FULL_MIGRATION_PLAN.md) - Общий план миграции
 - [CORE_DATA_PHASE2_COMPLETE.md](./CORE_DATA_PHASE2_COMPLETE.md) - Фаза 2
 - [CORE_DATA_MIGRATION_COMPLETE.md](./CORE_DATA_MIGRATION_COMPLETE.md) - Миграция v2
-- [CoreDataRepository.swift](./AIFinanceManager/Services/CoreDataRepository.swift) - Repository
-- [DataMigrationService.swift](./AIFinanceManager/Services/DataMigrationService.swift) - Migration
+- [CoreDataRepository.swift](./Tenra/Services/CoreDataRepository.swift) - Repository
+- [DataMigrationService.swift](./Tenra/Services/DataMigrationService.swift) - Migration
 
 ---
 

@@ -31,7 +31,7 @@
 
 ### Fix 1: BalanceCoordinator - processAddTransaction (5 минут)
 
-**Файл:** `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`
+**Файл:** `Tenra/Services/Balance/BalanceCoordinator.swift`
 
 **Строка:** 462
 
@@ -54,7 +54,7 @@ let newBalance = engine.applyTransaction(
 
 ### Fix 2: BalanceCoordinator - processRemoveTransaction (5 минут)
 
-**Файл:** `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`
+**Файл:** `Tenra/Services/Balance/BalanceCoordinator.swift`
 
 **Строка:** 499
 
@@ -79,7 +79,7 @@ let newBalance = engine.revertTransaction(
 
 #### Step 1: Обновить протокол
 
-**Файл:** `AIFinanceManager/Protocols/AccountOperationServiceProtocol.swift`
+**Файл:** `Tenra/Protocols/AccountOperationServiceProtocol.swift`
 
 **Было:**
 ```swift
@@ -117,7 +117,7 @@ func transfer(
 
 #### Step 2: Обновить реализацию
 
-**Файл:** `AIFinanceManager/Services/Transactions/AccountOperationService.swift`
+**Файл:** `Tenra/Services/Transactions/AccountOperationService.swift`
 
 **Строки:** 17-101
 
@@ -229,7 +229,7 @@ func transfer(
 
 #### Step 3: Обновить вызов в TransactionsViewModel
 
-**Файл:** `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл:** `Tenra/ViewModels/TransactionsViewModel.swift`
 
 **Строки:** 346-362
 
@@ -311,7 +311,7 @@ accountOperationService.transfer(
 
 ### Удалить неиспользуемые методы
 
-**Файл:** `AIFinanceManager/Services/Transactions/AccountOperationService.swift`
+**Файл:** `Tenra/Services/Transactions/AccountOperationService.swift`
 
 **Удалить:**
 ```swift

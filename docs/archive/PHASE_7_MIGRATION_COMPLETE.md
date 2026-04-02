@@ -316,14 +316,14 @@ await MainActor.run {
 
 ### Tests (1 file)
 
-16. **AIFinanceManagerTests/TransactionStoreTests.swift**
+16. **TenraTests/TransactionStoreTests.swift**
     - Fixed initialization
     - 18/18 tests passing
     - ~10 lines changed
 
 ### Environment Setup (1 file)
 
-17. **AIFinanceManagerApp.swift**
+17. **TenraApp.swift**
     - Added .environmentObject(coordinator.transactionStore)
     - ~1 line added
 

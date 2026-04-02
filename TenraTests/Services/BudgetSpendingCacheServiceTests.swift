@@ -1,5 +1,5 @@
 import Testing
-@testable import AIFinanceManager
+@testable import Tenra
 
 @MainActor
 struct BudgetSpendingCacheServiceTests {

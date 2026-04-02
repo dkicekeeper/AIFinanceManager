@@ -1,6 +1,6 @@
 //
 //  LoanDetailView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Detail view for loan/installment accounts with amortization schedule,
 //  payment breakdown, early repayment, and rate change actions.
@@ -28,7 +28,7 @@ struct LoanDetailView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(TimeFilterManager.self) private var timeFilterManager
 
-    private let logger = Logger(subsystem: "AIFinanceManager", category: "LoanDetailView")
+    private let logger = Logger(subsystem: "Tenra", category: "LoanDetailView")
 
     private var account: Account? {
         loansViewModel.getLoan(by: accountId)

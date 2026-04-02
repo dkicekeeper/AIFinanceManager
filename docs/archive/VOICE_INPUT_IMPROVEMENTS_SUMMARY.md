@@ -9,7 +9,7 @@
 
 ### 1. 🔧 Создан файл констант (VoiceInputConstants.swift)
 
-**Файл:** `AIFinanceManager/Utilities/VoiceInputConstants.swift`
+**Файл:** `Tenra/Utilities/VoiceInputConstants.swift`
 
 **Что сделано:**
 - Вынесены все магические числа в централизованный файл констант
@@ -35,7 +35,7 @@
 
 ### 2. ⚡ Оптимизирован VoiceInputParser (Pre-compiled Regex)
 
-**Файл:** `AIFinanceManager/Services/VoiceInputParser.swift`
+**Файл:** `Tenra/Services/VoiceInputParser.swift`
 
 **Что сделано:**
 - Добавлены **pre-compiled регулярные выражения** как свойства класса
@@ -72,7 +72,7 @@ for regex in amountRegexes {
 
 ### 3. 🎯 Исправлена логика выбора суммы
 
-**Файл:** `AIFinanceManager/Services/VoiceInputParser.swift`
+**Файл:** `Tenra/Services/VoiceInputParser.swift`
 
 **Проблема:**
 Голосовая команда "Потратил 50 тысяч на машину за 2023 год" распознавала **2023** как сумму вместо **50000**
@@ -124,7 +124,7 @@ func testParseCurrencyPriority() {
 
 ### 4. 🔄 Исправлен бесконечный цикл в UI (Debounce)
 
-**Файл:** `AIFinanceManager/Views/VoiceInputConfirmationView.swift`
+**Файл:** `Tenra/Views/VoiceInputConfirmationView.swift`
 
 **Проблема:**
 ```swift
@@ -177,7 +177,7 @@ private func validateAmount() {
 
 ### 5. 🔐 Исправлен race condition в stopRecording
 
-**Файл:** `AIFinanceManager/Services/VoiceInputService.swift`
+**Файл:** `Tenra/Services/VoiceInputService.swift`
 
 **Проблема:**
 ```swift
@@ -243,7 +243,7 @@ private func stopRecordingSync() async {
 
 ### 6. 🧪 Созданы unit-тесты для VoiceInputParser
 
-**Файл:** `AIFinanceManagerTests/VoiceInputParserTests.swift`
+**Файл:** `TenraTests/VoiceInputParserTests.swift`
 
 **Покрытие:** ~95% функциональности парсера
 
@@ -329,7 +329,7 @@ testParsingPerformance()
 
 ### 7. 🎨 Улучшена обработка ошибок в UI
 
-**Файл:** `AIFinanceManager/Views/VoiceInputView.swift`
+**Файл:** `Tenra/Views/VoiceInputView.swift`
 
 **До:**
 ```swift
@@ -487,7 +487,7 @@ testParsingPerformance()
 
 ### 8. 🐛 Исправлен race condition в модалке VoiceInputView
 
-**Файл:** `AIFinanceManager/Views/VoiceInputView.swift`
+**Файл:** `Tenra/Views/VoiceInputView.swift`
 
 **Проблема:**
 Пользователь сообщил: "при первом запуске после распознования, модалка закрывается и ничего не происходит. При повторении открывается пустая модалка после распознавания. и только в 3 раз открыватся корректно"
@@ -568,8 +568,8 @@ Button(action: {
 ### 9. 🐛 Исправлена пустая модалка при первом распознавании
 
 **Файлы:**
-- `AIFinanceManager/Views/ContentView.swift`
-- `AIFinanceManager/Models/ParsedOperation.swift`
+- `Tenra/Views/ContentView.swift`
+- `Tenra/Models/ParsedOperation.swift`
 
 **Проблема:**
 Пользователь сообщил: "в первый раз после распознования, модалка открывается пустая, только со второго распознавания открывается модалка правильно"
@@ -642,7 +642,7 @@ parsedOperation = parsed  // Sheet откроется автоматически
 
 ### 10. 🐛 Исправлено распознавание категорий и типа дохода
 
-**Файл:** `AIFinanceManager/Services/VoiceInputParser.swift`
+**Файл:** `Tenra/Services/VoiceInputParser.swift`
 
 **Проблемы:**
 1. Пользователь сообщил: "говорю '500 тенге на такси', текст распознается корректно, но категория Транспорт не выбирается"
@@ -763,8 +763,8 @@ let incomeKeywords = [
 ### 11. 🤖 Добавлена базовая ML инфраструктура (Фаза 1)
 
 **Файлы:**
-- `AIFinanceManager/Services/ML/CategoryMLPredictor.swift`
-- `AIFinanceManager/Services/ML/MLDataExporter.swift`
+- `Tenra/Services/ML/CategoryMLPredictor.swift`
+- `Tenra/Services/ML/MLDataExporter.swift`
 - `ML_INTEGRATION_GUIDE.md`
 
 **Что добавлено:**
@@ -845,7 +845,7 @@ class MLDataExporter {
 
 3. **Добавление модели в проект:**
    - Экспорт: `CategoryClassifier.mlmodel`
-   - Добавить в `AIFinanceManager/Services/ML/Models/`
+   - Добавить в `Tenra/Services/ML/Models/`
    - Xcode скомпилирует в `.mlmodelc`
 
 **Гибридный подход:**

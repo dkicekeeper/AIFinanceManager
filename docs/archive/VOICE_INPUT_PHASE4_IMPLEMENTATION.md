@@ -344,12 +344,12 @@ Siri-like Wave Animation
 ## 📝 Файлы
 
 ### Создано
-- `AIFinanceManager/Views/Components/SiriWaveView.swift`
+- `Tenra/Views/Components/SiriWaveView.swift`
 
 ### Изменено
-- `AIFinanceManager/Services/VoiceInputService.swift`
-- `AIFinanceManager/Views/VoiceInputView.swift`
-- `AIFinanceManager/Views/ContentView.swift`
+- `Tenra/Services/VoiceInputService.swift`
+- `Tenra/Views/VoiceInputView.swift`
+- `Tenra/Views/ContentView.swift`
 
 ---
 
@@ -378,7 +378,7 @@ Siri-like Wave Animation
 ### Build Status
 
 ```
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 ** BUILD SUCCEEDED **
 ```
 

@@ -1,4 +1,4 @@
-# AIFinanceManager
+# Tenra
 
 ## What This Is
 

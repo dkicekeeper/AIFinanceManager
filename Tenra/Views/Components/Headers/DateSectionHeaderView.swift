@@ -1,6 +1,6 @@
 //
 //  DateSectionHeaderView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Specialized section header for date-grouped transaction lists
 //  Shows date label + optional total amount for the day

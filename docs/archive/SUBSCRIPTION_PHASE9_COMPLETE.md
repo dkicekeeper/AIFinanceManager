@@ -26,9 +26,9 @@
 ### PHASE 1: Расширение TransactionStore ✅
 
 **Файлы изменены:**
-- `AIFinanceManager/Models/TransactionEvent.swift`
-- `AIFinanceManager/ViewModels/TransactionStore.swift`
-- `AIFinanceManager/ViewModels/TransactionStore+Recurring.swift` ← СОЗДАН
+- `Tenra/Models/TransactionEvent.swift`
+- `Tenra/ViewModels/TransactionStore.swift`
+- `Tenra/ViewModels/TransactionStore+Recurring.swift` ← СОЗДАН
 
 **Ключевые изменения:**
 
@@ -153,7 +153,7 @@ var activeSubscriptions: [RecurringSeries] // Только активные
 
 ### PHASE 4: Обновление AppCoordinator ✅
 
-**Файл:** `AIFinanceManager/ViewModels/AppCoordinator.swift`
+**Файл:** `Tenra/ViewModels/AppCoordinator.swift`
 
 **Удалено:**
 ```swift

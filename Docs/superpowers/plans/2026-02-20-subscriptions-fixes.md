@@ -13,8 +13,8 @@
 ## Task 1: Add missing localization keys to both Localizable.strings
 
 **Files:**
-- Modify: `AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings` (around line 392)
-- Modify: `AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings` (around line 392)
+- Modify: `Tenra/Tenra/en.lproj/Localizable.strings` (around line 392)
+- Modify: `Tenra/Tenra/ru.lproj/Localizable.strings` (around line 392)
 
 **Step 1: Append to EN strings — after `"subscriptions.status.unknown"` (line ~415)**
 
@@ -70,7 +70,7 @@ Add the following block in `ru.lproj/Localizable.strings` right after the existi
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -80,8 +80,8 @@ Expected: `Build succeeded`
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings \
-        AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings
+git add Tenra/Tenra/en.lproj/Localizable.strings \
+        Tenra/Tenra/ru.lproj/Localizable.strings
 git commit -m "i18n: add missing localization keys for subscriptions, notifications, frequency"
 ```
 
@@ -90,7 +90,7 @@ git commit -m "i18n: add missing localization keys for subscriptions, notificati
 ## Task 2: Fix `RecurringFrequency.displayName` — use proper localization keys
 
 **Files:**
-- Modify: `AIFinanceManager/Models/RecurringTransaction.swift` (lines 200-207)
+- Modify: `Tenra/Models/RecurringTransaction.swift` (lines 200-207)
 
 **Context:** Currently uses `NSLocalizedString("Daily", ...)` — those string keys don't exist in Localizable.strings, so Russian locale always shows English. Task 1 added the proper keys.
 
@@ -124,7 +124,7 @@ var displayName: String {
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -134,7 +134,7 @@ Expected: `Build succeeded`
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Models/RecurringTransaction.swift
+git add Tenra/Models/RecurringTransaction.swift
 git commit -m "fix: use localization keys in RecurringFrequency.displayName"
 ```
 
@@ -143,7 +143,7 @@ git commit -m "fix: use localization keys in RecurringFrequency.displayName"
 ## Task 3: Fix `NotificationPermissionView` — localize all hardcoded Russian strings
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Subscriptions/Components/NotificationPermissionView.swift`
+- Modify: `Tenra/Views/Subscriptions/Components/NotificationPermissionView.swift`
 
 **Context:** 4 Text literals are hardcoded in Russian. Replace with `String(localized:)` using keys added in Task 1.
 
@@ -216,7 +216,7 @@ var body: some View {
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -226,7 +226,7 @@ Expected: `Build succeeded`
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Subscriptions/Components/NotificationPermissionView.swift
+git add Tenra/Views/Subscriptions/Components/NotificationPermissionView.swift
 git commit -m "fix: localize NotificationPermissionView strings"
 ```
 
@@ -235,7 +235,7 @@ git commit -m "fix: localize NotificationPermissionView strings"
 ## Task 4: Fix `SubscriptionsCardView` — hardcoded Russian counter + missing key
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Subscriptions/SubscriptionsCardView.swift` (lines 28, 33, 49)
+- Modify: `Tenra/Views/Subscriptions/SubscriptionsCardView.swift` (lines 28, 33, 49)
 
 **Context:**
 - Line 28: `defaultValue:` is redundant when key exists in strings file
@@ -283,7 +283,7 @@ Text(String(format: String(localized: "subscriptions.activeCount"), subscription
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -293,7 +293,7 @@ Expected: `Build succeeded`
 **Step 5: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Subscriptions/SubscriptionsCardView.swift
+git add Tenra/Views/Subscriptions/SubscriptionsCardView.swift
 git commit -m "fix: localize subscription active count, remove redundant defaultValue"
 ```
 
@@ -302,7 +302,7 @@ git commit -m "fix: localize subscription active count, remove redundant default
 ## Task 5: Fix `DateFormatters` — hardcoded `ru_RU` locale
 
 **Files:**
-- Modify: `AIFinanceManager/Utils/DateFormatters.swift` (lines 34, 44)
+- Modify: `Tenra/Utils/DateFormatters.swift` (lines 34, 44)
 
 **Context:** `displayDateFormatter` and `displayDateWithYearFormatter` both hardcode `Locale(identifier: "ru_RU")`. English users see Russian month names everywhere (subscription cards, detail view, etc.).
 
@@ -333,7 +333,7 @@ formatter.locale = .current
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -343,7 +343,7 @@ Expected: `Build succeeded`
 **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Utils/DateFormatters.swift
+git add Tenra/Utils/DateFormatters.swift
 git commit -m "fix: use Locale.current in date formatters instead of hardcoded ru_RU"
 ```
 
@@ -352,7 +352,7 @@ git commit -m "fix: use Locale.current in date formatters instead of hardcoded r
 ## Task 6: Refactor `SubscriptionEditView` — sheet owns dismiss, fix force unwrap, cache categories
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Subscriptions/SubscriptionEditView.swift`
+- Modify: `Tenra/Views/Subscriptions/SubscriptionEditView.swift`
 
 **Context:**
 - Remove `onSave`/`onCancel` callbacks — sheet manages its own lifecycle via `@Environment(\.dismiss)`
@@ -591,7 +591,7 @@ SubscriptionEditView(
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -601,7 +601,7 @@ Expected: `Build succeeded`
 **Step 9: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Subscriptions/SubscriptionEditView.swift
+git add Tenra/Views/Subscriptions/SubscriptionEditView.swift
 git commit -m "refactor: SubscriptionEditView owns dismiss, remove force unwrap, cache categories"
 ```
 
@@ -610,7 +610,7 @@ git commit -m "refactor: SubscriptionEditView owns dismiss, remove force unwrap,
 ## Task 7: Refactor `SubscriptionsListView` — `.sheet(item:)`, topBarTrailing, remove callbacks
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Subscriptions/SubscriptionsListView.swift`
+- Modify: `Tenra/Views/Subscriptions/SubscriptionsListView.swift`
 
 **Context:**
 - Task 6 removed `onSave`/`onCancel` from SubscriptionEditView, so callers must be updated
@@ -726,7 +726,7 @@ In the current `subscriptionsList`, there's only `NavigationLink` — no sheet t
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -736,7 +736,7 @@ Expected: `Build succeeded`
 **Step 8: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Subscriptions/SubscriptionsListView.swift
+git add Tenra/Views/Subscriptions/SubscriptionsListView.swift
 git commit -m "refactor: SubscriptionsListView uses sheet(item:) and topBarTrailing"
 ```
 
@@ -745,7 +745,7 @@ git commit -m "refactor: SubscriptionsListView uses sheet(item:) and topBarTrail
 ## Task 8: Refactor `SubscriptionDetailView` — topBarTrailing, dismiss, cache transactions
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Subscriptions/SubscriptionDetailView.swift`
+- Modify: `Tenra/Views/Subscriptions/SubscriptionDetailView.swift`
 
 **Context:**
 - Remove `onSave`/`onCancel` from sheet (SubscriptionEditView now owns dismiss - Task 6)
@@ -873,7 +873,7 @@ Delete:
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -883,7 +883,7 @@ Expected: `Build succeeded`
 **Step 10: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Subscriptions/SubscriptionDetailView.swift
+git add Tenra/Views/Subscriptions/SubscriptionDetailView.swift
 git commit -m "refactor: SubscriptionDetailView caches transactions, topBarTrailing, removes dead code"
 ```
 
@@ -892,7 +892,7 @@ git commit -m "refactor: SubscriptionDetailView caches transactions, topBarTrail
 ## Task 9: Fix `SubscriptionCalendarView` — DateFormatter, ForEach identity, force unwrap
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Subscriptions/Components/SubscriptionCalendarView.swift`
+- Modify: `Tenra/Views/Subscriptions/Components/SubscriptionCalendarView.swift`
 
 **Context:**
 - `formatMonthYear()` creates a new `DateFormatter()` on each call → static cached formatter
@@ -1036,7 +1036,7 @@ Delete:
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -1046,7 +1046,7 @@ Expected: `Build succeeded`
 **Step 10: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Subscriptions/Components/SubscriptionCalendarView.swift
+git add Tenra/Views/Subscriptions/Components/SubscriptionCalendarView.swift
 git commit -m "perf: fix SubscriptionCalendarView - cached DateFormatter, stable ForEach id, remove force unwrap"
 ```
 
@@ -1055,7 +1055,7 @@ git commit -m "perf: fix SubscriptionCalendarView - cached DateFormatter, stable
 ## Task 10: Fix `SubscriptionCard` — correct `String(format:)` localization key
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Subscriptions/Components/SubscriptionCard.swift` (line 35)
+- Modify: `Tenra/Views/Subscriptions/Components/SubscriptionCard.swift` (line 35)
 
 **Context:** `"subscriptions.nextCharge"` = `"Next Charge"` — NOT a format string. Using it with `String(format:)` discards the date argument. Use new `"subscriptions.nextChargeOn"` key (added in Task 1) which contains `%@`.
 
@@ -1078,7 +1078,7 @@ Text(String(format: String(localized: "subscriptions.nextChargeOn"), formatDate(
 
 ```
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|Build succeeded"
 ```
@@ -1088,7 +1088,7 @@ Expected: `Build succeeded`
 **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Subscriptions/Components/SubscriptionCard.swift
+git add Tenra/Views/Subscriptions/Components/SubscriptionCard.swift
 git commit -m "fix: use correct format-string localization key in SubscriptionCard"
 ```
 
@@ -1100,7 +1100,7 @@ git commit -m "fix: use correct format-string localization key in SubscriptionCa
 
 ```bash
 xcodebuild clean build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | tail -5
 ```
@@ -1110,9 +1110,9 @@ Expected: `Build succeeded`
 
 ```bash
 xcodebuild test \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  -only-testing:AIFinanceManagerTests \
+  -only-testing:TenraTests \
   2>&1 | grep -E "Test Suite|passed|failed|error:"
 ```
 Expected: All tests passed.
@@ -1121,9 +1121,9 @@ Expected: All tests passed.
 
 ```bash
 grep -rn '"[А-Яа-яЁё]' \
-  AIFinanceManager/Views/Subscriptions/ \
-  AIFinanceManager/Utils/DateFormatters.swift \
-  AIFinanceManager/Models/RecurringTransaction.swift
+  Tenra/Views/Subscriptions/ \
+  Tenra/Utils/DateFormatters.swift \
+  Tenra/Models/RecurringTransaction.swift
 ```
 Expected: Only preview strings remain (acceptable). No hardcoded strings in production code.
 
@@ -1131,7 +1131,7 @@ Expected: Only preview strings remain (acceptable). No hardcoded strings in prod
 
 ```bash
 grep -rn '!' \
-  AIFinanceManager/Views/Subscriptions/ | \
+  Tenra/Views/Subscriptions/ | \
   grep -v '// ' | grep -v '!=' | grep -v 'important'
 ```
 Expected: No `!` force unwraps in subscriptions views.

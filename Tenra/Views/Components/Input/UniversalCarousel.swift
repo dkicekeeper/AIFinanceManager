@@ -1,6 +1,6 @@
 //
 //  UniversalCarousel.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created: 2026-02-16
 //  Universal horizontal carousel component

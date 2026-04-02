@@ -1,6 +1,6 @@
 //
 //  ReminderOption.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reminder selection enum for subscriptions
 //  Represents "Never" or specific days before

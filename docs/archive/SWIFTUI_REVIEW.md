@@ -1,7 +1,7 @@
 # SwiftUI Expert Review - State Management & Modern APIs
 
 **Date:** 2026-02-11
-**Codebase:** AIFinanceManager
+**Codebase:** Tenra
 **Review Focus:** State management patterns, modern API adoption, and SwiftUI best practices
 
 ---

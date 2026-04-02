@@ -1,4 +1,4 @@
-# AIFinanceManager — Project Bible
+# Tenra — Project Bible
 
 > **Дата создания:** 2026-01-28
 > **Последнее обновление:** 2026-02-15 (Phase 9 Complete + UI Components Refactoring)
@@ -10,7 +10,7 @@
 
 ## 1. Общая идея проекта
 
-**AIFinanceManager** — современное iOS приложение для персонального управления финансами, построенное на Swift 6.0+ / SwiftUI с использованием iOS 26+ возможностей (Liquid Glass).
+**Tenra** — современное iOS приложение для персонального управления финансами, построенное на Swift 6.0+ / SwiftUI с использованием iOS 26+ возможностей (Liquid Glass).
 
 ### Основная ценность
 Позволяет пользователю эффективно отслеживать доходы и расходы по нескольким счетам с поддержкой:
@@ -37,7 +37,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  AIFinanceManagerApp (@main)                            │
+│  TenraApp (@main)                            │
 │    └── ContentView                                      │
 │         ├── @EnvironmentObject TimeFilterManager        │
 │         ├── @EnvironmentObject AppCoordinator           │

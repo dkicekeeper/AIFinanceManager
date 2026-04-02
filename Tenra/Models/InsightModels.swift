@@ -1,6 +1,6 @@
 //
 //  InsightModels.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 17: Financial Insights Feature
 //  Data models for smart financial insights and analytics

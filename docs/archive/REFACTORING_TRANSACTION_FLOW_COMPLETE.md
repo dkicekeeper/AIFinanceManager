@@ -272,7 +272,7 @@ func suggestedAccountId() async -> String? {
 ### Build Status
 
 ```bash
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 
 Result: ✅ BUILD SUCCEEDED
 Warnings: 4 (unrelated to refactoring)

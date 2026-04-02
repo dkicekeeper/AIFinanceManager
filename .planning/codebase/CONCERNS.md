@@ -6,7 +6,7 @@
 
 **RecurringTransactionService — Deprecated Bridge Class (558 LOC):**
 - Issue: Entire service marked `⚠️ FULLY DEPRECATED` in file header; contains deadlock-prone code and non-functional methods
-- Files: `AIFinanceManager/Services/Transactions/RecurringTransactionService.swift`
+- Files: `Tenra/Services/Transactions/RecurringTransactionService.swift`
 - Impact:
   - Contains `DispatchSemaphore.wait()` calls on `@MainActor` (lines 135, 147, 209, 222, 253, 266, 492, 504) → DEADLOCK RISK if called from MainActor context
   - Methods like `updateRecurringSeries()`, `stopRecurringSeries()`, `deleteRecurringSeries()` attempt mutations on read-only `delegate.recurringSeries` property (Phase 9) — execute no-op save+generate calls
@@ -18,31 +18,31 @@
 
 **TransactionConverterService — Dead Code (5 LOC):**
 - Issue: Service marked `DEPRECATED — Phase 37: Merged into EntityMappingService`
-- Files: `AIFinanceManager/Services/CSV/TransactionConverterService.swift`
+- Files: `Tenra/Services/CSV/TransactionConverterService.swift`
 - Impact: `convertRow()` functionality moved to `EntityMappingServiceProtocol` but file not removed; creates confusion about where CSV conversion actually happens
 - Fix approach: Delete file and grep all imports/call sites to verify no references remain
 
 **Deprecated Protocol: RecurringTransactionServiceProtocol (59 LOC):**
 - Issue: One method marked `@available(*, deprecated)` — protocol still exists but implementations not being called
-- Files: `AIFinanceManager/Protocols/RecurringTransactionServiceProtocol.swift`
+- Files: `Tenra/Protocols/RecurringTransactionServiceProtocol.swift`
 - Impact: Code paths exist for methods that cannot safely execute; unnecessary protocol indirection
 - Fix approach: Inline remaining active methods to `TransactionStore+Recurring.swift`, delete protocol
 
 **Unused TransactionConverterServiceProtocol (6 LOC):**
 - Issue: Protocol marked `DEPRECATED` with no implementations
-- Files: `AIFinanceManager/Protocols/TransactionConverterServiceProtocol.swift`
+- Files: `Tenra/Protocols/TransactionConverterServiceProtocol.swift`
 - Impact: Dead import paths; confuses where CSV entity conversion happens (answer: `EntityMappingService`)
 - Fix approach: Delete protocol file
 
 **TransactionCacheManager — Account Balance Cache (77 LOC):**
 - Issue: Section marked `MARK: - Account Balance Cache (DEPRECATED — use BalanceCoordinator instead)`
-- Files: `AIFinanceManager/Services/Cache/TransactionCacheManager.swift`
+- Files: `Tenra/Services/Cache/TransactionCacheManager.swift`
 - Impact: Legacy cache paths remain but should never be called; creates dead code maintenance burden
 - Fix approach: Remove deprecated section; keep only transaction-related cache methods
 
 **UnifiedTransactionCache — Unimplemented TODO (73 LOC):**
 - Issue: Line 73: `// TODO: Implement prefix-based invalidation in LRUCache`
-- Files: `AIFinanceManager/Services/Cache/UnifiedTransactionCache.swift`
+- Files: `Tenra/Services/Cache/UnifiedTransactionCache.swift`
 - Impact: Cache invalidation strategy incomplete; partial implementation may miss cache eviction scenarios
 - Fix approach: Either implement prefix-based invalidation or simplify cache strategy to full invalidation on relevant events
 
@@ -50,7 +50,7 @@
 
 **NSBatchInsertRequest + dateSectionKey = nil (Historical - Mitigated in Phase 28):**
 - Symptoms: CSV import or batch inserts result in transactions with `dateSectionKey = nil`, breaking transaction grouping by date section
-- Files: `AIFinanceManager/Services/Repository/TransactionRepository.swift` (lines 403-432), `AIFinanceManager/ViewModels/AppCoordinator.swift` (lines 287-341)
+- Files: `Tenra/Services/Repository/TransactionRepository.swift` (lines 403-432), `Tenra/ViewModels/AppCoordinator.swift` (lines 287-341)
 - Trigger: `NSBatchInsertRequest` bypasses `willSave()` hook where `dateSectionKey` was previously computed
 - Current mitigation:
   - `TransactionRepository.batchInsertTransactions()` explicitly sets `dateSectionKey` before `NSBatchInsertRequest` execution (Phase 28 fix)
@@ -59,7 +59,7 @@
 
 **CSV Import Crash — "persistent store is not reachable" (Fixed in Phase 35):**
 - Symptoms: App crash with `NSError: The operation couldn't be completed. (Cocoa error 134080.)`; Object reference becomes invalid during CSV import
-- Files: `AIFinanceManager/Services/Repository/TransactionRepository.swift` (lines 239-257)
+- Files: `Tenra/Services/Repository/TransactionRepository.swift` (lines 239-257)
 - Trigger: `NSBatchDeleteRequest` + immediate `context.save()` when deleted objects have inverse relationships (e.g., `TransactionEntity.account` → `AccountEntity.transactions`); CoreData tries to read deleted row from SQLite to nullify inverse, but row already gone
 - Fix applied (Phase 35):
   - Replaced `NSBatchDeleteRequest` with `context.delete(entity)` for each stale transaction
@@ -69,7 +69,7 @@
 
 **CoreData FRC — Stale References on Store Reset (Fixed in Phase 35):**
 - Symptoms: Crash on `NSManagedObject.fault` fire after data reset (e.g., "Delete all data" → import new file)
-- Files: `AIFinanceManager/CoreData/CoreDataStack.swift`, `AIFinanceManager/ViewModels/TransactionPaginationController.swift`
+- Files: `Tenra/CoreData/CoreDataStack.swift`, `Tenra/ViewModels/TransactionPaginationController.swift`
 - Trigger: `CoreDataStack.resetAllData()` destroys/recreates persistent store (new UUID). Existing `NSFetchedResultsController` retains stale object references from old store
 - Fix applied (Phase 35):
   - `CoreDataStack` posts `storeDidResetNotification` synchronously after store recreation
@@ -79,7 +79,7 @@
 
 **DateFormatter Race in TransactionQueryService:**
 - Symptoms: Unpredictable date parsing failures in filtering operations under concurrent load
-- Files: `AIFinanceManager/Services/Transactions/TransactionQueryService.swift`
+- Files: `Tenra/Services/Transactions/TransactionQueryService.swift`
 - Trigger: `DateFormatter` is not thread-safe; if multiple threads call `date(from:)` simultaneously, results are undefined
 - Current mitigation: Phase 38 audit identified the issue; fix approach documented but not yet fully applied
 - Safe approach:
@@ -92,8 +92,8 @@
 **No Explicit Input Validation on User-Supplied Amounts:**
 - Risk: User enters extremely large amounts (e.g., `99999999999999.99`) → could overflow `Decimal` → silent truncation or undefined behavior
 - Files:
-  - `AIFinanceManager/Views/Transactions/Components/AmountInputView.swift` (no upper bound check)
-  - `AIFinanceManager/Utils/AmountFormatter.swift` (parses any Decimal.max)
+  - `Tenra/Views/Transactions/Components/AmountInputView.swift` (no upper bound check)
+  - `Tenra/Utils/AmountFormatter.swift` (parses any Decimal.max)
 - Current mitigation: `AmountFormatter.validate()` exists but is not enforced at input boundary
 - Recommendations:
   1. Add upper bound check in `AmountInputView` (e.g., `amount <= Decimal(999_999_999.99)`)
@@ -102,7 +102,7 @@
 
 **CSV Import — No Whitelist for Column Names:**
 - Risk: User-supplied CSV headers (`columnMapping`) used directly to map transactions; malicious CSV could define arbitrary columns
-- Files: `AIFinanceManager/Services/CSV/CSVValidationService.swift`, `AIFinanceManager/Services/CSV/EntityMappingService.swift`
+- Files: `Tenra/Services/CSV/CSVValidationService.swift`, `Tenra/Services/CSV/EntityMappingService.swift`
 - Current mitigation: Column names are validated against a finite set (`CSVColumnMapping` enum), but validation not always enforced
 - Recommendations:
   1. Verify all `columnMapping` keys exist in `CSVColumnMapping.allCases` before processing
@@ -111,7 +111,7 @@
 
 **CoreData Store File Permissions:**
 - Risk: CoreData SQLite store file (`*.sqlite`) may be readable/writable by other apps depending on FileProtection setting
-- Files: `AIFinanceManager/CoreData/CoreDataStack.swift` (store creation at lines ~70-100)
+- Files: `Tenra/CoreData/CoreDataStack.swift` (store creation at lines ~70-100)
 - Current mitigation: Not observed; default iOS protection may apply, but not explicitly set
 - Recommendations:
   1. Set `NSFileProtectionKey: .complete` on store options during creation
@@ -121,7 +121,7 @@
 
 **TransactionStore — Single 1213-LOC Class (SSOT Monolith):**
 - Problem: All transaction, account, category, recurring, and persistence operations in one class; becoming hard to navigate and test
-- Files: `AIFinanceManager/ViewModels/TransactionStore.swift` (1213 LOC, largest non-View class)
+- Files: `Tenra/ViewModels/TransactionStore.swift` (1213 LOC, largest non-View class)
 - Cause: Phase 7+ Single Source of Truth consolidation; every new feature adds methods to this class
 - Impact:
   - Testing individual operations requires mocking entire 1213-LOC class
@@ -135,7 +135,7 @@
 **InsightsService — 1169 LOC + 9 Extension Files (Phase 38 Split Incomplete):**
 - Problem: Even after splitting into extensions, main service + extensions = 2000+ LOC total; still monolithic
 - Files:
-  - `AIFinanceManager/Services/Insights/InsightsService.swift` (782 LOC post-split)
+  - `Tenra/Services/Insights/InsightsService.swift` (782 LOC post-split)
   - 9 extensions: `+Spending`, `+Income`, `+Budget`, `+Recurring`, `+CashFlow`, `+Wealth`, `+Savings`, `+Forecasting`, `+HealthScore`
 - Cause: Each granularity + category of insight requires its own generator; shared helpers (Phase 42 PreAggregatedData) partially mitigate
 - Impact:
@@ -149,7 +149,7 @@
 
 **SwiftUI List with 3,530 Sections (History View) — O(N) Eager Render (DOCUMENTED LIMITATION):**
 - Problem: `HistoryTransactionsList` uses `visibleSectionLimit = 100` infinite scroll; SwiftUI renders all `Section` headers eagerly, not lazily
-- Files: `AIFinanceManager/Views/History/HistoryTransactionsList.swift`, `AIFinanceManager/Views/History/HistoryView.swift`
+- Files: `Tenra/Views/History/HistoryTransactionsList.swift`, `Tenra/Views/History/HistoryView.swift`
 - Cause: SwiftUI's `List` + `@FetchedResultsController` pattern doesn't defer section header rendering
 - Impact: Scroll to bottom (3530 sections loaded) = 10-12s UI freeze; only first 100 sections are visible
 - Current mitigation: `HistoryTransactionsList` limits visible sections to 100 with `.onAppear { visibleSectionLimit += 100 }` infinite scroll pattern
@@ -160,7 +160,7 @@
 
 **HistoryView updateSummary() — ~540ms (DOCUMENTED BUT NOT OPTIMIZED):**
 - Problem: Called on every `onAppear` due to complex filtering logic; blocks MainActor briefly
-- Files: `AIFinanceManager/Views/Home/ContentView.swift` (smart use of `.task(id:summaryTrigger)` added in Phase 39)
+- Files: `Tenra/Views/Home/ContentView.swift` (smart use of `.task(id:summaryTrigger)` added in Phase 39)
 - Cause: Scans all 19k transactions to compute summary totals on every return from detail view
 - Impact: User perceives brief UI stutter (not total freeze, under 100ms) on ContentView reappear
 - Current mitigation: Phase 39 replaced `onChange` chains with `.task(id:)` + 80ms debounce; debounce skips on `isFullyInitialized = true`
@@ -170,7 +170,7 @@
 
 **CSV Import — O(N×M) Validation (N=row count, M=field count):**
 - Problem: `CSVValidationService.validateRow()` called for each row; does O(M) column lookups
-- Files: `AIFinanceManager/Services/CSV/CSVValidationService.swift`, `AIFinanceManager/Services/CSV/CSVImportCoordinator.swift`
+- Files: `Tenra/Services/CSV/CSVValidationService.swift`, `Tenra/Services/CSV/CSVImportCoordinator.swift`
 - Cause: Validates every field in every row sequentially before batch insert
 - Impact: CSV import of 1000 rows: ~1-2s (acceptable); 19k rows: ~20-40s (unacceptable if attempted)
 - Improvement path:
@@ -181,7 +181,7 @@
 ## Fragile Areas
 
 **Transaction Pagination Controller — Complex FRC Management:**
-- Files: `AIFinanceManager/ViewModels/TransactionPaginationController.swift`
+- Files: `Tenra/ViewModels/TransactionPaginationController.swift`
 - Why fragile:
   - `NSFetchedResultsController` lifecycle tied to CoreData context lifecycle; stale references possible if context resets
   - Section rebuilding happens synchronously in `controllerDidChangeContent` delegate method — any exception crashes delegate chain
@@ -193,7 +193,7 @@
 - Test coverage: `TransactionPaginationControllerTests.swift` exists; covers basic scenarios but not all edge cases
 
 **CoreData Merge Policy — Race Between Contexts:**
-- Files: `AIFinanceManager/Services/Repository/TransactionRepository.swift` (line 148: `mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy`)
+- Files: `Tenra/Services/Repository/TransactionRepository.swift` (line 148: `mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy`)
 - Why fragile:
   - Background context saves → viewContext merge is async by default (automaticallyMergesChangesFromParent)
   - If app exits before merge completes, old object IDs may persist in memory
@@ -205,7 +205,7 @@
 - Test coverage: No explicit test for merge behavior; reliance on implicit `saveTransactionsSync()` correctness
 
 **CategorySubcategoryCoordinator — Category Relationship Mutations:**
-- Files: `AIFinanceManager/Services/Categories/CategorySubcategoryCoordinator.swift`
+- Files: `Tenra/Services/Categories/CategorySubcategoryCoordinator.swift`
 - Why fragile:
   - Modifies both `CustomCategoryEntity.subcategories` and `SubcategoryEntity.categories` simultaneously
   - Inverse relationships must stay in sync; out-of-sync state causes FRC crashes
@@ -217,7 +217,7 @@
 - Test coverage: `CategorySubcategoryCoordinator` not directly tested; integration tests only
 
 **RecurringTransactionGenerator — Date Arithmetic Edge Cases:**
-- Files: `AIFinanceManager/Services/Recurring/RecurringTransactionGenerator.swift` (266 LOC)
+- Files: `Tenra/Services/Recurring/RecurringTransactionGenerator.swift` (266 LOC)
 - Why fragile:
   - Leap year handling: Feb 29 → Mar 1 on non-leap years? (documented but easy to regress)
   - Month-end handling: Jan 31 monthly → Feb 28/29? (Calendar.nextDate does this, but result varies by locale)
@@ -229,7 +229,7 @@
 - Test coverage: `RecurringTransactionTests.swift` exists; covers happy path but not edge cases (leap year, DST)
 
 **Voice Input Parser — Ambiguous Amount Parsing:**
-- Files: `AIFinanceManager/Services/Voice/VoiceInputParser.swift` (941 LOC)
+- Files: `Tenra/Services/Voice/VoiceInputParser.swift` (941 LOC)
 - Why fragile:
   - User says "two hundred" → could be `200` or `2.00`; no context to disambiguate
   - Decimal separator varies by locale (comma in EU, period in US); parser may misinterpret
@@ -268,7 +268,7 @@
 
 **Core Data Persistence Schema — No Explicit Migrations:**
 - Risk: Schema changes (add/remove columns, rename entities) require explicit migration Mapping Model
-- Files: `AIFinanceManager/CoreData/` (all `.xcdatamodeld` files)
+- Files: `Tenra/CoreData/` (all `.xcdatamodeld` files)
 - Status: Phase 40 removed `MonthlyAggregateEntity` and `CategoryAggregateEntity` from persisting code, but schema still in `.xcdatamodeld` (no migration created)
 - Impact: If user updates app with new schema and old data can't be faulted, CoreData crashes with "entity not found" or mismatched column error
 - Migration plan:
@@ -314,7 +314,7 @@
   - Form validation (invalid amount, missing category → error state)
   - Pagination (scroll to end of history → load next section)
   - Dark mode rendering (colors, contrast, layout)
-- Files: `AIFinanceManager/Views/` (132 Swift files, 0 test files)
+- Files: `Tenra/Views/` (132 Swift files, 0 test files)
 - Risk: UI regressions ship undetected; colors hardcoded (though Phase 34 reduced this); layout breaks on smaller devices
 - Priority: Medium — Most critical flows: Add/Edit/Delete Transaction, Category Management
 
@@ -327,7 +327,7 @@
   - Error handling (repository throws error → ViewModel shows alert)
   - State transitions (loading → loaded → error)
   - Cache invalidation (add transaction → insights become stale)
-- Files: `AIFinanceManagerTests/ViewModels/` (2 test files, 4+ ViewModels untested)
+- Files: `TenraTests/ViewModels/` (2 test files, 4+ ViewModels untested)
 - Risk: Invalid state can propagate to View; cache inconsistencies undetected
 - Priority: High — Critical: `InsightsViewModel` (complex logic), `DepositsViewModel` (financial accuracy)
 
@@ -341,7 +341,7 @@
   - `CSVImportCoordinator` — full import workflow, edge cases
   - `DepositInterestService` — interest calculation, date rounding
   - `RecurringTransactionGenerator` — edge cases (leap year, DST)
-- Files: `AIFinanceManagerTests/Services/` (7 test files, 30+ services)
+- Files: `TenraTests/Services/` (7 test files, 30+ services)
 - Risk: Business logic errors in budget/interest/recurring go undetected until user reports
 - Priority: High — Financial accuracy critical
 

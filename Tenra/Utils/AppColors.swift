@@ -1,6 +1,6 @@
 //
 //  AppColors.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Semantic color tokens + category palette. Single source of truth for all colors.
 //

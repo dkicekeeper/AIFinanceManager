@@ -13,7 +13,7 @@
 ## Task 1: Make `InsightsCardView` generic with a bottom-chart `@ViewBuilder` slot
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/InsightsCardView.swift`
+- Modify: `Tenra/Views/Insights/InsightsCardView.swift`
 
 ### Step 1: Read the file
 
@@ -112,7 +112,7 @@ Replace the existing `var body: some View { ... }` with:
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED"
 ```
@@ -122,7 +122,7 @@ Expected: `BUILD SUCCEEDED` (all existing callsites use the `init(insight:) wher
 ### Step 5: Commit
 
 ```bash
-git add AIFinanceManager/AIFinanceManager/Views/Insights/InsightsCardView.swift
+git add Tenra/Tenra/Views/Insights/InsightsCardView.swift
 git commit -m "feat(insights): add generic @ViewBuilder bottom-chart slot to InsightsCardView
 
 Adds InsightsCardView<BottomChart: View> with two inits:
@@ -140,7 +140,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ## Task 2: Update `CashFlowInsightsSection` — embed `PeriodCashFlowChart` in first card
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Sections/CashFlowInsightsSection.swift`
+- Modify: `Tenra/Views/Insights/Sections/CashFlowInsightsSection.swift`
 
 ### Step 1: Read the file
 
@@ -197,7 +197,7 @@ Replace the entire `var body: some View` with:
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED"
 ```
@@ -207,7 +207,7 @@ Expected: `BUILD SUCCEEDED`
 ### Step 4: Commit
 
 ```bash
-git add AIFinanceManager/AIFinanceManager/Views/Insights/Sections/CashFlowInsightsSection.swift
+git add Tenra/Tenra/Views/Insights/Sections/CashFlowInsightsSection.swift
 git commit -m "feat(insights): embed PeriodCashFlowChart inside first InsightsCardView in CashFlowInsightsSection
 
 Removes standalone chart above cards. PeriodCashFlowChart is now rendered
@@ -222,7 +222,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ## Task 3: Update `WealthInsightsSection` — embed `WealthChart` in first card
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Sections/WealthInsightsSection.swift`
+- Modify: `Tenra/Views/Insights/Sections/WealthInsightsSection.swift`
 
 ### Step 1: Read the file
 
@@ -279,7 +279,7 @@ Replace the entire `var body: some View` with:
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
   2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED"
 ```
@@ -289,7 +289,7 @@ Expected: `BUILD SUCCEEDED`
 ### Step 4: Commit
 
 ```bash
-git add AIFinanceManager/AIFinanceManager/Views/Insights/Sections/WealthInsightsSection.swift
+git add Tenra/Tenra/Views/Insights/Sections/WealthInsightsSection.swift
 git commit -m "feat(insights): embed WealthChart inside first InsightsCardView in WealthInsightsSection
 
 Removes standalone WealthChart above cards. Chart is now the bottom slot

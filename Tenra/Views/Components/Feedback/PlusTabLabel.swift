@@ -1,6 +1,6 @@
 //
 //  PlusTabLabel.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Custom label for the action tab (+/×).
 //

@@ -1,6 +1,6 @@
 //
 //  AmountDisplayConfiguration.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-11
 //  Centralized configuration for amount display formatting

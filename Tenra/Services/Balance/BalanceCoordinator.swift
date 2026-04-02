@@ -1,6 +1,6 @@
 //
 //  BalanceCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-02
 //  Part of Balance Refactoring Phase 4
@@ -26,7 +26,7 @@ import os
 final class BalanceCoordinator: BalanceCoordinatorProtocol {
 
     // MARK: - Logger
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "BalanceCoordinator")
+    private static let logger = Logger(subsystem: "Tenra", category: "BalanceCoordinator")
 
     // MARK: - Observable State
 

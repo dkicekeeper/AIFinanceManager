@@ -1,6 +1,6 @@
 //
 //  ServiceLogo.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Popular service brands organized by category
 //

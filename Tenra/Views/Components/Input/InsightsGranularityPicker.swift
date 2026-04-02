@@ -1,6 +1,6 @@
 //
 //  InsightsGranularityPicker.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 18: Financial Insights — Granularity picker
 //  Horizontal scrolling pill-button picker for selecting

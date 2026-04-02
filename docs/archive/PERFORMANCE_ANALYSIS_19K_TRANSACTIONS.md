@@ -1,4 +1,4 @@
-# Анализ производительности: AIFinanceManager при 19202 транзакциях
+# Анализ производительности: Tenra при 19202 транзакциях
 
 **Дата анализа:** 2026-01-28
 **Статус:** Критический анализ
@@ -45,7 +45,7 @@
 
 ### 1. ОТСУТСТВИЕ FETCH INDEXES В CORE DATA МОДЕЛИ
 
-**Файл:** `AIFinanceManager/CoreData/AIFinanceManager.xcdatamodeld/AIFinanceManager.xcdatamodel/contents`
+**Файл:** `Tenra/CoreData/Tenra.xcdatamodeld/Tenra.xcdatamodel/contents`
 **Строки:** 104-122 (TransactionEntity)
 
 #### Описание проблемы
@@ -117,7 +117,7 @@ if let dateRange = dateRange {
 
 ### 2. ЗАГРУЗКА ВСЕХ 19202 ТРАНЗАКЦИЙ В ПАМЯТЬ СРАЗУ
 
-**Файл:** `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**Файл:** `Tenra/ViewModels/TransactionsViewModel.swift`
 **Строки:** 14, 1352-1397
 
 #### Описание проблемы
@@ -188,7 +188,7 @@ class TransactionsViewModel {
 
 ### 3. СИНХРОННЫЕ FETCH REQUESTS НА MAIN THREAD
 
-**Файл:** `AIFinanceManager/Services/CoreDataRepository.swift`
+**Файл:** `Tenra/Services/CoreDataRepository.swift`
 **Строки:** 259-315, 318-428
 
 #### Описание проблемы
@@ -435,7 +435,7 @@ let batchSize = 100  // ⚠️ СЛИШКОМ МАЛЕНЬКИЙ для 19K ст
 #### 1.1 Добавить Fetch Indexes
 
 ```xml
-<!-- В AIFinanceManager.xcdatamodel -->
+<!-- В Tenra.xcdatamodel -->
 <entity name="TransactionEntity">
     <fetchIndex name="byDateIndex">
         <fetchIndexElement property="date" type="Binary" order="descending"/>
@@ -691,7 +691,7 @@ var displayMonthsRange: Int = 3  // Было 12
 ### 2026-01-28: Первый этап оптимизации ✅
 
 #### 1. ✅ Добавлены Fetch Indexes в Core Data модель
-**Файл:** `AIFinanceManager.xcdatamodel/contents`
+**Файл:** `Tenra.xcdatamodel/contents`
 - `byDateIndex` — индекс по дате (descending)
 - `byCategoryIndex` — индекс по категории
 - `byTypeIndex` — индекс по типу транзакции

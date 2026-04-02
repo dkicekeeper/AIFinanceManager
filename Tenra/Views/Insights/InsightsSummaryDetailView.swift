@@ -1,6 +1,6 @@
 //
 //  InsightsSummaryDetailView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 18: Financial Insights Feature
 //  Full-screen detail view shown when the InsightsSummaryHeader is tapped.

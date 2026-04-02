@@ -8,7 +8,7 @@
 
 ## 📊 Current State
 
-**File**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**File**: `Tenra/ViewModels/TransactionsViewModel.swift`
 - **Current LOC**: 2,471 lines
 - **Target LOC**: 400-600 lines
 - **Reduction**: ~75-80%
@@ -58,15 +58,15 @@ Checked all View files for deprecated method usages:
 
 ```bash
 # Account methods
-grep -r "viewModel.addAccount\|viewModel.updateAccount\|viewModel.deleteAccount" --include="*.swift" AIFinanceManager/Views/
+grep -r "viewModel.addAccount\|viewModel.updateAccount\|viewModel.deleteAccount" --include="*.swift" Tenra/Views/
 # Result: 0 usages ✅
 
 # Category methods
-grep -r "viewModel.addCategory\|viewModel.updateCategory\|viewModel.deleteCategory" --include="*.swift" AIFinanceManager/Views/
+grep -r "viewModel.addCategory\|viewModel.updateCategory\|viewModel.deleteCategory" --include="*.swift" Tenra/Views/
 # Result: 0 usages ✅
 
 # Subscription methods
-grep -r "viewModel.createSubscription\|viewModel.updateSubscription\|viewModel.pauseSubscription" --include="*.swift" AIFinanceManager/Views/
+grep -r "viewModel.createSubscription\|viewModel.updateSubscription\|viewModel.pauseSubscription" --include="*.swift" Tenra/Views/
 # Result: 0 usages ✅
 ```
 
@@ -148,8 +148,8 @@ These properties are needed by other ViewModels:
 
 #### Phase 1: Backup ✅
 ```bash
-cp AIFinanceManager/ViewModels/TransactionsViewModel.swift \
-   AIFinanceManager/ViewModels/TransactionsViewModel.swift.backup
+cp Tenra/ViewModels/TransactionsViewModel.swift \
+   Tenra/ViewModels/TransactionsViewModel.swift.backup
 ```
 
 #### Phase 2: Remove Deprecated Methods (One by One)

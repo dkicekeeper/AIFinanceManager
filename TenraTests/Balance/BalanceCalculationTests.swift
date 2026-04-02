@@ -1,6 +1,6 @@
 //
 //  BalanceCalculationTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Created on 2026-01-27
 //
@@ -16,7 +16,7 @@
 #if false
 
 import Testing
-@testable import AIFinanceManager
+@testable import Tenra
 
 struct BalanceCalculationTests {
 

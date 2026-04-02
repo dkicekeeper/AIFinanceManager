@@ -1,6 +1,6 @@
 //
 //  PeriodLineChart.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 43 (chart merge): Unified granularity-aware area/line chart.
 //  Replaces three structurally identical components:

@@ -1,6 +1,6 @@
 //
 //  AccountRepository.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //
@@ -25,7 +25,7 @@ protocol AccountRepositoryProtocol: Sendable {
 /// CoreData implementation of AccountRepositoryProtocol
 nonisolated final class AccountRepository: AccountRepositoryProtocol, @unchecked Sendable {
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "AccountRepository")
+    private static let logger = Logger(subsystem: "Tenra", category: "AccountRepository")
     private let stack: CoreDataStack
     private let saveCoordinator: CoreDataSaveCoordinator
     private let userDefaultsRepository: UserDefaultsRepository

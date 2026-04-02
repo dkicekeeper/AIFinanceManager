@@ -1,6 +1,6 @@
 //
 //  AccountActionViewModel.swift
-//  AIFinanceManager
+//  Tenra
 //
 
 import Foundation
@@ -29,7 +29,7 @@ final class AccountActionViewModel {
     @ObservationIgnored let accountsViewModel: AccountsViewModel
     @ObservationIgnored let transactionsViewModel: TransactionsViewModel
     @ObservationIgnored let transferDirection: DepositTransferDirection?
-    @ObservationIgnored private let logger = Logger(subsystem: "AIFinanceManager", category: "AccountActionViewModel")
+    @ObservationIgnored private let logger = Logger(subsystem: "Tenra", category: "AccountActionViewModel")
 
     // MARK: - Nested Types
 

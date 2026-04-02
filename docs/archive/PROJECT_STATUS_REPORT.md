@@ -115,7 +115,7 @@
 - ✅ CSV-related views (3 файла)
 
 **App Integration**:
-- ✅ AIFinanceManagerApp.swift - использует AppCoordinator
+- ✅ TenraApp.swift - использует AppCoordinator
 - ✅ CSVImportService.swift - обновлен
 
 **Архитектурные улучшения**:

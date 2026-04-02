@@ -1,6 +1,6 @@
 //
 //  AppAnimation.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Animation tokens and interactive button style.
 //

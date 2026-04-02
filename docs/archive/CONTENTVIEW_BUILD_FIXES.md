@@ -181,14 +181,14 @@ Summary(
 
 ```bash
 # Clean build folder
-rm -rf ~/Library/Developer/Xcode/DerivedData/AIFinanceManager-*
+rm -rf ~/Library/Developer/Xcode/DerivedData/Tenra-*
 
 # Build from command line
-cd /Users/dauletkydrali/Documents/GitHub/AIFinanceManager
-xcodebuild -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 15' clean build
+cd /Users/dauletkydrali/Documents/GitHub/Tenra
+xcodebuild -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 15' clean build
 
 # Or open in Xcode and build
-open AIFinanceManager.xcodeproj
+open Tenra.xcodeproj
 # Then: Cmd+B to build
 ```
 

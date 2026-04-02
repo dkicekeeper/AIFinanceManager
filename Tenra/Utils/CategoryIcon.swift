@@ -1,6 +1,6 @@
 //
 //  CategoryIcon.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Utility for getting SF Symbol icon names for categories
 //

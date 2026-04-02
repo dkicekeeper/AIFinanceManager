@@ -321,8 +321,8 @@ accountsVM.syncAccountBalances(accounts):
 ### Изменения в коде
 
 **Файлы:**
-- `AIFinanceManager/ViewModels/AccountsViewModel.swift` - 3 строки добавлено
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift` - 30 строк изменено
+- `Tenra/ViewModels/AccountsViewModel.swift` - 3 строки добавлено
+- `Tenra/ViewModels/TransactionsViewModel.swift` - 30 строк изменено
 
 **Добавлено:**
 - ✅ Отслеживание аккаунтов с рассчитанным `initialBalance`

@@ -1,6 +1,6 @@
 //
 //  LoanPaymentService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Service for loan/installment payment calculations: annuity formula,
 //  amortization schedules, payment breakdowns, early repayment handling.

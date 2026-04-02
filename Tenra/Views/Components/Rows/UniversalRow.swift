@@ -1,6 +1,6 @@
 //
 //  UniversalRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Universal row component with IconView integration and Design System compliance
 //  Created: 2026-02-16

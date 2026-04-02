@@ -13,7 +13,7 @@
 ### Task 1: `IncomeExpenseChart` — гlоw + corner radius + trailing padding + compact date labels
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Charts/IncomeExpenseChart.swift`
+- Modify: `Tenra/Views/Insights/Charts/IncomeExpenseChart.swift`
 
 **Step 1: Добавить glow и cornerRadius к BarMark-ам**
 
@@ -111,7 +111,7 @@ AxisMarks(values: .stride(by: .month)) { value in
 ### Task 2: `PeriodIncomeExpenseChart` — glow + corner radius + trailing padding + compact period labels
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Insights/Charts/IncomeExpenseChart.swift`
+- Modify: `Tenra/Views/Insights/Charts/IncomeExpenseChart.swift`
 
 **Step 1: Добавить glow и cornerRadius к BarMark-ам**
 
@@ -266,4 +266,4 @@ AxisMarks { value in
 1. `#Preview("Full income/expense chart (legacy)")` — столбики capsule, с glow, дата без года "ЯНВ"/"JAN"
 2. `#Preview("PeriodIncomeExpenseChart — Monthly")` — то же + компактные метки
 3. Compact preview — без изменений (glow/radius должны быть, padding/labels — нет)
-4. Собрать проект: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 16 Pro'`
+4. Собрать проект: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 16 Pro'`

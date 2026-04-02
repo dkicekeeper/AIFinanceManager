@@ -1,6 +1,6 @@
 //
 //  TransactionsViewModel+Recurring.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Recurring transactions and subscriptions extracted from TransactionsViewModel.
 //  Phase C: File split for maintainability.

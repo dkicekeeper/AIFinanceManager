@@ -1,6 +1,6 @@
 //
 //  CategoryDisplayData.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Unified model for displaying category in grid/list.
 //  Single source of truth for category presentation.

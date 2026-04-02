@@ -69,7 +69,7 @@ CategoryGradientBackground (API unchanged)
 
 ## Files Modified
 
-- `AIFinanceManager/Views/Components/Cards/CategoryGradientBackground.swift` — sole change
+- `Tenra/Views/Components/Cards/CategoryGradientBackground.swift` — sole change
 
 ## Files NOT Modified
 

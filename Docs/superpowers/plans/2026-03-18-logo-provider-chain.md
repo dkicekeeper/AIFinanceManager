@@ -17,14 +17,14 @@
 ### Task 1: Create LogoProvider Protocol
 
 **Files:**
-- Create: `AIFinanceManager/Services/Core/LogoProvider.swift`
+- Create: `Tenra/Services/Core/LogoProvider.swift`
 
 - [ ] **Step 1: Create the protocol and chain runner**
 
 ```swift
 //
 //  LogoProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Waterfall chain protocol for logo fetching
 //
@@ -57,13 +57,13 @@ nonisolated enum LogoProviderChain {
 
 - [ ] **Step 2: Add to Xcode project and verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 Expected: No errors (or only pre-existing ones)
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Core/LogoProvider.swift
+git add Tenra/Services/Core/LogoProvider.swift
 git commit -m "feat: add LogoProvider protocol and chain runner"
 ```
 
@@ -72,7 +72,7 @@ git commit -m "feat: add LogoProvider protocol and chain runner"
 ### Task 2: Create LocalLogoProvider
 
 **Files:**
-- Create: `AIFinanceManager/Services/Core/LocalLogoProvider.swift`
+- Create: `Tenra/Services/Core/LocalLogoProvider.swift`
 
 - [ ] **Step 1: Implement LocalLogoProvider**
 
@@ -81,7 +81,7 @@ This provider checks `BankLogo` assets. `BankLogo` has a `rawValue` (asset filen
 ```swift
 //
 //  LocalLogoProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Checks BankLogo assets for local logo matches
 //
@@ -137,12 +137,12 @@ nonisolated final class LocalLogoProvider: LogoProvider {
 
 - [ ] **Step 2: Add to Xcode project and verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Core/LocalLogoProvider.swift
+git add Tenra/Services/Core/LocalLogoProvider.swift
 git commit -m "feat: add LocalLogoProvider for BankLogo asset lookup"
 ```
 
@@ -151,14 +151,14 @@ git commit -m "feat: add LocalLogoProvider for BankLogo asset lookup"
 ### Task 3: Create GoogleFaviconProvider
 
 **Files:**
-- Create: `AIFinanceManager/Services/Core/GoogleFaviconProvider.swift`
+- Create: `Tenra/Services/Core/GoogleFaviconProvider.swift`
 
 - [ ] **Step 1: Implement GoogleFaviconProvider**
 
 ```swift
 //
 //  GoogleFaviconProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Fetches favicons from Google's favicon service
 //
@@ -213,12 +213,12 @@ nonisolated final class GoogleFaviconProvider: LogoProvider {
 
 - [ ] **Step 2: Add to Xcode project and verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Core/GoogleFaviconProvider.swift
+git add Tenra/Services/Core/GoogleFaviconProvider.swift
 git commit -m "feat: add GoogleFaviconProvider with size validation"
 ```
 
@@ -227,7 +227,7 @@ git commit -m "feat: add GoogleFaviconProvider with size validation"
 ### Task 4: Create LettermarkProvider
 
 **Files:**
-- Create: `AIFinanceManager/Services/Core/LettermarkProvider.swift`
+- Create: `Tenra/Services/Core/LettermarkProvider.swift`
 
 **Context:** Uses `CategoryColors.palette` for deterministic background color. The palette is an array of 14 `Color` values. We need to convert to `UIColor` since we render with `UIGraphicsImageRenderer`.
 
@@ -236,7 +236,7 @@ git commit -m "feat: add GoogleFaviconProvider with size validation"
 ```swift
 //
 //  LettermarkProvider.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Generates lettermark icons with deterministic colors
 //
@@ -344,14 +344,14 @@ nonisolated final class LettermarkProvider: LogoProvider {
 
 - [ ] **Step 2: Add to Xcode project and verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 Note: The `ServiceLogoRegistry` reference is commented out with a placeholder. It will be uncommented in Task 6 Step 5 after the registry is created.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Core/LettermarkProvider.swift
+git add Tenra/Services/Core/LettermarkProvider.swift
 git commit -m "feat: add LettermarkProvider with deterministic colors"
 ```
 
@@ -360,14 +360,14 @@ git commit -m "feat: add LettermarkProvider with deterministic colors"
 ### Task 5: Refactor LogoDevConfig + Extract LogoDevProvider
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Core/LogoDevConfig.swift`
+- Modify: `Tenra/Services/Core/LogoDevConfig.swift`
 - The logo.dev fetch logic will live in `LogoService` refactor (Task 7), but LogoDevProvider is essentially an extraction of the existing fetch from `LogoService`.
 
 `LogoDevProvider` doesn't need its own file — it's small enough to live inside `LogoProvider.swift`. But for clarity per spec, we keep it separate in LogoService's fetch logic. Actually, the cleanest approach: make `LogoDevProvider` a struct inside `LogoProvider.swift`.
 
 - [ ] **Step 1: Add LogoDevProvider to LogoProvider.swift**
 
-Append to `AIFinanceManager/Services/Core/LogoProvider.swift`:
+Append to `Tenra/Services/Core/LogoProvider.swift`:
 
 ```swift
 /// Fetches logos from logo.dev API. Returns nil if API key is unavailable.
@@ -406,12 +406,12 @@ nonisolated final class LogoDevProvider: LogoProvider {
 
 - [ ] **Step 2: Verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Core/LogoProvider.swift
+git add Tenra/Services/Core/LogoProvider.swift
 git commit -m "feat: add LogoDevProvider with 5s timeout"
 ```
 
@@ -422,9 +422,9 @@ git commit -m "feat: add LogoDevProvider with 5s timeout"
 ### Task 6: Refactor ServiceLogo to Struct Registry
 
 **Files:**
-- Modify: `AIFinanceManager/Models/ServiceLogo.swift`
-- Modify: `AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings`
-- Modify: `AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings`
+- Modify: `Tenra/Models/ServiceLogo.swift`
+- Modify: `Tenra/Tenra/en.lproj/Localizable.strings`
+- Modify: `Tenra/Tenra/ru.lproj/Localizable.strings`
 
 - [ ] **Step 1: Add ServiceLogoEntry struct and ServiceLogoRegistry**
 
@@ -742,7 +742,7 @@ Append to `ru.lproj/Localizable.strings`:
 
 - [ ] **Step 4: Verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 5: Uncomment LettermarkProvider's ServiceLogoRegistry reference**
 
@@ -750,15 +750,15 @@ Now that `ServiceLogoRegistry` exists, uncomment the `ServiceLogoRegistry.domain
 
 - [ ] **Step 6: Verify build again**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add AIFinanceManager/Models/ServiceLogo.swift \
-  AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings \
-  AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings \
-  AIFinanceManager/Services/Core/LettermarkProvider.swift
+git add Tenra/Models/ServiceLogo.swift \
+  Tenra/Tenra/en.lproj/Localizable.strings \
+  Tenra/Tenra/ru.lproj/Localizable.strings \
+  Tenra/Services/Core/LettermarkProvider.swift
 git commit -m "feat: add ServiceLogoRegistry with 150+ services and KZ/CIS entries"
 ```
 
@@ -769,7 +769,7 @@ git commit -m "feat: add ServiceLogoRegistry with 150+ services and KZ/CIS entri
 ### Task 7: Refactor LogoService to Use Provider Chain
 
 **Files:**
-- Modify: `AIFinanceManager/Services/Core/LogoService.swift`
+- Modify: `Tenra/Services/Core/LogoService.swift`
 
 - [ ] **Step 1: Rewrite LogoService**
 
@@ -778,7 +778,7 @@ Replace the entire content of `LogoService.swift`:
 ```swift
 //
 //  LogoService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Central logo service using waterfall provider chain
 //
@@ -884,14 +884,14 @@ final class LogoService {
 
 - [ ] **Step 2: Verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 Note: There may be errors in `BrandLogoView` because it still uses `try? await` and `LogoDevConfig.isAvailable`. These will be fixed in the next task.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add AIFinanceManager/Services/Core/LogoService.swift
+git add Tenra/Services/Core/LogoService.swift
 git commit -m "refactor: LogoService uses waterfall provider chain, drops throws"
 ```
 
@@ -900,7 +900,7 @@ git commit -m "refactor: LogoService uses waterfall provider chain, drops throws
 ### Task 8: Simplify BrandLogoView
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Icons/BrandLogoView.swift`
+- Modify: `Tenra/Views/Components/Icons/BrandLogoView.swift`
 
 - [ ] **Step 1: Rewrite BrandLogoView to chain-only**
 
@@ -909,7 +909,7 @@ Replace the entire content:
 ```swift
 //
 //  BrandLogoView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  SwiftUI component for displaying brand logos via provider chain
 //
@@ -983,16 +983,16 @@ struct BrandLogoView: View {
 
 - [ ] **Step 2: Verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 3: Check for any remaining `try? await LogoService` references**
 
-Run: `grep -rn "try.*logoImage" AIFinanceManager/` — should return 0 results.
+Run: `grep -rn "try.*logoImage" Tenra/` — should return 0 results.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Icons/BrandLogoView.swift
+git add Tenra/Views/Components/Icons/BrandLogoView.swift
 git commit -m "refactor: BrandLogoView drops AsyncImage, uses chain-only loading"
 ```
 
@@ -1003,7 +1003,7 @@ git commit -m "refactor: BrandLogoView drops AsyncImage, uses chain-only loading
 ### Task 9: Update IconPickerView with Two-Phase Search
 
 **Files:**
-- Modify: `AIFinanceManager/Views/Components/Icons/IconPickerView.swift`
+- Modify: `Tenra/Views/Components/Icons/IconPickerView.swift`
 
 - [ ] **Step 1: Update LogoItem enum to support ServiceLogoEntry**
 
@@ -1239,12 +1239,12 @@ private struct OnlineLogoRow: View {
 
 - [ ] **Step 5: Verify build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add AIFinanceManager/Views/Components/Icons/IconPickerView.swift
+git add Tenra/Views/Components/Icons/IconPickerView.swift
 git commit -m "feat: IconPickerView two-phase search with local suggestions + online fallback"
 ```
 
@@ -1259,20 +1259,20 @@ git commit -m "feat: IconPickerView two-phase search with local suggestions + on
 
 Run these searches:
 ```bash
-grep -rn "try.*logoImage" AIFinanceManager/ --include="*.swift"
-grep -rn "LogoDevConfig.isAvailable" AIFinanceManager/ --include="*.swift" | grep -v "LogoDevConfig.swift" | grep -v "LogoProvider.swift"
-grep -rn "ServiceLogo\." AIFinanceManager/ --include="*.swift" | grep -v "ServiceLogo.swift" | grep -v "ServiceLogoEntry" | grep -v "ServiceLogoRegistry"
+grep -rn "try.*logoImage" Tenra/ --include="*.swift"
+grep -rn "LogoDevConfig.isAvailable" Tenra/ --include="*.swift" | grep -v "LogoDevConfig.swift" | grep -v "LogoProvider.swift"
+grep -rn "ServiceLogo\." Tenra/ --include="*.swift" | grep -v "ServiceLogo.swift" | grep -v "ServiceLogoEntry" | grep -v "ServiceLogoRegistry"
 ```
 
 Fix any stale references found. The old `ServiceLogo` enum should still work since we kept it, but `IconPickerView` should now use `ServiceLogoRegistry`.
 
 - [ ] **Step 2: Full clean build**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30`
 
 - [ ] **Step 3: Verify no warnings from new code**
 
-Run: `xcodebuild build -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "warning:" | grep -E "(LogoProvider|LocalLogo|GoogleFavicon|Lettermark|ServiceLogoRegistry|BrandLogoView)" | head -20`
+Run: `xcodebuild build -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "warning:" | grep -E "(LogoProvider|LocalLogo|GoogleFavicon|Lettermark|ServiceLogoRegistry|BrandLogoView)" | head -20`
 
 Fix any warnings.
 

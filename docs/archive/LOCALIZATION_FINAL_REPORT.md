@@ -8,7 +8,7 @@
 
 ## 🎯 Executive Summary
 
-Проект AIFinanceManager успешно локализован для двух языков: **English** и **Russian**. Все критичные экраны (P0, P1, P2) полностью локализованы. Приложение готово к международному релизу в App Store.
+Проект Tenra успешно локализован для двух языков: **English** и **Russian**. Все критичные экраны (P0, P1, P2) полностью локализованы. Приложение готово к международному релизу в App Store.
 
 ### Ключевые метрики:
 - **216 локализационных ключей** в структурированной иерархии
@@ -424,7 +424,7 @@ Nov 15, 2025    9.99 USD
 
 ### Локализация:
 ```
-AIFinanceManager/AIFinanceManager/
+Tenra/Tenra/
 ├── en.lproj/
 │   └── Localizable.strings (216 keys)
 └── ru.lproj/
@@ -433,7 +433,7 @@ AIFinanceManager/AIFinanceManager/
 
 ### Локализованный код (14 files):
 ```
-AIFinanceManager/
+Tenra/
 ├── Models/
 │   └── TimeFilter.swift ✅
 ├── Views/
@@ -455,7 +455,7 @@ AIFinanceManager/
 
 ### Отчеты:
 ```
-/Users/dauletkydrali/Documents/AIFinanceManager/
+/Users/dauletkydrali/Documents/Tenra/
 ├── LOCALIZATION_REFACTORING_REPORT.md (Phase 1)
 ├── LOCALIZATION_PROGRESS_PHASE2.md (Phase 2)
 ├── LOCALIZATION_PROGRESS_PHASE3_4.md (Phase 3 & 4)

@@ -1,6 +1,6 @@
 //
 //  EntityMappingServiceProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Simplified CSV Import Architecture - Phase 11
 //  Removed ViewModels dependencies - works with TransactionStore only

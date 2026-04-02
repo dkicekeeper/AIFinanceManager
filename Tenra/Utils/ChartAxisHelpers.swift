@@ -1,6 +1,6 @@
 //
 //  ChartAxisHelpers.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 28: Chart Consistency Refactor
 //  Single source of truth for chart axis formatting logic.

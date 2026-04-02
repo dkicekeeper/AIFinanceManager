@@ -74,7 +74,7 @@ During Settings Refactoring Phase 2, I incorrectly created a new CSVImportCoordi
 ### File Structure After Fix
 
 ```
-AIFinanceManager/
+Tenra/
 ├── Protocols/
 │   ├── CSVImportCoordinatorProtocol.swift (SINGLE SOURCE OF TRUTH)
 │   └── Settings/

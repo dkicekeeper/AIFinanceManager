@@ -33,7 +33,7 @@ Successfully completed **Phase 1 (Critical Fixes)** and **Phase 2 (Service Decom
 - Reduced unnecessary iterations for long-term series
 
 **Files Modified:**
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift:2296-2405`
+- `Tenra/ViewModels/TransactionsViewModel.swift:2296-2405`
 
 ---
 
@@ -74,7 +74,7 @@ func saveToStorageDebounced() {
 - Reduced disk wear and battery usage
 
 **Files Modified:**
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift:83-88, 1412-1427, 1050, 1294, 2080, 2111, 2119, 2183, 2504, 2514, 2522, 2547, 2599, 2631`
+- `Tenra/ViewModels/TransactionsViewModel.swift:83-88, 1412-1427, 1050, 1294, 2080, 2111, 2119, 2183, 2504, 2514, 2522, 2547, 2599, 2631`
 
 ---
 
@@ -111,7 +111,7 @@ func saveToStorageDebounced() {
 - Reduced CPU usage during frequent balance updates
 
 **Files Modified:**
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift:62-68, 90-98, 1855-2075`
+- `Tenra/ViewModels/TransactionsViewModel.swift:62-68, 90-98, 1855-2075`
 
 ---
 
@@ -160,7 +160,7 @@ ViewModels/
 - Easy to extend with new filters
 
 **Files Created:**
-- `AIFinanceManager/ViewModels/Transactions/TransactionFilterService.swift`
+- `Tenra/ViewModels/Transactions/TransactionFilterService.swift`
 
 ---
 
@@ -188,7 +188,7 @@ ViewModels/
 - Performance optimization through proper sorting strategies
 
 **Files Created:**
-- `AIFinanceManager/ViewModels/Transactions/TransactionGroupingService.swift`
+- `Tenra/ViewModels/Transactions/TransactionGroupingService.swift`
 
 ---
 
@@ -215,7 +215,7 @@ ViewModels/
 - Scales well with Swift concurrency
 
 **Files Created:**
-- `AIFinanceManager/ViewModels/Balance/BalanceCalculator.swift`
+- `Tenra/ViewModels/Balance/BalanceCalculator.swift`
 
 ---
 
@@ -244,7 +244,7 @@ ViewModels/
 - Maintainable generation algorithm
 
 **Files Created:**
-- `AIFinanceManager/ViewModels/Recurring/RecurringTransactionGenerator.swift`
+- `Tenra/ViewModels/Recurring/RecurringTransactionGenerator.swift`
 
 ---
 
@@ -283,7 +283,7 @@ private lazy var recurringGenerator: RecurringTransactionGenerator = {
 - Clean API surface
 
 **Files Modified:**
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift:70-99`
+- `Tenra/ViewModels/TransactionsViewModel.swift:70-99`
 
 ---
 
@@ -384,7 +384,7 @@ The implementation provides:
 ## Files Created
 
 ```
-AIFinanceManager/ViewModels/
+Tenra/ViewModels/
 ├── Transactions/
 │   ├── TransactionFilterService.swift          (NEW - 315 lines)
 │   └── TransactionGroupingService.swift        (NEW - 228 lines)
@@ -397,7 +397,7 @@ AIFinanceManager/ViewModels/
 ## Files Modified
 
 ```
-AIFinanceManager/ViewModels/
+Tenra/ViewModels/
 └── TransactionsViewModel.swift                 (MODIFIED - optimizations added)
 ```
 

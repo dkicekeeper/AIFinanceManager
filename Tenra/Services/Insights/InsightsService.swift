@@ -1,6 +1,6 @@
 //
 //  InsightsService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 38: Refactored from 2832 LOC monolith into domain-specific extension files.
 //  This file retains: class declaration, init, public API, granularity API,
@@ -32,7 +32,7 @@ nonisolated final class InsightsService {
 
     // MARK: - Logger
     // Internal so cross-file extensions can log with `Self.logger`.
-    static let logger = Logger(subsystem: "AIFinanceManager", category: "InsightsService")
+    static let logger = Logger(subsystem: "Tenra", category: "InsightsService")
 
     // MARK: - Dependencies
     // Internal (no `private`) so cross-file extensions can access them directly.

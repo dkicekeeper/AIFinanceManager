@@ -7,7 +7,7 @@
 
 ## 🎉 Итоги
 
-Успешно завершена полная интеграция Core Data в приложение AIFinanceManager. Приложение теперь использует Core Data для хранения транзакций и счетов вместо UserDefaults.
+Успешно завершена полная интеграция Core Data в приложение Tenra. Приложение теперь использует Core Data для хранения транзакций и счетов вместо UserDefaults.
 
 ---
 
@@ -16,7 +16,7 @@
 ### Фаза 1: Core Data Model ✅
 
 **Файлы**:
-- `AIFinanceManager.xcdatamodeld` - Core Data модель
+- `Tenra.xcdatamodeld` - Core Data модель
 - `CoreDataStack.swift` - управление Core Data
 - `TransactionEntity+CoreDataClass.swift` - Entity для транзакций
 - `TransactionEntity+CoreDataProperties.swift` - свойства Entity

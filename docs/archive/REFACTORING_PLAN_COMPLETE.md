@@ -1,5 +1,5 @@
 # План полного рефакторинга операций транзакций
-## AIFinanceManager - Унификация CRUD, Single Source of Truth, LRU Cache
+## Tenra - Унификация CRUD, Single Source of Truth, LRU Cache
 
 > **Дата:** 2026-02-05
 > **Контекст:** Множественные кэши, сложная инвалидация, баги при обновлении балансов
@@ -955,11 +955,11 @@ class AppCoordinator: ObservableObject {
 }
 ```
 
-#### 7.3 Обновить AIFinanceManagerApp
+#### 7.3 Обновить TenraApp
 ```swift
-// AIFinanceManagerApp.swift
+// TenraApp.swift
 @main
-struct AIFinanceManagerApp: App {
+struct TenraApp: App {
     @StateObject private var coordinator = AppCoordinator()
 
     var body: some Scene {
@@ -976,7 +976,7 @@ struct AIFinanceManagerApp: App {
 **Файлы изменены:**
 - 15+ View файлов
 - `AppCoordinator.swift`
-- `AIFinanceManagerApp.swift`
+- `TenraApp.swift`
 
 **Тесты:**
 - Integration tests для каждого View

@@ -1,6 +1,6 @@
 //
 //  CategorySubcategoryCoordinatorProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Protocol for managing category-subcategory and transaction-subcategory links
 //  Extracted from CategoriesViewModel for better separation of concerns

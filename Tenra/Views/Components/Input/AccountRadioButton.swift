@@ -1,6 +1,6 @@
 //
 //  AccountRadioButton.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable account radio button component
 //

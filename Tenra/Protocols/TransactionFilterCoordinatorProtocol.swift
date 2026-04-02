@@ -1,6 +1,6 @@
 //
 //  TransactionFilterCoordinatorProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-01
 //  Phase 2 Refactoring: Service Extraction

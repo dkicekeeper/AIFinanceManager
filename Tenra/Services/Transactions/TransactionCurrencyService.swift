@@ -1,6 +1,6 @@
 //
 //  TransactionCurrencyService.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  PURPOSE: In-memory cache of pre-computed currency amounts for display.
 //

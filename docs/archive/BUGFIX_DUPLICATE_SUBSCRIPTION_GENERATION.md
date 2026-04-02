@@ -44,7 +44,7 @@ Task { @MainActor in
 
 ## The Fix
 
-**File**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+**File**: `Tenra/ViewModels/TransactionsViewModel.swift`
 
 Removed duplicate calls to `scheduleBalanceRecalculation()` and `scheduleSave()` from the notification observer:
 
@@ -173,9 +173,9 @@ This helps verify:
 ---
 
 ## Related Files
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift` - Removed duplicate method calls, added debug logging
-- `AIFinanceManager/ViewModels/SubscriptionsViewModel.swift` - Added debug logging for notification posting
-- `AIFinanceManager/Services/Transactions/RecurringTransactionService.swift` - Original implementation (no changes needed)
+- `Tenra/ViewModels/TransactionsViewModel.swift` - Removed duplicate method calls, added debug logging
+- `Tenra/ViewModels/SubscriptionsViewModel.swift` - Added debug logging for notification posting
+- `Tenra/Services/Transactions/RecurringTransactionService.swift` - Original implementation (no changes needed)
 
 ---
 

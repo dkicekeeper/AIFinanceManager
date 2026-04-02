@@ -56,8 +56,8 @@ This document summarizes the quick fixes applied to TransactionsViewModel follow
    - Russian: "Неизвестно"
 
 **Files Modified:**
-- `/Users/dauletkydrali/Documents/GitHub/AIFinanceManager/AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings`
-- `/Users/dauletkydrali/Documents/GitHub/AIFinanceManager/AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings`
+- `/Users/dauletkydrali/Documents/GitHub/Tenra/Tenra/Tenra/en.lproj/Localizable.strings`
+- `/Users/dauletkydrali/Documents/GitHub/Tenra/Tenra/Tenra/ru.lproj/Localizable.strings`
 
 **Location:** Added after line 159 in the "Common" section of both files
 
@@ -127,7 +127,7 @@ func transactions(for subscriptionId: String) -> [Transaction] {
 
 **Build Command:**
 ```bash
-xcodebuild -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 17' clean build
+xcodebuild -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 17' clean build
 ```
 
 **Results:**
@@ -169,7 +169,7 @@ xcodebuild -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iP
 ## Files Modified
 
 ### TransactionsViewModel.swift
-- **Location:** `/Users/dauletkydrali/Documents/GitHub/AIFinanceManager/AIFinanceManager/ViewModels/TransactionsViewModel.swift`
+- **Location:** `/Users/dauletkydrali/Documents/GitHub/Tenra/Tenra/ViewModels/TransactionsViewModel.swift`
 - **Changes:**
   - Removed 4 duplicate subcategory methods (lines 2197-2235)
   - Removed 1 unused transactions method (lines 2001-2004)
@@ -179,11 +179,11 @@ xcodebuild -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iP
 
 ### Localization Files
 1. **English Localizations:**
-   - **Location:** `/Users/dauletkydrali/Documents/GitHub/AIFinanceManager/AIFinanceManager/AIFinanceManager/en.lproj/Localizable.strings`
+   - **Location:** `/Users/dauletkydrali/Documents/GitHub/Tenra/Tenra/Tenra/en.lproj/Localizable.strings`
    - **Changes:** Added 2 keys (`common.uncategorized`, `common.unknown`)
 
 2. **Russian Localizations:**
-   - **Location:** `/Users/dauletkydrali/Documents/GitHub/AIFinanceManager/AIFinanceManager/AIFinanceManager/ru.lproj/Localizable.strings`
+   - **Location:** `/Users/dauletkydrali/Documents/GitHub/Tenra/Tenra/Tenra/ru.lproj/Localizable.strings`
    - **Changes:** Added 2 keys (`common.uncategorized`, `common.unknown`)
 
 ---
@@ -429,15 +429,15 @@ The TransactionsViewModel is now **leaner, cleaner, and more maintainable**, wit
 
 ```
 Changes Made:
-├── AIFinanceManager/ViewModels/
+├── Tenra/ViewModels/
 │   └── TransactionsViewModel.swift
 │       ├── Removed 4 duplicate subcategory methods
 │       ├── Removed 1 unused transactions method
 │       └── Final size: 2,384 lines (-333 from start)
-├── AIFinanceManager/AIFinanceManager/en.lproj/
+├── Tenra/Tenra/en.lproj/
 │   └── Localizable.strings
 │       └── Added 2 localization keys
-└── AIFinanceManager/AIFinanceManager/ru.lproj/
+└── Tenra/Tenra/ru.lproj/
     └── Localizable.strings
         └── Added 2 localization keys
 

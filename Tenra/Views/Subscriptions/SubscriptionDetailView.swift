@@ -1,6 +1,6 @@
 //
 //  SubscriptionDetailView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2024
 //

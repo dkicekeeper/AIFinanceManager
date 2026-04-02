@@ -25,8 +25,8 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - AIFinanceManager/Services/Cache/TransactionCacheManager.swift
-    - AIFinanceManager/Services/Cache/UnifiedTransactionCache.swift
+    - Tenra/Services/Cache/TransactionCacheManager.swift
+    - Tenra/Services/Cache/UnifiedTransactionCache.swift
 
 key-decisions:
   - "Full invalidation retained in UnifiedTransactionCache.invalidate(prefix:) — LRU holds <= 1000 entries (<50 KB); full eviction per event is acceptably cheap. Prefix-scoped eviction deferred until load necessitates it."
@@ -71,8 +71,8 @@ Each task was committed atomically:
 
 ## Files Created/Modified
 
-- `AIFinanceManager/Services/Cache/TransactionCacheManager.swift` — Deleted MARK section (lines 77-82) + removed `cachedAccountBalances.removeAll()` and `balanceCacheInvalidated = true` from `invalidateAll()`. Net -9 lines.
-- `AIFinanceManager/Services/Cache/UnifiedTransactionCache.swift` — Replaced 3-line TODO body with 4-line doc comment explaining intentional full-invalidation. Method signature and all callers unchanged.
+- `Tenra/Services/Cache/TransactionCacheManager.swift` — Deleted MARK section (lines 77-82) + removed `cachedAccountBalances.removeAll()` and `balanceCacheInvalidated = true` from `invalidateAll()`. Net -9 lines.
+- `Tenra/Services/Cache/UnifiedTransactionCache.swift` — Replaced 3-line TODO body with 4-line doc comment explaining intentional full-invalidation. Method signature and all callers unchanged.
 
 ## Decisions Made
 
@@ -102,8 +102,8 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
-- FOUND: AIFinanceManager/Services/Cache/TransactionCacheManager.swift
-- FOUND: AIFinanceManager/Services/Cache/UnifiedTransactionCache.swift
+- FOUND: Tenra/Services/Cache/TransactionCacheManager.swift
+- FOUND: Tenra/Services/Cache/UnifiedTransactionCache.swift
 - FOUND: .planning/phases/01-safety-and-cleanup/01-03-SUMMARY.md
 - FOUND: commit 238c0fe (Task 1)
 - FOUND: commit 17b46fa (Task 2)

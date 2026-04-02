@@ -309,7 +309,7 @@ Pattern:
 
 ### Step 1: Migrate BalanceStore (Critical)
 
-**File:** `AIFinanceManager/Services/Balance/BalanceStore.swift`
+**File:** `Tenra/Services/Balance/BalanceStore.swift`
 
 ```swift
 // Line 109: Change from ObservableObject to @Observable
@@ -331,7 +331,7 @@ final class BalanceStore {
 
 ### Step 2: Migrate VoiceInputService
 
-**File:** `AIFinanceManager/Services/VoiceInputService.swift`
+**File:** `Tenra/Services/VoiceInputService.swift`
 
 ```swift
 // Line 38: Add @Observable, remove ObservableObject
@@ -348,7 +348,7 @@ class VoiceInputService: NSObject {
 }
 ```
 
-**File:** `AIFinanceManager/Views/VoiceInput/VoiceInputView.swift`
+**File:** `Tenra/Views/VoiceInput/VoiceInputView.swift`
 
 ```swift
 // Line 12: Change from @ObservedObject to let
@@ -357,7 +357,7 @@ let voiceService: VoiceInputService
 
 ### Step 3: Migrate ExportCoordinator
 
-**File:** `AIFinanceManager/Services/Settings/ExportCoordinator.swift`
+**File:** `Tenra/Services/Settings/ExportCoordinator.swift`
 
 ```swift
 // Line 14: Add @Observable, remove ObservableObject
@@ -372,7 +372,7 @@ final class ExportCoordinator: ExportCoordinatorProtocol {
 
 ### Step 4: Migrate ImportFlowCoordinator
 
-**File:** `AIFinanceManager/Services/Settings/ImportFlowCoordinator.swift`
+**File:** `Tenra/Services/Settings/ImportFlowCoordinator.swift`
 
 ```swift
 // Line 16: Add @Observable, remove ObservableObject
@@ -391,7 +391,7 @@ final class ImportFlowCoordinator {
 }
 ```
 
-**File:** `AIFinanceManager/Views/Settings/Components/ImportFlowSheetsContainer.swift`
+**File:** `Tenra/Views/Settings/Components/ImportFlowSheetsContainer.swift`
 
 ```swift
 // Line 16: Change from @ObservedObject to let
@@ -400,7 +400,7 @@ let flowCoordinator: ImportFlowCoordinator
 
 ### Step 5: Migrate DateSectionExpensesCache
 
-**File:** `AIFinanceManager/Managers/DateSectionExpensesCache.swift`
+**File:** `Tenra/Managers/DateSectionExpensesCache.swift`
 
 ```swift
 // Line 18: Add @Observable, remove ObservableObject
@@ -411,7 +411,7 @@ class DateSectionExpensesCache {
 }
 ```
 
-**File:** `AIFinanceManager/Views/History/HistoryTransactionsList.swift`
+**File:** `Tenra/Views/History/HistoryTransactionsList.swift`
 
 ```swift
 // Line 20: Change from @ObservedObject to let
@@ -420,7 +420,7 @@ let expensesCache: DateSectionExpensesCache
 
 ### Step 6: Migrate TransactionPaginationManager
 
-**File:** `AIFinanceManager/Managers/TransactionPaginationManager.swift`
+**File:** `Tenra/Managers/TransactionPaginationManager.swift`
 
 ```swift
 // Line 15: Add @Observable, remove ObservableObject
@@ -436,7 +436,7 @@ class TransactionPaginationManager {
 }
 ```
 
-**File:** `AIFinanceManager/Views/History/HistoryTransactionsList.swift`
+**File:** `Tenra/Views/History/HistoryTransactionsList.swift`
 
 ```swift
 // Line 19: Change from @ObservedObject to let
@@ -445,7 +445,7 @@ let paginationManager: TransactionPaginationManager
 
 ### Step 7: Migrate HistoryFilterCoordinator
 
-**File:** `AIFinanceManager/ViewModels/HistoryFilterCoordinator.swift`
+**File:** `Tenra/ViewModels/HistoryFilterCoordinator.swift`
 
 ```swift
 // Line 19: Add @Observable, remove ObservableObject
@@ -464,7 +464,7 @@ class HistoryFilterCoordinator {
 
 ### Step 8: Migrate AppSettings
 
-**File:** `AIFinanceManager/Models/AppSettings.swift`
+**File:** `Tenra/Models/AppSettings.swift`
 
 ```swift
 // Line 15: Add @Observable, remove ObservableObject
@@ -482,7 +482,7 @@ class AppSettings: Codable {
 
 ### Step 9: Migrate ImportProgress
 
-**File:** `AIFinanceManager/Models/ImportProgress.swift`
+**File:** `Tenra/Models/ImportProgress.swift`
 
 ```swift
 // Line 15: Add @Observable, remove ObservableObject

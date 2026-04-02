@@ -1,6 +1,6 @@
 //
 //  MonthlyAggregateEntity+CoreDataProperties.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 22: Properties for MonthlyAggregateEntity.
 //

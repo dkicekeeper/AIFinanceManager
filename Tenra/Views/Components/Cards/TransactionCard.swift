@@ -1,6 +1,6 @@
 //
 //  TransactionCard.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable transaction card component for displaying transactions in lists
 //

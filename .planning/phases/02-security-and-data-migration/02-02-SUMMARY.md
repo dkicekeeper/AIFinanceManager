@@ -28,17 +28,17 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - AIFinanceManager/Utils/AmountFormatter.swift
-    - AIFinanceManager/Protocols/TransactionFormServiceProtocol.swift
-    - AIFinanceManager/Views/Transactions/AddTransactionCoordinator.swift
-    - AIFinanceManager/Models/TimeFilter.swift
-    - AIFinanceManager.xcodeproj/project.pbxproj
-    - AIFinanceManagerTests/Utils/AmountFormatterTests.swift
-    - AIFinanceManagerTests/Balance/BalanceCalculationTests.swift
-    - AIFinanceManagerTests/Services/Transactions/RecurringTransactionTests.swift
-    - AIFinanceManagerTests/Services/Voice/VoiceInputParserTests.swift
-    - AIFinanceManagerTests/ViewModels/TransactionPaginationControllerTests.swift
-    - AIFinanceManagerTests/ViewModels/TransactionStoreTests.swift
+    - Tenra/Utils/AmountFormatter.swift
+    - Tenra/Protocols/TransactionFormServiceProtocol.swift
+    - Tenra/Views/Transactions/AddTransactionCoordinator.swift
+    - Tenra/Models/TimeFilter.swift
+    - Tenra.xcodeproj/project.pbxproj
+    - TenraTests/Utils/AmountFormatterTests.swift
+    - TenraTests/Balance/BalanceCalculationTests.swift
+    - TenraTests/Services/Transactions/RecurringTransactionTests.swift
+    - TenraTests/Services/Voice/VoiceInputParserTests.swift
+    - TenraTests/ViewModels/TransactionPaginationControllerTests.swift
+    - TenraTests/ViewModels/TransactionStoreTests.swift
 
 key-decisions:
   - "Upper bound is 999,999,999.99 (not a round 1B) — matches the plan spec to prevent silent Decimal overflow while allowing realistic figures"
@@ -89,17 +89,17 @@ _Note: Task 1 was TDD — tests written first (RED), then implementation added (
 
 ## Files Created/Modified
 
-- `AIFinanceManager/Utils/AmountFormatter.swift` - Added `static func validate(_ amount: Decimal) -> Bool`
-- `AIFinanceManager/Protocols/TransactionFormServiceProtocol.swift` - Added `amountExceedsMaximum` case to `ValidationError` enum
-- `AIFinanceManager/Views/Transactions/AddTransactionCoordinator.swift` - Added upper-bound guard calling `AmountFormatter.validate()`
-- `AIFinanceManager/Models/TimeFilter.swift` - Restored `contains(date:)` and `contains(dateString:)` to fix pre-existing test failure
-- `AIFinanceManager.xcodeproj/project.pbxproj` - Fixed test targets: `GENERATE_INFOPLIST_FILE=YES`, `IPHONEOS_DEPLOYMENT_TARGET=26.0`
-- `AIFinanceManagerTests/Utils/AmountFormatterTests.swift` - Added 5 boundary tests + `import Foundation`
-- `AIFinanceManagerTests/Balance/BalanceCalculationTests.swift` - Wrapped in `#if false` (deleted services)
-- `AIFinanceManagerTests/Services/Transactions/RecurringTransactionTests.swift` - Fixed `RecurringSeries` init argument order
-- `AIFinanceManagerTests/Services/Voice/VoiceInputParserTests.swift` - Wrapped in `#if false` (old API)
-- `AIFinanceManagerTests/ViewModels/TransactionPaginationControllerTests.swift` - Removed dead `TransactionSection` init tests, added `import Foundation`
-- `AIFinanceManagerTests/ViewModels/TransactionStoreTests.swift` - Wrapped in `#if false` (old API)
+- `Tenra/Utils/AmountFormatter.swift` - Added `static func validate(_ amount: Decimal) -> Bool`
+- `Tenra/Protocols/TransactionFormServiceProtocol.swift` - Added `amountExceedsMaximum` case to `ValidationError` enum
+- `Tenra/Views/Transactions/AddTransactionCoordinator.swift` - Added upper-bound guard calling `AmountFormatter.validate()`
+- `Tenra/Models/TimeFilter.swift` - Restored `contains(date:)` and `contains(dateString:)` to fix pre-existing test failure
+- `Tenra.xcodeproj/project.pbxproj` - Fixed test targets: `GENERATE_INFOPLIST_FILE=YES`, `IPHONEOS_DEPLOYMENT_TARGET=26.0`
+- `TenraTests/Utils/AmountFormatterTests.swift` - Added 5 boundary tests + `import Foundation`
+- `TenraTests/Balance/BalanceCalculationTests.swift` - Wrapped in `#if false` (deleted services)
+- `TenraTests/Services/Transactions/RecurringTransactionTests.swift` - Fixed `RecurringSeries` init argument order
+- `TenraTests/Services/Voice/VoiceInputParserTests.swift` - Wrapped in `#if false` (old API)
+- `TenraTests/ViewModels/TransactionPaginationControllerTests.swift` - Removed dead `TransactionSection` init tests, added `import Foundation`
+- `TenraTests/ViewModels/TransactionStoreTests.swift` - Wrapped in `#if false` (old API)
 
 ## Decisions Made
 
@@ -114,9 +114,9 @@ _Note: Task 1 was TDD — tests written first (RED), then implementation added (
 
 **1. [Rule 3 - Blocking] Test target deployment target mismatch**
 - **Found during:** Task 1 (TDD RED phase)
-- **Issue:** `AIFinanceManagerTests` had `IPHONEOS_DEPLOYMENT_TARGET = 17.0` but the app module requires iOS 26.0 — tests failed to compile with "module has a minimum deployment target of iOS 26.0" and no `INFOPLIST_FILE` set caused code signing failure
-- **Fix:** Changed both Debug and Release configs to `GENERATE_INFOPLIST_FILE = YES` and `IPHONEOS_DEPLOYMENT_TARGET = 26.0` for `AIFinanceManagerTests` and `AIFinanceManagerUITests`
-- **Files modified:** `AIFinanceManager.xcodeproj/project.pbxproj`
+- **Issue:** `TenraTests` had `IPHONEOS_DEPLOYMENT_TARGET = 17.0` but the app module requires iOS 26.0 — tests failed to compile with "module has a minimum deployment target of iOS 26.0" and no `INFOPLIST_FILE` set caused code signing failure
+- **Fix:** Changed both Debug and Release configs to `GENERATE_INFOPLIST_FILE = YES` and `IPHONEOS_DEPLOYMENT_TARGET = 26.0` for `TenraTests` and `TenraUITests`
+- **Files modified:** `Tenra.xcodeproj/project.pbxproj`
 - **Verification:** Test target now compiles and runs on iOS 26 simulator
 - **Committed in:** `4c07fa0`
 

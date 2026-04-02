@@ -1,6 +1,6 @@
 //
 //  BudgetSettingsSection.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Universal budget settings component for category budgets
 //  Created 2026-02-17

@@ -1,6 +1,6 @@
 //
 //  PeriodBarChart.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 43 (chart merge): Unified granularity-aware income/expense grouped bar chart.
 //  Replaces PeriodIncomeExpenseChart.

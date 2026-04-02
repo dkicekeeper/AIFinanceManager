@@ -1,6 +1,6 @@
 //
 //  InsightsService+Wealth.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
 //  Responsible for: total wealth, wealth growth, account dormancy detection.

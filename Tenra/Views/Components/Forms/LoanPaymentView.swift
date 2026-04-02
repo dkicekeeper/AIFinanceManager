@@ -1,6 +1,6 @@
 //
 //  LoanPaymentView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  View for making a manual monthly loan payment.
 //  Selects a source bank account and records the payment.

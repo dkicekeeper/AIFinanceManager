@@ -22,7 +22,7 @@
 ### 1. Модель данных
 
 #### `CustomCategory` (расширена)
-**Файл**: `AIFinanceManager/Models/CustomCategory.swift`
+**Файл**: `Tenra/Models/CustomCategory.swift`
 
 **Новые поля**:
 ```swift
@@ -39,7 +39,7 @@ var budgetResetDay: Int             // День месяца для сброса
 - ✅ Дефолтное значение `budgetResetDay = 1`
 
 #### `BudgetProgress` (новая модель)
-**Файл**: `AIFinanceManager/Models/BudgetProgress.swift`
+**Файл**: `Tenra/Models/BudgetProgress.swift`
 
 **Структура**:
 ```swift
@@ -62,7 +62,7 @@ struct BudgetProgress {
 ### 2. ViewModel слой
 
 #### `CategoriesViewModel`
-**Файл**: `AIFinanceManager/ViewModels/CategoriesViewModel.swift`
+**Файл**: `Tenra/ViewModels/CategoriesViewModel.swift`
 
 **Новые методы**:
 
@@ -132,7 +132,7 @@ private func budgetPeriodStart(for category: CustomCategory) -> Date
 ### 3. UI компоненты
 
 #### `CategoryRow` (обновлен)
-**Файл**: `AIFinanceManager/Views/CategoriesManagementView.swift` (строки 134-231)
+**Файл**: `Tenra/Views/CategoriesManagementView.swift` (строки 134-231)
 
 **Визуальные элементы**:
 
@@ -158,7 +158,7 @@ private func budgetPeriodStart(for category: CustomCategory) -> Date
    - Открывает `SetBudgetSheet`
 
 #### `SetBudgetSheet` (новый компонент)
-**Файл**: `AIFinanceManager/Views/SetBudgetSheet.swift`
+**Файл**: `Tenra/Views/SetBudgetSheet.swift`
 
 **Функционал**:
 - Ввод суммы бюджета (TextField с `.decimalPad`)
@@ -173,7 +173,7 @@ private func budgetPeriodStart(for category: CustomCategory) -> Date
 - Поддержка EN + RU
 
 #### `CategoryChipWithBudget` (новый компонент)
-**Файл**: `AIFinanceManager/Views/Components/CategoryChipWithBudget.swift`
+**Файл**: `Tenra/Views/Components/CategoryChipWithBudget.swift`
 
 **Назначение**: Переиспользуемый компонент для отображения категории с индикатором бюджета
 
@@ -422,22 +422,22 @@ transactions.filter { transaction in
 ## 📚 Связанные файлы
 
 ### Модели:
-- `AIFinanceManager/Models/CustomCategory.swift`
-- `AIFinanceManager/Models/BudgetProgress.swift`
-- `AIFinanceManager/Models/Transaction.swift` (используется для расчета)
+- `Tenra/Models/CustomCategory.swift`
+- `Tenra/Models/BudgetProgress.swift`
+- `Tenra/Models/Transaction.swift` (используется для расчета)
 
 ### ViewModels:
-- `AIFinanceManager/ViewModels/CategoriesViewModel.swift`
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift` (предоставляет транзакции)
+- `Tenra/ViewModels/CategoriesViewModel.swift`
+- `Tenra/ViewModels/TransactionsViewModel.swift` (предоставляет транзакции)
 
 ### Views:
-- `AIFinanceManager/Views/CategoriesManagementView.swift`
-- `AIFinanceManager/Views/SetBudgetSheet.swift`
-- `AIFinanceManager/Views/Components/CategoryChipWithBudget.swift`
+- `Tenra/Views/CategoriesManagementView.swift`
+- `Tenra/Views/SetBudgetSheet.swift`
+- `Tenra/Views/Components/CategoryChipWithBudget.swift`
 
 ### Локализация:
-- `AIFinanceManager/en.lproj/Localizable.strings`
-- `AIFinanceManager/ru.lproj/Localizable.strings`
+- `Tenra/en.lproj/Localizable.strings`
+- `Tenra/ru.lproj/Localizable.strings`
 
 ### Документация:
 - `BUDGET_FEATURE_IMPLEMENTATION_COMPLETE.md`

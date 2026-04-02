@@ -1,6 +1,6 @@
 //
 //  FormattedAmountText.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-11
 //  Universal reusable component for displaying formatted amounts with smart decimal handling

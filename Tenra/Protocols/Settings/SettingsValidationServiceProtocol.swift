@@ -1,6 +1,6 @@
 //
 //  SettingsValidationServiceProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-04
 //  Settings Refactoring Phase 1

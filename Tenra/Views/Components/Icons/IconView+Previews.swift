@@ -1,6 +1,6 @@
 //
 //  IconView+Previews.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Xcode previews for IconView — extracted for maintainability.
 //  Phase C: File split.

@@ -49,7 +49,7 @@
 - ✅ `CSVColumnMappingView.swift`
 
 **App Integration**:
-- ✅ `AIFinanceManagerApp.swift` - создает AppCoordinator
+- ✅ `TenraApp.swift` - создает AppCoordinator
 
 ---
 

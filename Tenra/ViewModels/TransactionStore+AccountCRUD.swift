@@ -1,6 +1,6 @@
 //
 //  TransactionStore+AccountCRUD.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Account CRUD operations extracted from TransactionStore.
 //  Phase C: File split for maintainability.

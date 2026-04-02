@@ -34,7 +34,7 @@ Account(
 
 Команда для поиска:
 ```bash
-grep -r "account\.balance" AIFinanceManager/Views/
+grep -r "account\.balance" Tenra/Views/
 ```
 
 Ожидаемые файлы:

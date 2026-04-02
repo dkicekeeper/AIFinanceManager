@@ -1,6 +1,6 @@
 # 🎉 Voice Input Feature - Complete Implementation Summary
 
-**Проект:** AIFinanceManager Voice Input Enhancement
+**Проект:** Tenra Voice Input Enhancement
 **Период:** 2026-01-19
 **Статус:** ✅ **100% COMPLETED**
 **Версия:** 1.0
@@ -9,7 +9,7 @@
 
 ## 📊 Executive Summary
 
-Реализован полностью функциональный голосовой ввод транзакций для AIFinanceManager с современным UX, high-accuracy распознаванием и advanced features.
+Реализован полностью функциональный голосовой ввод транзакций для Tenra с современным UX, high-accuracy распознаванием и advanced features.
 
 ### Key Metrics
 
@@ -209,7 +209,7 @@ HighlightedText
 
 ### Build Status
 ```
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator build
+xcodebuild -scheme Tenra -sdk iphonesimulator build
 
 Phase 1: ✅ BUILD SUCCEEDED
 Phase 2: ✅ BUILD SUCCEEDED

@@ -1,6 +1,6 @@
 //
 //  LoanEditView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  View for creating, editing, and converting accounts to loans/installments.
 //  3 modes: new, edit, convert (mirrors DepositEditView pattern).

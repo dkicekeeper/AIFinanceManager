@@ -193,18 +193,18 @@ struct HistoryFilterSection: View {
 ## 📝 Файлы
 
 **Изменено:**
-1. `AIFinanceManager/Views/History/HistoryView.swift` (+3 строки)
+1. `Tenra/Views/History/HistoryView.swift` (+3 строки)
    - Добавлено состояние `showingTimeFilter`
    - Добавлен callback `onTimeFilterTap`
    - Добавлен `.sheet` для `TimeFilterView`
 
-2. `AIFinanceManager/Views/History/Components/HistoryFilterSection.swift` (+2 строки)
+2. `Tenra/Views/History/Components/HistoryFilterSection.swift` (+2 строки)
    - Добавлен параметр `onTimeFilterTap: () -> Void`
    - Обновлен `FilterChip` с реальным callback
 
 **Используется существующий:**
-- `AIFinanceManager/Views/History/TimeFilterView.swift` (без изменений)
-- `AIFinanceManager/Managers/TimeFilterManager.swift` (без изменений)
+- `Tenra/Views/History/TimeFilterView.swift` (без изменений)
+- `Tenra/Managers/TimeFilterManager.swift` (без изменений)
 
 ---
 

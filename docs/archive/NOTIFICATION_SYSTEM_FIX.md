@@ -65,7 +65,7 @@ struct NotificationDebugView: View
 
 ## 🔧 Изменения в существующих файлах
 
-### `AIFinanceManagerApp.swift`
+### `TenraApp.swift`
 ```diff
 + @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 ```

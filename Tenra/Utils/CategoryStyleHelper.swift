@@ -1,6 +1,6 @@
 //
 //  CategoryStyleHelper.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Utility для консистентного получения цветов и иконок категорий
 //  Устраняет дублирование логики из AccountActionView, QuickAddTransactionView, HistoryView

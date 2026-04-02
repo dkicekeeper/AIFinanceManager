@@ -22,7 +22,7 @@
 
 ### 1. Мемоизация Day Expenses ⚡
 
-**Создан:** `AIFinanceManager/Managers/DateSectionExpensesCache.swift` (135 строк)
+**Создан:** `Tenra/Managers/DateSectionExpensesCache.swift` (135 строк)
 
 **Функциональность:**
 - Кеширование расчетов day expenses для каждой секции
@@ -149,8 +149,8 @@ if transactionDay == today {
 ### Build Status: ✅ SUCCESS
 
 ```bash
-xcodebuild -project AIFinanceManager.xcodeproj \
-  -scheme AIFinanceManager \
+xcodebuild -project Tenra.xcodeproj \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
   build
 

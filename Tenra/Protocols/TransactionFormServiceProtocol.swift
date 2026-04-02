@@ -1,6 +1,6 @@
 //
 //  TransactionFormServiceProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Protocol for transaction form validation and processing
 //

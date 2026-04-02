@@ -1,6 +1,6 @@
 //
 //  CategoryOrderManager.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Manages category display order in UserDefaults
 //  Separates UI preferences from business data

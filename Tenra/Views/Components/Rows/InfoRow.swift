@@ -1,6 +1,6 @@
 //
 //  InfoRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable info row component (label: value)
 //  Migrated to UniversalRow architecture - 2026-02-16

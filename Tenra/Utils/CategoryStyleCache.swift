@@ -1,6 +1,6 @@
 //
 //  CategoryStyleCache.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Global singleton cache for CategoryStyleHelper to avoid recreating on every render
 //  OPTIMIZATION: Reduces object creation from 60fps × N categories to O(1) lookups

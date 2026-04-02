@@ -1,6 +1,6 @@
 //
 //  HapticManager.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Управление тактильной обратной связью (haptic feedback)
 //

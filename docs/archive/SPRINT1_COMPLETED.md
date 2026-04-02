@@ -9,7 +9,7 @@
 
 ### ✅ Задача 1: SaveCoordinator Actor (4 часа)
 
-**Создан новый файл:** `AIFinanceManager/Services/CoreDataSaveCoordinator.swift`
+**Создан новый файл:** `Tenra/Services/CoreDataSaveCoordinator.swift`
 
 #### Что сделано:
 
@@ -136,14 +136,14 @@ accounts = newAccounts
 ## Файлы изменены
 
 ### Новые файлы (1):
-- ✅ `AIFinanceManager/Services/CoreDataSaveCoordinator.swift` - 244 строки
+- ✅ `Tenra/Services/CoreDataSaveCoordinator.swift` - 244 строки
 
 ### Обновленные файлы (5):
-- ✅ `AIFinanceManager/Services/CoreDataRepository.swift` - обновлены 5 методов
-- ✅ `AIFinanceManager/ViewModels/AccountsViewModel.swift` - удалено 3 вызова
-- ✅ `AIFinanceManager/ViewModels/CategoriesViewModel.swift` - удалено 3 вызова
-- ✅ `AIFinanceManager/ViewModels/SubscriptionsViewModel.swift` - удалено 6 вызовов
-- ✅ `AIFinanceManager/ViewModels/TransactionsViewModel.swift` - удалено 1 вызов (если есть)
+- ✅ `Tenra/Services/CoreDataRepository.swift` - обновлены 5 методов
+- ✅ `Tenra/ViewModels/AccountsViewModel.swift` - удалено 3 вызова
+- ✅ `Tenra/ViewModels/CategoriesViewModel.swift` - удалено 3 вызова
+- ✅ `Tenra/ViewModels/SubscriptionsViewModel.swift` - удалено 6 вызовов
+- ✅ `Tenra/ViewModels/TransactionsViewModel.swift` - удалено 1 вызов (если есть)
 
 ---
 
@@ -195,7 +195,7 @@ func testConcurrentSaves() async throws {
 ### ⏭️ Следующие задачи (Week 1):
 
 #### ✅ Задача 3: Добавить Unique Constraints в Core Data (3 часа)
-- [ ] Открыть AIFinanceManager.xcdatamodeld
+- [ ] Открыть Tenra.xcdatamodeld
 - [ ] Добавить unique constraint на `id` для всех Entity
 - [ ] Создать миграцию если нужно
 

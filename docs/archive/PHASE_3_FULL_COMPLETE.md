@@ -348,7 +348,7 @@ User → AccountsViewModel.addAccount()
 ### Build Status
 
 ```bash
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 
 Result: ✅ BUILD SUCCEEDED
 Warnings: 0 new (existing CoreData warnings unrelated)

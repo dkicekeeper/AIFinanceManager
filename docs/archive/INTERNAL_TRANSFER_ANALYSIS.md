@@ -595,22 +595,22 @@ guard !amountText.isEmpty,
 ## 📚 Связанные файлы
 
 ### Модели
-- `AIFinanceManager/Models/Transaction.swift` - модель транзакции
-- `AIFinanceManager/Models/RecurringTransaction.swift` - модель recurring серий
+- `Tenra/Models/Transaction.swift` - модель транзакции
+- `Tenra/Models/RecurringTransaction.swift` - модель recurring серий
 
 ### ViewModels
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift` - логика работы с транзакциями
+- `Tenra/ViewModels/TransactionsViewModel.swift` - логика работы с транзакциями
 
 ### Views
-- `AIFinanceManager/Views/AccountActionView.swift` - форма создания перевода
-- `AIFinanceManager/Views/EditTransactionView.swift` - форма редактирования транзакции
-- `AIFinanceManager/Views/HistoryView.swift` - отображение истории транзакций
+- `Tenra/Views/AccountActionView.swift` - форма создания перевода
+- `Tenra/Views/EditTransactionView.swift` - форма редактирования транзакции
+- `Tenra/Views/HistoryView.swift` - отображение истории транзакций
 
 ### Services
-- `AIFinanceManager/Services/CurrencyConverter.swift` - конвертация валют
+- `Tenra/Services/CurrencyConverter.swift` - конвертация валют
 
 ### Utils
-- `AIFinanceManager/Utils/CategoryEmoji.swift` - иконки для категорий
+- `Tenra/Utils/CategoryEmoji.swift` - иконки для категорий
 
 ---
 

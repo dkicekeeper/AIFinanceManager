@@ -1,6 +1,6 @@
 //
 //  CategorySelectorView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable category selector component with horizontal scroll
 //

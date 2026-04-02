@@ -1,6 +1,6 @@
 //
 //  FormLabeledRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Label-value row primitive for form groups.
 //  The label stays visible at all times (unlike placeholder-only inputs),

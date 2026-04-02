@@ -1,4 +1,4 @@
-# План оптимизации производительности AIFinanceManager
+# План оптимизации производительности Tenra
 
 ## Проблема
 При загрузке 19000+ транзакций приложение тормозит при:
@@ -10,12 +10,12 @@
 ## Критические узкие места
 
 ### 1. HistoryView - отсутствие пагинации
-**Файл**: `AIFinanceManager/Views/HistoryView.swift`
+**Файл**: `Tenra/Views/HistoryView.swift`
 **Проблема**: Загружает все транзакции сразу в List
 **Решение**: Внедрить пагинацию и LazyVStack
 
 ### 2. Множественные фильтрации
-**Файл**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift:146-208`
+**Файл**: `Tenra/ViewModels/TransactionsViewModel.swift:146-208`
 **Проблема**: 7 onChange триггеров, каждый пересчитывает все транзакции
 **Решение**: Дебаунсинг и батчинг обновлений
 
@@ -24,12 +24,12 @@
 **Решение**: Индексы для быстрого поиска
 
 ### 4. Синхронная конвертация валют
-**Файл**: `AIFinanceManager/Views/HistoryView.swift:257-285`
+**Файл**: `Tenra/Views/HistoryView.swift:257-285`
 **Проблема**: CurrencyConverter.convertSync() в UI потоке
 **Решение**: Предварительное кеширование конвертаций
 
 ### 5. Тяжелые вычисления summary
-**Файл**: `AIFinanceManager/ViewModels/TransactionsViewModel.swift:419-606`
+**Файл**: `Tenra/ViewModels/TransactionsViewModel.swift:419-606`
 **Проблема**: Синхронный пересчет с прогнозом на 2 года
 **Решение**: Фоновые вычисления и кеширование
 
@@ -39,7 +39,7 @@
 
 #### Шаг 1: Добавить PaginationManager
 ```swift
-// AIFinanceManager/Managers/TransactionPaginationManager.swift
+// Tenra/Managers/TransactionPaginationManager.swift
 @MainActor
 class TransactionPaginationManager: ObservableObject {
     @Published var visibleTransactions: [Transaction] = []
@@ -101,7 +101,7 @@ ForEach(paginationManager.visibleTransactions.filter { grouped[dateKey]?.contain
 
 #### Создать индексы для быстрого поиска
 ```swift
-// AIFinanceManager/Managers/TransactionIndexManager.swift
+// Tenra/Managers/TransactionIndexManager.swift
 class TransactionIndexManager {
     private var byAccount: [String: Set<String>] = [:] // accountId -> transactionIds
     private var byCategory: [String: Set<String>] = [:] // category -> transactionIds

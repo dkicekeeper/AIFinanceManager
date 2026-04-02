@@ -118,7 +118,7 @@ private func saveCategoriesSync(_ categories: [CustomCategory]) {
 ### Поиск прямых вызовов UserDefaults для данных
 
 ```bash
-grep -r "UserDefaults\.standard\.set.*forKey.*(allTransactions|accounts|customCategories)" AIFinanceManager/
+grep -r "UserDefaults\.standard\.set.*forKey.*(allTransactions|accounts|customCategories)" Tenra/
 ```
 
 **Результат**: ✅ **Ничего не найдено!**
@@ -126,7 +126,7 @@ grep -r "UserDefaults\.standard\.set.*forKey.*(allTransactions|accounts|customCa
 ### Компиляция проекта
 
 ```bash
-xcodebuild -scheme AIFinanceManager -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' clean build
+xcodebuild -scheme Tenra -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' clean build
 ```
 
 **Результат**: ✅ **BUILD SUCCEEDED**
@@ -271,7 +271,7 @@ RecurringSeriesEntity:
 #### 2. CloudKit синхронизация
 ```swift
 // CoreDataStack.swift
-let container = NSPersistentCloudKitContainer(name: "AIFinanceManager")
+let container = NSPersistentCloudKitContainer(name: "Tenra")
 ```
 
 **Польза**: Синхронизация между устройствами пользователя

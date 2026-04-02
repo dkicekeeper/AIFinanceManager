@@ -132,11 +132,11 @@ git checkout -b phase-8-legacy-cleanup
 git push -u origin phase-8-legacy-cleanup
 
 # 2. Verify current state
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 # Should succeed ✅
 
 # 3. Run tests
-xcodebuild test -scheme AIFinanceManager
+xcodebuild test -scheme Tenra
 # Should pass 18/18 ✅
 ```
 
@@ -151,42 +151,42 @@ xcodebuild test -scheme AIFinanceManager
 rg "TransactionCRUDService" --type swift
 
 # If no references found:
-rm AIFinanceManager/Services/TransactionCRUDService.swift
+rm Tenra/Services/TransactionCRUDService.swift
 
 # Build to verify
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 ```
 
 #### 8.2.2: Delete CategoryAggregateService
 
 ```bash
 rg "CategoryAggregateService" --type swift
-rm AIFinanceManager/Services/CategoryAggregateService.swift
-xcodebuild -scheme AIFinanceManager build
+rm Tenra/Services/CategoryAggregateService.swift
+xcodebuild -scheme Tenra build
 ```
 
 #### 8.2.3: Delete CategoryAggregateCacheOptimized
 
 ```bash
 rg "CategoryAggregateCacheOptimized" --type swift
-rm AIFinanceManager/Services/CategoryAggregateCacheOptimized.swift
-xcodebuild -scheme AIFinanceManager build
+rm Tenra/Services/CategoryAggregateCacheOptimized.swift
+xcodebuild -scheme Tenra build
 ```
 
 #### 8.2.4: Delete TransactionCacheManager
 
 ```bash
 rg "TransactionCacheManager" --type swift
-rm AIFinanceManager/Services/TransactionCacheManager.swift
-xcodebuild -scheme AIFinanceManager build
+rm Tenra/Services/TransactionCacheManager.swift
+xcodebuild -scheme Tenra build
 ```
 
 #### 8.2.5: Delete CacheCoordinator
 
 ```bash
 rg "CacheCoordinator" --type swift
-rm AIFinanceManager/Services/CacheCoordinator.swift
-xcodebuild -scheme AIFinanceManager build
+rm Tenra/Services/CacheCoordinator.swift
+xcodebuild -scheme Tenra build
 ```
 
 #### 8.2.6: Evaluate DateSectionExpensesCache
@@ -200,7 +200,7 @@ rg "DateSectionExpensesCache" --type swift
 
 # If replaceable by UnifiedTransactionCache:
 # ❌ DELETE
-rm AIFinanceManager/Services/Cache/DateSectionExpensesCache.swift
+rm Tenra/Services/Cache/DateSectionExpensesCache.swift
 ```
 
 **After each deletion:**
@@ -269,8 +269,8 @@ func invalidateCache() {
 #### Step 4: Build & Test
 
 ```bash
-xcodebuild -scheme AIFinanceManager build
-xcodebuild test -scheme AIFinanceManager
+xcodebuild -scheme Tenra build
+xcodebuild test -scheme Tenra
 ```
 
 ### Phase 8.4: Clean Up Imports
@@ -309,10 +309,10 @@ self.transactionStore = TransactionStore(
 ```bash
 # 1. Clean build
 xcodebuild clean
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 
 # 2. Run all tests
-xcodebuild test -scheme AIFinanceManager
+xcodebuild test -scheme Tenra
 
 # 3. Check for unused code
 # Use Xcode Analyzer or SwiftLint

@@ -1,6 +1,6 @@
 //
 //  RecurringTransactionCoordinatorProtocol.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-02
 //  Part of: Subscriptions & Recurring Transactions Full Rebuild

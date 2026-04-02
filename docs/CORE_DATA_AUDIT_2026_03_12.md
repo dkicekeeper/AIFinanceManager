@@ -171,7 +171,7 @@ let storeOptions: [String: Any] = [
 **Fix**: Delete file or reduce to only the active helpers.
 
 ### P3-4: Model version discrepancy — `.xccurrentversion` says v6, CLAUDE.md says v5
-**File**: `.xccurrentversion` → `AIFinanceManager v6.xcdatamodel`
+**File**: `.xccurrentversion` → `Tenra v6.xcdatamodel`
 **Problem**: CLAUDE.md documents "CoreData v5 model" as current. The actual current model is v6 (adds `isLoan`, `loanInfoData` to AccountEntity).
 **Fix**: Update CLAUDE.md to reference v6.
 

@@ -1,6 +1,6 @@
 //
 //  PeriodBreakdownRow.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Single period row showing net flow + income/expenses breakdown.
 //  Extracted from InsightDetailView and InsightsSummaryDetailView (Phase 26).

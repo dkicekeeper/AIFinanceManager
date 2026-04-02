@@ -32,13 +32,13 @@
 ### ФАЗА 0: Подготовка — 2 часа ✅
 ```bash
 git checkout -b feature/subscriptions-full-rebuild-phase9
-cp -r AIFinanceManager/ViewModels/SubscriptionsViewModel.swift Docs/backup/
+cp -r Tenra/ViewModels/SubscriptionsViewModel.swift Docs/backup/
 ```
 
 ### ФАЗА 1: RecurringCacheService (LRU Cache) — 4 часа
 **Создать:**
 - `Services/Recurring/RecurringCacheService.swift` (150 LOC)
-- `AIFinanceManagerTests/RecurringCacheServiceTests.swift`
+- `TenraTests/RecurringCacheServiceTests.swift`
 
 **Что делает:**
 - LRU cache для planned transactions (O(1) vs O(n))
@@ -242,30 +242,30 @@ git checkout -b feature/subscriptions-full-rebuild-phase9
 
 # 2. Backup files
 mkdir -p Docs/backup
-cp AIFinanceManager/ViewModels/SubscriptionsViewModel.swift Docs/backup/
-cp -r AIFinanceManager/Services/Recurring/ Docs/backup/Recurring_before_phase9/
+cp Tenra/ViewModels/SubscriptionsViewModel.swift Docs/backup/
+cp -r Tenra/Services/Recurring/ Docs/backup/Recurring_before_phase9/
 
 # 3. Create cache service
-touch AIFinanceManager/Services/Recurring/RecurringCacheService.swift
-touch AIFinanceManagerTests/RecurringCacheServiceTests.swift
+touch Tenra/Services/Recurring/RecurringCacheService.swift
+touch TenraTests/RecurringCacheServiceTests.swift
 ```
 
 ### Run tests
 ```bash
 # Unit tests
-xcodebuild test -scheme AIFinanceManager -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -scheme Tenra -destination 'platform=iOS Simulator,name=iPhone 15'
 
 # Specific test file
-xcodebuild test -scheme AIFinanceManager -only-testing:RecurringCacheServiceTests
+xcodebuild test -scheme Tenra -only-testing:RecurringCacheServiceTests
 ```
 
 ### Check code metrics
 ```bash
 # Count LOC for SubscriptionsViewModel
-wc -l AIFinanceManager/ViewModels/SubscriptionsViewModel.swift
+wc -l Tenra/ViewModels/SubscriptionsViewModel.swift
 
 # Find all recurring-related files
-find AIFinanceManager -name "*Recurring*" -type f
+find Tenra -name "*Recurring*" -type f
 ```
 
 ---
@@ -339,13 +339,13 @@ open Docs/SUBSCRIPTION_FULL_REBUILD_PLAN.md
 
 # 2. Create branch и backup
 git checkout -b feature/subscriptions-full-rebuild-phase9
-mkdir -p Docs/backup && cp -r AIFinanceManager/Services/Recurring/ Docs/backup/
+mkdir -p Docs/backup && cp -r Tenra/Services/Recurring/ Docs/backup/
 
 # 3. Начать с ФАЗЫ 1 (RecurringCacheService)
 # См. детали в SUBSCRIPTION_FULL_REBUILD_PLAN.md → ФАЗА 1
 
 # 4. Run tests после каждой фазы
-xcodebuild test -scheme AIFinanceManager
+xcodebuild test -scheme Tenra
 ```
 
 ---

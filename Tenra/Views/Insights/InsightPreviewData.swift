@@ -1,6 +1,6 @@
 //
 //  InsightPreviewData.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 17: Financial Insights Feature
 //  Shared mock data used exclusively by #Preview blocks across Insights views.

@@ -19,7 +19,7 @@ tech_stack:
 
 key_files:
   created:
-    - AIFinanceManagerTests/Services/Transactions/RecurringTransactionGeneratorTests.swift
+    - TenraTests/Services/Transactions/RecurringTransactionGeneratorTests.swift
   modified: []
 
 decisions:
@@ -43,11 +43,11 @@ metrics:
 
 | Task | Name | Commit | Files |
 |------|------|--------|-------|
-| 1 | RecurringTransactionGenerator edge-case tests (TEST-03) | d543c16 | AIFinanceManagerTests/Services/Transactions/RecurringTransactionGeneratorTests.swift |
+| 1 | RecurringTransactionGenerator edge-case tests (TEST-03) | d543c16 | TenraTests/Services/Transactions/RecurringTransactionGeneratorTests.swift |
 
 ## What Was Built
 
-Created `AIFinanceManagerTests/Services/Transactions/RecurringTransactionGeneratorTests.swift` with 6 tests using Swift Testing framework:
+Created `TenraTests/Services/Transactions/RecurringTransactionGeneratorTests.swift` with 6 tests using Swift Testing framework:
 
 - **Test A** (`testJan31MonthlyProducesFeb28NonLeap`): Monthly series starting 2025-01-31 produces "2025-02-28" and does NOT produce "2025-02-29". Confirms Calendar month-addition clamps to last valid day on non-leap years.
 
@@ -79,6 +79,6 @@ None — plan executed exactly as written. The test file was included in commit 
 
 ## Self-Check: PASSED
 
-- File exists: AIFinanceManagerTests/Services/Transactions/RecurringTransactionGeneratorTests.swift — FOUND
+- File exists: TenraTests/Services/Transactions/RecurringTransactionGeneratorTests.swift — FOUND
 - Commit d543c16 contains the test file — FOUND
 - All 6 tests pass on simulator — CONFIRMED

@@ -1,6 +1,6 @@
 //
 //  TransactionsViewModel+PerformanceLogging.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-01
 //  Расширение для добавления детального логирования производительности в TransactionsViewModel

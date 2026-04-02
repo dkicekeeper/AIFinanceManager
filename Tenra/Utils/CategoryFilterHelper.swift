@@ -1,6 +1,6 @@
 //
 //  CategoryFilterHelper.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Helper for category filter display logic
 //  Phase 14: Extracted from CategoryFilterButton for reusability

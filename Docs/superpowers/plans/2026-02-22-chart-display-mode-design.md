@@ -117,7 +117,7 @@ Then every `compact` reference in `body` is renamed to `isCompact` with no seman
 
 ```bash
 xcodebuild build \
-  -scheme AIFinanceManager \
+  -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   2>&1 | grep -E "(BUILD|error:)"
 ```

@@ -1,6 +1,6 @@
 //
 //  TransactionEntity+SectionKey.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026-02-23
 //  Task 9: NSFetchedResultsController section grouping support

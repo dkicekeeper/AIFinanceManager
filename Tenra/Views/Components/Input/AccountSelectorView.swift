@@ -1,6 +1,6 @@
 //
 //  AccountSelectorView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Reusable account selector component with horizontal scroll
 //

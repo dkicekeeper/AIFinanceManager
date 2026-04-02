@@ -12,8 +12,8 @@ tech_stack:
   patterns: [PreAggregatedData-piggyback, conditional-fast-path]
 key_files:
   modified:
-    - AIFinanceManager/Services/Insights/InsightsService.swift
-    - AIFinanceManager/Services/Insights/InsightsService+Spending.swift
+    - Tenra/Services/Insights/InsightsService.swift
+    - Tenra/Services/Insights/InsightsService+Spending.swift
 decisions:
   - "Use Double (not Decimal) for categoryTotals — consistent with resolveAmountStatic return type and existing categoryMonthExpenses field"
   - "categoryGroups still built lazily in allTime path for subcategory breakdown downstream — avoids changing downstream code"

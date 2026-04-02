@@ -1,6 +1,6 @@
 //
 //  RecurringRepository.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //
@@ -21,7 +21,7 @@ protocol RecurringRepositoryProtocol: Sendable {
 /// CoreData implementation of RecurringRepositoryProtocol
 nonisolated final class RecurringRepository: RecurringRepositoryProtocol, @unchecked Sendable {
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "RecurringRepository")
+    private static let logger = Logger(subsystem: "Tenra", category: "RecurringRepository")
     private let stack: CoreDataStack
     private let saveCoordinator: CoreDataSaveCoordinator
     private let userDefaultsRepository: UserDefaultsRepository

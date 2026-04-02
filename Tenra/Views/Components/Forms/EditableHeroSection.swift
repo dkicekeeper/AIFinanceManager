@@ -1,6 +1,6 @@
 //
 //  EditableHeroSection.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 16: Hero-style Edit Views
 //  Updated: Phase 16 - AnimatedHeroInput

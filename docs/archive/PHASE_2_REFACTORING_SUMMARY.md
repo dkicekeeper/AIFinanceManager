@@ -334,8 +334,8 @@ class TransactionsViewModel: ObservableObject {
 ### Измененные файлы (4):
 
 1. `ViewModels/TransactionsViewModel.swift` — полный rebuild (1,501 → 757 lines)
-2. `AIFinanceManager/en.lproj/Localizable.strings` — добавлен `category.uncategorized`
-3. `AIFinanceManager/ru.lproj/Localizable.strings` — добавлен `category.uncategorized`
+2. `Tenra/en.lproj/Localizable.strings` — добавлен `category.uncategorized`
+3. `Tenra/ru.lproj/Localizable.strings` — добавлен `category.uncategorized`
 4. `Docs/PROJECT_BIBLE.md` — обновлена документация
 
 ### Backup файлы (1):

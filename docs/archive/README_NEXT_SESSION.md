@@ -53,7 +53,7 @@ Progress: [██████████████░░░░░░] 53% (8/
 
 ```bash
 # 1. Build and run
-xcodebuild -scheme AIFinanceManager build
+xcodebuild -scheme Tenra build
 # Launch in simulator
 
 # 2. Follow comprehensive test guide
@@ -127,13 +127,13 @@ open TESTING_GUIDE_PHASE_7.md
 
 ```bash
 # Build
-xcodebuild -scheme AIFinanceManager \
+xcodebuild -scheme Tenra \
   -sdk iphonesimulator \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
   build
 
 # Run tests
-xcodebuild test -scheme AIFinanceManager
+xcodebuild test -scheme Tenra
 
 # Check git status
 git status
@@ -142,7 +142,7 @@ git status
 git diff --name-only
 
 # Search for TODO comments
-grep -r "TODO.*Balance" AIFinanceManager/ViewModels/
+grep -r "TODO.*Balance" Tenra/ViewModels/
 ```
 
 ---

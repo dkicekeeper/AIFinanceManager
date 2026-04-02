@@ -1,6 +1,6 @@
 //
 //  MainTabView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Root tab bar using the iOS 26 Tab API.
 //

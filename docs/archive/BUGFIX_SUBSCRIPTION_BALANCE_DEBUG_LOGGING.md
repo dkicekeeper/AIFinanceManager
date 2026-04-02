@@ -230,9 +230,9 @@ If balances change from non-zero to zero:
 ---
 
 ## Files Modified
-- `AIFinanceManager/Services/Transactions/RecurringTransactionService.swift`
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift`
-- `AIFinanceManager/Services/Balance/BalanceCoordinator.swift`
+- `Tenra/Services/Transactions/RecurringTransactionService.swift`
+- `Tenra/ViewModels/TransactionsViewModel.swift`
+- `Tenra/Services/Balance/BalanceCoordinator.swift`
 
 ---
 

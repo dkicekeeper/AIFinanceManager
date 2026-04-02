@@ -182,5 +182,5 @@ These files have `#Preview` blocks referencing `.bankLogo(.kaspi)` etc. Replace 
 - Unit test SupabaseLogoProvider with mock URLSession
 - Unit test chain order: verify Supabase is called first
 - Unit test IconSource without `.bankLogo` case — Codable round-trip
-- Build verification: `grep -rn "BankLogo" AIFinanceManager/ --include="*.swift"` returns 0 results
+- Build verification: `grep -rn "BankLogo" Tenra/ --include="*.swift"` returns 0 results
 - Manual: upload a logo to Supabase, verify it appears in app

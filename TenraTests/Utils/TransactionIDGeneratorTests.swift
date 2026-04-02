@@ -1,12 +1,12 @@
 //
 //  TransactionIDGeneratorTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Created on 2024
 //
 
 import Testing
-@testable import AIFinanceManager
+@testable import Tenra
 
 struct TransactionIDGeneratorTests {
     

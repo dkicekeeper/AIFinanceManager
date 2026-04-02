@@ -31,7 +31,7 @@
 ### Changes Made
 
 #### 1. Added `transactionStore` to `RecurringTransactionServiceDelegate` Protocol
-**File**: `AIFinanceManager/Protocols/RecurringTransactionServiceProtocol.swift:72`
+**File**: `Tenra/Protocols/RecurringTransactionServiceProtocol.swift:72`
 
 ```swift
 // Dependencies
@@ -41,7 +41,7 @@ var transactionStore: TransactionStore? { get }  // ✅ NEW
 ```
 
 #### 2. Fixed Transaction Synchronization in `RecurringTransactionService`
-**File**: `AIFinanceManager/Services/Transactions/RecurringTransactionService.swift:246-295`
+**File**: `Tenra/Services/Transactions/RecurringTransactionService.swift:246-295`
 
 **Before**:
 ```swift
@@ -320,13 +320,13 @@ transactionStore.$accounts
 ---
 
 ## Related Files
-- `AIFinanceManager/Services/Transactions/RecurringTransactionService.swift` - Fixed transaction synchronization, added debug logging
-- `AIFinanceManager/Protocols/RecurringTransactionServiceProtocol.swift` - Added transactionStore to delegate
-- `AIFinanceManager/ViewModels/TransactionStore.swift` - Fixed validation to allow transactions without accountId
-- `AIFinanceManager/Services/Transactions/TransactionQueryService.swift` - Added fallback for non-date-based filters
-- `AIFinanceManager/ViewModels/AppCoordinator.swift` - **CRITICAL FIX**: Added accounts sync observer TransactionStore → TransactionsViewModel
-- `AIFinanceManager/Services/Balance/BalanceCoordinator.swift` - Added debug logging for balance recalculation
-- `AIFinanceManager/ViewModels/TransactionsViewModel.swift` - Added debug logging for scheduleBalanceRecalculation
+- `Tenra/Services/Transactions/RecurringTransactionService.swift` - Fixed transaction synchronization, added debug logging
+- `Tenra/Protocols/RecurringTransactionServiceProtocol.swift` - Added transactionStore to delegate
+- `Tenra/ViewModels/TransactionStore.swift` - Fixed validation to allow transactions without accountId
+- `Tenra/Services/Transactions/TransactionQueryService.swift` - Added fallback for non-date-based filters
+- `Tenra/ViewModels/AppCoordinator.swift` - **CRITICAL FIX**: Added accounts sync observer TransactionStore → TransactionsViewModel
+- `Tenra/Services/Balance/BalanceCoordinator.swift` - Added debug logging for balance recalculation
+- `Tenra/ViewModels/TransactionsViewModel.swift` - Added debug logging for scheduleBalanceRecalculation
 
 ---
 

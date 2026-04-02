@@ -1,6 +1,6 @@
 //
 //  AppCoordinator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //
@@ -58,7 +58,7 @@ class AppCoordinator {
     private var isInitialized = false
     private var isFastPathStarted = false
 
-    @ObservationIgnored private let logger = Logger(subsystem: "AIFinanceManager", category: "AppCoordinator")
+    @ObservationIgnored private let logger = Logger(subsystem: "Tenra", category: "AppCoordinator")
 
     // Observable loading stage outputs — views bind to these for per-element skeletons
     private(set) var isFastPathDone = false       // accounts + categories ready (~50ms)

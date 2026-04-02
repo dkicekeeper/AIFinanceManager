@@ -221,7 +221,7 @@ try await transactionStore.transfer(
 11. **Views/Accounts/AccountActionView.swift** (Phase 7.4)
 
 ### Tests (1 file)
-12. **AIFinanceManagerTests/TransactionStoreTests.swift**
+12. **TenraTests/TransactionStoreTests.swift**
     - Fixed test initialization
     - 18/18 tests passing
 

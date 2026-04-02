@@ -10,7 +10,7 @@
 
 ### 1. ✅ QuickAddTransactionView.swift - Полностью локализован
 
-**Файл**: `AIFinanceManager/Views/QuickAddTransactionView.swift`
+**Файл**: `Tenra/Views/QuickAddTransactionView.swift`
 
 #### Локализованные элементы:
 
@@ -49,7 +49,7 @@
 
 ### 2. ✅ VoiceInputView.swift - Полностью локализован
 
-**Файл**: `AIFinanceManager/Views/VoiceInputView.swift`
+**Файл**: `Tenra/Views/VoiceInputView.swift`
 
 #### Локализованные элементы:
 

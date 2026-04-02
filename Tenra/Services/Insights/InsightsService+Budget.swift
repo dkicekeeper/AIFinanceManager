@@ -1,6 +1,6 @@
 //
 //  InsightsService+Budget.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
 //  Responsible for: budget overspend detection, projected overspend, under-utilization.

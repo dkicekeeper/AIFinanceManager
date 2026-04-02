@@ -214,7 +214,7 @@ await settingsViewModel.startImportFlow(from: url)
 
 **After SettingsView migration:**
 ```bash
-rm AIFinanceManager/Services/CSVImportService.swift
+rm Tenra/Services/CSVImportService.swift
 # Update comment references to mention "replaced by CSVImportCoordinator"
 ```
 
@@ -343,7 +343,7 @@ CSVParsingService, CSVValidationService, EntityMappingService, etc.
 ### Task 2: Delete CSVImportService (~5 min)
 
 ```bash
-rm AIFinanceManager/Services/CSVImportService.swift
+rm Tenra/Services/CSVImportService.swift
 
 # Update comments referencing CSVImportService
 # - AppCoordinator.swift

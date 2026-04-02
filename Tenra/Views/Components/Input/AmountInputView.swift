@@ -1,6 +1,6 @@
 //
 //  AmountInputView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Large centered amount input with currency selector and conversion display.
 //  Core input mechanics delegated to AmountInput (AnimatedInputComponents.swift).

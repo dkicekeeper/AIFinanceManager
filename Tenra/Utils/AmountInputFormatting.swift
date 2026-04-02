@@ -1,6 +1,6 @@
 //
 //  AmountInputFormatting.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Shared static utilities for amount input components.
 //  Single source of truth for string cleaning and display formatting

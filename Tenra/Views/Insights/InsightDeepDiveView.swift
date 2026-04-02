@@ -1,6 +1,6 @@
 //
 //  InsightDeepDiveView.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 17: Financial Insights Feature
 //  Full category detail: subcategory breakdown, spending trends, anomalies
@@ -22,7 +22,7 @@ struct InsightDeepDiveView: View {
     /// Phase 23-C P16: precomputed index map — eliminates O(n²) firstIndex(where:) in ForEach.
     @State private var subcategoryIndexMap: [String: Int] = [:]
 
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "CategoryDeepDive")
+    private static let logger = Logger(subsystem: "Tenra", category: "CategoryDeepDive")
 
     // MARK: - Initializers
 

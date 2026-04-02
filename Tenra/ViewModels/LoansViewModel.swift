@@ -1,6 +1,6 @@
 //
 //  LoansViewModel.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Created on 2026
 //

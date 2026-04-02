@@ -1,6 +1,6 @@
 //
 //  AccountRepositoryTests.swift
-//  AIFinanceManagerTests
+//  TenraTests
 //
 //  Tests for AccountRepositoryProtocol contract and AccountEntity conversions.
 //  Phase B upgrade: from smoke test → real protocol-contract + entity-level tests.
@@ -10,7 +10,7 @@
 import Testing
 import CoreData
 import Foundation
-@testable import AIFinanceManager
+@testable import Tenra
 
 // MARK: - Protocol Contract Tests
 
@@ -124,7 +124,7 @@ struct AccountRepositoryMockTests {
 struct AccountEntityIntegrityTests {
 
     private func makeContainer() throws -> NSPersistentContainer {
-        let container = NSPersistentContainer(name: "AIFinanceManager")
+        let container = NSPersistentContainer(name: "Tenra")
         let desc = NSPersistentStoreDescription()
         desc.type = NSInMemoryStoreType
         desc.url = URL(string: "memory://\(UUID().uuidString)")

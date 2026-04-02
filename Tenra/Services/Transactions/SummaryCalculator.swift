@@ -1,6 +1,6 @@
 //
 //  SummaryCalculator.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 31 Fix B: Pure off-thread summary computation.
 //  Called from ContentView via Task.detached to keep MainActor free during

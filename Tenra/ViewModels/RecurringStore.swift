@@ -1,6 +1,6 @@
 //
 //  RecurringStore.swift
-//  AIFinanceManager
+//  Tenra
 //
 //  Phase 03-PERF-02: Extracted from TransactionStore (1213 LOC monolith — first split step).
 //  Owns recurring state: series, occurrences, generator, validator, cache.
@@ -16,7 +16,7 @@ import os
 final class RecurringStore {
 
     // MARK: - Logger
-    private static let logger = Logger(subsystem: "AIFinanceManager", category: "RecurringStore")
+    private static let logger = Logger(subsystem: "Tenra", category: "RecurringStore")
 
     // MARK: - Observable State
 
