@@ -37,6 +37,10 @@ class AppSettings: Codable {
     /// Размыть фото-обои на главном экране.
     var blurWallpaper: Bool
 
+    /// Currencies shown in the quick-access transaction currency Menu.
+    /// Account currencies are always included automatically (not stored here).
+    var quickAccessCurrencies: [String]
+
     // MARK: - Constants
 
     nonisolated static let defaultCurrency = "KZT"
@@ -54,12 +58,14 @@ class AppSettings: Codable {
         baseCurrency: String = defaultCurrency,
         wallpaperImageName: String? = nil,
         homeBackgroundMode: HomeBackgroundMode = .none,
-        blurWallpaper: Bool = false
+        blurWallpaper: Bool = false,
+        quickAccessCurrencies: [String] = ["USD", "EUR"]
     ) {
         self.baseCurrency = baseCurrency
         self.wallpaperImageName = wallpaperImageName
         self.homeBackgroundMode = homeBackgroundMode
         self.blurWallpaper = blurWallpaper
+        self.quickAccessCurrencies = quickAccessCurrencies
     }
 
     // MARK: - Codable
@@ -69,6 +75,7 @@ class AppSettings: Codable {
         case wallpaperImageName
         case homeBackgroundMode
         case blurWallpaper
+        case quickAccessCurrencies
     }
 
     required init(from decoder: Decoder) throws {
@@ -78,6 +85,7 @@ class AppSettings: Codable {
         // Backward-compatible: old saves without these keys use defaults
         homeBackgroundMode = (try? container.decodeIfPresent(HomeBackgroundMode.self, forKey: .homeBackgroundMode)) ?? .none
         blurWallpaper = (try? container.decodeIfPresent(Bool.self, forKey: .blurWallpaper)) ?? false
+        quickAccessCurrencies = (try? container.decodeIfPresent([String].self, forKey: .quickAccessCurrencies)) ?? ["USD", "EUR"]
     }
 
     func encode(to encoder: Encoder) throws {
@@ -86,6 +94,7 @@ class AppSettings: Codable {
         try container.encodeIfPresent(wallpaperImageName, forKey: .wallpaperImageName)
         try container.encode(homeBackgroundMode, forKey: .homeBackgroundMode)
         try container.encode(blurWallpaper, forKey: .blurWallpaper)
+        try container.encode(quickAccessCurrencies, forKey: .quickAccessCurrencies)
     }
 
     // MARK: - In-place Update
@@ -100,6 +109,7 @@ class AppSettings: Codable {
         wallpaperImageName = other.wallpaperImageName
         homeBackgroundMode = other.homeBackgroundMode
         blurWallpaper = other.blurWallpaper
+        quickAccessCurrencies = other.quickAccessCurrencies
     }
 
     // MARK: - Factory Methods
