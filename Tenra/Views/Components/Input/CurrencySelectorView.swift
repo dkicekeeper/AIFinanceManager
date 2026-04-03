@@ -16,7 +16,7 @@ struct CurrencySelectorView: View {
 
     init(
         selectedCurrency: Binding<String>,
-        availableCurrencies: [String] = ["KZT", "USD", "EUR", "RUB", "GBP"],
+        availableCurrencies: [String] = CurrencyInfo.popularCurrencies.map(\.code) + ["RUB", "GBP", "CNY", "JPY"],
         baseCurrency: String = ""
     ) {
         self._selectedCurrency = selectedCurrency
