@@ -22,7 +22,6 @@ struct DepositEditView: View {
     @State private var interestRateText: String = ""
     @State private var interestPostingDay: Int = 1
     @State private var capitalizationEnabled: Bool = true
-    private let depositCurrencies = ["KZT", "USD", "EUR"]
 
     /// True when converting a regular account → deposit (account exists but has no depositInfo)
     private var isConverting: Bool {
@@ -46,8 +45,7 @@ struct DepositEditView: View {
                         balance: $principalBalanceText,
                         currency: $currency,
                         titlePlaceholder: String(localized: "deposit.namePlaceholder"),
-                        config: .accountHero,
-                        currencies: depositCurrencies
+                        config: .accountHero
                     )
 
                     // Bank name + interest rate grouped in one card

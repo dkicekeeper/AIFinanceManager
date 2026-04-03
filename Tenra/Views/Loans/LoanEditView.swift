@@ -28,7 +28,6 @@ struct LoanEditView: View {
     @State private var startDate: Date = Date()
     @State private var validationError: String? = nil
 
-    private let currencies = ["KZT", "USD", "EUR"]
 
     /// True when converting a regular account → loan (account exists but has no loanInfo)
     private var isConverting: Bool {
@@ -71,8 +70,7 @@ struct LoanEditView: View {
                         balance: $principalAmountText,
                         currency: $currency,
                         titlePlaceholder: String(localized: "loan.namePlaceholder", defaultValue: "e.g. Car Loan"),
-                        config: .accountHero,
-                        currencies: currencies
+                        config: .accountHero
                     )
 
                     // Validation Error

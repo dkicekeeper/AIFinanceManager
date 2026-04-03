@@ -50,8 +50,7 @@ struct AccountEditView: View {
                         balance: $balanceText,
                         currency: $currency,
                         titlePlaceholder: String(localized: "account.namePlaceholder"),
-                        config: .accountHero,
-                        currencies: AppSettings.availableCurrencies
+                        config: .accountHero
                     )
 
                     // Validation Error

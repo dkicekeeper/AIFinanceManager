@@ -68,8 +68,7 @@ struct SubscriptionEditView: View {
                         balance: $amountText,
                         currency: $currency,
                         titlePlaceholder: String(localized: "subscription.namePlaceholder"),
-                        config: .subscriptionHero,
-                        baseCurrency: transactionsViewModel.appSettings.baseCurrency
+                        config: .subscriptionHero
                     )
                     
                     // Validation Error

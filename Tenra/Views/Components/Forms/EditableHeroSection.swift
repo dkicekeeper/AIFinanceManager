@@ -43,8 +43,6 @@ struct EditableHeroSection: View {
 
     let titlePlaceholder: String
     let config: HeroConfig
-    let currencies: [String]
-    let baseCurrency: String
     /// When set, the icon renders as a tinted circle (e.g. for categories).
     /// When nil, the icon renders as a glass hero (e.g. for accounts, subscriptions).
     let iconTintColor: String?
@@ -63,9 +61,7 @@ struct EditableHeroSection: View {
         currency: Binding<String> = .constant("USD"),
         iconTintColor: String? = nil,
         titlePlaceholder: String,
-        config: HeroConfig = HeroConfig(),
-        currencies: [String] = ["USD", "EUR", "KZT", "RUB", "GBP"],
-        baseCurrency: String = ""
+        config: HeroConfig = HeroConfig()
     ) {
         self._iconSource = iconSource
         self._title = title
@@ -74,8 +70,6 @@ struct EditableHeroSection: View {
         self.iconTintColor = iconTintColor
         self.titlePlaceholder = titlePlaceholder
         self.config = config
-        self.currencies = currencies
-        self.baseCurrency = baseCurrency
     }
 
     // MARK: - Body
@@ -157,11 +151,28 @@ struct EditableHeroSection: View {
             .padding(.horizontal, AppSpacing.lg)
 
             if config.showCurrency {
-                CurrencySelectorView(
-                    selectedCurrency: $currency,
-                    availableCurrencies: currencies,
-                    baseCurrency: baseCurrency
-                )
+                NavigationLink {
+                    CurrencyPickerView(
+                        selectedCurrency: currency,
+                        onSelect: { newCurrency in
+                            currency = newCurrency
+                        }
+                    )
+                } label: {
+                    HStack(spacing: AppSpacing.sm) {
+                        Text(Formatting.currencySymbol(for: currency))
+                        Text(currency)
+                            .font(AppTypography.bodySmall)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: AppIconSize.sm))
+                    }
+                    .foregroundStyle(AppColors.textSecondary)
+                    .padding(.horizontal, AppSpacing.lg)
+                    .padding(.vertical, AppSpacing.sm)
+                    .background(AppColors.secondaryBackground)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
