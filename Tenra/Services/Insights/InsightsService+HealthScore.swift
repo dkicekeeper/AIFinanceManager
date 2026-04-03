@@ -86,7 +86,14 @@ extension InsightsService {
         let emergencyFundScore = Int(min(monthsCovered / 6.0 * 100, 100).rounded())
 
         // --- Component 5: Cash Flow (weight 0.10) ---
-        let cashflowScore = latestNetFlow > 0 ? 100 : 0
+        let cashflowScore: Int
+        if totalIncome > 0 {
+            // net flow as % of income: +20% or more = 100, 0% = 50, -20% or worse = 0
+            let netFlowRatio = latestNetFlow / totalIncome
+            cashflowScore = Int(min(100, max(0, (netFlowRatio + 0.2) / 0.4 * 100)).rounded())
+        } else {
+            cashflowScore = latestNetFlow >= 0 ? 50 : 0
+        }
 
         // --- Weighted Total ---
         let total = Double(savingsRateScore)     * 0.30
