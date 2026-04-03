@@ -131,6 +131,15 @@ enum InsightSeverity: String, Hashable {
         case .critical: return "xmark.octagon.fill"
         }
     }
+
+    var sortOrder: Int {
+        switch self {
+        case .critical: return 0
+        case .warning:  return 1
+        case .neutral:  return 2
+        case .positive: return 3
+        }
+    }
 }
 
 // MARK: - Insight Category

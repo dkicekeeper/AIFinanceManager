@@ -106,14 +106,18 @@ final class InsightsViewModel {
         return insights.filter { $0.category == category }
     }
 
-    var spendingInsights: [Insight]     { insights.filter { $0.category == .spending } }
-    var incomeInsights: [Insight]       { insights.filter { $0.category == .income } }
-    var budgetInsights: [Insight]       { insights.filter { $0.category == .budget } }
-    var recurringInsights: [Insight]    { insights.filter { $0.category == .recurring } }
-    var cashFlowInsights: [Insight]     { insights.filter { $0.category == .cashFlow } }
-    var wealthInsights: [Insight]       { insights.filter { $0.category == .wealth } }
-    var savingsInsights: [Insight]      { insights.filter { $0.category == .savings } }     // Phase 24
-    var forecastingInsights: [Insight]  { insights.filter { $0.category == .forecasting } } // Phase 24
+    private func sortedBySeverity(_ items: [Insight]) -> [Insight] {
+        items.sorted { $0.severity.sortOrder < $1.severity.sortOrder }
+    }
+
+    var spendingInsights: [Insight]     { sortedBySeverity(insights.filter { $0.category == .spending }) }
+    var incomeInsights: [Insight]       { sortedBySeverity(insights.filter { $0.category == .income }) }
+    var budgetInsights: [Insight]       { sortedBySeverity(insights.filter { $0.category == .budget }) }
+    var recurringInsights: [Insight]    { sortedBySeverity(insights.filter { $0.category == .recurring }) }
+    var cashFlowInsights: [Insight]     { sortedBySeverity(insights.filter { $0.category == .cashFlow }) }
+    var wealthInsights: [Insight]       { sortedBySeverity(insights.filter { $0.category == .wealth }) }
+    var savingsInsights: [Insight]      { sortedBySeverity(insights.filter { $0.category == .savings }) }
+    var forecastingInsights: [Insight]  { sortedBySeverity(insights.filter { $0.category == .forecasting }) }
 
     /// Phase 36: Read directly from TransactionStore (one hop instead of two)
     var baseCurrency: String {
