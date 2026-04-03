@@ -166,43 +166,16 @@ extension InsightsService {
         // Group by category; flag categories with 2+ subscriptions
         let grouped = Dictionary(grouping: activeSeries, by: \.category)
         let duplicateGroups = grouped.filter { $0.value.count >= 2 }
-        guard !duplicateGroups.isEmpty else {
-            // Secondary check: any two subscriptions with monthly cost within 15%
-            let costs = activeSeries.map { seriesMonthlyEquivalent($0, baseCurrency: baseCurrency) }.sorted()
-            var hasSimilarCost = false
-            for i in 0..<costs.count - 1 {
-                let a = costs[i]; let b = costs[i + 1]
-                guard a > 0 else { continue }
-                if abs(a - b) / a < 0.15 { hasSimilarCost = true; break }
-            }
-            guard hasSimilarCost else { return nil }
+        guard !duplicateGroups.isEmpty else { return nil }
 
-            let totalDuplicateCost = costs.dropFirst().reduce(0, +)
-            return Insight(
-                id: "duplicateSubscriptions",
-                type: .duplicateSubscriptions,
-                title: String(localized: "insights.duplicateSubscriptions.title"),
-                subtitle: String(localized: "insights.duplicateSubscriptions.subtitle"),
-                metric: InsightMetric(
-                    value: totalDuplicateCost,
-                    formattedValue: Formatting.formatCurrency(totalDuplicateCost, currency: baseCurrency),
-                    currency: baseCurrency, unit: nil
-                ),
-                trend: nil,
-                severity: .warning,
-                category: .recurring,
-                detailData: nil
-            )
-        }
-
-        let duplicateCount = duplicateGroups.values.reduce(0) { $0 + $1.count }
         let duplicateCost = duplicateGroups.values.flatMap { $0 }
             .reduce(0.0) { $0 + seriesMonthlyEquivalent($1, baseCurrency: baseCurrency) }
+        let categoryNames = duplicateGroups.keys.prefix(3).joined(separator: ", ")
         return Insight(
             id: "duplicateSubscriptions",
             type: .duplicateSubscriptions,
             title: String(localized: "insights.duplicateSubscriptions.title"),
-            subtitle: "\(duplicateCount) \(String(localized: "insights.duplicateSubscriptions.subtitle"))",
+            subtitle: categoryNames,
             metric: InsightMetric(
                 value: duplicateCost,
                 formattedValue: Formatting.formatCurrency(duplicateCost, currency: baseCurrency),
