@@ -136,6 +136,11 @@ Tenra/
 - `PreAggregatedData` struct: single O(N) pass builds monthly totals, category-month expenses, `txDateMap`, per-account counts. All generators use O(M) dictionary lookups.
 - Split into 10 files: main service (~1095 LOC) + 9 domain extensions (`+Spending`, `+Income`, `+Budget`, `+Recurring`, `+CashFlow`, `+Wealth`, `+Savings`, `+Forecasting`, `+HealthScore`)
 - **⚠️ No `transactionStore` access in extension methods** — all data comes via parameters (snapshot fields). Adding new generators must follow this pattern.
+- **Severity sorting**: `InsightsViewModel` sorts insights by severity (`critical` > `warning` > `neutral` > `positive`) within each section via `sortedBySeverity()`
+- **Deleted metrics (2026-04 audit)**: `incomeSeasonality`, `spendingVelocity`, `savingsMomentum` removed (low signal, duplicated by other generators)
+- **`spendingSpike`**: uses relative threshold (1.5x category average) not absolute amount
+- **`accountDormancy`**: excludes deposit accounts (they accrue interest without transactions)
+- **Health Score components**: Cash Flow score uses gradient 0-100 (not binary); Emergency Fund baseline is 3 months (not 6); Budget Adherence excluded and weight redistributed when no budgets exist
 
 #### BalanceCoordinator
 - Single entry point for balance operations
