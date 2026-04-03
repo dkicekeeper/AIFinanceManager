@@ -57,13 +57,13 @@ struct SettingsView: View {
     private var settingsList: some View {
         ZStack(alignment: .top) {
             List {
+                dataManagementSection
                 generalSection
                 cloudSection
-                dataManagementSection
                 exportImportSection
+                dangerZoneSection
                 experimentsSection
                 aboutSection
-                dangerZoneSection
             }
             .navigationTitle(String(localized: "settings.title"))
             .navigationBarTitleDisplayMode(.large)
@@ -134,7 +134,6 @@ struct SettingsView: View {
     private var generalSection: some View {
         SettingsGeneralSection(
             selectedCurrency: settingsViewModel.settings.baseCurrency,
-            availableCurrencies: AppSettings.availableCurrencies,
             onCurrencyChange: { newCurrency in
                 Task { await settingsViewModel.updateBaseCurrency(newCurrency) }
             }
@@ -196,16 +195,18 @@ struct SettingsView: View {
 
     private var experimentsSection: some View {
         Section {
-            NavigationLink {
+            NavigationSettingsRow(
+                icon: "flask",
+                title: String(localized: "settings.experiments")
+            ) {
                 ExperimentsListView()
-            } label: {
-                Label(String(localized: "settings.experiments"), systemImage: "flask")
             }
             #if DEBUG
-            NavigationLink {
+            NavigationSettingsRow(
+                icon: "bell.badge",
+                title: String(localized: "settings.notificationDebug")
+            ) {
                 NotificationDebugView()
-            } label: {
-                Label(String(localized: "settings.notificationDebug"), systemImage: "bell.badge")
             }
             #endif
         }
@@ -214,21 +215,49 @@ struct SettingsView: View {
     // MARK: - About Section
 
     private var aboutSection: some View {
-        Section(header: Text(String(localized: "settings.about"))) {
+        Section(header: SettingsSectionHeaderView(title: String(localized: "settings.about"))) {
             if let url = URL(string: "https://dkicekeeper.github.io/Tenra/privacy-policy.html") {
                 Link(destination: url) {
-                    Label(String(localized: "settings.privacyPolicy"), systemImage: "hand.raised")
+                    UniversalRow(
+                        config: .settings,
+                        leadingIcon: .sfSymbol("hand.raised", color: AppColors.accent, size: AppIconSize.md)
+                    ) {
+                        Text(String(localized: "settings.privacyPolicy"))
+                            .font(AppTypography.body)
+                            .foregroundStyle(AppColors.textPrimary)
+                    } trailing: {
+                        Image(systemName: "arrow.up.right")
+                            .font(AppTypography.bodySmall)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
                 }
             }
             if let url = URL(string: "https://dkicekeeper.github.io/Tenra/terms-of-use.html") {
                 Link(destination: url) {
-                    Label(String(localized: "settings.termsOfUse"), systemImage: "doc.text")
+                    UniversalRow(
+                        config: .settings,
+                        leadingIcon: .sfSymbol("doc.text", color: AppColors.accent, size: AppIconSize.md)
+                    ) {
+                        Text(String(localized: "settings.termsOfUse"))
+                            .font(AppTypography.body)
+                            .foregroundStyle(AppColors.textPrimary)
+                    } trailing: {
+                        Image(systemName: "arrow.up.right")
+                            .font(AppTypography.bodySmall)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
                 }
             }
-            HStack {
+            UniversalRow(
+                config: .settings,
+                leadingIcon: .sfSymbol("info.circle", color: AppColors.accent, size: AppIconSize.md)
+            ) {
                 Text(String(localized: "settings.version"))
-                Spacer()
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppColors.textPrimary)
+            } trailing: {
                 Text("\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
+                    .font(AppTypography.bodySmall)
                     .foregroundStyle(AppColors.textSecondary)
             }
         }

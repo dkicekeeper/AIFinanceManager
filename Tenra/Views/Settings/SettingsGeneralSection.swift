@@ -16,7 +16,6 @@ struct SettingsGeneralSection<BackgroundDest: View>: View {
     // MARK: - Props
 
     let selectedCurrency: String
-    let availableCurrencies: [String]
     let onCurrencyChange: (String) -> Void
     let backgroundDestination: BackgroundDest
 
@@ -24,12 +23,10 @@ struct SettingsGeneralSection<BackgroundDest: View>: View {
 
     init(
         selectedCurrency: String,
-        availableCurrencies: [String],
         onCurrencyChange: @escaping (String) -> Void,
         @ViewBuilder backgroundDestination: () -> BackgroundDest
     ) {
         self.selectedCurrency = selectedCurrency
-        self.availableCurrencies = availableCurrencies
         self.onCurrencyChange = onCurrencyChange
         self.backgroundDestination = backgroundDestination()
     }
@@ -39,17 +36,31 @@ struct SettingsGeneralSection<BackgroundDest: View>: View {
     var body: some View {
         Section(header: SettingsSectionHeaderView(title: String(localized: "settings.general"))) {
             // Base Currency Picker
-            UniversalRow(
-                config: .settings,
-                leadingIcon: .sfSymbol("dollarsign.circle",
-                                       color: AppColors.accent,
-                                       size: AppIconSize.md)
-            ) {
-                Text(String(localized: "settings.baseCurrency"))
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppColors.textPrimary)
-            } trailing: {
-                currencyMenu
+            NavigationLink {
+                CurrencyPickerView(
+                    selectedCurrency: selectedCurrency,
+                    onSelect: onCurrencyChange
+                )
+            } label: {
+                UniversalRow(
+                    config: .settings,
+                    leadingIcon: .sfSymbol("dollarsign.circle",
+                                           color: AppColors.accent,
+                                           size: AppIconSize.md)
+                ) {
+                    Text(String(localized: "settings.baseCurrency"))
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.textPrimary)
+                } trailing: {
+                    HStack(spacing: AppSpacing.sm) {
+                        Text(Formatting.currencySymbol(for: selectedCurrency))
+                            .font(AppTypography.body)
+                            .foregroundStyle(AppColors.textSecondary)
+                        Text(selectedCurrency)
+                            .font(AppTypography.bodySmall)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+                }
             }
 
             // Background settings navigation link
@@ -62,32 +73,6 @@ struct SettingsGeneralSection<BackgroundDest: View>: View {
         }
     }
 
-    // MARK: - Currency Menu
-
-    private var currencyMenu: some View {
-        Menu {
-            ForEach(availableCurrencies, id: \.self) { currency in
-                Button {
-                    onCurrencyChange(currency)
-                } label: {
-                    HStack {
-                        Text(Formatting.currencySymbol(for: currency))
-                        if selectedCurrency == currency {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            Text(Formatting.currencySymbol(for: selectedCurrency))
-                .font(AppTypography.body)
-                .foregroundStyle(AppColors.textPrimary)
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.vertical, AppSpacing.sm)
-                .background(AppColors.secondaryBackground)
-                .clipShape(Capsule())
-        }
-    }
 }
 
 // MARK: - Preview
@@ -97,7 +82,6 @@ struct SettingsGeneralSection<BackgroundDest: View>: View {
         List {
             SettingsGeneralSection(
                 selectedCurrency: "KZT",
-                availableCurrencies: ["KZT", "USD", "EUR", "RUB"],
                 onCurrencyChange: { _ in }
             ) {
                 Text("Background Settings")
