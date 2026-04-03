@@ -3,7 +3,7 @@
 //  Tenra
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
-//  Responsible for: savings rate, emergency fund coverage, savings momentum trend.
+//  Responsible for: savings rate, emergency fund coverage.
 //
 
 import Foundation
@@ -29,13 +29,10 @@ extension InsightsService {
         if let rate = generateSavingsRate(allIncome: allIncome, allExpenses: allExpenses, baseCurrency: baseCurrency) {
             insights.append(rate)
         }
-        // EmergencyFund and SavingsMomentum are granularity-independent — skip when shared provided
+        // EmergencyFund is granularity-independent — skip when shared provided
         if !skipSharedGenerators {
             if let fund = generateEmergencyFund(accounts: accounts, transactions: transactions, baseCurrency: baseCurrency, balanceFor: balanceFor, preAggregated: preAggregated) {
                 insights.append(fund)
-            }
-            if let momentum = generateSavingsMomentum(transactions: transactions, baseCurrency: baseCurrency, preAggregated: preAggregated) {
-                insights.append(momentum)
             }
         }
         return insights
@@ -105,52 +102,4 @@ extension InsightsService {
         )
     }
 
-    private nonisolated func generateSavingsMomentum(transactions: [Transaction], baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
-        let aggregates: [InMemoryMonthlyTotal]
-        if let preAggregated {
-            aggregates = preAggregated.lastMonthlyTotals(4)
-        } else {
-            aggregates = Self.computeLastMonthlyTotals(4, from: transactions, baseCurrency: baseCurrency)
-        }
-        guard aggregates.count >= 2 else { return nil }
-
-        let rates: [Double] = aggregates.map { agg in
-            guard agg.totalIncome > 0 else { return 0 }
-            return ((agg.totalIncome - agg.totalExpenses) / agg.totalIncome) * 100
-        }
-
-        guard let currentRate = rates.last else { return nil }
-        let prevRates = Array(rates.dropLast())
-        guard !prevRates.isEmpty else { return nil }
-
-        let avgPrevRate = prevRates.reduce(0.0, +) / Double(prevRates.count)
-        let delta = currentRate - avgPrevRate
-        guard abs(delta) > 1 else { return nil }
-
-        let direction: TrendDirection = delta > 0 ? .up : .down
-        let severity: InsightSeverity = delta > 2 ? .positive : (delta < -2 ? .warning : .neutral)
-        Self.logger.debug("📊 [Insights] SavingsMomentum — current=\(String(format: "%.1f%%", currentRate), privacy: .public), avgPrev=\(String(format: "%.1f%%", avgPrevRate), privacy: .public), delta=\(String(format: "%+.1f%%", delta), privacy: .public)")
-        return Insight(
-            id: "savings_momentum",
-            type: .savingsMomentum,
-            title: String(localized: "insights.savingsMomentum"),
-            subtitle: String(localized: "insights.vsPrevious3Months"),
-            metric: InsightMetric(
-                value: currentRate,
-                formattedValue: String(format: "%.1f%%", currentRate),
-                currency: nil,
-                unit: nil
-            ),
-            trend: InsightTrend(
-                direction: direction,
-                changePercent: delta,
-                changeAbsolute: nil,
-                comparisonPeriod: String(localized: "insights.vsPrevious3Months")
-            ),
-            severity: severity,
-            category: .savings,
-            detailData: nil
-        )
-    }
 }

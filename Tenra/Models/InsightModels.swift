@@ -57,7 +57,6 @@ enum InsightType: String, Hashable {
     // Phase 24 — Savings
     case savingsRate       // (income - expenses) / income %
     case emergencyFund     // months of expenses covered by balance
-    case savingsMomentum   // savings rate trend vs 3-month average
 
     // Phase 24 — Forecasting
     case spendingForecast  // projected 30-day spend

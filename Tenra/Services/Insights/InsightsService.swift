@@ -355,7 +355,7 @@ nonisolated final class InsightsService {
             accounts: snapshot.accounts
         ))
 
-        // Phase 24 — Savings: SavingsRate is granularity-dependent; EmergencyFund/SavingsMomentum are shared
+        // Phase 24 — Savings: SavingsRate is granularity-dependent; EmergencyFund is shared
         // Phase 42b: skipSharedGenerators when shared insights already computed
         insights.append(contentsOf: generateSavingsInsights(
             allIncome: windowedIncome,
@@ -495,7 +495,6 @@ nonisolated final class InsightsService {
         "duplicate_subscriptions",
         "accountDormancy",
         "emergency_fund",
-        "savings_momentum",
         "spending_forecast",
         "balance_runway",
         "year_over_year",

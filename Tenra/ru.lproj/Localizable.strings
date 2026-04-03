@@ -829,8 +829,6 @@
 "insights.emergencyFund" = "Финансовая подушка";
 "insights.monthsCovered" = "покрывает %d месяцев";
 "insights.months" = "месяцев";
-"insights.savingsMomentum" = "Динамика сбережений";
-"insights.vsPrevious3Months" = "к среднему за 3 месяца";
 
 // Phase 24 — Spending (stub completions)
 "insights.categoryTrend" = "Тренд расходов";
@@ -845,7 +843,6 @@
 "insights.balanceRunway.months" = "месяцев хватит";
 "insights.yearOverYear" = "Год к году";
 "insights.incomeSeasonality" = "Сезонность доходов";
-"insights.spendingVelocity" = "Темп расходов";
 "insights.incomeSourceBreakdown" = "Источники дохода";
 
 // Phase 24 — Health Score & Behavioral

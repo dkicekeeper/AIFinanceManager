@@ -829,8 +829,6 @@
 "insights.emergencyFund" = "Emergency Fund";
 "insights.monthsCovered" = "%d months covered";
 "insights.months" = "months";
-"insights.savingsMomentum" = "Savings Momentum";
-"insights.vsPrevious3Months" = "vs previous 3 months";
 
 // Phase 24 — Spending (stub completions)
 "insights.categoryTrend" = "Spending Trend";
@@ -845,7 +843,6 @@
 "insights.balanceRunway.months" = "months of runway";
 "insights.yearOverYear" = "Year-over-Year";
 "insights.incomeSeasonality" = "Income Seasonality";
-"insights.spendingVelocity" = "Spending Velocity";
 "insights.incomeSourceBreakdown" = "Income Sources";
 
 // Phase 24 — Health Score & Behavioral
