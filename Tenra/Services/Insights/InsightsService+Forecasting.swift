@@ -4,7 +4,7 @@
 //
 //  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
 //  Responsible for: spending forecast, balance runway, year-over-year, income seasonality,
-//                   spending velocity, income source breakdown.
+//                   income source breakdown.
 //
 
 import Foundation
@@ -25,7 +25,7 @@ extension InsightsService {
     ) -> [Insight] {
         var insights: [Insight] = []
 
-        // SpendingForecast, BalanceRunway, YoY, IncomeSeasonality, SpendingVelocity
+        // SpendingForecast, BalanceRunway, YoY, IncomeSeasonality
         // are granularity-independent — skip when shared insights already provided
         if !skipSharedGenerators {
             if let forecast = generateSpendingForecast(transactions: snapshot.transactions, recurringSeries: snapshot.recurringSeries, categories: snapshot.categories, baseCurrency: baseCurrency, preAggregated: preAggregated) {
@@ -39,9 +39,6 @@ extension InsightsService {
             }
             if let seasonality = generateIncomeSeasonality(transactions: snapshot.transactions, baseCurrency: baseCurrency, preAggregated: preAggregated) {
                 insights.append(seasonality)
-            }
-            if let velocity = generateSpendingVelocity(transactions: snapshot.transactions, baseCurrency: baseCurrency, preAggregated: preAggregated) {
-                insights.append(velocity)
             }
         }
         // IncomeSourceBreakdown is granularity-dependent (uses currentBucketForForecasting) — always compute
@@ -290,63 +287,6 @@ extension InsightsService {
         )
     }
 
-    /// Compares current daily spending rate vs last month's daily rate.
-    private nonisolated func generateSpendingVelocity(transactions: [Transaction], baseCurrency: String, preAggregated: PreAggregatedData? = nil) -> Insight? {
-        let calendar = Calendar.current
-        let now = Date()
-        let dayOfMonth = calendar.component(.day, from: now)
-        guard dayOfMonth > 3 else { return nil }
-
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
-        let thisMonth: InMemoryMonthlyTotal?
-        let lastMonth: InMemoryMonthlyTotal?
-        if let preAggregated {
-            thisMonth = preAggregated.lastMonthlyTotals(1).first
-            lastMonth = preAggregated.lastMonthlyTotals(2).first
-        } else {
-            thisMonth = Self.computeLastMonthlyTotals(1, from: transactions, baseCurrency: baseCurrency).first
-            lastMonth = Self.computeLastMonthlyTotals(2, from: transactions, baseCurrency: baseCurrency).first
-        }
-
-        guard let spentSoFar = thisMonth?.totalExpenses, spentSoFar > 0 else { return nil }
-        guard let lastMonthTotal = lastMonth?.totalExpenses, lastMonthTotal > 0 else { return nil }
-
-        let currentDailyRate = spentSoFar / Double(dayOfMonth)
-
-        guard let prevMonthDate = calendar.date(byAdding: .month, value: -1, to: now) else { return nil }
-        let lastMonthDays = Double(calendar.range(of: .day, in: .month, for: prevMonthDate)?.count ?? 30)
-        let lastMonthDailyRate = lastMonthTotal / lastMonthDays
-
-        let ratio = currentDailyRate / lastMonthDailyRate
-        guard abs(ratio - 1.0) > 0.1 else { return nil }
-
-        let changePercent = (ratio - 1.0) * 100
-        let direction: TrendDirection = ratio > 1 ? .up : .down
-        let severity: InsightSeverity = ratio > 1.3 ? .warning : (ratio < 0.8 ? .positive : .neutral)
-
-        Self.logger.debug("⏱ [Insights] SpendingVelocity — ratio=\(String(format: "%.2f", ratio), privacy: .public)x, change=\(String(format: "%+.1f%%", changePercent), privacy: .public)")
-        return Insight(
-            id: "spending_velocity",
-            type: .spendingVelocity,
-            title: String(localized: "insights.spendingVelocity"),
-            subtitle: String(format: "%+.0f%%", changePercent),
-            metric: InsightMetric(
-                value: ratio,
-                formattedValue: String(format: "%.1fx", ratio),
-                currency: nil,
-                unit: nil
-            ),
-            trend: InsightTrend(
-                direction: direction,
-                changePercent: changePercent,
-                changeAbsolute: currentDailyRate - lastMonthDailyRate,
-                comparisonPeriod: String(localized: "insights.vsPreviousPeriod")
-            ),
-            severity: severity,
-            category: .forecasting,
-            detailData: nil
-        )
-    }
 
     // MARK: - Income Source Breakdown
 

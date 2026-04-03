@@ -63,7 +63,6 @@ enum InsightType: String, Hashable {
     case balanceRunway     // months until balance runs out at current burn
     case yearOverYear      // this month vs same month last year
     case incomeSeasonality // historically strongest/weakest income months
-    case spendingVelocity  // daily spend pace vs last month
 
     // Phase 24 — Behavioral
     case duplicateSubscriptions // possible duplicate recurring items

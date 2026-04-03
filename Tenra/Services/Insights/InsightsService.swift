@@ -498,8 +498,7 @@ nonisolated final class InsightsService {
         "spending_forecast",
         "balance_runway",
         "year_over_year",
-        "income_seasonality",
-        "spending_velocity"
+        "income_seasonality"
     ]
 
     /// Extracts granularity-independent insights from a full insight array.
