@@ -30,13 +30,24 @@ struct LoanLinkPaymentsView: View {
 
     // MARK: - Computed Properties
 
+    /// When search is empty — show auto-matched candidates.
+    /// When search is active — search ALL transactions globally and merge with candidates.
     private var filteredCandidates: [Transaction] {
-        var result = candidates
-        if !searchText.isEmpty {
+        var result: [Transaction]
+        if searchText.isEmpty {
+            result = candidates
+        } else {
+            // Global search across all transactions
             let query = searchText.lowercased()
-            result = result.filter {
-                $0.description.lowercased().contains(query)
-                || String(format: "%.0f", $0.amount).contains(query)
+            let allTx = transactionStore.transactions.filter { tx in
+                tx.type == .expense && tx.currency == loan.currency
+            }
+            result = allTx.filter { tx in
+                tx.description.lowercased().contains(query)
+                || tx.category.lowercased().contains(query)
+                || (tx.subcategory?.lowercased().contains(query) ?? false)
+                || String(format: "%.0f", tx.amount).contains(query)
+                || tx.date.contains(query)
             }
         }
         if let accountId = filterAccountId {
@@ -194,12 +205,9 @@ struct LoanLinkPaymentsView: View {
                                     currency: loan.currency,
                                     styleData: styleData,
                                     sourceAccount: sourceAccount,
-                                    targetAccount: targetAccount,
-                                    viewModel: nil,
-                                    categoriesViewModel: nil,
-                                    accountsViewModel: nil,
-                                    balanceCoordinator: nil
+                                    targetAccount: targetAccount
                                 )
+                                .allowsHitTesting(false)
                             }
                             .contentShape(Rectangle())
                         }
@@ -267,13 +275,13 @@ struct LoanLinkPaymentsView: View {
 
     private static let shortDisplay: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "d MMM"
+        f.dateFormat = "d MMMM"
         return f
     }()
 
     private static let longDisplay: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "d MMM yyyy"
+        f.dateFormat = "d MMMM yyyy"
         return f
     }()
 
