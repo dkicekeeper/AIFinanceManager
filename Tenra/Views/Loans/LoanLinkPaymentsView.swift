@@ -101,9 +101,43 @@ struct LoanLinkPaymentsView: View {
                     }
                 }
                 .padding(.vertical, AppSpacing.sm)
+                .background {
+                    Rectangle()
+                        .fill(.regularMaterial)
+                        .mask(
+                            VStack(spacing: 0) {
+                                Color.black
+                                LinearGradient(
+                                    colors: [.black, .clear],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                                .frame(height: 16)
+                            }
+                        )
+                        .padding(.bottom, -16)
+                }
             }
             .safeAreaInset(edge: .bottom) {
-                actionBar
+                VStack(spacing: 0) {
+                    actionBar
+                }
+                .background {
+                    Rectangle()
+                        .fill(.regularMaterial)
+                        .mask(
+                            VStack(spacing: 0) {
+                                LinearGradient(
+                                    colors: [.clear, .black],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                                .frame(height: 16)
+                                Color.black
+                            }
+                        )
+                        .padding(.top, -16)
+                }
             }
             .toolbar(.hidden, for: .tabBar)
             .task {
