@@ -148,18 +148,36 @@ struct LoanLinkPaymentsView: View {
         .padding(.vertical, AppSpacing.sm)
     }
 
+    // MARK: - Year Sections
+
+    private var yearSections: [(year: String, transactions: [Transaction])] {
+        let grouped = Dictionary(grouping: filteredCandidates) { tx in
+            String(tx.date.prefix(4))
+        }
+        return grouped.sorted { $0.key > $1.key }.map { (year: $0.key, transactions: $0.value) }
+    }
+
     // MARK: - Transaction List
 
     private var transactionList: some View {
         List {
-            ForEach(filteredCandidates) { tx in
-                transactionRow(tx)
-                    .listRowInsets(EdgeInsets(
-                        top: AppSpacing.sm,
-                        leading: AppSpacing.lg,
-                        bottom: AppSpacing.sm,
-                        trailing: AppSpacing.lg
-                    ))
+            ForEach(yearSections, id: \.year) { section in
+                Section {
+                    ForEach(section.transactions) { tx in
+                        transactionRow(tx)
+                            .listRowInsets(EdgeInsets(
+                                top: AppSpacing.sm,
+                                leading: AppSpacing.lg,
+                                bottom: AppSpacing.sm,
+                                trailing: AppSpacing.lg
+                            ))
+                    }
+                } header: {
+                    Text(section.year)
+                        .font(AppTypography.h4)
+                        .foregroundStyle(.primary)
+                        .textCase(nil)
+                }
             }
         }
         .listStyle(.plain)
@@ -193,9 +211,17 @@ struct LoanLinkPaymentsView: View {
                         .font(AppTypography.body)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-                    Text(DateFormatters.displayString(from: tx.date))
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: AppSpacing.xs) {
+                        Text(categoryLabel(for: tx))
+                            .font(AppTypography.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Text("·")
+                            .foregroundStyle(.tertiary)
+                        Text(DateFormatters.displayString(from: tx.date))
+                            .font(AppTypography.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Spacer()
@@ -235,6 +261,15 @@ struct LoanLinkPaymentsView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+    }
+
+    // MARK: - Helpers
+
+    private func categoryLabel(for tx: Transaction) -> String {
+        if let sub = tx.subcategory, !sub.isEmpty {
+            return "\(tx.category) → \(sub)"
+        }
+        return tx.category
     }
 
     // MARK: - Actions
