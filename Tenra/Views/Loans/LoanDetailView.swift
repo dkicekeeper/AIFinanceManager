@@ -22,6 +22,7 @@ struct LoanDetailView: View {
     @State private var showingEarlyRepayment = false
     @State private var showingRateChange = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingLinkPayments = false
     @State private var showingHistory = false
     @State private var showFullSchedule = false
     @State private var reconciliationError: String? = nil
@@ -114,6 +115,13 @@ struct LoanDetailView: View {
                         showingEarlyRepayment = true
                     } label: {
                         Label(String(localized: "loan.earlyRepayment", defaultValue: "Early Repayment"), systemImage: "bolt.fill")
+                    }
+
+                    Button {
+                        HapticManager.selection()
+                        showingLinkPayments = true
+                    } label: {
+                        Label(String(localized: "loan.linkPayments", defaultValue: "Link Payments"), systemImage: "link")
                     }
 
                     Divider()
@@ -211,6 +219,15 @@ struct LoanDetailView: View {
                             note: note
                         )
                     }
+                )
+            }
+        }
+        .sheet(isPresented: $showingLinkPayments) {
+            if let account = account {
+                LoanLinkPaymentsView(
+                    loan: account,
+                    transactionStore: transactionStore,
+                    loansViewModel: loansViewModel
                 )
             }
         }

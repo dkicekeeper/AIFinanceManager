@@ -1058,6 +1058,12 @@
 "loan.error.invalidRate" = "Введите корректную процентную ставку";
 "loan.error.invalidTerm" = "Введите корректный срок";
 "loan.error.noSourceAccount" = "Выберите счёт списания";
+"loan.linkPayments" = "Привязать платежи";
+"loan.linkPayments.title" = "Привязать платежи";
+"loan.linkPayments.selected" = "%d выбрано";
+"loan.linkPayments.search" = "Поиск по описанию или сумме";
+"loan.linkPayments.link" = "Привязать %d платежей";
+"loan.linkPayments.empty" = "Подходящие транзакции не найдены";
 
 // MARK: - Accounts (Types & Actions)
 "account.convertToDeposit" = "Конвертировать в депозит";
