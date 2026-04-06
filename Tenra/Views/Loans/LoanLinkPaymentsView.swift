@@ -91,8 +91,18 @@ struct LoanLinkPaymentsView: View {
             }
             .searchable(text: $searchText, prompt: String(localized: "loan.linkPayments.search", defaultValue: "Search by description or amount"))
             .navigationTitle(String(localized: "loan.linkPayments.title", defaultValue: "Link Payments"))
-            .navigationSubtitle(String(format: String(localized: "loan.linkPayments.selectedWithAmount", defaultValue: "%d selected · %@"), selectedIds.count, Formatting.formatCurrency(selectedTotal, currency: loan.currency)))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 0) {
+                        Text(String(localized: "loan.linkPayments.title", defaultValue: "Link Payments"))
+                            .font(AppTypography.body.weight(.semibold))
+                        Text(String(format: String(localized: "loan.linkPayments.selectedWithAmount", defaultValue: "%d selected · %@"), selectedIds.count, Formatting.formatCurrency(selectedTotal, currency: loan.currency)))
+                            .font(AppTypography.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
             .toolbar(.hidden, for: .tabBar)
             .task {
                 loadCandidates()

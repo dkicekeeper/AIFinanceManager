@@ -102,7 +102,7 @@ struct HistoryView: View {
             )
         }
         .navigationTitle(String(localized: "navigation.history"))
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(
             text: $filterCoordinator.searchText,
             isPresented: $filterCoordinator.isSearchActive,
