@@ -32,19 +32,16 @@ struct LoanRateChangeView: View {
                     FormSection {
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("percent", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "loan.rateLabel", defaultValue: "Annual rate"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             HStack(spacing: AppSpacing.xs) {
                                 TextField("0.0", text: $rateText)
-                                    .keyboardType(.decimalPad)
+                                    .inlineFieldStyle(keyboard: .decimalPad, maxWidth: 80)
                                     .focused($isRateFocused)
-                                    .multilineTextAlignment(.trailing)
-                                    .font(AppTypography.bodySmall)
-                                    .frame(maxWidth: 80)
                                 Text(String(localized: "loan.rateAnnual", defaultValue: "% annual"))
                                     .font(AppTypography.caption)
                                     .foregroundStyle(AppColors.textSecondary)
@@ -63,10 +60,10 @@ struct LoanRateChangeView: View {
 
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("note.text", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("note.text", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "loan.noteLabel", defaultValue: "Note"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             TextField(
@@ -74,9 +71,7 @@ struct LoanRateChangeView: View {
                                 text: $noteText,
                                 axis: .vertical
                             )
-                            .lineLimit(1...4)
-                            .multilineTextAlignment(.trailing)
-                            .font(AppTypography.bodySmall)
+                            .inlineNoteStyle()
                         }
                     }
 

@@ -1042,3 +1042,75 @@
 "error.backup.noActiveStore" = "No active database found";
 "error.backup.copyFailed" = "Failed to copy backup";
 "error.backup.incompatibleVersion" = "Backup version is incompatible";
+
+// MARK: - Loans (Form)
+"loan.addLoan" = "Add Loan";
+"loan.amountLabel" = "Amount";
+"loan.detailsSection" = "Loan Details";
+"loan.noteLabel" = "Note";
+"loan.payAllLoans" = "Loans";
+"loan.paymentSection" = "Payment";
+"loan.rateLabel" = "Annual rate";
+"loan.scheduleSection" = "Schedule";
+"loan.termLabel" = "Term";
+"loan.error.exceedsRemaining" = "Amount exceeds remaining balance";
+"loan.error.invalidAmount" = "Enter a valid amount";
+"loan.error.invalidRate" = "Enter a valid interest rate";
+"loan.error.invalidTerm" = "Enter a valid term";
+"loan.error.noSourceAccount" = "Select a source account";
+
+// MARK: - Accounts (Types & Actions)
+"account.convertToDeposit" = "Convert to Deposit";
+"account.postingWithInterest" = "Posting: %@ · ";
+"account.type.deposit" = "Deposits";
+"account.type.loan" = "Loans";
+"account.type.regular" = "Accounts";
+
+// MARK: - Deposits (Form)
+"deposit.bankDetails" = "Bank & Rate";
+"deposit.convertTitle" = "Convert to Deposit";
+"deposit.postingWithDate" = "Posting: %@";
+"deposit.schedule" = "Schedule";
+
+// MARK: - Transactions (Misc)
+"transaction.resumeRecurring" = "Resume";
+"transaction.type.internalTransfer" = "Transfer";
+"category.budget" = "Budget";
+
+// MARK: - Recurring Errors
+"error.recurring.invalidData" = "Invalid recurring series data";
+"error.recurring.invalidStartDate" = "Invalid start date format";
+"error.recurring.seriesNotFound" = "Recurring series not found";
+
+// MARK: - Insights
+"insights.remaining" = "remaining";
+
+// MARK: - Voice Input
+"voice.noTextRecognizedYet" = "No text recognized yet";
+"voice.stopRecording" = "Stop recording";
+"voice.tapToFinish" = "Tap to finish";
+
+// MARK: - Progress
+"progress.loadingAccounts" = "Loading accounts";
+"progress.loadingTransactions" = "Loading transactions";
+"progress.saving" = "Saving";
+
+// MARK: - UI (Misc)
+"common.changeIcon" = "Change icon";
+"currency.selected" = "Selected currency";
+"filter.accounts" = "Accounts";
+"timeFilter.customRange" = "Custom range";
+
+// MARK: - Accessibility
+"accessibility.accounts.addMenu" = "Add menu";
+"accessibility.accounts.doneReordering" = "Done reordering";
+"accessibility.accounts.reorder" = "Reorder";
+"accessibility.category.budgetHint" = "Budget usage";
+"accessibility.category.budgetProgress" = "Budget progress";
+"accessibility.category.label" = "Category";
+"accessibility.category.overBudget" = "Over budget";
+"accessibility.deposit.history" = "Transaction history";
+"accessibility.deposit.moreActions" = "More actions";
+"accessibility.insights.granularityPicker" = "Period picker";
+"accessibility.insights.granularityPickerHint" = "Select granularity: month, quarter, or year";
+"accessibility.transaction.history" = "Transaction history";

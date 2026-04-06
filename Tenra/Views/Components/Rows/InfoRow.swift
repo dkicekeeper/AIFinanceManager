@@ -24,7 +24,7 @@ struct InfoRow: View {
     var body: some View {
         UniversalRow(
             config: .info,
-            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.textSecondary, size: AppIconSize.md) }
+            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.accent, size: AppIconSize.lg) }
         ) {
             HStack {
                 Text(label)

@@ -28,9 +28,7 @@ struct BudgetSettingsSection: View {
                         .foregroundStyle(AppColors.textPrimary)
                 } trailing: {
                     TextField("0", text: $budgetAmount)
-                        .fontWeight(.semibold)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
+                        .inlineFieldStyle(keyboard: .decimalPad)
                         .accessibilityLabel(String(localized: "budget.amount"))
                 }
 

@@ -56,11 +56,11 @@ struct LoanEarlyRepaymentView: View {
                     FormSection {
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("banknote", color: AppColors.textSecondary, size: AppIconSize.md),
+                            leadingIcon: .sfSymbol("banknote", color: AppColors.accent, size: AppIconSize.lg),
                             hint: remainingHint
                         ) {
                             Text(String(localized: "loan.amountLabel", defaultValue: "Amount"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             HStack(spacing: AppSpacing.xs) {
@@ -68,10 +68,8 @@ struct LoanEarlyRepaymentView: View {
                                     String(localized: "loan.amountPlaceholder", defaultValue: "Amount"),
                                     text: $amountText
                                 )
-                                .keyboardType(.decimalPad)
+                                .inlineFieldStyle(keyboard: .decimalPad)
                                 .focused($isAmountFocused)
-                                .multilineTextAlignment(.trailing)
-                                .font(AppTypography.bodySmall)
                                 Text(Formatting.currencySymbol(for: account.currency))
                                     .font(AppTypography.bodySmall)
                                     .foregroundStyle(AppColors.textSecondary)
@@ -88,7 +86,7 @@ struct LoanEarlyRepaymentView: View {
 
                         Divider().padding(.leading, AppSpacing.lg)
 
-                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
                             Picker(String(localized: "loan.strategy", defaultValue: "Strategy"), selection: $repaymentType) {
                                 Text(String(localized: "loan.reduceTerm", defaultValue: "Reduce Term")).tag(EarlyRepaymentType.reduceTerm)
                                 Text(String(localized: "loan.reducePayment", defaultValue: "Reduce Payment")).tag(EarlyRepaymentType.reducePayment)
@@ -98,17 +96,17 @@ struct LoanEarlyRepaymentView: View {
                                 .font(AppTypography.caption)
                                 .foregroundStyle(AppColors.textSecondary)
                         }
-                        .padding(.vertical, AppSpacing.sm)
+                        .padding(.vertical, AppSpacing.lg)
                         .padding(.horizontal, AppSpacing.md)
 
                         Divider().padding(.leading, AppSpacing.lg)
 
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("note.text", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("note.text", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "loan.noteLabel", defaultValue: "Note"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             TextField(
@@ -116,9 +114,7 @@ struct LoanEarlyRepaymentView: View {
                                 text: $noteText,
                                 axis: .vertical
                             )
-                            .lineLimit(1...4)
-                            .multilineTextAlignment(.trailing)
-                            .font(AppTypography.bodySmall)
+                            .inlineNoteStyle()
                         }
                     }
 

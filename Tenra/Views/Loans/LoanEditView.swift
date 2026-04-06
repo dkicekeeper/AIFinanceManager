@@ -83,18 +83,17 @@ struct LoanEditView: View {
                     FormSection(header: String(localized: "loan.detailsSection", defaultValue: "Loan Details")) {
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("building.columns", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "loan.bankPlaceholder", defaultValue: "Bank"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             TextField(
                                 String(localized: "loan.bankPlaceholder", defaultValue: "Bank name"),
                                 text: $bankName
                             )
-                            .multilineTextAlignment(.trailing)
-                            .font(AppTypography.bodySmall)
+                            .inlineFieldStyle()
                         }
 
                         Divider()
@@ -126,18 +125,15 @@ struct LoanEditView: View {
 
                             UniversalRow(
                                 config: .standard,
-                                leadingIcon: .sfSymbol("percent", color: AppColors.textSecondary, size: AppIconSize.md)
+                                leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg)
                             ) {
                                 Text(String(localized: "loan.rateAnnual", defaultValue: "Interest rate"))
-                                    .font(AppTypography.bodySmall)
+                                    .font(AppTypography.body)
                                     .foregroundStyle(AppColors.textPrimary)
                             } trailing: {
                                 HStack(spacing: AppSpacing.xs) {
                                     TextField("0.0", text: $interestRateText)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .font(AppTypography.bodySmall)
-                                        .frame(maxWidth: 80)
+                                        .inlineFieldStyle(keyboard: .decimalPad, maxWidth: 80)
                                     Text(String(localized: "loan.rateAnnual", defaultValue: "% annual"))
                                         .font(AppTypography.caption)
                                         .foregroundStyle(AppColors.textSecondary)
@@ -150,18 +146,15 @@ struct LoanEditView: View {
                     FormSection(header: String(localized: "loan.scheduleSection", defaultValue: "Schedule")) {
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("clock", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("clock", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "loan.termLabel", defaultValue: "Term"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             HStack(spacing: AppSpacing.xs) {
                                 TextField("0", text: $termMonthsText)
-                                    .keyboardType(.numberPad)
-                                    .multilineTextAlignment(.trailing)
-                                    .font(AppTypography.bodySmall)
-                                    .frame(maxWidth: 60)
+                                    .inlineFieldStyle(keyboard: .numberPad, maxWidth: 60)
                                 Text(String(localized: "loan.months", defaultValue: "months"))
                                     .font(AppTypography.caption)
                                     .foregroundStyle(AppColors.textSecondary)
@@ -172,10 +165,10 @@ struct LoanEditView: View {
 
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("calendar.badge.clock", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("calendar.badge.clock", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "loan.paymentDay", defaultValue: "Payment day"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             HStack(spacing: AppSpacing.sm) {

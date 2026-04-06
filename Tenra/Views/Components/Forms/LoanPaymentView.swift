@@ -51,11 +51,11 @@ struct LoanPaymentView: View {
                     FormSection {
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("banknote", color: AppColors.textSecondary, size: AppIconSize.md),
+                            leadingIcon: .sfSymbol("banknote", color: AppColors.accent, size: AppIconSize.lg),
                             hint: scheduledHint
                         ) {
                             Text(String(localized: "loan.amountLabel", defaultValue: "Amount"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             HStack(spacing: AppSpacing.xs) {
@@ -63,10 +63,8 @@ struct LoanPaymentView: View {
                                     String(localized: "loan.amountPlaceholder", defaultValue: "Amount"),
                                     text: $amountText
                                 )
-                                .keyboardType(.decimalPad)
+                                .inlineFieldStyle(keyboard: .decimalPad)
                                 .focused($isAmountFocused)
-                                .multilineTextAlignment(.trailing)
-                                .font(AppTypography.bodySmall)
                                 Text(Formatting.currencySymbol(for: account.currency))
                                     .font(AppTypography.bodySmall)
                                     .foregroundStyle(AppColors.textSecondary)
@@ -78,10 +76,10 @@ struct LoanPaymentView: View {
                         if availableAccounts.isEmpty {
                             UniversalRow(
                                 config: .standard,
-                                leadingIcon: .sfSymbol("building.columns", color: AppColors.textSecondary, size: AppIconSize.md)
+                                leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
                             ) {
                                 Text(String(localized: "loan.sourceAccount", defaultValue: "From account"))
-                                    .font(AppTypography.bodySmall)
+                                    .font(AppTypography.body)
                                     .foregroundStyle(AppColors.textPrimary)
                             } trailing: {
                                 Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts"))

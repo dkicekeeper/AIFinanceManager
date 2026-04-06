@@ -67,10 +67,10 @@ struct LoanPayAllView: View {
 
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("sum", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("sum", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "loan.payAllTotal", defaultValue: "Total"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             FormattedAmountText(
@@ -87,10 +87,10 @@ struct LoanPayAllView: View {
                         if availableAccounts.isEmpty {
                             UniversalRow(
                                 config: .standard,
-                                leadingIcon: .sfSymbol("building.columns", color: AppColors.textSecondary, size: AppIconSize.md)
+                                leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
                             ) {
                                 Text(String(localized: "loan.sourceAccount", defaultValue: "From account"))
-                                    .font(AppTypography.bodySmall)
+                                    .font(AppTypography.body)
                                     .foregroundStyle(AppColors.textPrimary)
                             } trailing: {
                                 Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts"))

@@ -31,7 +31,7 @@ struct DatePickerRow: View {
     var body: some View {
         UniversalRow(
             config: .standard,
-            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.textPrimary, size: AppIconSize.lg) }
+            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.accent, size: AppIconSize.lg) }
         ) {
             DatePicker(
                 title,

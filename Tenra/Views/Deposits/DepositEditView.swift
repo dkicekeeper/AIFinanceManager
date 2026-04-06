@@ -52,36 +52,32 @@ struct DepositEditView: View {
                     FormSection(header: String(localized: "deposit.bankDetails", defaultValue: "Bank & Rate")) {
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("building.columns", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "deposit.bank"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             TextField(
                                 String(localized: "deposit.bankNamePlaceholder"),
                                 text: $bankName
                             )
-                            .multilineTextAlignment(.trailing)
-                            .font(AppTypography.bodySmall)
+                            .inlineFieldStyle()
                         }
 
                         Divider()
 
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("percent", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "deposit.interestRate"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             HStack(spacing: AppSpacing.xs) {
                                 TextField("0.0", text: $interestRateText)
-                                    .keyboardType(.decimalPad)
-                                    .multilineTextAlignment(.trailing)
-                                    .font(AppTypography.bodySmall)
-                                    .frame(maxWidth: 80)
+                                    .inlineFieldStyle(keyboard: .decimalPad, maxWidth: 80)
                                 Text(String(localized: "deposit.rateAnnual"))
                                     .font(AppTypography.caption)
                                     .foregroundStyle(AppColors.textSecondary)
@@ -93,10 +89,10 @@ struct DepositEditView: View {
                     FormSection(header: String(localized: "deposit.schedule", defaultValue: "Schedule")) {
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("calendar.badge.clock", color: AppColors.textSecondary, size: AppIconSize.md)
+                            leadingIcon: .sfSymbol("calendar.badge.clock", color: AppColors.accent, size: AppIconSize.lg)
                         ) {
                             Text(String(localized: "deposit.dayOfMonth"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             HStack(spacing: AppSpacing.sm) {
@@ -114,11 +110,11 @@ struct DepositEditView: View {
 
                         UniversalRow(
                             config: .standard,
-                            leadingIcon: .sfSymbol("arrow.triangle.2.circlepath", color: AppColors.textSecondary, size: AppIconSize.md),
+                            leadingIcon: .sfSymbol("arrow.triangle.2.circlepath", color: AppColors.accent, size: AppIconSize.lg),
                             hint: String(localized: "deposit.capitalizationHint")
                         ) {
                             Text(String(localized: "deposit.enableCapitalization"))
-                                .font(AppTypography.bodySmall)
+                                .font(AppTypography.body)
                                 .foregroundStyle(AppColors.textPrimary)
                         } trailing: {
                             Toggle("", isOn: $capitalizationEnabled)

@@ -1042,3 +1042,75 @@
 "error.backup.noActiveStore" = "Активная база данных не найдена";
 "error.backup.copyFailed" = "Не удалось скопировать резервную копию";
 "error.backup.incompatibleVersion" = "Версия резервной копии несовместима";
+
+// MARK: - Loans (Form)
+"loan.addLoan" = "Добавить кредит";
+"loan.amountLabel" = "Сумма";
+"loan.detailsSection" = "Детали кредита";
+"loan.noteLabel" = "Заметка";
+"loan.payAllLoans" = "Кредиты";
+"loan.paymentSection" = "Оплата";
+"loan.rateLabel" = "Годовая ставка";
+"loan.scheduleSection" = "График";
+"loan.termLabel" = "Срок";
+"loan.error.exceedsRemaining" = "Сумма превышает остаток";
+"loan.error.invalidAmount" = "Введите корректную сумму";
+"loan.error.invalidRate" = "Введите корректную процентную ставку";
+"loan.error.invalidTerm" = "Введите корректный срок";
+"loan.error.noSourceAccount" = "Выберите счёт списания";
+
+// MARK: - Accounts (Types & Actions)
+"account.convertToDeposit" = "Конвертировать в депозит";
+"account.postingWithInterest" = "Начисление: %@ · ";
+"account.type.deposit" = "Депозиты";
+"account.type.loan" = "Кредиты";
+"account.type.regular" = "Счета";
+
+// MARK: - Deposits (Form)
+"deposit.bankDetails" = "Банк и ставка";
+"deposit.convertTitle" = "Конвертировать в депозит";
+"deposit.postingWithDate" = "Начисление: %@";
+"deposit.schedule" = "График";
+
+// MARK: - Transactions (Misc)
+"transaction.resumeRecurring" = "Возобновить";
+"transaction.type.internalTransfer" = "Перевод";
+"category.budget" = "Бюджет";
+
+// MARK: - Recurring Errors
+"error.recurring.invalidData" = "Неверные данные регулярной серии";
+"error.recurring.invalidStartDate" = "Неверный формат даты начала";
+"error.recurring.seriesNotFound" = "Регулярная серия не найдена";
+
+// MARK: - Insights
+"insights.remaining" = "осталось";
+
+// MARK: - Voice Input
+"voice.noTextRecognizedYet" = "Текст пока не распознан";
+"voice.stopRecording" = "Остановить запись";
+"voice.tapToFinish" = "Нажмите для завершения";
+
+// MARK: - Progress
+"progress.loadingAccounts" = "Загрузка счетов";
+"progress.loadingTransactions" = "Загрузка транзакций";
+"progress.saving" = "Сохранение";
+
+// MARK: - UI (Misc)
+"common.changeIcon" = "Изменить иконку";
+"currency.selected" = "Выбранная валюта";
+"filter.accounts" = "Счета";
+"timeFilter.customRange" = "Свой период";
+
+// MARK: - Accessibility
+"accessibility.accounts.addMenu" = "Меню добавления";
+"accessibility.accounts.doneReordering" = "Завершить сортировку";
+"accessibility.accounts.reorder" = "Изменить порядок";
+"accessibility.category.budgetHint" = "Использование бюджета";
+"accessibility.category.budgetProgress" = "Прогресс бюджета";
+"accessibility.category.label" = "Категория";
+"accessibility.category.overBudget" = "Бюджет превышен";
+"accessibility.deposit.history" = "История операций";
+"accessibility.deposit.moreActions" = "Дополнительные действия";
+"accessibility.insights.granularityPicker" = "Выбор периода";
+"accessibility.insights.granularityPickerHint" = "Выберите детализацию: месяц, квартал или год";
+"accessibility.transaction.history" = "История транзакций";

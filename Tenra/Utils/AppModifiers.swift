@@ -87,6 +87,32 @@ extension View {
     }
 }
 
+// MARK: - Inline Field Styles
+
+extension View {
+    /// Standard styling for TextField inside UniversalRow trailing closure.
+    /// Ensures consistent font, alignment, keyboard type and optional width constraint.
+    func inlineFieldStyle(
+        keyboard: UIKeyboardType = .default,
+        maxWidth: CGFloat? = nil
+    ) -> some View {
+        self
+            .font(AppTypography.body)
+            .multilineTextAlignment(.trailing)
+            .keyboardType(keyboard)
+            .frame(maxWidth: maxWidth ?? .infinity)
+    }
+
+    /// Standard styling for multiline note TextField inside UniversalRow trailing closure.
+    /// Use with `TextField(..., axis: .vertical)`.
+    func inlineNoteStyle() -> some View {
+        self
+            .lineLimit(1...4)
+            .multilineTextAlignment(.trailing)
+            .font(AppTypography.body)
+    }
+}
+
 // MARK: - Staggered Entrance Modifier
 
 /// Animates a view's entrance with scale + opacity, typically used for facepile icons.
