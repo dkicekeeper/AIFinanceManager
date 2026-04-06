@@ -177,9 +177,12 @@ class LoansViewModel {
         transactions: [Transaction],
         transactionStore: TransactionStore
     ) async throws {
-        guard var loan = getLoan(by: loanId),
-              loan.loanInfo != nil else { return }
+        guard let loan = getLoan(by: loanId),
+              loan.loanInfo != nil else {
+            throw LoanLinkError.loanNotFound
+        }
 
+        let loanName = loan.name
         let sortedTransactions = transactions.sorted { $0.date < $1.date }
 
         // Convert each transaction to loanPayment
@@ -195,8 +198,8 @@ class LoansViewModel {
                 category: TransactionType.loanPaymentCategoryName,
                 subcategory: tx.subcategory,
                 accountId: loanId,
-                targetAccountId: tx.accountId, // source account becomes target
-                accountName: loan.name,
+                targetAccountId: tx.accountId,
+                accountName: loanName,
                 targetAccountName: tx.accountName,
                 targetCurrency: tx.targetCurrency,
                 targetAmount: tx.targetAmount,
@@ -207,16 +210,37 @@ class LoansViewModel {
             try await transactionStore.update(updated)
         }
 
-        // Recalculate loan state
-        let dates = sortedTransactions.map(\.date)
+        // Re-fetch loan after updates (balance may have changed during loop)
+        guard var freshLoan = getLoan(by: loanId),
+              var loanInfo = freshLoan.loanInfo else {
+            throw LoanLinkError.loanNotFound
+        }
+
+        // Count ALL loanPayment transactions for this loan (including pre-existing ones)
+        let allLoanPayments = transactionStore.transactions.filter {
+            $0.accountId == loanId && $0.type == .loanPayment
+        }.sorted { $0.date < $1.date }
+
+        let allDates = allLoanPayments.map(\.date)
         LoanPaymentService.recalculateAfterLinking(
-            loanInfo: &loan.loanInfo!,
-            linkedPaymentCount: sortedTransactions.count,
-            linkedPaymentDates: dates
+            loanInfo: &loanInfo,
+            linkedPaymentCount: allLoanPayments.count,
+            linkedPaymentDates: allDates
         )
 
-        // Persist updated loan
-        updateLoan(loan)
+        freshLoan.loanInfo = loanInfo
+        updateLoan(freshLoan)
+    }
+
+    enum LoanLinkError: LocalizedError {
+        case loanNotFound
+
+        var errorDescription: String? {
+            switch self {
+            case .loanNotFound:
+                return String(localized: "loan.linkPayments.error.notFound", defaultValue: "Loan not found")
+            }
+        }
     }
 
     // MARK: - Helper Methods
