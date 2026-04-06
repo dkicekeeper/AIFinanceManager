@@ -13,7 +13,6 @@ struct SubscriptionCard: View {
 
     var body: some View {
         HStack(spacing: AppSpacing.md) {
-            // REFACTORED 2026-02-02: Use IconView to eliminate duplication
             IconView(
                 source: subscription.iconSource,
                 size: AppIconSize.xxl

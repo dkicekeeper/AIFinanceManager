@@ -11,7 +11,6 @@ import Observation
 
 /// Manages pagination for large transaction lists
 /// Loads transactions incrementally to improve performance
-/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
 @Observable
 @MainActor
 class TransactionPaginationManager {

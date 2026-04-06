@@ -217,7 +217,7 @@ nonisolated enum DepositInterestService {
         let monthStart = calendar.date(from: components)!
         let monthStartString = DateFormatters.dateFormatter.string(from: monthStart)
 
-        // Idempotency check — in-memory (TransactionStore loads all transactions since Phase 16)
+        // Idempotency check — in-memory (TransactionStore holds all transactions)
         let alreadyPosted = allTransactions.contains { tx in
             tx.accountId == account.id
             && tx.type == .depositInterestAccrual

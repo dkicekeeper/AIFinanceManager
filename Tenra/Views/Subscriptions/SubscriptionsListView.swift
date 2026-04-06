@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct SubscriptionsListView: View {
-    // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
     let categoriesViewModel: CategoriesViewModel

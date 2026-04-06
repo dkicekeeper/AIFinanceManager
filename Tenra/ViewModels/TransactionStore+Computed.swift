@@ -3,7 +3,6 @@
 //  Tenra
 //
 //  Computed properties, caching, and calculation methods extracted from TransactionStore.
-//  Phase C: File split for maintainability.
 //
 
 import Foundation
@@ -12,8 +11,7 @@ import Foundation
 
 extension TransactionStore {
 
-    /// Summary of income/expense/transfers
-    /// Phase 6: Cached computed property
+    /// Summary of income/expense/transfers (cached)
     var summary: Summary {
         // Try cache first
         if let cached: Summary = cache.summary {
@@ -29,8 +27,7 @@ extension TransactionStore {
         return result
     }
 
-    /// Expenses grouped by category
-    /// Phase 6: Cached computed property
+    /// Expenses grouped by category (cached)
     var categoryExpenses: [CachedCategoryExpense] {
         // Try cache first
         if let cached: [CachedCategoryExpense] = cache.categoryExpenses {
@@ -46,8 +43,7 @@ extension TransactionStore {
         return result
     }
 
-    /// Daily expenses for a specific date
-    /// Phase 6: Cached computed property
+    /// Daily expenses for a specific date (cached)
     func expenses(for date: Date) -> Double {
         let dateString = DateFormatters.dateFormatter.string(from: date)
 

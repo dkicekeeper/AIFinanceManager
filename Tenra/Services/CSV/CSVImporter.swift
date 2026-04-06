@@ -158,7 +158,7 @@ enum CSVImportError: LocalizedError {
     case emptyFile
     case noHeaders
     case invalidFormat
-    case missingDependency(String)  // ✨ Phase 11: For missing TransactionStore or other deps
+    case missingDependency(String)
 
     var errorDescription: String? {
         switch self {

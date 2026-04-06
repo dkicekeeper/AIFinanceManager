@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct SubscriptionDetailView: View {
-    // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
     let categoriesViewModel: CategoriesViewModel
@@ -45,7 +44,6 @@ struct SubscriptionDetailView: View {
                         .screenPadding()
                 }
             }
-//            .padding(.vertical, AppSpacing.md)
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -146,7 +144,6 @@ struct SubscriptionDetailView: View {
     private var subscriptionInfoCard: some View {
         VStack(alignment: .center, spacing: AppSpacing.md) {
             VStack(spacing: AppSpacing.md) {
-                // REFACTORED 2026-02-02: Use IconView with glass effect
                 IconView(
                     source: subscription.iconSource,
                     style: .glassHero()

@@ -2,9 +2,6 @@
 //  TransactionsViewModel.swift
 //  Tenra
 //
-//  Phase 2 Refactoring Complete: 2026-02-01
-//  Reduction: 1,501 → ~600 lines (-60%)
-//
 
 import Foundation
 import SwiftUI
@@ -16,38 +13,31 @@ class TransactionsViewModel {
 
     // MARK: - Observable State (UI Bindings)
 
-    // MARK: - Phase 16: Computed Properties from TransactionStore (Single Source of Truth)
-    // These are no longer stored arrays — they read directly from TransactionStore
-    // eliminating O(N) array copies on every mutation.
-
-    /// All transactions — reads directly from TransactionStore (SSOT)
-    /// Setter is a no-op legacy compatibility shim — prefer direct TransactionStore mutations
+    /// All transactions — reads directly from TransactionStore.
+    /// Setter is a no-op — all mutations go through TransactionStore.
     var allTransactions: [Transaction] {
         get { transactionStore?.transactions ?? [] }
-        set {
-            // No-op: legacy compatibility path — all mutations go through TransactionStore
-        }
+        set { }
     }
 
-    /// Display transactions — same as allTransactions (no separate filtering)
+    /// Display transactions — same as allTransactions
     var displayTransactions: [Transaction] {
         transactionStore?.transactions ?? []
     }
 
     var categoryRules: [CategoryRule] = []
 
-    /// Accounts — reads directly from TransactionStore (SSOT)
+    /// Accounts — reads directly from TransactionStore
     var accounts: [Account] {
         transactionStore?.accounts ?? []
     }
 
-    /// Categories — reads directly from TransactionStore (SSOT)
+    /// Categories — reads directly from TransactionStore
     var customCategories: [CustomCategory] {
         transactionStore?.categories ?? []
     }
 
-    /// ✨ Phase 9: Now computed property delegating to TransactionStore (Single Source of Truth)
-    /// This eliminates data duplication and manual synchronization
+    /// Computed property delegating to TransactionStore (single source of truth)
     var recurringSeries: [RecurringSeries] {
         transactionStore?.recurringSeries ?? []
     }
@@ -63,33 +53,17 @@ class TransactionsViewModel {
     var appSettings: AppSettings = AppSettings.load()
     var hasOlderTransactions: Bool = false
 
-    // MIGRATED: initialAccountBalances moved to BalanceCoordinator
-    // MIGRATED: accountsWithCalculatedInitialBalance moved to BalanceCoordinator (calculation modes)
     var displayMonthsRange: Int = 120  // 10 years - increased from 6 to support historical data imports
 
     // MARK: - Dependencies (Injected)
 
     @ObservationIgnored let repository: DataRepositoryProtocol
-    // MIGRATED: accountBalanceService removed - using BalanceCoordinator instead
-    // MIGRATED: balanceCalculationService removed - using BalanceCoordinator instead
-
-    // ✨ Phase 9: Removed subscriptionsViewModel - recurring operations now in TransactionStore
-
-    /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth for balances
-    /// Injected by AppCoordinator - replaces old TransactionBalanceCoordinator
     @ObservationIgnored var balanceCoordinator: BalanceCoordinator?
-
-    /// Phase 8: TransactionStore as Single Source of Truth for all transaction operations
-    /// ✨ Phase 9: Now includes recurring operations (subscriptions + recurring transactions)
-    /// Replaces legacy CRUD services, cache managers, and coordinators
     @ObservationIgnored var transactionStore: TransactionStore?
 
     // MARK: - Services (Remaining)
 
     @ObservationIgnored let currencyService = TransactionCurrencyService()
-
-    /// Phase 8: Minimal cache for read-only display operations
-    /// Write operations handled by TransactionStore + UnifiedTransactionCache
     @ObservationIgnored let cacheManager = TransactionCacheManager()
 
     // MARK: - Services (initialized eagerly for @Observable compatibility)
@@ -182,8 +156,6 @@ class TransactionsViewModel {
 
         isLoading = true
 
-        // PERFORMANCE OPTIMIZATION: Concurrent loading (Phase 2)
-        // Phase 8: Storage loading handled by TransactionStore
         await generateRecurringAsync()
         await loadAggregateCacheAsync()
 
@@ -191,23 +163,17 @@ class TransactionsViewModel {
         PerformanceProfiler.end("TransactionsViewModel.loadDataAsync")
     }
 
-    /// Generate recurring transactions asynchronously (Phase 2)
     private func generateRecurringAsync() async {
         self.generateRecurringTransactions()
     }
 
-    /// Load aggregate cache asynchronously
-    /// Phase 8: Aggregate caching handled by TransactionStore
     private func loadAggregateCacheAsync() async {
-        // Phase 8: Aggregate caching handled by TransactionStore
-        // No action needed
         cacheManager.invalidateCategoryExpenses()
     }
 
     // MARK: - CRUD Operations (Delegated to Services)
 
     func addTransaction(_ transaction: Transaction) {
-        // Phase 8: Delegate to TransactionStore
         guard let transactionStore = transactionStore else {
             return
         }
@@ -222,8 +188,6 @@ class TransactionsViewModel {
     }
 
     func addTransactions(_ newTransactions: [Transaction]) {
-        // Phase 17: Use addBatch() instead of individual adds
-        // This triggers ONE sync instead of N syncs
         guard let transactionStore = transactionStore else { return }
 
         Task {
@@ -237,7 +201,6 @@ class TransactionsViewModel {
     }
 
     func addTransactionsForImport(_ newTransactions: [Transaction]) {
-        // Phase 8: Import via TransactionStore
         guard let transactionStore = transactionStore else {
             return
         }
@@ -259,7 +222,6 @@ class TransactionsViewModel {
     }
 
     func updateTransaction(_ transaction: Transaction) {
-        // Phase 8: Delegate to TransactionStore
         guard let transactionStore = transactionStore else {
             return
         }
@@ -275,7 +237,6 @@ class TransactionsViewModel {
     }
 
     func deleteTransaction(_ transaction: Transaction) {
-        // Phase 8: Delegate to TransactionStore
         guard let transactionStore = transactionStore else {
             return
         }
@@ -306,7 +267,6 @@ class TransactionsViewModel {
         categoryRules.removeAll { $0.description.lowercased() == newRule.description.lowercased() }
         categoryRules.append(newRule)
 
-        // Phase 16: Update transactions via TransactionStore
         guard let store = transactionStore else { return }
         let matchingDescription = newRule.description.lowercased()
 
@@ -338,7 +298,6 @@ class TransactionsViewModel {
     // MARK: - Account Operations
 
     func transfer(from sourceId: String, to targetId: String, amount: Double, date: String, description: String) {
-        // Phase 8: Delegate to TransactionStore
         guard let transactionStore = transactionStore else {
             return
         }
@@ -396,8 +355,6 @@ class TransactionsViewModel {
     }
 
     func resetAndRecalculateAllBalances() {
-
-        // MIGRATED: Initial balances are already in account.initialBalance
         for account in accounts {
             // Update BalanceCoordinator with initial balance from account
             if let initialBalance = account.initialBalance {
@@ -413,47 +370,24 @@ class TransactionsViewModel {
 
     // MARK: - Storage
 
-    func saveToStorage() {
-        // Phase 8: Persistence handled by TransactionStore automatically
-        // This is a backward compatibility stub
-    }
+    /// Backward compatibility stub — persistence handled by TransactionStore
+    func saveToStorage() { }
 
-    func saveToStorageDebounced() {
-        // Phase 8: Persistence handled by TransactionStore automatically
-        // This is a backward compatibility stub
-    }
+    /// Backward compatibility stub — persistence handled by TransactionStore
+    func saveToStorageDebounced() { }
 
-    func saveToStorageSync() {
-        // Phase 8: Persistence handled by TransactionStore automatically
-        // This is a backward compatibility stub
-    }
+    func saveToStorageSync() { }
 
-    func loadOlderTransactions() {
-        // Phase 8: Loading handled by TransactionStore
-        // This is a backward compatibility stub
-    }
+    func loadOlderTransactions() { }
 
-    /// PHASE 3: DEPRECATED - Accounts are now managed by TransactionStore
-    /// AccountsViewModel observes TransactionStore.$accounts instead
-    /// This method is kept for backward compatibility but does nothing
-    func syncAccountsFrom(_ accountsViewModel: AccountsViewModel) {
-        // Phase 16: Accounts are computed from TransactionStore — no manual sync needed
-    }
+    func syncAccountsFrom(_ accountsViewModel: AccountsViewModel) { }
 
-    /// Setup reference to CategoriesViewModel (Single Source of Truth)
-    /// Call this from AppCoordinator after both ViewModels are initialized
-    /// - Parameter categoriesViewModel: The single source of truth for categories
-    /// NOTE: With @Observable, we sync directly instead of using Combine publishers
-    func setCategoriesViewModel(_ categoriesViewModel: CategoriesViewModel) {
-        // Phase 16: customCategories is now a computed property from TransactionStore
-        // No manual sync needed — @Observable handles change notifications automatically
-    }
+    func setCategoriesViewModel(_ categoriesViewModel: CategoriesViewModel) { }
 
     // MARK: - Data Management
 
     func clearHistory() {
         categoryRules = []
-        // Phase 16: Transactions and accounts are managed by TransactionStore
         repository.clearAllData()
     }
 
@@ -464,16 +398,12 @@ class TransactionsViewModel {
         categorySubcategoryLinks = []
         transactionSubcategoryLinks = []
         selectedCategories = nil
-        // Phase 16: All data arrays (transactions, accounts, categories) are now
-        // computed properties from TransactionStore — clearing via repository
         repository.clearAllData()
     }
 
     // MARK: - Helpers
 
     func insertTransactionsSorted(_ newTransactions: [Transaction]) {
-        // Phase 16: Transactions are managed by TransactionStore
-        // New transactions should be added via TransactionStore.addBatch()
         guard !newTransactions.isEmpty, let store = transactionStore else { return }
         Task {
             try? await store.addBatch(newTransactions)
@@ -490,7 +420,6 @@ class TransactionsViewModel {
     }
 
     func cleanupDeletedAccount(_ accountId: String) {
-        // MIGRATED: BalanceCoordinator handles account removal
         Task {
             await balanceCoordinator?.removeAccount(accountId)
         }
@@ -501,10 +430,8 @@ class TransactionsViewModel {
         cacheManager.buildSubcategoryIndex(links: transactionSubcategoryLinks)
     }
 
+    /// Backward compatibility stub — displayTransactions is a computed property from TransactionStore
     func refreshDisplayTransactions() {
-        // Phase 16: displayTransactions is now a computed property from TransactionStore
-        // This method is kept for backward compatibility but is a no-op
-        // hasOlderTransactions is now always false (all transactions are loaded)
         hasOlderTransactions = false
     }
 
@@ -552,24 +479,20 @@ class TransactionsViewModel {
         }
     }
 
-    // MARK: - Initial Balance Access (MIGRATED to BalanceCoordinator)
+    // MARK: - Initial Balance Access
 
+    /// Backward compatibility — reads from account.initialBalance
     func getInitialBalance(for accountId: String) -> Double? {
-        // MIGRATED: Get from account.initialBalance
-        // Note: This method is primarily for backward compatibility
         return accounts.first(where: { $0.id == accountId })?.initialBalance
     }
 
+    /// Backward compatibility stub — BalanceCoordinator manages calculation modes
     func isAccountImported(_ accountId: String) -> Bool {
-        // MIGRATED: Check BalanceCoordinator calculation mode
-        // Async access not possible here, return false for now (not critical)
         return false
     }
 
-    func resetImportedAccountFlags() {
-        // MIGRATED: No longer needed - BalanceCoordinator manages modes
-        // This method kept for backward compatibility but does nothing
-    }
+    /// Backward compatibility stub — BalanceCoordinator manages calculation modes
+    func resetImportedAccountFlags() { }
 
     // MARK: - Currency Conversion
 
@@ -581,8 +504,6 @@ class TransactionsViewModel {
         currencyService.getConvertedAmountOrCompute(transaction: transaction, to: baseCurrency)
     }
 
-    // MARK: - Private Helpers
-    // MIGRATED: clearBalanceFlags removed - balance modes managed by BalanceCoordinator
 }
 
 // MARK: - Supporting Types

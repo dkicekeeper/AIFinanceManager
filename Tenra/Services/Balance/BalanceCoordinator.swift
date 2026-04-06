@@ -3,9 +3,6 @@
 //  Tenra
 //
 //  Created on 2026-02-02
-//  Part of Balance Refactoring Phase 4
-//  Cleaned up in Phase 36: removed BalanceUpdateQueue, BalanceCacheManager,
-//  NSCache, priority parameters, and statistics infra
 //
 //  SINGLE ENTRY POINT for all balance operations
 //  Coordinates between Store and Engine

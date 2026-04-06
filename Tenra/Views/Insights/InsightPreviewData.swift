@@ -173,7 +173,7 @@ extension Insight {
         )
     }
 
-    // Period trend — granularity-aware cash flow (Phase 18)
+    // Period trend — granularity-aware cash flow
     static func mockPeriodTrend() -> Insight {
         Insight(
             id: "preview_period_trend",
@@ -188,7 +188,7 @@ extension Insight {
         )
     }
 
-    // Wealth breakdown — per-account balances (Phase 18)
+    // Wealth breakdown — per-account balances
     static func mockWealthBreakdown() -> Insight {
         Insight(
             id: "preview_wealth",
@@ -203,7 +203,7 @@ extension Insight {
         )
     }
 
-    // Savings rate (Phase 24)
+    // Savings rate
     static func mockSavingsRate() -> Insight {
         Insight(
             id: "preview_savings_rate",
@@ -218,7 +218,7 @@ extension Insight {
         )
     }
 
-    // Spending forecast (Phase 24)
+    // Spending forecast
     static func mockForecasting() -> Insight {
         Insight(
             id: "preview_forecast",

@@ -15,20 +15,14 @@ import Observation
 class AccountsViewModel {
     // MARK: - Observable Properties
 
-    /// Phase 16: Accounts read directly from TransactionStore (Single Source of Truth)
-    /// No more array copies — @Observable tracks changes automatically
     var accounts: [Account] {
         transactionStore?.accounts ?? []
     }
 
     // MARK: - Dependencies
 
-    /// REFACTORED 2026-02-02: BalanceCoordinator as Single Source of Truth
-    /// Injected by AppCoordinator, optional for backward compatibility
     @ObservationIgnored var balanceCoordinator: BalanceCoordinator?
 
-    /// PHASE 3: TransactionStore as Single Source of Truth for accounts
-    /// ViewModels observe this instead of owning data
     @ObservationIgnored weak var transactionStore: TransactionStore?
 
     // MARK: - Private Properties
@@ -39,19 +33,10 @@ class AccountsViewModel {
 
     init(repository: DataRepositoryProtocol = UserDefaultsRepository()) {
         self.repository = repository
-        // PHASE 3: Don't load accounts here anymore - will be synced from TransactionStore
-        // self.accounts = repository.loadAccounts()
     }
 
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
-
-        // PHASE 3: TransactionStore is the owner - it will reload and publish to observers
-        // No need to reload here - accounts will be updated via subscription
-        // Just trigger syncInitialBalancesToCoordinator when accounts change
-
-
-        // MIGRATED: Sync accounts with BalanceCoordinator after reload
         syncInitialBalancesToCoordinator()
     }
     
@@ -67,10 +52,9 @@ class AccountsViewModel {
             initialBalance: shouldCalculateFromTransactions ? 0.0 : initialBalance
         )
 
-        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
         transactionStore?.addAccount(account)
 
-        // NEW: Register account with BalanceCoordinator (now synchronous)
+        // Register account with BalanceCoordinator
         if let coordinator = balanceCoordinator {
             await coordinator.registerAccounts([account])
             // Используем initialBalance вместо balance
@@ -130,11 +114,10 @@ class AccountsViewModel {
     }
 
     func deleteAccount(_ account: Account) {
-        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
         transactionStore?.deleteAccount(account.id)
         // Note: Transaction deletion is handled by the calling view
 
-        // NEW: Remove account from BalanceCoordinator
+        // Remove account from BalanceCoordinator
         if let coordinator = balanceCoordinator {
             Task {
                 await coordinator.removeAccount(account.id)
@@ -144,16 +127,11 @@ class AccountsViewModel {
     
     // MARK: - Account Balance Management
 
-    /// MIGRATED: Get initial balance from BalanceCoordinator (Single Source of Truth)
     func getInitialBalance(for accountId: String) -> Double? {
-        // Direct access to BalanceCoordinator not possible (async)
-        // Use account.initialBalance as fallback for backward compatibility
         return accounts.first(where: { $0.id == accountId })?.initialBalance
     }
 
-    /// MIGRATED: Set initial balance via BalanceCoordinator (Single Source of Truth)
     func setInitialBalance(_ balance: Double, for accountId: String) {
-        // Delegate to BalanceCoordinator
         if let coordinator = balanceCoordinator {
             Task {
                 await coordinator.setInitialBalance(balance, for: accountId)
@@ -208,10 +186,9 @@ class AccountsViewModel {
             initialBalance: balance
         )
 
-        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
         transactionStore?.addAccount(account)
 
-        // NEW: Register deposit with BalanceCoordinator
+        // Register deposit with BalanceCoordinator
         if let coordinator = balanceCoordinator {
             Task {
                 await coordinator.registerAccounts([account])
@@ -226,10 +203,9 @@ class AccountsViewModel {
     func updateDeposit(_ account: Account) {
         guard account.isDeposit else { return }
         if accounts.firstIndex(where: { $0.id == account.id }) != nil {
-            // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
             transactionStore?.updateAccount(account)
 
-            // NEW: Update deposit in BalanceCoordinator
+            // Update deposit in BalanceCoordinator
             if let coordinator = balanceCoordinator, let depositInfo = account.depositInfo {
                 let balance = NSDecimalNumber(decimal: depositInfo.principalBalance).doubleValue
                 Task {
@@ -318,11 +294,6 @@ class AccountsViewModel {
     var regularAccounts: [Account] {
         return accounts.filter { !$0.isDeposit && !$0.isLoan }
     }
-    
-    // MIGRATED: syncAccountBalances removed - now managed by BalanceCoordinator (Single Source of Truth)
-    // Balances are no longer synced manually between ViewModels
-    // All balance updates go through BalanceCoordinator.updateForTransaction()
-
 
     // MARK: - Intelligent Account Ranking
     
@@ -375,5 +346,4 @@ class AccountsViewModel {
     }
 
     // MARK: - Private Helpers
-    // PHASE 3: saveAccounts removed - TransactionStore handles persistence
 }

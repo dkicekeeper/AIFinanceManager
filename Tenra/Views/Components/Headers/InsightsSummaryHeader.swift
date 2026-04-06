@@ -14,9 +14,7 @@ struct InsightsSummaryHeader: View {
     let totalExpenses: Double
     let netFlow: Double
     let currency: String
-    /// Phase 23 P7: PeriodDataPoint instead of MonthlyDataPoint — no conversion needed.
     let periodDataPoints: [PeriodDataPoint]
-    /// Phase 24: optional financial health score shown as a compact badge.
     var healthScore: FinancialHealthScore? = nil
 
     private static let logger = Logger(subsystem: "Tenra", category: "InsightsSummaryHeader")
@@ -30,7 +28,6 @@ struct InsightsSummaryHeader: View {
                 currency: currency
             )
 
-            // Phase 24 — Health score badge (shown only when score is available)
             if let hs = healthScore {
                 HealthScoreBadge(score: hs)
             }

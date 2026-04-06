@@ -2,18 +2,18 @@
 //  TransactionCacheManager.swift
 //  Tenra
 //
-//  PURPOSE (Phase 36+): READ-ONLY display cache. Do NOT use for write operations.
+//  READ-ONLY display cache. Do NOT use for write operations.
 //
-//  ROLE CLARITY (updated Phase 36):
+//  ROLE CLARITY:
 //  ─────────────────────────────────────────────────────────────────────────────
-//  ✅ TransactionCacheManager — in-memory read cache for display layer only:
+//  TransactionCacheManager — in-memory read cache for display layer only:
 //      • Date string → Date parsing (O(1) repeat parses)
 //      • Transaction ID → Subcategory IDs index (built once per load)
 //      • Summary cache (total income/expenses for current filter)
 //      • Per-filter category expense cache (keyed by TimeFilter)
 //      • Category list caches (unique, expense, income names)
 //
-//  ❌ NOT for:
+//  NOT for:
 //      • Account balances — use BalanceCoordinator instead
 //      • Transaction persistence — use TransactionStore.apply(event:)
 //      • Aggregate data — use CategoryAggregateService / MonthlyAggregateService (CoreData)
@@ -28,7 +28,7 @@
 
 import Foundation
 
-// MARK: - Read-Only Display Cache (Phase 36+)
+// MARK: - Read-Only Display Cache
 
 /// In-memory cache for read-only UI display operations.
 /// Write/mutation caching is handled by TransactionStore + CoreData aggregate services.

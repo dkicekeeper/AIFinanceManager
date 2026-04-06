@@ -5,8 +5,6 @@
 //  Service for category budget calculations and progress tracking.
 //  Extracted from CategoriesViewModel for better separation of concerns.
 //
-//  Phase 40: Removed BudgetSpendingCacheService fast path — all transactions in memory, O(N) is fast.
-//
 
 import Foundation
 
@@ -48,13 +46,10 @@ struct CategoryBudgetService {
     }
 
     /// Calculate spent amount for a category in the current budget period.
-    ///
-    /// Phase 40: Always O(N) scan — all transactions are in memory, cache removed.
     nonisolated func calculateSpent(for category: CustomCategory, transactions: [Transaction]) -> Double {
         let periodStart = budgetPeriodStart(for: category)
         let periodEnd = Date()
 
-        // Phase 36: Use cached DateFormatter instead of allocating a new one per call
         let dateFormatter = DateFormatters.dateFormatter
 
         return transactions

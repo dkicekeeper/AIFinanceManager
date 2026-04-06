@@ -3,10 +3,9 @@
 //  Tenra
 //
 //  Created on 2026-02-02
-//  Part of Balance Refactoring Phase 1
 //
-//  Pure functions for balance calculations
-//  Stateless, testable, reusable logic
+//  Pure functions for balance calculations.
+//  Stateless, testable, reusable logic.
 //
 
 import Foundation

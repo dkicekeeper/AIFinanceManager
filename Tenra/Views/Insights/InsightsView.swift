@@ -66,7 +66,7 @@ struct InsightsView: View {
         .onChange(of: insightsViewModel.currentGranularity) { _, _ in
             HapticManager.light()
         }
-        // Phase 42: Lazy compute — onAppear triggers computation only if stale;
+        // Lazy compute — onAppear triggers computation only if stale;
         // onDisappear stops background recomputes on transaction changes.
         .task {
             insightsViewModel.onAppear()
@@ -265,24 +265,6 @@ struct InsightsView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-//        VStack(spacing: AppSpacing.lg) {
-//            Image(systemName: "chart.line.uptrend.xyaxis")
-//                .font(.system(size: AppIconSize.xxxl))
-//                .foregroundStyle(AppColors.textTertiary)
-//
-//            Text(String(localized: "insights.emptyState.title"))
-//                .font(AppTypography.h3)
-//                .foregroundStyle(AppColors.textPrimary)
-//
-//            Text(String(localized: "insights.emptyState.description"))
-//                .font(AppTypography.body)
-//                .foregroundStyle(AppColors.textSecondary)
-//                .multilineTextAlignment(.center)
-//        }
-//        .frame(maxWidth: .infinity)
-//        .padding(.top, AppSpacing.xxxl)
-//        .screenPadding()
-//        
         EmptyStateView(
             icon: "chart.line.uptrend.xyaxis",
             title: String(localized: "insights.emptyState.title"),

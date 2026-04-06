@@ -87,7 +87,6 @@ struct CategoryRow: View {
                         }
                     }
                 }
-//                .padding(.vertical, AppSpacing.xs)
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())

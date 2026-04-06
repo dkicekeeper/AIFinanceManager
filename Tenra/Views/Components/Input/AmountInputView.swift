@@ -51,7 +51,6 @@ struct AmountInputView: View {
                     .multilineTextAlignment(.center)
             }
         }
-//        .padding(AppSpacing.lg)
         // Debounced conversion for amount typing
         .task(id: amount) {
             try? await Task.sleep(for: .milliseconds(300))

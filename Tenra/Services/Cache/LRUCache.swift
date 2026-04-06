@@ -3,8 +3,7 @@
 //  Tenra
 //
 //  Created on 2026-02-02
-//  Part of: Subscriptions & Recurring Transactions Full Rebuild - Phase 3
-//  Purpose: Generic LRU (Least Recently Used) cache to prevent memory leaks
+//  Generic LRU (Least Recently Used) cache to prevent memory leaks.
 //
 
 import Foundation

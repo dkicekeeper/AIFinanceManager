@@ -76,7 +76,6 @@ struct ContentView: View {
     private var categoriesViewModel: CategoriesViewModel {
         coordinator.categoriesViewModel
     }
-    // ✨ Phase 9: Use TransactionStore instead of SubscriptionsViewModel
     private var transactionStore: TransactionStore {
         coordinator.transactionStore
     }
@@ -148,7 +147,6 @@ struct ContentView: View {
                 let filterEnd    = filterRange.end
                 let currency     = viewModel.appSettings.baseCurrency
 
-                // Phase 40: All transactions in memory — always use SummaryCalculator directly.
                 // Both summary and category weights are computed in one Task.detached so the
                 // transactions array is iterated only twice on the same background thread.
                 let (summary, categoryWeights) = await Task.detached(priority: .userInitiated) {

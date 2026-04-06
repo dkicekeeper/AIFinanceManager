@@ -2,9 +2,7 @@
 //  InsightsService+Forecasting.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
-//  Responsible for: spending forecast, balance runway, year-over-year, 
-//                   income source breakdown.
+//  Spending forecast, balance runway, year-over-year, and income source breakdown.
 //
 
 import Foundation
@@ -13,15 +11,15 @@ import SwiftUI
 
 extension InsightsService {
 
-    // MARK: - Forecasting Insights (Phase 24)
+    // MARK: - Forecasting Insights
 
     nonisolated func generateForecastingInsights(
         allTransactions: [Transaction],
         baseCurrency: String,
         snapshot: DataSnapshot,
         filteredTransactions: [Transaction]? = nil,
-        preAggregated: PreAggregatedData? = nil,     // Phase 42
-        skipSharedGenerators: Bool = false            // Phase 42b: shared generators already computed
+        preAggregated: PreAggregatedData? = nil,
+        skipSharedGenerators: Bool = false
     ) -> [Insight] {
         var insights: [Insight] = []
 
@@ -38,8 +36,8 @@ extension InsightsService {
                 insights.append(yoy)
             }
         }
-        // IncomeSourceBreakdown is granularity-dependent (uses currentBucketForForecasting) — always compute
-        // Phase 30: use filteredTransactions (windowed) when available so incomeSourceBreakdown
+        // IncomeSourceBreakdown is granularity-dependent (uses currentBucketForForecasting) — always compute.
+        // Use filteredTransactions (windowed) when available so incomeSourceBreakdown
         // respects the selected granularity period.
         let sourceTransactions = filteredTransactions ?? allTransactions
         if let breakdown = generateIncomeSourceBreakdown(allTransactions: sourceTransactions, categories: snapshot.categories, baseCurrency: baseCurrency) {
@@ -58,8 +56,8 @@ extension InsightsService {
 
         guard let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) else { return nil }
 
-        // Phase 40: Direct in-memory expense sum for last 30 days
-        // Note: this 30-day filter doesn't align to month boundaries, so it can't use preAggregated
+        // Direct in-memory expense sum for last 30 days.
+        // This 30-day filter doesn't align to month boundaries, so it can't use preAggregated.
         let last30Spent = transactions
             .filter { $0.type == .expense }
             .reduce(0.0) { total, tx in
@@ -85,7 +83,7 @@ extension InsightsService {
                 return total + seriesMonthlyEquivalent(series, baseCurrency: baseCurrency)
             }
 
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        // Use preAggregated O(M) lookup when available; fall back to O(N) scan
         let currentMonthData: InMemoryMonthlyTotal?
         if let preAggregated {
             currentMonthData = preAggregated.lastMonthlyTotals(1).first
@@ -124,7 +122,7 @@ extension InsightsService {
         let currentBalance = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         guard currentBalance > 0 else { return nil }
 
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        // Use preAggregated O(M) lookup when available; fall back to O(N) scan
         let aggregates: [InMemoryMonthlyTotal]
         if let preAggregated {
             aggregates = preAggregated.lastMonthlyTotals(3)
@@ -181,7 +179,7 @@ extension InsightsService {
         let now = Date()
         guard let oneYearAgo = calendar.date(byAdding: .year, value: -1, to: now) else { return nil }
 
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        // Use preAggregated O(M) lookup when available; fall back to O(N) scan
         let thisMonth: InMemoryMonthlyTotal?
         let lastYear: InMemoryMonthlyTotal?
         if let preAggregated {
@@ -231,13 +229,10 @@ extension InsightsService {
     // MARK: - Income Source Breakdown
 
     /// Groups income transactions by category to show income source distribution.
-    /// Phase 31: Uses CoreData fetch for full-history income totals by category.
     nonisolated func generateIncomeSourceBreakdown(allTransactions: [Transaction], categories: [CustomCategory], baseCurrency: String) -> Insight? {
         let incomeCategories = categories.filter { $0.type == .income }
         guard incomeCategories.count >= 2 else { return nil }
 
-        // Phase 42: Replaced CoreData fetchIncomeByCategoryFromCoreData with in-memory computation.
-        // All transactions are already in memory (Phase 40), so CoreData fetch was redundant.
         let incomeTransactions = allTransactions.filter { $0.type == .income }
         guard !incomeTransactions.isEmpty else { return nil }
         let totalIncome = incomeTransactions.reduce(0.0) { $0 + resolveAmount($1, baseCurrency: baseCurrency) }
@@ -282,6 +277,4 @@ extension InsightsService {
         )
     }
 
-    // Phase 42: fetchIncomeByCategoryFromCoreData deleted — replaced by in-memory computation
-    // in generateIncomeSourceBreakdown above. All transactions are in memory (Phase 40).
 }

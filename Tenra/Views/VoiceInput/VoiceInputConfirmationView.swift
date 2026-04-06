@@ -11,7 +11,7 @@ struct VoiceInputConfirmationView: View {
     let transactionsViewModel: TransactionsViewModel
     let accountsViewModel: AccountsViewModel
     let categoriesViewModel: CategoriesViewModel
-    @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
+    @Environment(TransactionStore.self) private var transactionStore
     @Environment(\.dismiss) var dismiss
     
     let parsedOperation: ParsedOperation
@@ -435,7 +435,6 @@ struct VoiceInputConfirmationView: View {
                 recurringOccurrenceId: nil
             )
             
-            // Phase 7.5: Use TransactionStore for add operation
             do {
                 _ = try await transactionStore.add(transaction)
 

@@ -94,7 +94,6 @@ enum TransactionEvent {
         case .bulkAdded(let transactions):
             return Set(transactions.map { $0.category }.filter { !$0.isEmpty })
 
-        // ✨ Phase 9: Recurring events
         case .seriesCreated(let series):
             return series.category.isEmpty ? Set() : Set([series.category])
 
@@ -128,7 +127,6 @@ enum TransactionEvent {
         case .bulkAdded(let txs):
             return txs
 
-        // ✨ Phase 9: Recurring events don't have transactions directly
         case .seriesCreated, .seriesUpdated, .seriesStopped, .seriesDeleted:
             return []
         }

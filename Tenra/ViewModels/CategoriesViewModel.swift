@@ -5,7 +5,6 @@
 //  Created on 2026
 //
 //  ViewModel for managing categories, subcategories, and category rules
-//  REFACTORED: Now uses dedicated services for SRP compliance
 
 import Foundation
 import SwiftUI
@@ -16,8 +15,7 @@ import Observation
 class CategoriesViewModel {
     // MARK: - Observable Properties
 
-    /// Phase 16: Categories read directly from TransactionStore (Single Source of Truth)
-    /// No more array copies — @Observable tracks changes automatically
+    /// Categories read directly from TransactionStore (Single Source of Truth)
     var customCategories: [CustomCategory] {
         transactionStore?.categories ?? []
     }
@@ -33,8 +31,6 @@ class CategoriesViewModel {
     @ObservationIgnored private var currencyService: TransactionCurrencyService?
     @ObservationIgnored private var appSettings: AppSettings?
 
-    /// PHASE 3: TransactionStore as Single Source of Truth for categories
-    /// ViewModels observe this instead of owning data
     /// @ObservationIgnored: set once at init, not reassigned; SwiftUI tracks categories
     /// directly on TransactionStore (same pattern as TransactionStore.coordinator)
     @ObservationIgnored weak var transactionStore: TransactionStore?
@@ -47,12 +43,10 @@ class CategoriesViewModel {
     /// Subcategory coordinator - handles subcategory and link management
     @ObservationIgnored private let subcategoryCoordinator: CategorySubcategoryCoordinatorProtocol
 
-    /// Budget coordinator - handles budget calculations (NOT USED YET - for future)
-    /// Note: Currently using old CategoryBudgetService for compatibility
+    /// Budget coordinator
     @ObservationIgnored private let budgetCoordinator: CategoryBudgetCoordinatorProtocol
 
     /// Budget service for category budget management
-    /// NOTE: Could be migrated to budgetCoordinator in future for better separation of concerns
     @ObservationIgnored private let budgetService: CategoryBudgetService
 
     // MARK: - Initialization
@@ -79,8 +73,6 @@ class CategoriesViewModel {
             appSettings: appSettings
         )
 
-        // PHASE 3: Don't load categories here anymore - will be synced from TransactionStore
-        // self.customCategories = repository.loadCategories()
         self.categoryRules = repository.loadCategoryRules()
         self.subcategories = repository.loadSubcategories()
         self.categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
@@ -98,22 +90,19 @@ class CategoriesViewModel {
         }
     }
 
-    /// Phase 16: Setup initial sync from TransactionStore for subcategory data
-    /// Categories are now a computed property, but subcategory data still needs initial sync
+    /// Sync subcategory data from TransactionStore on initial setup.
+    /// Categories are a computed property; subcategory data still needs manual sync.
     func setupTransactionStoreObserver() {
         guard let transactionStore = transactionStore else { return }
-        // Phase 16: customCategories is computed — no sync needed
-        // Subcategory data still needs sync (not yet migrated to computed)
         self.subcategories = transactionStore.subcategories
         self.categorySubcategoryLinks = transactionStore.categorySubcategoryLinks
         self.transactionSubcategoryLinks = transactionStore.transactionSubcategoryLinks
     }
 
-    /// Phase 16: Sync subcategory data from TransactionStore
-    /// Categories are computed — only subcategory data needs manual sync
+    /// Sync subcategory data from TransactionStore.
+    /// Categories are computed — only subcategory data needs manual sync.
     func syncCategoriesFromStore() {
         guard let transactionStore = transactionStore else { return }
-        // Phase 16: customCategories is computed — no sync needed
         self.subcategories = transactionStore.subcategories
         self.categorySubcategoryLinks = transactionStore.categorySubcategoryLinks
         self.transactionSubcategoryLinks = transactionStore.transactionSubcategoryLinks
@@ -121,8 +110,6 @@ class CategoriesViewModel {
 
     /// Перезагружает все данные из хранилища (используется после импорта)
     func reloadFromStorage() {
-        // PHASE 3: TransactionStore is the owner - it will reload and publish to observers
-        // No need to reload categories here - they will be updated via subscription
         categoryRules = repository.loadCategoryRules()
         subcategories = repository.loadSubcategories()
         categorySubcategoryLinks = repository.loadCategorySubcategoryLinks()
@@ -131,29 +118,22 @@ class CategoriesViewModel {
 
     // MARK: - Public Methods for Mutation
 
-    /// Phase 16: Categories are now computed from TransactionStore
-    /// Updates should go through TransactionStore directly
+    /// Backward compatibility stub — categories are computed from TransactionStore.
     func updateCategories(_ categories: [CustomCategory]) {
-        // Phase 16: customCategories is computed — updates go through TransactionStore
-        // This is a backward compatibility stub
     }
 
     // MARK: - Category CRUD Operations
 
     func addCategory(_ category: CustomCategory) {
-        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
         transactionStore?.addCategory(category)
     }
 
     func updateCategory(_ category: CustomCategory) {
-        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
         transactionStore?.updateCategory(category)
     }
 
     func deleteCategory(_ category: CustomCategory, deleteTransactions: Bool = false) {
-        // Note: deleteTransactions logic should be handled by TransactionsViewModel
-        // This method only handles category deletion
-        // PHASE 3: Delegate to TransactionStore (Single Source of Truth)
+        // deleteTransactions logic is handled by TransactionsViewModel
         transactionStore?.deleteCategory(category.id)
     }
 
@@ -285,11 +265,8 @@ class CategoriesViewModel {
     // MARK: - Batch Operations
 
     /// Сохраняет все данные CategoriesViewModel (используется после массового импорта)
-    /// PHASE 3: Category persistence now handled by TransactionStore
     func saveAllData() {
         subcategoryCoordinator.saveAllData()
-
-        // PHASE 3: Categories are saved by TransactionStore
     }
 
     // MARK: - Budget Management

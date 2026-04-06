@@ -3,7 +3,6 @@
 //  Tenra
 //
 //  Created on 2026-02-05
-//  Refactoring Phase 0: Unified Cache with LRU Eviction
 //
 
 import Foundation

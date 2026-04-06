@@ -2,8 +2,7 @@
 //  InsightsService+Wealth.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
-//  Responsible for: total wealth, wealth growth, account dormancy detection.
+//  Total wealth, wealth growth, account dormancy detection.
 //
 
 import Foundation
@@ -11,7 +10,7 @@ import os
 
 extension InsightsService {
 
-    // MARK: - Wealth Insights (Phase 18)
+    // MARK: - Wealth Insights
 
     nonisolated func generateWealthInsights(
         periodPoints: [PeriodDataPoint],
@@ -20,14 +19,14 @@ extension InsightsService {
         baseCurrency: String,
         currencyService: TransactionCurrencyService,
         balanceFor: (String) -> Double,
-        accountTransactionCounts: [String: Int]? = nil,   // Phase 42d: pre-computed from PreAggregatedData
+        accountTransactionCounts: [String: Int]? = nil,
         accounts: [Account]
     ) -> [Insight] {
         guard !accounts.isEmpty else { return [] }
 
         let totalWealth = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
 
-        // Phase 42d: Use pre-computed counts (O(1) lookup) instead of O(N×M) allTransactions.filter
+        // Use pre-computed counts (O(1) lookup) instead of O(N*M) allTransactions.filter
         let accountItems: [AccountInsightItem] = accounts.map { account in
             let txCount: Int
             if let counts = accountTransactionCounts {
@@ -99,7 +98,7 @@ extension InsightsService {
             detailData: .wealthBreakdown(accountItems)
         ))
 
-        // Wealth Growth (Phase 24)
+        // Wealth Growth
         if let pct = changePercent, abs(pct) > 1 {
             let wealthGrowthSeverity: InsightSeverity = currentPeriodNetFlow > 0 ? .positive : .warning
             wealthInsights.append(Insight(
@@ -128,16 +127,15 @@ extension InsightsService {
         return wealthInsights
     }
 
-    // MARK: - Account Dormancy (Phase 24 Behavioral)
+    // MARK: - Account Dormancy
 
     /// Flags accounts that have been idle for 30+ days but still hold a positive balance.
-    /// Phase 42: Replaced CoreData fetchLastTransactionDates with in-memory computation.
-    /// Phase 42e: Uses PreAggregatedData.lastAccountDates — O(accounts) instead of O(N) date-parsing loop.
+    /// Uses PreAggregatedData.lastAccountDates — O(accounts) instead of O(N) date-parsing loop.
     nonisolated func generateAccountDormancy(allTransactions: [Transaction], balanceFor: (String) -> Double, preAggregated: PreAggregatedData? = nil, accounts: [Account]) -> Insight? {
         let now = Date()
         guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now) else { return nil }
 
-        // Phase 42e: Use pre-computed lastAccountDates (O(1) per account) when available.
+        // Use pre-computed lastAccountDates (O(1) per account) when available.
         // Falls back to O(N) date-parsing loop when preAggregated is nil.
         let lastDates: [String: Date]
         if let preAgg = preAggregated {
@@ -192,6 +190,4 @@ extension InsightsService {
         )
     }
 
-    // Phase 42: fetchLastTransactionDates (CoreData) deleted — replaced by in-memory
-    // computation above. All transactions are in memory since Phase 40.
 }

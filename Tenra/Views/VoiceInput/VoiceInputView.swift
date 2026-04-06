@@ -9,7 +9,6 @@ import SwiftUI
 import UIKit
 
 struct VoiceInputView: View {
-    /// ✅ MIGRATED 2026-02-12: Changed from @ObservedObject to let for @Observable
     @Bindable var voiceService: VoiceInputService
     @Environment(\.dismiss) var dismiss
     let onComplete: (String) -> Void

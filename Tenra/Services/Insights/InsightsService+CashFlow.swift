@@ -2,16 +2,13 @@
 //  InsightsService+CashFlow.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
-//  Responsible for: net cash flow trend, best/worst period, projected balance from recurring.
-//
 
 import Foundation
 import os
 
 extension InsightsService {
 
-    // MARK: - Cash Flow Insights (legacy timeFilter path)
+    // MARK: - Cash Flow Insights
 
     nonisolated func generateCashFlowInsights(
         allTransactions: [Transaction],
@@ -156,7 +153,7 @@ extension InsightsService {
         return insights
     }
 
-    // MARK: - Cash Flow from Period Points (Phase 18)
+    // MARK: - Cash Flow from Period Points
 
     nonisolated func generateCashFlowInsightsFromPeriodPoints(
         periodPoints: [PeriodDataPoint],
@@ -217,7 +214,7 @@ extension InsightsService {
             ))
         }
 
-        // 3. Worst period (Phase 24)
+        // 3. Worst period
         if let worst = periodPoints.min(by: { $0.netFlow < $1.netFlow }),
            worst.netFlow < 0,
            worst.key != (bestPeriod?.key ?? "") {

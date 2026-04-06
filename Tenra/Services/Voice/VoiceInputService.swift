@@ -34,7 +34,6 @@ enum VoiceInputError: LocalizedError {
     }
 }
 
-/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
 @Observable
 @MainActor
 class VoiceInputService: NSObject {

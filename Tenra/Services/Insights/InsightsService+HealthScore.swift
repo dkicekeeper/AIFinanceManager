@@ -2,11 +2,7 @@
 //  InsightsService+HealthScore.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
-//  Responsible for: composite financial health score (0-100, 5 weighted components).
-//
-//  Phase 41: @MainActor removed — snapshots passed as parameters so the function
-//  runs entirely inside Task.detached (no main-thread hop for O(N) date-parse scans).
+//  Composite financial health score (0-100, 5 weighted components).
 //
 
 import Foundation
@@ -14,11 +10,11 @@ import SwiftUI
 
 extension InsightsService {
 
-    // MARK: - Financial Health Score (Phase 24)
+    // MARK: - Financial Health Score
 
     /// Computes a composite 0-100 financial health score from five weighted components.
     /// Call after `generateAllInsights` once totals and period data points are available.
-    /// Phase 41: Receives pre-captured snapshots — safe to call from Task.detached.
+    /// Receives pre-captured snapshots — safe to call from Task.detached.
     nonisolated func computeHealthScore(
         totalIncome: Double,
         totalExpenses: Double,
@@ -29,7 +25,7 @@ extension InsightsService {
         categories: [CustomCategory],
         recurringSeries: [RecurringSeries],
         accounts: [Account],
-        preAggregated: PreAggregatedData? = nil     // Phase 42
+        preAggregated: PreAggregatedData? = nil
     ) -> FinancialHealthScore {
         guard totalIncome > 0 else { return .unavailable() }
 
@@ -42,7 +38,7 @@ extension InsightsService {
 
         // --- Component 2: Budget Adherence (weight 0.25) ---
         let monthStart = startOfMonth(calendar, for: now)
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        // Use preAggregated O(M) lookup when available; fall back to O(N) scan
         let currentMonthAggregates: [InMemoryCategoryMonthTotal]
         if let preAggregated {
             currentMonthAggregates = preAggregated.categoryMonthTotalsInRange(from: monthStart, to: now)
@@ -72,7 +68,7 @@ extension InsightsService {
 
         // --- Component 4: Emergency Fund (weight 0.15) ---
         let totalBalance = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        // Use preAggregated O(M) lookup when available; fall back to O(N) scan
         let last3Months: [InMemoryMonthlyTotal]
         if let preAggregated {
             last3Months = preAggregated.lastMonthlyTotals(3)

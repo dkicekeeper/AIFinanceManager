@@ -17,9 +17,9 @@ struct InsightDeepDiveView: View {
     let viewModel: InsightsViewModel?
 
     @State private var subcategories: [SubcategoryBreakdownItem] = []
-    /// Phase 31: previous-bucket total for the comparison card (trend chart removed).
+    /// Previous-bucket total for the comparison card.
     @State private var prevBucketAmount: Double = 0
-    /// Phase 23-C P16: precomputed index map — eliminates O(n²) firstIndex(where:) in ForEach.
+    /// Precomputed index map — eliminates O(n^2) firstIndex(where:) in ForEach.
     @State private var subcategoryIndexMap: [String: Int] = [:]
 
     private static let logger = Logger(subsystem: "Tenra", category: "CategoryDeepDive")
@@ -71,7 +71,6 @@ struct InsightDeepDiveView: View {
                 }
             }
         }
-        // Phase 23-A P5: offload heavy computation to background thread
         .task { await loadDataAsync() }
     }
 
@@ -157,9 +156,8 @@ struct InsightDeepDiveView: View {
 
     // MARK: - Data Loading
 
-    /// Phase 23-A P5: async — viewModel.categoryDeepDive is CPU-heavy (filter + grouping).
+    /// Async because categoryDeepDive is CPU-heavy (filter + grouping).
     /// .task cancels automatically on view disappear.
-    /// categoryDeepDive is @MainActor-isolated, so we call it directly (await hops to MainActor).
     @MainActor
     private func loadDataAsync() async {
         guard let viewModel else { return } // Preview mode — data pre-populated

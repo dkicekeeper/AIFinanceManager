@@ -47,11 +47,9 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
         let subcategory = Subcategory(name: name)
         delegate.subcategories.append(subcategory)
 
-        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
         if let transactionStore = delegate.transactionStore {
             transactionStore.addSubcategory(subcategory)
         } else {
-            // Fallback: save directly to repository
             repository.saveSubcategories(delegate.subcategories)
         }
 
@@ -73,11 +71,9 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
 
         delegate.subcategories = newSubcategories
 
-        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
         if let transactionStore = delegate.transactionStore {
             transactionStore.updateSubcategories(newSubcategories)
         } else {
-            // Fallback: save directly to repository
             repository.saveSubcategories(delegate.subcategories)
         }
 
@@ -95,13 +91,11 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
         // Remove the subcategory itself
         delegate.subcategories.removeAll { $0.id == subcategoryId }
 
-        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
         if let transactionStore = delegate.transactionStore {
             transactionStore.updateSubcategories(delegate.subcategories)
             transactionStore.updateCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
             transactionStore.updateTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
         } else {
-            // Fallback: save directly to repository
             repository.saveSubcategories(delegate.subcategories)
             repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
             repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
@@ -123,11 +117,9 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
 
         guard let delegate = delegate else { return }
 
-        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
         if let transactionStore = delegate.transactionStore {
             transactionStore.updateCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
         } else {
-            // Fallback: save directly to repository
             repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
         }
 
@@ -160,11 +152,9 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             link.categoryId == categoryId && link.subcategoryId == subcategoryId
         }
 
-        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
         if let transactionStore = delegate.transactionStore {
             transactionStore.updateCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
         } else {
-            // Fallback: save directly to repository
             repository.saveCategorySubcategoryLinks(delegate.categorySubcategoryLinks)
         }
 
@@ -227,11 +217,9 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             delegate.transactionSubcategoryLinks.append(link)
         }
 
-        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
         if let transactionStore = delegate.transactionStore {
             transactionStore.updateTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
         } else {
-            // Fallback: save directly to repository
             repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
         }
 
@@ -270,11 +258,9 @@ final class CategorySubcategoryCoordinator: CategorySubcategoryCoordinatorProtoc
             }
         }
 
-        // ✨ Phase 10: Update TransactionStore (Single Source of Truth)
         if let transactionStore = delegate.transactionStore {
             transactionStore.updateTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
         } else {
-            // Fallback: save directly to repository (legacy behavior for CSV import)
             repository.saveTransactionSubcategoryLinks(delegate.transactionSubcategoryLinks)
         }
 

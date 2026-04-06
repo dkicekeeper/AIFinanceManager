@@ -106,8 +106,6 @@ struct InsightsCardView<BottomChart: View>: View {
         case .accountComparison:
             EmptyView()
         case .periodTrend(let points):
-            // Phase 18 — mini period chart.
-            // Phase 43 — uses PeriodLineChart with .wealth / .cashFlow series.
             PeriodLineChart(
                 dataPoints: points,
                 series: insight.category == .wealth ? .wealth : .cashFlow,
@@ -170,7 +168,7 @@ struct InsightsCardView<BottomChart: View>: View {
     }
 }
 
-#Preview("Savings & Forecasting (Phase 24)") {
+#Preview("Savings & Forecasting") {
     ScrollView {
         VStack(spacing: AppSpacing.md) {
             InsightsCardView(insight: .mockSavingsRate())

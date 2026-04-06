@@ -168,7 +168,7 @@ final class CategoryDisplayDataMapper: CategoryDisplayDataMapperProtocol {
             customCategories: customCategories
         )
 
-        // Phase 36: Deterministic id — prevents spurious ForEach animations on cache invalidation
+        // Deterministic id — prevents spurious ForEach animations on cache invalidation
         return CategoryDisplayData(
             id: customCategory?.id ?? "\(name)_\(type.rawValue)",
             name: name,

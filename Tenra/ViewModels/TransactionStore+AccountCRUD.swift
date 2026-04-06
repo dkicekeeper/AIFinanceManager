@@ -3,17 +3,15 @@
 //  Tenra
 //
 //  Account CRUD operations extracted from TransactionStore.
-//  Phase C: File split for maintainability.
 //
 
 import Foundation
 
-// MARK: - Account CRUD Operations (Phase 3)
+// MARK: - Account CRUD Operations
 
 extension TransactionStore {
 
     /// Add a new account
-    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
     func addAccount(_ account: Account) {
         // Check if account already exists
         if accounts.contains(where: { $0.id == account.id }) {
@@ -31,14 +29,11 @@ extension TransactionStore {
                 AccountOrderManager.shared.setOrder(order, for: account.id)
             }
 
-            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
-            // @Observable automatically notifies SwiftUI when accounts array changes
         }
 
     }
 
     /// Update an existing account
-    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
     func updateAccount(_ account: Account) {
         guard let index = accounts.firstIndex(where: { $0.id == account.id }) else {
             return
@@ -55,13 +50,11 @@ extension TransactionStore {
                 AccountOrderManager.shared.setOrder(order, for: account.id)
             }
 
-            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
         }
 
     }
 
     /// Delete an account
-    /// Phase 3: TransactionStore is now Single Source of Truth for accounts
     func deleteAccount(_ accountId: String) {
         accounts.removeAll { $0.id == accountId }
 
@@ -72,7 +65,6 @@ extension TransactionStore {
             // ✅ Remove order from UserDefaults
             AccountOrderManager.shared.removeOrder(for: accountId)
 
-            // Phase 16: No sync needed — ViewModels use computed properties from TransactionStore
         }
 
     }
@@ -123,7 +115,6 @@ extension TransactionStore {
     // MARK: - Account Persistence
 
     /// Persist accounts to repository
-    /// Phase 3: TransactionStore now manages account persistence
     internal func persistAccountsToRepository() {
         repository.saveAccounts(accounts)
     }

@@ -41,7 +41,7 @@ nonisolated final class RecurringRepository: RecurringRepositoryProtocol, @unche
     func loadRecurringSeries() -> [RecurringSeries] {
         PerformanceProfiler.start("RecurringRepository.loadRecurringSeries")
 
-        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        // Use background context — never fetch on the main thread.
         let bgContext = stack.newBackgroundContext()
         var series: [RecurringSeries] = []
         var loadError: Error? = nil
@@ -153,7 +153,7 @@ nonisolated final class RecurringRepository: RecurringRepositoryProtocol, @unche
     // MARK: - Recurring Occurrences
 
     func loadRecurringOccurrences() -> [RecurringOccurrence] {
-        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        // Use background context — never fetch on the main thread.
         let bgContext = stack.newBackgroundContext()
         var occurrences: [RecurringOccurrence] = []
         var loadError: Error? = nil

@@ -147,13 +147,11 @@ struct PeriodLineChart: View {
                         yAxisReferenceChart
                             .frame(width: yAxisWidth, height: chartHeight-28)
                             .allowsHitTesting(false)
-//                            .padding(.horizontal, AppSpacing.sm)
                     }
                 }
             }
         }
         .frame(height: chartHeight)
-//        .padding(.top, isCompact ? 0 : AppSpacing.sm)
         .chartAppear()
     }
 

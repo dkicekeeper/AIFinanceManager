@@ -45,7 +45,7 @@ nonisolated final class AccountRepository: AccountRepositoryProtocol, @unchecked
     func loadAccounts() -> [Account] {
         PerformanceProfiler.start("AccountRepository.loadAccounts")
 
-        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        // Use background context — never fetch on the main thread.
         let bgContext = stack.newBackgroundContext()
         var accounts: [Account] = []
         var loadError: Error? = nil

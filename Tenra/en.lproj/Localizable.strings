@@ -802,7 +802,7 @@
 "insights.periodComparison" = "Period Comparison";
 "insights.daysLeft" = "%d days left";
 
-// Phase 18 — Granularity picker
+// Granularity picker
 "insights.granularity.week" = "By Weeks";
 "insights.granularity.month" = "By Months";
 "insights.granularity.quarter" = "By Quarters";
@@ -818,27 +818,27 @@
 "insights.granularity.prev.quarter" = "vs previous quarter";
 "insights.granularity.prev.year" = "vs previous year";
 
-// Phase 18 — Wealth card
+// Wealth card
 "insights.wealth" = "Capital";
 "insights.wealth.title" = "Accumulated Capital";
 "insights.wealth.subtitle" = "Total balance across all accounts";
 "insights.wealth.accounts" = "Accounts";
 "insights.wealthGrowth" = "Wealth Change";
 
-// Phase 24 — Savings
+// Savings
 "insights.savings" = "Savings";
 "insights.savingsRate" = "Savings Rate";
 "insights.emergencyFund" = "Emergency Fund";
 "insights.monthsCovered" = "%d months covered";
 "insights.months" = "months";
 
-// Phase 24 — Spending (stub completions)
+// Spending
 "insights.categoryTrend" = "Spending Trend";
 "insights.categoryTrend.risingMonths" = "Rising for %d months";
 "insights.subscriptionGrowth" = "Subscription Growth";
 "insights.vsThreeMonthsAgo" = "vs 3 months ago";
 
-// Phase 24 — Forecasting
+// Forecasting
 "insights.forecasting" = "Forecast";
 "insights.spendingForecast" = "Monthly Spending Forecast";
 "insights.balanceRunway" = "Balance Runway";
@@ -846,7 +846,7 @@
 "insights.yearOverYear" = "Year-over-Year";
 "insights.incomeSourceBreakdown" = "Income Sources";
 
-// Phase 24 — Health Score & Behavioral
+// Health Score & Behavioral
 "insights.healthScore" = "Finance";
 "insights.healthGrade.excellent" = "Excellent";
 "insights.healthGrade.good" = "Good";

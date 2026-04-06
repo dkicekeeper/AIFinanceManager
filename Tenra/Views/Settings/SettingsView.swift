@@ -22,7 +22,6 @@ struct SettingsView: View {
     let transactionsViewModel: TransactionsViewModel
     let accountsViewModel: AccountsViewModel
     let categoriesViewModel: CategoriesViewModel
-    // ✨ Phase 9: Use TransactionStore instead of SubscriptionsViewModel
     let transactionStore: TransactionStore
     let depositsViewModel: DepositsViewModel
     let loansViewModel: LoansViewModel

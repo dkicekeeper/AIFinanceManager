@@ -3,8 +3,6 @@
 //  Tenra
 //
 //  Created on 2026-01-27
-//  Part of Phase 2: TransactionsViewModel Decomposition
-//  OPTIMIZED on 2026-02-01: Added cache support for 23x performance improvement
 //
 
 import Foundation

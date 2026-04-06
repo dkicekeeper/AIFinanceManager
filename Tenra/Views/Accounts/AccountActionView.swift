@@ -11,7 +11,7 @@ struct AccountActionView: View {
     let transactionsViewModel: TransactionsViewModel
     let accountsViewModel: AccountsViewModel
     let categoriesViewModel: CategoriesViewModel
-    @Environment(TransactionStore.self) private var transactionStore // Phase 7.4: TransactionStore integration
+    @Environment(TransactionStore.self) private var transactionStore
     @Environment(AppCoordinator.self) private var appCoordinator
     let account: Account
     let namespace: Namespace.ID

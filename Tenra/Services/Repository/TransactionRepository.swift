@@ -51,7 +51,7 @@ nonisolated final class TransactionRepository: TransactionRepositoryProtocol, @u
     func loadTransactions(dateRange: DateInterval? = nil) -> [Transaction] {
         PerformanceProfiler.start("TransactionRepository.loadTransactions")
 
-        // PERFORMANCE Phase 28-B: Use background context — never block the main thread for 19k entities.
+        // Use background context — never block the main thread for 19k entities.
         // performAndWait is synchronous but runs on the context's own serial queue (background thread).
         // Note: relationshipKeyPathsForPrefetching ["account", "targetAccount"] was removed.
         // toTransaction() uses string column fallbacks (accountId, accountName, etc.) for all
@@ -319,7 +319,7 @@ nonisolated final class TransactionRepository: TransactionRepositoryProtocol, @u
         }
     }
 
-    // MARK: - Targeted Persist Methods (Phase 28-C)
+    // MARK: - Targeted Persist Methods
 
     func insertTransaction(_ transaction: Transaction) {
         let bgContext = stack.newBackgroundContext()

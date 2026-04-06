@@ -2,11 +2,8 @@
 //  InsightsCache.swift
 //  Tenra
 //
-//  Phase 17: Financial Insights Feature
 //  In-memory LRU cache with TTL for computed insights.
-//
-//  Phase 31: Removed @MainActor isolation. Protected by NSLock so the cache
-//  can be read/written from InsightsService running on any thread.
+//  Protected by NSLock so the cache can be read/written from any thread.
 //
 //  Design:
 //  - Maximum `capacity` entries (default 20) to bound memory usage

@@ -13,7 +13,6 @@ import SwiftUI
 
 /// Manages caching of daily expenses for transaction sections
 /// Provides memoization to avoid expensive recalculations during scrolling
-/// Phase 36: Removed @Observable — nothing observes this reactively; it's a plain cache.
 @MainActor
 final class DateSectionExpensesCache {
 

@@ -54,7 +54,7 @@ nonisolated final class CategoryRepository: CategoryRepositoryProtocol, @uncheck
     func loadCategories() -> [CustomCategory] {
         PerformanceProfiler.start("CategoryRepository.loadCategories")
 
-        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        // Use background context — never fetch on the main thread.
         let bgContext = stack.newBackgroundContext()
         var categories: [CustomCategory] = []
         var loadError: Error? = nil
@@ -174,7 +174,7 @@ nonisolated final class CategoryRepository: CategoryRepositoryProtocol, @uncheck
     // MARK: - Subcategories
 
     func loadSubcategories() -> [Subcategory] {
-        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        // Use background context — never fetch on the main thread.
         let bgContext = stack.newBackgroundContext()
         var subcategories: [Subcategory] = []
         var loadError: Error? = nil
@@ -242,7 +242,7 @@ nonisolated final class CategoryRepository: CategoryRepositoryProtocol, @uncheck
     // MARK: - Category-Subcategory Links
 
     func loadCategorySubcategoryLinks() -> [CategorySubcategoryLink] {
-        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        // Use background context — never fetch on the main thread.
         let bgContext = stack.newBackgroundContext()
         var links: [CategorySubcategoryLink] = []
         var loadError: Error? = nil
@@ -312,7 +312,7 @@ nonisolated final class CategoryRepository: CategoryRepositoryProtocol, @uncheck
     // MARK: - Transaction-Subcategory Links
 
     func loadTransactionSubcategoryLinks() -> [TransactionSubcategoryLink] {
-        // PERFORMANCE Phase 28-B: Use background context — never fetch on the main thread.
+        // Use background context — never fetch on the main thread.
         let bgContext = stack.newBackgroundContext()
         var links: [TransactionSubcategoryLink] = []
         var loadError: Error? = nil

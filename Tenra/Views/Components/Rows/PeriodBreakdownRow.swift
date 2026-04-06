@@ -27,7 +27,6 @@ struct PeriodBreakdownRow: View {
                 Text(label)
                     .font(AppTypography.body)
                     .foregroundStyle(AppColors.textPrimary)
-//                    .frame(minWidth: labelMinWidth, alignment: .leading)
 
                 Spacer()
 

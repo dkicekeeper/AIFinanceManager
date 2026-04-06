@@ -12,7 +12,7 @@ struct AccountsManagementView: View {
     let accountsViewModel: AccountsViewModel
     let depositsViewModel: DepositsViewModel
     let transactionsViewModel: TransactionsViewModel
-    @Environment(TransactionStore.self) private var transactionStore // Phase 7.5: TransactionStore integration
+    @Environment(TransactionStore.self) private var transactionStore
     @Environment(\.dismiss) var dismiss
     @State private var showingAddAccount = false
     @State private var showingAddDeposit = false
@@ -117,7 +117,6 @@ struct AccountsManagementView: View {
         .navigationTitle(String(localized: "settings.accounts"))
         .navigationBarTitleDisplayMode(.large)
         .task {
-            // Phase 7.5: Пересчитываем проценты депозитов с TransactionStore
             depositsViewModel.reconcileAllDeposits(
                 allTransactions: transactionsViewModel.allTransactions,
                 onTransactionCreated: { transaction in
@@ -303,8 +302,6 @@ struct AccountsManagementView: View {
                 // CRITICAL: Use new method to clear and rebuild aggregate cache
                 transactionsViewModel.clearAndRebuildAggregateCache()
 
-                // syncAccountsFrom is a no-op (Phase 16) — removed
-
                 accountToDelete = nil
             }
         } message: { account in
@@ -327,7 +324,6 @@ struct AccountsManagementView: View {
 
 #Preview("Accounts Management - Empty") {
     let coordinator = AppCoordinator()
-    // Phase 16: accounts is computed from TransactionStore — empty by default
     return NavigationStack {
         AccountsManagementView(
             accountsViewModel: coordinator.accountsViewModel,

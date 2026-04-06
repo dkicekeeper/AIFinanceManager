@@ -3,10 +3,8 @@
 //  Tenra
 //
 //  Created on 2026-02-05
-//  Refactoring Phase 0-6: Single Source of Truth for Transactions
 //
-//  Purpose: Unified store for all transaction operations
-//  Replaces: TransactionCRUDService, CategoryAggregateService, multiple cache managers
+//  Unified store for all transaction operations.
 //  Pattern: Event Sourcing + Single Source of Truth + LRU Cache
 //
 
@@ -26,7 +24,6 @@ enum TransactionStoreError: LocalizedError {
     case cannotDeleteDepositInterest
     case persistenceFailed(Error)
 
-    // ✨ Phase 9: Recurring errors
     case seriesNotFound
     case invalidSeriesData
     case invalidStartDate
@@ -52,7 +49,6 @@ enum TransactionStoreError: LocalizedError {
         case .persistenceFailed(let error):
             return String(localized: "error.transaction.persistenceFailed", defaultValue: "Failed to save: \(error.localizedDescription)")
 
-        // ✨ Phase 9: Recurring errors
         case .seriesNotFound:
             return String(localized: "error.recurring.seriesNotFound", defaultValue: "Recurring series not found")
         case .invalidSeriesData:
@@ -83,7 +79,7 @@ final class TransactionStore {
     /// All categories - needed for validation
     var categories: [CustomCategory] = []
 
-    // MARK: - Subcategory Data (Phase 10: CSV Import Fix - Single Source of Truth)
+    // MARK: - Subcategory Data
 
     /// All subcategories - managed alongside categories
     var subcategories: [Subcategory] = []
@@ -96,17 +92,16 @@ final class TransactionStore {
 
     // MARK: - Dependencies
 
-    @ObservationIgnored internal let repository: DataRepositoryProtocol  // ✨ Phase 9: internal for access from extension
+    @ObservationIgnored internal let repository: DataRepositoryProtocol
     @ObservationIgnored internal let cache: UnifiedTransactionCache
 
     // ✅ REFACTORED: Balance coordinator is now REQUIRED (not optional)
     // This ensures balance updates always occur, no silent failures
     @ObservationIgnored private let balanceCoordinator: BalanceCoordinator
 
-    // Phase 03-PERF-02: Recurring state extracted to RecurringStore
     @ObservationIgnored internal let recurringStore: RecurringStore
 
-    // MARK: - Recurring Forwarders (Phase 03-PERF-02)
+    // MARK: - Recurring Forwarders
     // Extensions and callers use these to access RecurringStore state without knowing the indirection.
     var recurringSeries: [RecurringSeries] { recurringStore.recurringSeries }
     var recurringOccurrences: [RecurringOccurrence] { recurringStore.recurringOccurrences }
@@ -120,7 +115,7 @@ final class TransactionStore {
     // Import mode flag - when true, persistence is deferred until finishImport()
     var isImporting: Bool = false
 
-    // Phase 17: Debounce task for coalescing rapid mutations into single sync
+    // Debounce task for coalescing rapid mutations into single sync
     private var syncDebounceTask: Task<Void, Never>?
 
     // Lifecycle observer token for cleanup in deinit
@@ -139,7 +134,7 @@ final class TransactionStore {
     init(
         repository: DataRepositoryProtocol,
         balanceCoordinator: BalanceCoordinator,
-        recurringStore: RecurringStore,        // Phase 03-PERF-02
+        recurringStore: RecurringStore,
         cacheCapacity: Int = 1000
     ) {
         self.repository = repository
@@ -183,11 +178,10 @@ final class TransactionStore {
     // MARK: - Data Loading
 
     /// Load initial data from repository.
-    /// Phase 28-B: All CoreData fetches run on a background thread via Task.detached.
-    /// MainActor is NOT blocked — it awaits the background result.
-    ///
-    /// Phase 40: All transactions are loaded into memory (no window limit).
-    /// 19k transactions × ~400 bytes ≈ 7.6 MB — a single source of truth.
+    /// All CoreData fetches run on a background thread via Task.detached.
+    /// MainActor is NOT blocked -- it awaits the background result.
+    /// All transactions are loaded into memory (no window limit).
+    /// 19k transactions x ~400 bytes = 7.6 MB -- a single source of truth.
     func loadData() async throws {
         // Capture repository before leaving @MainActor — it's a constant (@ObservationIgnored let).
         let repo = self.repository
@@ -197,7 +191,7 @@ final class TransactionStore {
         // so they are safe to call from any thread.
         let (txs, accs, cats, subs, catLinks, txLinks, series, occurrences) =
             await Task.detached(priority: .userInitiated) {
-                let txs        = repo.loadTransactions(dateRange: nil)  // Phase 40: load all
+                let txs        = repo.loadTransactions(dateRange: nil)
                 let accs       = repo.loadAccounts()
                 let cats       = repo.loadCategories()
                 let subs       = repo.loadSubcategories()
@@ -216,7 +210,7 @@ final class TransactionStore {
         subcategories = subs
         categorySubcategoryLinks = catLinks
         transactionSubcategoryLinks = txLinks
-        recurringStore.load(series: series, occurrences: occurrences)  // Phase 03-PERF-02
+        recurringStore.load(series: series, occurrences: occurrences)
 
         // Note: baseCurrency will be set via updateBaseCurrency() from AppCoordinator
 
@@ -254,9 +248,8 @@ final class TransactionStore {
 
     // MARK: - CRUD Operations
 
-    /// Add a new transaction
-    /// Phase 1: Complete implementation with validation, balance updates, and persistence
-    /// Returns the created transaction with generated ID
+    /// Add a new transaction.
+    /// Returns the created transaction with generated ID.
     func add(_ transaction: Transaction) async throws -> Transaction {
         // 1. Validate transaction
         try validate(transaction)
@@ -301,7 +294,6 @@ final class TransactionStore {
     }
 
     /// Add multiple transactions in a single batch (optimized for CSV import)
-    /// Phase 8: Batch import without per-transaction persistence
     func addBatch(_ transactions: [Transaction]) async throws {
         guard !transactions.isEmpty else { return }
 
@@ -363,17 +355,16 @@ final class TransactionStore {
         // IMPORTANT: Save in correct order - accounts FIRST, then transactions (for relationships)
         do {
             if let coreDataRepo = repository as? CoreDataRepository {
-                // ✨ Phase 10: Save accounts BEFORE transactions (required for Core Data relationships)
+                // Save accounts BEFORE transactions (required for Core Data relationships)
                 print("📥 [TransactionStore] finishImport: saving accounts…")
                 try coreDataRepo.saveAccountsSync(accounts)
                 print("📥 [TransactionStore] finishImport: saving categories…")
                 try coreDataRepo.saveCategoriesSync(categories)
 
-                // ✨ Phase 10: Save subcategory data synchronously
                 try coreDataRepo.saveSubcategoriesSync(subcategories)
                 try coreDataRepo.saveCategorySubcategoryLinksSync(categorySubcategoryLinks)
 
-                // ✨ Phase 10: Save transactions AFTER accounts (so account relationships can be established)
+                // Save transactions AFTER accounts (so account relationships can be established)
                 print("📥 [TransactionStore] finishImport: saving \(txCount) transactions via saveTransactionsSync…")
                 try coreDataRepo.saveTransactionsSync(transactions)
                 print("📥 [TransactionStore] finishImport: saveTransactionsSync DONE")
@@ -383,7 +374,6 @@ final class TransactionStore {
                 repository.saveAccounts(accounts)
                 repository.saveCategories(categories)
 
-                // ✨ Phase 10: Save subcategory data
                 repository.saveSubcategories(subcategories)
                 repository.saveCategorySubcategoryLinks(categorySubcategoryLinks)
 
@@ -391,7 +381,7 @@ final class TransactionStore {
                 repository.saveTransactionSubcategoryLinks(transactionSubcategoryLinks)
             }
 
-            // Save recurring data — Phase 03-PERF-02: delegate to RecurringStore
+            // Save recurring data
             recurringStore.saveSeries()
             recurringStore.saveOccurrences()
 
@@ -408,7 +398,6 @@ final class TransactionStore {
     }
 
     /// Update an existing transaction
-    /// Phase 2: Complete implementation
     func update(_ transaction: Transaction) async throws {
         guard let old = transactions.first(where: { $0.id == transaction.id }) else {
             throw TransactionStoreError.transactionNotFound
@@ -436,7 +425,6 @@ final class TransactionStore {
     }
 
     /// Delete a transaction
-    /// Phase 3: Complete implementation
     func delete(_ transaction: Transaction) async throws {
         guard transactions.contains(where: { $0.id == transaction.id }) else {
             throw TransactionStoreError.transactionNotFound
@@ -456,7 +444,6 @@ final class TransactionStore {
     }
 
     /// Transfer between accounts (convenience method)
-    /// Phase 4: Complete implementation
     func transfer(
         from sourceId: String,
         to targetId: String,
@@ -499,10 +486,7 @@ final class TransactionStore {
 
     // MARK: - Private Helpers
 
-    /// Apply an event to the store
-    /// Phase 1-4: Core event processing - validates, updates state, balances, cache, persists
-    /// ✨ Phase 9: Made internal for access from TransactionStore+Recurring extension
-    /// Phase 40: Aggregate services removed — all transactions in memory (single source of truth)
+    /// Apply an event to the store: updates state, balances, cache, and persists
     internal func apply(_ event: TransactionEvent) async throws {
         // 1. Update state (SSOT)
         updateState(event)
@@ -510,15 +494,15 @@ final class TransactionStore {
         // 2. Update balances (incremental, awaited for consistency)
         await updateBalances(for: event)
 
-        // 3. Phase 20: Granular cache invalidation — only invalidate what changed
+        // 3. Granular cache invalidation — only invalidate what changed
         invalidateCache(for: event)
 
-        // 4. Phase 28-C: Incremental persist — O(1) per event (no await needed)
+        // 4. Incremental persist — O(1) per event (no await needed)
         if !isImporting {
             persistIncremental(event)
         }
 
-        // 5. Phase 17: Debounced sync — coalesces rapid mutations (e.g., batch adds)
+        // 5. Debounced sync — coalesces rapid mutations (e.g., batch adds)
         // @Observable automatically notifies SwiftUI for TransactionStore property changes.
         // Debounced sync handles cache invalidation and insights recompute.
         syncDebounceTask?.cancel()
@@ -551,7 +535,7 @@ final class TransactionStore {
             transactions.append(contentsOf: txs)
             transactionIdSet.formUnion(txs.map { $0.id })
 
-        // MARK: - Recurring Series Events (Phase 9 / Phase 03-PERF-02: delegated to RecurringStore)
+        // MARK: - Recurring Series Events (delegated to RecurringStore)
 
         case .seriesCreated(let series):
             recurringStore.handleSeriesCreated(series)
@@ -567,10 +551,10 @@ final class TransactionStore {
         }
     }
 
-    // MARK: - Recurring Transaction Generation (Phase 9)
+    // MARK: - Recurring Transaction Generation
 
-    /// Generate and add transactions for a recurring series
-    /// Helper method used by createSeries and updateSeries
+    /// Generate and add transactions for a recurring series.
+    /// Helper method used by createSeries and updateSeries.
     /// - Parameters:
     ///   - series: The recurring series to generate transactions for
     ///   - horizonMonths: Number of months ahead to generate (default: 3)
@@ -590,14 +574,13 @@ final class TransactionStore {
             let bulkEvent = TransactionEvent.bulkAdded(result.transactions)
             try await apply(bulkEvent)
 
-            // Track occurrences — Phase 03-PERF-02: delegate to recurringStore
+            // Track occurrences
             recurringStore.appendOccurrences(result.occurrences)
             recurringStore.saveOccurrences()
         }
     }
 
     /// Validate a transaction before adding/updating
-    /// Phase 1: Complete validation logic
     private func validate(_ transaction: Transaction) throws {
         // Amount validation
         guard transaction.amount > 0 else {
@@ -680,16 +663,12 @@ final class TransactionStore {
     }
 
     /// Update balance when adding a transaction
-    // TEMPORARILY REMOVED: Balance update methods
-    // These will be reimplemented to work with BalanceCoordinator in Phase 7.1
-    // See updateBalances(for:) method above for details
-
-    /// Phase 28-C: Incremental persist — O(1) per transaction event.
+    /// Incremental persist — O(1) per transaction event.
     /// Replaces `saveTransactions([all transactions])` which was O(3N) = ~57,000 ops for 19k records.
-    /// - .added: insertTransaction — creates one CoreData entity (O(1))
-    /// - .deleted: no-op — deleteTransactionImmediately already called in invalidateCache(for:)
-    /// - .updated: updateTransactionFields — fetches by PK and updates fields (O(1))
-    /// - .bulkAdded: batchInsertTransactions — NSBatchInsertRequest (O(N) but fast)
+    /// - .added: insertTransaction -- creates one CoreData entity (O(1))
+    /// - .deleted: no-op -- deleteTransactionImmediately already called in invalidateCache(for:)
+    /// - .updated: updateTransactionFields -- fetches by PK and updates fields (O(1))
+    /// - .bulkAdded: batchInsertTransactions -- NSBatchInsertRequest (O(N) but fast)
     /// - series events: keep full save (small datasets, infrequent)
     private func persistIncremental(_ event: TransactionEvent) {
         switch event {
@@ -708,14 +687,13 @@ final class TransactionStore {
 
         case .seriesCreated, .seriesUpdated, .seriesStopped, .seriesDeleted:
             // Recurring series are small datasets; use the existing full-save path
-            // Phase 03-PERF-02: delegate to RecurringStore
             recurringStore.saveSeries()
             recurringStore.saveOccurrences()
         }
     }
 
-    /// Phase 20: Granular cache invalidation based on event type
-    /// Only invalidates affected cache keys instead of clearing everything
+    /// Granular cache invalidation based on event type.
+    /// Only invalidates affected cache keys instead of clearing everything.
     private func invalidateCache(for event: TransactionEvent) {
         // Summary is always affected by any transaction change
         cache.remove(UnifiedTransactionCache.Key.summary)
@@ -724,9 +702,7 @@ final class TransactionStore {
         // Category expenses always affected
         cache.remove(UnifiedTransactionCache.Key.categoryExpenses)
 
-        // Phase 36: Removed synchronous invalidateCaches() call — the debounced
-        // syncTransactionStoreToViewModels() handles invalidation. Calling it both
-        // here and in the debounced path caused double-invalidation on every mutation.
+        // The debounced syncTransactionStoreToViewModels() handles cache invalidation.
         // @Observable tracking on `transactions` array ensures dependent computed
         // properties in QuickAddCoordinator recompute automatically.
 

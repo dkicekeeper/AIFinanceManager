@@ -3,7 +3,6 @@
 //  Tenra
 //
 //  Created on 2026-02-04
-//  Settings Refactoring Phase 2
 //
 
 import Foundation
@@ -12,7 +11,6 @@ import Observation
 
 /// Coordinator for CSV import flow state management
 /// Manages multi-step import process: file selection → preview → mapping → import → results
-/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
 @Observable
 @MainActor
 final class ImportFlowCoordinator {
@@ -69,7 +67,7 @@ final class ImportFlowCoordinator {
             let file = try CSVImporter.parseCSV(from: url)
             csvFile = file
 
-            // ✨ Phase 11: Create CSVImportCoordinator with TransactionStore
+            // Create CSVImportCoordinator with TransactionStore
             if let transactionStore = transactionsViewModel?.transactionStore {
                 importCoordinator = CSVImportCoordinator.create(
                     for: file,

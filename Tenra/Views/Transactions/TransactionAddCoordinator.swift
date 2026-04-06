@@ -19,8 +19,6 @@ final class TransactionAddCoordinator {
     @ObservationIgnored let categoriesViewModel: CategoriesViewModel
     @ObservationIgnored let accountsViewModel: AccountsViewModel
 
-    // ✅ REFACTORED: TransactionStore is now REQUIRED (not optional)
-    // No more dual paths - always use TransactionStore
     @ObservationIgnored private let transactionStore: TransactionStore
 
     // MARK: - State
@@ -53,7 +51,6 @@ final class TransactionAddCoordinator {
 
     // MARK: - Public Methods
 
-    /// ✅ REFACTORED: Simplified account suggestion - no manual caching
     /// Compute suggested account ID asynchronously
     func suggestedAccountId() async -> String? {
         let suggested = accountsViewModel.suggestedAccount(
@@ -168,7 +165,6 @@ final class TransactionAddCoordinator {
             targetAmounts: targetAmounts
         )
 
-        // ✅ REFACTORED: Single code path - always use TransactionStore
         let createdTransaction: Transaction
         do {
             createdTransaction = try await transactionStore.add(transaction)
@@ -261,9 +257,8 @@ final class TransactionAddCoordinator {
         )
     }
 
-    // MARK: - Phase 2: Inline Validation & Conversion (formerly FormService)
+    // MARK: - Validation & Conversion
 
-    /// ✅ REFACTORED: Validation logic moved from FormService
     private func validate(accounts: [Account]) -> ValidationResult {
         var errors: [ValidationError] = []
 
@@ -298,7 +293,6 @@ final class TransactionAddCoordinator {
         return .valid
     }
 
-    /// ✅ REFACTORED: Currency conversion moved from FormService
     private func convertCurrency(
         amount: Decimal,
         from sourceCurrency: String,
@@ -344,7 +338,6 @@ final class TransactionAddCoordinator {
         return CurrencyConversionResult(convertedAmount: nil, exchangeRate: nil)
     }
 
-    /// ✅ REFACTORED: Target amounts calculation moved from FormService
     private func calculateTargetAmounts(
         amount: Decimal,
         currency: String,

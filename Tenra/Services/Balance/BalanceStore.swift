@@ -3,7 +3,6 @@
 //  Tenra
 //
 //  Created on 2026-02-02
-//  Part of Balance Refactoring Phase 1
 //
 //  SINGLE SOURCE OF TRUTH for account balances
 //  Thread-safe state management with @MainActor
@@ -105,7 +104,6 @@ struct BalanceStoreUpdate: Equatable, Identifiable {
 
 /// Thread-safe store for account balances
 /// SINGLE SOURCE OF TRUTH - all balance data flows through this store
-/// ✅ MIGRATED 2026-02-12: Now using @Observable instead of ObservableObject
 @Observable
 @MainActor
 final class BalanceStore {
@@ -126,7 +124,7 @@ final class BalanceStore {
     private var calculationModes: [String: BalanceMode] = [:]
 
     /// History of balance updates (for debugging/auditing)
-    /// Phase 36: @ObservationIgnored — history mutations must not trigger UI re-renders
+    /// @ObservationIgnored — history mutations must not trigger UI re-renders
     @ObservationIgnored private var updateHistory: [BalanceStoreUpdate] = []
     @ObservationIgnored private let maxHistorySize: Int = 100
 

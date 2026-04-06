@@ -2,8 +2,7 @@
 //  CSVImportCoordinator.swift
 //  Tenra
 //
-//  Simplified CSV Import Architecture - Phase 11
-//  Removed CSVStorageCoordinator - direct TransactionStore interaction
+//  Coordinates CSV import: parsing, validation, mapping, and batch insertion.
 //
 
 import Foundation
@@ -19,8 +18,6 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
     private let parser: CSVParsingServiceProtocol
     private let validator: CSVValidationServiceProtocol
     private let mapper: EntityMappingServiceProtocol
-    // Phase 37: converter removed — convertRow() merged into EntityMappingServiceProtocol.
-    // Use mapper.convertRow(...) directly.
     private let cache: ImportCacheManager
     private let logger = Logger(subsystem: "Tenra", category: "CSVImportCoordinator")
 
@@ -194,7 +191,7 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
                 }
             }
 
-            // Convert to transaction (convertRow merged into mapper — Phase 37)
+            // Convert to transaction
             let transaction = mapper.convertRow(
                 csvRow,
                 accountId: accountId,
@@ -227,7 +224,6 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
 
             // Process batch if full or last row
             if transactionsBatch.count >= 500 || rowIndex == csvFile.rowCount - 1 {
-                // ✨ Phase 11: Direct TransactionStore interaction (no CSVStorageCoordinator)
                 if let transactionStore = transactionsViewModel.transactionStore {
                     do {
                         try await transactionStore.addBatch(transactionsBatch)
@@ -280,7 +276,6 @@ class CSVImportCoordinator: CSVImportCoordinatorProtocol {
             }
         }
 
-        // ✨ Phase 11: Finalize import - direct TransactionStore interaction
         if let transactionStore = transactionsViewModel.transactionStore {
             do {
                 try await transactionStore.finishImport()

@@ -47,7 +47,6 @@ struct TransactionAddModal: View {
         transactionStore: TransactionStore,
         onDismiss: @escaping () -> Void
     ) {
-        // ✅ REFACTORED: TransactionStore now passed directly, not via @EnvironmentObject
         _coordinator = State(initialValue: TransactionAddCoordinator(
             category: category,
             type: type,
@@ -103,7 +102,6 @@ struct TransactionAddModal: View {
                 coordinator.updateCurrencyForSelectedAccount()
             }
             .task {
-                // ✅ REFACTORED: Simplified account suggestion
                 // SwiftUI's .task{} automatically handles lifecycle
                 if coordinator.formData.accountId == nil {
                     coordinator.formData.accountId = await coordinator.suggestedAccountId()

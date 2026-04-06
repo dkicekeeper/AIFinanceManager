@@ -3,7 +3,6 @@
 //  Tenra
 //
 //  Created on 2026-02-01
-//  Phase 2 Refactoring: Service Extraction
 //
 
 import Foundation
@@ -112,7 +111,6 @@ class TransactionQueryService: TransactionQueryServiceProtocol {
             return cached
         }
 
-        // Phase 36: aggregateCache stub removed — always calculate from transactions directly
         guard let transactions = transactions, let currencyService = currencyService else {
             return [:]
         }

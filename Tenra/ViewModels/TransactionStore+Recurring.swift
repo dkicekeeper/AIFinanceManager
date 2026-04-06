@@ -3,10 +3,8 @@
 //  Tenra
 //
 //  Created on 2026-02-09
-//  Phase 9: Aggressive Integration - Recurring Operations
 //
-//  Purpose: Extension for recurring transaction operations in TransactionStore
-//  All recurring CRUD operations are now part of TransactionStore (Single Source of Truth)
+//  Recurring transaction operations for TransactionStore.
 //
 
 import Foundation
@@ -408,7 +406,6 @@ extension TransactionStore {
     /// Call this when series is updated to ensure fresh data
     /// - Parameter seriesId: The series ID to invalidate
     func invalidateCache(for seriesId: String) {
-        // Phase 03-PERF-02: delegate to RecurringStore
         recurringStore.invalidateCacheFor(seriesId: seriesId)
     }
 

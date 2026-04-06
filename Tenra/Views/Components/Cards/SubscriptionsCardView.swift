@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct SubscriptionsCardView: View {
-    // ✨ Phase 9: Use TransactionStore directly (Single Source of Truth)
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
     // Fix #7: Double instead of Decimal — avoids NSDecimalNumber round-trip at the use site.

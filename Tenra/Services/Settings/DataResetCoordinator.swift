@@ -3,14 +3,12 @@
 //  Tenra
 //
 //  Created on 2026-02-04
-//  Settings Refactoring Phase 1
 //
 
 import Foundation
 
 /// Coordinator for dangerous data operations
 /// Centralizes reset and recalculation logic that affects multiple ViewModels
-/// ✨ Phase 9: Updated to use TransactionStore instead of SubscriptionsViewModel
 @MainActor
 final class DataResetCoordinator: DataResetCoordinatorProtocol {
     // MARK: - Dependencies (weak to prevent retain cycles)
@@ -63,7 +61,7 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
             accountsViewModel.reloadFromStorage()
             categoriesViewModel.reloadFromStorage()
 
-            // ✨ Phase 9: Reload TransactionStore to clear recurring data
+            // Reload TransactionStore to clear recurring data
             try await transactionStore.loadData()
 
             // @Observable handles UI updates automatically - no need for objectWillChange.send()
@@ -95,7 +93,6 @@ final class DataResetCoordinator: DataResetCoordinatorProtocol {
 
     // MARK: - Dependency Injection
 
-    /// ✨ Phase 9: Updated to use TransactionStore instead of SubscriptionsViewModel
     func setDependencies(
         transactionsViewModel: TransactionsViewModel,
         accountsViewModel: AccountsViewModel,

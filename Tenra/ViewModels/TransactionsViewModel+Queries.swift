@@ -44,7 +44,6 @@ extension TransactionsViewModel {
             Set(vm.customCategories.map { $0.name })
         }
 
-        // Phase 40: All transactions in memory — always compute directly from allTransactions.
         let filter = timeFilterManager.currentFilter
         let result = queryService.getCategoryExpenses(
             timeFilter: filter,
@@ -136,7 +135,6 @@ extension TransactionsViewModel {
         cacheManager.invalidateCategoryExpenses()
     }
 
-    // Phase 21: Stub methods kept for backward compatibility
     func rebuildAggregateCacheAfterImport() async { cacheManager.invalidateAll() }
     func rebuildAggregateCacheInBackground() { cacheManager.invalidateAll() }
     func clearAndRebuildAggregateCache() { cacheManager.invalidateAll() }

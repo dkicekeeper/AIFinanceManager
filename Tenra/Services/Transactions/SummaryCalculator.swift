@@ -2,9 +2,8 @@
 //  SummaryCalculator.swift
 //  Tenra
 //
-//  Phase 31 Fix B: Pure off-thread summary computation.
-//  Called from ContentView via Task.detached to keep MainActor free during
-//  the skeleton→content transition (~275ms eliminated).
+//  Pure off-thread summary computation.
+//  Called from ContentView via Task.detached to keep MainActor free.
 //
 
 import Foundation

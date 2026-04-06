@@ -2,8 +2,7 @@
 //  InsightsService+Savings.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
-//  Responsible for: savings rate, emergency fund coverage.
+//  Savings rate and emergency fund coverage insights.
 //
 
 import Foundation
@@ -11,7 +10,7 @@ import os
 
 extension InsightsService {
 
-    // MARK: - Savings Insights (Phase 24)
+    // MARK: - Savings Insights
 
     nonisolated func generateSavingsInsights(
         allIncome: Double,
@@ -20,8 +19,8 @@ extension InsightsService {
         balanceFor: (String) -> Double,
         accounts: [Account],
         transactions: [Transaction],
-        preAggregated: PreAggregatedData? = nil,     // Phase 42
-        skipSharedGenerators: Bool = false            // Phase 42b: shared generators already computed
+        preAggregated: PreAggregatedData? = nil,
+        skipSharedGenerators: Bool = false
     ) -> [Insight] {
         var insights: [Insight] = []
 
@@ -68,7 +67,7 @@ extension InsightsService {
         let totalBalance = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
         guard totalBalance > 0 else { return nil }
 
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        // Use preAggregated O(M) lookup when available; fall back to O(N) scan
         let aggregates: [InMemoryMonthlyTotal]
         if let preAggregated {
             aggregates = preAggregated.lastMonthlyTotals(3)

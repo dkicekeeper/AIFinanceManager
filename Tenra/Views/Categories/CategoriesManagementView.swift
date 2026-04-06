@@ -222,7 +222,7 @@ struct CategoriesManagementView: View {
                     return
                 }
 
-                // Phase 16 SSOT fix: deleteTransactions goes through TransactionStore.apply()
+                // deleteTransactions goes through TransactionStore.apply()
                 // so aggregates, cache, and persistence are all updated correctly.
                 // deleteCategory runs AFTER await so CategoryAggregateService can still
                 // find the entity during per-transaction aggregate maintenance.

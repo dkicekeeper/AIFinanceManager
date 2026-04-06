@@ -2,7 +2,7 @@
 //  InsightsService+Recurring.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
+//  Recurring transaction, subscription growth, and duplicate subscription insights.
 //  Responsible for: recurring cost totals, subscription growth, duplicate subscription detection.
 //
 
@@ -66,7 +66,7 @@ extension InsightsService {
 
         let totalMonthly = recurringItems.reduce(0.0) { $0 + $1.monthlyEquivalent }
 
-        // Phase 30: Scale to the selected granularity period (weekly/quarterly/yearly equivalent).
+        // Scale to the selected granularity period (weekly/quarterly/yearly equivalent).
         let periodMultiplier: Double
         let periodUnit: String
         switch granularity {
@@ -105,7 +105,7 @@ extension InsightsService {
         )]
     }
 
-    // MARK: - Subscription Growth (Phase 24)
+    // MARK: - Subscription Growth
 
     /// Compares current monthly recurring total with the total 3 months ago.
     nonisolated func generateSubscriptionGrowth(baseCurrency: String, recurringSeries: [RecurringSeries]) -> Insight? {
@@ -155,7 +155,7 @@ extension InsightsService {
         )
     }
 
-    // MARK: - Duplicate Subscriptions (Phase 24 Behavioral)
+    // MARK: - Duplicate Subscriptions
 
     /// Detects possible duplicate subscriptions — active series with the same category
     /// OR monthly cost within 15% of each other.

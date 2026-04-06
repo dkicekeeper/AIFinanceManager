@@ -93,13 +93,6 @@ struct InsightDetailView<CategoryDestination: View>: View {
             case .categoryBreakdown(let items):
                 DonutChart(slices: DonutSlice.from(items), showLegend: false)
             case .periodTrend(let points):
-                // Phase 18 — granularity-aware chart.
-                // Phase 30 — different chart type per insight.type.
-                // Phase 43 — PeriodCashFlowChart + WealthChart merged into PeriodLineChart:
-                //   • bestMonth / worstMonth /
-                //     incomeGrowth / incomeVsExpenseRatio → PeriodBarChart (bars)
-                //   • wealth category                     → PeriodLineChart(.wealth)
-                //   • All others                          → PeriodLineChart(.cashFlow)
                 let gran = points.first?.granularity ?? .month
                 if insight.type == .bestMonth || insight.type == .worstMonth
                     || insight.type == .incomeGrowth || insight.type == .incomeVsExpenseRatio {
@@ -153,7 +146,6 @@ struct InsightDetailView<CategoryDestination: View>: View {
         case .wealthBreakdown(let accounts):
             accountDetailList(accounts)
         case .accountComparison(let accounts):
-            // Phase 30: show dormant accounts in detail view (was falling through to EmptyView)
             dormantAccountDetailList(accounts)
         default:
             EmptyView()
@@ -331,7 +323,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
         }
     }
 
-    /// Phase 30: Dormant accounts detail list — shows each account with last activity date and balance.
+    /// Shows each dormant account with last activity date and balance.
     private func dormantAccountDetailList(_ accounts: [AccountInsightItem]) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             SectionHeaderView(String(localized: "insights.dormant.accounts"), style: .large)

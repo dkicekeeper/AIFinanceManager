@@ -802,7 +802,7 @@
 "insights.periodComparison" = "Сравнение периодов";
 "insights.daysLeft" = "%d дней осталось";
 
-// Phase 18 — Granularity picker
+// Granularity picker
 "insights.granularity.week" = "По неделям";
 "insights.granularity.month" = "По месяцам";
 "insights.granularity.quarter" = "По кварталам";
@@ -818,27 +818,27 @@
 "insights.granularity.prev.quarter" = "к предыдущему кварталу";
 "insights.granularity.prev.year" = "к предыдущему году";
 
-// Phase 18 — Wealth card
+// Wealth card
 "insights.wealth" = "Капитал";
 "insights.wealth.title" = "Накопленный капитал";
 "insights.wealth.subtitle" = "Общий баланс всех счетов";
 "insights.wealth.accounts" = "Счета";
 "insights.wealthGrowth" = "Изменение капитала";
 
-// Phase 24 — Savings
+// Savings
 "insights.savings" = "Сбережения";
 "insights.savingsRate" = "Норма сбережений";
 "insights.emergencyFund" = "Финансовая подушка";
 "insights.monthsCovered" = "покрывает %d месяцев";
 "insights.months" = "месяцев";
 
-// Phase 24 — Spending (stub completions)
+// Spending
 "insights.categoryTrend" = "Тренд расходов";
 "insights.categoryTrend.risingMonths" = "Растёт %d месяцев";
 "insights.subscriptionGrowth" = "Рост подписок";
 "insights.vsThreeMonthsAgo" = "к 3 месяцам назад";
 
-// Phase 24 — Forecasting
+// Forecasting
 "insights.forecasting" = "Прогноз";
 "insights.spendingForecast" = "Прогноз расходов";
 "insights.balanceRunway" = "Запас баланса";
@@ -846,7 +846,7 @@
 "insights.yearOverYear" = "Год к году";
 "insights.incomeSourceBreakdown" = "Источники дохода";
 
-// Phase 24 — Health Score & Behavioral
+// Health Score & Behavioral
 "insights.healthScore" = "Финансы";
 "insights.healthGrade.excellent" = "Отлично";
 "insights.healthGrade.good" = "Хорошо";

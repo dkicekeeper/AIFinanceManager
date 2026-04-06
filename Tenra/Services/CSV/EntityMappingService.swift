@@ -2,9 +2,7 @@
 //  EntityMappingService.swift
 //  Tenra
 //
-//  Simplified CSV Import Architecture - Phase 11
-//  Works ONLY with TransactionStore (Single Source of Truth)
-//  Removed ViewModels dependencies - they update automatically via Combine
+//  Maps CSV rows to domain entities using TransactionStore as the single source of truth.
 //
 
 import Foundation
@@ -208,7 +206,7 @@ class EntityMappingService: EntityMappingServiceProtocol {
         return .created(id: newSubcategory.id)
     }
 
-    // MARK: - Transaction Conversion (merged from TransactionConverterService, Phase 37)
+    // MARK: - Transaction Conversion
 
     /// Converts a validated CSVRow + resolved entity IDs into a Transaction value.
     /// Previously lived in `TransactionConverterService`. Merged here because:

@@ -2,7 +2,7 @@
 //  InsightsService+Income.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
+//  Income growth and trend insights.
 //  Responsible for: income growth (MoM / period-over-period), income vs expense ratio.
 //
 
@@ -34,8 +34,8 @@ extension InsightsService {
         Self.logger.debug("💵 [Insights] Income START — incomeTransactions=\(incomeTransactions.count)")
 
         // 1. Income growth (period-over-period).
-        // Phase 30: use granularity bucket lookup when periodPoints available; fall back to legacy scan.
-        // Skip .allTime — same reason as spending MoM: previousPeriodKey == currentPeriodKey → duplicate labels.
+        // Use granularity bucket lookup when periodPoints available; fall back to legacy scan.
+        // Skip .allTime — previousPeriodKey == currentPeriodKey → duplicate labels.
         if let gran = granularity, !periodPoints.isEmpty, gran != .allTime {
             let currentPoint = periodPoints.first(where: { $0.key == gran.currentPeriodKey })
             let prevPoint    = periodPoints.first(where: { $0.key == gran.previousPeriodKey })

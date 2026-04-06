@@ -2,9 +2,8 @@
 //  InsightsService+Spending.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
-//  Responsible for: top spending category, period-over-period spending change,
-//                   average daily spending, spending spike detection, category trend.
+//  Top spending category, period-over-period spending change,
+//  average daily spending, spending spike detection, category trend.
 //
 
 import Foundation
@@ -41,8 +40,8 @@ extension InsightsService {
         currencyService: TransactionCurrencyService,
         granularity: InsightGranularity? = nil,
         periodPoints: [PeriodDataPoint] = [],
-        txDateMap: [String: Date]? = nil,   // Phase 42d: pre-parsed dates for O(1) range filter
-        preAggregated: PreAggregatedData? = nil, // Phase 03-PERF-01: O(1) categoryTotals for .allTime
+        txDateMap: [String: Date]? = nil,
+        preAggregated: PreAggregatedData? = nil,
         categories: [CustomCategory]
     ) -> [Insight] {
         var insights: [Insight] = []
@@ -53,7 +52,7 @@ extension InsightsService {
         }
 
         // 1. Top spending category
-        // Phase 31: Narrow to the current granularity bucket when available so the breakdown
+        // Narrow to the current granularity bucket when available so the breakdown
         // reflects only the current week / month / quarter / year — not the full window.
         let currentBucketPoint = granularity.flatMap { gran in
             periodPoints.first(where: { $0.key == gran.currentPeriodKey })
@@ -64,7 +63,7 @@ extension InsightsService {
 
         if let cp = currentBucketPoint {
             _ = (cp.periodStart, cp.periodEnd) // topRange was unused
-            // Phase 42d: Use dateMap for O(1) date lookups — avoids O(N) DateFormatter re-parsing
+            // Use dateMap for O(1) date lookups — avoids O(N) DateFormatter re-parsing
             if let map = txDateMap {
                 topExpenses = expenses.filter { tx in
                     guard let d = map[tx.date], d >= cp.periodStart, d < cp.periodEnd else { return false }
@@ -80,7 +79,7 @@ extension InsightsService {
             topTotalExpenses = periodSummary.totalExpenses
         }
 
-        // Phase 03-PERF-01: For .allTime with PreAggregatedData, use O(1) categoryTotals lookup.
+        // For .allTime with PreAggregatedData, use O(1) categoryTotals lookup.
         // For other granularities (or when preAggregated is nil), use the existing O(N) grouping.
         let sortedCategories: [(key: String, total: Double)]
         let categoryGroups: [String: [Transaction]]
@@ -117,7 +116,7 @@ extension InsightsService {
                 ? (top.total / topTotalExpenses) * 100
                 : 0
 
-            // Phase 30: show ALL categories in breakdown
+            // Show ALL categories in breakdown
             let breakdownItems: [CategoryBreakdownItem] = sortedCategories.map { item in
                 let pct = topTotalExpenses > 0 ? (item.total / topTotalExpenses) * 100 : 0
                 let cat = categories.first { $0.name == item.key }
@@ -172,7 +171,7 @@ extension InsightsService {
         }
 
         // 2. Period-over-period spending change.
-        // Phase 30: use granularity bucket lookup when periodPoints available; fall back to legacy scan.
+        // Use granularity bucket lookup when periodPoints available; fall back to legacy scan.
         // Skip for .allTime — there is no meaningful "previous all-time period".
         if let gran = granularity, !periodPoints.isEmpty, gran != .allTime {
             let currentPoint = periodPoints.first(where: { $0.key == gran.currentPeriodKey })
@@ -255,7 +254,7 @@ extension InsightsService {
         }
 
         // 3. Average daily spending.
-        // Phase 30: compute from current/previous granularity bucket when available.
+        // Compute from current/previous granularity bucket when available.
         if let gran = granularity, !periodPoints.isEmpty {
             let currentPoint = periodPoints.first(where: { $0.key == gran.currentPeriodKey })
             let prevPoint    = periodPoints.first(where: { $0.key == gran.previousPeriodKey })
@@ -320,7 +319,7 @@ extension InsightsService {
         return insights
     }
 
-    // MARK: - Spending Spike (Phase 24)
+    // MARK: - Spending Spike
 
     /// Detects a category whose current-month spending exceeds 1.5× its 3-month historical average.
     nonisolated func generateSpendingSpike(baseCurrency: String, transactions: [Transaction], preAggregated: PreAggregatedData? = nil) -> Insight? {
@@ -328,7 +327,7 @@ extension InsightsService {
         let now = Date()
         guard let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: startOfMonth(calendar, for: now)) else { return nil }
 
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        // Use preAggregated O(M) lookup when available; fall back to O(N) scan
         let monthlyAggregates: [InMemoryCategoryMonthTotal]
         if let preAggregated {
             monthlyAggregates = preAggregated.categoryMonthTotalsInRange(from: threeMonthsAgo, to: now)
@@ -394,7 +393,7 @@ extension InsightsService {
         )
     }
 
-    // MARK: - Category Trend (Phase 24)
+    // MARK: - Category Trend
 
     /// Finds the expense category that has been rising for the most consecutive months (min 2).
     nonisolated func generateCategoryTrend(baseCurrency: String, transactions: [Transaction], preAggregated: PreAggregatedData? = nil) -> Insight? {
@@ -402,7 +401,7 @@ extension InsightsService {
         let now = Date()
         guard let sixMonthsAgo = calendar.date(byAdding: .month, value: -6, to: startOfMonth(calendar, for: now)) else { return nil }
 
-        // Phase 42: Use preAggregated O(M) lookup when available; fall back to O(N) scan
+        // Use preAggregated O(M) lookup when available; fall back to O(N) scan
         let monthlyAggregates: [InMemoryCategoryMonthTotal]
         if let preAggregated {
             monthlyAggregates = preAggregated.categoryMonthTotalsInRange(from: sixMonthsAgo, to: now)

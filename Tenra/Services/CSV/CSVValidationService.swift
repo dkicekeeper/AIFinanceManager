@@ -3,7 +3,6 @@
 //  Tenra
 //
 //  Created on 2026-02-03
-//  CSV Import Refactoring Phase 2
 //
 
 import Foundation
@@ -146,7 +145,7 @@ nonisolated class CSVValidationService: CSVValidationServiceProtocol {
         return results
     }
 
-    // MARK: - Parallel Validation (Phase 5 Optimization)
+    // MARK: - Parallel Validation
 
     /// Validates CSV file rows in parallel batches for improved performance
     /// Uses Task groups to validate multiple batches concurrently
@@ -331,7 +330,7 @@ extension Array {
         indices.contains(index) ? self[index] : nil
     }
 
-    /// Splits array into chunks of specified size (Phase 5 optimization for parallel processing)
+    /// Splits array into chunks of specified size for parallel processing.
     nonisolated func chunked(into size: Int) -> [[Element]] {
         stride(from: 0, to: count, by: size).map {
             Array(self[$0..<Swift.min($0 + size, count)])

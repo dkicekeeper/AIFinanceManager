@@ -22,7 +22,7 @@ struct TransactionCard: View {
     let targetAccount: Account?
     let viewModel: TransactionsViewModel?
     let categoriesViewModel: CategoriesViewModel?
-    let accountsViewModel: AccountsViewModel?   // Phase 16: needed for EditTransactionCoordinator
+    let accountsViewModel: AccountsViewModel?
     let balanceCoordinator: BalanceCoordinator?  // Optional - can't use @ObservedObject with optionals
 
     // MARK: - Convenience
@@ -92,7 +92,7 @@ struct TransactionCard: View {
         self.balanceCoordinator = balanceCoordinator
     }
     
-    // MARK: - Display Helpers (Phase 16: delegated to TransactionDisplayHelper)
+    // MARK: - Display Helpers
 
     private var isFutureDate: Bool {
         TransactionDisplayHelper.isFutureDate(transaction.date)

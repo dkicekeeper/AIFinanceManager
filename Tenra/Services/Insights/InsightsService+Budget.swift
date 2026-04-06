@@ -2,8 +2,7 @@
 //  InsightsService+Budget.swift
 //  Tenra
 //
-//  Phase 38: Extracted from InsightsService monolith (2832 LOC → domain files).
-//  Responsible for: budget overspend detection, projected overspend, under-utilization.
+//  Budget overspend detection, projected overspend, under-utilization.
 //
 
 import Foundation
@@ -74,7 +73,7 @@ extension InsightsService {
             ))
         }
 
-        // Single pass to partition budget items (Phase 23-C P15)
+        // Single pass to partition budget items
         var overBudgetItems: [BudgetInsightItem] = []
         var projectedOverspendItems: [BudgetInsightItem] = []
         var underBudgetItems: [BudgetInsightItem] = []

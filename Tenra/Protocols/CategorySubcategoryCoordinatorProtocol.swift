@@ -106,6 +106,5 @@ protocol CategorySubcategoryDelegate: AnyObject {
     /// Current transaction-subcategory links
     var transactionSubcategoryLinks: [TransactionSubcategoryLink] { get set }
 
-    /// ✨ Phase 10: TransactionStore reference for Single Source of Truth
     var transactionStore: TransactionStore? { get }
 }

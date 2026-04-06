@@ -2,8 +2,7 @@
 //  CSVImportCoordinatorFactory.swift
 //  Tenra
 //
-//  Simplified CSV Import Architecture - Phase 11
-//  Removed CSVStorageCoordinator dependency
+//  Factory for creating CSVImportCoordinator with default dependencies.
 //
 
 import Foundation
@@ -18,9 +17,6 @@ extension CSVImportCoordinator {
     ///   - csvFile: CSV file to configure validator with headers
     ///   - transactionStore: TransactionStore instance for direct data manipulation
     /// - Returns: Configured coordinator ready for import
-    // Phase 37: TransactionConverterService removed — convertRow() merged into EntityMappingService.
-    // Coordinator no longer accepts a `converter` parameter.
-
     static func create(
         for csvFile: CSVFile,
         transactionStore: TransactionStore

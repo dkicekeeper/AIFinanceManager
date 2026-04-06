@@ -50,20 +50,13 @@ enum InsightType: String, Hashable {
     case worstMonth
     case projectedBalance
     case accountActivity
-    // Phase 18 — Wealth
     case totalWealth      // Current sum of all account balances
     case wealthGrowth     // Monthly/period growth of accumulated balance
-
-    // Phase 24 — Savings
     case savingsRate       // (income - expenses) / income %
     case emergencyFund     // months of expenses covered by balance
-
-    // Phase 24 — Forecasting
     case spendingForecast  // projected 30-day spend
     case balanceRunway     // months until balance runs out at current burn
     case yearOverYear      // this month vs same month last year
-
-    // Phase 24 — Behavioral
     case duplicateSubscriptions // possible duplicate recurring items
     case accountDormancy        // accounts idle 30+ days with non-zero balance
 }
@@ -150,9 +143,9 @@ enum InsightCategory: String, CaseIterable, Hashable {
     case budget
     case recurring
     case cashFlow
-    case wealth      // Phase 18 — Accumulated capital card
-    case savings     // Phase 24 — Savings rate, emergency fund, momentum
-    case forecasting // Phase 24 — Spend forecast, runway, YoY, seasonality
+    case wealth      // Accumulated capital card
+    case savings
+    case forecasting
 
     var displayName: String {
         switch self {
@@ -185,11 +178,11 @@ enum InsightCategory: String, CaseIterable, Hashable {
 
 enum InsightDetailData: Hashable {
     case categoryBreakdown([CategoryBreakdownItem])
-    case periodTrend([PeriodDataPoint])         // Phase 18 — granularity-aware trend
+    case periodTrend([PeriodDataPoint])         // Granularity-aware trend
     case budgetProgressList([BudgetInsightItem])
     case recurringList([RecurringInsightItem])
     case accountComparison([AccountInsightItem])
-    case wealthBreakdown([AccountInsightItem])   // Phase 18 — per-account balances
+    case wealthBreakdown([AccountInsightItem])   // Per-account balances
 }
 
 // MARK: - Category Breakdown

@@ -31,7 +31,7 @@ extension AccountEntity {
     @NSManaged public nonisolated var logo: String?  // Deprecated: Use iconSourceData instead
     @NSManaged public nonisolated var iconSourceData: Data?  // Stores full IconSource as JSON
     @NSManaged public nonisolated var name: String?
-    @NSManaged public nonisolated var shouldCalculateFromTransactions: Bool  // ✨ Phase 10: Track balance calculation mode
+    @NSManaged public nonisolated var shouldCalculateFromTransactions: Bool
     @NSManaged public nonisolated var targetTransactions: NSSet?
     @NSManaged public nonisolated var transactions: NSSet?
 
