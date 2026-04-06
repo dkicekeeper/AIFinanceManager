@@ -11,9 +11,13 @@ import SwiftUI
 
 struct LoanLinkPaymentsView: View {
     let loan: Account
-    let transactionStore: TransactionStore
     let loansViewModel: LoansViewModel
+    let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
+    let accountsViewModel: AccountsViewModel
+    let balanceCoordinator: BalanceCoordinator
 
+    @Environment(TransactionStore.self) private var transactionStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var candidates: [Transaction] = []
@@ -51,6 +55,15 @@ struct LoanLinkPaymentsView: View {
 
     private var uniqueAccountIds: [String] {
         Array(Set(candidates.compactMap(\.accountId))).sorted()
+    }
+
+    // MARK: - Date Sections
+
+    private var dateSections: [(date: String, displayLabel: String, transactions: [Transaction])] {
+        let grouped = Dictionary(grouping: filteredCandidates) { $0.date }
+        return grouped.sorted { $0.key > $1.key }.map { key, txs in
+            (date: key, displayLabel: displayDateKey(from: key), transactions: txs)
+        }
     }
 
     // MARK: - Body
@@ -148,35 +161,58 @@ struct LoanLinkPaymentsView: View {
         .padding(.vertical, AppSpacing.sm)
     }
 
-    // MARK: - Year Sections
-
-    private var yearSections: [(year: String, transactions: [Transaction])] {
-        let grouped = Dictionary(grouping: filteredCandidates) { tx in
-            String(tx.date.prefix(4))
-        }
-        return grouped.sorted { $0.key > $1.key }.map { (year: $0.key, transactions: $0.value) }
-    }
-
     // MARK: - Transaction List
 
     private var transactionList: some View {
         List {
-            ForEach(yearSections, id: \.year) { section in
+            ForEach(dateSections, id: \.date) { section in
                 Section {
-                    ForEach(section.transactions) { tx in
-                        transactionRow(tx)
-                            .listRowInsets(EdgeInsets(
-                                top: AppSpacing.sm,
-                                leading: AppSpacing.lg,
-                                bottom: AppSpacing.sm,
-                                trailing: AppSpacing.lg
-                            ))
+                    ForEach(section.transactions) { transaction in
+                        let isSelected = selectedIds.contains(transaction.id)
+                        let styleData = CategoryStyleHelper.cached(
+                            category: transaction.category,
+                            type: transaction.type,
+                            customCategories: categoriesViewModel.customCategories
+                        )
+                        let sourceAccount = accountsViewModel.accounts.first { $0.id == transaction.accountId }
+                        let targetAccount = accountsViewModel.accounts.first { $0.id == transaction.targetAccountId }
+
+                        Button {
+                            if isSelected {
+                                selectedIds.remove(transaction.id)
+                            } else {
+                                selectedIds.insert(transaction.id)
+                            }
+                        } label: {
+                            HStack(spacing: AppSpacing.md) {
+                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isSelected ? AppColors.accent : .secondary)
+                                    .font(.system(size: AppIconSize.md))
+
+                                TransactionCard(
+                                    transaction: transaction,
+                                    currency: loan.currency,
+                                    styleData: styleData,
+                                    sourceAccount: sourceAccount,
+                                    targetAccount: targetAccount,
+                                    viewModel: nil,
+                                    categoriesViewModel: nil,
+                                    accountsViewModel: nil,
+                                    balanceCoordinator: nil
+                                )
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(
+                            top: AppSpacing.sm,
+                            leading: AppSpacing.lg,
+                            bottom: AppSpacing.sm,
+                            trailing: AppSpacing.lg
+                        ))
                     }
                 } header: {
-                    Text(section.year)
-                        .font(AppTypography.h4)
-                        .foregroundStyle(.primary)
-                        .textCase(nil)
+                    DateSectionHeaderView(dateKey: section.displayLabel)
                 }
             }
         }
@@ -190,49 +226,6 @@ struct LoanLinkPaymentsView: View {
                 ContentUnavailableView.search(text: searchText)
             }
         }
-    }
-
-    private func transactionRow(_ tx: Transaction) -> some View {
-        let isSelected = selectedIds.contains(tx.id)
-        return Button {
-            if isSelected {
-                selectedIds.remove(tx.id)
-            } else {
-                selectedIds.insert(tx.id)
-            }
-        } label: {
-            HStack(spacing: AppSpacing.md) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? AppColors.accent : .secondary)
-                    .font(.system(size: AppIconSize.md))
-
-                VStack(alignment: .leading, spacing: AppSpacing.xxs) {
-                    Text(tx.description)
-                        .font(AppTypography.body)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    HStack(spacing: AppSpacing.xs) {
-                        Text(categoryLabel(for: tx))
-                            .font(AppTypography.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        Text("·")
-                            .foregroundStyle(.tertiary)
-                        Text(DateFormatters.displayString(from: tx.date))
-                            .font(AppTypography.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                Text(Formatting.formatCurrency(tx.amount, currency: tx.currency))
-                    .font(AppTypography.body.weight(.medium))
-                    .foregroundStyle(.primary)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Action Bar
@@ -265,11 +258,44 @@ struct LoanLinkPaymentsView: View {
 
     // MARK: - Helpers
 
-    private func categoryLabel(for tx: Transaction) -> String {
-        if let sub = tx.subcategory, !sub.isEmpty {
-            return "\(tx.category) → \(sub)"
+    private static let isoParser: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
+    private static let shortDisplay: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        return f
+    }()
+
+    private static let longDisplay: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
+
+    private func displayDateKey(from isoDate: String) -> String {
+        guard let date = Self.isoParser.date(from: isoDate) else { return isoDate }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let sectionDay = calendar.startOfDay(for: date)
+
+        if sectionDay == today {
+            return String(localized: "common.today", defaultValue: "Today")
         }
-        return tx.category
+        if let diff = calendar.dateComponents([.day], from: sectionDay, to: today).day, diff == 1 {
+            return String(localized: "common.yesterday", defaultValue: "Yesterday")
+        }
+
+        let currentYear = calendar.component(.year, from: Date())
+        let sectionYear = calendar.component(.year, from: date)
+        if sectionYear == currentYear {
+            return Self.shortDisplay.string(from: date)
+        }
+        return Self.longDisplay.string(from: date)
     }
 
     // MARK: - Actions
@@ -280,7 +306,6 @@ struct LoanLinkPaymentsView: View {
             in: transactionStore.transactions
         )
         candidates = matched
-        // Pre-select all auto-matched candidates
         selectedIds = Set(matched.map(\.id))
     }
 

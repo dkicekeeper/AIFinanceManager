@@ -226,8 +226,11 @@ struct LoanDetailView: View {
             if let account = account {
                 LoanLinkPaymentsView(
                     loan: account,
-                    transactionStore: transactionStore,
-                    loansViewModel: loansViewModel
+                    loansViewModel: loansViewModel,
+                    transactionsViewModel: transactionsViewModel,
+                    categoriesViewModel: appCoordinator.categoriesViewModel,
+                    accountsViewModel: appCoordinator.accountsViewModel,
+                    balanceCoordinator: balanceCoordinator
                 )
             }
         }
