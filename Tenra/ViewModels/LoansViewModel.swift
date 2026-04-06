@@ -170,6 +170,55 @@ class LoansViewModel {
         accountsViewModel.updateAccount(account)
     }
 
+    // MARK: - Link Existing Transactions
+
+    func linkTransactions(
+        toLoan loanId: String,
+        transactions: [Transaction],
+        transactionStore: TransactionStore
+    ) async throws {
+        guard var loan = getLoan(by: loanId),
+              loan.loanInfo != nil else { return }
+
+        let sortedTransactions = transactions.sorted { $0.date < $1.date }
+
+        // Convert each transaction to loanPayment
+        for tx in sortedTransactions {
+            let updated = Transaction(
+                id: tx.id,
+                date: tx.date,
+                description: tx.description,
+                amount: tx.amount,
+                currency: tx.currency,
+                convertedAmount: tx.convertedAmount,
+                type: .loanPayment,
+                category: TransactionType.loanPaymentCategoryName,
+                subcategory: tx.subcategory,
+                accountId: loanId,
+                targetAccountId: tx.accountId, // source account becomes target
+                accountName: loan.name,
+                targetAccountName: tx.accountName,
+                targetCurrency: tx.targetCurrency,
+                targetAmount: tx.targetAmount,
+                recurringSeriesId: tx.recurringSeriesId,
+                recurringOccurrenceId: tx.recurringOccurrenceId,
+                createdAt: tx.createdAt
+            )
+            try await transactionStore.update(updated)
+        }
+
+        // Recalculate loan state
+        let dates = sortedTransactions.map(\.date)
+        LoanPaymentService.recalculateAfterLinking(
+            loanInfo: &loan.loanInfo!,
+            linkedPaymentCount: sortedTransactions.count,
+            linkedPaymentDates: dates
+        )
+
+        // Persist updated loan
+        updateLoan(loan)
+    }
+
     // MARK: - Helper Methods
 
     /// Get loan by ID

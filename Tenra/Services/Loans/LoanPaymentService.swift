@@ -346,6 +346,47 @@ nonisolated enum LoanPaymentService {
         account.loanInfo = loanInfo
     }
 
+    // MARK: - Link Existing Payments
+
+    /// Recalculates loan state after linking existing transactions.
+    static func recalculateAfterLinking(
+        loanInfo: inout LoanInfo,
+        linkedPaymentCount: Int,
+        linkedPaymentDates: [String]
+    ) {
+        loanInfo.paymentsMade = linkedPaymentCount
+        loanInfo.lastPaymentDate = linkedPaymentDates.last
+        loanInfo.lastReconciliationDate = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter.string(from: Date())
+        }()
+
+        if loanInfo.loanType == .installment {
+            let totalPaid = loanInfo.monthlyPayment * Decimal(linkedPaymentCount)
+            loanInfo.remainingPrincipal = loanInfo.originalPrincipal - totalPaid
+            loanInfo.totalInterestPaid = 0
+            return
+        }
+
+        // Annuity: walk payments chronologically, compute interest/principal split
+        var remaining = loanInfo.originalPrincipal
+        var totalInterest: Decimal = 0
+
+        for _ in 0..<linkedPaymentCount {
+            let breakdown = paymentBreakdown(
+                remainingPrincipal: remaining,
+                annualRate: loanInfo.interestRateAnnual,
+                monthlyPayment: loanInfo.monthlyPayment
+            )
+            remaining -= breakdown.principal
+            totalInterest += breakdown.interest
+        }
+
+        loanInfo.remainingPrincipal = max(remaining, 0)
+        loanInfo.totalInterestPaid = totalInterest
+    }
+
     // MARK: - Private Helpers
 
     private static func isPaymentDay(date: Date, paymentDay: Int, loanInfo: LoanInfo) -> Bool {
