@@ -28,9 +28,9 @@ struct PrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSpacing.md)
             .background(AppColors.accent)
-            .clipShape(.rect(cornerRadius: AppRadius.md))
+            .clipShape(.rect(cornerRadius: AppRadius.circle))
             .opacity(effectivelyDisabled ? 0.4 : 1.0)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
             .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
     }
 }
@@ -45,8 +45,8 @@ struct SecondaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSpacing.md)
             .background(AppColors.secondaryBackground)
-            .clipShape(.rect(cornerRadius: AppRadius.md))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .clipShape(.rect(cornerRadius: AppRadius.circle))
+            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
             .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
     }
 }
