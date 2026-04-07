@@ -12,7 +12,10 @@ struct SubcategoriesManagementView: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingAddSubcategory = false
     @State private var editingSubcategory: Subcategory?
-    
+    @State private var mode: ManagementMode = .normal
+    @State private var selection: Set<String> = []
+    @State private var showingBulkDeleteDialog = false
+
     var body: some View {
         Group {
             if categoriesViewModel.subcategories.isEmpty {
@@ -26,7 +29,7 @@ struct SubcategoriesManagementView: View {
                     }
                 )
             } else {
-                List {
+                List(selection: mode.isSelecting ? $selection : nil) {
                     ForEach(categoriesViewModel.subcategories) { subcategory in
                         let usageCount = categoriesViewModel.subcategoryUsageCount(for: subcategory.id)
                         let lastUsed = categoriesViewModel.subcategoryLastUsedDate(for: subcategory.id)
@@ -34,12 +37,23 @@ struct SubcategoriesManagementView: View {
                             subcategory: subcategory,
                             usageCount: usageCount,
                             lastUsedDate: lastUsed,
-                            onEdit: { editingSubcategory = subcategory },
+                            onEdit: {
+                                guard !mode.isSelecting else { return }
+                                editingSubcategory = subcategory
+                            },
                             onDelete: {
                                 HapticManager.warning()
                                 categoriesViewModel.deleteSubcategory(subcategory.id)
                             }
                         )
+                        .onLongPressGesture {
+                            guard mode == .normal else { return }
+                            HapticManager.selectionChanged()
+                            withAnimation(AppAnimation.contentSpring) {
+                                mode = .selecting
+                                selection.insert(subcategory.id)
+                            }
+                        }
                     }
                 }
             }
@@ -48,13 +62,77 @@ struct SubcategoriesManagementView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(action: { 
-                    HapticManager.light()
-                    showingAddSubcategory = true 
-                }) {
-                    Image(systemName: "plus")
+                switch mode {
+                case .normal:
+                    Button {
+                        HapticManager.light()
+                        withAnimation(AppAnimation.contentSpring) { mode = .selecting }
+                    } label: {
+                        Image(systemName: "checkmark.circle")
+                    }
+                    .accessibilityLabel(String(localized: "bulk.select"))
+                case .selecting:
+                    Button {
+                        HapticManager.light()
+                        withAnimation(AppAnimation.contentSpring) {
+                            mode = .normal
+                            selection.removeAll()
+                        }
+                    } label: {
+                        Text(String(localized: "bulk.done"))
+                    }
+                    .glassProminentButton()
+                case .reordering:
+                    EmptyView()
                 }
-                .glassProminentButton()
+            }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            ToolbarItem(placement: .topBarTrailing) {
+                if mode == .normal {
+                    Button(action: {
+                        HapticManager.light()
+                        showingAddSubcategory = true
+                    }) {
+                        Image(systemName: "plus")
+                    }
+                    .glassProminentButton()
+                } else if mode.isSelecting {
+                    Button {
+                        HapticManager.selection()
+                        let allIds = Set(categoriesViewModel.subcategories.map(\.id))
+                        if selection == allIds {
+                            selection.removeAll()
+                        } else {
+                            selection = allIds
+                        }
+                    } label: {
+                        Text(selection.count == categoriesViewModel.subcategories.count
+                             ? String(localized: "bulk.deselectAll")
+                             : String(localized: "bulk.selectAll"))
+                    }
+                }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if mode.isSelecting && !selection.isEmpty {
+                BulkDeleteButton(count: selection.count) {
+                    showingBulkDeleteDialog = true
+                }
+                .animation(AppAnimation.contentSpring, value: selection.count)
+            }
+        }
+        .alert(
+            String(format: String(localized: "bulk.deleteSubcategories.title"), selection.count),
+            isPresented: $showingBulkDeleteDialog
+        ) {
+            Button(String(localized: "button.cancel"), role: .cancel) {}
+            Button(String(localized: "bulk.deleteSubcategories.confirm"), role: .destructive) {
+                HapticManager.warning()
+                categoriesViewModel.deleteSubcategories(selection)
+                withAnimation(AppAnimation.contentSpring) {
+                    selection.removeAll()
+                    mode = .normal
+                }
             }
         }
         .sheet(isPresented: $showingAddSubcategory) {
