@@ -53,6 +53,7 @@ struct SubcategoriesManagementView: View {
                         subcategoryRow(for: subcategory)
                     }
                 }
+                .environment(\.editMode, .constant(mode.editMode))
             }
         }
         .navigationTitle(String(localized: "settings.subcategories"))
