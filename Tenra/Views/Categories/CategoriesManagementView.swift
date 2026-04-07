@@ -108,7 +108,7 @@ struct CategoriesManagementView: View {
                         )
                         .onLongPressGesture {
                             guard mode == .normal else { return }
-                            HapticManager.selectionChanged()
+                            HapticManager.selection()
                             withAnimation(AppAnimation.contentSpring) {
                                 mode = .selecting
                                 selection.insert(category.id)

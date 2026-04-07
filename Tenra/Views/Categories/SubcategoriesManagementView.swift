@@ -16,6 +16,33 @@ struct SubcategoriesManagementView: View {
     @State private var selection: Set<String> = []
     @State private var showingBulkDeleteDialog = false
 
+    @ViewBuilder
+    private func subcategoryRow(for subcategory: Subcategory) -> some View {
+        let usageCount = categoriesViewModel.subcategoryUsageCount(for: subcategory.id)
+        let lastUsed = categoriesViewModel.subcategoryLastUsedDate(for: subcategory.id)
+        SubcategoryManagementRow(
+            subcategory: subcategory,
+            usageCount: usageCount,
+            lastUsedDate: lastUsed,
+            onEdit: {
+                guard !mode.isSelecting else { return }
+                editingSubcategory = subcategory
+            },
+            onDelete: {
+                HapticManager.warning()
+                categoriesViewModel.deleteSubcategory(subcategory.id)
+            }
+        )
+        .onLongPressGesture {
+            guard mode == .normal else { return }
+            HapticManager.selection()
+            withAnimation(AppAnimation.contentSpring) {
+                mode = .selecting
+                selection.insert(subcategory.id)
+            }
+        }
+    }
+
     var body: some View {
         Group {
             if categoriesViewModel.subcategories.isEmpty {
@@ -31,29 +58,7 @@ struct SubcategoriesManagementView: View {
             } else {
                 List(selection: mode.isSelecting ? $selection : nil) {
                     ForEach(categoriesViewModel.subcategories) { subcategory in
-                        let usageCount = categoriesViewModel.subcategoryUsageCount(for: subcategory.id)
-                        let lastUsed = categoriesViewModel.subcategoryLastUsedDate(for: subcategory.id)
-                        SubcategoryManagementRow(
-                            subcategory: subcategory,
-                            usageCount: usageCount,
-                            lastUsedDate: lastUsed,
-                            onEdit: {
-                                guard !mode.isSelecting else { return }
-                                editingSubcategory = subcategory
-                            },
-                            onDelete: {
-                                HapticManager.warning()
-                                categoriesViewModel.deleteSubcategory(subcategory.id)
-                            }
-                        )
-                        .onLongPressGesture {
-                            guard mode == .normal else { return }
-                            HapticManager.selectionChanged()
-                            withAnimation(AppAnimation.contentSpring) {
-                                mode = .selecting
-                                selection.insert(subcategory.id)
-                            }
-                        }
+                        subcategoryRow(for: subcategory)
                     }
                 }
             }
