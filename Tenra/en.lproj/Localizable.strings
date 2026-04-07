@@ -1121,3 +1121,26 @@
 "accessibility.insights.granularityPicker" = "Period picker";
 "accessibility.insights.granularityPickerHint" = "Select granularity: month, quarter, or year";
 "accessibility.transaction.history" = "Transaction history";
+
+// MARK: - Bulk Selection
+"bulk.select" = "Select";
+"bulk.selectAll" = "Select All";
+"bulk.deselectAll" = "Deselect All";
+"bulk.done" = "Done";
+"bulk.deleteCount" = "Delete (%d)";
+
+// MARK: - Bulk Delete Accounts
+"bulk.deleteAccounts.title" = "Delete %d accounts?";
+"bulk.deleteAccounts.message" = "What to do with related transactions?";
+"bulk.deleteAccounts.onlyAccounts" = "Delete only accounts";
+"bulk.deleteAccounts.withTransactions" = "Delete with all transactions";
+
+// MARK: - Bulk Delete Categories
+"bulk.deleteCategories.title" = "Delete %d categories?";
+"bulk.deleteCategories.message" = "What to do with related transactions?";
+"bulk.deleteCategories.onlyCategories" = "Delete only categories";
+"bulk.deleteCategories.withTransactions" = "Delete with all transactions";
+
+// MARK: - Bulk Delete Subcategories
+"bulk.deleteSubcategories.title" = "Delete %d subcategories?";
+"bulk.deleteSubcategories.confirm" = "Delete";

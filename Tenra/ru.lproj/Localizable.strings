@@ -1121,3 +1121,26 @@
 "accessibility.insights.granularityPicker" = "Выбор периода";
 "accessibility.insights.granularityPickerHint" = "Выберите детализацию: месяц, квартал или год";
 "accessibility.transaction.history" = "История транзакций";
+
+// MARK: - Bulk Selection
+"bulk.select" = "Выбрать";
+"bulk.selectAll" = "Выбрать все";
+"bulk.deselectAll" = "Снять выбор";
+"bulk.done" = "Готово";
+"bulk.deleteCount" = "Удалить (%d)";
+
+// MARK: - Bulk Delete Accounts
+"bulk.deleteAccounts.title" = "Удалить счетов: %d?";
+"bulk.deleteAccounts.message" = "Что делать со связанными транзакциями?";
+"bulk.deleteAccounts.onlyAccounts" = "Удалить только счета";
+"bulk.deleteAccounts.withTransactions" = "Удалить с транзакциями";
+
+// MARK: - Bulk Delete Categories
+"bulk.deleteCategories.title" = "Удалить категорий: %d?";
+"bulk.deleteCategories.message" = "Что делать со связанными транзакциями?";
+"bulk.deleteCategories.onlyCategories" = "Удалить только категории";
+"bulk.deleteCategories.withTransactions" = "Удалить с транзакциями";
+
+// MARK: - Bulk Delete Subcategories
+"bulk.deleteSubcategories.title" = "Удалить подкатегорий: %d?";
+"bulk.deleteSubcategories.confirm" = "Удалить";
