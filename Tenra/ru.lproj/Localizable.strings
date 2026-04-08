@@ -403,6 +403,7 @@
 
 // MARK: - Voice Input Confirmation
 "voiceConfirmation.title" = "Проверьте операцию";
+"voiceConfirmation.confirm" = "Подтвердить";
 "voiceConfirmation.type" = "Тип операции";
 "voiceConfirmation.noAccounts" = "Нет доступных счетов";
 "voiceConfirmation.selectCategory" = "Выберите категорию";

@@ -57,13 +57,13 @@ class VoiceInputService: NSObject {
     /// Metal renderer reads it directly every frame — bypasses SwiftUI update cycle.
     @ObservationIgnored let amplitudeRef: AudioLevelRef = AudioLevelRef()
 
-    // MARK: - Voice Activity Detection
+    // MARK: - Voice Activity Detection (always-on)
 
     /// Silence detector for automatic stop
     @ObservationIgnored private var silenceDetector: SilenceDetector?
 
-    /// VAD enabled flag (can be toggled by user)
-    var isVADEnabled: Bool = VoiceInputConstants.vadEnabled
+    /// True once any text has been recognized — silence detection only starts after this
+    @ObservationIgnored private var hasRecognizedText: Bool = false
 
     // MARK: - Dynamic Context (iOS 17+)
 
@@ -163,23 +163,10 @@ class VoiceInputService: NSObject {
         finalTranscription = ""
         errorMessage = nil
         isStopping = false
+        hasRecognizedText = false
 
-        // Initialize silence detector if VAD is enabled
-        if isVADEnabled {
-            silenceDetector = SilenceDetector()
-
-            #if DEBUG
-            if VoiceInputConstants.enableParsingDebugLogs {
-            }
-            #endif
-        } else {
-            silenceDetector = nil
-
-            #if DEBUG
-            if VoiceInputConstants.enableParsingDebugLogs {
-            }
-            #endif
-        }
+        // Always-on silence detector
+        silenceDetector = SilenceDetector()
         
         // Настраиваем аудио сессию
         let audioSession = AVAudioSession.sharedInstance()
@@ -229,9 +216,8 @@ class VoiceInputService: NSObject {
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
 
-        // Capture VAD state and refs BEFORE the closure to avoid reading
+        // Capture refs BEFORE the closure to avoid reading
         // @MainActor-isolated properties from the audio render thread.
-        let vadEnabled = isVADEnabled
         let detector = silenceDetector
         let ref = amplitudeRef
 
@@ -248,23 +234,22 @@ class VoiceInputService: NSObject {
                 for i in 0..<n { sum += data[i] * data[i] }
                 return sqrt(sum / Float(n))
             }()
-            // Normalize: typical speech peaks ~0.05–0.3 raw RMS → map to 0.2–1.0 range
-            let targetLevel = min(rms * 8.0, 1.0)
+            // Normalize: typical speech 0.01-0.15 RMS → amplify aggressively for visual response
+            let targetLevel = min(rms * 18.0, 1.0)
             // Write to ref on main thread — renderer reads it directly, no SwiftUI hop needed
             DispatchQueue.main.async {
-                // Exponential smoothing: fast attack (~45%), slow decay
-                ref.value = ref.value * 0.55 + max(targetLevel, 0.15) * 0.45
-            }
-
-            // Analyze for silence detection if VAD is enabled
-            if vadEnabled, let detector {
-                Task { @MainActor [weak self] in
-                    let silenceDetected = detector.analyzeSample(buffer)
-                    if silenceDetected {
-                        self?.stopRecording()
-                    }
+                let current = ref.value
+                if targetLevel > current {
+                    // Smooth attack: ramp up over ~3 buffers
+                    ref.value = current * 0.4 + targetLevel * 0.6
+                } else {
+                    // Gentle decay: ~0.5s fade-out for smooth visuals
+                    ref.value = current * 0.92 + targetLevel * 0.08
                 }
             }
+
+            // Audio VAD disabled — silence detection is text-based (in VoiceInputView)
+            // SilenceDetector kept for potential future use but not auto-stopping here.
         }
         
         // Запускаем аудио engine
@@ -281,17 +266,21 @@ class VoiceInputService: NSObject {
 
             if let result = result {
                 Task { @MainActor in
+                    // Guard: don't overwrite text after recording stopped.
+                    // Cancelling the recognition task fires a callback that may
+                    // contain empty or truncated text — ignore it.
+                    guard self.isRecording || self.isStopping else { return }
+
                     let transcription = result.bestTranscription.formattedString
-                    self.transcribedText = transcription
 
-                    #if DEBUG
-                    if VoiceInputConstants.enableParsingDebugLogs {
+                    // Never overwrite with empty — preserve last recognized text
+                    if !transcription.isEmpty {
+                        self.transcribedText = transcription
+                        self.hasRecognizedText = true
                     }
-                    #endif
 
-                    // Сохраняем финальную транскрипцию
                     if result.isFinal {
-                        self.finalTranscription = transcription
+                        self.finalTranscription = transcription.isEmpty ? self.transcribedText : transcription
                     }
                 }
             }

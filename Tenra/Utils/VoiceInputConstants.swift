@@ -81,7 +81,7 @@ enum VoiceInputConstants {
 
     /// Продолжительность тишины для автоматической остановки (секунды)
     /// Запись остановится после этой продолжительности непрерывной тишины
-    nonisolated static let vadSilenceDuration: TimeInterval = 2.5
+    nonisolated static let vadSilenceDuration: TimeInterval = 2.0
 
     /// Минимальная продолжительность речи перед включением VAD (секунды)
     /// Предотвращает ложные срабатывания в начале записи
@@ -95,7 +95,7 @@ enum VoiceInputConstants {
     // MARK: - Debug
 
     /// Флаг для включения детального логирования парсинга
-    nonisolated static let enableParsingDebugLogs = true
+    nonisolated static let enableParsingDebugLogs = false
 
     /// Префикс для debug-логов
     static let debugLogPrefix = "🔍 [VoiceInput]"

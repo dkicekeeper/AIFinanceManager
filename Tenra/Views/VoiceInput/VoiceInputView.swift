@@ -2,7 +2,8 @@
 //  VoiceInputView.swift
 //  Tenra
 //
-//  Created on 2024
+//  Voice input with live transcription, animated text, and transaction preview.
+//  Manages its own confirmation sheet — no callback chain to parent.
 //
 
 import SwiftUI
@@ -11,10 +12,11 @@ import UIKit
 struct VoiceInputView: View {
     @Bindable var voiceService: VoiceInputService
     @Environment(\.dismiss) var dismiss
-    let onComplete: (String) -> Void
+    @Environment(TransactionStore.self) private var transactionStore
     let parser: VoiceInputParser
-    /// When true the view is hosted inside a tab — skips its own NavigationStack
-    /// and close button so the parent NavigationStack handles navigation.
+    let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
+    let accountsViewModel: AccountsViewModel
     var embeddedInTab: Bool = false
 
     @State private var showingPermissionAlert = false
@@ -24,7 +26,19 @@ struct VoiceInputView: View {
     @State private var showingErrorAlert = false
     @State private var errorAlertMessage = ""
     @State private var parseDebounceTask: Task<Void, Never>?
-    @State private var stopTask: Task<Void, Never>?
+    @State private var livePreview: ParsedOperation?
+    @State private var silenceTimer: Task<Void, Never>?
+    /// Set when user taps preview card → opens confirmation sheet directly
+    @State private var editingOperation: ParsedOperation?
+    /// Captured text at the moment of action
+    @State private var capturedText: String = ""
+    /// Saved successfully flag
+    @State private var savedSuccessfully = false
+
+    private var currentText: String {
+        let final = voiceService.getFinalText()
+        return final.isEmpty ? voiceService.transcribedText : final
+    }
 
     var body: some View {
         if embeddedInTab {
@@ -52,9 +66,10 @@ struct VoiceInputView: View {
     private var coreContent: some View {
         VStack(spacing: 0) {
             Spacer()
+            previewSection
             transcriptionSection
-            vadToggleSection
-            stopButtonSection
+                .padding(.bottom, 24)
+            buttonSection
         }
         .overlay {
             if voiceService.isRecording {
@@ -63,8 +78,25 @@ struct VoiceInputView: View {
                     .transition(.opacity.animation(AppAnimation.gentleSpring))
             }
         }
+        .animation(AppAnimation.gentleSpring, value: voiceService.isRecording)
         .navigationTitle(String(localized: "voice.title"))
         .navigationBarTitleDisplayMode(.inline)
+        // ── Confirmation sheet (edit-only mode: returns updated ParsedOperation) ──
+        .sheet(item: $editingOperation) { parsed in
+            VoiceInputConfirmationView(
+                transactionsViewModel: transactionsViewModel,
+                accountsViewModel: accountsViewModel,
+                categoriesViewModel: categoriesViewModel,
+                parsedOperation: parsed,
+                originalText: capturedText,
+                onUpdate: { updated in
+                    withAnimation(AppAnimation.gentleSpring) {
+                        livePreview = updated
+                    }
+                }
+            )
+            .environment(transactionStore)
+        }
         .alert(String(localized: "voice.error"), isPresented: $showingPermissionAlert) {
             permissionAlertButtons
         } message: {
@@ -83,22 +115,48 @@ struct VoiceInputView: View {
                 showingErrorAlert = true
             }
         }
-        .onChange(of: voiceService.isRecording) { oldValue, newValue in
-            if oldValue && !newValue {
-                if let error = voiceService.errorMessage, !error.isEmpty {
-                    errorAlertMessage = error
-                    showingErrorAlert = true
+        .onChange(of: voiceService.transcribedText) { oldText, newText in
+            // Text-driven amplitude boost
+            let lengthDelta = newText.count - oldText.count
+            if lengthDelta > 0 {
+                let target = min(Float(lengthDelta) * 0.12, 1.0)
+                let current = voiceService.amplitudeRef.value
+                let blended = current * 0.4 + max(current, target) * 0.6
+                voiceService.amplitudeRef.value = min(blended, 1.0)
+            }
+
+            // Text-based auto-stop: 5s after last recognized text
+            if !newText.isEmpty && voiceService.isRecording {
+                silenceTimer?.cancel()
+                silenceTimer = Task {
+                    try? await Task.sleep(for: .seconds(5))
+                    guard !Task.isCancelled else { return }
+                    if voiceService.isRecording {
+                        voiceService.stopRecording()
+                    }
                 }
             }
-        }
-        .onChange(of: voiceService.transcribedText) { _, newText in
-            // Debounce parsing to avoid heavy regex work on every partial result
+
+            // Debounced parse
             parseDebounceTask?.cancel()
             parseDebounceTask = Task {
                 try? await Task.sleep(for: .milliseconds(300))
                 guard !Task.isCancelled else { return }
                 recognizedEntities = parser.parseEntitiesLive(from: newText)
-                // Announce only debounced final text to avoid flooding VoiceOver
+
+                if !newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let parsed = parser.parse(newText)
+                    if parsed.amount != nil {
+                        withAnimation(AppAnimation.gentleSpring) {
+                            livePreview = parsed
+                        }
+                    } else if livePreview != nil {
+                        withAnimation(AppAnimation.gentleSpring) {
+                            livePreview = nil
+                        }
+                    }
+                }
+
                 if !newText.isEmpty {
                     UIAccessibility.post(notification: .announcement, argument: newText)
                 }
@@ -107,59 +165,117 @@ struct VoiceInputView: View {
         .onAppear { startRecordingOnAppear() }
         .onDisappear {
             parseDebounceTask?.cancel()
-            stopTask?.cancel()
+            silenceTimer?.cancel()
             if voiceService.isRecording { voiceService.stopRecording() }
         }
     }
 
     // MARK: - Subviews
 
-    private var transcriptionSection: some View {
-        ScrollView {
-            VStack {
-                Spacer()
-                if voiceService.transcribedText.isEmpty {
-                    Text(String(localized: "voice.speak"))
-                        .font(AppTypography.h4)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, AppSpacing.lg)
-                } else {
-                    HighlightedText(
-                        text: voiceService.transcribedText,
-                        entities: recognizedEntities,
-                        font: AppTypography.h4
-                    )
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, AppSpacing.lg)
-                }
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
+    @ViewBuilder
+    private var previewSection: some View {
+        if let preview = livePreview {
+            previewCard(for: preview)
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.bottom, AppSpacing.lg)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
         }
+    }
+
+    /// Preview card matching TransactionCard's visual layout but without
+    /// its built-in tap/sheet/swipe gestures. Wrapped in a Button for our own action.
+    private func previewCard(for parsed: ParsedOperation) -> some View {
+        let amount = (parsed.amount as? NSDecimalNumber)?.doubleValue ?? 0
+        let category = parsed.categoryName ?? String(localized: "category.other")
+        let currency = parsed.currencyCode ?? accountsViewModel.accounts.first(where: { $0.id == parsed.accountId })?.currency ?? "KZT"
+        let description = parsed.note.isEmpty ? voiceService.transcribedText : parsed.note
+        let sourceAccount = accountsViewModel.accounts.first(where: { $0.id == parsed.accountId })
+
+        let styleData = CategoryStyleHelper.cached(
+            category: category,
+            type: parsed.type,
+            customCategories: categoriesViewModel.customCategories
+        )
+
+        return Button {
+            capturedText = currentText
+            voiceService.stopRecording()
+            silenceTimer?.cancel()
+            editingOperation = parsed
+        } label: {
+            HStack(spacing: AppSpacing.md) {
+                // Icon — same as TransactionIconView
+                IconView(
+                    source: .sfSymbol(styleData.iconName),
+                    style: .circle(
+                        size: AppIconSize.xxl,
+                        tint: .monochrome(styleData.primaryColor),
+                        backgroundColor: styleData.lightBackgroundColor
+                    )
+                )
+
+                // Info — same structure as TransactionInfoView
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                    Text(category)
+                        .font(AppTypography.h4)
+                        .foregroundStyle(AppColors.textPrimary)
+
+                    if let accountName = sourceAccount?.name {
+                        Text(accountName)
+                            .font(AppTypography.bodySmall)
+                            .foregroundStyle(AppColors.textSecondary)
+                    }
+
+                    if !description.isEmpty {
+                        Text(description)
+                            .font(AppTypography.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                // Amount — same as FormattedAmountView
+                FormattedAmountView(
+                    amount: amount,
+                    currency: currency,
+                    prefix: TransactionDisplayHelper.amountPrefix(for: parsed.type),
+                    color: TransactionDisplayHelper.amountColor(for: parsed.type)
+                )
+            }
+            .padding(AppSpacing.lg)
+            .cardStyle()
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var transcriptionSection: some View {
+        VStack {
+            if voiceService.transcribedText.isEmpty {
+                if voiceService.isRecording {
+                    PulsingText(text: String(localized: "voice.speak"))
+                }
+            } else {
+                HighlightedText(
+                    text: voiceService.transcribedText,
+                    entities: recognizedEntities,
+                    font: AppTypography.h4
+                )
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, AppSpacing.lg)
+                .contentTransition(.interpolate)
+                .animation(AppAnimation.gentleSpring, value: voiceService.transcribedText)
+            }
+        }
+        .frame(maxWidth: .infinity)
         .frame(maxHeight: VoiceInputConstants.transcriptionMaxHeight)
     }
 
     @ViewBuilder
-    private var vadToggleSection: some View {
-        if !voiceService.isRecording {
-            VStack(spacing: AppSpacing.sm) {
-                Toggle(String(localized: "voice.vadToggle"), isOn: $voiceService.isVADEnabled)
-                    .font(AppTypography.caption)
-                    .padding(.horizontal, AppSpacing.lg)
-                Text(String(localized: "voice.vadDescription"))
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, AppSpacing.lg)
-            }
-            .padding(.vertical, AppSpacing.md)
-        }
-    }
-
-    @ViewBuilder
-    private var stopButtonSection: some View {
+    private var buttonSection: some View {
         if voiceService.isRecording {
+            // Recording: stop button
             HStack {
                 Spacer()
                 Button(action: handleStopTap) {
@@ -174,15 +290,26 @@ struct VoiceInputView: View {
                     }
                 }
                 .accessibilityLabel(String(localized: "voice.stopRecording"))
-                .accessibilityHint(
-                    voiceService.transcribedText.isEmpty
-                        ? String(localized: "voice.noTextRecognizedYet")
-                        : String(localized: "voice.tapToFinish")
-                )
                 Spacer()
             }
             .padding(.bottom, AppSpacing.xl)
-            .background(AppColors.backgroundPrimary)
+        } else if !voiceService.transcribedText.isEmpty, let preview = livePreview {
+            // Stopped with parsed preview: confirm saves directly
+            Button {
+                quickSave(preview)
+            } label: {
+                HStack(spacing: AppSpacing.sm) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text(String(localized: "voiceConfirmation.confirm"))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, AppSpacing.md)
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.bottom, AppSpacing.xl)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 
@@ -206,21 +333,37 @@ struct VoiceInputView: View {
 
     private func handleStopTap() {
         voiceService.stopRecording()
-        stopTask?.cancel()
-        stopTask = Task {
-            try? await Task.sleep(for: .milliseconds(VoiceInputConstants.finalizationDelayMs))
-            guard !Task.isCancelled else { return }
-            if let errorMsg = voiceService.errorMessage, !errorMsg.isEmpty {
-                errorAlertMessage = errorMsg
-                showingErrorAlert = true
-                return
-            }
-            let finalText = voiceService.getFinalText()
-            if !finalText.isEmpty {
-                onComplete(finalText)
-            } else {
-                errorAlertMessage = String(localized: "voice.emptyText")
-                showingErrorAlert = true
+        silenceTimer?.cancel()
+    }
+
+    private func quickSave(_ parsed: ParsedOperation) {
+        let accountId = parsed.accountId ?? accountsViewModel.accounts.first?.id
+        guard let accountId else { return }
+        let account = accountsViewModel.accounts.first { $0.id == accountId }
+        let currency = parsed.currencyCode ?? account?.currency ?? "KZT"
+
+        let transaction = Transaction(
+            id: "",
+            date: DateFormatters.dateFormatter.string(from: parsed.date),
+            description: parsed.note.isEmpty ? currentText : parsed.note,
+            amount: (parsed.amount as? NSDecimalNumber)?.doubleValue ?? 0,
+            currency: currency,
+            type: parsed.type,
+            category: parsed.categoryName ?? String(localized: "category.other"),
+            accountId: accountId
+        )
+
+        Task {
+            do {
+                _ = try await transactionStore.add(transaction)
+                HapticManager.success()
+                // Reset and restart recording for next transaction
+                withAnimation(AppAnimation.gentleSpring) {
+                    livePreview = nil
+                }
+                try? await voiceService.startRecording()
+            } catch {
+                HapticManager.error()
             }
         }
     }
@@ -244,6 +387,31 @@ struct VoiceInputView: View {
     }
 }
 
+// MARK: - Pulsating Placeholder
+
+private struct PulsingText: View {
+    let text: String
+    @State private var isPulsing = false
+
+    var body: some View {
+        Text(text)
+            .font(AppTypography.h4)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, AppSpacing.lg)
+            .opacity(isPulsing ? 0.3 : 0.8)
+            .animation(
+                AppAnimation.isReduceMotionEnabled
+                    ? nil
+                    : .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                value: isPulsing
+            )
+            .onAppear { isPulsing = true }
+    }
+}
+
+// MARK: - Recording Indicator
+
 struct RecordingIndicatorView: View {
     @State private var isAnimating = false
 
@@ -259,14 +427,11 @@ struct RecordingIndicatorView: View {
                         : AppAnimation.gentleSpring.repeatForever(autoreverses: true),
                     value: isAnimating
                 )
-
             Text(String(localized: "voice.recording"))
                 .font(AppTypography.bodyEmphasis)
                 .foregroundStyle(AppColors.destructive)
         }
-        .onAppear {
-            isAnimating = true
-        }
+        .onAppear { isAnimating = true }
     }
 }
 
@@ -274,11 +439,14 @@ struct RecordingIndicatorView: View {
     let coordinator = AppCoordinator()
     VoiceInputView(
         voiceService: VoiceInputService(),
-        onComplete: { _ in },
         parser: VoiceInputParser(
             categoriesViewModel: coordinator.categoriesViewModel,
             accountsViewModel: coordinator.accountsViewModel,
             transactionsViewModel: coordinator.transactionsViewModel
-        )
+        ),
+        transactionsViewModel: coordinator.transactionsViewModel,
+        categoriesViewModel: coordinator.categoriesViewModel,
+        accountsViewModel: coordinator.accountsViewModel
     )
+    .environment(coordinator.transactionStore)
 }

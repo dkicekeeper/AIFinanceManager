@@ -403,6 +403,7 @@
 
 // MARK: - Voice Input Confirmation
 "voiceConfirmation.title" = "Review Operation";
+"voiceConfirmation.confirm" = "Confirm";
 "voiceConfirmation.type" = "Operation Type";
 "voiceConfirmation.noAccounts" = "No available accounts";
 "voiceConfirmation.selectCategory" = "Select category";

@@ -63,42 +63,22 @@ struct VoiceTab: View {
     @Environment(AppCoordinator.self) private var coordinator
 
     @State private var voiceService = VoiceInputService()
-    @State private var parsedOperation: ParsedOperation? = nil
-
-    // Fix #5: stored as @State so a single VoiceInputParser instance is created for the
-    // VoiceTab lifetime and reused across body re-evaluations. The previous computed var
-    // created a new parser on every body call (potentially 60×/s during animations).
-    // Optional because @Environment is unavailable at @State init time; set once in .task.
     @State private var parser: VoiceInputParser? = nil
 
     var body: some View {
         NavigationStack {
             VoiceInputView(
                 voiceService: voiceService,
-                onComplete: { transcribedText in
-                    guard let p = parser else { return }
-                    let trimmed = transcribedText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    parsedOperation = p.parse(trimmed)
-                },
-                // Fallback creates a parser only on the first frame (before .task fires).
-                // From the second frame onward the stored @State parser is used instead.
                 parser: parser ?? VoiceInputParser(
                     categoriesViewModel: coordinator.categoriesViewModel,
                     accountsViewModel: coordinator.accountsViewModel,
                     transactionsViewModel: coordinator.transactionsViewModel
                 ),
+                transactionsViewModel: coordinator.transactionsViewModel,
+                categoriesViewModel: coordinator.categoriesViewModel,
+                accountsViewModel: coordinator.accountsViewModel,
                 embeddedInTab: true
             )
-            .navigationDestination(item: $parsedOperation) { parsed in
-                VoiceInputConfirmationView(
-                    transactionsViewModel: coordinator.transactionsViewModel,
-                    accountsViewModel: coordinator.accountsViewModel,
-                    categoriesViewModel: coordinator.categoriesViewModel,
-                    parsedOperation: parsed,
-                    originalText: voiceService.getFinalText()
-                )
-            }
             .task {
                 if parser == nil {
                     parser = VoiceInputParser(

@@ -13,9 +13,13 @@ struct VoiceInputConfirmationView: View {
     let categoriesViewModel: CategoriesViewModel
     @Environment(TransactionStore.self) private var transactionStore
     @Environment(\.dismiss) var dismiss
-    
+
     let parsedOperation: ParsedOperation
     let originalText: String
+
+    /// When set, checkmark returns updated ParsedOperation instead of saving.
+    /// nil = save mode (legacy), non-nil = edit-only mode (voice preview).
+    var onUpdate: ((ParsedOperation) -> Void)?
     
     @State private var selectedType: TransactionType
     @State private var selectedDate: Date
@@ -44,13 +48,15 @@ struct VoiceInputConfirmationView: View {
         accountsViewModel: AccountsViewModel,
         categoriesViewModel: CategoriesViewModel,
         parsedOperation: ParsedOperation,
-        originalText: String
+        originalText: String,
+        onUpdate: ((ParsedOperation) -> Void)? = nil
     ) {
         self.transactionsViewModel = transactionsViewModel
         self.accountsViewModel = accountsViewModel
         self.categoriesViewModel = categoriesViewModel
         self.parsedOperation = parsedOperation
         self.originalText = originalText
+        self.onUpdate = onUpdate
         
         _selectedType = State(initialValue: parsedOperation.type)
         _selectedDate = State(initialValue: parsedOperation.date)
@@ -189,7 +195,11 @@ struct VoiceInputConfirmationView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        saveTransaction()
+                        if onUpdate != nil {
+                            returnUpdatedOperation()
+                        } else {
+                            saveTransaction()
+                        }
                     } label: {
                         Image(systemName: "checkmark")
                     }
@@ -354,6 +364,32 @@ struct VoiceInputConfirmationView: View {
         }
     }
     
+    /// Edit-only mode: build updated ParsedOperation from current fields and return it.
+    private func returnUpdatedOperation() {
+        let cleanedAmount = amountText
+            .replacingOccurrences(of: ",", with: ".")
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "₸", with: "")
+            .replacingOccurrences(of: "$", with: "")
+            .replacingOccurrences(of: "€", with: "")
+            .replacingOccurrences(of: "₽", with: "")
+            .trimmingCharacters(in: .whitespaces)
+
+        var updated = ParsedOperation(
+            type: selectedType,
+            amount: Decimal(string: cleanedAmount),
+            currencyCode: selectedCurrency,
+            date: selectedDate,
+            accountId: selectedAccountId,
+            categoryName: selectedCategoryName,
+            subcategoryNames: Array(selectedSubcategoryNames),
+            note: noteText
+        )
+        // Preserve subcategory IDs for linking later
+        onUpdate?(updated)
+        dismiss()
+    }
+
     private func saveTransaction() {
         // Валидируем перед сохранением
         validateAmount()
