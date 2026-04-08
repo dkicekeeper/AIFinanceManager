@@ -3,7 +3,7 @@
 //  Tenra
 //
 //  Apple Intelligence–style edge glow using MeshGradient.
-//  Blobs orbit the full perimeter; voice fills the entire screen.
+//  5×7 grid: more vertical rows for even side color density on tall screens.
 //
 
 import SwiftUI
@@ -13,151 +13,115 @@ struct SiriGlowView: View {
     var amplitudeRef: AudioLevelRef
 
     var body: some View {
-        TimelineView(.animation) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            let a = Double(amplitudeRef.value)
-            meshGlow(t: t, amp: a)
+        GeometryReader { geo in
+            TimelineView(.animation) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                let a = Double(amplitudeRef.value)
+                let aspect = geo.size.width / max(geo.size.height, 1)
+                meshGlow(t: t, amp: a, aspect: aspect)
+            }
         }
     }
 
     @ViewBuilder
-    private func meshGlow(t: Double, amp: Double) -> some View {
-        let points = buildPoints(t: t, amp: amp)
+    private func meshGlow(t: Double, amp: Double, aspect: Double) -> some View {
+        let points = buildPoints(t: t, amp: amp, aspect: aspect)
         let colors = buildColors(t: t, amp: amp)
 
-        MeshGradient(width: 5, height: 5, points: points, colors: colors)
+        // width=5 cols, height=7 rows → 35 points
+        MeshGradient(width: 5, height: 7, points: points, colors: colors)
             .blur(radius: 30 + CGFloat(amp) * 20)
             .opacity(0.75 + amp * 0.25)
             .allowsHitTesting(false)
     }
 
-    // MARK: - Colors: rotate hues around the perimeter
+    // MARK: - Colors: 5×7 = 35 colors
 
     private func buildColors(t: Double, amp: Double) -> [Color] {
-        // 12 vivid hues cycling. Edge points sample from this rotating palette.
-        let hues: [Color] = [
-            .init(red: 0.55, green: 0.10, blue: 1.00),  // purple
-            .init(red: 0.00, green: 0.75, blue: 1.00),  // cyan
-            .init(red: 0.10, green: 0.85, blue: 0.65),  // emerald
-            .init(red: 1.00, green: 0.60, blue: 0.10),  // amber
-            .init(red: 1.00, green: 0.30, blue: 0.55),  // hot pink
-            .init(red: 0.90, green: 0.20, blue: 0.80),  // magenta
-            .init(red: 0.25, green: 0.45, blue: 1.00),  // cobalt
-            .init(red: 1.00, green: 0.45, blue: 0.70),  // coral
-            .init(red: 0.65, green: 0.25, blue: 1.00),  // violet
-            .init(red: 0.15, green: 0.60, blue: 1.00),  // azure
-            .init(red: 0.55, green: 0.10, blue: 1.00),  // purple (wrap)
-            .init(red: 0.00, green: 0.75, blue: 1.00),  // cyan (wrap)
-        ]
-
-        // Slow rotation through palette
-        let shift = t * 0.06
-        func hue(_ i: Double) -> Color {
-            let idx = (i + shift).truncatingRemainder(dividingBy: Double(hues.count - 1))
-            let i0 = Int(idx) % (hues.count - 1)
-            return hues[i0]
+        func hue(phase: Double) -> Color {
+            let slow = t * 0.18 + phase
+            let r = 0.55 + 0.45 * sin(slow)
+            let g = 0.35 + 0.35 * sin(slow * 1.3 + 2.1)
+            let b = 0.55 + 0.45 * sin(slow * 0.7 + 4.2)
+            return Color(red: r, green: g, blue: b)
         }
 
-        // Side color opacity: driven by amplitude
-        let sideAlpha = 0.3 + amp * 0.5
+        let sa = 0.4 + amp * 0.5 // side alpha
 
-        // 5×5 grid color layout:
-        // Row 0: top edge (5 colors)
-        // Row 1: near-top (side colors + transparent center)
-        // Row 2: middle (side colors + transparent center)
-        // Row 3: near-bottom (side colors + transparent center)
-        // Row 4: bottom edge (5 colors)
+        // 7 rows × 5 cols. Left/right cols vivid, center 3 cols transparent.
         return [
-            // Row 0 — top edge: all vivid
-            hue(0), hue(1), hue(2), hue(3), hue(4),
-            // Row 1 — left vivid, center clear, right vivid
-            hue(9).opacity(sideAlpha), .white.opacity(0), .white.opacity(0), .white.opacity(0), hue(5).opacity(sideAlpha),
-            // Row 2 — middle: sides only
-            hue(8).opacity(sideAlpha), .white.opacity(0), .white.opacity(0), .white.opacity(0), hue(6).opacity(sideAlpha),
-            // Row 3 — left vivid, center clear, right vivid
-            hue(7).opacity(sideAlpha), .white.opacity(0), .white.opacity(0), .white.opacity(0), hue(7).opacity(sideAlpha),
-            // Row 4 — bottom edge: all vivid
-            hue(5), hue(6), hue(7), hue(8), hue(9),
+            // Row 0 — top edge
+            hue(phase: 0.0), hue(phase: 1.5), hue(phase: 3.0), hue(phase: 4.5), hue(phase: 6.0),
+            // Row 1 — near-top
+            hue(phase: 13.0).opacity(sa), .white.opacity(0), .white.opacity(0), .white.opacity(0), hue(phase: 7.0).opacity(sa),
+            // Row 2 — upper-mid
+            hue(phase: 12.0).opacity(sa), .white.opacity(0), .white.opacity(0), .white.opacity(0), hue(phase: 8.0).opacity(sa),
+            // Row 3 — center
+            hue(phase: 11.0).opacity(sa), .white.opacity(0), .white.opacity(0), .white.opacity(0), hue(phase: 9.0).opacity(sa),
+            // Row 4 — lower-mid
+            hue(phase: 10.0).opacity(sa), .white.opacity(0), .white.opacity(0), .white.opacity(0), hue(phase: 10.0).opacity(sa),
+            // Row 5 — near-bottom
+            hue(phase: 9.0).opacity(sa), .white.opacity(0), .white.opacity(0), .white.opacity(0), hue(phase: 11.0).opacity(sa),
+            // Row 6 — bottom edge
+            hue(phase: 6.5), hue(phase: 8.0), hue(phase: 9.5), hue(phase: 11.0), hue(phase: 12.5),
         ]
     }
 
-    // MARK: - Points: orbit + voice distortion
+    // MARK: - Points: 5×7 grid, aspect-corrected
 
-    private func buildPoints(t: Double, amp: Double) -> [SIMD2<Float>] {
-        // Amplitude: quadratic for explosive feel
+    private func buildPoints(t: Double, amp: Double, aspect: Double) -> [SIMD2<Float>] {
         let a2 = amp * amp
-        let a3 = a2 * amp
+        let glowFraction = 0.15 + a2 * 0.30
 
-        // Interior rows/cols: hug edges in silence, push to center with voice
-        // silence: 0.06 from edge. max voice: up to 0.50 (fills entire screen)
-        let push = Float(a2 * 0.30)
-        // Rounder blobs: more evenly spaced grid, not squeezed to edges
-        let inner1 = 0.15 + push      // silence: 0.15, loud: 0.45
-        let inner2 = 0.85 - push      // silence: 0.85, loud: 0.55
+        let insetX = Float(glowFraction)
+        let insetY = Float(glowFraction * min(aspect, 1.0))
 
-        let rowY: [Float] = [0.0, inner1, 0.5, inner2, 1.0]
-        let colX: [Float] = [0.0, inner1, 0.5, inner2, 1.0]
+        // 5 columns
+        let colX: [Float] = [0.0, insetX, 0.5, 1.0 - insetX, 1.0]
 
-        var pts = [SIMD2<Float>](repeating: .zero, count: 25)
+        // 7 rows: evenly distributed for uniform side color density
+        // Rows 0,6 = outer edges. Rows 1-5 = inner, evenly spaced between insetY and 1-insetY.
+        let innerSpan = 1.0 - 2.0 * Double(insetY)
+        var rowY: [Float] = [0.0]
+        rowY.append(insetY)
+        for i in 1...3 {
+            rowY.append(Float(Double(insetY) + innerSpan * Double(i) / 4.0))
+        }
+        rowY.append(1.0 - insetY)
+        rowY.append(1.0)
+        // rowY now has 7 entries: [0, insetY, 25%, 50%, 75%, 1-insetY, 1]
 
-        for row in 0..<5 {
-            for col in 0..<5 {
-                let idx = row * 5 + col
-                let isCorner = (row == 0 || row == 4) && (col == 0 || col == 4)
-                let isEdge = row == 0 || row == 4 || col == 0 || col == 4
-                let isInner = !isEdge
+        let rows = 7
+        let cols = 5
+        var pts = [SIMD2<Float>](repeating: .zero, count: rows * cols)
 
-                var x = Double(colX[col])
-                var y = Double(rowY[row])
+        for row in 0..<rows {
+            for col in 0..<cols {
+                let idx = row * cols + col
+                let isOuterRow = (row == 0 || row == rows - 1)
+                let isOuterCol = (col == 0 || col == cols - 1)
 
-                if isCorner {
-                    // Corners pinned
+                let x = Double(colX[col])
+                let y = Double(rowY[row])
+
+                if isOuterRow || isOuterCol {
                     pts[idx] = SIMD2<Float>(Float(x), Float(y))
-                    continue
-                }
-
-                let seed = Double(idx) * 1.7
-
-                if isEdge {
-                    // Edge points: slow orbit in silence, dramatic with voice
-                    let s1 = 0.4 + seed.truncatingRemainder(dividingBy: 0.5)
-                    let s2 = 0.35 + (seed * 1.3).truncatingRemainder(dividingBy: 0.45)
-
-                    let silenceWobble = 0.03
-                    let voiceWobble = a2 * 0.25
-                    let range = silenceWobble + voiceWobble
-
-                    x += sin(t * s1 + seed) * range
-                    y += cos(t * s2 + seed * 1.4) * range
-
-                    // High-freq shake on loud sounds
-                    let shake = a3 * 0.05
-                    x += sin(t * 9.0 + seed * 2.1) * shake
-                    y += cos(t * 8.0 + seed * 3.3) * shake
-
-                    // Clamp: near own edge, allowed to push further with voice
-                    let edgeRange = 0.10 + amp * 0.20
-                    if col == 0 { x = max(-0.03, min(x, Double(inner1) + 0.02)) }
-                    if col == 4 { x = min(1.03, max(x, Double(inner2) - 0.02)) }
-                    if row == 0 { y = max(-0.03, min(y, Double(inner1) + 0.02)) }
-                    if row == 4 { y = min(1.03, max(y, Double(inner2) - 0.02)) }
-                    // Middle edge points can move along their edge freely
-                    if col > 0 && col < 4 && (row == 0 || row == 4) {
-                        x = max(0.0, min(1.0, x))
-                    }
-                    if row > 0 && row < 4 && (col == 0 || col == 4) {
-                        y = max(0.0, min(1.0, y))
-                    }
-                    _ = edgeRange // suppress warning
-
                 } else {
-                    // Interior: voice pushes them around creating distortion
-                    let drift = 0.01 + a2 * 0.12
-                    x += sin(t * 0.4 + seed) * drift
-                    y += cos(t * 0.35 + seed * 1.5) * drift
-                }
+                    // Inner points: wobble + voice
+                    let seed = Double(idx) * 1.7
+                    let s1 = 0.3 + seed.truncatingRemainder(dividingBy: 0.4)
+                    let s2 = 0.25 + (seed * 1.3).truncatingRemainder(dividingBy: 0.35)
 
-                pts[idx] = SIMD2<Float>(Float(x), Float(y))
+                    let range = 0.02 + a2 * 0.15
+                    var px = x + sin(t * s1 + seed) * range
+                    var py = y + cos(t * s2 + seed * 1.4) * range
+
+                    let shake = a2 * amp * 0.04
+                    px += sin(t * 7.0 + seed * 2.1) * shake
+                    py += cos(t * 6.0 + seed * 3.3) * shake
+
+                    pts[idx] = SIMD2<Float>(Float(px), Float(py))
+                }
             }
         }
 

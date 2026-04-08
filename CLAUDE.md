@@ -578,6 +578,18 @@ Current branch: `main`
 - **Services/Categories/**: Category budgets, CRUD operations
 - **Services/CSV/**: CSV import/export coordination (see CSV Export/Import Round-Trip Rules above)
 - **Services/Voice/**: Voice input parsing and services
+
+### Voice Input Architecture
+- **VoiceInputView is self-contained**: manages its own `.sheet(item:)` for confirmation. No callback chains to parent — data flows directly within the view.
+- **VoiceInputConfirmationView has its own `NavigationStack`**: present via `.sheet()`, NEVER via `.navigationDestination()` (nested NavigationStack = empty/broken view).
+- **VoiceInputConfirmationView `onUpdate` mode**: pass `onUpdate: ((ParsedOperation) -> Void)?` to get edit-only behavior (returns updated ParsedOperation without saving). `nil` = save mode (legacy).
+- **TransactionCard has built-in `.onTapGesture` + `.sheet`**: cannot be used as read-only preview — inner gesture intercepts outer. Build a custom preview card with `Button` + same subcomponents (`IconView`, `FormattedAmountView`).
+- **Speech recognition `cancel()` fires callback** with empty/truncated text — guard with `guard self.isRecording || self.isStopping else { return }` and never overwrite `transcribedText` with empty string.
+- **Silence detection**: audio-based VAD unreliable with background noise. Use text-based timeout: reset timer on every `transcribedText` change, auto-stop after N seconds of no new text.
+- **Amplitude smoothing**: asymmetric — fast attack (`0.6` weight), slow decay (`0.08`). Text-driven spikes via `onChange(of: transcribedText)` blended with `0.4/0.6`.
+- **SiriGlowView**: `MeshGradient` (iOS 18+) with `TimelineView(.animation)`. Read `amplitudeRef.value` directly each frame — no `@State` intermediary (causes stale values).
+- **⚠️ MTKView clearColor**: set on `view.clearColor`, NOT on descriptor after `makeRenderCommandEncoder()` — encoder copies descriptor at creation time.
+
 - **Services/Import/**: PDF and statement text parsing
 - **Services/Cache/**: Caching coordinators and managers
 
