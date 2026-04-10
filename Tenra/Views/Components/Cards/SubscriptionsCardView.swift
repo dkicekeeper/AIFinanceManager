@@ -13,6 +13,8 @@ struct SubscriptionsCardView: View {
     // Fix #7: Double instead of Decimal — avoids NSDecimalNumber round-trip at the use site.
     @State private var totalAmount: Double = 0
     @State private var isLoadingTotal: Bool = false
+    /// Subscription amounts converted to base currency for PackedCircleIconsView sizing.
+    @State private var convertedAmounts: [String: Double] = [:]
 
     private var subscriptions: [RecurringSeries] {
         transactionStore.activeSubscriptions
@@ -74,7 +76,7 @@ struct SubscriptionsCardView: View {
                         PackedCircleItem(
                             id: sub.id,
                             iconSource: sub.iconSource,
-                            amount: (sub.amount as NSDecimalNumber).doubleValue
+                            amount: convertedAmounts[sub.id] ?? (sub.amount as NSDecimalNumber).doubleValue
                         )
                     }
                 )
@@ -101,6 +103,20 @@ struct SubscriptionsCardView: View {
         let result = await transactionStore.calculateSubscriptionsTotalInCurrency(baseCurrency)
         // (result.total as NSDecimalNumber) is a free bridge cast — Decimal IS NSDecimalNumber.
         totalAmount = (result.total as NSDecimalNumber).doubleValue
+
+        // Convert each subscription amount to base currency for PackedCircle sizing
+        var amounts: [String: Double] = [:]
+        for sub in subscriptions {
+            let raw = (sub.amount as NSDecimalNumber).doubleValue
+            if sub.currency == baseCurrency {
+                amounts[sub.id] = raw
+            } else if let converted = await CurrencyConverter.convert(amount: raw, from: sub.currency, to: baseCurrency) {
+                amounts[sub.id] = converted
+            } else {
+                amounts[sub.id] = raw
+            }
+        }
+        convertedAmounts = amounts
         isLoadingTotal = false
     }
 }

@@ -158,4 +158,40 @@ struct SubscriptionTransactionMatcherTests {
         #expect(candidates.count == 1)
         #expect(candidates[0].amount == 9.99)
     }
+
+    @Test func findCandidates_matchesCrossCurrencyViaConvertedAmount() {
+        // Subscription is $100 USD, transaction is in KZT with convertedAmount = 100
+        let sub = makeSubscription(amount: 100, currency: "USD")
+        let kztTransaction = Transaction(
+            id: "cross-1",
+            date: "2024-02-01",
+            description: "Payment",
+            amount: 50_000,
+            currency: "KZT",
+            convertedAmount: 100,
+            type: .expense,
+            category: "Entertainment"
+        )
+        let usdTransaction = makeTransaction(date: "2024-03-01", amount: 100, currency: "USD")
+        let unrelatedKzt = Transaction(
+            id: "cross-2",
+            date: "2024-04-01",
+            description: "Other",
+            amount: 50_000,
+            currency: "KZT",
+            convertedAmount: 200, // doesn't match
+            type: .expense,
+            category: "Entertainment"
+        )
+
+        let candidates = SubscriptionTransactionMatcher.findCandidates(
+            for: sub,
+            in: [kztTransaction, usdTransaction, unrelatedKzt]
+        )
+
+        #expect(candidates.count == 2)
+        // USD direct match + KZT via convertedAmount
+        #expect(candidates.contains(where: { $0.id == "cross-1" }))
+        #expect(candidates.contains(where: { $0.currency == "USD" }))
+    }
 }
