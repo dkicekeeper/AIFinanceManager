@@ -1,0 +1,141 @@
+//
+//  SubscriptionTransactionMatcherTests.swift
+//  TenraTests
+//
+
+import Foundation
+import Testing
+@testable import Tenra
+
+@MainActor
+struct SubscriptionTransactionMatcherTests {
+
+    // MARK: - Helpers
+
+    private func makeSubscription(
+        amount: Decimal = 9.99,
+        startDate: String = "2024-01-01",
+        currency: String = "USD"
+    ) -> RecurringSeries {
+        RecurringSeries(
+            id: "sub-1",
+            amount: amount,
+            currency: currency,
+            category: "Entertainment",
+            description: "Netflix",
+            frequency: .monthly,
+            startDate: startDate,
+            kind: .subscription,
+            status: .active
+        )
+    }
+
+    private func makeTransaction(
+        id: String = UUID().uuidString,
+        date: String,
+        amount: Double,
+        type: TransactionType = .expense,
+        currency: String = "USD",
+        recurringSeriesId: String? = nil
+    ) -> Transaction {
+        Transaction(
+            id: id,
+            date: date,
+            description: "Payment",
+            amount: amount,
+            currency: currency,
+            type: type,
+            category: "Entertainment",
+            recurringSeriesId: recurringSeriesId
+        )
+    }
+
+    // MARK: - findCandidates
+
+    @Test func findCandidates_matchesExpensesWithinTolerance() {
+        let sub = makeSubscription(amount: 9.99, startDate: "2024-01-01")
+        let transactions = [
+            makeTransaction(date: "2024-02-01", amount: 9.99),
+            makeTransaction(date: "2024-03-01", amount: 9.50),  // within 10%
+            makeTransaction(date: "2024-04-01", amount: 5.00),  // outside 10%
+            makeTransaction(date: "2024-05-01", amount: 15.00), // outside 10%
+        ]
+
+        let candidates = SubscriptionTransactionMatcher.findCandidates(
+            for: sub,
+            in: transactions
+        )
+
+        #expect(candidates.count == 2)
+        #expect(candidates[0].amount == 9.99)
+        #expect(candidates[1].amount == 9.50)
+    }
+
+    @Test func findCandidates_excludesNonExpenses() {
+        let sub = makeSubscription()
+        let transactions = [
+            makeTransaction(date: "2024-02-01", amount: 9.99, type: .income),
+            makeTransaction(date: "2024-02-02", amount: 9.99, type: .internalTransfer),
+            makeTransaction(date: "2024-02-03", amount: 9.99, type: .expense),
+        ]
+
+        let candidates = SubscriptionTransactionMatcher.findCandidates(for: sub, in: transactions)
+
+        #expect(candidates.count == 1)
+        #expect(candidates[0].type == .expense)
+    }
+
+    @Test func findCandidates_excludesBeforeStartDate() {
+        let sub = makeSubscription(startDate: "2024-06-01")
+        let transactions = [
+            makeTransaction(date: "2024-05-01", amount: 9.99),
+            makeTransaction(date: "2024-07-01", amount: 9.99),
+        ]
+
+        let candidates = SubscriptionTransactionMatcher.findCandidates(for: sub, in: transactions)
+
+        #expect(candidates.count == 1)
+        #expect(candidates[0].date == "2024-07-01")
+    }
+
+    @Test func findCandidates_excludesDifferentCurrency() {
+        let sub = makeSubscription(currency: "USD")
+        let transactions = [
+            makeTransaction(date: "2024-02-01", amount: 9.99, currency: "USD"),
+            makeTransaction(date: "2024-02-02", amount: 9.99, currency: "KZT"),
+        ]
+
+        let candidates = SubscriptionTransactionMatcher.findCandidates(for: sub, in: transactions)
+
+        #expect(candidates.count == 1)
+        #expect(candidates[0].currency == "USD")
+    }
+
+    @Test func findCandidates_excludesAlreadyLinked() {
+        let sub = makeSubscription()
+        let transactions = [
+            makeTransaction(date: "2024-02-01", amount: 9.99, recurringSeriesId: nil),
+            makeTransaction(date: "2024-03-01", amount: 9.99, recurringSeriesId: "other-series"),
+        ]
+
+        let candidates = SubscriptionTransactionMatcher.findCandidates(for: sub, in: transactions)
+
+        #expect(candidates.count == 1)
+        #expect(candidates[0].recurringSeriesId == nil)
+    }
+
+    @Test func findCandidates_sortsByDate() {
+        let sub = makeSubscription()
+        let transactions = [
+            makeTransaction(date: "2024-04-01", amount: 9.99),
+            makeTransaction(date: "2024-02-01", amount: 9.99),
+            makeTransaction(date: "2024-03-01", amount: 9.99),
+        ]
+
+        let candidates = SubscriptionTransactionMatcher.findCandidates(for: sub, in: transactions)
+
+        #expect(candidates[0].date == "2024-02-01")
+        #expect(candidates[1].date == "2024-03-01")
+        #expect(candidates[2].date == "2024-04-01")
+    }
+}
