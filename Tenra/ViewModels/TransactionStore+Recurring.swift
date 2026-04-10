@@ -518,4 +518,43 @@ extension TransactionStore {
 
         return (total, conversions)
     }
+
+    // MARK: - Link Existing Transactions to Subscription
+
+    /// Link existing transactions to a subscription by setting their recurringSeriesId.
+    /// Unlike loan linking, this does NOT change the transaction type or accountId —
+    /// only the recurringSeriesId is set, making the transaction appear in the
+    /// subscription's transaction history.
+    func linkTransactionsToSubscription(
+        seriesId: String,
+        transactions: [Transaction]
+    ) async throws {
+        guard recurringSeries.contains(where: { $0.id == seriesId }) else {
+            throw TransactionStoreError.seriesNotFound
+        }
+
+        for tx in transactions.sorted(by: { $0.date < $1.date }) {
+            let updated = Transaction(
+                id: tx.id,
+                date: tx.date,
+                description: tx.description,
+                amount: tx.amount,
+                currency: tx.currency,
+                convertedAmount: tx.convertedAmount,
+                type: tx.type,
+                category: tx.category,
+                subcategory: tx.subcategory,
+                accountId: tx.accountId,
+                targetAccountId: tx.targetAccountId,
+                accountName: tx.accountName,
+                targetAccountName: tx.targetAccountName,
+                targetCurrency: tx.targetCurrency,
+                targetAmount: tx.targetAmount,
+                recurringSeriesId: seriesId,
+                recurringOccurrenceId: tx.recurringOccurrenceId,
+                createdAt: tx.createdAt
+            )
+            try await update(updated)
+        }
+    }
 }
