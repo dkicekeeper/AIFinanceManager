@@ -25,6 +25,12 @@ struct SubscriptionDetailView: View {
         transactionStore.recurringSeries.first(where: { $0.id == subscription.id }) ?? subscription
     }
 
+    /// Reactive trigger: changes when transactions for this subscription are added/removed/modified.
+    private var transactionStoreVersion: String {
+        let seriesTxs = transactionStore.transactions.filter { $0.recurringSeriesId == subscription.id }
+        return "\(subscription.id)-\(seriesTxs.count)-\(seriesTxs.map(\.id).hashValue)"
+    }
+
     private func refreshTransactions() async {
         cachedTransactions = transactionStore.transactions
             .filter { $0.recurringSeriesId == subscription.id }
@@ -164,15 +170,13 @@ struct SubscriptionDetailView: View {
         .navigationDestination(isPresented: $showingLinkPayments) {
             SubscriptionLinkPaymentsView(
                 subscription: liveSubscription,
+                transactionStore: transactionStore,
                 categoriesViewModel: categoriesViewModel,
                 accountsViewModel: accountsViewModel
             )
         }
-        .task(id: subscription.id) {
+        .task(id: transactionStoreVersion) {
             await refreshTransactions()
-        }
-        .onChange(of: transactionStore.transactions.count) { _, _ in
-            Task { await refreshTransactions() }
         }
     }
     

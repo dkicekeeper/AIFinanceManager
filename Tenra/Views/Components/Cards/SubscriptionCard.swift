@@ -55,6 +55,7 @@ struct SubscriptionCard: View {
         }
         .padding(AppSpacing.lg)
         .cardStyle()
+        .accessibilityElement(children: .combine)
     }
     
     @ViewBuilder

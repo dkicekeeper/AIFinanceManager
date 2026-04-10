@@ -28,7 +28,7 @@ enum ReminderOption: Hashable, Codable {
             case 30:
                 return String(localized: "reminder.daysBefore.30")
             default:
-                return "За \(offset) дней"
+                return String(localized: "reminder.daysBefore.custom \(offset)")
             }
         }
     }

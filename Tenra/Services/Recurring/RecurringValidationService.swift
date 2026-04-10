@@ -37,12 +37,12 @@ nonisolated class RecurringValidationService {
 
         // Validate description is not empty
         guard !series.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw RecurringTransactionError.invalidAmount // Using generic error for now
+            throw RecurringTransactionError.emptyDescription
         }
 
         // Validate currency
         guard !series.currency.isEmpty else {
-            throw RecurringTransactionError.invalidAmount
+            throw RecurringTransactionError.emptyCurrency
         }
 
         // For subscription-specific validation
@@ -57,13 +57,13 @@ nonisolated class RecurringValidationService {
     private func validateSubscription(_ series: RecurringSeries) throws {
         // Subscription must have a status
         guard series.status != nil else {
-            throw RecurringTransactionError.invalidAmount // Using generic error for now
+            throw RecurringTransactionError.missingSubscriptionStatus
         }
 
         // If reminderOffsets exist, validate they are positive
         if let offsets = series.reminderOffsets {
             guard offsets.allSatisfy({ $0 > 0 }) else {
-                throw RecurringTransactionError.invalidAmount
+                throw RecurringTransactionError.invalidReminderOffsets
             }
         }
     }

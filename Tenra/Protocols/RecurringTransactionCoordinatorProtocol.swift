@@ -83,6 +83,10 @@ enum RecurringTransactionError: LocalizedError {
     case invalidStartDate
     case missingAccount
     case coordinatorNotInitialized
+    case emptyDescription
+    case emptyCurrency
+    case missingSubscriptionStatus
+    case invalidReminderOffsets
 
     var errorDescription: String? {
         switch self {
@@ -98,6 +102,14 @@ enum RecurringTransactionError: LocalizedError {
             return String(localized: "recurring.error.missingAccount")
         case .coordinatorNotInitialized:
             return "Recurring coordinator is not initialized"
+        case .emptyDescription:
+            return String(localized: "recurring.error.emptyDescription")
+        case .emptyCurrency:
+            return String(localized: "recurring.error.emptyCurrency")
+        case .missingSubscriptionStatus:
+            return String(localized: "recurring.error.missingSubscriptionStatus")
+        case .invalidReminderOffsets:
+            return String(localized: "recurring.error.invalidReminderOffsets")
         }
     }
 }

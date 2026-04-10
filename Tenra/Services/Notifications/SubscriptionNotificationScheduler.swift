@@ -75,8 +75,8 @@ class SubscriptionNotificationScheduler {
             
             // Create notification content
             let content = UNMutableNotificationContent()
-            content.title = "Напоминание о подписке"
-            content.body = "Подписка \"\(series.description)\" будет списана \(amountString) через \(offsetDays) \(dayWord(offsetDays))"
+            content.title = String(localized: "notification.subscription.reminderTitle")
+            content.body = String(localized: "notification.subscription.reminderBody \(series.description) \(amountString) \(offsetDays)")
             content.sound = .default
             content.badge = NSNumber(value: 1)
             
@@ -130,7 +130,6 @@ class SubscriptionNotificationScheduler {
         }
     }
     
-    /// Helper: get Russian word for days
     /// Reschedule notifications for all active subscriptions
     /// This should be called when app becomes active or after a notification is delivered
     func rescheduleAllActiveSubscriptions(subscriptions: [RecurringSeries]) async {
@@ -153,25 +152,6 @@ class SubscriptionNotificationScheduler {
 
     }
 
-    /// Helper: get Russian word for days
-    private func dayWord(_ days: Int) -> String {
-        let lastDigit = days % 10
-        let lastTwoDigits = days % 100
-        
-        if lastTwoDigits >= 11 && lastTwoDigits <= 19 {
-            return "дней"
-        }
-        
-        switch lastDigit {
-        case 1:
-            return "день"
-        case 2, 3, 4:
-            return "дня"
-        default:
-            return "дней"
-        }
-    }
-    
     /// Calculate next charge date for a subscription
     /// This method properly calculates the next occurrence based on startDate and frequency
     func calculateNextChargeDate(for series: RecurringSeries) -> Date? {

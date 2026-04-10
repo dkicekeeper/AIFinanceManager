@@ -89,9 +89,6 @@ struct SubscriptionsCardView: View {
         // `.task(id: refreshID)`. SwiftUI automatically cancels and restarts this task whenever
         // `refreshID` changes (subscriptions count or base currency), and cancels it on view
         // removal — no task leaks on sheet dismiss.
-        .task {
-            await refreshTotal()
-        }
         .task(id: refreshID) {
             await refreshTotal()
         }

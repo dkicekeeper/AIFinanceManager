@@ -447,6 +447,9 @@
 "notification.permission.description" = "Получайте уведомления о предстоящих списаниях по подпискам, чтобы не пропустить важные платежи";
 "notification.permission.allow" = "Разрешить уведомления";
 "notification.permission.skip" = "Не сейчас";
+"notification.subscription.reminderTitle" = "Напоминание о подписке";
+"notification.subscription.reminderBody %@ %@ %lld" = "Подписка \"%@\" будет списана %@ через %lld дн.";
+"reminder.daysBefore.custom %lld" = "За %lld дн.";
 
 // Active count (EmptyState)
 "emptyState.noActiveSubscriptions" = "Нет активных подписок";
@@ -549,6 +552,10 @@
 "recurring.error.invalidAmount" = "Сумма должна быть больше нуля";
 "recurring.error.invalidStartDate" = "Неверная дата начала";
 "recurring.error.missingAccount" = "Пожалуйста, выберите счёт";
+"recurring.error.emptyDescription" = "Название не может быть пустым";
+"recurring.error.emptyCurrency" = "Необходимо указать валюту";
+"recurring.error.missingSubscriptionStatus" = "Необходимо указать статус подписки";
+"recurring.error.invalidReminderOffsets" = "Дни напоминания должны быть положительными";
 "recurring.validation.amountRequired" = "Требуется указать сумму";
 "recurring.validation.descriptionRequired" = "Требуется указать описание";
 

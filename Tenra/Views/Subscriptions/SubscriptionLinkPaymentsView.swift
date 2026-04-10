@@ -11,10 +11,10 @@ import SwiftUI
 
 struct SubscriptionLinkPaymentsView: View {
     let subscription: RecurringSeries
+    let transactionStore: TransactionStore
     let categoriesViewModel: CategoriesViewModel
     let accountsViewModel: AccountsViewModel
 
-    @Environment(TransactionStore.self) private var transactionStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var candidates: [Transaction] = []
@@ -427,6 +427,8 @@ struct SubscriptionLinkPaymentsView: View {
 
     // MARK: - Actions
 
+    @State private var isInitialLoad = true
+
     private func loadCandidates() {
         var matched = SubscriptionTransactionMatcher.findCandidates(
             for: subscription,
@@ -444,7 +446,16 @@ struct SubscriptionLinkPaymentsView: View {
             }
         }
         candidates = matched
-        selectedIds = Set(matched.map(\.id))
+
+        if isInitialLoad {
+            // Auto-select all on first load
+            selectedIds = Set(matched.map(\.id))
+            isInitialLoad = false
+        } else {
+            // On filter changes, keep existing selections that are still in candidates
+            let candidateIds = Set(matched.map(\.id))
+            selectedIds = selectedIds.intersection(candidateIds)
+        }
     }
 
     private func linkSelected() {

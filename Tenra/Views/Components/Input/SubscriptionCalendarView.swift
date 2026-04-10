@@ -21,6 +21,11 @@ struct SubscriptionCalendarView: View {
     @State private var currentWeekIndex: Int = 8 // weeksBefore = 8, index 8 = current week
     @State private var monthlyTotals: [Int: Decimal] = [:]
     @State private var weeklyTotals: [Int: Decimal] = [:]
+    /// Pre-computed: subscriptions keyed by day-of-month string "YYYY-M-D"
+    @State private var subscriptionsByDay: [String: [RecurringSeries]] = [:]
+    /// Cached date arrays — avoid recomputing on every body evaluation
+    @State private var cachedMonths: [Date] = []
+    @State private var cachedWeeks: [Date] = []
 
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
@@ -50,10 +55,16 @@ struct SubscriptionCalendarView: View {
         }
         .padding(AppSpacing.lg)
         .cardStyle()
+        .onAppear {
+            cachedMonths = computeAllMonths()
+            cachedWeeks = computeAllWeeks()
+            rebuildSubscriptionsByDay()
+        }
         .task {
             await refreshTotals()
         }
         .onChange(of: subscriptions.count) { _, _ in
+            rebuildSubscriptionsByDay()
             Task { await refreshTotals() }
         }
         .onChange(of: baseCurrency) { _, _ in
@@ -72,13 +83,13 @@ struct SubscriptionCalendarView: View {
                             currentMonthIndex = 0
                         }
                     }) {
-                        Text(formatMonthYear(allMonths[currentMonthIndex]))
+                        Text(formatMonthYear(cachedMonths.isEmpty ? Date() : cachedMonths[currentMonthIndex]))
                             .font(AppTypography.h4)
                             .foregroundStyle(AppColors.textPrimary)
                     }
                     .buttonStyle(.plain)
                 } else {
-                    Text(formatWeekRange(allWeeks[currentWeekIndex]))
+                    Text(formatWeekRange(cachedWeeks.isEmpty ? Date() : cachedWeeks[currentWeekIndex]))
                         .font(AppTypography.h4)
                         .foregroundStyle(AppColors.textPrimary)
                 }
@@ -132,7 +143,7 @@ struct SubscriptionCalendarView: View {
             if isExpanded {
                 GeometryReader { geometry in
                     TabView(selection: $currentMonthIndex) {
-                        ForEach(Array(allMonths.enumerated()), id: \.offset) { index, monthStart in
+                        ForEach(Array(cachedMonths.enumerated()), id: \.offset) { index, monthStart in
                             monthGrid(for: monthStart, availableHeight: geometry.size.height)
                                 .tag(index)
                                 .transition(.asymmetric(
@@ -148,7 +159,7 @@ struct SubscriptionCalendarView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .top)))
             } else {
                 TabView(selection: $currentWeekIndex) {
-                    ForEach(Array(allWeeks.enumerated()), id: \.offset) { index, weekStart in
+                    ForEach(Array(cachedWeeks.enumerated()), id: \.offset) { index, weekStart in
                         weekRow(for: weekStart)
                             .tag(index)
                     }
@@ -231,6 +242,17 @@ struct SubscriptionCalendarView: View {
             }
         }
         .frame(height: 80)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(dateAccessibilityLabel(date: date, subscriptions: occurrences))
+    }
+
+    private func dateAccessibilityLabel(date: Date, subscriptions: [RecurringSeries]) -> String {
+        let dateStr = date.formatted(date: .long, time: .omitted)
+        if subscriptions.isEmpty {
+            return dateStr
+        }
+        let names = subscriptions.map(\.description).joined(separator: ", ")
+        return "\(dateStr), \(names)"
     }
 
     private func logoView(for sub: RecurringSeries, size: CGFloat) -> some View {
@@ -242,8 +264,8 @@ struct SubscriptionCalendarView: View {
     private func toggleExpanded() {
         if isExpanded {
             // Sync: find week containing the first day of the current month
-            let monthStart = allMonths[currentMonthIndex]
-            let weeks = allWeeks
+            let monthStart = cachedMonths[currentMonthIndex]
+            let weeks = cachedWeeks
             if let idx = weeks.firstIndex(where: { weekStart in
                 guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) else { return false }
                 return weekStart <= monthStart && monthStart < weekEnd
@@ -252,8 +274,8 @@ struct SubscriptionCalendarView: View {
             }
         } else {
             // Sync: find month matching the current week's start date
-            let weekStart = allWeeks[currentWeekIndex]
-            if let idx = allMonths.firstIndex(where: {
+            let weekStart = cachedWeeks[currentWeekIndex]
+            if let idx = cachedMonths.firstIndex(where: {
                 calendar.isDate($0, equalTo: weekStart, toGranularity: .month)
             }) {
                 currentMonthIndex = idx
@@ -266,7 +288,7 @@ struct SubscriptionCalendarView: View {
 
     // MARK: - Data Sources
 
-    private var allMonths: [Date] {
+    private func computeAllMonths() -> [Date] {
         let today = calendar.startOfDay(for: Date())
         guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) else {
             return [today]
@@ -278,7 +300,7 @@ struct SubscriptionCalendarView: View {
 
     // 8 weeks before + current week + 47 weeks ahead = 56 weeks total
     // currentWeekIndex default = 8 (today's week)
-    private var allWeeks: [Date] {
+    private func computeAllWeeks() -> [Date] {
         let today = calendar.startOfDay(for: Date())
         let weekday = calendar.component(.weekday, from: today)
         let firstDayOffset = (weekday - calendar.firstWeekday + 7) % 7
@@ -297,7 +319,7 @@ struct SubscriptionCalendarView: View {
     }
 
     private func calculateCalendarHeight() -> CGFloat {
-        let currentMonth = allMonths[currentMonthIndex]
+        let currentMonth = cachedMonths[currentMonthIndex]
         let days = calendarDays(for: currentMonth)
         let weeksCount = ceil(Double(days.count) / 7.0)
 
@@ -318,7 +340,8 @@ struct SubscriptionCalendarView: View {
 
     private func calculateAllMonthTotals() async {
         var totals: [Int: Decimal] = [:]
-        for (index, monthDate) in allMonths.enumerated() {
+        let months = cachedMonths
+        for (index, monthDate) in months.enumerated() {
             let monthStart = calendar.startOfDay(for: monthDate)
             guard let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) else {
                 continue
@@ -342,7 +365,8 @@ struct SubscriptionCalendarView: View {
 
     private func calculateAllWeeklyTotals() async {
         var totals: [Int: Decimal] = [:]
-        for (index, weekStart) in allWeeks.enumerated() {
+        let weeks = cachedWeeks
+        for (index, weekStart) in weeks.enumerated() {
             guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) else { continue }
             let weekInterval = DateInterval(start: weekStart, end: weekEnd.addingTimeInterval(-1))
             var weekTotal: Decimal = 0
@@ -409,11 +433,32 @@ struct SubscriptionCalendarView: View {
     }
 
     private func subscriptionsOnDate(_ date: Date) -> [RecurringSeries] {
-        guard let endDate = calendar.date(byAdding: .day, value: 1, to: date) else { return [] }
-        let dayInterval = DateInterval(start: date, end: endDate.addingTimeInterval(-1))
-        return subscriptions.filter { sub in
-            !sub.occurrences(in: dayInterval).isEmpty
+        let comps = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = comps.year, let month = comps.month, let day = comps.day else { return [] }
+        let key = "\(year)-\(month)-\(day)"
+        return subscriptionsByDay[key] ?? []
+    }
+
+    /// Pre-compute which subscriptions fall on which day across the full calendar range.
+    private func rebuildSubscriptionsByDay() {
+        guard !cachedMonths.isEmpty, !cachedWeeks.isEmpty else { return }
+
+        // Determine the full date range we need to cover
+        let rangeStart = cachedWeeks.first ?? Date()
+        guard let rangeEnd = calendar.date(byAdding: .month, value: 12, to: cachedMonths.first ?? Date()) else { return }
+        let fullInterval = DateInterval(start: rangeStart, end: rangeEnd)
+
+        var result: [String: [RecurringSeries]] = [:]
+        for sub in subscriptions {
+            let occurrences = sub.occurrences(in: fullInterval)
+            for date in occurrences {
+                let comps = calendar.dateComponents([.year, .month, .day], from: date)
+                guard let year = comps.year, let month = comps.month, let day = comps.day else { continue }
+                let key = "\(year)-\(month)-\(day)"
+                result[key, default: []].append(sub)
+            }
         }
+        subscriptionsByDay = result
     }
 }
 

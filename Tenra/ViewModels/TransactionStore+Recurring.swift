@@ -430,9 +430,11 @@ extension TransactionStore {
         try await updateSeries(updated)
 
         // Delete future transactions since series is now paused
-        let today = DateFormatters.dateFormatter.string(from: Date())
+        let today = Calendar.current.startOfDay(for: Date())
         let futureTxs = transactions.filter { tx in
-            tx.recurringSeriesId == seriesId && tx.date > today
+            guard tx.recurringSeriesId == seriesId else { return false }
+            guard let txDate = DateFormatters.dateFormatter.date(from: tx.date) else { return false }
+            return txDate > today
         }
         for tx in futureTxs {
             try await apply(TransactionEvent.deleted(tx))

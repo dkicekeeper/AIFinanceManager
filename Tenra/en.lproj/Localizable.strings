@@ -447,6 +447,9 @@
 "notification.permission.description" = "Get notified about upcoming subscription charges so you never miss an important payment";
 "notification.permission.allow" = "Allow Notifications";
 "notification.permission.skip" = "Not Now";
+"notification.subscription.reminderTitle" = "Subscription Reminder";
+"notification.subscription.reminderBody %@ %@ %lld" = "Subscription \"%@\" will be charged %@ in %lld days";
+"reminder.daysBefore.custom %lld" = "%lld days before";
 
 // Active count (EmptyState)
 "emptyState.noActiveSubscriptions" = "No active subscriptions";
@@ -549,6 +552,10 @@
 "recurring.error.invalidAmount" = "Amount must be greater than zero";
 "recurring.error.invalidStartDate" = "Invalid start date";
 "recurring.error.missingAccount" = "Please select an account";
+"recurring.error.emptyDescription" = "Name cannot be empty";
+"recurring.error.emptyCurrency" = "Currency is required";
+"recurring.error.missingSubscriptionStatus" = "Subscription status is required";
+"recurring.error.invalidReminderOffsets" = "Reminder days must be positive";
 "recurring.validation.amountRequired" = "Amount is required";
 "recurring.validation.descriptionRequired" = "Description is required";
 
