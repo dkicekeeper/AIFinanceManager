@@ -145,6 +145,9 @@ struct SubscriptionLinkPaymentsView: View {
             .onChange(of: filterCategoryNames) { _, _ in
                 loadCandidates()
             }
+            .onChange(of: filterSubcategoryNames) { _, _ in
+                loadCandidates()
+            }
             .sheet(isPresented: $showingCategoryFilter) {
                 CategoryFilterView(
                     expenseCategories: candidateExpenseCategories,
@@ -323,7 +326,8 @@ struct SubscriptionLinkPaymentsView: View {
                                     currency: subscription.currency,
                                     styleData: styleData,
                                     sourceAccount: sourceAccount,
-                                    targetAccount: targetAccount
+                                    targetAccount: targetAccount,
+                                    categoriesViewModel: categoriesViewModel
                                 )
                                 .allowsHitTesting(false)
                             }
@@ -429,9 +433,15 @@ struct SubscriptionLinkPaymentsView: View {
             in: transactionStore.transactions,
             exactMatch: useExactAmount
         )
-        // Apply category filter at candidate level so selection reflects filter
+        // Apply category/subcategory filters at candidate level so selection reflects filter
         if let categoryNames = filterCategoryNames {
             matched = matched.filter { categoryNames.contains($0.category) }
+        }
+        if let subcategoryNames = filterSubcategoryNames {
+            matched = matched.filter { tx in
+                guard let sub = tx.subcategory else { return false }
+                return subcategoryNames.contains(sub)
+            }
         }
         candidates = matched
         selectedIds = Set(matched.map(\.id))
