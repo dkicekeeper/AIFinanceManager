@@ -220,6 +220,47 @@ nonisolated enum LoanPaymentService {
         }
     }
 
+    // MARK: - Early Repayment Transaction
+
+    /// Create an early repayment transaction and update loan state.
+    /// Returns the transaction + updated loanInfo so the caller can persist both.
+    static func createEarlyRepaymentTransaction(
+        account: Account,
+        loanInfo: LoanInfo,
+        amount: Decimal,
+        date: String,
+        type: EarlyRepaymentType,
+        sourceAccountId: String,
+        sourceAccountName: String?,
+        note: String? = nil
+    ) -> (transaction: Transaction, updatedLoanInfo: LoanInfo) {
+        var updated = loanInfo
+
+        applyEarlyRepayment(
+            loanInfo: &updated,
+            amount: amount,
+            date: date,
+            type: type,
+            note: note
+        )
+
+        let transaction = Transaction(
+            id: UUID().uuidString,
+            date: date,
+            description: note ?? String(localized: "loan.earlyRepayment.description", defaultValue: "Early repayment"),
+            amount: NSDecimalNumber(decimal: amount).doubleValue,
+            currency: account.currency,
+            type: .loanEarlyRepayment,
+            category: TransactionType.loanPaymentCategoryName,
+            accountId: account.id,
+            targetAccountId: sourceAccountId,
+            accountName: account.name,
+            targetAccountName: sourceAccountName
+        )
+
+        return (transaction, updated)
+    }
+
     // MARK: - Manual Payment
 
     /// Create a manual loan payment transaction and update loan state.

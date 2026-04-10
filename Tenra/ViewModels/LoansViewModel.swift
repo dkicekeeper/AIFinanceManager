@@ -89,23 +89,31 @@ class LoansViewModel {
         amount: Decimal,
         date: String,
         type: EarlyRepaymentType,
+        sourceAccountId: String,
         note: String? = nil
-    ) {
+    ) -> Transaction? {
         guard var account = accountsViewModel.getAccount(by: accountId),
-              var loanInfo = account.loanInfo else {
-            return
+              let loanInfo = account.loanInfo else {
+            return nil
         }
 
-        LoanPaymentService.applyEarlyRepayment(
-            loanInfo: &loanInfo,
+        let sourceAccount = accountsViewModel.getAccount(by: sourceAccountId)
+
+        let (transaction, updatedLoanInfo) = LoanPaymentService.createEarlyRepaymentTransaction(
+            account: account,
+            loanInfo: loanInfo,
             amount: amount,
             date: date,
             type: type,
+            sourceAccountId: sourceAccountId,
+            sourceAccountName: sourceAccount?.name,
             note: note
         )
 
-        account.loanInfo = loanInfo
+        account.loanInfo = updatedLoanInfo
         accountsViewModel.updateAccount(account)
+
+        return transaction
     }
 
     // MARK: - Manual Payment

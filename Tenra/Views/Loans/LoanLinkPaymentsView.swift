@@ -56,7 +56,7 @@ struct LoanLinkPaymentsView: View {
     }
 
     private var selectedTransactions: [Transaction] {
-        candidates.filter { selectedIds.contains($0.id) }
+        transactionStore.transactions.filter { selectedIds.contains($0.id) }
     }
 
     private var selectedTotal: Double {

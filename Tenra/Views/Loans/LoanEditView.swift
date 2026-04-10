@@ -267,6 +267,23 @@ struct LoanEditView: View {
             ? (existingInfo?.startDate ?? DateFormatters.dateFormatter.string(from: startDate))
             : DateFormatters.dateFormatter.string(from: startDate)
 
+        // Recalculate monthly payment when principal, rate, or term changed
+        let shouldRecalculate: Bool
+        if let existing = existingInfo {
+            shouldRecalculate = principalAmount != existing.originalPrincipal
+                || interestRate != existing.interestRateAnnual
+                || termMonths != existing.termMonths
+        } else {
+            shouldRecalculate = true // New loan — always calculate
+        }
+
+        let monthlyPayment: Decimal?
+        if shouldRecalculate {
+            monthlyPayment = nil // LoanInfo.init will calculate via LoanPaymentService
+        } else {
+            monthlyPayment = existingInfo?.monthlyPayment
+        }
+
         let loanInfo = LoanInfo(
             bankName: bankName,
             loanType: loanType,
@@ -278,7 +295,7 @@ struct LoanEditView: View {
             termMonths: termMonths,
             startDate: startDateStr,
             endDate: existingInfo?.endDate,
-            monthlyPayment: existingInfo?.monthlyPayment,
+            monthlyPayment: monthlyPayment,
             paymentDay: paymentDay,
             paymentsMade: existingInfo?.paymentsMade ?? 0,
             lastPaymentDate: existingInfo?.lastPaymentDate,

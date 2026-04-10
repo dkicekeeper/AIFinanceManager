@@ -25,6 +25,7 @@ struct LoanDetailView: View {
     @State private var showingLinkPayments = false
     @State private var showingHistory = false
     @State private var showFullSchedule = false
+    @State private var cachedSchedule: [LoanPaymentService.AmortizationEntry] = []
     @State private var reconciliationError: String? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(TimeFilterManager.self) private var timeFilterManager
@@ -197,14 +198,25 @@ struct LoanDetailView: View {
                 LoanEarlyRepaymentView(
                     account: account,
                     loanInfo: loanInfo,
-                    onRepayment: { amount, date, type, note in
-                        loansViewModel.makeEarlyRepayment(
+                    availableAccounts: loansViewModel.accountsViewModel.regularAccounts,
+                    onRepayment: { amount, date, type, sourceAccountId, note in
+                        if let transaction = loansViewModel.makeEarlyRepayment(
                             accountId: account.id,
                             amount: amount,
                             date: date,
                             type: type,
+                            sourceAccountId: sourceAccountId,
                             note: note
-                        )
+                        ) {
+                            Task {
+                                do {
+                                    _ = try await transactionStore.add(transaction)
+                                    transactionsViewModel.recalculateAccountBalances()
+                                } catch {
+                                    logger.error("Failed to add early repayment transaction: \(error.localizedDescription)")
+                                }
+                            }
+                        }
                     }
                 )
             }
@@ -253,22 +265,34 @@ struct LoanDetailView: View {
             Text(String(localized: "loan.deleteMessage", defaultValue: "All loan data and payment history will be deleted."))
         }
         .task(id: accountId) {
-            // Reconcile only this loan's payments
-            let store = transactionStore
+            // Build amortization schedule cache
+            if let li = loanInfo {
+                cachedSchedule = LoanPaymentService.generateAmortizationSchedule(loanInfo: li)
+            }
+
+            // Reconcile only this loan's payments — collect then batch-persist
+            var createdTransactions: [Transaction] = []
             loansViewModel.reconcileLoanPayments(
                 for: accountId,
                 allTransactions: transactionsViewModel.allTransactions,
                 onTransactionCreated: { transaction in
-                    Task { @MainActor in
-                        do {
-                            _ = try await store.add(transaction)
-                        } catch {
-                            logger.error("Failed to add loan payment transaction: \(error.localizedDescription)")
-                            reconciliationError = error.localizedDescription
-                        }
-                    }
+                    createdTransactions.append(transaction)
                 }
             )
+
+            for tx in createdTransactions {
+                do {
+                    _ = try await transactionStore.add(tx)
+                } catch {
+                    logger.error("Failed to add loan payment transaction: \(error.localizedDescription)")
+                    reconciliationError = error.localizedDescription
+                }
+            }
+
+            // Rebuild schedule after reconciliation (paymentsMade may have changed)
+            if !createdTransactions.isEmpty, let li = loanInfo {
+                cachedSchedule = LoanPaymentService.generateAmortizationSchedule(loanInfo: li)
+            }
         }
     }
 
@@ -431,7 +455,7 @@ struct LoanDetailView: View {
                     value: Formatting.formatCurrency(NSDecimalNumber(decimal: loanInfo.totalInterestPaid).doubleValue, currency: account.currency)
                 )
 
-                let totalInterest = LoanPaymentService.totalInterestOverLife(loanInfo: loanInfo)
+                let totalInterest = cachedSchedule.reduce(Decimal(0)) { $0 + $1.interest }
                 InfoRow(
                     icon: "chart.line.uptrend.xyaxis",
                     label: String(localized: "loan.projectedTotalInterest", defaultValue: "Total Interest (projected)"),
@@ -479,7 +503,7 @@ struct LoanDetailView: View {
     // MARK: - Amortization Schedule
 
     private func amortizationSection(loanInfo: LoanInfo) -> some View {
-        let schedule = LoanPaymentService.generateAmortizationSchedule(loanInfo: loanInfo)
+        let schedule = cachedSchedule
         let displayedEntries = showFullSchedule ? schedule : Array(schedule.prefix(6))
 
         return VStack(alignment: .leading, spacing: AppSpacing.md) {

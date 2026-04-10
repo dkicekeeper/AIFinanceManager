@@ -164,6 +164,15 @@ Tenra/
 - **⚠️ Initial date computation**: New/converted deposits MUST use `DepositEditView.computeInitialDates(postingDay:)` to set `lastInterestCalculationDate` to the most recent posting date — otherwise interest shows 0 (default is today → `calculateInterestToToday()` loop never executes)
 - **⚠️ Don't decompose Account for addDeposit**: Use `AccountsViewModel.addDepositAccount(_ account:)` to preserve computed DepositInfo dates. Decomposing into fields loses `lastInterestCalculationDate`/`lastInterestPostingMonth`.
 
+#### Loans — Payment Tracking & Reconciliation
+- `LoanInfo` persisted via `loanInfoData: Data?` (JSON-encoded Binary) on `AccountEntity` (CoreData v6), mirrors `DepositInfo` pattern
+- `LoanPaymentService` (`nonisolated enum`): annuity formula, amortization schedule, payment breakdown, early repayment, reconciliation
+- `LoanInfo.init` auto-calculates `monthlyPayment` when `nil` is passed — pass `nil` to force recalculation after principal/rate/term changes
+- **Reconciliation**: `reconcileLoanPayments` is synchronous with `onTransactionCreated` callback. Callers MUST collect transactions in array, then batch-persist via `transactionStore.add()` after reconciliation completes. Do NOT spawn fire-and-forget `Task {}` inside the callback — creates race condition where loan state diverges from transaction records.
+- **AccountsManagementView**: centralized reconciliation point for both deposits AND loans on `.task {}` appear
+- **Every financial mutation MUST create a transaction**: `makeManualPayment` → `.loanPayment`, `makeEarlyRepayment` → `.loanEarlyRepayment`. Both return `Transaction?` for the caller to persist.
+- **⚠️ `reconcileAllLoans` must be called globally** — not just per-loan in detail view. If user doesn't visit each loan's detail screen, reconciliation is skipped.
+
 #### Logo Provider Chain (Supabase → LogoDev → GoogleFavicon → Lettermark)
 - `SupabaseLogoProvider` auto-indexes bucket via Storage API, fuzzy-matches normalized filenames (strips spaces/underscores/hyphens/dots + common affixes like "bank"). Index cached to disk, refreshed daily. Empty index retries every 60s.
 - `LogoDevProvider` uses logo.dev API with 5s timeout, checks `LogoDevConfig.isAvailable` internally
@@ -374,6 +383,7 @@ New file needed?
 │  ├─ Voice input? → Services/Voice/
 │  ├─ PDF parsing? → Services/Import/
 │  ├─ Recurring transactions? → Services/Recurring/
+│  ├─ Loan operations? → Services/Loans/
 │  ├─ Caching? → Services/Cache/
 │  ├─ Settings management? → Services/Settings/
 │  ├─ Core protocol or shared service? → Services/Core/
@@ -427,6 +437,7 @@ New file needed?
 - **`filterService.filterByTimeRange` is expensive** (~16μs/tx due to DateFormatter): use `txDateMap` inline filter when available.
 - **⚠️ Recurring: fire-and-forget `createRecurringSeries()`** — generated txs are NOT in the store when `save()` returns. Always `await transactionStore.createSeries(series)` directly when you need to act on generated transactions (e.g. link subcategories).
 - **⚠️ `getPlannedTransactions(horizon:)` deprecated** — filter `transactionStore.transactions` directly.
+- **Reconciliation callback pattern**: Never spawn `Task {}` inside synchronous `onTransactionCreated` callbacks — collect into array, batch-persist after reconciliation completes. Applies to both deposits and loans.
 - **Subcategory CoreData relationship**: `Transaction.subcategory: String?` is legacy; real subcats live via `categoriesViewModel.linkSubcategoriesToTransaction(transactionId:subcategoryIds:)`. Generated recurring txs need explicit linking after creation.
 - **`categoriesViewModel` threading in Views**: `SubscriptionDetailView` and `SubscriptionsListView` require `CategoriesViewModel` passed as parameter from `ContentView`.
 

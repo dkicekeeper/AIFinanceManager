@@ -11,7 +11,8 @@ import SwiftUI
 struct LoanEarlyRepaymentView: View {
     let account: Account
     let loanInfo: LoanInfo
-    let onRepayment: (Decimal, String, EarlyRepaymentType, String?) -> Void // (amount, date, type, note)
+    let availableAccounts: [Account]
+    let onRepayment: (Decimal, String, EarlyRepaymentType, String, String?) -> Void // (amount, date, type, sourceAccountId, note)
 
     @Environment(\.dismiss) private var dismiss
 
@@ -19,6 +20,7 @@ struct LoanEarlyRepaymentView: View {
     @State private var repaymentDate: Date = Date()
     @State private var repaymentType: EarlyRepaymentType = .reduceTerm
     @State private var noteText: String = ""
+    @State private var selectedSourceAccountId: String = ""
     @FocusState private var isAmountFocused: Bool
     @State private var validationError: String? = nil
 
@@ -41,7 +43,7 @@ struct LoanEarlyRepaymentView: View {
     var body: some View {
         EditSheetContainer(
             title: String(localized: "loan.earlyRepaymentTitle", defaultValue: "Early Repayment"),
-            isSaveDisabled: amountText.isEmpty,
+            isSaveDisabled: amountText.isEmpty || selectedSourceAccountId.isEmpty,
             wrapInForm: false,
             onSave: { saveRepayment() },
             onCancel: { dismiss() }
@@ -101,6 +103,30 @@ struct LoanEarlyRepaymentView: View {
 
                         Divider().padding(.leading, AppSpacing.lg)
 
+                        if availableAccounts.isEmpty {
+                            UniversalRow(
+                                config: .standard,
+                                leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
+                            ) {
+                                Text(String(localized: "loan.sourceAccount", defaultValue: "From account"))
+                                    .font(AppTypography.body)
+                                    .foregroundStyle(AppColors.textPrimary)
+                            } trailing: {
+                                Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts"))
+                                    .font(AppTypography.bodySmall)
+                                    .foregroundStyle(AppColors.textSecondary)
+                            }
+                        } else {
+                            MenuPickerRow(
+                                icon: "building.columns",
+                                title: String(localized: "loan.sourceAccount", defaultValue: "From account"),
+                                selection: $selectedSourceAccountId,
+                                options: availableAccounts.map { (label: $0.name, value: $0.id) }
+                            )
+                        }
+
+                        Divider().padding(.leading, AppSpacing.lg)
+
                         UniversalRow(
                             config: .standard,
                             leadingIcon: .sfSymbol("note.text", color: AppColors.accent, size: AppIconSize.lg)
@@ -126,6 +152,11 @@ struct LoanEarlyRepaymentView: View {
                     }
                 }
                 .padding(AppSpacing.lg)
+            }
+        }
+        .onAppear {
+            if selectedSourceAccountId.isEmpty, let first = availableAccounts.first {
+                selectedSourceAccountId = first.id
             }
         }
         .task {
@@ -205,10 +236,19 @@ struct LoanEarlyRepaymentView: View {
         }
         validationError = nil
 
+        guard !selectedSourceAccountId.isEmpty else {
+            withAnimation(AppAnimation.contentSpring) {
+                validationError = String(localized: "loan.error.noSourceAccount", defaultValue: "Select a source account")
+            }
+            HapticManager.error()
+            return
+        }
+        validationError = nil
+
         let dateStr = DateFormatters.dateFormatter.string(from: repaymentDate)
         let note = noteText.isEmpty ? nil : noteText
 
-        onRepayment(amount, dateStr, repaymentType, note)
+        onRepayment(amount, dateStr, repaymentType, selectedSourceAccountId, note)
         HapticManager.success()
         dismiss()
     }
@@ -240,9 +280,17 @@ struct LoanEarlyRepaymentView: View {
         initialBalance: 5_000_000
     )
 
+    let sourceAccount = Account(
+        id: "source-1",
+        name: "Kaspi Gold",
+        currency: "KZT",
+        initialBalance: 500_000
+    )
+
     LoanEarlyRepaymentView(
         account: sampleAccount,
         loanInfo: sampleAccount.loanInfo!,
-        onRepayment: { _, _, _, _ in }
+        availableAccounts: [sourceAccount],
+        onRepayment: { _, _, _, _, _ in }
     )
 }

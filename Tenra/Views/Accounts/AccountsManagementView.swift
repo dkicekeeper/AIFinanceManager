@@ -11,6 +11,7 @@ import SwiftUI
 struct AccountsManagementView: View {
     let accountsViewModel: AccountsViewModel
     let depositsViewModel: DepositsViewModel
+    let loansViewModel: LoansViewModel
     let transactionsViewModel: TransactionsViewModel
     @Environment(TransactionStore.self) private var transactionStore
     @Environment(\.dismiss) var dismiss
@@ -134,6 +135,22 @@ struct AccountsManagementView: View {
                     }
                 }
             )
+
+            // Reconcile all loans — collect then batch-persist
+            var loanTransactions: [Transaction] = []
+            loansViewModel.reconcileAllLoans(
+                allTransactions: transactionsViewModel.allTransactions,
+                onTransactionCreated: { transaction in
+                    loanTransactions.append(transaction)
+                }
+            )
+            for tx in loanTransactions {
+                do {
+                    _ = try await transactionStore.add(tx)
+                } catch {
+                    logger.error("Failed to add loan payment transaction: \(error.localizedDescription)")
+                }
+            }
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -402,6 +419,7 @@ struct AccountsManagementView: View {
         AccountsManagementView(
             accountsViewModel: coordinator.accountsViewModel,
             depositsViewModel: coordinator.depositsViewModel,
+            loansViewModel: coordinator.loansViewModel,
             transactionsViewModel: coordinator.transactionsViewModel
         )
     }
@@ -414,6 +432,7 @@ struct AccountsManagementView: View {
         AccountsManagementView(
             accountsViewModel: coordinator.accountsViewModel,
             depositsViewModel: coordinator.depositsViewModel,
+            loansViewModel: coordinator.loansViewModel,
             transactionsViewModel: coordinator.transactionsViewModel
         )
     }

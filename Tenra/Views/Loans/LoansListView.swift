@@ -94,7 +94,7 @@ struct LoansListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: AppSpacing.md) {
-                    if !activeLoans.isEmpty {
+                    if !activeLoans.isEmpty && canPayAll {
                         Button {
                             HapticManager.light()
                             showingPayAll = true
@@ -186,6 +186,12 @@ struct LoansListView: View {
 
     private var activeLoans: [Account] {
         loansViewModel.loans.filter { ($0.loanInfo?.remainingPrincipal ?? 0) > 0 }
+    }
+
+    /// Pay All only available when all active loans share a single currency
+    private var canPayAll: Bool {
+        let currencies = Set(activeLoans.map(\.currency))
+        return currencies.count == 1
     }
 
     private func payAllLoans(sourceAccountId: String, dateStr: String) {
