@@ -140,4 +140,22 @@ struct SubscriptionTransactionMatcherTests {
         #expect(candidates[1].date == "2024-03-01")
         #expect(candidates[2].date == "2024-04-01")
     }
+
+    @Test func findCandidates_exactMatchOnlyMatchesExactAmount() {
+        let sub = makeSubscription(amount: 9.99)
+        let transactions = [
+            makeTransaction(date: "2024-02-01", amount: 9.99),
+            makeTransaction(date: "2024-03-01", amount: 9.50),  // within 10% but not exact
+            makeTransaction(date: "2024-04-01", amount: 10.49), // within 10% but not exact
+        ]
+
+        let candidates = SubscriptionTransactionMatcher.findCandidates(
+            for: sub,
+            in: transactions,
+            exactMatch: true
+        )
+
+        #expect(candidates.count == 1)
+        #expect(candidates[0].amount == 9.99)
+    }
 }

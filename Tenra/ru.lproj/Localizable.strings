@@ -1074,9 +1074,12 @@
 // Привязка платежей к подписке
 "subscription.linkPayments.title" = "Привязать платежи";
 "subscription.linkPayments.search" = "Поиск по описанию или сумме";
+"subscription.linkPayments.searchPlaceholder" = "Поиск";
 "subscription.linkPayments.selectedWithAmount" = "%d выбрано · %@";
 "subscription.linkPayments.link" = "Привязать %d платежей";
 "subscription.linkPayments.empty" = "Нет подходящих транзакций";
+"subscription.linkPayments.amountExact" = "Точная сумма";
+"subscription.linkPayments.amountTolerance" = "±10%";
 "subscription.filterAll" = "Все";
 
 // MARK: - Accounts (Types & Actions)

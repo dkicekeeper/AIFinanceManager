@@ -23,12 +23,17 @@ struct SubscriptionLinkPaymentsView: View {
     @State private var isLinking = false
     @State private var showError = false
     @State private var errorMessage = ""
+
+    // Filters
     @State private var filterAccountId: String?
+    @State private var useExactAmount = false
+    @State private var filterCategoryNames: Set<String>?
+    @State private var showingCategoryFilter = false
 
     // MARK: - Computed Properties
 
-    /// When search is empty -- show auto-matched candidates.
-    /// When search is active -- search ALL unlinked expense transactions globally.
+    /// When search is empty — show auto-matched candidates.
+    /// When search is active — search ALL unlinked expense transactions globally.
     private var filteredCandidates: [Transaction] {
         var result: [Transaction]
         if searchText.isEmpty {
@@ -51,6 +56,9 @@ struct SubscriptionLinkPaymentsView: View {
         if let accountId = filterAccountId {
             result = result.filter { $0.accountId == accountId }
         }
+        if let categoryNames = filterCategoryNames {
+            result = result.filter { categoryNames.contains($0.category) }
+        }
         return result
     }
 
@@ -64,6 +72,11 @@ struct SubscriptionLinkPaymentsView: View {
 
     private var uniqueAccountIds: [String] {
         Array(Set(candidates.compactMap(\.accountId))).sorted()
+    }
+
+    /// Unique expense category names from candidates for the category filter sheet
+    private var candidateExpenseCategories: [String] {
+        Array(Set(candidates.map(\.category))).sorted()
     }
 
     // MARK: - Date Sections
@@ -80,15 +93,11 @@ struct SubscriptionLinkPaymentsView: View {
     var body: some View {
         transactionList
             .safeAreaBar(edge: .top) {
-                if uniqueAccountIds.count > 1 {
-                    accountFilter
-                        .padding(.vertical, AppSpacing.sm)
-                }
+                filterHeader
             }
             .safeAreaBar(edge: .bottom) {
                 actionBar
             }
-            .searchable(text: $searchText, prompt: String(localized: "subscription.linkPayments.search", defaultValue: "Search by description or amount"))
             .navigationTitle(String(localized: "subscription.linkPayments.title", defaultValue: "Link Payments"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -106,32 +115,110 @@ struct SubscriptionLinkPaymentsView: View {
             .task {
                 loadCandidates()
             }
+            .onChange(of: useExactAmount) { _, _ in
+                loadCandidates()
+            }
+            .sheet(isPresented: $showingCategoryFilter) {
+                CategoryFilterView(
+                    expenseCategories: candidateExpenseCategories,
+                    incomeCategories: [],
+                    customCategories: categoriesViewModel.customCategories,
+                    currentFilter: filterCategoryNames,
+                    onFilterChanged: { newFilter in
+                        filterCategoryNames = newFilter
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
     }
 
-    // MARK: - Account Filter
+    // MARK: - Filter Header
 
-    private var accountFilter: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+    private var filterHeader: some View {
+        VStack(spacing: AppSpacing.sm) {
+            // Inline search field
             HStack(spacing: AppSpacing.sm) {
-                UniversalFilterButton(
-                    title: String(localized: "subscription.filterAll", defaultValue: "All"),
-                    isSelected: filterAccountId == nil,
-                    showChevron: false,
-                    onTap: { filterAccountId = nil }
-                )
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: AppIconSize.sm))
 
-                ForEach(uniqueAccountIds, id: \.self) { accountId in
-                    let accountName = transactionStore.accounts.first(where: { $0.id == accountId })?.name ?? accountId
+                TextField(
+                    String(localized: "subscription.linkPayments.searchPlaceholder", defaultValue: "Search"),
+                    text: $searchText
+                )
+                .font(AppTypography.body)
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: AppIconSize.sm))
+                    }
+                }
+            }
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.vertical, AppSpacing.sm)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppRadius.md))
+            .padding(.horizontal, AppSpacing.lg)
+
+            // Filter carousel
+            UniversalCarousel(config: .filter) {
+                // Amount mode toggle
+                UniversalFilterButton(
+                    title: useExactAmount
+                        ? String(localized: "subscription.linkPayments.amountExact", defaultValue: "Exact")
+                        : String(localized: "subscription.linkPayments.amountTolerance", defaultValue: "\u{00B1}10%"),
+                    isSelected: useExactAmount,
+                    showChevron: false,
+                    onTap: { useExactAmount.toggle() }
+                ) {
+                    Image(systemName: useExactAmount ? "equal" : "plusminus")
+                }
+
+                // Account filter
+                if uniqueAccountIds.count > 1 {
                     UniversalFilterButton(
-                        title: accountName,
-                        isSelected: filterAccountId == accountId,
-                        showChevron: false,
-                        onTap: { filterAccountId = accountId }
+                        title: filterAccountId == nil
+                            ? String(localized: "subscription.filterAll", defaultValue: "All")
+                            : (transactionStore.accounts.first(where: { $0.id == filterAccountId })?.name ?? String(localized: "subscription.filterAll", defaultValue: "All")),
+                        isSelected: filterAccountId != nil,
+                        showChevron: true
+                    ) {
+                        Image(systemName: "creditcard")
+                    } menuContent: {
+                        Button {
+                            filterAccountId = nil
+                        } label: {
+                            Label(String(localized: "subscription.filterAll", defaultValue: "All"), systemImage: filterAccountId == nil ? "checkmark" : "")
+                        }
+                        ForEach(uniqueAccountIds, id: \.self) { accountId in
+                            let name = transactionStore.accounts.first(where: { $0.id == accountId })?.name ?? accountId
+                            Button {
+                                filterAccountId = accountId
+                            } label: {
+                                Label(name, systemImage: filterAccountId == accountId ? "checkmark" : "")
+                            }
+                        }
+                    }
+                }
+
+                // Category filter
+                UniversalFilterButton(
+                    title: CategoryFilterHelper.displayText(for: filterCategoryNames),
+                    isSelected: filterCategoryNames != nil,
+                    onTap: { showingCategoryFilter = true }
+                ) {
+                    CategoryFilterHelper.iconView(
+                        for: filterCategoryNames,
+                        customCategories: categoriesViewModel.customCategories,
+                        incomeCategories: []
                     )
                 }
             }
-            .padding(.horizontal, AppSpacing.lg)
         }
+        .padding(.vertical, AppSpacing.sm)
     }
 
     // MARK: - Transaction List
@@ -187,6 +274,7 @@ struct SubscriptionLinkPaymentsView: View {
             }
         }
         .listStyle(.plain)
+        .scrollDismissesKeyboard(.interactively)
         .overlay {
             if filteredCandidates.isEmpty {
                 if searchText.isEmpty {
@@ -255,7 +343,8 @@ struct SubscriptionLinkPaymentsView: View {
     private func loadCandidates() {
         let matched = SubscriptionTransactionMatcher.findCandidates(
             for: subscription,
-            in: transactionStore.transactions
+            in: transactionStore.transactions,
+            exactMatch: useExactAmount
         )
         candidates = matched
         selectedIds = Set(matched.map(\.id))
