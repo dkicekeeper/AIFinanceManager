@@ -8,6 +8,7 @@
 
 public import Foundation
 public import CoreData
+import os
 
 public typealias AccountEntityCoreDataClassSet = NSSet
 
@@ -15,6 +16,9 @@ public typealias AccountEntityCoreDataClassSet = NSSet
 public class AccountEntity: NSManagedObject {
 
 }
+
+// 🔍 DIAG [balance-zero-bug]
+private let accountEntityDiagLogger = Logger(subsystem: "Tenra", category: "AccountEntity")
 
 // MARK: - Conversion Methods
 extension AccountEntity {
@@ -77,6 +81,9 @@ extension AccountEntity {
         entity.name = account.name
         // On creation: balance = initialBalance (no transactions yet)
         let startingBalance = account.initialBalance ?? 0
+        // 🔍 DIAG [balance-zero-bug]: log every AccountEntity creation so we can see whether
+        // remaining accounts get re-created (and zeroed) during a bulk delete.
+        accountEntityDiagLogger.log("🟡 AccountEntity.from: id=\(account.id, privacy: .public) name=\(account.name, privacy: .public) startingBalance=\(startingBalance) incomingBalance=\(account.balance) shouldCalc=\(account.shouldCalculateFromTransactions)")
         entity.balance = startingBalance
         entity.initialBalance = startingBalance  // Stored separately — never overwritten after creation
         entity.currency = account.currency

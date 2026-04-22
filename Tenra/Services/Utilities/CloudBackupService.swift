@@ -148,6 +148,10 @@ nonisolated final class CloudBackupService: @unchecked Sendable {
 
     /// Restores a backup by swapping the persistent store.
     /// Rejects backups with incompatible model versions.
+    ///
+    /// **Threading**: `swapStore` is dispatched on a detached background task — it
+    /// performs file I/O and PSC.add which together can run for hundreds of ms,
+    /// and must never block the main thread (watchdog + missed UI frames).
     /// - Parameter metadata: The backup to restore
     func restoreBackup(_ metadata: BackupMetadata) async throws {
         // Reject incompatible model versions
@@ -185,8 +189,11 @@ nonisolated final class CloudBackupService: @unchecked Sendable {
             throw CoreDataStack.CloudBackupError.noActiveStore
         }
 
-        // Swap the store
-        try coreDataStack.swapStore(from: sourceURL)
+        // Swap the store off the main thread — file I/O + PSC.addPersistentStore can be slow.
+        let stack = coreDataStack
+        try await Task.detached(priority: .userInitiated) {
+            try stack.swapStore(from: sourceURL)
+        }.value
 
         CloudBackupService.logger.info("Backup restored: \(metadata.id)")
     }

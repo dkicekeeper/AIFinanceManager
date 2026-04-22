@@ -299,6 +299,8 @@ struct AccountsManagementView: View {
                         },
                         onCancel: { editingAccount = nil }
                     )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
                 }
             }
         }

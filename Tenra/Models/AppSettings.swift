@@ -36,6 +36,9 @@ class AppSettings: Codable {
     var homeBackgroundMode: HomeBackgroundMode
     /// Размыть фото-обои на главном экране.
     var blurWallpaper: Bool
+    /// Прозрачность орбов градиента (режим `.gradient`) — 0.05…1.0, default 0.35.
+    /// Регулирует, насколько ярко проступают цвета расходов на главном экране.
+    var homeBackgroundOpacity: Double
 
     /// Currencies shown in the quick-access transaction currency Menu.
     /// Account currencies are always included automatically (not stored here).
@@ -59,12 +62,14 @@ class AppSettings: Codable {
         wallpaperImageName: String? = nil,
         homeBackgroundMode: HomeBackgroundMode = .none,
         blurWallpaper: Bool = false,
+        homeBackgroundOpacity: Double = 0.35,
         quickAccessCurrencies: [String] = ["USD", "EUR"]
     ) {
         self.baseCurrency = baseCurrency
         self.wallpaperImageName = wallpaperImageName
         self.homeBackgroundMode = homeBackgroundMode
         self.blurWallpaper = blurWallpaper
+        self.homeBackgroundOpacity = homeBackgroundOpacity
         self.quickAccessCurrencies = quickAccessCurrencies
     }
 
@@ -75,6 +80,7 @@ class AppSettings: Codable {
         case wallpaperImageName
         case homeBackgroundMode
         case blurWallpaper
+        case homeBackgroundOpacity
         case quickAccessCurrencies
     }
 
@@ -85,6 +91,7 @@ class AppSettings: Codable {
         // Backward-compatible: old saves without these keys use defaults
         homeBackgroundMode = (try? container.decodeIfPresent(HomeBackgroundMode.self, forKey: .homeBackgroundMode)) ?? .none
         blurWallpaper = (try? container.decodeIfPresent(Bool.self, forKey: .blurWallpaper)) ?? false
+        homeBackgroundOpacity = (try? container.decodeIfPresent(Double.self, forKey: .homeBackgroundOpacity)) ?? 0.35
         quickAccessCurrencies = (try? container.decodeIfPresent([String].self, forKey: .quickAccessCurrencies)) ?? ["USD", "EUR"]
     }
 
@@ -94,6 +101,7 @@ class AppSettings: Codable {
         try container.encodeIfPresent(wallpaperImageName, forKey: .wallpaperImageName)
         try container.encode(homeBackgroundMode, forKey: .homeBackgroundMode)
         try container.encode(blurWallpaper, forKey: .blurWallpaper)
+        try container.encode(homeBackgroundOpacity, forKey: .homeBackgroundOpacity)
         try container.encode(quickAccessCurrencies, forKey: .quickAccessCurrencies)
     }
 
@@ -109,6 +117,7 @@ class AppSettings: Codable {
         wallpaperImageName = other.wallpaperImageName
         homeBackgroundMode = other.homeBackgroundMode
         blurWallpaper = other.blurWallpaper
+        homeBackgroundOpacity = other.homeBackgroundOpacity
         quickAccessCurrencies = other.quickAccessCurrencies
     }
 

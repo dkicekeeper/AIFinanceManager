@@ -336,12 +336,13 @@ struct ContentView: View {
 
         case .gradient:
             // Category orbs fill the full screen behind all Liquid Glass cards.
-            // Opacity kept low so the glass layer remains legible.
+            // Opacity is user-configurable in Settings (default 0.35) so that the
+            // glass layer remains legible at conservative values but can be dialed up.
             CategoryGradientBackground(
                 weights: homeState.cachedCategoryWeights,
                 customCategories: coordinator.categoriesViewModel.customCategories
             )
-            .opacity(0.35)
+            .opacity(viewModel.appSettings.homeBackgroundOpacity)
             .ignoresSafeArea(.all, edges: .all)
             .animation(AppAnimation.gentleSpring, value: homeState.cachedCategoryWeights)
 

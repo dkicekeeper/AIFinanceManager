@@ -32,7 +32,10 @@ struct SettingsView: View {
     @State private var showingResetConfirmation = false
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
-    @State private var showingDisableSyncConfirmation = false
+
+    /// Cached expense-category weights for the home background preview.
+    /// Refreshed when this view appears so the gradient preview reflects current data.
+    @State private var backgroundPreviewWeights: [CategoryColorWeight] = []
 
     // MARK: - Body
 
@@ -101,17 +104,6 @@ struct SettingsView: View {
         } message: {
             Text(String(localized: "alert.deleteAllData.message"))
         }
-        .alert(
-            String(localized: "alert.disableSync.title"),
-            isPresented: $showingDisableSyncConfirmation
-        ) {
-            Button(String(localized: "alert.disableSync.confirm"), role: .destructive) {
-                Task { await cloudSyncViewModel.disableSync() }
-            }
-            Button(String(localized: "alert.deleteAllData.cancel"), role: .cancel) {}
-        } message: {
-            Text(String(localized: "alert.disableSync.message"))
-        }
         .sheet(isPresented: $showingExportSheet) {
             ExportActivityView(transactionsViewModel: transactionsViewModel)
         }
@@ -141,6 +133,9 @@ struct SettingsView: View {
                 currentMode: settingsViewModel.settings.homeBackgroundMode,
                 wallpaperImage: settingsViewModel.currentWallpaper,
                 blurWallpaper: settingsViewModel.settings.blurWallpaper,
+                backgroundOpacity: settingsViewModel.settings.homeBackgroundOpacity,
+                categoryWeights: backgroundPreviewWeights,
+                customCategories: categoriesViewModel.customCategories,
                 onModeSelect: { newMode in
                     Task { await settingsViewModel.updateBackgroundMode(newMode) }
                 },
@@ -157,8 +152,12 @@ struct SettingsView: View {
                 },
                 onBlurChange: { blur in
                     Task { await settingsViewModel.updateBlurWallpaper(blur) }
+                },
+                onOpacityChange: { newOpacity in
+                    Task { await settingsViewModel.updateBackgroundOpacity(newOpacity) }
                 }
             )
+            .task { await refreshBackgroundPreviewWeights() }
         }
     }
 
@@ -265,16 +264,7 @@ struct SettingsView: View {
 
     private var cloudSection: some View {
         SettingsCloudSection(
-            isSyncEnabled: cloudSyncViewModel.isSyncEnabled,
-            syncState: cloudSyncViewModel.syncState,
             storageUsed: cloudSyncViewModel.storageUsed,
-            onToggleSync: { enabled in
-                if enabled {
-                    Task { await cloudSyncViewModel.enableSync() }
-                } else {
-                    showingDisableSyncConfirmation = true
-                }
-            },
             backupsDestination: CloudBackupsView(
                 cloudSyncViewModel: cloudSyncViewModel,
                 transactionCount: transactionsViewModel.allTransactions.count,
@@ -290,6 +280,30 @@ struct SettingsView: View {
                 showingResetConfirmation = true
             }
         )
+    }
+
+    // MARK: - Background Preview Helpers
+
+    /// Compute top-expense category weights for the background preview on a
+    /// background thread so opening the page stays snappy.
+    private func refreshBackgroundPreviewWeights() async {
+        let snapshot = transactionsViewModel.allTransactions
+        let currency = settingsViewModel.settings.baseCurrency
+        // Last 30 days is representative of "current" spend without needing the
+        // active TimeFilter — this view lives outside the home timeline scope.
+        let end = Date()
+        let start = Calendar.current.date(byAdding: .day, value: -30, to: end) ?? end
+
+        let weights = await Task.detached(priority: .userInitiated) {
+            SummaryCalculator.computeTopExpenseWeights(
+                transactions: snapshot,
+                filterStart: start,
+                filterEnd: end,
+                baseCurrency: currency
+            )
+        }.value
+
+        backgroundPreviewWeights = weights
     }
 }
 

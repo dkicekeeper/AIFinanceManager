@@ -31,6 +31,12 @@ struct HomeBackgroundPicker: View {
     let wallpaperImage: UIImage?
     /// Mirrors the home screen blur setting so the card preview matches reality.
     let blurWallpaper: Bool
+    /// Current opacity for the expense-colour gradient (default used if unset).
+    var gradientOpacity: Double = 0.35
+    /// Real top-expense weights so the gradient card reflects actual data.
+    var gradientWeights: [CategoryColorWeight] = []
+    /// Custom categories — needed to resolve orb tints.
+    var customCategories: [CustomCategory] = []
     let onModeSelect: (HomeBackgroundMode) -> Void
     let onPhotoChange: (PhotosPickerItem?) async -> Void
 
@@ -113,6 +119,29 @@ struct HomeBackgroundPicker: View {
         .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
     }
 
+    // MARK: - Gradient Preview Fallback
+
+    /// When real weights aren't available yet (empty tx dataset or cold start),
+    /// synthesize a representative palette from the user's custom categories so
+    /// the gradient card never renders flat.
+    private var effectiveGradientWeights: [CategoryColorWeight] {
+        if !gradientWeights.isEmpty { return gradientWeights }
+        let names = customCategories.prefix(5).map(\.name)
+        guard !names.isEmpty else {
+            return [
+                CategoryColorWeight(category: "food",          weight: 1.0),
+                CategoryColorWeight(category: "transport",     weight: 0.75),
+                CategoryColorWeight(category: "entertainment", weight: 0.55),
+                CategoryColorWeight(category: "shopping",      weight: 0.40),
+                CategoryColorWeight(category: "utilities",     weight: 0.30)
+            ]
+        }
+        let step = 1.0 / Double(names.count)
+        return names.enumerated().map { idx, name in
+            CategoryColorWeight(category: name, weight: 1.0 - Double(idx) * step)
+        }
+    }
+
     // MARK: - Card Artwork
 
     @ViewBuilder
@@ -124,35 +153,16 @@ struct HomeBackgroundPicker: View {
                 .fill(Color(.systemGroupedBackground))
 
         case .gradient:
-            // Static preview using the same palette as the live gradient
-            GeometryReader { geo in
-                ZStack {
-                    Rectangle().fill(
-                        LinearGradient(
-                            colors: [Color(red: 0.05, green: 0.05, blue: 0.12),
-                                     Color(red: 0.08, green: 0.05, blue: 0.18)],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                    )
-                    // Orb 1 — blue/indigo
-                    Ellipse()
-                        .fill(Color(red: 0.231, green: 0.510, blue: 0.965).opacity(0.65))
-                        .frame(width: geo.size.width * 0.9, height: geo.size.height * 0.5)
-                        .offset(x: -geo.size.width * 0.15, y: -geo.size.height * 0.20)
-                        .blur(radius: 22)
-                    // Orb 2 — purple
-                    Ellipse()
-                        .fill(Color(red: 0.545, green: 0.361, blue: 0.965).opacity(0.55))
-                        .frame(width: geo.size.width * 0.75, height: geo.size.height * 0.45)
-                        .offset(x: geo.size.width * 0.20, y: -geo.size.height * 0.05)
-                        .blur(radius: 20)
-                    // Orb 3 — pink
-                    Ellipse()
-                        .fill(Color(red: 0.925, green: 0.255, blue: 0.600).opacity(0.50))
-                        .frame(width: geo.size.width * 0.85, height: geo.size.height * 0.4)
-                        .offset(x: geo.size.width * 0.05, y: geo.size.height * 0.25)
-                        .blur(radius: 22)
-                }
+            // Live preview: same CategoryGradientBackground as the home screen,
+            // with the user's real expense-colour weights + current opacity.
+            // Adapts to light/dark via Color(.systemGroupedBackground) underlay.
+            ZStack {
+                Color(.systemGroupedBackground)
+                CategoryGradientBackground(
+                    weights: effectiveGradientWeights,
+                    customCategories: customCategories
+                )
+                .opacity(gradientOpacity)
             }
 
         case .wallpaper:

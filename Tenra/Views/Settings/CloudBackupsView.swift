@@ -23,37 +23,8 @@ struct CloudBackupsView: View {
 
     var body: some View {
         List {
-            // Create backup button
-            Section {
-                Button {
-                    Task {
-                        await cloudSyncViewModel.createBackup(
-                            transactionCount: transactionCount,
-                            accountCount: accountCount,
-                            categoryCount: categoryCount
-                        )
-                    }
-                } label: {
-                    HStack {
-                        Spacer()
-                        if cloudSyncViewModel.isCreatingBackup {
-                            ProgressView()
-                                .padding(.trailing, AppSpacing.sm)
-                        }
-                        Text(String(localized: "settings.cloud.createBackup"))
-                            .font(AppTypography.body)
-                        Spacer()
-                    }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(cloudSyncViewModel.isCreatingBackup)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            }
-
-            // Backup list
             if !cloudSyncViewModel.backups.isEmpty {
-                Section(header: SettingsSectionHeaderView(title: String(localized: "settings.cloud.backups"))) {
+                Section {
                     ForEach(cloudSyncViewModel.backups) { backup in
                         BackupRowView(
                             metadata: backup,
@@ -70,8 +41,44 @@ struct CloudBackupsView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                Task {
+                    await cloudSyncViewModel.createBackup(
+                        transactionCount: transactionCount,
+                        accountCount: accountCount,
+                        categoryCount: categoryCount
+                    )
+                }
+            } label: {
+                HStack {
+                    Spacer()
+                    if cloudSyncViewModel.isCreatingBackup {
+                        ProgressView()
+                            .padding(.trailing, AppSpacing.sm)
+                    }
+                    Text(String(localized: "settings.cloud.createBackup"))
+                        .font(AppTypography.body)
+                    Spacer()
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(cloudSyncViewModel.isCreatingBackup)
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.vertical, AppSpacing.md)
+        }
+        .toolbar(.hidden, for: .tabBar)
         .navigationTitle(String(localized: "settings.cloud.backups"))
         .navigationBarTitleDisplayMode(.large)
+        .disabled(cloudSyncViewModel.isRestoringBackup)
+        .overlay {
+            if cloudSyncViewModel.isRestoringBackup {
+                RestoreProgressOverlay()
+                    .transition(.opacity)
+                    .zIndex(2)
+            }
+        }
+        .animation(AppAnimation.gentleSpring, value: cloudSyncViewModel.isRestoringBackup)
         .overlay {
             // Toast messages
             VStack {
@@ -121,5 +128,33 @@ struct CloudBackupsView: View {
         .task {
             cloudSyncViewModel.loadBackups()
         }
+    }
+}
+
+private struct RestoreProgressOverlay: View {
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+
+            VStack(spacing: AppSpacing.md) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+
+                Text(String(localized: "settings.cloud.restoring"))
+                    .font(AppTypography.bodyEmphasis)
+                    .foregroundStyle(.white)
+
+                Text(String(localized: "settings.cloud.restoringSubtitle"))
+                    .font(AppTypography.body)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(AppSpacing.xl)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous))
+            .padding(AppSpacing.xl)
+        }
+        .accessibilityElement(children: .combine)
     }
 }

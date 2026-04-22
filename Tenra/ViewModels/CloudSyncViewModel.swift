@@ -2,8 +2,10 @@
 //  CloudSyncViewModel.swift
 //  Tenra
 //
-//  UI state for iCloud sync settings.
-//  Coordinates CloudSyncService, CloudSyncSettingsService, and CloudBackupService.
+//  UI state for local backups. iCloud sync was removed 2026-04-22 —
+//  CloudKit's HistoryExpired events were triggering data loss on restart.
+//  The class name is kept to avoid renaming across call sites; despite the
+//  name, it now manages only on-device backups in Documents/Backups.
 //
 
 import Foundation
@@ -18,7 +20,6 @@ final class CloudSyncViewModel {
 
     // MARK: - Observable State
 
-    var syncState: SyncState = .disabled
     var backups: [BackupMetadata] = []
     var isCreatingBackup = false
     var isRestoringBackup = false
@@ -26,16 +27,8 @@ final class CloudSyncViewModel {
     var successMessage: String?
     var errorMessage: String?
 
-    var isSyncEnabled: Bool = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
-        didSet {
-            UserDefaults.standard.set(isSyncEnabled, forKey: "iCloudSyncEnabled")
-        }
-    }
-
     // MARK: - Dependencies
 
-    @ObservationIgnored private let syncService: CloudSyncService
-    @ObservationIgnored private let settingsService: CloudSyncSettingsService
     @ObservationIgnored private let backupService: CloudBackupService
     @ObservationIgnored private let coreDataStack: CoreDataStack
 
@@ -45,102 +38,11 @@ final class CloudSyncViewModel {
     // MARK: - Init
 
     init(
-        syncService: CloudSyncService,
-        settingsService: CloudSyncSettingsService,
         backupService: CloudBackupService,
         coreDataStack: CoreDataStack = .shared
     ) {
-        self.syncService = syncService
-        self.settingsService = settingsService
         self.backupService = backupService
         self.coreDataStack = coreDataStack
-
-        // Setup callbacks
-        syncService.onSyncStateChanged = { [weak self] state in
-            Task { @MainActor in
-                self?.syncState = state
-            }
-        }
-
-        settingsService.onRemoteSettingsChanged = { [weak self] changes in
-            Task { @MainActor in
-                self?.handleRemoteSettingsChanged(changes)
-            }
-        }
-    }
-
-    // MARK: - Sync Toggle
-
-    func toggleSync() async {
-        if isSyncEnabled {
-            // Turning OFF — confirm first (handled by view alert)
-            await disableSync()
-        } else {
-            await enableSync()
-        }
-    }
-
-    func enableSync() async {
-        syncState = .initialSync
-
-        let hasAccount = await syncService.checkiCloudAccountStatus()
-        guard hasAccount else {
-            syncState = .noAccount
-            return
-        }
-
-        isSyncEnabled = true
-
-        // Reload container off main thread — CoreDataStack is thread-safe (NSLock).
-        // This prevents UI freeze during loadPersistentStores + CloudKit schema init.
-        let stack = coreDataStack
-        await Task.detached {
-            stack.reloadContainer()
-        }.value
-
-        // Check if CloudKit container actually loaded (fallback resets the UserDefaults flag)
-        guard UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") else {
-            isSyncEnabled = false  // sync stored property with UserDefaults (fallback set it to false)
-            syncState = .error("CoreData model is not yet CloudKit-compatible")
-            CloudSyncViewModel.logger.error("CloudKit container failed to load — sync disabled automatically")
-            return
-        }
-
-        // Reload in-memory data from the new container
-        if let coordinator = appCoordinator {
-            try? await coordinator.transactionStore.loadData()
-            coordinator.syncTransactionStoreToViewModels(batchMode: true)
-            await coordinator.balanceCoordinator.registerAccounts(coordinator.transactionStore.accounts)
-        }
-
-        syncService.startMonitoring()
-        settingsService.startListening()
-        settingsService.pushAllToCloud()
-
-        syncState = .idle
-
-        CloudSyncViewModel.logger.info("iCloud sync enabled")
-    }
-
-    func disableSync() async {
-        isSyncEnabled = false
-        syncState = .disabled
-        syncService.stopMonitoring()
-        settingsService.stopListening()
-
-        // Reload container off main thread — awaited so enableSync() won't race
-        let stack = coreDataStack
-        await Task.detached {
-            stack.reloadContainer()
-        }.value
-
-        if let coordinator = appCoordinator {
-            try? await coordinator.transactionStore.loadData()
-            coordinator.syncTransactionStoreToViewModels(batchMode: true)
-            await coordinator.balanceCoordinator.registerAccounts(coordinator.transactionStore.accounts)
-        }
-
-        CloudSyncViewModel.logger.info("iCloud sync disabled")
     }
 
     // MARK: - Backups
@@ -169,6 +71,7 @@ final class CloudSyncViewModel {
 
     func restoreBackup(_ metadata: BackupMetadata) async {
         isRestoringBackup = true
+
         do {
             try await backupService.restoreBackup(metadata)
             // swapStore posts storeDidResetNotification (FRC rebuilds) but in-memory
@@ -182,6 +85,7 @@ final class CloudSyncViewModel {
         } catch {
             await showError(error.localizedDescription)
         }
+
         isRestoringBackup = false
     }
 
@@ -193,40 +97,6 @@ final class CloudSyncViewModel {
         } catch {
             Task { await showError(error.localizedDescription) }
         }
-    }
-
-    // MARK: - Settings Sync
-
-    /// Push a setting change to iCloud (called from SettingsViewModel on user action)
-    func pushSettingToCloud(key: String, value: Any) {
-        guard isSyncEnabled else { return }
-        settingsService.pushToCloud(key: key, value: value)
-    }
-
-    private func handleRemoteSettingsChanged(_ changes: [String: Any]) {
-        CloudSyncViewModel.logger.info("Applied \(changes.count) remote settings")
-        // SettingsService reads from UserDefaults, which was already updated
-        // by CloudSyncSettingsService. UI will update via @Observable.
-    }
-
-    // MARK: - Initialize on App Start
-
-    func initializeIfNeeded() async {
-        guard isSyncEnabled else {
-            syncState = .disabled
-            return
-        }
-
-        let hasAccount = await syncService.checkiCloudAccountStatus()
-        guard hasAccount else {
-            syncState = .noAccount
-            return
-        }
-
-        syncState = .idle
-        syncService.startMonitoring()
-        settingsService.startListening()
-        loadBackups()
     }
 
     // MARK: - Messages

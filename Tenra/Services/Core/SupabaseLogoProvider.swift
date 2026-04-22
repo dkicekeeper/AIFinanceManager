@@ -55,7 +55,7 @@ nonisolated final class SupabaseLogoProvider: LogoProvider {
     actor IndexActor {
         private var index: [String: String]? // normalized → "actual_filename.png"
         private var lastFetch: Date?
-        private var isFetching = false
+        private var inFlightFetch: Task<[String: String], Never>?
 
         /// Get the index, fetching if needed (max once per day for non-empty, retry every 60s for empty)
         func getIndex() async -> [String: String] {
@@ -78,37 +78,50 @@ nonisolated final class SupabaseLogoProvider: LogoProvider {
                 }
             }
 
-            // Fetch from Supabase (prevent concurrent fetches)
-            guard !isFetching else {
-                return index ?? [:]
+            // Coalesce concurrent fetches: parallel callers await the same Task
+            if let inFlightFetch {
+                return await inFlightFetch.value
             }
-            isFetching = true
-            defer { isFetching = false }
 
-            if let freshIndex = await fetchBucketIndex() {
-                self.index = freshIndex
+            let fetchTask = Task<[String: String], Never> { [weak self] in
+                let fetched = await self?.fetchBucketIndex() ?? nil
+                let result = fetched ?? [:]
+                await self?.storeFetchResult(result)
+                return result
+            }
+            inFlightFetch = fetchTask
+            let result = await fetchTask.value
+            inFlightFetch = nil
+            return result
+        }
+
+        private func storeFetchResult(_ result: [String: String]) {
+            if !result.isEmpty {
+                self.index = result
                 self.lastFetch = Date()
-                // Only cache non-empty index to disk
-                if !freshIndex.isEmpty {
-                    saveToDisk(freshIndex)
-                }
-                return freshIndex
+                saveToDisk(result)
+            } else {
+                // Record empty fetch so the 60s retry gate applies
+                self.lastFetch = Date()
+                if self.index == nil { self.index = [:] }
             }
-
-            return index ?? [:]
         }
 
         /// Force refresh the index
         func refresh() async {
-            guard !isFetching else { return }
-            isFetching = true
-            defer { isFetching = false }
-
-            if let freshIndex = await fetchBucketIndex() {
-                self.index = freshIndex
-                self.lastFetch = Date()
-                saveToDisk(freshIndex)
+            if let inFlightFetch {
+                _ = await inFlightFetch.value
+                return
             }
+            let fetchTask = Task<[String: String], Never> { [weak self] in
+                let fetched = await self?.fetchBucketIndex() ?? nil
+                let result = fetched ?? [:]
+                await self?.storeFetchResult(result)
+                return result
+            }
+            inFlightFetch = fetchTask
+            _ = await fetchTask.value
+            inFlightFetch = nil
         }
 
         // MARK: - Supabase Storage API

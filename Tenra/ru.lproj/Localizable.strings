@@ -98,6 +98,9 @@
 "settings.background.photo" = "Фото";
 "settings.background.blurWallpaper" = "Размыть обои";
 "settings.background.removePhoto" = "Удалить фото";
+"settings.background.preview" = "Превью фона";
+"settings.background.opacity" = "Интенсивность цвета";
+"settings.background.opacityTitle" = "Цвет расходов";
 "settings.dataManagement" = "Управление данными";
 "settings.categories" = "Категории";
 "settings.subcategories" = "Подкатегории";
@@ -1041,7 +1044,7 @@
 "pdf.error.ocr %@" = "Ошибка при распознавании текста: %@";
 
 // MARK: - iCloud Sync
-"settings.cloud" = "iCloud";
+"settings.cloud" = "Резервные копии";
 "settings.cloud.sync" = "Синхронизация iCloud";
 "settings.cloud.status.synced" = "Синхронизировано";
 "settings.cloud.status.syncing" = "Синхронизация...";
@@ -1057,6 +1060,8 @@
 "settings.cloud.backupCreated" = "Резервная копия создана";
 "settings.cloud.restore" = "Восстановить";
 "settings.cloud.restoreSuccess" = "Данные восстановлены";
+"settings.cloud.restoring" = "Восстановление…";
+"settings.cloud.restoringSubtitle" = "Не закрывайте приложение";
 "settings.cloud.delete" = "Удалить";
 "settings.cloud.storage" = "Хранилище";
 "settings.cloud.storageUsed" = "%@ из %@";

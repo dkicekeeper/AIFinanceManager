@@ -8,7 +8,6 @@
 
 import Foundation
 import CoreData
-import CloudKit
 import UIKit
 import os
 
@@ -100,53 +99,18 @@ final class CoreDataStack: @unchecked Sendable {
 
     // MARK: - Container Creation
 
-    /// Creates either an NSPersistentCloudKitContainer or NSPersistentContainer
-    /// depending on the user's iCloud sync preference.
-    private func createContainer() -> NSPersistentContainer {
-        if UserDefaults.standard.bool(forKey: "iCloudSyncEnabled") {
-            return NSPersistentCloudKitContainer(name: "Tenra")
-        } else {
-            return NSPersistentContainer(name: "Tenra")
-        }
-    }
-
-    /// Configures and loads a new persistent container. Does NOT acquire containerLock —
-    /// callers are responsible for holding the lock when needed.
-    /// If NSPersistentCloudKitContainer fails to load (e.g. model incompatible with CloudKit),
-    /// automatically falls back to NSPersistentContainer to prevent data loss.
+    /// Creates and loads a local-only persistent container. iCloud/CloudKit sync was
+    /// removed 2026-04-22 after `HistoryExpired` events caused data loss on restart.
     private func createAndLoadContainer() -> NSPersistentContainer {
-        let container = createContainer()
-        let loaded = configureAndLoad(container)
+        let container = NSPersistentContainer(name: "Tenra")
 
-        if loaded {
-            return container
-        }
-
-        // CloudKit container failed — fall back to plain NSPersistentContainer to prevent data loss
-        if container is NSPersistentCloudKitContainer {
-            CoreDataStack.logger.error("⚠️ CloudKit container failed to load — falling back to local-only NSPersistentContainer")
-            UserDefaults.standard.set(false, forKey: "iCloudSyncEnabled")
-            let fallback = NSPersistentContainer(name: "Tenra")
-            let fallbackLoaded = configureAndLoad(fallback)
-            if !fallbackLoaded {
-                CoreDataStack.logger.critical("❌ Fallback NSPersistentContainer also failed to load")
-            }
-            return fallback
-        }
-
-        return container
-    }
-
-    /// Configures store descriptions and loads persistent stores on the given container.
-    /// Returns true if the store loaded successfully.
-    private func configureAndLoad(_ container: NSPersistentContainer) -> Bool {
         let description = container.persistentStoreDescriptions.first
         description?.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         description?.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
 
-        // Use .completeUntilFirstUserAuthentication instead of .complete so the store
-        // remains accessible during background fetches (e.g. CloudKit sync pushes).
-        // .complete would block access while the device is locked, breaking background sync.
+        // .completeUntilFirstUserAuthentication keeps the store accessible during
+        // background fetches (e.g. background tasks). `.complete` would block access
+        // while the device is locked.
         description?.setOption(FileProtectionType.completeUntilFirstUserAuthentication as NSObject,
                                 forKey: NSPersistentStoreFileProtectionKey)
 
@@ -154,18 +118,9 @@ final class CoreDataStack: @unchecked Sendable {
         description?.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
         description?.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
 
-        // Configure CloudKit container options if using NSPersistentCloudKitContainer
-        if container is NSPersistentCloudKitContainer {
-            description?.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
-                containerIdentifier: "iCloud.dakacom.Tenra"
-            )
-        }
-
-        var loadSuccess = true
         container.loadPersistentStores { [self] storeDescription, error in
             if let error = error as NSError? {
                 CoreDataStack.logger.critical("Persistent store failed to load: \(error), \(error.userInfo)")
-                loadSuccess = false
                 self.isCoreDataAvailable = false
                 if error.code == NSPersistentStoreIncompatibleVersionHashError ||
                    error.code == NSMigrationMissingSourceModelError {
@@ -178,37 +133,11 @@ final class CoreDataStack: @unchecked Sendable {
             }
         }
 
-        guard loadSuccess else { return false }
-
-        // CloudKit schema init (DEBUG only, gated by UserDefaults flag)
-        if let cloudContainer = container as? NSPersistentCloudKitContainer {
-            let hasInitialized = UserDefaults.standard.bool(forKey: "CloudKitSchemaInitialized")
-            if !hasInitialized {
-                do {
-                    #if DEBUG
-                    try cloudContainer.initializeCloudKitSchema(options: [])
-                    UserDefaults.standard.set(true, forKey: "CloudKitSchemaInitialized")
-                    CoreDataStack.logger.info("CloudKit schema initialized (development)")
-                    #else
-                    try cloudContainer.initializeCloudKitSchema(options: [.dryRun])
-                    CoreDataStack.logger.info("CloudKit schema validated (production)")
-                    #endif
-                } catch {
-                    CoreDataStack.logger.error("CloudKit schema initialization failed: \(error.localizedDescription)")
-                }
-            }
-        }
-
-        // Automatic merge from parent context
         container.viewContext.automaticallyMergesChangesFromParent = true
-
-        // Use constraint merge policy to handle unique constraint violations
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-
-        // Undo manager for view context (optional, can be disabled for performance)
         container.viewContext.undoManager = nil
 
-        return true
+        return container
     }
 
     // MARK: - Persistent Container
@@ -410,8 +339,14 @@ final class CoreDataStack: @unchecked Sendable {
     }
 
     /// Replaces the current persistent store with a backup file. Used for restoring
-    /// from cloud backups. Posts storeDidResetNotification on success.
-    func swapStore(from backupURL: URL) throws {
+    /// from cloud backups. Posts storeDidResetNotification on the main thread on success.
+    ///
+    /// **Threading**: This method blocks for the duration of file I/O + PSC.add (can be
+    /// hundreds of ms or more). It MUST be called from a background thread (e.g. via
+    /// `Task.detached`). Calling it from the main thread will freeze the UI and trigger
+    /// the watchdog. The viewContext mutations are dispatched onto the main queue
+    /// internally via `performAndWait`.
+    nonisolated func swapStore(from backupURL: URL) throws {
         containerLock.lock()
         defer { containerLock.unlock() }
 
@@ -420,6 +355,12 @@ final class CoreDataStack: @unchecked Sendable {
               let storeURL = store.url else { throw CloudBackupError.noActiveStore }
 
         let options = store.options as? [String: Any]
+        let viewContext = container.viewContext
+
+        // Drop all registered objects on viewContext BEFORE removing the store —
+        // any zombie fault accessed after the store is gone would crash with
+        // "persistent store is not reachable from this coordinator".
+        viewContext.performAndWait { viewContext.reset() }
 
         try container.persistentStoreCoordinator.remove(store)
 
@@ -448,9 +389,15 @@ final class CoreDataStack: @unchecked Sendable {
         }
 
         try container.persistentStoreCoordinator.addPersistentStore(type: .sqlite, at: storeURL, options: options)
-        container.viewContext.reset()
 
-        NotificationCenter.default.post(name: Self.storeDidResetNotification, object: self)
+        // Reset again so the viewContext picks up the new store's row cache.
+        viewContext.performAndWait { viewContext.reset() }
+
+        // Notify FRC holders on the main thread (asynchronously) so SwiftUI gets a
+        // render frame between the swap completing and the FRC re-fetching.
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Self.storeDidResetNotification, object: self)
+        }
     }
 
     // MARK: - Performance Monitoring

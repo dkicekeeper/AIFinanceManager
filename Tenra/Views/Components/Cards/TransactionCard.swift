@@ -150,13 +150,17 @@ struct TransactionCard: View {
         .accessibilityLabel(accessibilityText)
         .accessibilityHint(String(localized: "accessibility.swipeForOptions"))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            // Удаление
-            Button(role: .destructive) {
+            // Удаление — НЕ используем role: .destructive, т.к. он заставляет
+            // SwiftUI анимированно удалить строку сразу по тапу, что дизмиссит
+            // confirmationDialog до того, как пользователь подтвердит. В итоге
+            // транзакция "удаляется" визуально, но delete() не вызывается.
+            Button {
                 HapticManager.warning()
                 showingDeleteConfirmation = true
             } label: {
                 Label(String(localized: "button.delete"), systemImage: "trash")
             }
+            .tint(.red)
             .accessibilityLabel(String(localized: "accessibility.deleteTransaction"))
 
             // Stop Recurring — shown only when series exists and is active

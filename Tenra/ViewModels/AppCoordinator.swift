@@ -162,16 +162,9 @@ class AppCoordinator {
             transactionsViewModel: self.transactionsViewModel
         )
 
-        // iCloud Sync services
-        let cloudSyncService = CloudSyncService()
-        let cloudSyncSettingsService = CloudSyncSettingsService()
+        // Local backups VM (iCloud sync removed 2026-04-22 — backups live in Documents/Backups)
         let cloudBackupService = CloudBackupService()
-
-        self.cloudSyncViewModel = CloudSyncViewModel(
-            syncService: cloudSyncService,
-            settingsService: cloudSyncSettingsService,
-            backupService: cloudBackupService
-        )
+        self.cloudSyncViewModel = CloudSyncViewModel(backupService: cloudBackupService)
         self.cloudSyncViewModel.appCoordinator = self
 
         // @Observable handles change propagation automatically - no manual observer setup needed
@@ -292,9 +285,6 @@ class AppCoordinator {
         Task(priority: .background) {
             CoreDataStack.shared.purgeHistory(olderThan: 7)
         }
-
-        // Initialize iCloud sync if enabled
-        await cloudSyncViewModel.initializeIfNeeded()
 
         PerformanceProfiler.end("AppCoordinator.initialize")
     }

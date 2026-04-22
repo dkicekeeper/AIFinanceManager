@@ -17,7 +17,7 @@ final class LogoDiskCache {
     
     /// Bump this when cache format changes or stale data needs clearing.
     /// Changing this wipes the entire logo disk cache on next launch.
-    private static let cacheVersion = 2 // v2: Supabase migration, lettermarks no longer cached
+    private static let cacheVersion = 3 // v3: wipe LogoDev fallbacks cached due to Supabase race bug
 
     private init() {
         // Используем Application Support / logos

@@ -6,6 +6,10 @@
 //
 
 import Foundation
+import os
+
+// 🔍 DIAG [balance-zero-bug]
+private let accountCRUDLogger = Logger(subsystem: "Tenra", category: "AccountCRUD")
 
 // MARK: - Account CRUD Operations
 
@@ -71,7 +75,15 @@ extension TransactionStore {
 
     /// Delete multiple accounts — single persist at the end
     func deleteAccounts(_ ids: Set<String>) {
+        // 🔍 DIAG [balance-zero-bug]: snapshot of remaining accounts + their in-memory balance
+        // right before persistence. If any remaining account shows `balance=0` here, the stale
+        // in-memory Account struct is the culprit; if balances look right, the corruption is
+        // happening in CoreData later.
+        accountCRUDLogger.log("🗑️ deleteAccounts START: removing \(ids.count) ids=\(Array(ids), privacy: .public) totalAccountsBefore=\(self.accounts.count)")
         accounts.removeAll { ids.contains($0.id) }
+        for a in accounts {
+            accountCRUDLogger.log("🗑️ deleteAccounts remaining: id=\(a.id, privacy: .public) name=\(a.name, privacy: .public) balance=\(a.balance) initial=\(a.initialBalance ?? -1) shouldCalc=\(a.shouldCalculateFromTransactions)")
+        }
 
         if !isImporting {
             persistAccountsToRepository()
@@ -80,6 +92,7 @@ extension TransactionStore {
                 AccountOrderManager.shared.removeOrder(for: id)
             }
         }
+        accountCRUDLogger.log("🗑️ deleteAccounts END — saveAccounts dispatched")
     }
 
     /// Deletes all transactions associated with an account (where accountId or targetAccountId matches).

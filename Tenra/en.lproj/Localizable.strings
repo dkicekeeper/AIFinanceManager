@@ -98,6 +98,9 @@
 "settings.background.photo" = "Photo";
 "settings.background.blurWallpaper" = "Blur Wallpaper";
 "settings.background.removePhoto" = "Remove Photo";
+"settings.background.preview" = "Background preview";
+"settings.background.opacity" = "Colour intensity";
+"settings.background.opacityTitle" = "Expense colour";
 "settings.dataManagement" = "Data Management";
 "settings.categories" = "Categories";
 "settings.subcategories" = "Subcategories";
@@ -1041,7 +1044,7 @@
 "pdf.error.ocr %@" = "Text recognition error: %@";
 
 // MARK: - iCloud Sync
-"settings.cloud" = "iCloud";
+"settings.cloud" = "Backups";
 "settings.cloud.sync" = "iCloud Sync";
 "settings.cloud.status.synced" = "Synced";
 "settings.cloud.status.syncing" = "Syncing...";
@@ -1057,6 +1060,8 @@
 "settings.cloud.backupCreated" = "Backup created successfully";
 "settings.cloud.restore" = "Restore";
 "settings.cloud.restoreSuccess" = "Data restored successfully";
+"settings.cloud.restoring" = "Restoring…";
+"settings.cloud.restoringSubtitle" = "Please don't close the app";
 "settings.cloud.delete" = "Delete";
 "settings.cloud.storage" = "Storage";
 "settings.cloud.storageUsed" = "%@ of %@";

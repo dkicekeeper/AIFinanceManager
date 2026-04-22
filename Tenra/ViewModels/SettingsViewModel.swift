@@ -200,6 +200,17 @@ final class SettingsViewModel {
         }
     }
 
+    /// Adjust the expense-colour gradient opacity on the home screen.
+    /// Clamped to 0.05…1.0 to avoid fully invisible / over-saturated states.
+    func updateBackgroundOpacity(_ opacity: Double) async {
+        settings.homeBackgroundOpacity = max(0.05, min(1.0, opacity))
+        do {
+            try await storageService.saveSettings(settings)
+        } catch {
+            await showError(error.localizedDescription)
+        }
+    }
+
     // MARK: - Export/Import Operations
 
     /// Export all data to CSV

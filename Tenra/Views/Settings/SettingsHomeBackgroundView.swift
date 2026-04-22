@@ -3,16 +3,17 @@
 //  Tenra
 //
 //  Dedicated page for home screen background settings.
-//  Mode cards (with inline photo picking for wallpaper) + blur toggle.
+//  Hero live preview + mode picker + per-mode controls (blur / opacity).
 //
 
 import SwiftUI
 import PhotosUI
 
-/// Full-page background settings: mode cards + blur toggle.
-///
-/// Photo selection is handled directly by the wallpaper card in `HomeBackgroundPicker` —
-/// no separate "select photo" row is shown here.
+/// Full-page background settings:
+///   • Hero preview — mirrors what the home screen will look like (adapts L/D)
+///   • Mode picker — none / gradient / photo
+///   • Opacity slider for the "expense colour" gradient (when mode == .gradient)
+///   • Blur toggle + remove photo (when mode == .wallpaper)
 struct SettingsHomeBackgroundView: View {
 
     // MARK: - Props
@@ -20,21 +21,32 @@ struct SettingsHomeBackgroundView: View {
     let currentMode: HomeBackgroundMode
     let wallpaperImage: UIImage?
     let blurWallpaper: Bool
+    let backgroundOpacity: Double
+    /// Top-expense weights, used by the gradient preview. Empty ⇒ demo fallback palette.
+    let categoryWeights: [CategoryColorWeight]
+    /// Custom categories — needed to resolve tints for the orbs.
+    let customCategories: [CustomCategory]
     let onModeSelect: (HomeBackgroundMode) -> Void
     let onPhotoChange: (PhotosPickerItem?) async -> Void
     let onWallpaperRemove: () async -> Void
     let onBlurChange: (Bool) -> Void
+    let onOpacityChange: (Double) -> Void
 
     // MARK: - Body
 
     var body: some View {
         List {
-            // Mode cards — wallpaper card opens photo picker on tap
+            // Mode picker — cards themselves act as live previews (gradient uses
+            // the real category colours + current opacity; wallpaper uses the
+            // saved photo with blur). No separate hero preview.
             Section {
                 HomeBackgroundPicker(
                     currentMode: currentMode,
                     wallpaperImage: wallpaperImage,
                     blurWallpaper: blurWallpaper,
+                    gradientOpacity: backgroundOpacity,
+                    gradientWeights: categoryWeights,
+                    customCategories: customCategories,
                     onModeSelect: onModeSelect,
                     onPhotoChange: onPhotoChange
                 )
@@ -44,10 +56,23 @@ struct SettingsHomeBackgroundView: View {
                                           trailing: 0))
             }
 
-            // Wallpaper-specific controls — visible only when wallpaper mode is active
+            // Gradient-specific control: opacity of the expense colour layer
+            if currentMode == .gradient {
+                Section(header: SettingsSectionHeaderView(
+                    title: String(localized: "settings.background.opacityTitle",
+                                  defaultValue: "Expense colour")
+                )) {
+                    OpacitySliderRow(
+                        value: backgroundOpacity,
+                        onChange: onOpacityChange
+                    )
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            // Wallpaper-specific controls
             if currentMode == .wallpaper {
                 Section {
-                    // Blur toggle
                     Toggle(isOn: Binding(
                         get: { blurWallpaper },
                         set: { onBlurChange($0) }
@@ -58,7 +83,6 @@ struct SettingsHomeBackgroundView: View {
                         )
                     }
 
-                    // Remove — only shown when a photo is saved
                     if wallpaperImage != nil {
                         UniversalRow(
                             config: .settings,
@@ -84,12 +108,50 @@ struct SettingsHomeBackgroundView: View {
     }
 }
 
+// MARK: - Opacity Slider Row
+
+private struct OpacitySliderRow: View {
+    let value: Double
+    let onChange: (Double) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            HStack {
+                Label(
+                    String(localized: "settings.background.opacity",
+                           defaultValue: "Colour intensity"),
+                    systemImage: "circle.lefthalf.filled"
+                )
+                .font(AppTypography.body)
+                .foregroundStyle(AppColors.textPrimary)
+
+                Spacer()
+
+                Text("\(Int((value * 100).rounded()))%")
+                    .font(AppTypography.bodySmall.monospacedDigit())
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            Slider(
+                value: Binding(
+                    get: { value },
+                    set: { onChange($0) }
+                ),
+                in: 0.05...1.0
+            )
+            .tint(AppColors.accent)
+        }
+        .padding(.vertical, AppSpacing.xs)
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
     struct PreviewWrapper: View {
-        @State private var mode: HomeBackgroundMode = .wallpaper
+        @State private var mode: HomeBackgroundMode = .gradient
         @State private var blur = false
+        @State private var opacity: Double = 0.35
 
         var body: some View {
             NavigationStack {
@@ -97,10 +159,14 @@ struct SettingsHomeBackgroundView: View {
                     currentMode: mode,
                     wallpaperImage: nil,
                     blurWallpaper: blur,
+                    backgroundOpacity: opacity,
+                    categoryWeights: [],
+                    customCategories: [],
                     onModeSelect: { mode = $0 },
                     onPhotoChange: { _ in },
                     onWallpaperRemove: {},
-                    onBlurChange: { blur = $0 }
+                    onBlurChange: { blur = $0 },
+                    onOpacityChange: { opacity = $0 }
                 )
             }
         }
