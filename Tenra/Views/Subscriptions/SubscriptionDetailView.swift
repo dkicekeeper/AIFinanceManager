@@ -20,10 +20,7 @@ struct SubscriptionDetailView: View {
     @State private var showingUnlinkAllConfirmation = false
     @State private var cachedTransactions: [Transaction] = []
     @State private var cachedSpentAllTimeInSubCurrency: Double = 0
-    @State private var visibleTxLimit: Int = 100
     @Environment(\.dismiss) var dismiss
-
-    private static let transactionPageSize = 100
 
     /// Live subscription from the store — reflects pause/resume/edit changes in real time.
     private var liveSubscription: RecurringSeries {
@@ -47,8 +44,6 @@ struct SubscriptionDetailView: View {
         cachedTransactions = linked
         // Recompute cached sum off the main critical path; O(N) but only on store change.
         cachedSpentAllTimeInSubCurrency = computeSpentAllTime(in: linked, currency: liveSubscription.currency)
-        // Reset pagination cap on reload so UI doesn't try to show more than exists.
-        visibleTxLimit = Self.transactionPageSize
     }
 
     private func computeSpentAllTime(in txs: [Transaction], currency: String) -> Double {
@@ -70,118 +65,40 @@ struct SubscriptionDetailView: View {
         transactionStore.nextChargeDate(for: liveSubscription.id)
     }
 
-    /// Sections built only from the first `visibleTxLimit` most-recent transactions.
-    /// Caps rendering cost regardless of how many transactions are linked to the series.
-    private var transactionDateSections: [(date: String, displayLabel: String, transactions: [Transaction])] {
-        let slice = cachedTransactions.prefix(visibleTxLimit)
-        let grouped = Dictionary(grouping: slice) { $0.date }
-        return grouped.sorted { $0.key > $1.key }.map { key, txs in
-            (date: key, displayLabel: formatTransactionDate(key), transactions: txs)
-        }
-    }
-
-    private func formatTransactionDate(_ isoDate: String) -> String {
-        guard let date = DateFormatters.dateFormatter.date(from: isoDate) else { return isoDate }
-        let cal = Calendar.current
-        if cal.isDateInToday(date) { return String(localized: "common.today", defaultValue: "Today") }
-        if cal.isDateInYesterday(date) { return String(localized: "common.yesterday", defaultValue: "Yesterday") }
-        if cal.component(.year, from: date) == cal.component(.year, from: Date()) {
-            return DateFormatters.displayDateFormatter.string(from: date)
-        }
-        return DateFormatters.displayDateWithYearFormatter.string(from: date)
-    }
-    
     var body: some View {
-        ScrollView {
-            VStack(spacing: AppSpacing.lg) {
-                // Info card
-                subscriptionInfoCard
-                    .screenPadding()
-                
-                // Transactions history
-                if !cachedTransactions.isEmpty {
-                    transactionsSection
-                        .screenPadding()
-                }
+        let accountsById = Dictionary(uniqueKeysWithValues: transactionsViewModel.accounts.map { ($0.id, $0) })
+
+        EntityDetailScaffold(
+            navigationTitle: "",
+            infoRows: infoRowConfigs(),
+            transactions: cachedTransactions,
+            historyCurrency: liveSubscription.currency,
+            accountsById: accountsById,
+            styleHelper: { tx in
+                CategoryStyleHelper.cached(
+                    category: tx.category,
+                    type: tx.type,
+                    customCategories: categoriesViewModel.customCategories
+                )
+            },
+            viewModel: transactionsViewModel,
+            categoriesViewModel: categoriesViewModel,
+            accountsViewModel: accountsViewModel,
+            balanceCoordinator: accountsViewModel.balanceCoordinator,
+            hero: {
+                HeroSection(
+                    icon: liveSubscription.iconSource,
+                    title: liveSubscription.description,
+                    primaryAmount: NSDecimalNumber(decimal: liveSubscription.amount).doubleValue,
+                    primaryCurrency: liveSubscription.currency,
+                    showBaseConversion: true,
+                    baseCurrency: transactionsViewModel.appSettings.baseCurrency
+                )
+            },
+            toolbarMenu: {
+                subscriptionToolbarMenu
             }
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        showingLinkPayments = true
-                    } label: {
-                        Label(String(localized: "subscription.linkPayments.title", defaultValue: "Link Payments"), systemImage: "link.badge.plus")
-                    }
-
-                    Button {
-                        showingEditView = true
-                    } label: {
-                        Label(String(localized: "subscriptions.edit"), systemImage: "pencil")
-                    }
-                    
-                    if liveSubscription.subscriptionStatus == .active {
-                        Button {
-                            Task {
-                                try await transactionStore.pauseSubscription(id: liveSubscription.id)
-                            }
-                        } label: {
-                            Label(String(localized: "subscriptions.pause"), systemImage: "pause.circle")
-                        }
-                    } else if liveSubscription.subscriptionStatus == .paused {
-                        Button {
-                            Task {
-                                // Find subcategory IDs from any existing transaction in this series
-                                // to apply them to newly generated occurrences after resume.
-                                let existingTx = transactionStore.transactions.first {
-                                    $0.recurringSeriesId == liveSubscription.id
-                                }
-                                let subcategoryIds = existingTx.map {
-                                    categoriesViewModel.getSubcategoriesForTransaction($0.id).map { $0.id }
-                                } ?? []
-
-                                let idsBefore = Set(transactionStore.transactions.map { $0.id })
-
-                                try await transactionStore.resumeSubscription(id: liveSubscription.id)
-
-                                if !subcategoryIds.isEmpty {
-                                    let idsAfter = Set(transactionStore.transactions.map { $0.id })
-                                    let newIds = idsAfter.subtracting(idsBefore)
-                                    for id in newIds {
-                                        categoriesViewModel.linkSubcategoriesToTransaction(
-                                            transactionId: id,
-                                            subcategoryIds: subcategoryIds
-                                        )
-                                    }
-                                }
-                            }
-                        } label: {
-                            Label(String(localized: "subscriptions.resume"), systemImage: "play.circle")
-                        }
-                    }
-                    
-                    if linkedTransactionCount > 0 {
-                        Divider()
-                        Button(role: .destructive) {
-                            showingUnlinkAllConfirmation = true
-                        } label: {
-                            Label(String(localized: "subscription.unlinkAll", defaultValue: "Unlink all transactions"), systemImage: "link.badge.minus")
-                        }
-                    }
-
-                    Divider()
-
-                    Button(role: .destructive) {
-                        showingDeleteConfirmation = true
-                    } label: {
-                        Label(String(localized: "subscriptions.delete"), systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                }
-            }
-        }
+        )
         .sheet(isPresented: $showingEditView) {
             SubscriptionEditView(
                 transactionStore: transactionStore,
@@ -192,14 +109,14 @@ struct SubscriptionDetailView: View {
         }
         .alert(String(localized: "subscriptions.deleteConfirmTitle"), isPresented: $showingDeleteConfirmation) {
             Button(String(localized: "quickAdd.cancel"), role: .cancel) {}
-            
+
             Button(String(localized: "subscriptions.deleteOnlySubscription"), role: .destructive) {
                 Task {
                     try await transactionStore.deleteSeries(id: subscription.id, deleteTransactions: false)
                     dismiss()
                 }
             }
-            
+
             Button(String(localized: "subscriptions.deleteSubscriptionAndTransactions"), role: .destructive) {
                 Task {
                     try await transactionStore.deleteSeries(id: subscription.id, deleteTransactions: true)
@@ -237,97 +154,118 @@ struct SubscriptionDetailView: View {
             await refreshTransactions()
         }
     }
-    
-    private var subscriptionInfoCard: some View {
-        VStack(alignment: .center, spacing: AppSpacing.md) {
-            VStack(spacing: AppSpacing.md) {
-                IconView(
-                    source: liveSubscription.iconSource,
-                    style: .glassHero()
-                )
 
-                VStack(alignment: .center, spacing: AppSpacing.xs) {
-                    Text(liveSubscription.description)
-                        .font(AppTypography.h1)
-                    
-                    FormattedAmountText(
-                        amount: NSDecimalNumber(decimal: liveSubscription.amount).doubleValue,
-                        currency: liveSubscription.currency,
-                        fontSize: AppTypography.h4,
-                        color: .secondary
-                    )
+    private func infoRowConfigs() -> [InfoRowConfig] {
+        var rows: [InfoRowConfig] = []
+        rows.append(InfoRowConfig(
+            icon: "tag.fill",
+            label: String(localized: "subscriptions.category"),
+            value: liveSubscription.category
+        ))
+        rows.append(InfoRowConfig(
+            icon: "repeat",
+            label: String(localized: "subscriptions.frequency"),
+            value: liveSubscription.frequency.displayName
+        ))
+        if let nextDate = nextChargeDate {
+            rows.append(InfoRowConfig(
+                icon: "calendar.badge.clock",
+                label: String(localized: "subscriptions.nextCharge"),
+                value: formatDate(nextDate)
+            ))
+        }
+        if let accountId = liveSubscription.accountId,
+           let account = transactionsViewModel.accounts.first(where: { $0.id == accountId }) {
+            rows.append(InfoRowConfig(
+                icon: "creditcard.fill",
+                label: String(localized: "subscriptions.account"),
+                value: account.name
+            ))
+        }
+        rows.append(InfoRowConfig(
+            icon: "checkmark.circle.fill",
+            label: String(localized: "subscriptions.status"),
+            value: statusText
+        ))
+        rows.append(InfoRowConfig(
+            icon: "sum",
+            label: String(localized: "subscriptions.spentAllTime", defaultValue: "Spent all time"),
+            value: spentAllTimeDisplay
+        ))
+        return rows
+    }
 
-                    if liveSubscription.currency != transactionsViewModel.appSettings.baseCurrency {
-                        ConvertedAmountView(
-                            amount: NSDecimalNumber(decimal: liveSubscription.amount).doubleValue,
-                            fromCurrency: liveSubscription.currency,
-                            toCurrency: transactionsViewModel.appSettings.baseCurrency,
-                            fontSize: AppTypography.caption,
-                            color: .secondary.opacity(0.7)
-                        )
+    @ViewBuilder
+    private var subscriptionToolbarMenu: some View {
+        Button {
+            showingLinkPayments = true
+        } label: {
+            Label(String(localized: "subscription.linkPayments.title", defaultValue: "Link Payments"),
+                  systemImage: "link.badge.plus")
+        }
+
+        Button {
+            showingEditView = true
+        } label: {
+            Label(String(localized: "subscriptions.edit"), systemImage: "pencil")
+        }
+
+        if liveSubscription.subscriptionStatus == .active {
+            Button {
+                Task {
+                    try await transactionStore.pauseSubscription(id: liveSubscription.id)
+                }
+            } label: {
+                Label(String(localized: "subscriptions.pause"), systemImage: "pause.circle")
+            }
+        } else if liveSubscription.subscriptionStatus == .paused {
+            Button {
+                Task {
+                    // Find subcategory IDs from any existing transaction in this series
+                    // to apply them to newly generated occurrences after resume.
+                    let existingTx = transactionStore.transactions.first {
+                        $0.recurringSeriesId == liveSubscription.id
+                    }
+                    let subcategoryIds = existingTx.map {
+                        categoriesViewModel.getSubcategoriesForTransaction($0.id).map { $0.id }
+                    } ?? []
+
+                    let idsBefore = Set(transactionStore.transactions.map { $0.id })
+
+                    try await transactionStore.resumeSubscription(id: liveSubscription.id)
+
+                    if !subcategoryIds.isEmpty {
+                        let idsAfter = Set(transactionStore.transactions.map { $0.id })
+                        let newIds = idsAfter.subtracting(idsBefore)
+                        for id in newIds {
+                            categoriesViewModel.linkSubcategoriesToTransaction(
+                                transactionId: id,
+                                subcategoryIds: subcategoryIds
+                            )
+                        }
                     }
                 }
-                Spacer()
+            } label: {
+                Label(String(localized: "subscriptions.resume"), systemImage: "play.circle")
             }
-            VStack(spacing: AppSpacing.sm)
-            {
-                InfoRow(
-                    icon: "tag.fill",
-                    label: String(
-                        localized: "subscriptions.category"
-                    ),
-                    value: liveSubscription.category
-                )
-                InfoRow(
-                    icon: "repeat",
-                    label: String(
-                        localized: "subscriptions.frequency"
-                    ),
-                    value: liveSubscription.frequency.displayName
-                )
-                
-                if let nextDate = nextChargeDate {
-                    InfoRow(
-                        icon: "calendar.badge.clock",
-                        label: String(
-                            localized: "subscriptions.nextCharge"
-                        ),
-                        value: formatDate(
-                            nextDate
-                        )
-                    )
-                }
-                
-                if let accountId = liveSubscription.accountId,
-                   let account = transactionsViewModel.accounts.first(
-                    where: {
-                        $0.id == accountId
-                    }) {
-                    InfoRow(
-                        icon: "creditcard.fill",
-                        label: String(
-                            localized: "subscriptions.account"
-                        ),
-                        value: account.name
-                    )
-                }
-                
-                InfoRow(
-                    icon: "checkmark.circle.fill",
-                    label: String(
-                        localized: "subscriptions.status"
-                    ),
-                    value: statusText
-                )
+        }
 
-                InfoRow(
-                    icon: "sum",
-                    label: String(localized: "subscriptions.spentAllTime", defaultValue: "Spent all time"),
-                    value: spentAllTimeDisplay
-                )
+        if linkedTransactionCount > 0 {
+            Divider()
+            Button(role: .destructive) {
+                showingUnlinkAllConfirmation = true
+            } label: {
+                Label(String(localized: "subscription.unlinkAll", defaultValue: "Unlink all transactions"),
+                      systemImage: "link.badge.minus")
             }
-            .padding(AppSpacing.lg)
-            .cardStyle()
+        }
+
+        Divider()
+
+        Button(role: .destructive) {
+            showingDeleteConfirmation = true
+        } label: {
+            Label(String(localized: "subscriptions.delete"), systemImage: "trash")
         }
     }
 
@@ -343,7 +281,7 @@ struct SubscriptionDetailView: View {
         }
         return primary
     }
-    
+
     private var statusText: String {
         switch liveSubscription.subscriptionStatus {
         case .active:
@@ -354,66 +292,6 @@ struct SubscriptionDetailView: View {
             return String(localized: "subscriptions.status.archived")
         case .none:
             return String(localized: "subscriptions.status.unknown")
-        }
-    }
-    
-    private var transactionsSection: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
-            HStack {
-                Text(String(localized: "subscriptions.transactionHistory"))
-                    .font(AppTypography.h4)
-                Spacer()
-                if cachedTransactions.count > 0 {
-                    Text("\(cachedTransactions.count)")
-                        .font(AppTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            LazyVStack(spacing: 0, pinnedViews: []) {
-                ForEach(transactionDateSections, id: \.date) { section in
-                    VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                        Text(section.displayLabel)
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, AppSpacing.sm)
-
-                        ForEach(section.transactions) { transaction in
-                            let styleData = CategoryStyleHelper.cached(
-                                category: transaction.category,
-                                type: transaction.type,
-                                customCategories: categoriesViewModel.customCategories
-                            )
-                            let sourceAccount = transactionsViewModel.accounts.first { $0.id == transaction.accountId }
-                            let targetAccount = transaction.targetAccountId.flatMap { tid in
-                                transactionsViewModel.accounts.first { $0.id == tid }
-                            }
-
-                            TransactionCard(
-                                transaction: transaction,
-                                currency: liveSubscription.currency,
-                                styleData: styleData,
-                                sourceAccount: sourceAccount,
-                                targetAccount: targetAccount,
-                                viewModel: transactionsViewModel,
-                                categoriesViewModel: categoriesViewModel,
-                                accountsViewModel: accountsViewModel,
-                                balanceCoordinator: accountsViewModel.balanceCoordinator
-                            )
-                        }
-                    }
-                }
-
-                // Pagination: reveal more items when the tail row appears.
-                if visibleTxLimit < cachedTransactions.count {
-                    ProgressView()
-                        .padding(.vertical, AppSpacing.md)
-                        .frame(maxWidth: .infinity)
-                        .onAppear {
-                            visibleTxLimit = min(visibleTxLimit + Self.transactionPageSize, cachedTransactions.count)
-                        }
-                }
-            }
         }
     }
 
@@ -427,7 +305,7 @@ struct SubscriptionDetailView: View {
 #Preview("Active Subscription") {
     let coordinator = AppCoordinator()
     let timeFilterManager = TimeFilterManager()
-    
+
     NavigationStack {
         SubscriptionDetailView(
             transactionStore: coordinator.transactionStore,
@@ -453,7 +331,7 @@ struct SubscriptionDetailView: View {
 #Preview("Paused Subscription") {
     let coordinator = AppCoordinator()
     let timeFilterManager = TimeFilterManager()
-    
+
     NavigationStack {
         SubscriptionDetailView(
             transactionStore: coordinator.transactionStore,
@@ -479,7 +357,7 @@ struct SubscriptionDetailView: View {
 #Preview("Archived Subscription") {
     let coordinator = AppCoordinator()
     let timeFilterManager = TimeFilterManager()
-    
+
     NavigationStack {
         SubscriptionDetailView(
             transactionStore: coordinator.transactionStore,
@@ -501,4 +379,3 @@ struct SubscriptionDetailView: View {
         .environment(timeFilterManager)
     }
 }
-
