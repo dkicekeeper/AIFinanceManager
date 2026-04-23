@@ -152,7 +152,7 @@ struct SubscriptionTransactionMatcherTests {
         let candidates = SubscriptionTransactionMatcher.findCandidates(
             for: sub,
             in: transactions,
-            exactMatch: true
+            mode: .exact
         )
 
         #expect(candidates.count == 1)

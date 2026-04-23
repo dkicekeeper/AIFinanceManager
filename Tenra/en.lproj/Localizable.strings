@@ -1224,3 +1224,19 @@
 // MARK: - Bulk Delete Subcategories
 "bulk.deleteSubcategories.title" = "Delete %d subcategories?";
 "bulk.deleteSubcategories.confirm" = "Delete";
+
+// MARK: - Account Detail View
+"account.detail.actions.addTransaction" = "Add transaction";
+"account.detail.actions.transfer" = "Transfer";
+"account.detail.totalIncome" = "Total income";
+"account.detail.totalExpense" = "Total expense";
+"account.detail.transactionCount" = "Transactions";
+"account.detail.delete.confirmTitle" = "Delete account?";
+"account.detail.delete.confirmMessage" = "This will permanently delete the account.";
+"accounts.type" = "Type";
+"accounts.currency" = "Currency";
+"accounts.type.deposit" = "Deposit";
+"accounts.type.loan" = "Loan";
+"accounts.type.regular" = "Account";
+"common.edit" = "Edit";
+"common.delete" = "Delete";

@@ -1224,3 +1224,19 @@
 // MARK: - Bulk Delete Subcategories
 "bulk.deleteSubcategories.title" = "Удалить подкатегорий: %d?";
 "bulk.deleteSubcategories.confirm" = "Удалить";
+
+// MARK: - Account Detail View
+"account.detail.actions.addTransaction" = "Добавить транзакцию";
+"account.detail.actions.transfer" = "Перевод";
+"account.detail.totalIncome" = "Всего доходов";
+"account.detail.totalExpense" = "Всего расходов";
+"account.detail.transactionCount" = "Транзакций";
+"account.detail.delete.confirmTitle" = "Удалить счёт?";
+"account.detail.delete.confirmMessage" = "Счёт будет удалён навсегда.";
+"accounts.type" = "Тип";
+"accounts.currency" = "Валюта";
+"accounts.type.deposit" = "Депозит";
+"accounts.type.loan" = "Кредит";
+"accounts.type.regular" = "Счёт";
+"common.edit" = "Изменить";
+"common.delete" = "Удалить";

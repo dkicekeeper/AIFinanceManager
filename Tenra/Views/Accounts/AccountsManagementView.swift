@@ -19,6 +19,7 @@ struct AccountsManagementView: View {
     @State private var showingAddAccount = false
     @State private var showingAddDeposit = false
     @State private var editingAccount: Account?
+    @State private var navigatingAccount: Account?
     @State private var accountToDelete: Account?
     @State private var showingAccountDeleteDialog = false
     @State private var convertingAccount: Account?
@@ -70,7 +71,7 @@ struct AccountsManagementView: View {
                             account: account,
                             onEdit: {
                                 guard !mode.isSelecting else { return }
-                                editingAccount = account
+                                navigatingAccount = account
                             },
                             onDelete: {
                                 HapticManager.warning()
@@ -233,6 +234,31 @@ struct AccountsManagementView: View {
                              : String(localized: "bulk.selectAll"))
                     }
                 }
+            }
+        }
+        .navigationDestination(item: $navigatingAccount) { account in
+            if account.isDeposit {
+                DepositDetailView(
+                    depositsViewModel: depositsViewModel,
+                    transactionsViewModel: transactionsViewModel,
+                    balanceCoordinator: appCoordinator.balanceCoordinator,
+                    accountId: account.id
+                )
+            } else if account.isLoan {
+                LoanDetailView(
+                    loansViewModel: loansViewModel,
+                    transactionsViewModel: transactionsViewModel,
+                    balanceCoordinator: appCoordinator.balanceCoordinator,
+                    accountId: account.id
+                )
+            } else {
+                AccountDetailView(
+                    transactionStore: transactionStore,
+                    transactionsViewModel: transactionsViewModel,
+                    accountsViewModel: accountsViewModel,
+                    categoriesViewModel: appCoordinator.categoriesViewModel,
+                    account: account
+                )
             }
         }
         .sheet(isPresented: $showingAddAccount) {
