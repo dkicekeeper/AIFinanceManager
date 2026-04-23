@@ -2,8 +2,9 @@
 //  LoanDetailView.swift
 //  Tenra
 //
-//  Detail view for loan/installment accounts with amortization schedule,
-//  payment breakdown, early repayment, and rate change actions.
+//  Detail view for loan/installment accounts. Uses EntityDetailScaffold for
+//  hero/actions/history composition. Payment breakdown, stats, and the
+//  amortization schedule live in the scaffold's `customSections` slot.
 //
 
 import OSLog
@@ -23,58 +24,41 @@ struct LoanDetailView: View {
     @State private var showingRateChange = false
     @State private var showingDeleteConfirmation = false
     @State private var showingLinkPayments = false
-    @State private var showingHistory = false
     @State private var showFullSchedule = false
     @State private var cachedSchedule: [LoanPaymentService.AmortizationEntry] = []
+    @State private var cachedTransactions: [Transaction] = []
     @State private var reconciliationError: String? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(TimeFilterManager.self) private var timeFilterManager
 
     private let logger = Logger(subsystem: "Tenra", category: "LoanDetailView")
 
-    private var account: Account? {
+    /// Live lookup — reflects rename / rate change / payment updates without re-navigation.
+    private var liveAccount: Account? {
         loansViewModel.getLoan(by: accountId)
     }
 
-    private var loanInfo: LoanInfo? {
-        account?.loanInfo
+    /// Cheap O(N) counter; feeds `.task(id:)` so `refreshTransactions` only runs
+    /// when this loan's transactions change.
+    private var refreshTrigger: Int {
+        var n = 0
+        for tx in transactionStore.transactions
+        where tx.accountId == accountId || tx.targetAccountId == accountId {
+            n += 1
+        }
+        return n
+    }
+
+    private func refreshTransactions() async {
+        cachedTransactions = transactionStore.transactions
+            .filter { $0.accountId == accountId || $0.targetAccountId == accountId }
+            .sorted { $0.date > $1.date }
     }
 
     var body: some View {
         Group {
-            if let account = account {
-                ScrollView {
-                    VStack(spacing: AppSpacing.lg) {
-                        if let error = reconciliationError {
-                            InlineStatusText(message: error, type: .error)
-                                .screenPadding()
-                        }
-
-                        if let loanInfo = loanInfo {
-                            headerCard(loanInfo: loanInfo, account: account)
-                                .chartAppear()
-                                .screenPadding()
-
-                            paymentBreakdownCard(loanInfo: loanInfo, account: account)
-                                .chartAppear(delay: 0.05)
-                                .screenPadding()
-
-                            statsCard(loanInfo: loanInfo, account: account)
-                                .chartAppear(delay: 0.1)
-                                .screenPadding()
-
-                            amortizationSection(loanInfo: loanInfo)
-                                .chartAppear(delay: 0.15)
-                                .screenPadding()
-
-                            actionsSection
-                                .chartAppear(delay: 0.2)
-                                .screenPadding()
-                        }
-                    }
-                    .padding(.vertical, AppSpacing.md)
-                }
-                .navigationTitle(account.name)
+            if let account = liveAccount {
+                scaffold(for: account)
             } else {
                 EmptyStateView(
                     icon: "creditcard",
@@ -84,91 +68,81 @@ struct LoanDetailView: View {
                 .navigationTitle(String(localized: "loan.title", defaultValue: "Loan"))
             }
         }
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    HapticManager.selection()
-                    showingHistory = true
-                } label: {
-                    Image(systemName: "clock.arrow.circlepath")
+    }
+
+    @ViewBuilder
+    private func scaffold(for account: Account) -> some View {
+        let accountsById = Dictionary(
+            uniqueKeysWithValues: transactionsViewModel.accounts.map { ($0.id, $0) }
+        )
+
+        EntityDetailScaffold(
+            navigationTitle: account.name,
+            primaryAction: ActionConfig(
+                title: String(localized: "loan.makePayment", defaultValue: "Make Payment"),
+                systemImage: "banknote",
+                action: {
+                    HapticManager.light()
+                    showingPayment = true
                 }
-                .accessibilityLabel(String(localized: "loan.history", defaultValue: "Payment History"))
-            }
-            ToolbarSpacer(.fixed, placement: .topBarTrailing)
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        HapticManager.selection()
-                        showingEditView = true
-                    } label: {
-                        Label(String(localized: "loan.edit", defaultValue: "Edit Loan"), systemImage: "pencil")
-                    }
-
-                    Button {
-                        HapticManager.selection()
-                        showingRateChange = true
-                    } label: {
-                        Label(String(localized: "loan.changeRate", defaultValue: "Change Rate"), systemImage: "chart.line.uptrend.xyaxis")
-                    }
-
-                    Button {
-                        HapticManager.selection()
-                        showingEarlyRepayment = true
-                    } label: {
-                        Label(String(localized: "loan.earlyRepayment", defaultValue: "Early Repayment"), systemImage: "bolt.fill")
-                    }
-
-                    Button {
-                        HapticManager.selection()
-                        showingLinkPayments = true
-                    } label: {
-                        Label(String(localized: "loan.linkPayments", defaultValue: "Link Payments"), systemImage: "link")
-                    }
-
-                    Divider()
-
-                    Button(role: .destructive) {
-                        HapticManager.warning()
-                        showingDeleteConfirmation = true
-                    } label: {
-                        Label(String(localized: "loan.delete", defaultValue: "Delete Loan"), systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+            ),
+            secondaryAction: ActionConfig(
+                title: String(localized: "loan.earlyRepayment", defaultValue: "Early Repayment"),
+                systemImage: "bolt.fill",
+                action: {
+                    HapticManager.light()
+                    showingEarlyRepayment = true
                 }
-                .accessibilityLabel(String(localized: "loan.actions", defaultValue: "Loan Actions"))
-            }
-        }
-        .sheet(isPresented: $showingHistory) {
-            if let account = account {
-                NavigationStack {
-                    HistoryView(
-                        transactionsViewModel: transactionsViewModel,
-                        accountsViewModel: loansViewModel.accountsViewModel,
-                        categoriesViewModel: appCoordinator.categoriesViewModel,
-                        paginationController: appCoordinator.transactionPaginationController,
-                        initialAccountId: account.id
-                    )
-                    .environment(timeFilterManager)
-                }
-            }
-        }
-        .sheet(isPresented: $showingEditView) {
-            if let account = account {
-                LoanEditView(
-                    loansViewModel: loansViewModel,
-                    account: account,
-                    onSave: { updatedAccount in
-                        loansViewModel.updateLoan(updatedAccount)
-                        transactionsViewModel.recalculateAccountBalances()
-                        showingEditView = false
-                    }
+            ),
+            infoRows: [],
+            transactions: cachedTransactions,
+            historyCurrency: account.currency,
+            accountsById: accountsById,
+            styleHelper: { tx in
+                CategoryStyleHelper.cached(
+                    category: tx.category,
+                    type: tx.type,
+                    customCategories: appCoordinator.categoriesViewModel.customCategories
                 )
+            },
+            viewModel: transactionsViewModel,
+            categoriesViewModel: appCoordinator.categoriesViewModel,
+            accountsViewModel: loansViewModel.accountsViewModel,
+            balanceCoordinator: balanceCoordinator,
+            hero: {
+                HeroSection(
+                    icon: account.iconSource,
+                    title: account.name,
+                    primaryAmount: account.loanInfo.map {
+                        NSDecimalNumber(decimal: $0.remainingPrincipal).doubleValue
+                    } ?? 0,
+                    primaryCurrency: account.currency,
+                    subtitle: heroSubtitle(for: account),
+                    progress: progressConfig(for: account),
+                    showBaseConversion: true,
+                    baseCurrency: transactionsViewModel.appSettings.baseCurrency
+                )
+            },
+            customSections: {
+                loanCustomSections(for: account)
+            },
+            toolbarMenu: {
+                loanToolbarMenu
             }
+        )
+        .sheet(isPresented: $showingEditView) {
+            LoanEditView(
+                loansViewModel: loansViewModel,
+                account: account,
+                onSave: { updatedAccount in
+                    loansViewModel.updateLoan(updatedAccount)
+                    transactionsViewModel.recalculateAccountBalances()
+                    showingEditView = false
+                }
+            )
         }
         .sheet(isPresented: $showingPayment) {
-            if let account = account, let loanInfo = loanInfo {
+            if let loanInfo = account.loanInfo {
                 LoanPaymentView(
                     account: account,
                     loanInfo: loanInfo,
@@ -194,7 +168,7 @@ struct LoanDetailView: View {
             }
         }
         .sheet(isPresented: $showingEarlyRepayment) {
-            if let account = account, let loanInfo = loanInfo {
+            if let loanInfo = account.loanInfo {
                 LoanEarlyRepaymentView(
                     account: account,
                     loanInfo: loanInfo,
@@ -222,7 +196,7 @@ struct LoanDetailView: View {
             }
         }
         .sheet(isPresented: $showingRateChange) {
-            if let account = account, account.loanInfo != nil {
+            if account.loanInfo != nil {
                 LoanRateChangeView(
                     account: account,
                     onRateChanged: { effectiveFrom, annualRate, note in
@@ -237,40 +211,41 @@ struct LoanDetailView: View {
             }
         }
         .navigationDestination(isPresented: $showingLinkPayments) {
-            if let account = account {
-                LoanLinkPaymentsView(
-                    loan: account,
-                    loansViewModel: loansViewModel,
-                    transactionsViewModel: transactionsViewModel,
-                    categoriesViewModel: appCoordinator.categoriesViewModel,
-                    accountsViewModel: appCoordinator.accountsViewModel,
-                    balanceCoordinator: balanceCoordinator
-                )
-            }
+            LoanLinkPaymentsView(
+                loan: account,
+                loansViewModel: loansViewModel,
+                transactionsViewModel: transactionsViewModel,
+                categoriesViewModel: appCoordinator.categoriesViewModel,
+                accountsViewModel: appCoordinator.accountsViewModel,
+                balanceCoordinator: balanceCoordinator
+            )
         }
         .alert(String(localized: "loan.deleteTitle", defaultValue: "Delete Loan?"), isPresented: $showingDeleteConfirmation) {
             Button(String(localized: "button.delete"), role: .destructive) {
-                if let account = account {
-                    HapticManager.warning()
-                    loansViewModel.deleteLoan(account)
-                    Task {
-                        await transactionStore.deleteTransactions(forAccountId: account.id)
-                    }
-                    transactionsViewModel.recalculateAccountBalances()
+                HapticManager.warning()
+                loansViewModel.deleteLoan(account)
+                Task {
+                    await transactionStore.deleteTransactions(forAccountId: account.id)
                 }
+                transactionsViewModel.recalculateAccountBalances()
                 dismiss()
             }
             Button(String(localized: "button.cancel"), role: .cancel) {}
         } message: {
             Text(String(localized: "loan.deleteMessage", defaultValue: "All loan data and payment history will be deleted."))
         }
+        .task(id: refreshTrigger) {
+            await refreshTransactions()
+        }
         .task(id: accountId) {
             // Build amortization schedule cache
-            if let li = loanInfo {
+            if let li = account.loanInfo {
                 cachedSchedule = LoanPaymentService.generateAmortizationSchedule(loanInfo: li)
             }
 
-            // Reconcile only this loan's payments — collect then batch-persist
+            // Reconcile only this loan's payments — collect synchronously, then batch-persist.
+            // Never spawn Task {} inside the onTransactionCreated callback — would race
+            // on TransactionStore and diverge loan state from transaction records (CLAUDE.md rule).
             var createdTransactions: [Transaction] = []
             loansViewModel.reconcileLoanPayments(
                 for: accountId,
@@ -290,80 +265,53 @@ struct LoanDetailView: View {
             }
 
             // Rebuild schedule after reconciliation (paymentsMade may have changed)
-            if !createdTransactions.isEmpty, let li = loanInfo {
+            if !createdTransactions.isEmpty, let li = liveAccount?.loanInfo {
                 cachedSchedule = LoanPaymentService.generateAmortizationSchedule(loanInfo: li)
             }
         }
     }
 
-    // MARK: - Header Card
+    // MARK: - Hero helpers
 
-    private func headerCard(loanInfo: LoanInfo, account: Account) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
-            // Icon + Name + Bank
-            HStack {
-                IconView(source: account.iconSource, size: AppIconSize.xxl)
-                VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                    Text(account.name)
-                        .font(AppTypography.h3)
-                    HStack(spacing: AppSpacing.xs) {
-                        Text(loanInfo.bankName)
-                            .font(AppTypography.bodySmall)
-                            .foregroundStyle(AppColors.textSecondaryAccessible)
-                        LoanTypeBadge(loanType: loanInfo.loanType)
-                    }
-                }
-                Spacer()
+    private func progressConfig(for account: Account) -> ProgressConfig? {
+        guard let info = account.loanInfo, info.originalPrincipal > 0 else { return nil }
+        let paid = NSDecimalNumber(decimal: info.originalPrincipal - info.remainingPrincipal).doubleValue
+        let total = NSDecimalNumber(decimal: info.originalPrincipal).doubleValue
+        return ProgressConfig(
+            current: max(paid, 0),
+            total: total,
+            label: String(localized: "loan.paidOff", defaultValue: "Paid off"),
+            color: AppColors.income
+        )
+    }
+
+    private func heroSubtitle(for account: Account) -> String? {
+        guard let info = account.loanInfo else { return nil }
+        if let nextDate = LoanPaymentService.nextPaymentDate(loanInfo: info) {
+            return String(
+                format: String(localized: "loan.nextPayment", defaultValue: "Next payment: %@"),
+                formatDate(nextDate)
+            )
+        }
+        return info.bankName
+    }
+
+    // MARK: - Custom sections
+
+    @ViewBuilder
+    private func loanCustomSections(for account: Account) -> some View {
+        VStack(spacing: AppSpacing.lg) {
+            if let error = reconciliationError {
+                InlineStatusText(message: error, type: .error)
             }
 
-            // Progress bar
-            let progress = LoanPaymentService.progressPercentage(loanInfo: loanInfo)
-            VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                HStack {
-                    Text(String(localized: "loan.paidOff", defaultValue: "Paid off"))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(AppColors.textSecondary)
-                    Spacer()
-                    Text(String(format: "%.0f%%", progress * 100))
-                        .font(AppTypography.bodySmall.weight(.medium))
-                        .foregroundStyle(AppColors.income)
-                }
-                ProgressView(value: progress)
-                    .tint(AppColors.income)
-                    .accessibilityValue(String(format: "%.0f%%", progress * 100))
-            }
-
-            Divider()
-
-            // Remaining Principal
-            VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                Text(String(localized: "loan.remainingPrincipal", defaultValue: "Remaining"))
-                    .font(AppTypography.bodySmall)
-                    .foregroundStyle(AppColors.textSecondary)
-                FormattedAmountText(
-                    amount: NSDecimalNumber(decimal: loanInfo.remainingPrincipal).doubleValue,
-                    currency: account.currency,
-                    fontSize: AppTypography.h2
-                )
-            }
-
-            // Next Payment
-            if let nextDate = LoanPaymentService.nextPaymentDate(loanInfo: loanInfo) {
-                VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                    Text(String(format: String(localized: "loan.nextPayment", defaultValue: "Next payment: %@"), formatDate(nextDate)))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(AppColors.textSecondaryAccessible)
-                    FormattedAmountText(
-                        amount: NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue,
-                        currency: account.currency,
-                        fontSize: AppTypography.h4,
-                        color: AppColors.planned
-                    )
-                }
+            if let loanInfo = account.loanInfo {
+                paymentBreakdownCard(loanInfo: loanInfo, account: account)
+                statsCard(loanInfo: loanInfo, account: account)
+                amortizationSection(loanInfo: loanInfo, account: account)
             }
         }
-        .padding(AppSpacing.lg)
-        .cardStyle()
+        .screenPadding()
     }
 
     // MARK: - Payment Breakdown Card
@@ -502,7 +450,7 @@ struct LoanDetailView: View {
 
     // MARK: - Amortization Schedule
 
-    private func amortizationSection(loanInfo: LoanInfo) -> some View {
+    private func amortizationSection(loanInfo: LoanInfo, account: Account) -> some View {
         let schedule = cachedSchedule
         let displayedEntries = showFullSchedule ? schedule : Array(schedule.prefix(6))
 
@@ -516,7 +464,7 @@ struct LoanDetailView: View {
                     .foregroundStyle(AppColors.textSecondary)
             } else {
                 ForEach(displayedEntries) { entry in
-                    amortizationRow(entry: entry)
+                    amortizationRow(entry: entry, account: account)
                 }
 
                 if schedule.count > 6 && !showFullSchedule {
@@ -536,7 +484,7 @@ struct LoanDetailView: View {
         .cardStyle()
     }
 
-    private func amortizationRow(entry: LoanPaymentService.AmortizationEntry) -> some View {
+    private func amortizationRow(entry: LoanPaymentService.AmortizationEntry, account: Account) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: AppSpacing.xxs) {
                 Text("#\(entry.paymentNumber)")
@@ -549,9 +497,9 @@ struct LoanDetailView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: AppSpacing.xxs) {
-                FormattedAmountText(amount: NSDecimalNumber(decimal: entry.payment).doubleValue, currency: account?.currency ?? "KZT", fontSize: AppTypography.bodySmall)
+                FormattedAmountText(amount: NSDecimalNumber(decimal: entry.payment).doubleValue, currency: account.currency, fontSize: AppTypography.bodySmall)
                 if entry.interest > 0 {
-                    Text(String(format: String(localized: "loan.interestShort", defaultValue: "int: %@"), Formatting.formatCurrency(NSDecimalNumber(decimal: entry.interest).doubleValue, currency: account?.currency ?? "KZT")))
+                    Text(String(format: String(localized: "loan.interestShort", defaultValue: "int: %@"), Formatting.formatCurrency(NSDecimalNumber(decimal: entry.interest).doubleValue, currency: account.currency)))
                         .font(AppTypography.caption)
                         .foregroundStyle(AppColors.expense)
                 }
@@ -565,27 +513,45 @@ struct LoanDetailView: View {
         .futureTransactionStyle(isFuture: !entry.isPaid)
     }
 
-    // MARK: - Actions Section
+    // MARK: - Toolbar menu
 
-    private var actionsSection: some View {
-        VStack(spacing: AppSpacing.sm) {
-            Button {
-                HapticManager.light()
-                showingPayment = true
-            } label: {
-                Label(String(localized: "loan.makePayment", defaultValue: "Make Payment"), systemImage: "banknote")
-                    .frame(maxWidth: .infinity)
-            }
-            .primaryButton()
+    @ViewBuilder
+    private var loanToolbarMenu: some View {
+        Button {
+            HapticManager.selection()
+            showingEditView = true
+        } label: {
+            Label(String(localized: "loan.edit", defaultValue: "Edit Loan"), systemImage: "pencil")
+        }
 
-            Button {
-                HapticManager.light()
-                showingEarlyRepayment = true
-            } label: {
-                Label(String(localized: "loan.makeEarlyRepayment", defaultValue: "Early Repayment"), systemImage: "bolt.fill")
-                    .frame(maxWidth: .infinity)
-            }
-            .secondaryButton()
+        Button {
+            HapticManager.selection()
+            showingRateChange = true
+        } label: {
+            Label(String(localized: "loan.changeRate", defaultValue: "Change Rate"), systemImage: "chart.line.uptrend.xyaxis")
+        }
+
+        Button {
+            HapticManager.selection()
+            showingEarlyRepayment = true
+        } label: {
+            Label(String(localized: "loan.earlyRepayment", defaultValue: "Early Repayment"), systemImage: "bolt.fill")
+        }
+
+        Button {
+            HapticManager.selection()
+            showingLinkPayments = true
+        } label: {
+            Label(String(localized: "loan.linkPayments", defaultValue: "Link Payments"), systemImage: "link")
+        }
+
+        Divider()
+
+        Button(role: .destructive) {
+            HapticManager.warning()
+            showingDeleteConfirmation = true
+        } label: {
+            Label(String(localized: "loan.delete", defaultValue: "Delete Loan"), systemImage: "trash")
         }
     }
 
