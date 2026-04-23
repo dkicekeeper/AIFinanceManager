@@ -226,7 +226,6 @@
 "transaction.stopRecurring.message" = "Это прекратит повторение операции. Все будущие транзакции будут удалены.";
 "transaction.stopRecurring.confirm" = "Прекратить повторение";
 "transaction.stopRecurring.cancel" = "Отмена";
-"transaction.recurring" = "Повторяющаяся";
 "accessibility.deleteTransaction" = "Удалить транзакцию";
 "accessibility.stopRecurring" = "Прекратить повторение транзакции";
 "accessibility.swipeForOptions" = "Смахните влево для опций";
@@ -1012,8 +1011,6 @@
 "loan.selectSourceAccount" = "Выберите счёт для оплаты";
 "loan.scheduledPayment" = "По графику: %@";
 "loan.noSourceAccounts" = "Нет доступных счетов";
-"loan.interestPortion" = "Проценты";
-"loan.principalPortion" = "Основной долг";
 "loan.payAll" = "Оплатить все";
 "loan.payAllTitle" = "Оплатить все кредиты";
 "loan.payAllTotal" = "Общая сумма";

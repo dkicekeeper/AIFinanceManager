@@ -226,7 +226,6 @@
 "transaction.stopRecurring.message" = "This will stop the recurring transaction. All future transactions will be deleted.";
 "transaction.stopRecurring.confirm" = "Stop Recurring";
 "transaction.stopRecurring.cancel" = "Cancel";
-"transaction.recurring" = "Recurring";
 "accessibility.deleteTransaction" = "Delete transaction";
 "accessibility.stopRecurring" = "Stop recurring transaction";
 "accessibility.swipeForOptions" = "Swipe left for options";
@@ -1012,8 +1011,6 @@
 "loan.selectSourceAccount" = "Select account to pay from";
 "loan.scheduledPayment" = "Scheduled: %@";
 "loan.noSourceAccounts" = "No accounts available";
-"loan.interestPortion" = "Interest";
-"loan.principalPortion" = "Principal";
 "loan.payAll" = "Pay All";
 "loan.payAllTitle" = "Pay All Loans";
 "loan.payAllTotal" = "Total Payment";
