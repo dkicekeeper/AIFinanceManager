@@ -225,6 +225,8 @@ nonisolated class RecurringTransactionGenerator: @unchecked Sendable {
             return min((daysBetweenStartAndHorizon / 7) + 10, 2000)
         case .monthly:
             return min((daysBetweenStartAndHorizon / 30) + 10, 500)
+        case .quarterly:
+            return min((daysBetweenStartAndHorizon / 90) + 10, 200)
         case .yearly:
             return min((daysBetweenStartAndHorizon / 365) + 10, 100)
         }
@@ -239,6 +241,8 @@ nonisolated class RecurringTransactionGenerator: @unchecked Sendable {
             return calendar.date(byAdding: .day, value: 7, to: currentDate)
         case .monthly:
             return calendar.date(byAdding: .month, value: 1, to: currentDate)
+        case .quarterly:
+            return calendar.date(byAdding: .month, value: 3, to: currentDate)
         case .yearly:
             return calendar.date(byAdding: .year, value: 1, to: currentDate)
         }

@@ -203,6 +203,13 @@ class SubscriptionNotificationScheduler {
                 nextDate = date
             }
 
+        case .quarterly:
+            let monthsPassed = calendar.dateComponents([.month], from: normalizedStartDate, to: today).month ?? 0
+            let quartersPassed = monthsPassed / 3
+            if let date = calendar.date(byAdding: .month, value: (quartersPassed + 1) * 3, to: normalizedStartDate) {
+                nextDate = date
+            }
+
         case .yearly:
             // Calculate years between start and today
             let yearsPassed = calendar.dateComponents([.year], from: normalizedStartDate, to: today).year ?? 0

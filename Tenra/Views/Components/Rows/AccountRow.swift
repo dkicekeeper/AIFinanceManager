@@ -89,7 +89,7 @@ struct AccountRow: View {
                     Spacer()
 
                     if account.isDeposit {
-                        Image(systemName: "banknote")
+                        Image(systemName: "lock.square.stack.fill")
                             .foregroundStyle(.secondary)
                             .font(.system(size: AppIconSize.sm))
                     }

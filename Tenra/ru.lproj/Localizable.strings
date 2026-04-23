@@ -299,8 +299,8 @@
 "deposit.capitalizationHint" = "При включенной капитализации проценты добавляются к основной сумме каждый месяц";
 "deposit.new" = "Новый депозит";
 "deposit.editTitle" = "Редактировать депозит";
-"deposit.interestAccrual.description" = "Начисление процентов";
-"deposit.interestAccrual.category" = "Начисление процентов";
+"deposit.interestAccrual.description" = "Проценты";
+"deposit.interestAccrual.category" = "Проценты";
 
 // MARK: - Categories Management
 "categories.expenseCategories" = "Категории расходов";
@@ -467,6 +467,7 @@
 "frequency.daily" = "Ежедневно";
 "frequency.weekly" = "Еженедельно";
 "frequency.monthly" = "Ежемесячно";
+"frequency.quarterly" = "Ежеквартально";
 "frequency.yearly" = "Ежегодно";
 
 // Subscription Form
@@ -749,6 +750,7 @@
 // MARK: - Filter Buttons (Phase 14)
 "filter.allAccounts" = "Все счета";
 "filter.allCategories" = "Все категории";
+"filter.allSubcategories" = "Все подкатегории";
 "filter.categoriesCount" = "%d категорий";
 
 // MARK: - Animated Input (Phase 16)
@@ -1106,10 +1108,27 @@
 "subscription.linkPayments.search" = "Поиск по описанию или сумме";
 "subscription.linkPayments.searchPlaceholder" = "Поиск";
 "subscription.linkPayments.selectedWithAmount" = "%d выбрано · %@";
-"subscription.linkPayments.link" = "Привязать %d платежей";
+"subscription.linkPayments.link" = "Привязать %d";
 "subscription.linkPayments.empty" = "Нет подходящих транзакций";
 "subscription.linkPayments.amountExact" = "Точная сумма";
-"subscription.linkPayments.amountTolerance" = "±10%";
+"subscription.linkPayments.amountTolerance" = "±30%";
+"subscription.linkPayments.amountAll" = "Все";
+"subscription.linkPayments.unknownAccount" = "Неизвестный счёт";
+"common.done" = "Готово";
+"deposit.linkInterest.title" = "Привязать выплаты процентов";
+"deposit.recalculateInterest" = "Пересчитать проценты";
+"subscription.linkPayments.selectAll" = "Выбрать все";
+"subscription.linkPayments.deselectAll" = "Снять выбор";
+"subscriptions.spentAllTime" = "Потрачено за всё время";
+"subscription.edit.propagate.title" = "Обновить связанные транзакции?";
+"subscription.edit.propagate.message" = "Применить изменения к существующим транзакциям этой подписки?";
+"subscription.edit.propagate.seriesOnly" = "Только подписку";
+"subscription.edit.propagate.future" = "Будущие транзакции";
+"subscription.edit.propagate.all" = "Все транзакции";
+"subscription.unlinkAll" = "Отвязать все транзакции";
+"subscription.unlinkAll.title" = "Отвязать все транзакции?";
+"subscription.unlinkAll.confirm" = "Отвязать";
+"subscription.unlinkAll.message" = "Убрать связь с подпиской у %d транзакций? Сами транзакции останутся.";
 "subscription.linkPayments.subcategories" = "Подкатегории";
 "subscription.linkPayments.subcategoriesCount" = "%d подкатегорий";
 "subscription.filterAll" = "Все";

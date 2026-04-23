@@ -198,11 +198,14 @@ struct DepositInfo: Codable, Equatable, Hashable {
     var lastInterestCalculationDate: String // YYYY-MM-DD, дата последнего расчета
     var lastInterestPostingMonth: String // YYYY-MM-01, начало месяца последнего начисления
     var interestAccruedForCurrentPeriod: Decimal // Накоплено за текущий период до начисления
+    var initialPrincipal: Decimal // Размер депозита на момент создания (не меняется)
+    var startDate: String // YYYY-MM-DD дата создания депозита (для исторического расчёта)
 
     enum CodingKeys: String, CodingKey {
         case bankName, principalBalance, capitalizationEnabled, interestAccruedNotCapitalized
         case interestRateAnnual, interestRateHistory, interestPostingDay
         case lastInterestCalculationDate, lastInterestPostingMonth, interestAccruedForCurrentPeriod
+        case initialPrincipal, startDate
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -217,6 +220,11 @@ struct DepositInfo: Codable, Equatable, Hashable {
         lastInterestCalculationDate = try container.decode(String.self, forKey: .lastInterestCalculationDate)
         lastInterestPostingMonth = try container.decode(String.self, forKey: .lastInterestPostingMonth)
         interestAccruedForCurrentPeriod = try container.decode(Decimal.self, forKey: .interestAccruedForCurrentPeriod)
+        // Migration: default initialPrincipal to current principalBalance if missing.
+        // Best-effort — existing deposits treat their current balance as "initial".
+        initialPrincipal = (try container.decodeIfPresent(Decimal.self, forKey: .initialPrincipal)) ?? principalBalance
+        // Migration: default startDate to lastInterestCalculationDate if missing.
+        startDate = (try container.decodeIfPresent(String.self, forKey: .startDate)) ?? lastInterestCalculationDate
     }
 
     init(
@@ -229,7 +237,9 @@ struct DepositInfo: Codable, Equatable, Hashable {
         interestPostingDay: Int,
         lastInterestCalculationDate: String? = nil,
         lastInterestPostingMonth: String? = nil,
-        interestAccruedForCurrentPeriod: Decimal = 0
+        interestAccruedForCurrentPeriod: Decimal = 0,
+        initialPrincipal: Decimal? = nil,
+        startDate: String? = nil
     ) {
         self.bankName = bankName
         self.principalBalance = principalBalance
@@ -256,6 +266,9 @@ struct DepositInfo: Codable, Equatable, Hashable {
             }
         }
         self.interestAccruedForCurrentPeriod = interestAccruedForCurrentPeriod
+        // initialPrincipal defaults to principalBalance for new deposits — represents creation-time amount.
+        self.initialPrincipal = initialPrincipal ?? principalBalance
+        self.startDate = startDate ?? lastInterestCalculationDate ?? today
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -270,6 +283,8 @@ struct DepositInfo: Codable, Equatable, Hashable {
         try container.encode(lastInterestCalculationDate, forKey: .lastInterestCalculationDate)
         try container.encode(lastInterestPostingMonth, forKey: .lastInterestPostingMonth)
         try container.encode(interestAccruedForCurrentPeriod, forKey: .interestAccruedForCurrentPeriod)
+        try container.encode(initialPrincipal, forKey: .initialPrincipal)
+        try container.encode(startDate, forKey: .startDate)
     }
 }
 

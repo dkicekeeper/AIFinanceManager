@@ -31,7 +31,7 @@ nonisolated class RecurringValidationService {
 
         // Validate frequency
         switch series.frequency {
-        case .daily, .weekly, .monthly, .yearly:
+        case .daily, .weekly, .monthly, .quarterly, .yearly:
             break
         }
 

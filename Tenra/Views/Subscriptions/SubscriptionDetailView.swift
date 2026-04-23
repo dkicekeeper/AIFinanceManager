@@ -17,32 +17,64 @@ struct SubscriptionDetailView: View {
     @State private var showingEditView = false
     @State private var showingDeleteConfirmation = false
     @State private var showingLinkPayments = false
+    @State private var showingUnlinkAllConfirmation = false
     @State private var cachedTransactions: [Transaction] = []
+    @State private var cachedSpentAllTimeInSubCurrency: Double = 0
+    @State private var visibleTxLimit: Int = 100
     @Environment(\.dismiss) var dismiss
+
+    private static let transactionPageSize = 100
 
     /// Live subscription from the store — reflects pause/resume/edit changes in real time.
     private var liveSubscription: RecurringSeries {
         transactionStore.recurringSeries.first(where: { $0.id == subscription.id }) ?? subscription
     }
 
-    /// Reactive trigger: changes when transactions for this subscription are added/removed/modified.
-    private var transactionStoreVersion: String {
-        let seriesTxs = transactionStore.transactions.filter { $0.recurringSeriesId == subscription.id }
-        return "\(subscription.id)-\(seriesTxs.count)-\(seriesTxs.map(\.id).hashValue)"
+    /// Reactive trigger: cheap O(N) single pass on transactions (count only).
+    /// Intentionally avoids hashing all ids — that was the 3000-tx freeze culprit.
+    private var linkedTransactionCount: Int {
+        var n = 0
+        for tx in transactionStore.transactions where tx.recurringSeriesId == subscription.id {
+            n += 1
+        }
+        return n
     }
 
     private func refreshTransactions() async {
-        cachedTransactions = transactionStore.transactions
+        let linked = transactionStore.transactions
             .filter { $0.recurringSeriesId == subscription.id }
             .sorted { $0.date > $1.date }
+        cachedTransactions = linked
+        // Recompute cached sum off the main critical path; O(N) but only on store change.
+        cachedSpentAllTimeInSubCurrency = computeSpentAllTime(in: linked, currency: liveSubscription.currency)
+        // Reset pagination cap on reload so UI doesn't try to show more than exists.
+        visibleTxLimit = Self.transactionPageSize
+    }
+
+    private func computeSpentAllTime(in txs: [Transaction], currency: String) -> Double {
+        txs.reduce(0.0) { total, tx in
+            if tx.currency == currency {
+                return total + tx.amount
+            }
+            if let converted = CurrencyConverter.convertSync(
+                amount: tx.amount, from: tx.currency, to: currency
+            ) {
+                return total + converted
+            }
+            if let stored = tx.convertedAmount { return total + stored }
+            return total + tx.amount
+        }
     }
 
     private var nextChargeDate: Date? {
         transactionStore.nextChargeDate(for: liveSubscription.id)
     }
 
+    /// Sections built only from the first `visibleTxLimit` most-recent transactions.
+    /// Caps rendering cost regardless of how many transactions are linked to the series.
     private var transactionDateSections: [(date: String, displayLabel: String, transactions: [Transaction])] {
-        let grouped = Dictionary(grouping: cachedTransactions) { $0.date }
+        let slice = cachedTransactions.prefix(visibleTxLimit)
+        let grouped = Dictionary(grouping: slice) { $0.date }
         return grouped.sorted { $0.key > $1.key }.map { key, txs in
             (date: key, displayLabel: formatTransactionDate(key), transactions: txs)
         }
@@ -129,8 +161,17 @@ struct SubscriptionDetailView: View {
                         }
                     }
                     
+                    if linkedTransactionCount > 0 {
+                        Divider()
+                        Button(role: .destructive) {
+                            showingUnlinkAllConfirmation = true
+                        } label: {
+                            Label(String(localized: "subscription.unlinkAll", defaultValue: "Unlink all transactions"), systemImage: "link.badge.minus")
+                        }
+                    }
+
                     Divider()
-                    
+
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
@@ -145,6 +186,7 @@ struct SubscriptionDetailView: View {
             SubscriptionEditView(
                 transactionStore: transactionStore,
                 transactionsViewModel: transactionsViewModel,
+                categoriesViewModel: categoriesViewModel,
                 subscription: liveSubscription
             )
         }
@@ -167,6 +209,22 @@ struct SubscriptionDetailView: View {
         } message: {
             Text(String(localized: "subscriptions.deleteConfirmMessage"))
         }
+        .alert(
+            String(localized: "subscription.unlinkAll.title", defaultValue: "Unlink all transactions?"),
+            isPresented: $showingUnlinkAllConfirmation
+        ) {
+            Button(String(localized: "quickAdd.cancel"), role: .cancel) {}
+            Button(String(localized: "subscription.unlinkAll.confirm", defaultValue: "Unlink All"), role: .destructive) {
+                Task {
+                    try? await transactionStore.unlinkAllTransactions(fromSeriesId: subscription.id)
+                }
+            }
+        } message: {
+            Text(String(
+                format: String(localized: "subscription.unlinkAll.message", defaultValue: "Remove the subscription link from %d transactions? The transactions themselves remain intact."),
+                linkedTransactionCount
+            ))
+        }
         .navigationDestination(isPresented: $showingLinkPayments) {
             SubscriptionLinkPaymentsView(
                 subscription: liveSubscription,
@@ -175,7 +233,7 @@ struct SubscriptionDetailView: View {
                 accountsViewModel: accountsViewModel
             )
         }
-        .task(id: transactionStoreVersion) {
+        .task(id: linkedTransactionCount) {
             await refreshTransactions()
         }
     }
@@ -261,10 +319,29 @@ struct SubscriptionDetailView: View {
                     ),
                     value: statusText
                 )
+
+                InfoRow(
+                    icon: "sum",
+                    label: String(localized: "subscriptions.spentAllTime", defaultValue: "Spent all time"),
+                    value: spentAllTimeDisplay
+                )
             }
             .padding(AppSpacing.lg)
             .cardStyle()
         }
+    }
+
+    private var spentAllTimeDisplay: String {
+        let subCurrency = liveSubscription.currency
+        let baseCurrency = transactionsViewModel.appSettings.baseCurrency
+        let subTotal = cachedSpentAllTimeInSubCurrency
+        let primary = Formatting.formatCurrency(subTotal, currency: subCurrency)
+
+        if subCurrency != baseCurrency,
+           let baseTotal = CurrencyConverter.convertSync(amount: subTotal, from: subCurrency, to: baseCurrency) {
+            return primary + " · " + Formatting.formatCurrency(baseTotal, currency: baseCurrency)
+        }
+        return primary
     }
     
     private var statusText: String {
@@ -282,10 +359,18 @@ struct SubscriptionDetailView: View {
     
     private var transactionsSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            Text(String(localized: "subscriptions.transactionHistory"))
-                .font(AppTypography.h4)
+            HStack {
+                Text(String(localized: "subscriptions.transactionHistory"))
+                    .font(AppTypography.h4)
+                Spacer()
+                if cachedTransactions.count > 0 {
+                    Text("\(cachedTransactions.count)")
+                        .font(AppTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0, pinnedViews: []) {
                 ForEach(transactionDateSections, id: \.date) { section in
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {
                         Text(section.displayLabel)
@@ -317,6 +402,16 @@ struct SubscriptionDetailView: View {
                             )
                         }
                     }
+                }
+
+                // Pagination: reveal more items when the tail row appears.
+                if visibleTxLimit < cachedTransactions.count {
+                    ProgressView()
+                        .padding(.vertical, AppSpacing.md)
+                        .frame(maxWidth: .infinity)
+                        .onAppear {
+                            visibleTxLimit = min(visibleTxLimit + Self.transactionPageSize, cachedTransactions.count)
+                        }
                 }
             }
         }

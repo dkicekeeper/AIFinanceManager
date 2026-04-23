@@ -11,6 +11,7 @@ import SwiftUI
 struct SubscriptionEditView: View {
     let transactionStore: TransactionStore
     let transactionsViewModel: TransactionsViewModel
+    let categoriesViewModel: CategoriesViewModel
     let subscription: RecurringSeries?
 
     @Environment(\.dismiss) private var dismiss
@@ -28,6 +29,17 @@ struct SubscriptionEditView: View {
     @State private var validationError: String? = nil
     @State private var isSaving = false
     @State private var availableCategories: [String] = []
+
+    // Propagation alert (edit mode only)
+    @State private var pendingSeries: RecurringSeries? = nil
+    @State private var showingPropagationAlert = false
+
+    /// Scope for propagating edits to linked transactions.
+    private enum PropagationScope {
+        case seriesOnly
+        case future
+        case all
+    }
 
     private func computeAvailableCategories() -> [String] {
         var categories: Set<String> = []
@@ -69,7 +81,20 @@ struct SubscriptionEditView: View {
                         titlePlaceholder: String(localized: "subscription.namePlaceholder"),
                         config: .subscriptionHero
                     )
-                    
+
+                    // Base-currency equivalent (only when entered currency differs)
+                    if currency != transactionsViewModel.appSettings.baseCurrency,
+                       let parsedAmount = Decimal(string: amountText.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: " ", with: "")),
+                       parsedAmount > 0 {
+                        ConvertedAmountView(
+                            amount: NSDecimalNumber(decimal: parsedAmount).doubleValue,
+                            fromCurrency: currency,
+                            toCurrency: transactionsViewModel.appSettings.baseCurrency,
+                            fontSize: AppTypography.caption,
+                            color: .secondary.opacity(0.7)
+                        )
+                    }
+
                     // Validation Error
                     if let error = validationError {
                         InlineStatusText(message: error, type: .error)
@@ -147,6 +172,26 @@ struct SubscriptionEditView: View {
                 }
             }
         }
+        .alert(
+            String(localized: "subscription.edit.propagate.title", defaultValue: "Update linked transactions?"),
+            isPresented: $showingPropagationAlert,
+            presenting: pendingSeries
+        ) { series in
+            Button(String(localized: "subscription.edit.propagate.seriesOnly", defaultValue: "Only subscription")) {
+                performSave(series: series, scope: .seriesOnly)
+            }
+            Button(String(localized: "subscription.edit.propagate.future", defaultValue: "Future transactions")) {
+                performSave(series: series, scope: .future)
+            }
+            Button(String(localized: "subscription.edit.propagate.all", defaultValue: "All transactions"), role: .destructive) {
+                performSave(series: series, scope: .all)
+            }
+            Button(String(localized: "quickAdd.cancel"), role: .cancel) {
+                pendingSeries = nil
+            }
+        } message: { _ in
+            Text(String(localized: "subscription.edit.propagate.message", defaultValue: "Apply changes to existing transactions linked to this subscription?"))
+        }
         .sheet(isPresented: $showingNotificationPermission, onDismiss: { dismiss() }) {
             NotificationPermissionView(
                 onAllow: {
@@ -200,7 +245,7 @@ struct SubscriptionEditView: View {
             amount: amount,
             currency: currency,
             category: selectedCategory,
-            subcategory: nil,
+            subcategory: description, // Subscription name doubles as subcategory (auto-linked below)
             description: description,
             accountId: accountId,
             targetAccountId: nil,
@@ -213,6 +258,33 @@ struct SubscriptionEditView: View {
             status: subscription?.status ?? .active
         )
 
+        // Decide between immediate save and propagation alert.
+        if let existing = subscription, hasPropagatableChange(old: existing, new: series),
+           hasLinkedTransactions(seriesId: existing.id) {
+            pendingSeries = series
+            showingPropagationAlert = true
+        } else {
+            performSave(series: series, scope: .seriesOnly)
+        }
+    }
+
+    /// True if any field that would propagate to generated transactions has changed.
+    private func hasPropagatableChange(old: RecurringSeries, new: RecurringSeries) -> Bool {
+        old.amount != new.amount
+            || old.currency != new.currency
+            || old.description != new.description
+            || old.category != new.category
+            || old.accountId != new.accountId
+            || old.iconSource != new.iconSource
+    }
+
+    private func hasLinkedTransactions(seriesId: String) -> Bool {
+        transactionStore.transactions.contains { $0.recurringSeriesId == seriesId }
+    }
+
+    /// Save the series, optionally propagate changes to linked transactions,
+    /// and ensure the subscription's name exists as a linked subcategory.
+    private func performSave(series: RecurringSeries, scope: PropagationScope) {
         isSaving = true
 
         Task {
@@ -226,11 +298,41 @@ struct SubscriptionEditView: View {
             }
 
             do {
-                if subscription == nil {
+                // 1. Resolve or create subcategory named after subscription.
+                let subcategory = resolveOrCreateSubcategory(name: series.description, categoryName: series.category)
+
+                // 2. Save the series (create vs update).
+                let isCreate = subscription == nil
+                if isCreate {
                     try await transactionStore.createSeries(series)
                 } else {
                     try await transactionStore.updateSeries(series)
                 }
+
+                // 3. Determine which transactions should receive propagated field updates + subcategory link.
+                let oldSeries = subscription
+                let scopedTxs = transactionsToUpdate(for: series, scope: scope)
+
+                // 4. For edit with propagation → rewrite fields on linked transactions.
+                if let oldSeries = oldSeries, scope != .seriesOnly {
+                    let changes = propagatableChanges(old: oldSeries, new: series)
+                    for tx in scopedTxs {
+                        let updated = applyChanges(to: tx, changes: changes, newSeries: series)
+                        if updated != tx {
+                            try await transactionStore.update(updated)
+                        }
+                    }
+                }
+
+                // 5. Link subcategory to all scoped transactions + always to all current series transactions on create.
+                let txsToLink: [Transaction]
+                if isCreate {
+                    txsToLink = transactionStore.transactions.filter { $0.recurringSeriesId == series.id }
+                } else {
+                    txsToLink = scopedTxs
+                }
+                linkSubcategory(subcategory, toTransactions: txsToLink)
+
                 HapticManager.success()
 
                 if needsPermissionSheet {
@@ -248,6 +350,103 @@ struct SubscriptionEditView: View {
             }
         }
     }
+
+    private func transactionsToUpdate(for series: RecurringSeries, scope: PropagationScope) -> [Transaction] {
+        let all = transactionStore.transactions.filter { $0.recurringSeriesId == series.id }
+        switch scope {
+        case .seriesOnly:
+            return []
+        case .all:
+            return all
+        case .future:
+            let today = DateFormatters.dateFormatter.string(from: Date())
+            return all.filter { $0.date >= today }
+        }
+    }
+
+    private struct PropagatableChanges {
+        var amount: Bool
+        var currency: Bool
+        var description: Bool
+        var category: Bool
+        var accountId: Bool
+    }
+
+    private func propagatableChanges(old: RecurringSeries, new: RecurringSeries) -> PropagatableChanges {
+        PropagatableChanges(
+            amount: old.amount != new.amount,
+            currency: old.currency != new.currency,
+            description: old.description != new.description,
+            category: old.category != new.category,
+            accountId: old.accountId != new.accountId
+        )
+    }
+
+    private func applyChanges(to tx: Transaction, changes: PropagatableChanges, newSeries series: RecurringSeries) -> Transaction {
+        let newAmount = changes.amount ? NSDecimalNumber(decimal: series.amount).doubleValue : tx.amount
+        let newCurrency = changes.currency ? series.currency : tx.currency
+        let newDescription = changes.description ? series.description : tx.description
+        let newCategory = changes.category ? series.category : tx.category
+        let newAccountId = changes.accountId ? (series.accountId ?? tx.accountId) : tx.accountId
+        return Transaction(
+            id: tx.id,
+            date: tx.date,
+            description: newDescription,
+            amount: newAmount,
+            currency: newCurrency,
+            convertedAmount: tx.convertedAmount,
+            type: tx.type,
+            category: newCategory,
+            subcategory: tx.subcategory,
+            accountId: newAccountId,
+            targetAccountId: tx.targetAccountId,
+            accountName: tx.accountName,
+            targetAccountName: tx.targetAccountName,
+            targetCurrency: tx.targetCurrency,
+            targetAmount: tx.targetAmount,
+            recurringSeriesId: tx.recurringSeriesId,
+            recurringOccurrenceId: tx.recurringOccurrenceId,
+            createdAt: tx.createdAt
+        )
+    }
+
+    /// Find subcategory by case-insensitive name; create + link to the category if missing.
+    private func resolveOrCreateSubcategory(name: String, categoryName: String) -> Subcategory {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let existing = categoriesViewModel.subcategories.first(where: {
+            $0.name.caseInsensitiveCompare(trimmed) == .orderedSame
+        }) {
+            ensureSubcategoryLinkedToCategory(subcategoryId: existing.id, categoryName: categoryName)
+            return existing
+        }
+        let created = categoriesViewModel.addSubcategory(name: trimmed)
+        ensureSubcategoryLinkedToCategory(subcategoryId: created.id, categoryName: categoryName)
+        return created
+    }
+
+    private func ensureSubcategoryLinkedToCategory(subcategoryId: String, categoryName: String) {
+        guard let categoryId = transactionsViewModel.customCategories.first(where: { $0.name == categoryName })?.id
+        else { return }
+        let alreadyLinked = categoriesViewModel.categorySubcategoryLinks.contains {
+            $0.subcategoryId == subcategoryId && $0.categoryId == categoryId
+        }
+        if !alreadyLinked {
+            categoriesViewModel.linkSubcategoryToCategory(subcategoryId: subcategoryId, categoryId: categoryId)
+        }
+    }
+
+    private func linkSubcategory(_ subcategory: Subcategory, toTransactions txs: [Transaction]) {
+        for tx in txs {
+            let existing = categoriesViewModel.getSubcategoriesForTransaction(tx.id).map(\.id)
+            if existing.contains(subcategory.id) { continue }
+            var updated = existing
+            updated.append(subcategory.id)
+            categoriesViewModel.linkSubcategoriesToTransaction(
+                transactionId: tx.id,
+                subcategoryIds: updated
+            )
+        }
+    }
 }
 
 #Preview {
@@ -255,6 +454,7 @@ struct SubscriptionEditView: View {
     SubscriptionEditView(
         transactionStore: coordinator.transactionStore,
         transactionsViewModel: coordinator.transactionsViewModel,
+        categoriesViewModel: coordinator.categoriesViewModel,
         subscription: nil
     )
 }

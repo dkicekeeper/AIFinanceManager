@@ -14,6 +14,7 @@ struct AccountsManagementView: View {
     let loansViewModel: LoansViewModel
     let transactionsViewModel: TransactionsViewModel
     @Environment(TransactionStore.self) private var transactionStore
+    @Environment(AppCoordinator.self) private var appCoordinator
     @Environment(\.dismiss) var dismiss
     @State private var showingAddAccount = false
     @State private var showingAddDeposit = false
@@ -21,6 +22,7 @@ struct AccountsManagementView: View {
     @State private var accountToDelete: Account?
     @State private var showingAccountDeleteDialog = false
     @State private var convertingAccount: Account?
+    @State private var linkingInterestDeposit: Account?
     @State private var mode: ManagementMode = .normal
     @State private var selection: Set<String> = []
     @State private var showingBulkDeleteDialog = false
@@ -91,7 +93,7 @@ struct AccountsManagementView: View {
                                     HapticManager.light()
                                     convertingAccount = account
                                 } label: {
-                                    Label(String(localized: "account.convertToDeposit", defaultValue: "Convert to Deposit"), systemImage: "banknote")
+                                    Label(String(localized: "account.convertToDeposit", defaultValue: "Convert to Deposit"), systemImage: "lock.square.stack.fill")
                                 }
                             }
 
@@ -211,7 +213,7 @@ struct AccountsManagementView: View {
                             HapticManager.light()
                             showingAddDeposit = true
                         }) {
-                            Label(String(localized: "account.newDeposit"), systemImage: "banknote")
+                            Label(String(localized: "account.newDeposit"), systemImage: "lock.square.stack.fill")
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -284,6 +286,15 @@ struct AccountsManagementView: View {
                             depositsViewModel.updateDeposit(updatedAccount)
                             transactionsViewModel.recalculateAccountBalances()
                             editingAccount = nil
+                        },
+                        onLinkPayments: {
+                            // Close edit sheet first, then present link-interest sheet.
+                            let deposit = account
+                            editingAccount = nil
+                            // Small delay so the sheet dismissal completes cleanly.
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                linkingInterestDeposit = deposit
+                            }
                         }
                     )
                 } else {
@@ -297,11 +308,29 @@ struct AccountsManagementView: View {
                             transactionsViewModel.syncAccountsFrom(accountsViewModel)
                             editingAccount = nil
                         },
-                        onCancel: { editingAccount = nil }
+                        onCancel: { editingAccount = nil },
+                        onConvertToDeposit: {
+                            let accountToConvert = account
+                            editingAccount = nil
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                convertingAccount = accountToConvert
+                            }
+                        }
                     )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
                 }
+            }
+        }
+        .sheet(item: $linkingInterestDeposit) { deposit in
+            NavigationStack {
+                DepositLinkInterestView(
+                    deposit: deposit,
+                    depositsViewModel: depositsViewModel,
+                    transactionStore: transactionStore,
+                    categoriesViewModel: appCoordinator.categoriesViewModel,
+                    accountsViewModel: accountsViewModel
+                )
             }
         }
         .sheet(item: $convertingAccount) { account in

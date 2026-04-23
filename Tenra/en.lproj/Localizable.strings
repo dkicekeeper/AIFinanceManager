@@ -299,8 +299,8 @@
 "deposit.capitalizationHint" = "When capitalization is enabled, interest is added to the principal amount each month";
 "deposit.new" = "New Deposit";
 "deposit.editTitle" = "Edit Deposit";
-"deposit.interestAccrual.description" = "Interest accrual";
-"deposit.interestAccrual.category" = "Interest accrual";
+"deposit.interestAccrual.description" = "Interest";
+"deposit.interestAccrual.category" = "Interest";
 
 // MARK: - Categories Management
 "categories.expenseCategories" = "Expense Categories";
@@ -467,6 +467,7 @@
 "frequency.daily" = "Daily";
 "frequency.weekly" = "Weekly";
 "frequency.monthly" = "Monthly";
+"frequency.quarterly" = "Quarterly";
 "frequency.yearly" = "Yearly";
 
 // Subscription Form
@@ -749,6 +750,7 @@
 // MARK: - Filter Buttons (Phase 14)
 "filter.allAccounts" = "All Accounts";
 "filter.allCategories" = "All Categories";
+"filter.allSubcategories" = "All Subcategories";
 "filter.categoriesCount" = "%d categories";
 
 // MARK: - Animated Input (Phase 16)
@@ -1106,10 +1108,27 @@
 "subscription.linkPayments.search" = "Search by description or amount";
 "subscription.linkPayments.searchPlaceholder" = "Search";
 "subscription.linkPayments.selectedWithAmount" = "%d selected · %@";
-"subscription.linkPayments.link" = "Link %d Payments";
+"subscription.linkPayments.link" = "Link %d";
 "subscription.linkPayments.empty" = "No matching transactions";
 "subscription.linkPayments.amountExact" = "Exact";
-"subscription.linkPayments.amountTolerance" = "±10%";
+"subscription.linkPayments.amountTolerance" = "±30%";
+"subscription.linkPayments.amountAll" = "All";
+"subscription.linkPayments.unknownAccount" = "Unknown account";
+"common.done" = "Done";
+"deposit.linkInterest.title" = "Link Interest Payments";
+"deposit.recalculateInterest" = "Recalculate Interest";
+"subscription.linkPayments.selectAll" = "Select All";
+"subscription.linkPayments.deselectAll" = "Deselect All";
+"subscriptions.spentAllTime" = "Spent all time";
+"subscription.edit.propagate.title" = "Update linked transactions?";
+"subscription.edit.propagate.message" = "Apply changes to existing transactions linked to this subscription?";
+"subscription.edit.propagate.seriesOnly" = "Only subscription";
+"subscription.edit.propagate.future" = "Future transactions";
+"subscription.edit.propagate.all" = "All transactions";
+"subscription.unlinkAll" = "Unlink all transactions";
+"subscription.unlinkAll.title" = "Unlink all transactions?";
+"subscription.unlinkAll.confirm" = "Unlink All";
+"subscription.unlinkAll.message" = "Remove the subscription link from %d transactions? The transactions themselves remain intact.";
 "subscription.linkPayments.subcategories" = "Subcategories";
 "subscription.linkPayments.subcategoriesCount" = "%d subcategories";
 "subscription.filterAll" = "All";

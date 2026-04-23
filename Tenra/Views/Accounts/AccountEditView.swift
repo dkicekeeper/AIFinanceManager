@@ -14,6 +14,9 @@ struct AccountEditView: View {
     let account: Account?
     let onSave: (Account) -> Void
     let onCancel: () -> Void
+    /// Optional toolbar action — when set (edit mode), shows a "Convert to deposit"
+    /// button. Caller closes this sheet and opens `DepositEditView` in conversion mode.
+    var onConvertToDeposit: (() -> Void)? = nil
 
     @State private var name: String = ""
     @State private var balanceText: String = ""
@@ -61,6 +64,19 @@ struct AccountEditView: View {
                 }
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.top, AppSpacing.md)
+            }
+            .toolbar {
+                // Inner toolbar merges with EditSheetContainer's xmark/checkmark toolbar.
+                // Placed in the `.principal` slot area via `.topBarLeading` chain —
+                // rendered next to the existing cancel button.
+                if let onConvertToDeposit, account != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(action: onConvertToDeposit) {
+                            Image(systemName: "lock.square.stack.fill")
+                        }
+                        .accessibilityLabel(String(localized: "account.convertToDeposit", defaultValue: "Convert to Deposit"))
+                    }
+                }
             }
         }
         .onAppear {

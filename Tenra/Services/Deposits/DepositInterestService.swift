@@ -32,13 +32,51 @@ nonisolated enum DepositInterestService {
             return
         }
 
-        var currentDate = calendar.date(byAdding: .day, value: 1, to: lastCalcDateNormalized)!
+        // Principal events that change the historical principal over time:
+        // top-ups add, withdrawals subtract, and already-posted interest adds (if capitalized).
+        //
+        // Events dated on or before `startDate` are considered baked into `initialPrincipal`
+        // (the balance the user declared at deposit creation/conversion). Only events
+        // strictly AFTER startDate move the running principal — this prevents
+        // double-counting of historical income/transfers that pre-date the deposit's
+        // existence (e.g. when converting a regular account and then linking old income
+        // transactions as interest).
+        let events = allTransactions
+            .filter { tx in
+                tx.accountId == account.id &&
+                (tx.type == .depositTopUp || tx.type == .depositWithdrawal || tx.type == .depositInterestAccrual) &&
+                tx.date > depositInfo.startDate
+            }
+            .sorted { $0.date < $1.date }
+
+        // Walk events up to (but not including) the walk start date so we start with
+        // the correct running principal. Ensures past top-ups/withdrawals are respected
+        // even if they were recorded out of order.
+        let walkStart = calendar.date(byAdding: .day, value: 1, to: lastCalcDateNormalized)!
+        let walkStartStr = DateFormatters.dateFormatter.string(from: walkStart)
+
+        var runningPrincipal: Decimal = depositInfo.initialPrincipal
+        var eventIdx = 0
+        while eventIdx < events.count && events[eventIdx].date < walkStartStr {
+            runningPrincipal += principalDelta(for: events[eventIdx], capitalizationEnabled: depositInfo.capitalizationEnabled)
+            eventIdx += 1
+        }
+
+        var currentDate = walkStart
         var totalAccrued: Decimal = depositInfo.interestAccruedForCurrentPeriod
 
         while currentDate < today {
+            let currentDateStr = DateFormatters.dateFormatter.string(from: currentDate)
+
+            // Apply any top-up/withdrawal/already-posted-interest events dated on this day
+            // BEFORE calculating today's interest — banks charge interest on start-of-day balance.
+            while eventIdx < events.count && events[eventIdx].date <= currentDateStr {
+                runningPrincipal += principalDelta(for: events[eventIdx], capitalizationEnabled: depositInfo.capitalizationEnabled)
+                eventIdx += 1
+            }
+
             let rate = rateForDate(date: currentDate, history: depositInfo.interestRateHistory)
-            let baseAmount = depositInfo.principalBalance
-            let dailyInterest = baseAmount * (rate / 100) / 365
+            let dailyInterest = runningPrincipal * (rate / 100) / 365
             totalAccrued += dailyInterest
 
             if shouldPostInterest(
@@ -48,7 +86,7 @@ nonisolated enum DepositInterestService {
             ) {
                 let postingAmount = totalAccrued
                 if postingAmount > 0 {
-                    postInterest(
+                    let posted = postInterest(
                         account: &account,
                         depositInfo: &depositInfo,
                         amount: postingAmount,
@@ -56,6 +94,13 @@ nonisolated enum DepositInterestService {
                         allTransactions: allTransactions,
                         onTransactionCreated: onTransactionCreated
                     )
+                    if posted {
+                        // Factor newly-posted interest into running principal so the next day's
+                        // interest compounds on the larger balance (when capitalization enabled).
+                        if depositInfo.capitalizationEnabled {
+                            runningPrincipal += postingAmount
+                        }
+                    }
                     totalAccrued = 0
                 }
             }
@@ -65,8 +110,25 @@ nonisolated enum DepositInterestService {
 
         depositInfo.interestAccruedForCurrentPeriod = totalAccrued
         depositInfo.lastInterestCalculationDate = DateFormatters.dateFormatter.string(from: today)
+        // Sync cached principalBalance to the derived historical value.
+        depositInfo.principalBalance = runningPrincipal
 
         account.depositInfo = depositInfo
+    }
+
+    /// Signed amount by which the given deposit-related transaction moves the running principal.
+    private static func principalDelta(for tx: Transaction, capitalizationEnabled: Bool) -> Decimal {
+        let amt = Decimal(tx.amount)
+        switch tx.type {
+        case .depositTopUp:
+            return amt
+        case .depositWithdrawal:
+            return -amt
+        case .depositInterestAccrual:
+            return capitalizationEnabled ? amt : 0
+        default:
+            return 0
+        }
     }
 
     /// Добавляет новую ставку в историю
@@ -88,7 +150,10 @@ nonisolated enum DepositInterestService {
         return depositInfo.interestRateAnnual
     }
 
-    /// Рассчитывает проценты на сегодня (без сохранения)
+    /// Рассчитывает проценты на сегодня (без сохранения).
+    /// Legacy overload using cached `principalBalance`. Callers without transaction access
+    /// (callsites that just render UI) use this; the historical-accurate overload
+    /// `(depositInfo:accountId:allTransactions:)` walks deposit events for precision.
     static func calculateInterestToToday(depositInfo: DepositInfo) -> Decimal {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -105,6 +170,59 @@ nonisolated enum DepositInterestService {
             let rate = rateForDate(date: currentDate, history: depositInfo.interestRateHistory)
             let baseAmount = depositInfo.principalBalance
             let dailyInterest = baseAmount * (rate / 100) / 365
+            totalAccrued += dailyInterest
+
+            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
+        }
+
+        return totalAccrued
+    }
+
+    /// Рассчитывает проценты на сегодня с учётом исторических топ-апов/снятий.
+    /// Unlike the legacy overload, this walks deposit events so daily interest uses
+    /// the principal that was actually present on each day.
+    static func calculateInterestToToday(
+        depositInfo: DepositInfo,
+        accountId: String,
+        allTransactions: [Transaction]
+    ) -> Decimal {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        guard let lastCalcDate = DateFormatters.dateFormatter.date(from: depositInfo.lastInterestCalculationDate) else {
+            return depositInfo.interestAccruedForCurrentPeriod
+        }
+        let lastCalcDateNormalized = calendar.startOfDay(for: lastCalcDate)
+
+        let events = allTransactions
+            .filter { tx in
+                tx.accountId == accountId &&
+                (tx.type == .depositTopUp || tx.type == .depositWithdrawal || tx.type == .depositInterestAccrual) &&
+                tx.date > depositInfo.startDate
+            }
+            .sorted { $0.date < $1.date }
+
+        let walkStart = calendar.date(byAdding: .day, value: 1, to: lastCalcDateNormalized)!
+        let walkStartStr = DateFormatters.dateFormatter.string(from: walkStart)
+
+        var runningPrincipal: Decimal = depositInfo.initialPrincipal
+        var eventIdx = 0
+        while eventIdx < events.count && events[eventIdx].date < walkStartStr {
+            runningPrincipal += principalDelta(for: events[eventIdx], capitalizationEnabled: depositInfo.capitalizationEnabled)
+            eventIdx += 1
+        }
+
+        var currentDate = walkStart
+        var totalAccrued: Decimal = depositInfo.interestAccruedForCurrentPeriod
+
+        while currentDate <= today {
+            let currentDateStr = DateFormatters.dateFormatter.string(from: currentDate)
+            while eventIdx < events.count && events[eventIdx].date <= currentDateStr {
+                runningPrincipal += principalDelta(for: events[eventIdx], capitalizationEnabled: depositInfo.capitalizationEnabled)
+                eventIdx += 1
+            }
+            let rate = rateForDate(date: currentDate, history: depositInfo.interestRateHistory)
+            let dailyInterest = runningPrincipal * (rate / 100) / 365
             totalAccrued += dailyInterest
 
             currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
@@ -202,7 +320,13 @@ nonisolated enum DepositInterestService {
                lastPostingComponents.month != currentComponents.month
     }
 
-    /// Начисляет проценты (создает транзакцию и обновляет баланс)
+    /// Начисляет проценты (создает транзакцию и обновляет баланс).
+    /// Returns `true` if a new transaction was posted (so caller can compound running principal).
+    /// Note: principal mutation is deferred to the caller in the new historical walk —
+    /// `runningPrincipal` is owned by `reconcileDepositInterest`. This function only
+    /// updates `interestAccruedNotCapitalized` when capitalization is off, and the
+    /// `lastInterestPostingMonth` marker.
+    @discardableResult
     private static func postInterest(
         account: inout Account,
         depositInfo: inout DepositInfo,
@@ -210,7 +334,7 @@ nonisolated enum DepositInterestService {
         date: Date,
         allTransactions: [Transaction],
         onTransactionCreated: (Transaction) -> Void
-    ) {
+    ) -> Bool {
         let calendar = Calendar.current
         let dateNormalized = calendar.startOfDay(for: date)
         let components = calendar.dateComponents([.year, .month], from: dateNormalized)
@@ -224,7 +348,8 @@ nonisolated enum DepositInterestService {
             && tx.date >= monthStartString
         }
         if alreadyPosted {
-            return
+            depositInfo.lastInterestPostingMonth = monthStartString
+            return false
         }
 
         let dateString = DateFormatters.dateFormatter.string(from: date)
@@ -239,12 +364,12 @@ nonisolated enum DepositInterestService {
         let transaction = Transaction(
             id: transactionId,
             date: dateString,
-            description: String(localized: "deposit.interestAccrual.description", defaultValue: "Interest accrual"),
+            description: String(localized: "deposit.interestAccrual.description", defaultValue: "Interest"),
             amount: amountDouble,
             currency: account.currency,
             convertedAmount: nil,
             type: .depositInterestAccrual,
-            category: String(localized: "deposit.interestAccrual.category", defaultValue: "Interest accrual"),
+            category: String(localized: "deposit.interestAccrual.category", defaultValue: "Interest"),
             subcategory: nil,
             accountId: account.id,
             targetAccountId: nil,
@@ -257,14 +382,13 @@ nonisolated enum DepositInterestService {
 
         onTransactionCreated(transaction)
 
-        if depositInfo.capitalizationEnabled {
-            depositInfo.principalBalance += amount
-        } else {
+        if !depositInfo.capitalizationEnabled {
             depositInfo.interestAccruedNotCapitalized += amount
         }
 
         depositInfo.lastInterestPostingMonth = monthStartString
         account.depositInfo = depositInfo
+        return true
     }
 
     /// Генерирует стабильный детерминированный ID для транзакции начисления процентов

@@ -1048,10 +1048,11 @@ nonisolated final class InsightsService {
         let amount = NSDecimalNumber(decimal: series.amount).doubleValue
         let rawMonthly: Double
         switch series.frequency {
-        case .daily:   rawMonthly = amount * 30
-        case .weekly:  rawMonthly = amount * 4.33
-        case .monthly: rawMonthly = amount
-        case .yearly:  rawMonthly = amount / 12
+        case .daily:     rawMonthly = amount * 30
+        case .weekly:    rawMonthly = amount * 4.33
+        case .monthly:   rawMonthly = amount
+        case .quarterly: rawMonthly = amount / 3
+        case .yearly:    rawMonthly = amount / 12
         }
         if series.currency != baseCurrency,
            let converted = CurrencyConverter.convertSync(amount: rawMonthly, from: series.currency, to: baseCurrency) {
@@ -1072,10 +1073,11 @@ nonisolated final class InsightsService {
             let amount = NSDecimalNumber(decimal: series.amount).doubleValue
             let monthly: Double
             switch series.frequency {
-            case .daily:   monthly = amount * 30
-            case .weekly:  monthly = amount * 4.33
-            case .monthly: monthly = amount
-            case .yearly:  monthly = amount / 12
+            case .daily:     monthly = amount * 30
+            case .weekly:    monthly = amount * 4.33
+            case .monthly:   monthly = amount
+            case .quarterly: monthly = amount / 3
+            case .yearly:    monthly = amount / 12
             }
             let isIncome = categories.first { $0.name == series.category }?.type == .income
             return total + (isIncome ? monthly : -monthly)

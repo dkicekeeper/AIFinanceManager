@@ -79,13 +79,16 @@ struct EditSheetContainer<Content: View>: View {
     }
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarLeading) {
+        ToolbarItem(placement: .cancellationAction) {
             Button(action: onCancel) {
                 Image(systemName: "xmark")
             }
             .accessibilityLabel(String(localized: "button.cancel"))
         }
-        ToolbarItem(placement: .navigationBarTrailing) {
+        // `.confirmationAction` anchors the Save button to the far-right of the nav bar.
+        // Child views can add extra items via `.primaryAction`, which iOS renders
+        // to the LEFT of `.confirmationAction` — exactly the visual order we want.
+        ToolbarItem(placement: .confirmationAction) {
             Button {
                 HapticManager.light()
                 onSave()

@@ -30,6 +30,7 @@ struct DepositDetailView: View {
     @State private var showingRateChange = false
     @State private var showingDeleteConfirmation = false
     @State private var showingHistory = false
+    @State private var showingLinkInterest = false
     @State private var reconciliationError: String? = nil
     @Environment(\.dismiss) var dismiss
     @Namespace private var depositActionNamespace
@@ -111,6 +112,30 @@ struct DepositDetailView: View {
                         Label(String(localized: "deposit.changeRate"), systemImage: "chart.line.uptrend.xyaxis")
                     }
 
+                    Button {
+                        HapticManager.selection()
+                        showingLinkInterest = true
+                    } label: {
+                        Label(String(localized: "deposit.linkInterest.title", defaultValue: "Link Interest Payments"), systemImage: "link.badge.plus")
+                    }
+
+                    Button {
+                        HapticManager.selection()
+                        if let id = account?.id {
+                            Task {
+                                try? await depositsViewModel.recalculateInterest(
+                                    for: id,
+                                    transactionStore: transactionStore
+                                )
+                            }
+                        }
+                    } label: {
+                        Label(
+                            String(localized: "deposit.recalculateInterest", defaultValue: "Recalculate Interest"),
+                            systemImage: "arrow.clockwise"
+                        )
+                    }
+
                     Divider()
 
                     Button(role: .destructive) {
@@ -182,6 +207,19 @@ struct DepositDetailView: View {
                         )
                     }
                 )
+            }
+        }
+        .sheet(isPresented: $showingLinkInterest) {
+            if let account = account {
+                NavigationStack {
+                    DepositLinkInterestView(
+                        deposit: account,
+                        depositsViewModel: depositsViewModel,
+                        transactionStore: transactionStore,
+                        categoriesViewModel: appCoordinator.categoriesViewModel,
+                        accountsViewModel: depositsViewModel.accountsViewModel
+                    )
+                }
             }
         }
         .alert(String(localized: "deposit.deleteTitle"), isPresented: $showingDeleteConfirmation) {

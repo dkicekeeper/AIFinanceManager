@@ -11,6 +11,9 @@ struct DepositEditView: View {
     let depositsViewModel: DepositsViewModel
     let account: Account?
     let onSave: (Account) -> Void
+    /// Optional toolbar action — when set (editing an existing deposit), shows a
+    /// "Link interest payments" button that closes this sheet and opens the link view.
+    var onLinkPayments: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
 
@@ -124,6 +127,17 @@ struct DepositEditView: View {
                 }
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.top, AppSpacing.md)
+            }
+            .toolbar {
+                // Merges with EditSheetContainer's xmark/checkmark toolbar.
+                if let onLinkPayments, account?.depositInfo != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(action: onLinkPayments) {
+                            Image(systemName: "link.badge.plus")
+                        }
+                        .accessibilityLabel(String(localized: "deposit.linkInterest.title", defaultValue: "Link Interest Payments"))
+                    }
+                }
             }
         }
         .onAppear {

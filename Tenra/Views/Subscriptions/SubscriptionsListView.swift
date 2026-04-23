@@ -77,12 +77,14 @@ struct SubscriptionsListView: View {
                 SubscriptionEditView(
                     transactionStore: transactionStore,
                     transactionsViewModel: transactionsViewModel,
+                    categoriesViewModel: categoriesViewModel,
                     subscription: nil
                 )
             case .edit(let subscription):
                 SubscriptionEditView(
                     transactionStore: transactionStore,
                     transactionsViewModel: transactionsViewModel,
+                    categoriesViewModel: categoriesViewModel,
                     subscription: subscription
                 )
             }

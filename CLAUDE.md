@@ -163,6 +163,10 @@ Tenra/
 - **Account → Deposit conversion**: `DepositEditView` handles 3 modes (new, edit, convert) via `isConverting` computed property
 - **⚠️ Initial date computation**: New/converted deposits MUST use `DepositEditView.computeInitialDates(postingDay:)` to set `lastInterestCalculationDate` to the most recent posting date — otherwise interest shows 0 (default is today → `calculateInterestToToday()` loop never executes)
 - **⚠️ Don't decompose Account for addDeposit**: Use `AccountsViewModel.addDepositAccount(_ account:)` to preserve computed DepositInfo dates. Decomposing into fields loses `lastInterestCalculationDate`/`lastInterestPostingMonth`.
+- **Deposit balance model**: `balance = initialPrincipal + sum(events with date > startDate)`. Events = `.depositTopUp` (+), `.depositWithdrawal` (−), `.depositInterestAccrual` (+ iff `capitalizationEnabled`). `principalBalance` is a cached result of `DepositInterestService.reconcileDepositInterest` — never mutate it outside that service. Link-interest flow reclassifies tx type only; it must NOT touch `principalBalance` / `interestAccruedNotCapitalized`.
+- **`startDate` on DepositInfo** marks when the deposit "exists for calculation". Events dated on/before `startDate` are assumed baked into `initialPrincipal` and filtered out of the reconcile walk — prevents double-counting when converting a regular account with past income into a deposit.
+- **Auto-posted interest tx id prefix `di_`**: deterministic djb2 hash of `(depositId, month, amount, currency)`. Survives process restarts → use for idempotency and bulk cleanup. `DepositsViewModel.recalculateInterest` deletes only `.depositInterestAccrual` with `di_` prefix so user-linked interest stays.
+- **`DepositsViewModel.linkTransactionsAsInterest(depositId:transactions:transactionStore:)`**: converts `.income` on the deposit's account into `.depositInterestAccrual`. Pure reclassification — no balance/deposit-info mutation. UI wrapper: `DepositLinkInterestView` (uses shared `LinkPaymentsView` with `Options.deposit`).
 
 #### Loans — Payment Tracking & Reconciliation
 - `LoanInfo` persisted via `loanInfoData: Data?` (JSON-encoded Binary) on `AccountEntity` (CoreData v6), mirrors `DepositInfo` pattern
@@ -440,6 +444,13 @@ New file needed?
 - **Reconciliation callback pattern**: Never spawn `Task {}` inside synchronous `onTransactionCreated` callbacks — collect into array, batch-persist after reconciliation completes. Applies to both deposits and loans.
 - **Subcategory CoreData relationship**: `Transaction.subcategory: String?` is legacy; real subcats live via `categoriesViewModel.linkSubcategoriesToTransaction(transactionId:subcategoryIds:)`. Generated recurring txs need explicit linking after creation.
 - **`categoriesViewModel` threading in Views**: `SubscriptionDetailView` and `SubscriptionsListView` require `CategoriesViewModel` passed as parameter from `ContentView`.
+- **`@State` cache for 2k+ row lists**: Computed props for filter/group-by/lookup re-run per view-body eval and dominate tap latency. Move `filteredX`, `dateSections`, `accountById`, `allSatisfy`-flags into `@State`, rebuild in a single `rebuildDerivedCaches()` pass on input changes. See `SubscriptionLinkPaymentsView` for the pattern.
+- **Heavy nonisolated scans off MainActor**: `Task.detached(priority: .userInitiated) { let result = Matcher.scan(...); await MainActor.run { self.baseline = result; self.applyFilters() } }` for O(N_transactions) filters on view open. SwiftUI `View` structs are auto-Sendable — capture is safe.
+- **`TransactionStore.update()` blocks removing `recurringSeriesId`**: throws `cannotRemoveRecurring`. To unlink (e.g. bulk unlink from subscription), use `apply(.updated(old: tx, new: updatedTx))` directly. See `unlinkAllTransactions(fromSeriesId:)` in `TransactionStore+Recurring.swift`.
+- **`RecurringFrequency` case additions touch 6+ files**: `Models/RecurringTransaction.swift`, `Services/Recurring/RecurringValidationService.swift`, `Services/Recurring/RecurringTransactionGenerator.swift` (2 switches), `Services/Notifications/SubscriptionNotificationScheduler.swift`, `Services/Insights/InsightsService.swift` (2 switches), `Services/Insights/InsightsService+Recurring.swift`. Grep `case .monthly:` to audit.
+- **New `.swift` files auto-register**: Xcode synchronized folders pick up any new file in `Tenra/` subdirectories on next build. Do NOT edit `project.pbxproj` manually for adding files.
+- **Link-payments UI is shared**: `Views/Components/LinkPayments/LinkPaymentsView.swift` provides the full linking UX (filters, sheets, search, caches, background scan, haptic). New owner entities wrap it with `findCandidates` + `performLink` `@Sendable` closures — do NOT duplicate the state machine. See `SubscriptionLinkPaymentsView.swift` / `LoanLinkPaymentsView.swift`.
+- **Transaction matchers must accept `AmountMatchMode`** (`.all` / `.tolerance` / `.exact`) — defined in `Services/Recurring/SubscriptionTransactionMatcher.swift`. Both `SubscriptionTransactionMatcher` and `LoanTransactionMatcher` conform; new matchers should follow the same signature to plug into `LinkPaymentsView`.
 
 ## SwiftUI Layout Gotchas
 
@@ -451,6 +462,8 @@ New file needed?
 - **`Text("localization.key")` renders the raw key**: Always use `Text(String(localized: "some.key"))` for guaranteed localized output.
 - **`Task.sleep(nanoseconds:)` → Duration API**: Use `try? await Task.sleep(for: .milliseconds(150))` instead.
 - **ForEach identity — never use `UUID()`**: `UUID()` generates a new id every render → spurious animations, sheet dismiss/reopen. Use stable identifiers: name-based id, `"\(name)_\(type.rawValue)"` fallback.
+- **Prefer `.searchable(text:placement:.navigationBarDrawer(.always))` over custom TextField**: gives native Cancel for keyboard dismiss + scope/tokens support. Custom search bars in nav stacks typically need manual `@FocusState` + keyboard toolbar that `.searchable` handles for free.
+- **Extra toolbar items in `EditSheetContainer`**: container uses `.cancellationAction` (xmark) + `.confirmationAction` (Save). Child views nest `.toolbar { ToolbarItem(placement: .primaryAction) { ... } }` inside the content closure — iOS auto-places `.primaryAction` items LEFT of `.confirmationAction`. Do NOT use `.topBarTrailing` / `.navigationBarTrailing` — they land on the wrong side of Save.
 
 ## Common Tasks
 

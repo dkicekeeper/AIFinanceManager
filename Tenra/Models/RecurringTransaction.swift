@@ -187,6 +187,8 @@ struct RecurringSeries: Identifiable, Codable, Equatable, Hashable {
             return calendar.date(byAdding: .day, value: 7, to: date)
         case .monthly:
             return calendar.date(byAdding: .month, value: 1, to: date)
+        case .quarterly:
+            return calendar.date(byAdding: .month, value: 3, to: date)
         case .yearly:
             return calendar.date(byAdding: .year, value: 1, to: date)
         }
@@ -197,14 +199,16 @@ enum RecurringFrequency: String, Codable, CaseIterable, Hashable {
     case daily = "daily"
     case weekly = "weekly"
     case monthly = "monthly"
+    case quarterly = "quarterly"
     case yearly = "yearly"
-    
+
     var displayName: String {
         switch self {
-        case .daily:   return String(localized: "frequency.daily")
-        case .weekly:  return String(localized: "frequency.weekly")
-        case .monthly: return String(localized: "frequency.monthly")
-        case .yearly:  return String(localized: "frequency.yearly")
+        case .daily:     return String(localized: "frequency.daily")
+        case .weekly:    return String(localized: "frequency.weekly")
+        case .monthly:   return String(localized: "frequency.monthly")
+        case .quarterly: return String(localized: "frequency.quarterly")
+        case .yearly:    return String(localized: "frequency.yearly")
         }
     }
 }

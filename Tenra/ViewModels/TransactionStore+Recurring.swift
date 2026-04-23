@@ -570,4 +570,43 @@ extension TransactionStore {
             try await apply(TransactionEvent.updated(old: tx, new: updated))
         }
     }
+
+    /// Unlink all transactions currently linked to a subscription series.
+    /// Clears `recurringSeriesId` (and `recurringOccurrenceId`) on each linked transaction.
+    /// Bypasses `update()`'s recurring-guard by applying events directly.
+    /// Returns the number of transactions that were unlinked.
+    @discardableResult
+    func unlinkAllTransactions(fromSeriesId seriesId: String) async throws -> Int {
+        guard recurringSeries.contains(where: { $0.id == seriesId }) else {
+            throw TransactionStoreError.seriesNotFound
+        }
+
+        let linked = transactions.filter { $0.recurringSeriesId == seriesId }
+        guard !linked.isEmpty else { return 0 }
+
+        for tx in linked {
+            let updated = Transaction(
+                id: tx.id,
+                date: tx.date,
+                description: tx.description,
+                amount: tx.amount,
+                currency: tx.currency,
+                convertedAmount: tx.convertedAmount,
+                type: tx.type,
+                category: tx.category,
+                subcategory: tx.subcategory,
+                accountId: tx.accountId,
+                targetAccountId: tx.targetAccountId,
+                accountName: tx.accountName,
+                targetAccountName: tx.targetAccountName,
+                targetCurrency: tx.targetCurrency,
+                targetAmount: tx.targetAmount,
+                recurringSeriesId: nil,
+                recurringOccurrenceId: nil,
+                createdAt: tx.createdAt
+            )
+            try await apply(TransactionEvent.updated(old: tx, new: updated))
+        }
+        return linked.count
+    }
 }

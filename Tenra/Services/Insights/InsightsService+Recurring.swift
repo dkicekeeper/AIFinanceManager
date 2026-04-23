@@ -26,10 +26,11 @@ extension InsightsService {
             let amount = NSDecimalNumber(decimal: series.amount).doubleValue
             let rawMonthlyEquivalent: Double
             switch series.frequency {
-            case .daily:   rawMonthlyEquivalent = amount * 30
-            case .weekly:  rawMonthlyEquivalent = amount * 4.33
-            case .monthly: rawMonthlyEquivalent = amount
-            case .yearly:  rawMonthlyEquivalent = amount / 12
+            case .daily:     rawMonthlyEquivalent = amount * 30
+            case .weekly:    rawMonthlyEquivalent = amount * 4.33
+            case .monthly:   rawMonthlyEquivalent = amount
+            case .quarterly: rawMonthlyEquivalent = amount / 3
+            case .yearly:    rawMonthlyEquivalent = amount / 12
             }
 
             // Convert each item's monthly equivalent to baseCurrency before storing.
