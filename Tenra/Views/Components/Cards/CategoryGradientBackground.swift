@@ -121,10 +121,13 @@ struct CategoryGradientBackground: View {
             let w = geo.size.width
             let h = geo.size.height
             let base = max(w, h) * 0.85
-            let items = Array(weights.prefix(5))
+            // 3 orbs is enough to read as "lava lamp" — visually 4th/5th orbs were
+            // already mostly lost behind the heavy blur. Going from 5→3 cuts the
+            // most expensive part of the pipeline (per-orb blur + composite) by ~40 %.
+            let items = Array(weights.prefix(3))
 
             // Back layer: first 2 orbs (highest weight) — larger, slower, deeper blur.
-            // Front layer: orbs 3-5 — smaller, faster drift, sharper blur.
+            // Front layer: orb 3 — smaller, faster drift, sharper blur.
             let backItems = Array(items.prefix(2))
             let frontItems = items.count > 2 ? Array(items.dropFirst(2)) : []
 

@@ -7,10 +7,7 @@
 //
 
 import SwiftUI
-import os
 import ImageIO
-
-private let cvLogger = Logger(subsystem: "Tenra", category: "ContentView")
 
 // MARK: - HomeDestination
 
@@ -49,7 +46,10 @@ struct ContentView: View {
     }
     private var summaryTrigger: SummaryTrigger {
         SummaryTrigger(
-            txCount: transactionStore.transactions.count,
+            // Read the Observable mirror, not transactions.count — the latter would
+            // subscribe ContentView's body to the full 19k-element array and re-eval
+            // body on every micro-mutation.
+            txCount: transactionStore.transactionsCount,
             filterName: timeFilterManager.currentFilter.displayName,
             isImporting: transactionStore.isImporting,
             isFullyInitialized: coordinator.isFullyInitialized
@@ -196,34 +196,41 @@ struct ContentView: View {
                 homeState.wallpaperImage     = image
                 homeState.wallpaperImageName = name
             }
-#if DEBUG
-            .onChange(of: coordinator.isFastPathDone) { _, isDone in
-                cvLogger.debug("⚡️ [ContentView] isFastPathDone → \(isDone)")
-            }
-            .onChange(of: coordinator.isFullyInitialized) { _, isInit in
-                cvLogger.debug("✅ [ContentView] isFullyInitialized → \(isInit)")
-            }
-#endif
         }
     }
 
     // MARK: - Main Content
+    @ViewBuilder
     private var mainContent: some View {
         ScrollView {
             VStack(spacing: AppSpacing.lg) {
-                accountsSection
-                    .contentReveal(isReady: coordinator.isFastPathDone)
-                historyNavigationLink
-                    .contentReveal(isReady: coordinator.isFullyInitialized)
-                subscriptionsNavigationLink
-                    .contentReveal(isReady: coordinator.isFullyInitialized, delay: 0.05)
-                loansNavigationLink
-                    .contentReveal(isReady: coordinator.isFullyInitialized, delay: 0.1)
-                categoriesSection
-                    .contentReveal(isReady: coordinator.isFastPathDone, delay: 0.05)
+                // Sections are gated by `if` — not `.contentReveal` opacity — so SwiftUI
+                // doesn't pay the cost of evaluating their bodies, laying them out, and
+                // rendering glass effects during the first render before data is ready.
+                // Profiling showed the initial ContentView render was blocking MainActor
+                // for ~2.4 s, which delayed fastPath's `await` from delivering accounts
+                // and prevented the user from interacting with anything for ~6 s total.
+                if coordinator.isFastPathDone {
+                    accountsSection
+                        .transition(.opacity)
+                }
+                if coordinator.isFullyInitialized {
+                    historyNavigationLink
+                        .transition(.opacity)
+                    subscriptionsNavigationLink
+                        .transition(.opacity)
+                    loansNavigationLink
+                        .transition(.opacity)
+                }
+                if coordinator.isFastPathDone {
+                    categoriesSection
+                        .transition(.opacity)
+                }
                 errorSection
             }
             .padding(.vertical, AppSpacing.md)
+            .animation(AppAnimation.contentRevealAnimation, value: coordinator.isFastPathDone)
+            .animation(AppAnimation.contentRevealAnimation, value: coordinator.isFullyInitialized)
         }
     }
 
@@ -253,7 +260,10 @@ struct ContentView: View {
             TransactionsSummaryCard(
                 summary: homeState.cachedSummary,
                 currency: viewModel.appSettings.baseCurrency,
-                isEmpty: transactionStore.transactions.isEmpty
+                // Use the Observable count mirror so this navlink doesn't subscribe
+                // to the full transactions array (any tx mutation would otherwise
+                // dirty the entire summary navlink).
+                isEmpty: transactionStore.transactionsCount == 0
             )
         }
         .buttonStyle(.bounce)

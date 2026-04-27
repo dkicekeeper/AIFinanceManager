@@ -83,11 +83,27 @@ final class SettingsViewModel {
 
     // MARK: - Lifecycle
 
-    /// Load settings and wallpaper on initialization
+    /// Load settings and wallpaper on initialization.
+    /// loadCurrentWallpaper depends on `settings.wallpaperImageName` from loadSettings,
+    /// so settings must complete first. Wallpaper file read and history scan are
+    /// independent — run them in parallel to overlap their disk I/O.
+    ///
+    /// Used by SettingsView (`.task`) where currentWallpaper is actually rendered.
+    /// During app startup use `loadSettingsOnly()` instead — wallpaper decoding on
+    /// MainActor was burning ~2 s of fastPath wall time even when the user wasn't
+    /// looking at Settings, and the home screen has its own downsampling pipeline.
     func loadInitialData() async {
         await loadSettings()
-        await loadCurrentWallpaper()
-        await loadWallpaperHistory()
+        async let wallpaper: Void = loadCurrentWallpaper()
+        async let history: Void = loadWallpaperHistory()
+        _ = await (wallpaper, history)
+    }
+
+    /// Lightweight startup variant: loads only settings (UserDefaults read).
+    /// Skips full-resolution wallpaper decode and history file enumeration since
+    /// neither is needed until the user opens Settings.
+    func loadSettingsOnly() async {
+        await loadSettings()
     }
 
     // MARK: - Settings Operations

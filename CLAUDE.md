@@ -117,6 +117,8 @@ Tenra/
 - Provides: Repository, all ViewModels, Stores, and Coordinators
 - Two-phase startup: `initializeFastPath()` loads accounts+categories (<50ms) → UI visible instantly; full 19k-transaction load runs in background via `initialize()`
 - Observable flags `isFastPathDone` / `isFullyInitialized` drive per-section content reveal (staggered fade-in via `ContentRevealModifier`)
+- **`TransactionStore.loadAccountsOnly()` is misnamed — it also loads categories.** Both are needed for the home screen's first paint.
+- **`SettingsViewModel.loadSettingsOnly()` is the fastPath variant** (UserDefaults read only). `loadInitialData()` additionally decodes the full-resolution wallpaper UIImage on MainActor and is heavy — only `SettingsView.task` should call it.
 
 #### TransactionStore
 - **THE** single source of truth for transactions, accounts, and categories
@@ -359,6 +361,7 @@ Never use `@StateObject`, `@ObservedObject`, `@EnvironmentObject` — those are 
 - **`addBatch` fallback pattern**: `TransactionStore.addBatch()` validates ALL transactions; one failure rejects the entire batch. `CSVImportCoordinator` retries individual `add()` calls.
 - **Entity resolution case-sensitivity**: `resolveCategoryByName` must use case-insensitive comparison. When cache HITs on a case-variant, return the **stored** entity name (not the input name).
 - **NEVER use `NSBatchDeleteRequest` then `context.save()` on the SAME context** when deleted objects have inverse relationships. Use `context.delete()` instead.
+- **`viewContext.perform { }` runs on MainActor** — viewContext is MainActor-bound, so its perform queue blocks UI. Use `newBackgroundContext()` for heavy ops (purgeHistory, batch deletes, large fetches that don't need UI synchronicity).
 
 ### CSV Export/Import Round-Trip Rules
 - **All 6 TransactionTypes** must export/import: `expense`, `income`, `internal`, `deposit_topup`, `deposit_withdrawal`, `deposit_interest`. Mappings live in `CSVColumnMapping.typeMappings`.
@@ -451,6 +454,9 @@ New file needed?
 - **New `.swift` files auto-register**: Xcode synchronized folders pick up any new file in `Tenra/` subdirectories on next build. Do NOT edit `project.pbxproj` manually for adding files.
 - **Link-payments UI is shared**: `Views/Components/LinkPayments/LinkPaymentsView.swift` provides the full linking UX (filters, sheets, search, caches, background scan, haptic). New owner entities wrap it with `findCandidates` + `performLink` `@Sendable` closures — do NOT duplicate the state machine. See `SubscriptionLinkPaymentsView.swift` / `LoanLinkPaymentsView.swift`.
 - **Transaction matchers must accept `AmountMatchMode`** (`.all` / `.tolerance` / `.exact`) — defined in `Services/Recurring/SubscriptionTransactionMatcher.swift`. Both `SubscriptionTransactionMatcher` and `LoanTransactionMatcher` conform; new matchers should follow the same signature to plug into `LinkPaymentsView`.
+- **Don't profile under attached Xcode debugger** — `os.Logger.debug` flooding alone inflated a real <1s launch into a measured 4–6s. Use Instruments Time Profiler or detach debugger before measuring.
+- **Reading `.count`/`.isEmpty`/`dict[key]` on an `@Observable` collection subscribes the body to the whole collection** — for hot paths over 19k transactions, maintain a separate Observable scalar mirror (e.g. `TransactionStore.transactionsCount`) and read that instead.
+- **`PerformanceProfiler.start/end` uses `CACurrentMediaTime()` synchronously** — measurements reflect actual elapsed time at the call site. Older logs that captured time via queued `Task { @MainActor }` are not comparable.
 
 ## SwiftUI Layout Gotchas
 
@@ -464,6 +470,8 @@ New file needed?
 - **ForEach identity — never use `UUID()`**: `UUID()` generates a new id every render → spurious animations, sheet dismiss/reopen. Use stable identifiers: name-based id, `"\(name)_\(type.rawValue)"` fallback.
 - **Prefer `.searchable(text:placement:.navigationBarDrawer(.always))` over custom TextField**: gives native Cancel for keyboard dismiss + scope/tokens support. Custom search bars in nav stacks typically need manual `@FocusState` + keyboard toolbar that `.searchable` handles for free.
 - **Extra toolbar items in `EditSheetContainer`**: container uses `.cancellationAction` (xmark) + `.confirmationAction` (Save). Child views nest `.toolbar { ToolbarItem(placement: .primaryAction) { ... } }` inside the content closure — iOS auto-places `.primaryAction` items LEFT of `.confirmationAction`. Do NOT use `.topBarTrailing` / `.navigationBarTrailing` — they land on the wrong side of Save.
+- **`.contentReveal(isReady:)` only hides via opacity — it does NOT skip body evaluation, layout, or render.** For genuinely deferred rendering of heavy sections (glass cards, PackedCircleIconsView, large grids), gate them behind an `if` condition instead.
+- **iOS 26 TabView lazy-renders non-active tab content** — verified: `AnalyticsTab.body` and `SettingsTab.body` don't fire on launch when `.home` is selected. Don't worry about non-active tab init being on the launch critical path.
 
 ## Common Tasks
 
@@ -612,7 +620,6 @@ Current branch: `main`
 - **Silence detection**: audio-based VAD unreliable with background noise. Use text-based timeout: reset timer on every `transcribedText` change, auto-stop after N seconds of no new text.
 - **Amplitude smoothing**: asymmetric — fast attack (`0.6` weight), slow decay (`0.08`). Text-driven spikes via `onChange(of: transcribedText)` blended with `0.4/0.6`.
 - **SiriGlowView**: `MeshGradient` (iOS 18+) with `TimelineView(.animation)`. Read `amplitudeRef.value` directly each frame — no `@State` intermediary (causes stale values).
-- **⚠️ MTKView clearColor**: set on `view.clearColor`, NOT on descriptor after `makeRenderCommandEncoder()` — encoder copies descriptor at creation time.
 
 - **Services/Import/**: PDF and statement text parsing
 - **Services/Cache/**: Caching coordinators and managers

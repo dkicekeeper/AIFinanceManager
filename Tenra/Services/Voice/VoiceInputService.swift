@@ -54,7 +54,7 @@ class VoiceInputService: NSObject {
     // MARK: - Audio Level (for wave visualization)
 
     /// Shared amplitude reference. Audio tap writes to `.value` on main thread;
-    /// Metal renderer reads it directly every frame — bypasses SwiftUI update cycle.
+    /// the wave visualization reads it directly every frame — bypasses SwiftUI update cycle.
     @ObservationIgnored let amplitudeRef: AudioLevelRef = AudioLevelRef()
 
     // MARK: - Voice Activity Detection (always-on)

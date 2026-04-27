@@ -6,57 +6,64 @@
 //
 
 import Foundation
+import QuartzCore
 import os
 
 private let perfLogger = Logger(subsystem: "Tenra", category: "Performance")
 
-/// Простой профилировщик производительности для debug режима
+/// Простой профилировщик производительности для debug режима.
+///
+/// Implementation note: previous version used `Task { @MainActor in startTimes[...] = Date() }`
+/// to capture timestamps. That made measurements unreliable for any hot caller — the captured
+/// time was "when MainActor next had a free slot", not the actual call site, so a 142 ms
+/// `initialize()` followed by 4 s of UI rendering would report as a 4 s warning. Now we use
+/// `CACurrentMediaTime()` (lock-free, monotonic) at the call site, gated by an unfair lock so
+/// nonisolated callers from any thread are safe.
 #if DEBUG
-@MainActor
-class PerformanceProfiler {
-    private static var measurements: [String: TimeInterval] = [:]
-    private static var startTimes: [String: Date] = [:]
+final class PerformanceProfiler {
+    nonisolated(unsafe) private static var measurements: [String: TimeInterval] = [:]
+    nonisolated(unsafe) private static var startTimes: [String: CFTimeInterval] = [:]
+    nonisolated(unsafe) private static var lock = os_unfair_lock_s()
 
-    /// Начать измерение времени выполнения
     nonisolated static func start(_ name: String) {
-        Task { @MainActor in
-            startTimes[name] = Date()
-        }
+        let now = CACurrentMediaTime()
+        os_unfair_lock_lock(&lock)
+        startTimes[name] = now
+        os_unfair_lock_unlock(&lock)
     }
 
-    /// Завершить измерение и вывести результат
     nonisolated static func end(_ name: String) {
-        Task { @MainActor in
-            guard let startTime = startTimes[name] else {
-                return
-            }
+        let now = CACurrentMediaTime()
+        os_unfair_lock_lock(&lock)
+        let startTime = startTimes.removeValue(forKey: name)
+        if let startTime {
+            measurements[name] = now - startTime
+        }
+        os_unfair_lock_unlock(&lock)
 
-            let duration = Date().timeIntervalSince(startTime)
-            measurements[name] = duration
+        guard let startTime else { return }
+        let duration = now - startTime
 
-            if duration > 0.1 {
-                // Threshold exceeded — warn so it appears in Console.app filtered by category "Performance"
-                perfLogger.warning("⚠️ [Perf] \(name): \(String(format: "%.0f", duration * 1000))ms — exceeds 100ms threshold")
-            } else if duration > 0.016 {
-                perfLogger.debug("🕐 [Perf] \(name): \(String(format: "%.0f", duration * 1000))ms")
-            }
-
-            startTimes.removeValue(forKey: name)
+        if duration > 0.1 {
+            perfLogger.warning("⚠️ [Perf] \(name): \(String(format: "%.0f", duration * 1000))ms — exceeds 100ms threshold")
+        } else if duration > 0.016 {
+            perfLogger.debug("🕐 [Perf] \(name): \(String(format: "%.0f", duration * 1000))ms")
         }
     }
 
-    /// Получить все измерения
     static func getAllMeasurements() -> [String: TimeInterval] {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
         return measurements
     }
 
-    /// Очистить все измерения
     static func clear() {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
         measurements.removeAll()
         startTimes.removeAll()
     }
 
-    /// Измерить время выполнения блока кода
     static func measure<T>(_ name: String, _ block: () throws -> T) rethrows -> T {
         start(name)
         defer { end(name) }

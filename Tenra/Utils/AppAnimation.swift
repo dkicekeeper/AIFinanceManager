@@ -99,8 +99,11 @@ enum AppAnimation {
     }
 
     /// Blur radius per layer. Back layer = deeper blur (farther), front = sharper (closer).
+    /// Reduced from 60/35 to 44/28: the original radii were eating GPU during scroll
+    /// without adding visual softness — at this size the perceptual difference is small
+    /// but the blur convolution cost scales with radius squared.
     static func orbBlur(isBackLayer: Bool) -> CGFloat {
-        isBackLayer ? 60 : 35
+        isBackLayer ? 44 : 28
     }
 
     /// Reduce-Motion-aware orb breathing animation factory.

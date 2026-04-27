@@ -96,23 +96,44 @@ struct SubscriptionsCardView: View {
 
     /// Calculate total subscription amount in base currency.
     private func refreshTotal() async {
-        isLoadingTotal = true
-        let result = await transactionStore.calculateSubscriptionsTotalInCurrency(baseCurrency)
-        // (result.total as NSDecimalNumber) is a free bridge cast — Decimal IS NSDecimalNumber.
-        totalAmount = (result.total as NSDecimalNumber).doubleValue
+        // Show the redacted placeholder only on the very first load — refreshing
+        // an already-displayed value over the placeholder is jarring and reads as a
+        // flicker on every recurring-series mutation.
+        let isFirstLoad = totalAmount == 0
+        if isFirstLoad { isLoadingTotal = true }
 
-        // Convert each subscription amount to base currency for PackedCircle sizing
-        var amounts: [String: Double] = [:]
-        for sub in subscriptions {
-            let raw = (sub.amount as NSDecimalNumber).doubleValue
-            if sub.currency == baseCurrency {
-                amounts[sub.id] = raw
-            } else if let converted = await CurrencyConverter.convert(amount: raw, from: sub.currency, to: baseCurrency) {
-                amounts[sub.id] = converted
-            } else {
-                amounts[sub.id] = raw
-            }
+        let baseCur = baseCurrency
+        // Snapshot subscription scalars on MainActor so the TaskGroup body works
+        // with Sendable value types only — avoids capturing RecurringSeries refs.
+        let subTuples: [(id: String, currency: String, raw: Double)] = subscriptions.map {
+            (id: $0.id, currency: $0.currency, raw: ($0.amount as NSDecimalNumber).doubleValue)
         }
+
+        // Compute total and per-subscription conversions in parallel. The total query
+        // hits CurrencyConverter once; the per-sub loop did N sequential awaits before.
+        async let totalResult = transactionStore.calculateSubscriptionsTotalInCurrency(baseCur)
+        async let amountsByID: [String: Double] = withTaskGroup(of: (String, Double).self) { group in
+            for sub in subTuples {
+                group.addTask {
+                    if sub.currency == baseCur { return (sub.id, sub.raw) }
+                    let converted = await CurrencyConverter.convert(
+                        amount: sub.raw, from: sub.currency, to: baseCur
+                    )
+                    return (sub.id, converted ?? sub.raw)
+                }
+            }
+            var dict: [String: Double] = [:]
+            dict.reserveCapacity(subTuples.count)
+            for await (id, amount) in group {
+                dict[id] = amount
+            }
+            return dict
+        }
+
+        let result = await totalResult
+        let amounts = await amountsByID
+
+        totalAmount = (result.total as NSDecimalNumber).doubleValue
         convertedAmounts = amounts
         isLoadingTotal = false
     }

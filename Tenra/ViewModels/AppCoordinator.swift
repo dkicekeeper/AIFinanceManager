@@ -189,9 +189,10 @@ class AppCoordinator {
 
         categoriesViewModel.setupTransactionStoreObserver()
 
-        // Initial sync from TransactionStore to ViewModels
-        syncTransactionStoreToViewModels()
-
+        // No initial sync here — TransactionStore is empty at this point. The first
+        // useful sync happens in initialize() after loadData() populates the store.
+        // Calling sync here just resets InsightsVM's empty caches and dirties Observable
+        // dependencies before the first frame is even rendered.
     }
 
     // MARK: - Public Methods
@@ -201,16 +202,23 @@ class AppCoordinator {
     func initializeFastPath() async {
         guard !isFastPathStarted else { return }
         isFastPathStarted = true
-        // Load accounts and categories only (small datasets, needed for first frame)
-        try? await transactionStore.loadAccountsOnly()
+
+        // Run accounts/categories fetch and settings read in parallel — they share no
+        // state and used to be serialized through three sequential awaits.
+        async let accountsLoad: Void = {
+            try? await self.transactionStore.loadAccountsOnly()
+        }()
+        async let settingsLoad: Void = self.settingsViewModel.loadSettingsOnly()
+        _ = await (accountsLoad, settingsLoad)
+
         // Calling without transactions so accounts briefly show their persisted balance.
         // initialize() will register accounts again after full transaction load.
         await balanceCoordinator.registerAccounts(transactionStore.accounts)
-        // Load settings (UserDefaults read — instant)
-        await settingsViewModel.loadInitialData()
+
         // Populate backup count/storage so the Settings row doesn't read 0 until the user
         // navigates into CloudBackupsView. listBackups() is a synchronous directory scan.
         cloudSyncViewModel.loadBackups()
+
         isFastPathDone = true
     }
 
@@ -228,7 +236,13 @@ class AppCoordinator {
         let t_init_start = CACurrentMediaTime()
         logger.debug("🚀 [INIT] initialize() START — tx count before load: \(self.transactionStore.transactions.count)")
 
-        // 1. Load all data into TransactionStore (single source of truth)
+        // 1. Load data and run FRC setup concurrently. FRC.setup() is MainActor-bound
+        // but loadData() releases MainActor while its detached fetches run in background;
+        // SwiftUI's MainActor schedules frcSetupTask on that idle window, overlapping its
+        // 50–200 ms cost with the dominant transaction fetch.
+        let frcSetupTask = Task { @MainActor [weak self] in
+            self?.transactionPaginationController.setup()
+        }
         let t0 = CACurrentMediaTime()
         try? await transactionStore.loadData()
         let t1 = CACurrentMediaTime()
@@ -239,15 +253,22 @@ class AppCoordinator {
         let t2 = CACurrentMediaTime()
         logger.debug("🔄 [INIT] syncToViewModels()    : \(String(format: "%.0f", (t2-t1)*1000))ms")
 
-        // 3. Register accounts with BalanceCoordinator.
-        // account.balance is kept accurate by persistIncremental() on every mutation.
-        await balanceCoordinator.registerAccounts(transactionStore.accounts)
+        // 3. Register accounts with BalanceCoordinator only if FastPath didn't already
+        // do it for the full set. account.balance is kept accurate by persistIncremental()
+        // on every mutation, so re-registering with the same accounts is a no-op that just
+        // re-publishes BalanceCoordinator.balances → all AccountCards needlessly re-render.
+        let storeAccountIds = Set(transactionStore.accounts.map { $0.id })
+        let registeredIds = Set(balanceCoordinator.balances.keys)
+        if !storeAccountIds.isSubset(of: registeredIds) {
+            await balanceCoordinator.registerAccounts(transactionStore.accounts)
+        }
         let t3 = CACurrentMediaTime()
-        logger.debug("💰 [INIT] registerAccounts()    : \(String(format: "%.0f", (t3-t2)*1000))ms")
+        logger.debug("💰 [INIT] registerAccounts()    : \(String(format: "%.0f", (t3-t2)*1000))ms — skipped:\(storeAccountIds.isSubset(of: registeredIds))")
 
-        // Task 9: Start FRC after full data is loaded so the initial fetch sees all transactions.
-        // Backfill runs concurrently in background — does NOT block History.
-        transactionPaginationController.setup()
+        // FRC setup was kicked off above in parallel with loadData — wait for it now.
+        // The FRC reads CoreData directly via viewContext (independent of TransactionStore),
+        // so the two fetches don't share state and overlap cleanly during the loadData await.
+        await frcSetupTask.value
         let t4 = CACurrentMediaTime()
         logger.debug("📋 [INIT] paginationCtrl.setup(): \(String(format: "%.0f", (t4-t3)*1000))ms — sections:\(self.transactionPaginationController.sections.count) totalCount:\(self.transactionPaginationController.totalCount)")
 
@@ -260,36 +281,28 @@ class AppCoordinator {
         let t5 = CACurrentMediaTime()
         logger.debug("✅ [INIT] isFullyInitialized=true: total so far \(String(format: "%.0f", (t5-t_init_start)*1000))ms")
 
-        // Trigger insights recompute now that all transactions are in memory.
-        // syncTransactionStoreToViewModels(batchMode: true) skipped this to avoid a
-        // pre-data compute; here we schedule it after the store is fully loaded.
+        // 5. Load settings (only if fast path hasn't already loaded them).
+        // Wallpaper image decode is intentionally NOT loaded here — SettingsView's
+        // own .task handles it lazily when the user navigates there.
+        if !isFastPathStarted {
+            await settingsViewModel.loadSettingsOnly()
+        }
+
+        PerformanceProfiler.end("AppCoordinator.initialize")
+
+        // Insights recompute — non-essential for first frame; debounced internally.
         insightsViewModel.invalidateAndRecompute()
 
-        // Task 9 / v3 migration: populate dateSectionKey for records that were imported via
-        // NSBatchInsertRequest before 2026-02-24 (batch inserts bypass willSave()).
-        // Fire-and-forget — History is already open.  The FRC refreshes automatically once
-        // the background context saves (viewContext.automaticallyMergesChangesFromParent=true).
+        // Date section key backfill — runs on a bg CoreData context, doesn't touch MainActor.
         Task(priority: .background) { [weak self] in
             await self?.backfillDateSectionKeysIfNeeded()
         }
 
-        // 4. Generate recurring transactions in background (non-blocking)
-        Task(priority: .background) { [weak self] in
-            guard let self else { return }
-            self.transactionsViewModel.generateRecurringTransactions()
-        }
-
-        // 5. Load settings (only if fast path hasn't already loaded them)
-        if !isFastPathStarted {
-            await settingsViewModel.loadInitialData()
-        }
-
-        // Purge persistent history older than 7 days — prevents unbounded DB growth
+        // Purge persistent history older than 7 days — prevents unbounded DB growth.
+        // Runs on a bg CoreData context (see CoreDataStack.purgeHistory).
         Task(priority: .background) {
             CoreDataStack.shared.purgeHistory(olderThan: 7)
         }
-
-        PerformanceProfiler.end("AppCoordinator.initialize")
     }
     
     // MARK: - Private Methods

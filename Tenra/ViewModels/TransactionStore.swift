@@ -70,6 +70,13 @@ final class TransactionStore {
     /// All transactions - THE ONLY source of transaction data
     var transactions: [Transaction] = []
 
+    /// Lightweight Observable mirror of `transactions.count`.
+    /// Views that only need to react to "did the count change" (e.g. `summaryTrigger`,
+    /// empty-state checks) should observe this instead of reading `transactions.count`
+    /// — that read subscribes the surrounding body to the entire 19k-element array,
+    /// causing a full body re-eval every time any transaction is added/updated/deleted.
+    private(set) var transactionsCount: Int = 0
+
     /// Pre-maintained set of transaction IDs for O(1) lookups (avoids O(N) Set construction)
     @ObservationIgnored internal var transactionIdSet: Set<String> = []
 
@@ -186,31 +193,34 @@ final class TransactionStore {
         // Capture repository before leaving @MainActor — it's a constant (@ObservationIgnored let).
         let repo = self.repository
 
-        // Run ALL repository reads on a background thread.
-        // Each repository method uses bgContext.performAndWait internally,
-        // so they are safe to call from any thread.
-        let (txs, accs, cats, subs, catLinks, txLinks, series, occurrences) =
-            await Task.detached(priority: .userInitiated) {
-                let txs        = repo.loadTransactions(dateRange: nil)
-                let accs       = repo.loadAccounts()
-                let cats       = repo.loadCategories()
-                let subs       = repo.loadSubcategories()
-                let catLinks   = repo.loadCategorySubcategoryLinks()
-                let txLinks    = repo.loadTransactionSubcategoryLinks()
-                let series     = repo.loadRecurringSeries()
-                let occ        = repo.loadRecurringOccurrences()
-                return (txs, accs, cats, subs, catLinks, txLinks, series, occ)
-            }.value
+        // Run ALL repository reads in parallel on background threads.
+        // Each repository call creates its own newBackgroundContext() and is fully
+        // isolated, so concurrent reads share only the persistent store coordinator
+        // (SQLite reads parallelize fine with WAL mode). The 19k-transaction fetch
+        // dominates wall time; running it alongside the 7 small fetches turns total
+        // load time into ~max(individual fetches) instead of sum.
+        async let txs        = Task.detached(priority: .userInitiated) { repo.loadTransactions(dateRange: nil) }.value
+        async let accs       = Task.detached(priority: .userInitiated) { repo.loadAccounts() }.value
+        async let cats       = Task.detached(priority: .userInitiated) { repo.loadCategories() }.value
+        async let subs       = Task.detached(priority: .userInitiated) { repo.loadSubcategories() }.value
+        async let catLinks   = Task.detached(priority: .userInitiated) { repo.loadCategorySubcategoryLinks() }.value
+        async let txLinks    = Task.detached(priority: .userInitiated) { repo.loadTransactionSubcategoryLinks() }.value
+        async let series     = Task.detached(priority: .userInitiated) { repo.loadRecurringSeries() }.value
+        async let occurrences = Task.detached(priority: .userInitiated) { repo.loadRecurringOccurrences() }.value
+
+        let (loadedTxs, loadedAccs, loadedCats, loadedSubs, loadedCatLinks, loadedTxLinks, loadedSeries, loadedOcc) =
+            await (txs, accs, cats, subs, catLinks, txLinks, series, occurrences)
 
         // Back on @MainActor — single assignment cycle triggers one @Observable update.
-        accounts  = AccountOrderManager.shared.applyOrders(to: accs)
-        transactions = txs
-        transactionIdSet = Set(txs.map { $0.id })
-        categories = CategoryOrderManager.shared.applyOrders(to: cats)
-        subcategories = subs
-        categorySubcategoryLinks = catLinks
-        transactionSubcategoryLinks = txLinks
-        recurringStore.load(series: series, occurrences: occurrences)
+        accounts  = AccountOrderManager.shared.applyOrders(to: loadedAccs)
+        transactions = loadedTxs
+        transactionsCount = loadedTxs.count
+        transactionIdSet = Set(loadedTxs.map { $0.id })
+        categories = CategoryOrderManager.shared.applyOrders(to: loadedCats)
+        subcategories = loadedSubs
+        categorySubcategoryLinks = loadedCatLinks
+        transactionSubcategoryLinks = loadedTxLinks
+        recurringStore.load(series: loadedSeries, occurrences: loadedOcc)
 
         // Note: baseCurrency will be set via updateBaseCurrency() from AppCoordinator
 
@@ -519,6 +529,7 @@ final class TransactionStore {
         switch event {
         case .added(let tx):
             transactions.append(tx)
+            transactionsCount = transactions.count
             transactionIdSet.insert(tx.id)
 
         case .updated(let old, let new):
@@ -529,10 +540,12 @@ final class TransactionStore {
 
         case .deleted(let tx):
             transactions.removeAll { $0.id == tx.id }
+            transactionsCount = transactions.count
             transactionIdSet.remove(tx.id)
 
         case .bulkAdded(let txs):
             transactions.append(contentsOf: txs)
+            transactionsCount = transactions.count
             transactionIdSet.formUnion(txs.map { $0.id })
 
         // MARK: - Recurring Series Events (delegated to RecurringStore)

@@ -9,12 +9,12 @@ import SwiftUI
 
 struct AccountCard: View {
     let account: Account
-    let balanceCoordinator: BalanceCoordinator
+    /// Pre-resolved balance — passed in from AccountsCarousel so this card does NOT
+    /// subscribe to BalanceCoordinator.balances. Reading the dict here would mean any
+    /// balance change re-renders every visible card; with a value passed in, only the
+    /// owning ForEach row whose value actually changed re-renders.
+    let balance: Double
     var namespace: Namespace.ID
-
-    private var balance: Double {
-        balanceCoordinator.balances[account.id] ?? 0
-    }
 
     var body: some View {
         NavigationLink(value: account) {
@@ -48,11 +48,10 @@ struct AccountCard: View {
 
 #Preview("Account Card") {
     @Previewable @Namespace var ns
-    let coordinator = AppCoordinator()
     NavigationStack {
         AccountCard(
             account: Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000),
-            balanceCoordinator: coordinator.balanceCoordinator,
+            balance: 1000,
             namespace: ns
         )
         .padding()

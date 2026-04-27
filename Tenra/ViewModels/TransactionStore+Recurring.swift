@@ -367,14 +367,23 @@ extension TransactionStore {
 
         let today = Calendar.current.startOfDay(for: Date())
 
-        for series in activeSeries {
-            // Check if this series already has a future transaction
-            let hasFuture = transactions.contains { tx in
-                guard tx.recurringSeriesId == series.id else { return false }
-                guard let date = DateFormatters.dateFormatter.date(from: tx.date) else { return false }
-                return date > today
+        // Pre-compute the set of seriesIds that already have a future transaction.
+        // Single O(N) scan over all transactions, then O(1) lookup per series — replaces
+        // the previous O(N × M) pattern that scanned 19k transactions for every active
+        // series and contributed to a multi-second MainActor block at startup.
+        var seriesIdsWithFutureTx: Set<String> = []
+        seriesIdsWithFutureTx.reserveCapacity(activeSeries.count)
+        for tx in transactions {
+            guard let seriesId = tx.recurringSeriesId else { continue }
+            if seriesIdsWithFutureTx.contains(seriesId) { continue }
+            guard let date = DateFormatters.dateFormatter.date(from: tx.date) else { continue }
+            if date > today {
+                seriesIdsWithFutureTx.insert(seriesId)
             }
-            guard !hasFuture else { continue }
+        }
+
+        for series in activeSeries {
+            guard !seriesIdsWithFutureTx.contains(series.id) else { continue }
 
             // Generate backfill (past gaps) + 1 future
             let existingTransactionIds = transactionIdSet
@@ -399,6 +408,11 @@ extension TransactionStore {
             // Track occurrences
             recurringStore.appendOccurrences(result.occurrences)
             recurringStore.saveOccurrences()
+
+            // Yield between series so the MainActor can interleave higher-priority UI
+            // work (input handling, layout). Each apply() above already does heavy work;
+            // without yielding, a many-series backlog freezes the UI for seconds at startup.
+            await Task.yield()
         }
     }
 

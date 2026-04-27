@@ -251,15 +251,19 @@ final class CoreDataStack: @unchecked Sendable {
 
     /// Purge persistent history older than `days` days.
     /// Called once per launch from a background task to prevent unbounded DB growth.
+    ///
+    /// Runs on a fresh `newBackgroundContext()` — viewContext.perform { } would block
+    /// MainActor for the entire purge (observed 1–2 s on databases with heavy CSV
+    /// import history), freezing the UI right after `isFullyInitialized = true` flips.
     func purgeHistory(olderThan days: Int = 7) {
         guard let cutoff = Calendar.current.date(
             byAdding: .day, value: -days, to: Date()
         ) else { return }
         let purgeRequest = NSPersistentHistoryChangeRequest.deleteHistory(before: cutoff)
-        // viewContext is main-thread affined — must use perform for thread safety.
-        viewContext.perform {
+        let bgContext = newBackgroundContext()
+        bgContext.perform {
             do {
-                try self.viewContext.execute(purgeRequest)
+                try bgContext.execute(purgeRequest)
                 CoreDataStack.logger.info("Purged persistent history older than \(days) days")
             } catch {
                 CoreDataStack.logger.error("Failed to purge persistent history: \(error.localizedDescription)")

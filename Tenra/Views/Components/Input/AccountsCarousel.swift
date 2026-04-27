@@ -17,11 +17,16 @@ struct AccountsCarousel: View {
 
     // MARK: - Body
     var body: some View {
+        // Snapshot the balances dict here — this view subscribes to it (parent of
+        // AccountCard), so per-card body re-evals only happen when the row's specific
+        // balance changes. Without this hoist, AccountCard would observe the whole
+        // dict and every balance write would re-render every visible card.
+        let balancesById = balanceCoordinator.balances
         UniversalCarousel(config: .cards) {
             ForEach(accounts.sortedByOrder()) { account in
                 AccountCard(
                     account: account,
-                    balanceCoordinator: balanceCoordinator,
+                    balance: balancesById[account.id] ?? 0,
                     namespace: namespace
                 )
                 .scrollTransition(.animated(.easeOut(duration: 0.3))) { content, phase in
