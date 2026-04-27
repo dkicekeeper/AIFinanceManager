@@ -45,7 +45,15 @@ final class AccountActionViewModel {
     }
 
     var incomeCategories: [String] {
-        transactionsViewModel.incomeCategories
+        // transactionsViewModel.incomeCategories is derived from transaction.category strings,
+        // so deleted categories that still have legacy transactions referencing them would
+        // leak into the picker. Intersect with current customCategories to hide them.
+        let validNames = Set(
+            transactionsViewModel.customCategories
+                .filter { $0.type == .income }
+                .map { $0.name }
+        )
+        return transactionsViewModel.incomeCategories.filter { validNames.contains($0) }
     }
 
     var navigationTitleText: String {

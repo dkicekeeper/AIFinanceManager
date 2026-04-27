@@ -208,6 +208,9 @@ class AppCoordinator {
         await balanceCoordinator.registerAccounts(transactionStore.accounts)
         // Load settings (UserDefaults read — instant)
         await settingsViewModel.loadInitialData()
+        // Populate backup count/storage so the Settings row doesn't read 0 until the user
+        // navigates into CloudBackupsView. listBackups() is a synchronous directory scan.
+        cloudSyncViewModel.loadBackups()
         isFastPathDone = true
     }
 

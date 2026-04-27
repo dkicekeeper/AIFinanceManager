@@ -18,10 +18,16 @@ struct TimeFilterView: View {
 
     init(filterManager: TimeFilterManager) {
         self.filterManager = filterManager
-        _selectedPreset = State(initialValue: filterManager.currentFilter.preset)
-        let start = filterManager.currentFilter.startDate
-        let end = filterManager.currentFilter.endDate
-        _customDateRange = State(initialValue: start...end)
+        let currentFilter = filterManager.currentFilter
+        _selectedPreset = State(initialValue: currentFilter.preset)
+        if currentFilter.preset == .custom {
+            _customDateRange = State(initialValue: currentFilter.startDate...currentFilter.endDate)
+        } else {
+            // Non-custom presets (e.g. .allTime) carry sentinel dates like 1970/2125 that
+            // would render as the picker default — anchor on today instead.
+            let today = Calendar.current.startOfDay(for: Date())
+            _customDateRange = State(initialValue: today...today)
+        }
     }
 
     var body: some View {
