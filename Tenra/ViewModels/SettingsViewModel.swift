@@ -47,6 +47,7 @@ final class SettingsViewModel {
 
     // MARK: - ViewModel References (weak to prevent retain cycles)
 
+    @ObservationIgnored weak var coordinator: AppCoordinator?
     @ObservationIgnored private weak var transactionsViewModel: TransactionsViewModel?
     @ObservationIgnored private weak var categoriesViewModel: CategoriesViewModel?
     @ObservationIgnored private weak var accountsViewModel: AccountsViewModel?
@@ -290,7 +291,7 @@ final class SettingsViewModel {
 
         do {
             try await resetCoordinator.resetAllData()
-            OnboardingState.reset()
+            coordinator?.resetOnboarding()
 
             // Add haptic feedback for successful reset
             HapticManager.success()

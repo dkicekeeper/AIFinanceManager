@@ -23,7 +23,9 @@ struct OnboardingFlowView: View {
                     .navigationDestination(for: OnboardingStep.self) { step in
                         switch step {
                         case .currency:
-                            OnboardingCurrencyStep(vm: vm)
+                            // Unreachable: .currency is the root view of the NavigationStack, never pushed.
+                            // This case exists so the switch is exhaustive over OnboardingStep.
+                            EmptyView()
                         case .account:
                             OnboardingAccountStep(vm: vm)
                         case .categories:

@@ -168,7 +168,6 @@ class AppCoordinator {
             accountsViewModel: accountsViewModel,
             initialSettings: transactionsViewModel.appSettings
         )
-
         // Initialize InsightsService and InsightsViewModel
         let insightsCache = InsightsCache()
         let insightsFilterService = TransactionFilterService(dateFormatter: DateFormatters.dateFormatter)
@@ -216,6 +215,10 @@ class AppCoordinator {
 
         // Set coordinator reference in TransactionStore for automatic sync after mutations
         transactionStore.coordinator = self
+
+        // Back-reference so SettingsViewModel can call coordinator.resetOnboarding()
+        // after resetAllData() — set after all stored properties are initialized.
+        settingsViewModel.coordinator = self
 
         categoriesViewModel.setupTransactionStoreObserver()
 
