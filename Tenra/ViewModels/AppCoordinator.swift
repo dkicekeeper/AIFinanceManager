@@ -59,9 +59,35 @@ class AppCoordinator {
     private(set) var isFastPathDone = false       // accounts + categories ready (~50ms)
     private(set) var isFullyInitialized = false   // transactions + all data ready (~1-3s)
 
-    // TEMP — Task 5: Replaced by real onboarding gate implementation in Task 5.
-    private(set) var needsOnboarding: Bool = false
-    func completeOnboarding() { /* stub — Task 5 adds real impl */ }
+    // MARK: - Onboarding gate
+
+    /// True on first launch (until the user completes onboarding). Mutated by
+    /// `completeOnboarding()` and `resetOnboarding()`. Read by `TenraApp.swift`
+    /// to decide whether to show `OnboardingFlowView` or `MainTabView`.
+    private(set) var needsOnboarding: Bool = !OnboardingState.isCompleted
+
+    func completeOnboarding() {
+        OnboardingState.markCompleted()
+        needsOnboarding = false
+        logger.info("onboarding_finished")
+    }
+
+    func resetOnboarding() {
+        OnboardingState.reset()
+        needsOnboarding = true
+        logger.info("onboarding_reset")
+    }
+
+    /// iCloud-restore mitigation: if accounts already exist after the fast path
+    /// finishes (e.g. user restored from an iCloud backup on a new device),
+    /// auto-mark onboarding as completed and skip the flow.
+    func reconcileOnboardingAfterFastPath() {
+        guard !OnboardingState.isCompleted else { return }
+        guard !accountsViewModel.accounts.isEmpty else { return }
+        OnboardingState.markCompleted()
+        needsOnboarding = false
+        logger.info("onboarding_skipped_due_to_existing_data accountsCount=\(self.accountsViewModel.accounts.count, privacy: .public)")
+    }
 
     // MARK: - Initialization
 
@@ -223,6 +249,7 @@ class AppCoordinator {
         // navigates into CloudBackupsView. listBackups() is a synchronous directory scan.
         cloudSyncViewModel.loadBackups()
 
+        reconcileOnboardingAfterFastPath()
         isFastPathDone = true
     }
 
