@@ -290,6 +290,7 @@ final class SettingsViewModel {
 
         do {
             try await resetCoordinator.resetAllData()
+            OnboardingState.reset()
 
             // Add haptic feedback for successful reset
             HapticManager.success()
