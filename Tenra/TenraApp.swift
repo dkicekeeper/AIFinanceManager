@@ -20,10 +20,15 @@ struct TenraApp: App {
         WindowGroup {
             Group {
                 if let coordinator {
-                    MainTabView()
-                        .environment(timeFilterManager)
-                        .environment(coordinator)
-                        .environment(coordinator.transactionStore)
+                    if coordinator.needsOnboarding {
+                        OnboardingFlowView(coordinator: coordinator)
+                            .environment(coordinator)
+                    } else {
+                        MainTabView()
+                            .environment(timeFilterManager)
+                            .environment(coordinator)
+                            .environment(coordinator.transactionStore)
+                    }
                 } else {
                     // System launch screen is still visible — show matching background
                     // so there is no flash when coordinator becomes ready.
