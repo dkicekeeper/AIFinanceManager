@@ -47,8 +47,8 @@ struct CurrencyListContent: View {
 
     private func currencyRow(_ currency: CurrencyInfo) -> some View {
         Button {
-            onTap(currency.code)
             HapticManager.selection()
+            onTap(currency.code)
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
