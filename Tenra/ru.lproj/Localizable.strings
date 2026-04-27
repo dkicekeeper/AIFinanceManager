@@ -1251,3 +1251,47 @@
 "category.detail.delete.confirmMessage" = "Категория будет удалена.";
 "category.detail.type.expense" = "Расход";
 "category.detail.type.income" = "Доход";
+
+/* MARK: - Onboarding */
+
+"onboarding.welcome.page1.title" = "Все финансы в одном месте";
+"onboarding.welcome.page1.subtitle" = "Счета, депозиты, кредиты, подписки и категории трат — всё в одном приложении с понятной аналитикой.";
+"onboarding.welcome.page2.title" = "Добавляйте транзакции голосом";
+"onboarding.welcome.page2.subtitle" = "Скажите «Кофе 800 тенге» — Tenra поймёт сумму, валюту и категорию. Или импортируйте выписку из PDF/CSV.";
+"onboarding.welcome.page3.title" = "Ваши данные — только ваши";
+"onboarding.welcome.page3.subtitle" = "Всё хранится локально на устройстве. iCloud-бэкап опциональный. Никаких аккаунтов и регистраций.";
+
+"onboarding.cta.next" = "Далее";
+"onboarding.cta.start" = "Начать";
+"onboarding.cta.done" = "Готово";
+"onboarding.cta.doneWithCount" = "Готово • выбрано %d";
+
+"onboarding.currency.title" = "Выберите основную валюту";
+"onboarding.currency.subtitle" = "В этой валюте Tenra будет показывать общий баланс и аналитику. Валюту можно сменить позже в Настройках.";
+
+"onboarding.account.title" = "Добавьте первый счёт";
+"onboarding.account.subtitle" = "Это может быть карта, наличные или счёт в банке. Позже добавите остальные.";
+"onboarding.account.namePlaceholder" = "Например, Kaspi";
+"onboarding.account.nameLabel" = "Название";
+"onboarding.account.iconLabel" = "Иконка";
+"onboarding.account.balanceLabel" = "Стартовый баланс";
+"onboarding.account.currencyChangedBanner" = "Валюта приложения изменена. Валюта счёта останется прежней. Изменить можно в редакторе счёта.";
+
+"onboarding.categories.title" = "Выберите категории трат";
+"onboarding.categories.subtitle" = "Отметьте те, которыми будете пользоваться. Остальные сможете добавить позже.";
+
+"onboarding.preset.groceries" = "Продукты";
+"onboarding.preset.dining" = "Кафе и рестораны";
+"onboarding.preset.transport" = "Транспорт";
+"onboarding.preset.housing" = "Жильё";
+"onboarding.preset.utilities" = "Коммунальные";
+"onboarding.preset.health" = "Здоровье";
+"onboarding.preset.clothing" = "Одежда";
+"onboarding.preset.entertainment" = "Развлечения";
+"onboarding.preset.travel" = "Путешествия";
+"onboarding.preset.education" = "Образование";
+"onboarding.preset.gifts" = "Подарки";
+"onboarding.preset.subscriptions" = "Подписки";
+"onboarding.preset.pets" = "Питомцы";
+"onboarding.preset.services" = "Услуги";
+"onboarding.preset.other" = "Прочее";

@@ -1251,3 +1251,47 @@
 "category.detail.delete.confirmMessage" = "This will delete the category.";
 "category.detail.type.expense" = "Expense";
 "category.detail.type.income" = "Income";
+
+/* MARK: - Onboarding */
+
+"onboarding.welcome.page1.title" = "All your finances in one place";
+"onboarding.welcome.page1.subtitle" = "Accounts, deposits, loans, subscriptions and spending categories — together with clear analytics.";
+"onboarding.welcome.page2.title" = "Add transactions by voice";
+"onboarding.welcome.page2.subtitle" = "Say \"Coffee 800 tenge\" — Tenra parses amount, currency, and category. Or import statements from PDF/CSV.";
+"onboarding.welcome.page3.title" = "Your data stays yours";
+"onboarding.welcome.page3.subtitle" = "Everything is stored on-device. iCloud backup is optional. No accounts, no signup.";
+
+"onboarding.cta.next" = "Next";
+"onboarding.cta.start" = "Get started";
+"onboarding.cta.done" = "Done";
+"onboarding.cta.doneWithCount" = "Done • %d selected";
+
+"onboarding.currency.title" = "Choose your base currency";
+"onboarding.currency.subtitle" = "Tenra will show your total balance and analytics in this currency. You can change it later in Settings.";
+
+"onboarding.account.title" = "Add your first account";
+"onboarding.account.subtitle" = "It can be a card, cash, or a bank account. You can add more later.";
+"onboarding.account.namePlaceholder" = "e.g., Chase";
+"onboarding.account.nameLabel" = "Name";
+"onboarding.account.iconLabel" = "Icon";
+"onboarding.account.balanceLabel" = "Starting balance";
+"onboarding.account.currencyChangedBanner" = "App currency changed. Account currency stays the same. You can change it in the account editor.";
+
+"onboarding.categories.title" = "Choose spending categories";
+"onboarding.categories.subtitle" = "Pick the ones you'll use. You can add more later.";
+
+"onboarding.preset.groceries" = "Groceries";
+"onboarding.preset.dining" = "Dining out";
+"onboarding.preset.transport" = "Transport";
+"onboarding.preset.housing" = "Housing";
+"onboarding.preset.utilities" = "Utilities";
+"onboarding.preset.health" = "Health";
+"onboarding.preset.clothing" = "Clothing";
+"onboarding.preset.entertainment" = "Entertainment";
+"onboarding.preset.travel" = "Travel";
+"onboarding.preset.education" = "Education";
+"onboarding.preset.gifts" = "Gifts";
+"onboarding.preset.subscriptions" = "Subscriptions";
+"onboarding.preset.pets" = "Pets";
+"onboarding.preset.services" = "Services";
+"onboarding.preset.other" = "Other";
