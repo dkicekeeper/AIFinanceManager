@@ -25,7 +25,9 @@ struct CategoriesManagementView: View {
     @State private var mode: ManagementMode = .normal
     @State private var selection: Set<String> = []
     @State private var showingBulkDeleteDialog = false
-    
+
+    @Namespace private var categoryNamespace
+
     // Precompute budget progress once per view update to avoid O(N) × O(rows) per-row computation
     private var budgetProgressMap: [String: BudgetProgress] {
         var map: [String: BudgetProgress] = [:]
@@ -107,7 +109,9 @@ struct CategoriesManagementView: View {
                             onDelete: {
                                 categoryToDelete = category
                                 showingDeleteDialog = true
-                            }
+                            },
+                            transitionSourceID: category.id,
+                            transitionNamespace: categoryNamespace
                         )
                         .contextMenu {
                             Button {
@@ -228,6 +232,7 @@ struct CategoriesManagementView: View {
                 accountsViewModel: appCoordinator.accountsViewModel,
                 category: category
             )
+            .navigationTransition(.zoom(sourceID: category.id, in: categoryNamespace))
         }
         .sheet(isPresented: $showingAddCategory) {
             CategoryEditView(

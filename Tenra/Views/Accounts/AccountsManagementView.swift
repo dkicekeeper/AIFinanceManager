@@ -28,6 +28,8 @@ struct AccountsManagementView: View {
     @State private var selection: Set<String> = []
     @State private var showingBulkDeleteDialog = false
 
+    @Namespace private var accountNamespace
+
     // Кешируем baseCurrency для оптимизации
     private var baseCurrency: String {
         transactionsViewModel.appSettings.baseCurrency
@@ -80,7 +82,9 @@ struct AccountsManagementView: View {
                             },
                             balanceCoordinator: coordinator,
                             interestToday: depositsViewModel.interestToday(for: account),
-                            nextPostingDate: depositsViewModel.nextPostingDate(for: account)
+                            nextPostingDate: depositsViewModel.nextPostingDate(for: account),
+                            transitionSourceID: account.id,
+                            transitionNamespace: accountNamespace
                         )
                         .contextMenu {
                             Button {
@@ -240,29 +244,32 @@ struct AccountsManagementView: View {
             }
         }
         .navigationDestination(item: $navigatingAccount) { account in
-            if account.isDeposit {
-                DepositDetailView(
-                    depositsViewModel: depositsViewModel,
-                    transactionsViewModel: transactionsViewModel,
-                    balanceCoordinator: appCoordinator.balanceCoordinator,
-                    accountId: account.id
-                )
-            } else if account.isLoan {
-                LoanDetailView(
-                    loansViewModel: loansViewModel,
-                    transactionsViewModel: transactionsViewModel,
-                    balanceCoordinator: appCoordinator.balanceCoordinator,
-                    accountId: account.id
-                )
-            } else {
-                AccountDetailView(
-                    transactionStore: transactionStore,
-                    transactionsViewModel: transactionsViewModel,
-                    accountsViewModel: accountsViewModel,
-                    categoriesViewModel: appCoordinator.categoriesViewModel,
-                    account: account
-                )
+            Group {
+                if account.isDeposit {
+                    DepositDetailView(
+                        depositsViewModel: depositsViewModel,
+                        transactionsViewModel: transactionsViewModel,
+                        balanceCoordinator: appCoordinator.balanceCoordinator,
+                        accountId: account.id
+                    )
+                } else if account.isLoan {
+                    LoanDetailView(
+                        loansViewModel: loansViewModel,
+                        transactionsViewModel: transactionsViewModel,
+                        balanceCoordinator: appCoordinator.balanceCoordinator,
+                        accountId: account.id
+                    )
+                } else {
+                    AccountDetailView(
+                        transactionStore: transactionStore,
+                        transactionsViewModel: transactionsViewModel,
+                        accountsViewModel: accountsViewModel,
+                        categoriesViewModel: appCoordinator.categoriesViewModel,
+                        account: account
+                    )
+                }
             }
+            .navigationTransition(.zoom(sourceID: account.id, in: accountNamespace))
         }
         .sheet(isPresented: $showingAddAccount) {
             AccountEditView(

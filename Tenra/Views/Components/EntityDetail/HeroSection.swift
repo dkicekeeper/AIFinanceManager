@@ -13,6 +13,7 @@ import SwiftUI
 
 struct HeroSection: View {
     let icon: IconSource?
+    let iconTint: IconTint?
     let title: String
     let primaryAmount: Double?
     let primaryCurrency: String
@@ -26,6 +27,7 @@ struct HeroSection: View {
     init(
         icon: IconSource?,
         title: String,
+        iconTint: IconTint? = nil,
         primaryAmount: Double? = nil,
         primaryCurrency: String = "",
         subtitle: String? = nil,
@@ -34,6 +36,7 @@ struct HeroSection: View {
         baseCurrency: String = ""
     ) {
         self.icon = icon
+        self.iconTint = iconTint
         self.title = title
         self.primaryAmount = primaryAmount
         self.primaryCurrency = primaryCurrency
@@ -58,7 +61,7 @@ struct HeroSection: View {
                         isOverBudget: progress.fraction > 1.0
                     )
                 }
-                IconView(source: icon, style: .glassHero())
+                IconView(source: icon, style: .glassHero(tint: iconTint ?? .original))
             }
             .scaleEffect(iconScale)
             .onAppear {

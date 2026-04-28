@@ -80,7 +80,8 @@ struct InsightDeepDiveView: View {
         VStack(spacing: AppSpacing.sm) {
             HeroSection(
                 icon: iconSource,
-                title: categoryName
+                title: categoryName,
+                iconTint: .monochrome(color)
             )
 
             let totalAmount = subcategories.reduce(0.0) { $0 + $1.amount }

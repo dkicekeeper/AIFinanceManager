@@ -22,6 +22,13 @@ struct CategoryChip: View {
     var iconName: String? = nil
     var iconColor: Color? = nil
 
+    /// Optional zoom-transition source. When set, the icon ZStack becomes the
+    /// matched source for `.navigationTransition(.zoom(sourceID:in:))` on the
+    /// destination view — the destination zooms out of the icon circle, not
+    /// the surrounding chip+totals block.
+    var transitionSourceID: String? = nil
+    var transitionNamespace: Namespace.ID? = nil
+
     // OPTIMIZATION: Use cached style data instead of recreating on every render.
     // If iconName/iconColor overrides are provided, build style data from them directly
     // (bypasses cache which may have stale data when customCategories is []).
@@ -56,7 +63,7 @@ struct CategoryChip: View {
                             isOverBudget: progress.isOverBudget
                         )
                     }
-                    
+
                     if #available(iOS 26, *) {
                         Image(systemName: styleData.iconName)
                             .font(AppTypography.h2)
@@ -83,6 +90,10 @@ struct CategoryChip: View {
                             )
                     }
                 }
+                .matchedTransitionSourceIfPresent(
+                    id: transitionSourceID,
+                    namespace: transitionNamespace
+                )
             }
         }
         .buttonStyle(.plain) 

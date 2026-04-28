@@ -31,6 +31,8 @@ struct TransactionCard: View {
     @State private var showingResumeError = false
     @State private var resumeErrorMessage = ""
 
+    @Namespace private var editNamespace
+
     @Environment(TransactionStore.self) private var transactionStore
 
     init(
@@ -87,7 +89,9 @@ struct TransactionCard: View {
             targetAccount: targetAccount,
             subscriptionIconSource: subscriptionIconSource,
             showRecurringBadge: showRecurringBadge,
-            linkedSubcategories: linkedSubcategories
+            linkedSubcategories: linkedSubcategories,
+            transitionSourceID: transaction.id,
+            transitionNamespace: editNamespace
         )
         .accessibilityHint(Text(String(localized: "accessibility.swipeForOptions")))
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -182,6 +186,7 @@ struct TransactionCard: View {
                     customCategories: catVM.customCategories,
                     balanceCoordinator: balanceCoordinator
                 )
+                .navigationTransition(.zoom(sourceID: transaction.id, in: editNamespace))
             }
         }
     }

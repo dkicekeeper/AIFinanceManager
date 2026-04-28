@@ -85,7 +85,9 @@ private struct CategoryGridItem: View {
                 onTap: onTap,
                 budgetProgress: category.budgetProgress,
                 iconName: category.iconName,
-                iconColor: category.iconColor
+                iconColor: category.iconColor,
+                transitionSourceID: "\(category.name)_\(category.type.rawValue)",
+                transitionNamespace: sourceNamespace
             )
 
             if let totalText = category.formattedTotal(currency: baseCurrency) {
@@ -102,23 +104,6 @@ private struct CategoryGridItem: View {
                     .lineLimit(1)
             }
             Spacer()
-        }
-        .matchedTransitionSourceIfPresent(
-            id: "\(category.name)_\(category.type.rawValue)",
-            namespace: sourceNamespace
-        )
-    }
-}
-
-// MARK: - Helpers
-
-private extension View {
-    @ViewBuilder
-    func matchedTransitionSourceIfPresent(id: some Hashable, namespace: Namespace.ID?) -> some View {
-        if let ns = namespace {
-            matchedTransitionSource(id: id, in: ns)
-        } else {
-            self
         }
     }
 }

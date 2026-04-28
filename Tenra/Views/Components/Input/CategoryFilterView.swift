@@ -185,7 +185,10 @@ struct CategoryFilterView: View {
 
     private func iconConfig(for categoryName: String) -> IconConfig {
         if let custom = customCategories.first(where: { $0.name == categoryName }) {
-            return .auto(source: custom.iconSource, size: AppIconSize.xl)
+            return .custom(
+                source: custom.iconSource,
+                style: .circle(size: AppIconSize.xl, tint: .monochrome(custom.color))
+            )
         }
         return .sfSymbol("folder", color: AppColors.textSecondary)
     }

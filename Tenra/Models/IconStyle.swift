@@ -258,10 +258,10 @@ struct IconStyle: Equatable, Hashable {
 
     /// Стеклянная иконка для hero секций (подписки, счета)
     /// Используется в: SubscriptionDetailView, AccountDetailView
-    static func glassHero(size: CGFloat = AppIconSize.ultra) -> IconStyle {
+    static func glassHero(size: CGFloat = AppIconSize.ultra, tint: IconTint = .original) -> IconStyle {
         .circle(
             size: size,
-            tint: .original,
+            tint: tint,
             hasGlassEffect: true
         )
     }

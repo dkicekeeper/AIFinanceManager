@@ -15,6 +15,12 @@ struct CategoryRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
 
+    /// Optional zoom-transition source. When both id and namespace are non-nil,
+    /// the icon (with budget ring) becomes the matched source for
+    /// `.navigationTransition(.zoom(...))` on the destination detail view.
+    var transitionSourceID: String? = nil
+    var transitionNamespace: Namespace.ID? = nil
+
     private var categoryAccessibilityLabel: String {
         var parts = [category.name]
         if let progress = budgetProgress {
@@ -50,6 +56,10 @@ struct CategoryRow: View {
                             )
                         )
                     }
+                    .matchedTransitionSourceIfPresent(
+                        id: transitionSourceID,
+                        namespace: transitionNamespace
+                    )
 
                     // Название и бюджет
                     VStack(alignment: .leading, spacing: AppSpacing.xs) {

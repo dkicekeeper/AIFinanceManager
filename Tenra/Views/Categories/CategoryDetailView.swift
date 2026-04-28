@@ -113,6 +113,7 @@ struct CategoryDetailView: View {
                 HeroSection(
                     icon: liveCategory.iconSource,
                     title: liveCategory.name,
+                    iconTint: .monochrome(liveCategory.color),
                     primaryAmount: aggregates.amountInPeriod,
                     primaryCurrency: baseCurrency,
                     subtitle: timeFilterManager.currentFilter.displayName,

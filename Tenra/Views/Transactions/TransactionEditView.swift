@@ -60,7 +60,8 @@ struct TransactionEditView: View {
                         // Hero: category icon + name (or transfer icon)
                         HeroSection(
                             icon: heroIconSource,
-                            title: heroTitle
+                            title: heroTitle,
+                            iconTint: heroIconTint
                         )
 
                         // Error banner
@@ -255,6 +256,10 @@ struct TransactionEditView: View {
             return .sfSymbol("arrow.left.arrow.right")
         }
         return heroCategory?.iconSource
+    }
+
+    private var heroIconTint: IconTint? {
+        heroCategory.map { .monochrome($0.color) }
     }
 
     private var heroTitle: String {

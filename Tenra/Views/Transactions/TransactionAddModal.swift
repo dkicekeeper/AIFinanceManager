@@ -122,7 +122,8 @@ struct TransactionAddModal: View {
             VStack(spacing: AppSpacing.lg) {
                 HeroSection(
                     icon: categoryData?.iconSource,
-                    title: coordinator.formData.category
+                    title: coordinator.formData.category,
+                    iconTint: categoryData.map { .monochrome($0.color) }
                 )
 
                 AmountInputView(
@@ -175,12 +176,6 @@ struct TransactionAddModal: View {
 
     private var toolbarContent: some ToolbarContent {
         Group {
-            ToolbarItem(placement: .cancellationAction) {
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                }
-                .accessibilityLabel(String(localized: "button.close"))
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 recurringMenuButton
             }

@@ -25,6 +25,12 @@ struct TransactionCardView: View {
     /// Pre-resolved subcategory links (caller resolves via `categoriesViewModel`).
     let linkedSubcategories: [Subcategory]
 
+    /// Optional zoom-transition source. When both id and namespace are non-nil, the
+    /// transaction's icon becomes the matched source for a zoom transition into the
+    /// edit sheet (iOS 18+).
+    let transitionSourceID: String?
+    let transitionNamespace: Namespace.ID?
+
     init(
         transaction: Transaction,
         currency: String,
@@ -33,7 +39,9 @@ struct TransactionCardView: View {
         targetAccount: Account? = nil,
         subscriptionIconSource: IconSource? = nil,
         showRecurringBadge: Bool = false,
-        linkedSubcategories: [Subcategory] = []
+        linkedSubcategories: [Subcategory] = [],
+        transitionSourceID: String? = nil,
+        transitionNamespace: Namespace.ID? = nil
     ) {
         self.transaction = transaction
         self.currency = currency
@@ -43,6 +51,8 @@ struct TransactionCardView: View {
         self.subscriptionIconSource = subscriptionIconSource
         self.showRecurringBadge = showRecurringBadge
         self.linkedSubcategories = linkedSubcategories
+        self.transitionSourceID = transitionSourceID
+        self.transitionNamespace = transitionNamespace
     }
 
     private var resolvedAccounts: [Account] {
@@ -70,6 +80,10 @@ struct TransactionCardView: View {
                 styleData: styleData,
                 subscriptionIconSource: subscriptionIconSource,
                 showRecurringBadge: showRecurringBadge
+            )
+            .matchedTransitionSourceIfPresent(
+                id: transitionSourceID,
+                namespace: transitionNamespace
             )
 
             TransactionInfoView(

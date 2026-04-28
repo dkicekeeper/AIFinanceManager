@@ -17,6 +17,12 @@ struct AccountRow: View {
     /// Pre-computed next interest posting date (from parent via DepositInterestService)
     var nextPostingDate: Date? = nil
 
+    /// Optional zoom-transition source. When both id and namespace are non-nil,
+    /// the row's logo becomes the matched source for `.navigationTransition(.zoom(...))`
+    /// on the destination detail view.
+    var transitionSourceID: String? = nil
+    var transitionNamespace: Namespace.ID? = nil
+
     private var balance: Double {
         balanceCoordinator.balances[account.id] ?? 0
     }
@@ -39,6 +45,10 @@ struct AccountRow: View {
                 HStack(spacing: AppSpacing.md) {
                     // Логотип банка
                     IconView(source: account.iconSource, size: AppIconSize.xl)
+                        .matchedTransitionSourceIfPresent(
+                            id: transitionSourceID,
+                            namespace: transitionNamespace
+                        )
 
                     VStack(alignment: .leading, spacing: AppSpacing.xs) {
                         Text(account.name)
