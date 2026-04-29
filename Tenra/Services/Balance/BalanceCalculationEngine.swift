@@ -158,9 +158,14 @@ struct BalanceCalculationEngine {
     ) -> Double {
         switch transaction.type {
         case .income:
+            // For deposits, balance is sourced from `principalBalance` (kept fresh by
+            // `DepositInterestService.reconcileDepositInterest`). Skipping incremental
+            // updates here prevents double-counting.
+            if account.isDeposit { return currentBalance }
             return currentBalance + getTransactionAmount(transaction, for: account.currency)
 
         case .expense:
+            if account.isDeposit { return currentBalance }
             return currentBalance - getTransactionAmount(transaction, for: account.currency)
 
         case .internalTransfer:
@@ -196,11 +201,14 @@ struct BalanceCalculationEngine {
     ) -> Double {
         switch transaction.type {
         case .income:
-            // Revert income - subtract
+            // For deposits, balance is sourced from `principalBalance` (kept fresh by
+            // `DepositInterestService.reconcileDepositInterest`). Skipping incremental
+            // updates here prevents double-counting.
+            if account.isDeposit { return currentBalance }
             return currentBalance - getTransactionAmount(transaction, for: account.currency)
 
         case .expense:
-            // Revert expense - add back
+            if account.isDeposit { return currentBalance }
             return currentBalance + getTransactionAmount(transaction, for: account.currency)
 
         case .internalTransfer:
