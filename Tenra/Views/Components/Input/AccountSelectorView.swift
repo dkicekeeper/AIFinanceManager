@@ -15,6 +15,18 @@ struct AccountSelectorView: View {
     let warningMessage: String?
     let balanceCoordinator: BalanceCoordinator
 
+    // Centered card sits with `contentMargin` on each side. Within that margin,
+    // `cardSpacing` is the gap between cards and `neighborPeek` is the visible
+    // portion of the neighbor card extending to the screen edge.
+    private let cardSpacing: CGFloat = AppSpacing.md
+    private let neighborPeek: CGFloat = AppSpacing.lg
+
+    private var contentMargin: CGFloat {
+        cardSpacing + neighborPeek
+    }
+
+    @State private var scrollPosition: String?
+
     init(
         accounts: [Account],
         selectedAccountId: Binding<String?>,
@@ -30,7 +42,7 @@ struct AccountSelectorView: View {
         self.warningMessage = warningMessage
         self.balanceCoordinator = balanceCoordinator
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.xs) {
             if accounts.isEmpty {
@@ -42,23 +54,7 @@ struct AccountSelectorView: View {
                         .padding(AppSpacing.lg)
                 }
             } else {
-                UniversalCarousel(
-                    config: .standard,
-                    scrollToId: .constant(selectedAccountId)
-                ) {
-                    ForEach(accounts.sortedByOrder()) { account in
-                        AccountRadioButton(
-                            account: account,
-                            isSelected: selectedAccountId == account.id,
-                            onTap: {
-                                selectedAccountId = account.id
-                                onSelectionChange?(account.id)
-                            },
-                            balanceCoordinator: balanceCoordinator
-                        )
-                        .id(account.id)
-                    }
-                }
+                accountCarousel
             }
 
             if let warning = warningMessage {
@@ -67,41 +63,189 @@ struct AccountSelectorView: View {
             }
         }
     }
+
+    private var accountCarousel: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: cardSpacing) {
+                ForEach(accounts.sortedByOrder()) { account in
+                    AccountRadioButton(
+                        account: account,
+                        isSelected: selectedAccountId == account.id,
+                        onTap: {
+                            guard selectedAccountId != account.id else { return }
+                            selectedAccountId = account.id
+                            onSelectionChange?(account.id)
+                        },
+                        balanceCoordinator: balanceCoordinator
+                    )
+                    .containerRelativeFrame(.horizontal)
+                    .id(account.id)
+                }
+            }
+            .padding(.vertical, AppSpacing.xs)
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $scrollPosition, anchor: .center)
+        .contentMargins(.horizontal, contentMargin, for: .scrollContent)
+        .scrollClipDisabled()
+        .onAppear {
+            if scrollPosition != selectedAccountId {
+                scrollPosition = selectedAccountId
+            }
+        }
+        .onChange(of: selectedAccountId) { _, newId in
+            guard scrollPosition != newId else { return }
+            withAnimation(.easeInOut(duration: 0.3)) {
+                scrollPosition = newId
+            }
+        }
+        // Commit auto-selection only when scroll settles. During a tap-induced
+        // animated scroll, `scrollPosition` momentarily reports every card the
+        // animation passes over — committing on each would fire spurious
+        // selection changes. At `.idle` the position is stable: if it differs
+        // from `selectedAccountId`, the change came from a user drag.
+        .onScrollPhaseChange { _, newPhase in
+            guard newPhase == .idle,
+                  let landedId = scrollPosition,
+                  landedId != selectedAccountId
+            else { return }
+            selectedAccountId = landedId
+            onSelectionChange?(landedId)
+        }
+    }
 }
 
-#Preview {
-    @Previewable @State var selectedAccountId: String? = nil
+// MARK: - Previews
+
+private let previewAccounts: [Account] = [
+    Account(name: "Main Card", currency: "USD", iconSource: .sfSymbol("creditcard.fill"), initialBalance: 1_234.56),
+    Account(name: "Savings", currency: "EUR", iconSource: .sfSymbol("banknote.fill"), initialBalance: 8_500),
+    Account(name: "Travel Wallet", currency: "GBP", iconSource: .sfSymbol("airplane"), initialBalance: 250),
+    Account(name: "Cash", currency: "USD", iconSource: .sfSymbol("dollarsign.circle.fill"), initialBalance: 75.25),
+    Account(name: "Investment Brokerage Long Name", currency: "USD", iconSource: .sfSymbol("chart.line.uptrend.xyaxis"), initialBalance: 42_000)
+]
+
+#Preview("Multiple — no selection") {
+    @Previewable @State var selectedId: String? = nil
     let coordinator = AppCoordinator()
 
-    return VStack {
-        AccountSelectorView(
-            accounts: [
-                Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000),
-                Account(name: "Savings", currency: "USD", iconSource: nil, initialBalance: 5000)
-            ],
-            selectedAccountId: $selectedAccountId,
-            emptyStateMessage: nil,
-            warningMessage: nil,
-            balanceCoordinator: coordinator.balanceCoordinator
-        )
-
-        AccountSelectorView(
-            accounts: [],
-            selectedAccountId: $selectedAccountId,
-            emptyStateMessage: "No accounts available",
-            warningMessage: nil,
-            balanceCoordinator: coordinator.balanceCoordinator
-        )
-
-        AccountSelectorView(
-            accounts: [
-                Account(name: "Main Account", currency: "USD", iconSource: nil, initialBalance: 1000)
-            ],
-            selectedAccountId: $selectedAccountId,
-            emptyStateMessage: nil,
-            warningMessage: "Please select an account",
-            balanceCoordinator: coordinator.balanceCoordinator
-        )
+    AccountSelectorView(
+        accounts: previewAccounts,
+        selectedAccountId: $selectedId,
+        balanceCoordinator: coordinator.balanceCoordinator
+    )
+    .task {
+        await coordinator.balanceCoordinator.registerAccounts(previewAccounts)
     }
-    .padding()
+}
+
+#Preview("Multiple — pre-selected (middle)") {
+    @Previewable @State var selectedId: String? = previewAccounts[2].id
+    let coordinator = AppCoordinator()
+
+    AccountSelectorView(
+        accounts: previewAccounts,
+        selectedAccountId: $selectedId,
+        onSelectionChange: { id in
+            print("Selection changed to: \(id ?? "nil")")
+        },
+        balanceCoordinator: coordinator.balanceCoordinator
+    )
+    .task {
+        await coordinator.balanceCoordinator.registerAccounts(previewAccounts)
+    }
+}
+
+#Preview("Single account") {
+    @Previewable @State var selectedId: String? = nil
+    let coordinator = AppCoordinator()
+    let single = [previewAccounts[0]]
+
+    AccountSelectorView(
+        accounts: single,
+        selectedAccountId: $selectedId,
+        balanceCoordinator: coordinator.balanceCoordinator
+    )
+    .task {
+        await coordinator.balanceCoordinator.registerAccounts(single)
+    }
+}
+
+#Preview("Two accounts with warning") {
+    @Previewable @State var selectedId: String? = nil
+    let coordinator = AppCoordinator()
+    let two = Array(previewAccounts.prefix(2))
+
+    AccountSelectorView(
+        accounts: two,
+        selectedAccountId: $selectedId,
+        warningMessage: "Please select an account before proceeding",
+        balanceCoordinator: coordinator.balanceCoordinator
+    )
+    .task {
+        await coordinator.balanceCoordinator.registerAccounts(two)
+    }
+}
+
+#Preview("Empty state") {
+    @Previewable @State var selectedId: String? = nil
+    let coordinator = AppCoordinator()
+
+    AccountSelectorView(
+        accounts: [],
+        selectedAccountId: $selectedId,
+        emptyStateMessage: "No accounts available — add one in Settings",
+        balanceCoordinator: coordinator.balanceCoordinator
+    )
+}
+
+#Preview("Stacked variants") {
+    @Previewable @State var selectedA: String? = nil
+    @Previewable @State var selectedB: String? = previewAccounts[0].id
+    @Previewable @State var selectedC: String? = nil
+    let coordinator = AppCoordinator()
+    let two = Array(previewAccounts.prefix(2))
+
+    ScrollView {
+        VStack(alignment: .leading, spacing: AppSpacing.xl) {
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                Text("Multiple, no selection")
+                    .font(AppTypography.h4)
+                    .padding(.horizontal, AppSpacing.lg)
+                AccountSelectorView(
+                    accounts: previewAccounts,
+                    selectedAccountId: $selectedA,
+                    balanceCoordinator: coordinator.balanceCoordinator
+                )
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                Text("Pre-selected first")
+                    .font(AppTypography.h4)
+                    .padding(.horizontal, AppSpacing.lg)
+                AccountSelectorView(
+                    accounts: two,
+                    selectedAccountId: $selectedB,
+                    balanceCoordinator: coordinator.balanceCoordinator
+                )
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                Text("Empty")
+                    .font(AppTypography.h4)
+                    .padding(.horizontal, AppSpacing.lg)
+                AccountSelectorView(
+                    accounts: [],
+                    selectedAccountId: $selectedC,
+                    emptyStateMessage: "No accounts available",
+                    balanceCoordinator: coordinator.balanceCoordinator
+                )
+            }
+        }
+        .padding(.vertical, AppSpacing.lg)
+    }
+    .task {
+        await coordinator.balanceCoordinator.registerAccounts(previewAccounts)
+    }
 }

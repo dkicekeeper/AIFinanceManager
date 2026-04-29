@@ -163,19 +163,131 @@ struct AccountActionView: View {
 
 // CategoryRadioButton is now replaced by CategoryChip
 
-#Preview {
-    @Previewable @Namespace var ns
+// MARK: - Previews
+
+private func makeDepositInfo(
+    bank: String = "Tenra Bank",
+    principal: Decimal = 100_000,
+    rate: Decimal = 12,
+    capitalization: Bool = true
+) -> DepositInfo {
+    DepositInfo(
+        bankName: bank,
+        principalBalance: principal,
+        capitalizationEnabled: capitalization,
+        interestRateAnnual: rate,
+        interestPostingDay: 15
+    )
+}
+
+@MainActor
+private func makePreviewWrapper(
+    account: Account,
+    transferDirection: DepositTransferDirection? = nil
+) -> some View {
     let coordinator = AppCoordinator()
-    return NavigationStack {
-        AccountActionView(
-            transactionsViewModel: coordinator.transactionsViewModel,
-            accountsViewModel: coordinator.accountsViewModel,
-            account: Account(name: "Main", currency: "USD", iconSource: nil, initialBalance: 1000),
-            namespace: ns,
-            categoriesViewModel: coordinator.categoriesViewModel
-        )
+    return AccountActionPreviewWrapper(
+        coordinator: coordinator,
+        account: account,
+        transferDirection: transferDirection
+    )
+}
+
+private struct AccountActionPreviewWrapper: View {
+    let coordinator: AppCoordinator
+    let account: Account
+    let transferDirection: DepositTransferDirection?
+    @Namespace private var ns
+
+    var body: some View {
+        NavigationStack {
+            AccountActionView(
+                transactionsViewModel: coordinator.transactionsViewModel,
+                accountsViewModel: coordinator.accountsViewModel,
+                account: account,
+                namespace: ns,
+                categoriesViewModel: coordinator.categoriesViewModel,
+                transferDirection: transferDirection
+            )
+        }
+        .environment(coordinator)
+        .environment(coordinator.transactionStore)
+        .environment(TimeFilterManager())
     }
-    .environment(coordinator)
-    .environment(coordinator.transactionStore)
-    .environment(TimeFilterManager())
+}
+
+#Preview("Regular account (USD)") {
+    makePreviewWrapper(
+        account: Account(
+            name: "Main Card",
+            currency: "USD",
+            iconSource: .sfSymbol("creditcard.fill"),
+            initialBalance: 1_234.56
+        )
+    )
+}
+
+#Preview("Regular account — brand logo") {
+    makePreviewWrapper(
+        account: Account(
+            name: "Revolut",
+            currency: "EUR",
+            iconSource: .brandService("revolut.com"),
+            initialBalance: 5_280
+        )
+    )
+}
+
+#Preview("Regular account — empty balance") {
+    makePreviewWrapper(
+        account: Account(
+            name: "New Wallet",
+            currency: "GBP",
+            iconSource: .sfSymbol("wallet.bifold.fill"),
+            initialBalance: 0
+        )
+    )
+}
+
+#Preview("Deposit — default (top-up)") {
+    makePreviewWrapper(
+        account: Account(
+            name: "12% Term Deposit",
+            currency: "USD",
+            iconSource: .sfSymbol("banknote.fill"),
+            depositInfo: makeDepositInfo(),
+            initialBalance: 100_000
+        )
+    )
+}
+
+#Preview("Deposit — withdrawal direction") {
+    makePreviewWrapper(
+        account: Account(
+            name: "12% Term Deposit",
+            currency: "USD",
+            iconSource: .sfSymbol("banknote.fill"),
+            depositInfo: makeDepositInfo(),
+            initialBalance: 100_000
+        ),
+        transferDirection: .fromDeposit
+    )
+}
+
+#Preview("Deposit — high-yield, no capitalization") {
+    makePreviewWrapper(
+        account: Account(
+            name: "Premium Savings",
+            currency: "EUR",
+            iconSource: .sfSymbol("star.circle.fill"),
+            depositInfo: makeDepositInfo(
+                bank: "Premium Bank",
+                principal: 500_000,
+                rate: 18,
+                capitalization: false
+            ),
+            initialBalance: 500_000
+        ),
+        transferDirection: .toDeposit
+    )
 }

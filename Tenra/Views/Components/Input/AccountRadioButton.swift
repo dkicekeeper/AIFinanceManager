@@ -36,12 +36,15 @@ struct AccountRadioButton: View {
                     )
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(AppSpacing.lg)
             .cardStyle()
-            .overlay(
+            .overlay {
                 RoundedRectangle(cornerRadius: AppRadius.xl, style: .continuous)
-                    .stroke(isSelected ? AppColors.accent : Color.clear, lineWidth: AppSize.selectedBorderWidth)
-            )
+                    .stroke(AppColors.accent, lineWidth: AppSize.selectedBorderWidth)
+                    .opacity(isSelected ? 1 : 0)
+                    .animation(AppAnimation.gentleSpring, value: isSelected)
+            }
         }
         .buttonStyle(.bounce)
     }
