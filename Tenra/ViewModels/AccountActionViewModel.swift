@@ -10,9 +10,9 @@ import OSLog
 @MainActor
 final class AccountActionViewModel {
 
-    // MARK: - Observable State (UI-driving properties — tracked by @Observable)
+    // MARK: - Observable State
 
-    var selectedAction: ActionType = .transfer
+    var selectedAction: ActionType
     var amountText: String = ""
     var selectedCurrency: String
     var descriptionText: String = ""
@@ -22,11 +22,8 @@ final class AccountActionViewModel {
     var showingError: Bool = false
     var errorMessage: String = ""
     var shouldDismiss: Bool = false
-    /// User-toggleable for deposits (top-up vs withdrawal).
-    /// Initial value is set from the entry point; toggling rebuilds nav title and save path.
-    var transferDirection: DepositTransferDirection?
 
-    // MARK: - Dependencies (@ObservationIgnored per Phase 23 — let deps in @Observable must be ignored)
+    // MARK: - Dependencies
 
     @ObservationIgnored let account: Account
     @ObservationIgnored let accountsViewModel: AccountsViewModel
@@ -47,9 +44,6 @@ final class AccountActionViewModel {
     }
 
     var incomeCategories: [String] {
-        // transactionsViewModel.incomeCategories is derived from transaction.category strings,
-        // so deleted categories that still have legacy transactions referencing them would
-        // leak into the picker. Intersect with current customCategories to hide them.
         let validNames = Set(
             transactionsViewModel.customCategories
                 .filter { $0.type == .income }
@@ -59,50 +53,35 @@ final class AccountActionViewModel {
     }
 
     var navigationTitleText: String {
-        if account.isDeposit {
-            if let direction = transferDirection {
-                return direction == .toDeposit
-                    ? String(localized: "transactionForm.depositTopUp")
-                    : String(localized: "transactionForm.depositWithdrawal")
-            }
-            return String(localized: "transactionForm.depositTopUp")
-        }
-        return selectedAction == .income
+        selectedAction == .income
             ? String(localized: "transactionForm.accountTopUp")
             : String(localized: "transactionForm.transfer")
     }
 
     var headerForAccountSelection: String {
-        if account.isDeposit {
-            if let direction = transferDirection {
-                return direction == .toDeposit
-                    ? String(localized: "transactionForm.fromAccount")
-                    : String(localized: "transactionForm.toAccount")
-            }
-            return String(localized: "transactionForm.fromAccount")
-        }
-        return String(localized: "transactionForm.toAccount")
+        String(localized: "transactionForm.toAccount")
     }
 
     // MARK: - Init
 
+    /// `defaultAction == nil` selects a per-account default: deposits open in `.income`
+    /// (Top-up is the most common deposit operation); regular accounts open in `.transfer`
+    /// (matches the existing entry point from AccountDetailView's secondary "Transfer" button).
     init(
         account: Account,
         accountsViewModel: AccountsViewModel,
         transactionsViewModel: TransactionsViewModel,
-        transferDirection: DepositTransferDirection? = nil
+        defaultAction: ActionType? = nil
     ) {
         self.account = account
         self.accountsViewModel = accountsViewModel
         self.transactionsViewModel = transactionsViewModel
-        self.transferDirection = transferDirection
         self.selectedCurrency = account.currency
+        self.selectedAction = defaultAction ?? (account.isDeposit ? .income : .transfer)
     }
 
     // MARK: - Save
 
-    /// Validates input, converts currency if needed, and persists the transaction or transfer.
-    /// `transactionStore` is passed from the View (via @Environment) to avoid storing it here.
     func saveTransaction(date: Date, transactionStore: TransactionStore) async {
         guard !amountText.isEmpty,
               let amount = Double(AmountInputFormatting.cleanAmountString(amountText)),
@@ -136,7 +115,7 @@ final class AccountActionViewModel {
         }
     }
 
-    // MARK: - Private: Income
+    // MARK: - Private: Income (Top-up)
 
     private func saveIncomeTransaction(
         amount: Double,
@@ -151,7 +130,6 @@ final class AccountActionViewModel {
             return
         }
 
-        // Convert currency if different from account's currency
         var convertedAmount: Double? = nil
         if selectedCurrency != account.currency {
             guard let converted = await CurrencyConverter.convert(
@@ -201,7 +179,6 @@ final class AccountActionViewModel {
         finalDescription: String,
         transactionStore: TransactionStore
     ) async {
-        // Validate target account selection
         guard let targetAccountId = selectedTargetAccountId else {
             errorMessage = String(localized: "transactionForm.selectTargetAccount")
             showingError = true
@@ -223,26 +200,14 @@ final class AccountActionViewModel {
             return
         }
 
-        // Determine source and target IDs (deposit direction logic)
-        let (sourceId, targetId): (String, String)
-        if account.isDeposit, let direction = transferDirection {
-            switch direction {
-            case .toDeposit:
-                sourceId = targetAccountId
-                targetId = account.id
-            case .fromDeposit:
-                sourceId = account.id
-                targetId = targetAccountId
-            }
-        } else {
-            sourceId = account.id
-            targetId = targetAccountId
-        }
+        // The current account is always the source — deposit transfers are always
+        // outgoing (Variant A). To put money INTO a deposit, the user goes from the
+        // source account's screen.
+        let sourceId = account.id
+        let targetId = targetAccountId
 
-        // Resolve source currency
-        let sourceCurrency = resolveSourceCurrency(sourceId: sourceId)
+        let sourceCurrency = account.currency
 
-        // Convert source amount if needed
         if selectedCurrency != sourceCurrency {
             guard await CurrencyConverter.convert(
                 amount: amount,
@@ -256,7 +221,6 @@ final class AccountActionViewModel {
             }
         }
 
-        // Pre-load exchange rates for all involved currencies
         let targetAccount = accountsViewModel.accounts.first(where: { $0.id == targetId })
         let targetCurrency = targetAccount?.currency ?? selectedCurrency
         let currenciesToLoad = Set([selectedCurrency, account.currency, targetCurrency])
@@ -270,7 +234,6 @@ final class AccountActionViewModel {
             }
         }
 
-        // Validate all needed conversions can be done
         if selectedCurrency != account.currency {
             guard await CurrencyConverter.convert(amount: amount, from: selectedCurrency, to: account.currency) != nil else {
                 errorMessage = String(localized: "currency.error.sourceConversionFailed")
@@ -298,7 +261,6 @@ final class AccountActionViewModel {
             }
         }
 
-        // Compute target amount
         var precomputedTargetAmount: Double?
         if selectedCurrency != targetCurrency {
             precomputedTargetAmount = await CurrencyConverter.convert(
@@ -310,7 +272,6 @@ final class AccountActionViewModel {
             precomputedTargetAmount = amount
         }
 
-        // Execute transfer
         do {
             try await transactionStore.transfer(
                 from: sourceId,
@@ -330,15 +291,5 @@ final class AccountActionViewModel {
             showingError = true
             HapticManager.error()
         }
-    }
-
-    // MARK: - Private: Helpers
-
-    private func resolveSourceCurrency(sourceId: String) -> String {
-        if account.isDeposit, let direction = transferDirection {
-            if direction == .fromDeposit { return account.currency }
-            return accountsViewModel.accounts.first(where: { $0.id == sourceId })?.currency ?? account.currency
-        }
-        return accountsViewModel.accounts.first(where: { $0.id == sourceId })?.currency ?? account.currency
     }
 }
