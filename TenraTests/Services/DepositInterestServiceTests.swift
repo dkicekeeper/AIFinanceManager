@@ -390,7 +390,7 @@ struct DepositInterestServiceTests {
             id: "t1", date: dateString(offsetDays: -2), description: "",
             amount: 50_000, currency: "KZT", convertedAmount: nil,
             type: .internalTransfer, category: TransactionType.transferCategoryName,
-            subcategory: nil, accountId: "other", targetAccountId: "d1"
+            subcategory: nil, accountId: "d1", targetAccountId: "other"
         )
 
         DepositInterestService.reconcileDepositInterest(
@@ -400,6 +400,62 @@ struct DepositInterestServiceTests {
         )
         // Principal unchanged because .internalTransfer is not in affectsDepositPrincipal.
         #expect(account.depositInfo?.principalBalance == Decimal(100_000))
+    }
+
+    @Test("reconcile with capitalization+posting reflects posted interest in principalBalance")
+    func reconcile_capitalizedPostingDuringWalk_principalIncludesPosting() {
+        // Deposit started 35 days ago at 100k, 12% APR, capitalization ON,
+        // posting day = 1 of the month. Walking from 35 days ago to today
+        // crosses one or more month boundaries → at least one posting fires.
+        // The posted interest must be folded into `principalBalance` (not just
+        // into the local walk variable that gets discarded).
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let startDate = calendar.date(byAdding: .day, value: -35, to: today)!
+        let startDateStr = DateFormatters.dateFormatter.string(from: startDate)
+
+        let postingDay = 1
+        // last posting marker = month before startDate so first posting day after start fires
+        let monthBeforeStart = calendar.date(byAdding: .month, value: -1, to: startDate)!
+        let monthBeforeStartComps = calendar.dateComponents([.year, .month], from: monthBeforeStart)
+        let monthBeforeStartFloor = calendar.date(from: monthBeforeStartComps)!
+        let monthBeforeStartStr = DateFormatters.dateFormatter.string(from: monthBeforeStartFloor)
+
+        var info = DepositInfo(
+            bankName: "T",
+            principalBalance: 100_000,
+            capitalizationEnabled: true,
+            interestAccruedNotCapitalized: 0,
+            interestRateAnnual: 12,
+            interestRateHistory: [RateChange(effectiveFrom: startDateStr, annualRate: 12)],
+            interestPostingDay: postingDay,
+            lastInterestCalculationDate: startDateStr,
+            lastInterestPostingMonth: monthBeforeStartStr,
+            interestAccruedForCurrentPeriod: 0,
+            initialPrincipal: 100_000,
+            startDate: startDateStr
+        )
+        var account = makeDepositAccount(currency: "KZT", depositInfo: info)
+
+        var posted: [Transaction] = []
+        DepositInterestService.reconcileDepositInterest(
+            account: &account,
+            allTransactions: [],
+            onTransactionCreated: { posted.append($0) }
+        )
+
+        // At least one posting must have fired.
+        #expect(posted.count >= 1)
+        // Principal must be strictly greater than initialPrincipal (interest folded in).
+        let principal = account.depositInfo?.principalBalance ?? 0
+        #expect(principal > Decimal(100_000), "Expected principalBalance > 100k after capitalized posting; got \(principal)")
+        // And it must equal initialPrincipal + sum of posted amounts (capitalization on).
+        // Tolerance accounts for Decimal→Double→Decimal round-trip in Transaction.amount.
+        let totalPosted: Decimal = posted.reduce(Decimal(0)) { acc, tx in acc + Decimal(tx.amount) }
+        let expected = Decimal(100_000) + totalPosted
+        let diff = abs(principal - expected)
+        #expect(diff < Decimal(string: "0.01")!, "Principal \(principal) should ≈ \(expected); diff \(diff)")
+        _ = info  // suppress unused warning
     }
 }
 

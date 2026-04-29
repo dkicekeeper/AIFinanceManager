@@ -43,12 +43,16 @@ nonisolated enum DepositInterestService {
             }
             .sorted { $0.date < $1.date }
 
+        // Hoisted so the trailing principalBalance accounting can reuse the
+        // walk's running total (which folds in capitalized interest postings
+        // created during the walk via `onTransactionCreated`).
+        var runningPrincipal: Decimal = depositInfo.initialPrincipal
+
         if lastCalcDateNormalized < today {
             // Day-by-day interest accrual walk — only runs when there are new days.
             let walkStart = calendar.date(byAdding: .day, value: 1, to: lastCalcDateNormalized)!
             let walkStartStr = DateFormatters.dateFormatter.string(from: walkStart)
 
-            var runningPrincipal: Decimal = depositInfo.initialPrincipal
             var eventIdx = 0
             while eventIdx < events.count && events[eventIdx].date < walkStartStr {
                 runningPrincipal += principalDelta(for: events[eventIdx], capitalizationEnabled: depositInfo.capitalizationEnabled)
@@ -99,15 +103,26 @@ nonisolated enum DepositInterestService {
             depositInfo.lastInterestCalculationDate = DateFormatters.dateFormatter.string(from: today)
         }
 
-        // ALWAYS recompute principalBalance from `initialPrincipal` walking every event
-        // up to and including today. This makes same-day events show in the displayed
-        // balance immediately, regardless of whether the day-by-day walk ran above.
+        // Final principalBalance accounting:
+        //  - If the day-by-day walk ran, `runningPrincipal` already reflects
+        //    initialPrincipal + events[< today] + capitalized interest postings.
+        //    We only need to add today's events (the walk excludes them).
+        //  - If the walk didn't run (already reconciled today), rebuild from
+        //    `initialPrincipal` walking events with date <= today. This handles
+        //    the same-day-Top-up case (D7a).
         let todayStr = DateFormatters.dateFormatter.string(from: today)
-        var principal: Decimal = depositInfo.initialPrincipal
-        for tx in events where tx.date <= todayStr {
-            principal += principalDelta(for: tx, capitalizationEnabled: depositInfo.capitalizationEnabled)
+        if lastCalcDateNormalized < today {
+            for tx in events where tx.date == todayStr {
+                runningPrincipal += principalDelta(for: tx, capitalizationEnabled: depositInfo.capitalizationEnabled)
+            }
+            depositInfo.principalBalance = runningPrincipal
+        } else {
+            var principal: Decimal = depositInfo.initialPrincipal
+            for tx in events where tx.date <= todayStr {
+                principal += principalDelta(for: tx, capitalizationEnabled: depositInfo.capitalizationEnabled)
+            }
+            depositInfo.principalBalance = principal
         }
-        depositInfo.principalBalance = principal
 
         account.depositInfo = depositInfo
     }
