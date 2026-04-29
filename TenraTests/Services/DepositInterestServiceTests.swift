@@ -402,6 +402,39 @@ struct DepositInterestServiceTests {
         #expect(account.depositInfo?.principalBalance == Decimal(100_000))
     }
 
+    // MARK: - calculateInterestToToday(allTransactions:) tests (Task 4)
+
+    @Test("calculateInterestToToday(allTransactions:) accrues on principal grown by .income")
+    func calculateInterestToToday_walksIncome() {
+        // Deposit at 100k, 12% APR, .income of 100k applied 3 days ago doubles the
+        // running principal from that day. Validate that the historical walk picks
+        // up the .income event.
+        var info = makeDepositInfo(
+            principal: 100_000,
+            annualRate: 12,
+            lastCalcDateOffset: -5,
+            accruedForPeriod: 0
+        )
+        info.initialPrincipal = 100_000
+        info.startDate = dateString(offsetDays: -10)
+
+        let income = makeIncomeTx(
+            id: "i1", amount: 100_000,
+            date: dateString(offsetDays: -3),
+            accountId: "d1"
+        )
+
+        let walked = DepositInterestService.calculateInterestToToday(
+            depositInfo: info, accountId: "d1", allTransactions: [income]
+        )
+        let baseline = DepositInterestService.calculateInterestToToday(
+            depositInfo: info, accountId: "d1", allTransactions: []
+        )
+
+        // Walked variant must accrue strictly more because principal doubled mid-period.
+        #expect(walked > baseline)
+    }
+
     @Test("reconcile with capitalization+posting reflects posted interest in principalBalance")
     func reconcile_capitalizedPostingDuringWalk_principalIncludesPosting() {
         // Deposit started 35 days ago at 100k, 12% APR, capitalization ON,

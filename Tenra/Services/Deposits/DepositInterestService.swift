@@ -211,7 +211,7 @@ nonisolated enum DepositInterestService {
         let events = allTransactions
             .filter { tx in
                 tx.accountId == accountId &&
-                (tx.type == .depositTopUp || tx.type == .depositWithdrawal || tx.type == .depositInterestAccrual) &&
+                tx.type.affectsDepositPrincipal &&
                 tx.date > depositInfo.startDate
             }
             .sorted { $0.date < $1.date }
