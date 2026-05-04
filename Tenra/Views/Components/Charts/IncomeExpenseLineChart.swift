@@ -12,6 +12,13 @@
 import SwiftUI
 import Charts
 
+/// See `PeriodLineChartCache` header for rationale.
+@MainActor
+private final class IncomeExpenseLineChartCache {
+    var labelToIndex: [String: Int] = [:]
+    var labelIndexIdentity: String = ""
+}
+
 struct IncomeExpenseLineChart: View {
     let dataPoints: [PeriodDataPoint]
     let currency: String
@@ -20,9 +27,8 @@ struct IncomeExpenseLineChart: View {
 
     @Binding var zoomScale: CGFloat
 
-    @State private var selectedRange: ClosedRange<String>?
     @State private var selectedValueLabel: String?
-    @State private var visibleLeftLabel: String?
+    @State private var cache = IncomeExpenseLineChartCache()
 
     init(
         dataPoints: [PeriodDataPoint],
@@ -48,30 +54,16 @@ struct IncomeExpenseLineChart: View {
         dataPoints.flatMap { [$0.income, $0.expenses] }.max() ?? 1
     }
 
-    private func dynamicYMax(visibleCount: Int) -> Double {
-        guard !dataPoints.isEmpty else { return fullYMax }
-        if selectedRange != nil { return fullYMax }
-        let leftIdx: Int
-        if let label = visibleLeftLabel,
-           let idx = dataPoints.firstIndex(where: { $0.label == label }) {
-            leftIdx = idx
-        } else {
-            leftIdx = max(0, dataPoints.count - visibleCount)
-        }
-        let endIdx = min(dataPoints.count - 1, leftIdx + visibleCount - 1)
-        let slice = dataPoints[leftIdx...endIdx]
-        return slice.flatMap { [$0.income, $0.expenses] }.max() ?? 1
-    }
-
     private var selectedSinglePoint: PeriodDataPoint? {
-        guard selectionPoints.isEmpty,
-              let label = selectedValueLabel else { return nil }
-        return dataPoints.first { $0.label == label }
+        guard let label = selectedValueLabel,
+              let idx = cache.labelToIndex[label] else { return nil }
+        return dataPoints[idx]
     }
 
-    private func visibleCount(for containerWidth: CGFloat) -> Int {
-        guard effectivePointWidth > 0 else { return dataPoints.count }
-        let raw = Int((containerWidth / effectivePointWidth).rounded())
+    /// Width-independent visible-window size. See PeriodLineChart for rationale.
+    private var visibleCount: Int {
+        let base = 12.0
+        let raw = Int((base / max(zoomScale, 0.1)).rounded())
         return max(1, min(dataPoints.count, raw))
     }
 
@@ -80,14 +72,19 @@ struct IncomeExpenseLineChart: View {
         return dataPoints.first(where: { $0.periodStart > now })?.label
     }
 
-    private var selectionPoints: [PeriodDataPoint] {
-        guard let range = selectedRange,
-              let lo = dataPoints.firstIndex(where: { $0.label == range.lowerBound }),
-              let hi = dataPoints.firstIndex(where: { $0.label == range.upperBound })
-        else { return [] }
-        let l = min(lo, hi)
-        let h = max(lo, hi)
-        return Array(dataPoints[l...h])
+    private var dataPointsIdentity: String {
+        guard let first = dataPoints.first, let last = dataPoints.last else { return "" }
+        return "\(dataPoints.count)|\(first.label)|\(last.label)"
+    }
+
+    private func rebuildLabelIndexIfNeeded() {
+        let identity = dataPointsIdentity
+        guard cache.labelIndexIdentity != identity else { return }
+        var map = [String: Int]()
+        map.reserveCapacity(dataPoints.count)
+        for (i, p) in dataPoints.enumerated() { map[p.label] = i }
+        cache.labelToIndex = map
+        cache.labelIndexIdentity = identity
     }
 
     private var axisLabelMap: [String: String] {
@@ -98,31 +95,37 @@ struct IncomeExpenseLineChart: View {
         if dataPoints.isEmpty {
             emptyState.frame(height: chartHeight)
         } else if isCompact {
+            // See PeriodLineChart — `.chartAppear()` removed for compact (scroll cost).
             sparkline
                 .frame(height: chartHeight)
-                .chartAppear()
         } else {
             VStack(spacing: AppSpacing.sm) {
-                if !selectionPoints.isEmpty {
-                    rangeBanner
-                } else if let p = selectedSinglePoint {
-                    singleBanner(point: p)
-                }
+                bannerSlot
 
-                interactiveChart
+                fullChart
                     .frame(height: chartHeight)
-            }
-            .onChange(of: selectedRange) { _, new in
-                guard new != nil else { return }
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                selectedValueLabel = nil
             }
             .onChange(of: selectedValueLabel) { _, new in
                 guard new != nil else { return }
                 UISelectionFeedbackGenerator().selectionChanged()
             }
+            .onAppear { rebuildLabelIndexIfNeeded() }
+            .onChange(of: dataPointsIdentity) { _, _ in rebuildLabelIndexIfNeeded() }
             .chartAppear()
         }
+    }
+
+    /// Fixed-height slot — see PeriodLineChart.bannerSlot for rationale.
+    private var bannerSlot: some View {
+        ZStack {
+            if let p = selectedSinglePoint {
+                singleBanner(point: p)
+                    .transition(.opacity)
+            }
+        }
+        .frame(height: 56)
+        .screenPadding()
+        .animation(.easeInOut(duration: 0.15), value: selectedSinglePoint?.label)
     }
 
     private var emptyState: some View {
@@ -165,39 +168,14 @@ struct IncomeExpenseLineChart: View {
 
     // MARK: - Interactive full chart
 
-    private var interactiveChart: some View {
-        GeometryReader { proxy in
-            let visible = visibleCount(for: proxy.size.width)
-            let leftIdx = max(0, dataPoints.count - visible)
-            let initialLabel = dataPoints[leftIdx].label
-            fullChart(visibleCount: visible, initialLeftLabel: initialLabel)
-        }
-    }
-
-    private func fullChart(visibleCount: Int, initialLeftLabel: String) -> some View {
-        let yMaxNow = dynamicYMax(visibleCount: visibleCount)
-        let scrollBinding = Binding<String>(
-            get: { visibleLeftLabel ?? initialLeftLabel },
-            set: { newValue in
-                guard selectedRange == nil else { return }
-                visibleLeftLabel = newValue
-            }
-        )
+    private var fullChart: some View {
+        let yMaxNow = fullYMax
+        let categoryDomain = dataPoints.map { $0.label }
+        let leftIdx = max(0, dataPoints.count - visibleCount)
+        let trailingAnchorLabel = dataPoints[leftIdx].label
         return Chart {
-            if let range = selectedRange {
-                RectangleMark(
-                    xStart: .value("Start", range.lowerBound),
-                    xEnd: .value("End", range.upperBound)
-                )
-                .foregroundStyle(AppColors.accent.opacity(0.15))
-            }
-
-            if let label = selectedValueLabel, selectionPoints.isEmpty {
-                RuleMark(x: .value("Selected", label))
-                    .foregroundStyle(AppColors.textTertiary.opacity(0.4))
-                    .lineStyle(StrokeStyle(lineWidth: 1))
-            }
-
+            // Today marker — drawn first; today is always part of dataPoints'
+            // label set so it doesn't introduce a new category.
             if let today = todayLabel {
                 RuleMark(x: .value("Today", today))
                     .foregroundStyle(AppColors.accent.opacity(0.45))
@@ -273,12 +251,40 @@ struct IncomeExpenseLineChart: View {
                 .foregroundStyle(AppColors.destructive)
                 .symbolSize(28)
             }
+
+            // Selection emphasis last. Two-series chart so we highlight BOTH the
+            // income and expense points at the selected x. See PeriodLineChart
+            // for the visual layering rationale (ruler → halo → inner).
+            if let label = selectedValueLabel,
+               let idx = cache.labelToIndex[label] {
+                let p = dataPoints[idx]
+
+                RuleMark(x: .value("Selected", label))
+                    .foregroundStyle(AppColors.accent.opacity(0.5))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+
+                PointMark(x: .value("SelHaloIn", p.label), y: .value("V", p.income))
+                    .symbolSize(180)
+                    .foregroundStyle(AppColors.success.opacity(0.20))
+                PointMark(x: .value("SelInnerIn", p.label), y: .value("V", p.income))
+                    .symbolSize(70)
+                    .foregroundStyle(AppColors.success)
+
+                PointMark(x: .value("SelHaloEx", p.label), y: .value("V", p.expenses))
+                    .symbolSize(180)
+                    .foregroundStyle(AppColors.destructive.opacity(0.20))
+                PointMark(x: .value("SelInnerEx", p.label), y: .value("V", p.expenses))
+                    .symbolSize(70)
+                    .foregroundStyle(AppColors.destructive)
+            }
         }
+        .chartXScale(domain: categoryDomain)
         .chartYScale(domain: 0...yMaxNow)
         .chartXVisibleDomain(length: visibleCount)
         .chartScrollableAxes(.horizontal)
-        .chartScrollPosition(x: scrollBinding)
-        .chartXSelection(range: $selectedRange)
+        // Trailing anchor — see PeriodLineChart.
+        .chartScrollPosition(initialX: trailingAnchorLabel)
+        // Framework-supported selection — see PeriodLineChart for rationale.
         .chartXSelection(value: $selectedValueLabel)
         .chartXAxis {
             AxisMarks { value in
@@ -307,82 +313,37 @@ struct IncomeExpenseLineChart: View {
 
     // MARK: - Single-point banner
 
+    /// Selection banner. No close button — auto-hides on tap-off / scroll.
+    /// Date is emphasised; income/expenses shown side by side beneath.
     private func singleBanner(point: PeriodDataPoint) -> some View {
         HStack(alignment: .center, spacing: AppSpacing.lg) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(axisLabelMap[point.label] ?? point.label)
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
+                    .font(AppTypography.bodyEmphasis)
+                    .foregroundStyle(AppColors.textPrimary)
                 HStack(spacing: AppSpacing.md) {
                     HStack(spacing: 4) {
                         Circle().fill(AppColors.success).frame(width: 8, height: 8)
                         Text(ChartAxisHelpers.formatCompact(point.income))
-                            .font(AppTypography.bodyEmphasis)
+                            .font(AppTypography.body)
                             .foregroundStyle(AppColors.success)
                     }
                     HStack(spacing: 4) {
                         Circle().fill(AppColors.destructive).frame(width: 8, height: 8)
                         Text(ChartAxisHelpers.formatCompact(point.expenses))
-                            .font(AppTypography.bodyEmphasis)
+                            .font(AppTypography.body)
                             .foregroundStyle(AppColors.destructive)
                     }
                 }
             }
-            Spacer()
-            Button {
-                selectedValueLabel = nil
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(AppColors.textTertiary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(String(localized: "insights.range.reset")))
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, AppSpacing.md)
         .padding(.vertical, AppSpacing.sm)
         .cardStyle()
     }
 
-    // MARK: - Range banner
-
-    private var rangeBanner: some View {
-        let pts = selectionPoints
-        let totalIncome = pts.reduce(0) { $0 + $1.income }
-        let totalExpenses = pts.reduce(0) { $0 + $1.expenses }
-        return HStack(alignment: .center, spacing: AppSpacing.lg) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(String(localized: "insights.range.totalIncome"))
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(ChartAxisHelpers.formatCompact(totalIncome))
-                    .font(AppTypography.bodyEmphasis)
-                    .foregroundStyle(AppColors.success)
-            }
-            Divider().frame(height: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(String(localized: "insights.range.totalExpenses"))
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(ChartAxisHelpers.formatCompact(totalExpenses))
-                    .font(AppTypography.bodyEmphasis)
-                    .foregroundStyle(AppColors.destructive)
-            }
-            Spacer()
-            Button {
-                selectedRange = nil
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(AppColors.textTertiary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(String(localized: "insights.range.reset")))
-        }
-        .padding(.horizontal, AppSpacing.md)
-        .padding(.vertical, AppSpacing.sm)
-        .cardStyle()
-    }
 }
 
 #Preview("IncomeExpenseLineChart — Monthly") {

@@ -5,12 +5,15 @@
 //  Granularity-aware income/expense grouped bar chart.
 //
 //  Performance notes (after audit):
-//  - X-domain is the full dataset; Y-domain is static across the entire dataset
-//    so Y-axis doesn't recompute on scroll/drag.
-//  - Long-press-and-drag selects a range via `chartXSelection(range:)`.
-//    Single-tap selection (`chartXSelection(value:)`) is intentionally NOT used
-//    because it conflicts with range selection on iOS 17/18 (range wins, single
-//    never fires). Pick one, not both.
+//  - Single-tap selection (`chartXSelection(value:)`) is the only selection mode.
+//    Range selection was removed: every frame, the range-banner subtree was a
+//    body-redraw amplifier, plus the dual `chartXSelection(value:) + (range:)`
+//    pair forced two state writes per gesture.
+//  - Y-domain is dynamic for the visible window. Lookups use a cached
+//    `[label: index]` map (`PeriodBarChartCache`) — replaces O(N)
+//    `firstIndex(where:)` that fired on every scroll frame.
+//  - Scroll-position binding throttles same-value writes (Apple Charts emits
+//    redundant updates during settle).
 //  - Localized labels and the axis label map are cached / hoisted out of body
 //    to keep the per-frame body cost flat during scroll.
 //  - No animations on hot-path state (selection, scroll position, zoom).
@@ -18,6 +21,14 @@
 
 import SwiftUI
 import Charts
+
+/// Per-instance label→index cache. See `PeriodLineChartCache` header for the
+/// rationale (avoids O(N) `firstIndex(where:)` on every horizontal-scroll frame).
+@MainActor
+private final class PeriodBarChartCache {
+    var labelToIndex: [String: Int] = [:]
+    var labelIndexIdentity: String = ""
+}
 
 struct PeriodBarChart: View {
     let dataPoints: [PeriodDataPoint]
@@ -29,9 +40,8 @@ struct PeriodBarChart: View {
     /// Defaults to 1.0 when the chart is used standalone (no parent toolbar).
     @Binding var zoomScale: CGFloat
 
-    @State private var selectedRange: ClosedRange<String>?
     @State private var selectedValueLabel: String?
-    @State private var visibleLeftLabel: String?
+    @State private var cache = PeriodBarChartCache()
 
     init(
         dataPoints: [PeriodDataPoint],
@@ -52,39 +62,23 @@ struct PeriodBarChart: View {
     private var effectivePointWidth: CGFloat { basePointWidth * zoomScale }
     private var chartHeight: CGFloat { isCompact ? 60 : 200 }
 
-    /// Y max over the entire dataset (compact sparkline only).
+    /// Static Y max over the entire dataset. Replaces the previous dynamic
+    /// per-window recompute (which caused bars to visually jump when scrolling
+    /// across stretches with different magnitudes).
     private var fullYMax: Double {
         dataPoints.flatMap { [$0.income, $0.expenses] }.max() ?? 1
     }
 
-    /// Y max for the currently-visible window — recomputed when scroll position
-    /// or zoom changes, so zooming into a quiet stretch doesn't squash bars.
-    /// **Frozen during active range selection** so the Y axis doesn't recompute
-    /// (and bars don't jump) while the user drags a selection.
-    private func dynamicYMax(visibleCount: Int) -> Double {
-        guard !dataPoints.isEmpty else { return fullYMax }
-        if selectedRange != nil { return fullYMax }
-        let leftIdx: Int
-        if let label = visibleLeftLabel,
-           let idx = dataPoints.firstIndex(where: { $0.label == label }) {
-            leftIdx = idx
-        } else {
-            leftIdx = max(0, dataPoints.count - visibleCount)
-        }
-        let endIdx = min(dataPoints.count - 1, leftIdx + visibleCount - 1)
-        let slice = dataPoints[leftIdx...endIdx]
-        return slice.flatMap { [$0.income, $0.expenses] }.max() ?? 1
-    }
-
     private var selectedSinglePoint: PeriodDataPoint? {
-        guard selectionPoints.isEmpty,
-              let label = selectedValueLabel else { return nil }
-        return dataPoints.first { $0.label == label }
+        guard let label = selectedValueLabel,
+              let idx = cache.labelToIndex[label] else { return nil }
+        return dataPoints[idx]
     }
 
-    private func visibleCount(for containerWidth: CGFloat) -> Int {
-        guard effectivePointWidth > 0 else { return dataPoints.count }
-        let raw = Int((containerWidth / effectivePointWidth).rounded())
+    /// Width-independent visible-window size. See PeriodLineChart for rationale.
+    private var visibleCount: Int {
+        let base = 12.0
+        let raw = Int((base / max(zoomScale, 0.1)).rounded())
         return max(1, min(dataPoints.count, raw))
     }
 
@@ -93,14 +87,19 @@ struct PeriodBarChart: View {
         return dataPoints.first(where: { $0.periodStart > now })?.label
     }
 
-    private var selectionPoints: [PeriodDataPoint] {
-        guard let range = selectedRange,
-              let lo = dataPoints.firstIndex(where: { $0.label == range.lowerBound }),
-              let hi = dataPoints.firstIndex(where: { $0.label == range.upperBound })
-        else { return [] }
-        let l = min(lo, hi)
-        let h = max(lo, hi)
-        return Array(dataPoints[l...h])
+    private var dataPointsIdentity: String {
+        guard let first = dataPoints.first, let last = dataPoints.last else { return "" }
+        return "\(dataPoints.count)|\(first.label)|\(last.label)"
+    }
+
+    private func rebuildLabelIndexIfNeeded() {
+        let identity = dataPointsIdentity
+        guard cache.labelIndexIdentity != identity else { return }
+        var map = [String: Int]()
+        map.reserveCapacity(dataPoints.count)
+        for (i, p) in dataPoints.enumerated() { map[p.label] = i }
+        cache.labelToIndex = map
+        cache.labelIndexIdentity = identity
     }
 
     private var axisLabelMap: [String: String] {
@@ -113,31 +112,37 @@ struct PeriodBarChart: View {
         if dataPoints.isEmpty {
             emptyState.frame(height: chartHeight)
         } else if isCompact {
+            // See PeriodLineChart — `.chartAppear()` removed for compact (scroll cost).
             sparkline
                 .frame(height: chartHeight)
-                .chartAppear()
         } else {
             VStack(spacing: AppSpacing.sm) {
-                if !selectionPoints.isEmpty {
-                    rangeBanner
-                } else if let p = selectedSinglePoint {
-                    singleBanner(point: p)
-                }
+                bannerSlot
 
-                interactiveChart
+                fullChart
                     .frame(height: chartHeight)
-            }
-            .onChange(of: selectedRange) { _, new in
-                guard new != nil else { return }
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                selectedValueLabel = nil
             }
             .onChange(of: selectedValueLabel) { _, new in
                 guard new != nil else { return }
                 UISelectionFeedbackGenerator().selectionChanged()
             }
+            .onAppear { rebuildLabelIndexIfNeeded() }
+            .onChange(of: dataPointsIdentity) { _, _ in rebuildLabelIndexIfNeeded() }
             .chartAppear()
         }
+    }
+
+    /// Fixed-height slot — see PeriodLineChart.bannerSlot for rationale.
+    private var bannerSlot: some View {
+        ZStack {
+            if let p = selectedSinglePoint {
+                singleBanner(point: p)
+                    .transition(.opacity)
+            }
+        }
+        .frame(height: 56)
+        .screenPadding()
+        .animation(.easeInOut(duration: 0.15), value: selectedSinglePoint?.label)
     }
 
     private var emptyState: some View {
@@ -180,43 +185,14 @@ struct PeriodBarChart: View {
 
     // MARK: - Interactive full chart
 
-    private var interactiveChart: some View {
-        GeometryReader { proxy in
-            let visible = visibleCount(for: proxy.size.width)
-            let leftIdx = max(0, dataPoints.count - visible)
-            let initialLabel = dataPoints[leftIdx].label
-            fullChart(visibleCount: visible, initialLeftLabel: initialLabel)
-        }
-    }
-
-    private func fullChart(visibleCount: Int, initialLeftLabel: String) -> some View {
-        let yMaxNow = dynamicYMax(visibleCount: visibleCount)
-        // Setter blocked during active range selection — see PeriodLineChart for rationale.
-        let scrollBinding = Binding<String>(
-            get: { visibleLeftLabel ?? initialLeftLabel },
-            set: { newValue in
-                guard selectedRange == nil else { return }
-                visibleLeftLabel = newValue
-            }
-        )
+    private var fullChart: some View {
+        let yMaxNow = fullYMax
+        let categoryDomain = dataPoints.map { $0.label }
+        let leftIdx = max(0, dataPoints.count - visibleCount)
+        let trailingAnchorLabel = dataPoints[leftIdx].label
         return Chart {
-            // Translucent band highlighting the selected range.
-            if let range = selectedRange {
-                RectangleMark(
-                    xStart: .value("Start", range.lowerBound),
-                    xEnd: .value("End", range.upperBound)
-                )
-                .foregroundStyle(AppColors.accent.opacity(0.15))
-            }
-
-            // Single-tap selection ruler.
-            if let label = selectedValueLabel, selectionPoints.isEmpty {
-                RuleMark(x: .value("Selected", label))
-                    .foregroundStyle(AppColors.textTertiary.opacity(0.4))
-                    .lineStyle(StrokeStyle(lineWidth: 1))
-            }
-
-            // Today / future boundary marker.
+            // Today marker — drawn first; today is always part of dataPoints'
+            // label set so it doesn't introduce a new category.
             if let today = todayLabel {
                 RuleMark(x: .value("Today", today))
                     .foregroundStyle(AppColors.accent.opacity(0.45))
@@ -245,12 +221,26 @@ struct PeriodBarChart: View {
                 .foregroundStyle(AppColors.destructive.opacity(0.85))
                 .position(by: .value("Type", "expenses"))
             }
+
+            // Selection emphasis last — drawn on top.
+            // For bar chart: a translucent vertical band highlighting the column,
+            // plus a stronger ruler on top of the band centre.
+            if let label = selectedValueLabel {
+                RectangleMark(x: .value("SelBand", label))
+                    .foregroundStyle(AppColors.accent.opacity(0.10))
+
+                RuleMark(x: .value("Selected", label))
+                    .foregroundStyle(AppColors.accent.opacity(0.5))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+            }
         }
+        .chartXScale(domain: categoryDomain)
         .chartYScale(domain: 0...yMaxNow)
         .chartXVisibleDomain(length: visibleCount)
         .chartScrollableAxes(.horizontal)
-        .chartScrollPosition(x: scrollBinding)
-        .chartXSelection(range: $selectedRange)
+        // Trailing anchor — see PeriodLineChart.
+        .chartScrollPosition(initialX: trailingAnchorLabel)
+        // Framework-supported selection — coexists with `chartScrollableAxes`.
         .chartXSelection(value: $selectedValueLabel)
         .chartXAxis {
             AxisMarks { value in
@@ -281,82 +271,37 @@ struct PeriodBarChart: View {
 
     // MARK: - Single-point banner
 
+    /// Selection banner. No close button — auto-hides on tap-off / scroll.
+    /// Date is emphasised; income/expenses shown side by side beneath.
     private func singleBanner(point: PeriodDataPoint) -> some View {
         HStack(alignment: .center, spacing: AppSpacing.lg) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(axisLabelMap[point.label] ?? point.label)
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
+                    .font(AppTypography.bodyEmphasis)
+                    .foregroundStyle(AppColors.textPrimary)
                 HStack(spacing: AppSpacing.md) {
                     HStack(spacing: 4) {
                         Circle().fill(AppColors.success).frame(width: 8, height: 8)
                         Text(ChartAxisHelpers.formatCompact(point.income))
-                            .font(AppTypography.bodyEmphasis)
+                            .font(AppTypography.body)
                             .foregroundStyle(AppColors.success)
                     }
                     HStack(spacing: 4) {
                         Circle().fill(AppColors.destructive).frame(width: 8, height: 8)
                         Text(ChartAxisHelpers.formatCompact(point.expenses))
-                            .font(AppTypography.bodyEmphasis)
+                            .font(AppTypography.body)
                             .foregroundStyle(AppColors.destructive)
                     }
                 }
             }
-            Spacer()
-            Button {
-                selectedValueLabel = nil
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(AppColors.textTertiary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(String(localized: "insights.range.reset")))
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, AppSpacing.md)
         .padding(.vertical, AppSpacing.sm)
         .cardStyle()
     }
 
-    // MARK: - Range banner
-
-    private var rangeBanner: some View {
-        let pts = selectionPoints
-        let totalIncome = pts.reduce(0) { $0 + $1.income }
-        let totalExpenses = pts.reduce(0) { $0 + $1.expenses }
-        return HStack(alignment: .center, spacing: AppSpacing.lg) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(String(localized: "insights.range.totalIncome"))
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(ChartAxisHelpers.formatCompact(totalIncome))
-                    .font(AppTypography.bodyEmphasis)
-                    .foregroundStyle(AppColors.success)
-            }
-            Divider().frame(height: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(String(localized: "insights.range.totalExpenses"))
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(ChartAxisHelpers.formatCompact(totalExpenses))
-                    .font(AppTypography.bodyEmphasis)
-                    .foregroundStyle(AppColors.destructive)
-            }
-            Spacer()
-            Button {
-                selectedRange = nil
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(AppColors.textTertiary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(String(localized: "insights.range.reset")))
-        }
-        .padding(.horizontal, AppSpacing.md)
-        .padding(.vertical, AppSpacing.sm)
-        .cardStyle()
-    }
 }
 
 // MARK: - Previews

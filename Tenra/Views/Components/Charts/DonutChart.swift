@@ -121,15 +121,13 @@ struct DonutChart<CenterContent: View>: View {
     // MARK: Body
 
     var body: some View {
-        chartContent
-            .chartAppear()
-    }
-
-    @ViewBuilder private var chartContent: some View {
+        // Compact mini-charts skip `.chartAppear()` — they render inside scroll feeds
+        // where `LazyVStack` realises sections during scroll; firing N concurrent
+        // entrance springs at materialisation cost frames. Full mode keeps it.
         if isCompact {
             compactChart
         } else {
-            fullChart
+            fullChart.chartAppear()
         }
     }
 
@@ -152,7 +150,6 @@ struct DonutChart<CenterContent: View>: View {
             .cornerRadius(cornerRadius(for: slice.percentage))
             .foregroundStyle(slice.color)
         }
-        .animation(AppAnimation.chartUpdateAnimation, value: slices.count)
         .frame(height: 60)
         .chartLegend(.hidden)
     }

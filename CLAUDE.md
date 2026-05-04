@@ -37,6 +37,15 @@ xcodebuild test \
 # Quickly isolate build errors (skip swiftc log noise)
 xcodebuild build -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30
+
+# Profiling on real device (xctrace, requires unlocked iPhone)
+# Open Xcode → Window → Devices and Simulators to prime the connection.
+# Disable iPhone auto-lock during recording. Performance perf needs a real
+# device, not the simulator. If xctrace fails 2-3 times after retrying,
+# abandon the trace and audit the code grounded in this file's patterns.
+xcrun xctrace record --template SwiftUI \
+  --output ~/Desktop/session.trace \
+  --device "Dkicekeeper 17" --attach Tenra
 ```
 
 ## Project Overview
@@ -468,6 +477,7 @@ New file needed?
 - **`String(localized:)` в hot-path body чарта = антипаттерн**: на каждом scroll-кадре пересоздаётся localized string. Кэшировать в `@State` / `static let` вне `body` или использовать stable string keys для `position(by:)` и т.п.
 - **Heavy axis-label maps кэшируются через `ChartAxisLabelMapCache`** (MainActor singleton, key=count+first+last). Любые новые heavy chart-формат-функции (`DateFormatter`, `Dictionary` builds) должны идти через аналогичный cache, иначе при scroll/zoom пересборка на 60fps доминирует frame budget.
 - **`.animation(value:)` на scroll/zoom-зависимом state = hot-path catastrophe**: каждое scroll-событие запускает spring → накопление анимаций → лаги. Apple Charts сами плавно интерполируют — не нужно spring'а сверху.
+- **Mini-charts in scroll feeds → Canvas, not `Chart{}`**: Apple Charts per-card instantiation hitches `LazyVStack` section materialization at ~5ms per chart. For compact sparklines/donuts inside cards, use `Canvas`-based components (see `Views/Components/Charts/MiniDonut.swift` / `MiniSparkline.swift` as the pattern).
 
 ## Swift Charts Patterns
 
@@ -479,9 +489,13 @@ New file needed?
 - **Setter race во время range-selection**: Apple вызывает `chartScrollPosition.setter` во время `chartXSelection(range:)` drag → если scroll position управляет dynamic Y → бары прыгают. Решение: блокировать setter и **замораживать dynamic Y** пока `selectedRange != nil`.
 - **Multi-series `AreaMark` STACK по умолчанию** — для overlay (income vs expense) нужно `series:` ПЛЮС `stacking: .unstacked` вместе. Без `series:` две areas мерджатся в одну zigzag-серию между x-точками.
 - **`AxisValueLabel(collisionResolution: .greedy(minimumSpacing: 6))`** — стандартное прореживание налезающих дат. Применять везде где AxisMarks { } по String x.
-- **Initial trailing scroll**: вычислить `initialLeftLabel = dataPoints[max(0, count - visibleCount)].label` из GeometryReader proxy.size.width, передать в `chartScrollPosition(initialX:)`. Чарт по умолчанию открывается на leading.
+- **Initial trailing scroll**: `initialLeftLabel = dataPoints[max(0, count - visibleCount)].label` → `chartScrollPosition(initialX: initialLeftLabel)`. `chartXVisibleDomain(length: N)` for category axis shows N categories regardless of frame width — no `GeometryReader` needed; derive `visibleCount` from `zoomScale` only.
 - **Reusable `ChartZoomControls(zoomScale: $zoomScale, range:)`** — `+/-` кнопки с `step ×1.5` через `Views/Components/Charts/PeriodChartSwitcher.swift`. Используется в `PeriodChartSwitcher` (picker слева, zoom справа в HStack) и в standalone `PeriodLineChart` (свой `zoomToolbar`).
 - **`AnyShapeStyle` для условных gradient/color** на `LineMark.foregroundStyle()` — allows switching между solid и `LinearGradient` без overload-конфликтов.
+- **Category X-axis order = first-occurrence across marks in declaration order.** Lock via `chartXScale(domain: dataPoints.map { $0.label })` AND put conditional/selection marks AFTER `ForEach(dataPoints)`. A selection `RuleMark` declared first silently reorders the axis (tap-flips-date bug).
+- **Custom tap selection blocks scroll on `chartScrollableAxes` charts**: `chartOverlay { Color.clear.contentShape(...) ... }` absorbs touches at SwiftUI hit-testing layer, before gesture arbitration — `simultaneousGesture` / `onTapGesture(coordinateSpace:)` don't help. For tap selection on scrollable charts use **only** `chartXSelection(value:)`.
+- **`chartScrollPosition(initialX:)` is stable** for one-shot trailing-anchor when no other re-anchor sources exist (static yDomain, no `chartScrollPosition(x: $binding)`). The `x: $binding` form re-anchors viewport on body re-eval — caused "x-axis flips on tap" bug.
+- **Selection banner anti-jump**: wrap conditional banner in fixed-height `ZStack` (e.g. `.frame(height: 56)`) with opacity transition. Banner placed directly in VStack shifts chart vertically on selection appear/disappear.
 
 ## SwiftUI Layout Gotchas
 

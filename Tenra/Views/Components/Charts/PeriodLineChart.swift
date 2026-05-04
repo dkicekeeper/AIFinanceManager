@@ -153,32 +153,6 @@ enum PeriodLineChartSeries {
         case .wealth:              return 2.5
         }
     }
-
-    // MARK: - Range summary
-
-    /// Aggregates the selected points into a single representative number for the range banner.
-    /// - `.spending` and `.cashFlow` → sum of values across the range.
-    /// - `.wealth`  → end-of-range value minus start-of-range value (delta).
-    func summarize(_ points: [PeriodDataPoint]) -> Double {
-        guard !points.isEmpty else { return 0 }
-        switch self {
-        case .spending: return points.reduce(0) { $0 + $1.expenses }
-        case .cashFlow: return points.reduce(0) { $0 + $1.netFlow }
-        case .wealth:
-            let last = points.last.map { $0.cumulativeBalance ?? $0.netFlow } ?? 0
-            let first = points.first.map { $0.cumulativeBalance ?? $0.netFlow } ?? 0
-            return last - first
-        }
-    }
-
-    /// Localized title shown above the summary value in the range banner.
-    var summaryTitle: String {
-        switch self {
-        case .spending: return String(localized: "insights.range.totalExpenses")
-        case .cashFlow: return String(localized: "insights.range.netFlow")
-        case .wealth:   return String(localized: "insights.range.wealthChange")
-        }
-    }
 }
 
 // MARK: - PeriodLineChart
@@ -198,6 +172,16 @@ enum PeriodLineChartSeries {
 /// PeriodLineChart(dataPoints: points, series: .cashFlow, granularity: .month)
 /// PeriodLineChart(dataPoints: points, series: .wealth,   granularity: .month, mode: .compact)
 /// ```
+/// Per-instance label→index cache for O(1) lookup when finding a tapped point.
+/// Stored as `@State` so the same instance lives across body re-evals; mutating
+/// its stored fields is safe — SwiftUI tracks reference identity, not internal
+/// class state. Rebuilt only when the dataset's identity fingerprint changes.
+@MainActor
+private final class PeriodLineChartCache {
+    var labelToIndex: [String: Int] = [:]
+    var labelIndexIdentity: String = ""
+}
+
 struct PeriodLineChart: View {
     let dataPoints: [PeriodDataPoint]
     let series: PeriodLineChartSeries
@@ -205,9 +189,8 @@ struct PeriodLineChart: View {
     var mode: ChartDisplayMode = .full
 
     @State private var zoomScale: CGFloat = 1.0
-    @State private var selectedRange: ClosedRange<String>?
     @State private var selectedValueLabel: String?
-    @State private var visibleLeftLabel: String?
+    @State private var cache = PeriodLineChartCache()
 
     private var isCompact: Bool { mode == .compact }
     private var basePointWidth: CGFloat { isCompact ? 30 : granularity.pointWidth }
@@ -217,45 +200,31 @@ struct PeriodLineChart: View {
 
     private var values: [Double] { dataPoints.map { series.value(for: $0) } }
 
-    /// Y-domain over the entire dataset (used by compact sparkline).
+    /// Static Y-domain computed once over the entire dataset. Replaces the previous
+    /// `dynamicYDomain(visibleCount:)` which recomputed per body re-eval driven by
+    /// scroll position. Two reasons to make it static:
+    ///   1. **Visual stability**: with dynamic domain, the Y axis re-scaled as the
+    ///      user scrolled — bars/lines visually jumped under their finger.
+    ///   2. **Performance**: a stable domain means `lineStyle`/`areaStyle`
+    ///      (multi-stop `LinearGradient` for `.cashFlow`/`.wealth`) are constant
+    ///      and can be hoisted out of the per-frame body.
     private var fullYDomain: ClosedRange<Double> { series.yDomain(values: values) }
 
-    /// Y-domain over the currently-visible window. Recomputed only when
-    /// `visibleLeftLabel` or `zoomScale` changes — NOT on every body call.
-    /// Apple Charts updates its scale smoothly without an explicit `.animation`,
-    /// so we deliberately avoid attaching a spring here (that was the lag source).
-    ///
-    /// **Frozen during active range selection** — otherwise dragging across periods
-    /// re-scales the Y axis mid-gesture, which makes bars/lines visually jump under
-    /// the user's finger. Selection is a frozen viewport: range stays visible against
-    /// a stable axis until the user resets it.
-    private func dynamicYDomain(visibleCount: Int) -> ClosedRange<Double> {
-        guard !dataPoints.isEmpty else { return fullYDomain }
-        if selectedRange != nil { return fullYDomain }
-        let leftIdx: Int
-        if let label = visibleLeftLabel,
-           let idx = dataPoints.firstIndex(where: { $0.label == label }) {
-            leftIdx = idx
-        } else {
-            leftIdx = max(0, dataPoints.count - visibleCount)
-        }
-        let endIdx = min(dataPoints.count - 1, leftIdx + visibleCount - 1)
-        let slice = dataPoints[leftIdx...endIdx]
-        return series.yDomain(values: slice.map { series.value(for: $0) })
-    }
-
-    /// Single-tap selected point (only valid when no range is active).
+    /// Single-tap selected point.
     private var selectedSinglePoint: PeriodDataPoint? {
-        guard selectionPoints.isEmpty,
-              let label = selectedValueLabel else { return nil }
-        return dataPoints.first { $0.label == label }
+        guard let label = selectedValueLabel,
+              let idx = cache.labelToIndex[label] else { return nil }
+        return dataPoints[idx]
     }
 
-    /// How many data points fit in the visible window for the current zoom.
-    /// Smaller values = more zoomed-in; clamped between 1 and total count.
-    private func visibleCount(for containerWidth: CGFloat) -> Int {
-        guard effectivePointWidth > 0 else { return dataPoints.count }
-        let raw = Int((containerWidth / effectivePointWidth).rounded())
+    /// How many data points fit in the visible window. Width-independent: a
+    /// category x-axis treats `chartXVisibleDomain(length:)` as "show N
+    /// categories regardless of width", so we don't need a `GeometryReader`.
+    /// Default = 12 buckets (1 year of months / 3 months of weeks); zoom-in
+    /// halves, zoom-out doubles. Apple Charts gracefully clamps small datasets.
+    private var visibleCount: Int {
+        let base = 12.0
+        let raw = Int((base / max(zoomScale, 0.1)).rounded())
         return max(1, min(dataPoints.count, raw))
     }
 
@@ -265,16 +234,26 @@ struct PeriodLineChart: View {
         return dataPoints.first(where: { $0.periodStart > now })?.label
     }
 
-    /// Points covered by the active range selection (in array order, not lex order).
-    private var selectionPoints: [PeriodDataPoint] {
-        guard let range = selectedRange,
-              let lo = dataPoints.firstIndex(where: { $0.label == range.lowerBound }),
-              let hi = dataPoints.firstIndex(where: { $0.label == range.upperBound })
-        else { return [] }
-        let l = min(lo, hi)
-        let h = max(lo, hi)
-        return Array(dataPoints[l...h])
+    /// Identity fingerprint used to detect when `dataPoints` has changed and the
+    /// `[label: index]` cache must be rebuilt. Cheap to compute — no full scan.
+    private var dataPointsIdentity: String {
+        guard let first = dataPoints.first, let last = dataPoints.last else { return "" }
+        return "\(dataPoints.count)|\(first.label)|\(last.label)"
     }
+
+    /// Rebuilds the label→index cache when the dataset identity changes.
+    /// Side-effecting on the class-typed cache is safe: SwiftUI tracks @State
+    /// reference identity, not the class's internal state.
+    private func rebuildLabelIndexIfNeeded() {
+        let identity = dataPointsIdentity
+        guard cache.labelIndexIdentity != identity else { return }
+        var map = [String: Int]()
+        map.reserveCapacity(dataPoints.count)
+        for (i, p) in dataPoints.enumerated() { map[p.label] = i }
+        cache.labelToIndex = map
+        cache.labelIndexIdentity = identity
+    }
+
 
     // MARK: Body
 
@@ -283,34 +262,45 @@ struct PeriodLineChart: View {
             emptyState
                 .frame(height: chartHeight)
         } else if isCompact {
+            // No `.chartAppear()` in compact: mini-charts live in the Insights feed
+            // where many materialise simultaneously during scroll — concurrent springs
+            // cost frames. Full mode (below) keeps the entrance animation.
             sparkline
                 .frame(height: chartHeight)
-                .chartAppear()
         } else {
             VStack(spacing: AppSpacing.sm) {
                 zoomToolbar
                     .screenPadding()
 
-                if !selectionPoints.isEmpty {
-                    rangeBanner
-                } else if let p = selectedSinglePoint {
-                    singleBanner(point: p)
-                }
+                bannerSlot
 
-                interactiveChart
+                fullChart
                     .frame(height: chartHeight)
-            }
-            .onChange(of: selectedRange) { _, new in
-                guard new != nil else { return }
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                selectedValueLabel = nil
             }
             .onChange(of: selectedValueLabel) { _, new in
                 guard new != nil else { return }
                 UISelectionFeedbackGenerator().selectionChanged()
             }
+            .onAppear { rebuildLabelIndexIfNeeded() }
+            .onChange(of: dataPointsIdentity) { _, _ in rebuildLabelIndexIfNeeded() }
             .chartAppear()
         }
+    }
+
+    /// Fixed-height slot for the selection banner. Always reserves space so the
+    /// chart below doesn't shift when the banner appears/disappears. Visibility
+    /// is opacity-driven; horizontal padding aligns the banner with the screen
+    /// margin (`screenPadding`).
+    private var bannerSlot: some View {
+        ZStack {
+            if let p = selectedSinglePoint {
+                singleBanner(point: p)
+                    .transition(.opacity)
+            }
+        }
+        .frame(height: 56)
+        .screenPadding()
+        .animation(.easeInOut(duration: 0.15), value: selectedSinglePoint?.label)
     }
 
     private var emptyState: some View {
@@ -356,47 +346,20 @@ struct PeriodLineChart: View {
 
     // MARK: - Interactive full chart
 
-    private var interactiveChart: some View {
-        GeometryReader { proxy in
-            let visible = visibleCount(for: proxy.size.width)
-            let leftIdx = max(0, dataPoints.count - visible)
-            let initialLabel = dataPoints[leftIdx].label
-            fullChart(visibleCount: visible, initialLeftLabel: initialLabel)
-        }
-    }
-
-    private func fullChart(visibleCount: Int, initialLeftLabel: String) -> some View {
-        let domain = dynamicYDomain(visibleCount: visibleCount)
+    private var fullChart: some View {
+        let domain = fullYDomain
+        // Stable styles: yDomain is fixed for the lifetime of this view, so the
+        // multi-stop `LinearGradient` for `.cashFlow`/`.wealth` is computed once.
         let lineFill = series.lineStyle(yDomain: domain)
         let areaFill = series.areaStyle(yDomain: domain)
-        // Bind scrollPosition through a non-optional String binding (Apple Charts requirement).
-        // Setter is **blocked while a range selection is active** so range-drag doesn't
-        // cause the chart to auto-pan or re-trigger Y-axis recompute mid-gesture.
-        let scrollBinding = Binding<String>(
-            get: { visibleLeftLabel ?? initialLeftLabel },
-            set: { newValue in
-                guard selectedRange == nil else { return }
-                visibleLeftLabel = newValue
-            }
-        )
+        let categoryDomain = dataPoints.map { $0.label }
+        // Trailing anchor: leftmost visible label = `count - visibleCount`, so the
+        // most recent data appears on the right edge by default.
+        let leftIdx = max(0, dataPoints.count - visibleCount)
+        let trailingAnchorLabel = dataPoints[leftIdx].label
         return Chart {
-            // Translucent band highlighting the selected range.
-            if let range = selectedRange {
-                RectangleMark(
-                    xStart: .value("Start", range.lowerBound),
-                    xEnd: .value("End", range.upperBound)
-                )
-                .foregroundStyle(AppColors.accent.opacity(0.15))
-            }
-
-            // Single-tap selection ruler.
-            if let label = selectedValueLabel, selectionPoints.isEmpty {
-                RuleMark(x: .value("Selected", label))
-                    .foregroundStyle(AppColors.textTertiary.opacity(0.4))
-                    .lineStyle(StrokeStyle(lineWidth: 1))
-            }
-
-            // Today / future boundary marker.
+            // Today / future boundary marker — drawn first; today is part of
+            // dataPoints' label set so this doesn't introduce a new category.
             if let today = todayLabel {
                 RuleMark(x: .value("Today", today))
                     .foregroundStyle(AppColors.accent.opacity(0.45))
@@ -427,12 +390,53 @@ struct PeriodLineChart: View {
                     .foregroundStyle(AppColors.textTertiary.opacity(0.5))
                     .lineStyle(StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
             }
+
+            // Selection emphasis — drawn LAST so it renders on top. The x-domain
+            // is also locked via `chartXScale(domain:)` below. Both safeguards
+            // ensure selection marks cannot reorder the X axis.
+            //
+            // Visual layers (back-to-front): ruler → halo → emphasized point.
+            if let label = selectedValueLabel,
+               let idx = cache.labelToIndex[label] {
+                let selectedPoint = dataPoints[idx]
+                let v = series.value(for: selectedPoint)
+                let pointColor = series.pointColor(for: v)
+
+                RuleMark(x: .value("Selected", label))
+                    .foregroundStyle(pointColor.opacity(0.5))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+
+                PointMark(
+                    x: .value("SelectedHalo", selectedPoint.label),
+                    y: .value("SelectedV", v)
+                )
+                .symbolSize(180)
+                .foregroundStyle(pointColor.opacity(0.20))
+
+                PointMark(
+                    x: .value("SelectedInner", selectedPoint.label),
+                    y: .value("SelectedV", v)
+                )
+                .symbolSize(70)
+                .foregroundStyle(pointColor)
+            }
         }
+        // Lock category order to the dataPoints' label sequence. Without this,
+        // Apple Charts derives x-domain from "first occurrence across marks in
+        // declaration order" — which made the selection RuleMark's label define
+        // the leading category, flipping the axis on every tap.
+        .chartXScale(domain: categoryDomain)
         .chartYScale(domain: domain)
         .chartXVisibleDomain(length: visibleCount)
         .chartScrollableAxes(.horizontal)
-        .chartScrollPosition(x: scrollBinding)
-        .chartXSelection(range: $selectedRange)
+        // Trailing anchor — start with most recent data on the right.
+        // `initialX` is one-shot at first appearance and not re-applied on body
+        // re-evals (verified by virtue of the architecture: no other anchor
+        // sources exist now to compete with it).
+        .chartScrollPosition(initialX: trailingAnchorLabel)
+        // Use the framework-supported selection. `chartXSelection(value:)`
+        // coexists with `chartScrollableAxes` at the gesture-arbitration level —
+        // tap selects, drag scrolls.
         .chartXSelection(value: $selectedValueLabel)
         .chartXAxis {
             AxisMarks { value in
@@ -461,63 +465,23 @@ struct PeriodLineChart: View {
 
     // MARK: - Single-point banner
 
+    /// Selection banner. No close button — the banner auto-hides when the user
+    /// taps elsewhere or scrolls (selection clears on tap-off via Apple Charts).
+    /// Date is emphasised (bodyEmphasis on primary text) per design spec.
     private func singleBanner(point: PeriodDataPoint) -> some View {
         let value = series.value(for: point)
         return HStack(spacing: AppSpacing.md) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(axisLabelMap[point.label] ?? point.label)
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(ChartAxisHelpers.formatCompact(value))
-                    .font(AppTypography.bodyEmphasis)
-                    .foregroundStyle(series.pointColor(for: value))
-            }
-            Spacer()
-            Button {
-                selectedValueLabel = nil
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(AppColors.textTertiary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(String(localized: "insights.range.reset")))
-        }
-        .padding(.horizontal, AppSpacing.md)
-        .padding(.vertical, AppSpacing.sm)
-        .cardStyle()
-    }
-
-    // MARK: - Range banner
-
-    private var rangeBanner: some View {
-        let pts = selectionPoints
-        let value = series.summarize(pts)
-        return HStack(spacing: AppSpacing.md) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(series.summaryTitle)
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
-                Text(ChartAxisHelpers.formatCompact(value))
                     .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(AppColors.textPrimary)
+                Text(ChartAxisHelpers.formatCompact(value))
+                    .font(AppTypography.body)
+                    .foregroundStyle(series.pointColor(for: value))
             }
-            Spacer()
-            if let first = pts.first?.label, let last = pts.last?.label {
-                Text("\(axisLabelMap[first] ?? first) – \(axisLabelMap[last] ?? last)")
-                    .font(AppTypography.caption2)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
-            Button {
-                selectedRange = nil
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(AppColors.textTertiary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(String(localized: "insights.range.reset")))
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, AppSpacing.md)
         .padding(.vertical, AppSpacing.sm)
         .cardStyle()

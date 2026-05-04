@@ -22,26 +22,18 @@ struct ContentRevealModifier: ViewModifier {
         content
             .opacity(isVisible ? 1 : 0)
             .animation(AppAnimation.contentRevealAnimation, value: isVisible)
-            .onChange(of: isReady) { _, ready in
-                guard ready, !isVisible else { return }
-                revealAfterDelay()
-            }
-            .onAppear {
-                if isReady && !isVisible {
-                    revealAfterDelay()
+            // `.task(id: isReady)` replaces the unstructured `Task { sleep }` that the
+            // old `revealAfterDelay()` spawned: that task was unowned and could write
+            // `isVisible = true` after the view had already disappeared. `.task` is
+            // tied to view lifetime and auto-cancels on disappear.
+            .task(id: isReady) {
+                guard isReady, !isVisible else { return }
+                if delay > 0 {
+                    try? await Task.sleep(for: .milliseconds(Int(delay * 1000)))
+                    if Task.isCancelled { return }
                 }
-            }
-    }
-
-    private func revealAfterDelay() {
-        if delay > 0 {
-            Task {
-                try? await Task.sleep(for: .milliseconds(Int(delay * 1000)))
                 isVisible = true
             }
-        } else {
-            isVisible = true
-        }
     }
 }
 

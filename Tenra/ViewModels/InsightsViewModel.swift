@@ -107,7 +107,10 @@ final class InsightsViewModel {
     }
 
     var hasData: Bool {
-        !transactionStore.transactions.isEmpty
+        // Read the Observable scalar mirror (`transactionsCount`) instead of
+        // `transactions.isEmpty`. The latter subscribes the entire 19k-tx array
+        // and re-evaluates the whole Insights feed on every transaction mutation.
+        transactionStore.transactionsCount > 0
     }
 
     // MARK: - Lifecycle

@@ -96,7 +96,11 @@ struct InsightsCardView<BottomChart: View>: View {
     private var miniChart: some View {
         switch insight.detailData {
         case .categoryBreakdown(let items):
-            DonutChart(slices: DonutSlice.from(items), mode: .compact)
+            // Canvas-based replacement for `DonutChart(mode: .compact)`. With
+            // 25+ cards visible during scroll, instantiating Apple Charts per
+            // mini-card dominated frame time when LazyVStack materialised a
+            // section. See MiniDonut.swift header for the rationale.
+            MiniDonut(slices: DonutSlice.from(items))
         case .budgetProgressList(let items):
             if let first = items.first {
                 budgetProgressBar(first)
@@ -106,13 +110,12 @@ struct InsightsCardView<BottomChart: View>: View {
         case .accountComparison:
             EmptyView()
         case .periodTrend(let points):
-            PeriodLineChart(
+            // Canvas-based replacement for `PeriodLineChart(mode: .compact)`.
+            // See MiniSparkline.swift header for the rationale.
+            MiniSparkline(
                 dataPoints: points,
-                series: insight.category == .wealth ? .wealth : .cashFlow,
-                granularity: points.first?.granularity ?? .month,
-                mode: .compact
+                series: insight.category == .wealth ? .wealth : .cashFlow
             )
-            .frame(height: 60)
         case .wealthBreakdown:
             // No mini chart for wealth breakdown (account list)
             EmptyView()
