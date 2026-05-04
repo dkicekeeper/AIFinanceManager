@@ -115,26 +115,34 @@ struct InsightsView: View {
     // MARK: - Summary Header Section
 
     private var insightsSummaryHeaderSection: some View {
-        NavigationLink(destination: InsightsSummaryDetailView(
-            totalIncome: insightsViewModel.totalIncome,
-            totalExpenses: insightsViewModel.totalExpenses,
-            netFlow: insightsViewModel.netFlow,
-            currency: insightsViewModel.baseCurrency,
-            periodDataPoints: insightsViewModel.periodDataPoints,
-            granularity: insightsViewModel.currentGranularity
-        )) {
-            InsightsSummaryHeader(
+        VStack(alignment: .leading, spacing: AppSpacing.lg) {
+            NavigationLink(destination: InsightsSummaryDetailView(
                 totalIncome: insightsViewModel.totalIncome,
                 totalExpenses: insightsViewModel.totalExpenses,
                 netFlow: insightsViewModel.netFlow,
                 currency: insightsViewModel.baseCurrency,
                 periodDataPoints: insightsViewModel.periodDataPoints,
-                healthScore: insightsViewModel.healthScore
-            )
-            .screenPadding()
-            .contentShape(Rectangle())
+                granularity: insightsViewModel.currentGranularity
+            )) {
+                InsightsTotalsCard(
+                    income: insightsViewModel.totalIncome,
+                    expenses: insightsViewModel.totalExpenses,
+                    netFlow: insightsViewModel.netFlow,
+                    currency: insightsViewModel.baseCurrency
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if let hs = insightsViewModel.healthScore {
+                NavigationLink(destination: FinancialHealthDetailView(score: hs)) {
+                    HealthScoreBadge(score: hs)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
+        .screenPadding()
         .contentReveal(isReady: !insightsViewModel.isLoading)
     }
 
