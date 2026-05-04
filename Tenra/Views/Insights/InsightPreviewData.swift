@@ -319,6 +319,11 @@ extension PeriodDataPoint {
 }
 
 // MARK: - Mock FinancialHealthScore
+//
+// Mock values are realistic snapshots for #Previews, not mathematically
+// derived. `netFlowPercent` reflects the latest period's net flow over
+// total income — it lives in a different time window than the cumulative
+// `totalIncomeWindow` / `totalExpensesWindow` and need not match them.
 
 extension FinancialHealthScore {
     static func mockGood() -> FinancialHealthScore {
@@ -330,7 +335,21 @@ extension FinancialHealthScore {
             budgetAdherenceScore: 80,
             recurringRatioScore: 65,
             emergencyFundScore: 60,
-            cashflowScore: 100
+            cashflowScore: 100,
+            savingsRatePercent: 15.0,
+            budgetsOnTrack: 8,
+            budgetsTotal: 10,
+            recurringMonthlyTotal: 220_000,
+            recurringPercentOfIncome: 35.0,
+            monthsCovered: 1.8,
+            avgMonthlyExpenses: 400_000,
+            avgMonthlyNetFlow: 80_000,
+            totalBalance: 720_000,
+            netFlowPercent: 13.0,
+            totalIncomeWindow: 600_000,
+            totalExpensesWindow: 510_000,
+            baseCurrency: "KZT",
+            isBudgetComponentActive: true
         )
     }
 
@@ -343,7 +362,21 @@ extension FinancialHealthScore {
             budgetAdherenceScore: 40,
             recurringRatioScore: 50,
             emergencyFundScore: 30,
-            cashflowScore: 0
+            cashflowScore: 0,
+            savingsRatePercent: 4.0,
+            budgetsOnTrack: 4,
+            budgetsTotal: 10,
+            recurringMonthlyTotal: 350_000,
+            recurringPercentOfIncome: 58.0,
+            monthsCovered: 0.9,
+            avgMonthlyExpenses: 580_000,
+            avgMonthlyNetFlow: -40_000,
+            totalBalance: 520_000,
+            netFlowPercent: -8.0,
+            totalIncomeWindow: 600_000,
+            totalExpensesWindow: 580_000,
+            baseCurrency: "KZT",
+            isBudgetComponentActive: true
         )
     }
 }

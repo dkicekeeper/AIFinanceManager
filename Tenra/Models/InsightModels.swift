@@ -269,7 +269,24 @@ struct FinancialHealthScore {
     let budgetAdherenceScore:  Int    // 0-100, weight 0.25
     let recurringRatioScore:   Int    // 0-100, weight 0.20
     let emergencyFundScore:    Int    // 0-100, weight 0.15
-    let cashflowScore:         Int    // 0 or 100, weight 0.10
+    let cashflowScore:         Int    // 0-100, weight 0.10
+
+    // MARK: Raw values (for the detail screen)
+
+    let savingsRatePercent:      Double  // e.g. 12.4
+    let budgetsOnTrack:          Int     // e.g. 7
+    let budgetsTotal:            Int     // 0 = budget component excluded
+    let recurringMonthlyTotal:   Double  // baseCurrency, monthly equivalent
+    let recurringPercentOfIncome: Double // e.g. 38.5
+    let monthsCovered:           Double  // e.g. 1.8
+    let avgMonthlyExpenses:      Double  // baseCurrency
+    let avgMonthlyNetFlow:       Double  // baseCurrency, signed
+    let totalBalance:            Double  // baseCurrency
+    let netFlowPercent:          Double  // e.g. -7.2
+    let totalIncomeWindow:       Double  // baseCurrency
+    let totalExpensesWindow:     Double  // baseCurrency
+    let baseCurrency:            String
+    let isBudgetComponentActive: Bool    // mirrors budgetsTotal > 0
 }
 
 extension FinancialHealthScore {
@@ -283,7 +300,21 @@ extension FinancialHealthScore {
             budgetAdherenceScore: 0,
             recurringRatioScore: 0,
             emergencyFundScore: 0,
-            cashflowScore: 0
+            cashflowScore: 0,
+            savingsRatePercent: 0,
+            budgetsOnTrack: 0,
+            budgetsTotal: 0,
+            recurringMonthlyTotal: 0,
+            recurringPercentOfIncome: 0,
+            monthsCovered: 0,
+            avgMonthlyExpenses: 0,
+            avgMonthlyNetFlow: 0,
+            totalBalance: 0,
+            netFlowPercent: 0,
+            totalIncomeWindow: 0,
+            totalExpensesWindow: 0,
+            baseCurrency: "",
+            isBudgetComponentActive: false
         )
     }
 }
