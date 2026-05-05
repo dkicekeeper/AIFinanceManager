@@ -14,6 +14,10 @@
 6. [Formatting & Display](#6-formatting--display)
 7. [Haptics](#7-haptics)
 8. [Remaining Native Form Views](#8-remaining-native-form-views)
+9. [Animation Guidelines](#9-animation-guidelines)
+10. [cardStyle Padding Contract](#10-cardstyle-padding-contract)
+11. [AnimatedInputComponents Deep Dive](#11-animatedinputcomponents-deep-dive)
+12. [Amount Formatting Files](#12-amount-formatting-files)
 
 ---
 
@@ -135,6 +139,7 @@ All use Inter variable font with Dynamic Type scaling:
 | `slow` | 0.35s | Modals |
 | `chartAppearAnimation` | spring(0.55, 0.82) | Chart entrance |
 | `chartUpdateAnimation` | spring(0.5, 0.85) | Chart data updates |
+| `chartBannerFade` | (see source) | Chart selection banner appear/disappear |
 
 **Magic numbers:** `facepileHiddenScale` (0.5), `facepileStagger` (0.06s per icon), `chartHiddenScale` (0.94).
 
@@ -913,4 +918,142 @@ All primary entity edit views (`Account`, `Subscription`, `Category`, `Deposit`,
 
 ---
 
-*Last Updated: 2026-03-20*
+## 9. Animation Guidelines
+
+### Never use hardcoded springs
+
+All animations must use `AppAnimation` constants. Never use inline `.spring(response:dampingFraction:)`.
+
+| Context | Token |
+|---------|-------|
+| Validation errors, content toggles | `AppAnimation.contentSpring` |
+| Amount changes, state transitions | `AppAnimation.gentleSpring` |
+| Facepile icon entrance | `AppAnimation.facepileSpring` |
+| Chart entrance (opacity+scale) | `AppAnimation.chartAppearAnimation` |
+| Chart data updates | `AppAnimation.chartUpdateAnimation` |
+| Chart selection banner | `AppAnimation.chartBannerFade` |
+| Section fade-in on init | `AppAnimation.contentRevealAnimation` |
+| Progress bar expansion | `AppAnimation.progressBarSpring` |
+| Bounce effects | `AppAnimation.spring` |
+
+### Animation Modifiers
+
+- **`.staggeredEntrance(delay:)`** — `scale(0.5→1.0)` + opacity pop-in. Use for facepile icons, overlapping avatar stacks. Delay per icon: `Double(index) * AppAnimation.facepileStagger`.
+- **`.chartAppear(delay:)`** — `scale(0.94→1.0)` + opacity from bottom. Use for chart containers and card entrances in scrollable lists.
+- **`.contentReveal(isReady:delay:)`** — opacity fade-in. Use for staggered section reveals during initialization (home, insights).
+- **`.filterChipStyle(isSelected:)`** — includes animated selection transition via `contentSpring`.
+
+### Card State Transitions (empty↔loaded)
+
+Cards with empty/loaded states must animate the transition:
+
+```swift
+if items.isEmpty {
+    EmptyStateView(...).transition(.opacity)
+} else {
+    loadedContent.transition(.opacity)
+}
+// Outside the conditional:
+.animation(AppAnimation.gentleSpring, value: items.isEmpty)
+```
+
+### Reduce Motion
+
+All decorative animations respect `UIAccessibility.isReduceMotionEnabled`. Use `AppAnimation.isReduceMotionEnabled` to check. Reduce Motion-aware variants (`adaptiveSpring`, `fastAnimation`, etc.) return `.linear(duration: 0)` when enabled.
+
+---
+
+## 10. cardStyle Padding Contract
+
+`cardStyle()` = **pure visual only** (shape + material, NO padding). Never rely on it for spacing.
+
+### Rows own their padding
+
+`RowConfiguration` presets:
+
+| Preset | V padding | H padding |
+|--------|-----------|-----------|
+| `.standard` | 12 | 16 |
+| `.info` | 8 | 0 |
+| `.selectable` | 12 | 16 |
+| `.sheetList` | 12 | 16 |
+| `.settings` | 4 | 0 |
+
+### Arbitrary content
+
+VStack, HStack, custom cards must add `.padding(AppSpacing.lg)` explicitly before `.cardStyle()`.
+
+### Why H:0 for `.info` and `.settings`
+
+- **`.info` H:0** — InfoRow always lives inside a container with `.padding(.lg)` — adding own H padding would double it to 32pt
+- **`.settings` H:0** — `List` / `Form` apply `listRowInsets` (16pt leading/trailing) automatically — rows inside must NOT add H padding
+
+### Dividers inside cards
+
+`.padding(.leading, AppSpacing.lg)` (16pt) to align with row content start.
+
+---
+
+## 11. AnimatedInputComponents Deep Dive
+
+`Tenra/Views/Components/Input/AnimatedInputComponents.swift` contains:
+
+| Component | Purpose |
+|-----------|---------|
+| `BlinkingCursor` | Animated cursor for text inputs |
+| `AmountDigitDisplay` | Animated amount display using single `Text` with `.numericText()` transition |
+| `AmountInput` | Self-contained amount input (`AmountDigitDisplay` + hidden `TextField` + focus management) |
+| `AmountInputView` | Thin wrapper around `AmountInput` + currency selector + conversion display + error |
+
+### Visual Digit Grouping via `AttributedString.kern`
+
+⚠️ **Critical for `.numericText()` animation correctness.**
+
+Space characters in the string shift character positions on grouping change ("1 234" → "12 345"), causing **multiple digits to animate**.
+
+`AttributedString.kern` is a styling attribute **invisible to `.numericText()`** — the string stays "12345" but renders as "12 345". Only the actual typed/deleted digit animates.
+
+Used in both `AmountDigitDisplay` and `AmountInputView` conversion display.
+
+### Font Sizing
+
+Via `.minimumScaleFactor(0.3)` — handles long amounts gracefully without clipping.
+
+### `AmountInput` Configuration
+
+- `baseFontSize`
+- `color`
+- `placeholderColor`
+- `autoFocus`
+- `showContextMenu`
+- `onAmountChange`
+
+### `AnimatedTitleInput`
+
+Uses `contentTransition(.interpolate)` — **intentionally different** from `AmountDigitDisplay`'s `.numericText()`. Don't unify.
+
+---
+
+## 12. Amount Formatting Files
+
+Three separate files with distinct purposes:
+
+| File | Purpose | Decimal places |
+|------|---------|----------------|
+| `Tenra/Utils/AmountFormatter.swift` | Stored values: format/parse/validate; `minimumFractionDigits=2` | Always 2 ("1 234.50") |
+| `Tenra/Utils/AmountDisplayConfiguration.swift` | Global formatter config. **Hot path: `.formatter`** (cached). `makeNumberFormatter()` creates new object — never call in `List`/`ForEach` | Configurable (default 2) |
+| `Tenra/Utils/AmountInputFormatting.swift` | Input component mechanics: `cleanAmountString`, `displayAmount(for:)`, `groupDigits()`, `formatLargeNumber()` | 0–2 (no trailing zeros) |
+
+### Cache Invalidation
+
+⚠️ **`AmountDisplayConfiguration` cache invalidation**:
+
+```swift
+static var shared = Config() { didSet { _cache = nil } }
+```
+
+Mutating `shared.prop = x` also triggers `didSet` (Swift copies struct and reassigns).
+
+---
+
+*Last Updated: 2026-05-05*
