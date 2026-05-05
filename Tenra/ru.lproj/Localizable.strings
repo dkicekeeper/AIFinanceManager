@@ -859,6 +859,15 @@
 "insights.formula.savingsRate.rec.good" = "Сберегаете больше 20%% — держите ритм и направьте излишек на долгосрочную цель.";
 "insights.formula.savingsRate.rec.fair" = "Неплохо, но до 20%% не хватает %@ в месяц. Подрежьте регулярные или разовые категории, которые подросли.";
 "insights.formula.savingsRate.rec.low" = "Ниже 10%% — буфера почти нет. Минимум +%@ в месяц: начните с самой крупной дискреционной категории.";
+"insights.formula.emergencyFund.title" = "Резервный фонд";
+"insights.formula.emergencyFund.heroLabel" = "Сколько месяцев расходов покроет баланс";
+"insights.formula.emergencyFund.formulaHeader" = "Как считается";
+"insights.formula.emergencyFund.row.balance" = "Общий баланс";
+"insights.formula.emergencyFund.row.avgExpenses" = "Средние расходы (3 мес)";
+"insights.formula.emergencyFund.row.monthsCovered" = "Месяцев покрытия";
+"insights.formula.emergencyFund.explainer" = "Сколько продержитесь, если доход остановится завтра. Минимум — 3 месяца; 6 месяцев — комфортная подушка.";
+"insights.formula.emergencyFund.rec.good" = "Покрытие выше 3 месяцев. Излишек можно перевести на доходный счёт или направить на долгосрочные цели.";
+"insights.formula.emergencyFund.rec.gap" = "До 3 месяцев покрытия не хватает %@. Даже небольшие пополнения накапливаются — начните с любой суммы, которая укладывается в норму сбережений.";
 "insights.granularity.prev.week" = "к предыдущей неделе";
 "insights.granularity.prev.month" = "к предыдущему месяцу";
 "insights.granularity.prev.quarter" = "к предыдущему кварталу";

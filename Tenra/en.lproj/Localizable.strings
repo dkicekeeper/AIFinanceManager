@@ -859,6 +859,15 @@
 "insights.formula.savingsRate.rec.good" = "You're saving more than 20%% — keep the routine and consider directing the surplus toward a long-term goal.";
 "insights.formula.savingsRate.rec.fair" = "Decent, but pushing to 20%% means an extra %@ saved each month. Trim recurring or one-off categories that crept up.";
 "insights.formula.savingsRate.rec.low" = "Below 10%% leaves no buffer. Aim for at least %@ more each month — start with the largest discretionary category.";
+"insights.formula.emergencyFund.title" = "Emergency Fund";
+"insights.formula.emergencyFund.heroLabel" = "Months of expenses your balance covers";
+"insights.formula.emergencyFund.formulaHeader" = "How it's computed";
+"insights.formula.emergencyFund.row.balance" = "Total balance";
+"insights.formula.emergencyFund.row.avgExpenses" = "Avg monthly expenses (last 3 mo)";
+"insights.formula.emergencyFund.row.monthsCovered" = "Months covered";
+"insights.formula.emergencyFund.explainer" = "How long your accounts cover regular spending if income paused tomorrow. 3+ months is the floor most planners recommend; 6 months is a comfortable cushion.";
+"insights.formula.emergencyFund.rec.good" = "You're past the 3-month threshold. Consider parking the surplus in a higher-yield account or directing it toward longer-term goals.";
+"insights.formula.emergencyFund.rec.gap" = "To reach 3 months of cover, top up by %@. Even small monthly contributions compound — start with whatever fits your savings rate.";
 "insights.granularity.prev.week" = "vs previous week";
 "insights.granularity.prev.month" = "vs previous month";
 "insights.granularity.prev.quarter" = "vs previous quarter";

@@ -121,6 +121,37 @@ extension InsightsService {
         let monthsCovered = totalBalance / avgMonthlyExpenses
         let severity: InsightSeverity = monthsCovered >= 3 ? .positive : (monthsCovered >= 1 ? .warning : .critical)
         let monthsInt = Int(monthsCovered.rounded(.down))
+
+        let recommendation: String
+        if monthsCovered >= 3 {
+            recommendation = String(localized: "insights.formula.emergencyFund.rec.good")
+        } else {
+            let targetBalance = avgMonthlyExpenses * 3
+            let gap = targetBalance - totalBalance
+            recommendation = String(
+                format: String(localized: "insights.formula.emergencyFund.rec.gap"),
+                Formatting.formatCurrencySmart(max(0, gap), currency: baseCurrency)
+            )
+        }
+
+        let model = InsightFormulaModel(
+            id: "emergencyFund",
+            titleKey: "insights.formula.emergencyFund.title",
+            icon: "shield.lefthalf.filled",
+            color: severity.color,
+            heroValueText: String(format: String(localized: "insights.formula.value.months"), monthsCovered),
+            heroLabelKey: "insights.formula.emergencyFund.heroLabel",
+            formulaHeaderKey: "insights.formula.emergencyFund.formulaHeader",
+            formulaRows: [
+                InsightFormulaRow(id: "balance", labelKey: "insights.formula.emergencyFund.row.balance", value: totalBalance, kind: .currency),
+                InsightFormulaRow(id: "avgExpenses", labelKey: "insights.formula.emergencyFund.row.avgExpenses", value: avgMonthlyExpenses, kind: .currency),
+                InsightFormulaRow(id: "monthsCovered", labelKey: "insights.formula.emergencyFund.row.monthsCovered", value: monthsCovered, kind: .months, isEmphasised: true)
+            ],
+            explainerKey: "insights.formula.emergencyFund.explainer",
+            recommendation: recommendation,
+            baseCurrency: baseCurrency
+        )
+
         Self.logger.debug("🛡 [Insights] EmergencyFund — \(String(format: "%.1f", monthsCovered), privacy: .public) months, severity=\(String(describing: severity), privacy: .public)")
         return Insight(
             id: "emergency_fund",
@@ -136,7 +167,7 @@ extension InsightsService {
             trend: nil,
             severity: severity,
             category: .savings,
-            detailData: nil
+            detailData: .formulaBreakdown(model)
         )
     }
 
