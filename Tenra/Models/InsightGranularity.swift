@@ -240,6 +240,27 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
         }
     }
 
+    // MARK: - Banner Label (full, no abbreviations)
+
+    /// Banner-friendly label — used in chart selection banners where the
+    /// axis-style abbreviations ("ЯНВ" / "W03" / "Q1") are too compact. Shows
+    /// the full month name + year for `.month`, a full week range for `.week`,
+    /// and matches `periodLabel` for the others (which are already non-abbreviated).
+    nonisolated func bannerLabel(for key: String, locale: Locale = .current) -> String {
+        let calendar = Calendar.current
+        let date = periodStart(for: key)
+        switch self {
+        case .week:
+            let df = DateFormatter()
+            df.locale = locale
+            df.dateFormat = DateFormatter.dateFormat(fromTemplate: "dMMMMyyyy", options: 0, locale: locale)
+            let weekEnd = calendar.date(byAdding: .day, value: 6, to: date) ?? date
+            return "\(df.string(from: date)) – \(df.string(from: weekEnd))"
+        case .month, .quarter, .year, .allTime:
+            return periodLabel(for: key, locale: locale)
+        }
+    }
+
     // MARK: - SF Symbol icon
 
     /// SF Symbol name representing this granularity in pickers and menus.

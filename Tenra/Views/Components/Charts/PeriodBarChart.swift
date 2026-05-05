@@ -276,7 +276,9 @@ struct PeriodBarChart: View {
     private func singleBanner(point: PeriodDataPoint) -> some View {
         HStack(alignment: .center, spacing: AppSpacing.lg) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(axisLabelMap[point.label] ?? point.label)
+                // Use the granularity's full banner label — bypasses the axis
+                // dedup map which produces compact "ЯНВ" / "W03" / "Q1" forms.
+                Text(granularity.bannerLabel(for: point.key))
                     .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(AppColors.textPrimary)
                 HStack(spacing: AppSpacing.md) {
