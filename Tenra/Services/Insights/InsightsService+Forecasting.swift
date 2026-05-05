@@ -294,6 +294,50 @@ extension InsightsService {
         let direction: TrendDirection = delta > 0 ? .up : .down
         let severity: InsightSeverity = delta <= -10 ? .positive : (delta >= 15 ? .warning : .neutral)
         let thisLabel = thisMonth?.label ?? ""
+        let lastLabel = lastYear?.label ?? ""
+        let absDelta = thisExpenses - lastYearExpenses
+
+        let recommendation: String
+        if delta <= -10 {
+            recommendation = String(localized: "insights.formula.yearOverYear.rec.down")
+        } else if delta >= 15 {
+            recommendation = String(
+                format: String(localized: "insights.formula.yearOverYear.rec.up"),
+                String(format: "%.1f%%", delta)
+            )
+        } else {
+            recommendation = String(localized: "insights.formula.yearOverYear.rec.flat")
+        }
+
+        let model = InsightFormulaModel(
+            id: "yearOverYear",
+            titleKey: "insights.formula.yearOverYear.title",
+            icon: "calendar.circle.fill",
+            color: severity.color,
+            heroValueText: String(format: "%+.1f%%", delta),
+            heroLabelKey: "insights.formula.yearOverYear.heroLabel",
+            formulaHeaderKey: "insights.formula.yearOverYear.formulaHeader",
+            formulaRows: [
+                InsightFormulaRow(
+                    id: "thisMonth",
+                    labelKey: "insights.formula.yearOverYear.row.thisMonth",
+                    value: thisExpenses,
+                    kind: .rawText("\(Formatting.formatCurrencySmart(thisExpenses, currency: baseCurrency)) — \(thisLabel)")
+                ),
+                InsightFormulaRow(
+                    id: "lastYear",
+                    labelKey: "insights.formula.yearOverYear.row.lastYear",
+                    value: lastYearExpenses,
+                    kind: .rawText("\(Formatting.formatCurrencySmart(lastYearExpenses, currency: baseCurrency)) — \(lastLabel)")
+                ),
+                InsightFormulaRow(id: "absDelta", labelKey: "insights.formula.yearOverYear.row.absDelta", value: absDelta, kind: .currency),
+                InsightFormulaRow(id: "delta", labelKey: "insights.formula.yearOverYear.row.delta", value: delta, kind: .percent, isEmphasised: true)
+            ],
+            explainerKey: "insights.formula.yearOverYear.explainer",
+            recommendation: recommendation,
+            baseCurrency: baseCurrency
+        )
+
         Self.logger.debug("📅 [Insights] YoY — this=\(String(format: "%.0f", thisExpenses), privacy: .public), lastYear=\(String(format: "%.0f", lastYearExpenses), privacy: .public), delta=\(String(format: "%+.1f%%", delta), privacy: .public)")
         return Insight(
             id: "year_over_year",
@@ -309,12 +353,12 @@ extension InsightsService {
             trend: InsightTrend(
                 direction: direction,
                 changePercent: delta,
-                changeAbsolute: thisExpenses - lastYearExpenses,
+                changeAbsolute: absDelta,
                 comparisonPeriod: String(localized: "insights.yearOverYear")
             ),
             severity: severity,
             category: .forecasting,
-            detailData: nil
+            detailData: .formulaBreakdown(model)
         )
     }
 

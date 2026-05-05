@@ -896,6 +896,17 @@
 "insights.formula.balanceRunway.rec.long" = "Запас более 3 месяцев — вы хорошо забуферены. Часть денег можно перевести в более долгосрочные инструменты.";
 "insights.formula.balanceRunway.rec.short" = "Ниже 3 месяцев. Сократите расходы на ~%@/мес для подушки на 3 месяца — начните с самой крупной дискреционной категории.";
 "insights.formula.balanceRunway.rec.critical" = "Меньше месяца — закрывайте разрыв срочно. Даже пауза одной крупной подписки даст несколько дней.";
+"insights.formula.yearOverYear.title" = "Год к году";
+"insights.formula.yearOverYear.heroLabel" = "Изменение к тому же месяцу год назад";
+"insights.formula.yearOverYear.formulaHeader" = "Как считается";
+"insights.formula.yearOverYear.row.thisMonth" = "В этом месяце";
+"insights.formula.yearOverYear.row.lastYear" = "Тот же месяц год назад";
+"insights.formula.yearOverYear.row.absDelta" = "Абсолютное изменение";
+"insights.formula.yearOverYear.row.delta" = "Изменение в %%";
+"insights.formula.yearOverYear.explainer" = "Сравнение общих расходов за текущий месяц и тот же месяц год назад. Помогает отличить реальный сдвиг от сезонности — декабрь всегда «дороже», но именно этот декабрь тяжелее прошлого?";
+"insights.formula.yearOverYear.rec.down" = "Расходы заметно ниже год к году. Если это случайно — проверьте, не пропущена ли регулярная транзакция; иногда она «прячется» именно так.";
+"insights.formula.yearOverYear.rec.up" = "Рост на %@. Сравните топ-категории обоих месяцев — обычно скачок объясняется одной новой подпиской, дополнительным циклом аренды или крупной покупкой.";
+"insights.formula.yearOverYear.rec.flat" = "Изменение умеренное — ваш паттерн расходов стабилен. Проверьте тот же показатель в следующем месяце для отслеживания дрейфа.";
 "insights.granularity.prev.week" = "к предыдущей неделе";
 "insights.granularity.prev.month" = "к предыдущему месяцу";
 "insights.granularity.prev.quarter" = "к предыдущему кварталу";

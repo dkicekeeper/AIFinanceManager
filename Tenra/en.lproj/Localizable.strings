@@ -896,6 +896,17 @@
 "insights.formula.balanceRunway.rec.long" = "More than 3 months of runway — you're well-buffered. Consider deploying excess cash to longer-term instruments.";
 "insights.formula.balanceRunway.rec.short" = "Below 3 months. Cut burn by ~%@/mo to reach a 3-month buffer; start with the largest discretionary category.";
 "insights.formula.balanceRunway.rec.critical" = "Less than a month of runway — close the gap urgently. Even pausing one major recurring payment buys days.";
+"insights.formula.yearOverYear.title" = "Year-Over-Year Spending";
+"insights.formula.yearOverYear.heroLabel" = "Change vs same month last year";
+"insights.formula.yearOverYear.formulaHeader" = "How it's computed";
+"insights.formula.yearOverYear.row.thisMonth" = "This month";
+"insights.formula.yearOverYear.row.lastYear" = "Same month last year";
+"insights.formula.yearOverYear.row.absDelta" = "Absolute change";
+"insights.formula.yearOverYear.row.delta" = "Percentage change";
+"insights.formula.yearOverYear.explainer" = "Compares total expenses for the current month vs. the same month one year ago. Useful for spotting genuine drift versus seasonal swings — December always spends more, but is *this* December heavier than last?";
+"insights.formula.yearOverYear.rec.down" = "Spending is meaningfully down year-over-year. If unintentional, audit which categories cooled — sometimes a missed recurring is hiding here.";
+"insights.formula.yearOverYear.rec.up" = "Spending is up %@. Compare top categories for both months — single new subscriptions, an extra rent cycle, or one big purchase often explain the jump.";
+"insights.formula.yearOverYear.rec.flat" = "Modest change vs. last year — your spending pattern is stable. Track the same metric next month to spot any drift.";
 "insights.granularity.prev.week" = "vs previous week";
 "insights.granularity.prev.month" = "vs previous month";
 "insights.granularity.prev.quarter" = "vs previous quarter";
