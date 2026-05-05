@@ -918,6 +918,7 @@
 "insights.formula.projectedBalance.explainer" = "Current balance + (recurring net − avg non-recurring expenses) scaled to the selected period. Naïve linear projection — assumes the last 3 buckets represent what's coming. Use it for early warning, not as a precise forecast.";
 "insights.formula.projectedBalance.rec.growing" = "Projection trends upward — the current pattern adds to balance over the period.";
 "insights.formula.projectedBalance.rec.dropping" = "Projection drops by %@ over the period. Identify which categories pushed expenses up — those are where intervention compounds.";
+"insights.wealth.growth.compare" = "%@ vs %@";
 "insights.granularity.prev.week" = "vs previous week";
 "insights.granularity.prev.month" = "vs previous month";
 "insights.granularity.prev.quarter" = "vs previous quarter";

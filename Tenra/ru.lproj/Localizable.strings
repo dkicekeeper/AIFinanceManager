@@ -918,6 +918,7 @@
 "insights.formula.projectedBalance.explainer" = "Текущий баланс + (чистый поток подписок − средние непостоянные расходы), масштабированные на выбранный период. Простая линейная проекция — предполагает, что последние 3 периода повторятся. Используйте для раннего сигнала, не как точный прогноз.";
 "insights.formula.projectedBalance.rec.growing" = "Тренд вверх — текущий паттерн прибавляет к балансу за период.";
 "insights.formula.projectedBalance.rec.dropping" = "Просадка на %@ за период. Найдите категории, которые подняли расходы — там вмешательство даёт максимальный эффект.";
+"insights.wealth.growth.compare" = "%@ к %@";
 "insights.granularity.prev.week" = "к предыдущей неделе";
 "insights.granularity.prev.month" = "к предыдущему месяцу";
 "insights.granularity.prev.quarter" = "к предыдущему кварталу";

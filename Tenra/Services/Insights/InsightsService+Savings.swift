@@ -103,7 +103,8 @@ extension InsightsService {
     }
 
     private nonisolated func generateEmergencyFund(accounts: [Account], transactions: [Transaction], baseCurrency: String, balanceFor: (String) -> Double, preAggregated: PreAggregatedData? = nil) -> Insight? {
-        let totalBalance = accounts.reduce(0.0) { $0 + balanceFor($1.id) }
+        // Loans are liabilities, not emergency reserves.
+        let totalBalance = accounts.filter { !$0.isLoan }.reduce(0.0) { $0 + balanceFor($1.id) }
         guard totalBalance > 0 else { return nil }
 
         // Use preAggregated O(M) lookup when available; fall back to O(N) scan
