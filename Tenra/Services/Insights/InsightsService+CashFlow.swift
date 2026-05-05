@@ -271,6 +271,38 @@ extension InsightsService {
             ? "+" + Formatting.formatCurrencySmart(projectedNetChange, currency: baseCurrency)
             : Formatting.formatCurrencySmart(projectedNetChange, currency: baseCurrency)
 
+        let pbSeverity: InsightSeverity = projectedBalance >= 0 ? .positive : .critical
+        let pbRecommendation: String
+        if projectedNetChange >= 0 {
+            pbRecommendation = String(localized: "insights.formula.projectedBalance.rec.growing")
+        } else {
+            let drop = -projectedNetChange
+            pbRecommendation = String(
+                format: String(localized: "insights.formula.projectedBalance.rec.dropping"),
+                Formatting.formatCurrencySmart(drop, currency: baseCurrency)
+            )
+        }
+
+        let pbModel = InsightFormulaModel(
+            id: "projectedBalance",
+            titleKey: "insights.formula.projectedBalance.title",
+            icon: "chart.line.uptrend.xyaxis.circle.fill",
+            color: pbSeverity.color,
+            heroValueText: Formatting.formatCurrencySmart(projectedBalance, currency: baseCurrency),
+            heroLabelKey: "insights.formula.projectedBalance.heroLabel",
+            formulaHeaderKey: "insights.formula.projectedBalance.formulaHeader",
+            formulaRows: [
+                InsightFormulaRow(id: "currentBalance", labelKey: "insights.formula.projectedBalance.row.currentBalance", value: currentBalance, kind: .currency),
+                InsightFormulaRow(id: "recurringNet", labelKey: "insights.formula.projectedBalance.row.recurringNet", value: periodRecurringNet, kind: .currency),
+                InsightFormulaRow(id: "avgExpenses", labelKey: "insights.formula.projectedBalance.row.avgExpenses", value: periodAvgExpenses, kind: .currency),
+                InsightFormulaRow(id: "horizon", labelKey: "insights.formula.projectedBalance.row.horizon", value: projectedPeriodMultiplier, kind: .rawText(granularity.displayName)),
+                InsightFormulaRow(id: "projected", labelKey: "insights.formula.projectedBalance.row.projected", value: projectedBalance, kind: .currency, isEmphasised: true)
+            ],
+            explainerKey: "insights.formula.projectedBalance.explainer",
+            recommendation: pbRecommendation,
+            baseCurrency: baseCurrency
+        )
+
         insights.append(Insight(
             id: "projected_balance",
             type: .projectedBalance,
@@ -289,9 +321,9 @@ extension InsightsService {
                 comparisonPeriod: String(localized: "insights.currentBalance") + ": "
                     + Formatting.formatCurrencySmart(currentBalance, currency: baseCurrency)
             ),
-            severity: projectedBalance >= 0 ? .positive : .critical,
+            severity: pbSeverity,
             category: .cashFlow,
-            detailData: nil
+            detailData: .formulaBreakdown(pbModel)
         ))
 
         return insights

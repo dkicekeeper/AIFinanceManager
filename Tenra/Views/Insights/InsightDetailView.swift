@@ -34,8 +34,11 @@ struct InsightDetailView<CategoryDestination: View>: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppSpacing.xl) {
-                // Header
-                headerSection
+                // Header — hidden for formula-breakdown detail since the card already
+                // carries hero + label.
+                if !isFormulaBreakdown {
+                    headerSection
+                }
 
                 // Full-size chart
                 chartSection
@@ -50,6 +53,11 @@ struct InsightDetailView<CategoryDestination: View>: View {
         .onAppear {
             logger.debug("📋 [InsightDetail] OPEN — type=\(String(describing: insight.type), privacy: .public), category=\(String(describing: insight.category), privacy: .public), metric=\(insight.metric.formattedValue, privacy: .public), drillDown=\(_onCategoryTap != nil)")
         }
+    }
+
+    private var isFormulaBreakdown: Bool {
+        if case .formulaBreakdown = insight.detailData { return true }
+        return false
     }
 
     // MARK: - Header
@@ -118,6 +126,9 @@ struct InsightDetailView<CategoryDestination: View>: View {
         case .wealthBreakdown:
             // Account balance list rendered in detailSection
             EmptyView()
+        case .formulaBreakdown(let model):
+            InsightFormulaCard(model: model)
+                .screenPadding()
         case nil:
             EmptyView()
         }
@@ -149,7 +160,9 @@ struct InsightDetailView<CategoryDestination: View>: View {
             accountDetailList(accounts)
         case .accountComparison(let accounts):
             dormantAccountDetailList(accounts)
-        default:
+        case .formulaBreakdown:
+            EmptyView()
+        case nil:
             EmptyView()
         }
     }

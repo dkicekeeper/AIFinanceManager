@@ -94,9 +94,47 @@ extension InsightsService {
         let monthlyIncome = currentMonthData?.totalIncome ?? 0
 
         let pendingRecurring = max(0, (monthlyRecurringExpenses / Double(totalDaysInMonth)) * Double(daysRemaining))
-        let forecast = spentSoFar + (avgDailySpend * Double(daysRemaining)) + pendingRecurring
+        let projectedRemaining = avgDailySpend * Double(daysRemaining)
+        let forecast = spentSoFar + projectedRemaining + pendingRecurring
 
         let severity: InsightSeverity = monthlyIncome > 0 ? (forecast > monthlyIncome ? .warning : .positive) : .neutral
+
+        let recommendation: String
+        if monthlyIncome > 0 && forecast > monthlyIncome {
+            let overrun = forecast - monthlyIncome
+            recommendation = String(
+                format: String(localized: "insights.formula.spendingForecast.rec.overrun"),
+                Formatting.formatCurrencySmart(overrun, currency: baseCurrency)
+            )
+        } else if monthlyIncome > 0 {
+            let cushion = monthlyIncome - forecast
+            recommendation = String(
+                format: String(localized: "insights.formula.spendingForecast.rec.onTrack"),
+                Formatting.formatCurrencySmart(cushion, currency: baseCurrency)
+            )
+        } else {
+            recommendation = String(localized: "insights.formula.spendingForecast.rec.noIncome")
+        }
+
+        let model = InsightFormulaModel(
+            id: "spendingForecast",
+            titleKey: "insights.formula.spendingForecast.title",
+            icon: "calendar.badge.exclamationmark",
+            color: severity.color,
+            heroValueText: Formatting.formatCurrencySmart(forecast, currency: baseCurrency),
+            heroLabelKey: "insights.formula.spendingForecast.heroLabel",
+            formulaHeaderKey: "insights.formula.spendingForecast.formulaHeader",
+            formulaRows: [
+                InsightFormulaRow(id: "spentSoFar", labelKey: "insights.formula.spendingForecast.row.spentSoFar", value: spentSoFar, kind: .currency),
+                InsightFormulaRow(id: "avgDaily", labelKey: "insights.formula.spendingForecast.row.avgDaily", value: avgDailySpend, kind: .currency),
+                InsightFormulaRow(id: "daysLeft", labelKey: "insights.formula.spendingForecast.row.daysLeft", value: Double(daysRemaining), kind: .days),
+                InsightFormulaRow(id: "projectedRest", labelKey: "insights.formula.spendingForecast.row.projectedRest", value: projectedRemaining + pendingRecurring, kind: .currency),
+                InsightFormulaRow(id: "total", labelKey: "insights.formula.spendingForecast.row.total", value: forecast, kind: .currency, isEmphasised: true)
+            ],
+            explainerKey: "insights.formula.spendingForecast.explainer",
+            recommendation: recommendation,
+            baseCurrency: baseCurrency
+        )
 
         Self.logger.debug("🔮 [Insights] SpendingForecast — spentSoFar=\(String(format: "%.0f", spentSoFar), privacy: .public), avgDaily=\(String(format: "%.0f", avgDailySpend), privacy: .public), daysLeft=\(daysRemaining), forecast=\(String(format: "%.0f", forecast), privacy: .public) \(baseCurrency, privacy: .public)")
         return Insight(
@@ -113,7 +151,7 @@ extension InsightsService {
             trend: nil,
             severity: severity,
             category: .forecasting,
-            detailData: nil
+            detailData: .formulaBreakdown(model)
         )
     }
 
@@ -131,9 +169,30 @@ extension InsightsService {
         }
         guard !aggregates.isEmpty else { return nil }
 
-        let avgMonthlyNetFlow = aggregates.reduce(0.0) { $0 + $1.netFlow } / Double(aggregates.count)
+        let avgIncome = aggregates.reduce(0.0) { $0 + $1.totalIncome } / Double(aggregates.count)
+        let avgExpenses = aggregates.reduce(0.0) { $0 + $1.totalExpenses } / Double(aggregates.count)
+        let avgMonthlyNetFlow = avgIncome - avgExpenses
 
+        // Positive net flow → growing balance: not strictly a runway, but show the breakdown.
         if avgMonthlyNetFlow > 0 {
+            let model = InsightFormulaModel(
+                id: "balanceRunway",
+                titleKey: "insights.formula.balanceRunway.title",
+                icon: "fuelpump.fill",
+                color: AppColors.success,
+                heroValueText: "+" + Formatting.formatCurrencySmart(avgMonthlyNetFlow, currency: baseCurrency) + " / " + String(localized: "insights.perMonth"),
+                heroLabelKey: "insights.formula.balanceRunway.heroLabel.growing",
+                formulaHeaderKey: "insights.formula.balanceRunway.formulaHeader",
+                formulaRows: [
+                    InsightFormulaRow(id: "balance", labelKey: "insights.formula.balanceRunway.row.balance", value: currentBalance, kind: .currency),
+                    InsightFormulaRow(id: "avgIncome", labelKey: "insights.formula.balanceRunway.row.avgIncome", value: avgIncome, kind: .currency),
+                    InsightFormulaRow(id: "avgExpenses", labelKey: "insights.formula.balanceRunway.row.avgExpenses", value: avgExpenses, kind: .currency),
+                    InsightFormulaRow(id: "netFlow", labelKey: "insights.formula.balanceRunway.row.netFlow", value: avgMonthlyNetFlow, kind: .currency, isEmphasised: true)
+                ],
+                explainerKey: "insights.formula.balanceRunway.explainer.growing",
+                recommendation: String(localized: "insights.formula.balanceRunway.rec.growing"),
+                baseCurrency: baseCurrency
+            )
             return Insight(
                 id: "balance_runway",
                 type: .balanceRunway,
@@ -148,13 +207,48 @@ extension InsightsService {
                 trend: nil,
                 severity: .positive,
                 category: .forecasting,
-                detailData: nil
+                detailData: .formulaBreakdown(model)
             )
         }
 
-        let runway = currentBalance / abs(avgMonthlyNetFlow)
+        let burn = abs(avgMonthlyNetFlow)
+        let runway = currentBalance / burn
         let severity: InsightSeverity = runway >= 3 ? .positive : (runway >= 1 ? .warning : .critical)
-        Self.logger.debug("🛤 [Insights] BalanceRunway — balance=\(String(format: "%.0f", currentBalance), privacy: .public), burn=\(String(format: "%.0f", avgMonthlyNetFlow), privacy: .public)/mo, runway=\(String(format: "%.1f", runway), privacy: .public) months")
+
+        let recommendation: String
+        if runway >= 3 {
+            recommendation = String(localized: "insights.formula.balanceRunway.rec.long")
+        } else if runway >= 1 {
+            let neededReduction = burn - (currentBalance / 3)
+            recommendation = String(
+                format: String(localized: "insights.formula.balanceRunway.rec.short"),
+                Formatting.formatCurrencySmart(max(0, neededReduction), currency: baseCurrency)
+            )
+        } else {
+            recommendation = String(localized: "insights.formula.balanceRunway.rec.critical")
+        }
+
+        let model = InsightFormulaModel(
+            id: "balanceRunway",
+            titleKey: "insights.formula.balanceRunway.title",
+            icon: "fuelpump.fill",
+            color: severity.color,
+            heroValueText: String(format: String(localized: "insights.formula.value.months"), runway),
+            heroLabelKey: "insights.formula.balanceRunway.heroLabel",
+            formulaHeaderKey: "insights.formula.balanceRunway.formulaHeader",
+            formulaRows: [
+                InsightFormulaRow(id: "balance", labelKey: "insights.formula.balanceRunway.row.balance", value: currentBalance, kind: .currency),
+                InsightFormulaRow(id: "avgIncome", labelKey: "insights.formula.balanceRunway.row.avgIncome", value: avgIncome, kind: .currency),
+                InsightFormulaRow(id: "avgExpenses", labelKey: "insights.formula.balanceRunway.row.avgExpenses", value: avgExpenses, kind: .currency),
+                InsightFormulaRow(id: "burn", labelKey: "insights.formula.balanceRunway.row.burn", value: burn, kind: .currency),
+                InsightFormulaRow(id: "runway", labelKey: "insights.formula.balanceRunway.row.runway", value: runway, kind: .months, isEmphasised: true)
+            ],
+            explainerKey: "insights.formula.balanceRunway.explainer",
+            recommendation: recommendation,
+            baseCurrency: baseCurrency
+        )
+
+        Self.logger.debug("🛤 [Insights] BalanceRunway — balance=\(String(format: "%.0f", currentBalance), privacy: .public), burn=\(String(format: "%.0f", burn), privacy: .public)/mo, runway=\(String(format: "%.1f", runway), privacy: .public) months")
         return Insight(
             id: "balance_runway",
             type: .balanceRunway,
@@ -169,7 +263,7 @@ extension InsightsService {
             trend: nil,
             severity: severity,
             category: .forecasting,
-            detailData: nil
+            detailData: .formulaBreakdown(model)
         )
     }
 
@@ -200,6 +294,50 @@ extension InsightsService {
         let direction: TrendDirection = delta > 0 ? .up : .down
         let severity: InsightSeverity = delta <= -10 ? .positive : (delta >= 15 ? .warning : .neutral)
         let thisLabel = thisMonth?.label ?? ""
+        let lastLabel = lastYear?.label ?? ""
+        let absDelta = thisExpenses - lastYearExpenses
+
+        let recommendation: String
+        if delta <= -10 {
+            recommendation = String(localized: "insights.formula.yearOverYear.rec.down")
+        } else if delta >= 15 {
+            recommendation = String(
+                format: String(localized: "insights.formula.yearOverYear.rec.up"),
+                String(format: "%.1f%%", delta)
+            )
+        } else {
+            recommendation = String(localized: "insights.formula.yearOverYear.rec.flat")
+        }
+
+        let model = InsightFormulaModel(
+            id: "yearOverYear",
+            titleKey: "insights.formula.yearOverYear.title",
+            icon: "calendar.circle.fill",
+            color: severity.color,
+            heroValueText: String(format: "%+.1f%%", delta),
+            heroLabelKey: "insights.formula.yearOverYear.heroLabel",
+            formulaHeaderKey: "insights.formula.yearOverYear.formulaHeader",
+            formulaRows: [
+                InsightFormulaRow(
+                    id: "thisMonth",
+                    labelKey: "insights.formula.yearOverYear.row.thisMonth",
+                    value: thisExpenses,
+                    kind: .rawText("\(Formatting.formatCurrencySmart(thisExpenses, currency: baseCurrency)) — \(thisLabel)")
+                ),
+                InsightFormulaRow(
+                    id: "lastYear",
+                    labelKey: "insights.formula.yearOverYear.row.lastYear",
+                    value: lastYearExpenses,
+                    kind: .rawText("\(Formatting.formatCurrencySmart(lastYearExpenses, currency: baseCurrency)) — \(lastLabel)")
+                ),
+                InsightFormulaRow(id: "absDelta", labelKey: "insights.formula.yearOverYear.row.absDelta", value: absDelta, kind: .currency),
+                InsightFormulaRow(id: "delta", labelKey: "insights.formula.yearOverYear.row.delta", value: delta, kind: .percent, isEmphasised: true)
+            ],
+            explainerKey: "insights.formula.yearOverYear.explainer",
+            recommendation: recommendation,
+            baseCurrency: baseCurrency
+        )
+
         Self.logger.debug("📅 [Insights] YoY — this=\(String(format: "%.0f", thisExpenses), privacy: .public), lastYear=\(String(format: "%.0f", lastYearExpenses), privacy: .public), delta=\(String(format: "%+.1f%%", delta), privacy: .public)")
         return Insight(
             id: "year_over_year",
@@ -215,12 +353,12 @@ extension InsightsService {
             trend: InsightTrend(
                 direction: direction,
                 changePercent: delta,
-                changeAbsolute: thisExpenses - lastYearExpenses,
+                changeAbsolute: absDelta,
                 comparisonPeriod: String(localized: "insights.yearOverYear")
             ),
             severity: severity,
             category: .forecasting,
-            detailData: nil
+            detailData: .formulaBreakdown(model)
         )
     }
 

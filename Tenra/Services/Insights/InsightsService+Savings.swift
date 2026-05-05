@@ -44,6 +44,45 @@ extension InsightsService {
         let rate = ((allIncome - allExpenses) / allIncome) * 100
         let savedAmount = allIncome - allExpenses
         let severity: InsightSeverity = rate > 20 ? .positive : (rate >= 10 ? .warning : .critical)
+
+        let recommendation: String
+        if rate >= 20 {
+            recommendation = String(localized: "insights.formula.savingsRate.rec.good")
+        } else if rate >= 10 {
+            let target = allIncome * 0.20
+            let gap = target - savedAmount
+            recommendation = String(
+                format: String(localized: "insights.formula.savingsRate.rec.fair"),
+                Formatting.formatCurrencySmart(max(0, gap), currency: baseCurrency)
+            )
+        } else {
+            let target = allIncome * 0.10
+            let gap = target - savedAmount
+            recommendation = String(
+                format: String(localized: "insights.formula.savingsRate.rec.low"),
+                Formatting.formatCurrencySmart(max(0, gap), currency: baseCurrency)
+            )
+        }
+
+        let model = InsightFormulaModel(
+            id: "savingsRate",
+            titleKey: "insights.formula.savingsRate.title",
+            icon: "banknote.fill",
+            color: severity.color,
+            heroValueText: String(format: "%.1f%%", rate),
+            heroLabelKey: "insights.formula.savingsRate.heroLabel",
+            formulaHeaderKey: "insights.formula.savingsRate.formulaHeader",
+            formulaRows: [
+                InsightFormulaRow(id: "income", labelKey: "insights.formula.savingsRate.row.income", value: allIncome, kind: .currency),
+                InsightFormulaRow(id: "expenses", labelKey: "insights.formula.savingsRate.row.expenses", value: allExpenses, kind: .currency),
+                InsightFormulaRow(id: "saved", labelKey: "insights.formula.savingsRate.row.saved", value: max(0, savedAmount), kind: .currency),
+                InsightFormulaRow(id: "rate", labelKey: "insights.formula.savingsRate.row.rate", value: rate, kind: .percent, isEmphasised: true)
+            ],
+            explainerKey: "insights.formula.savingsRate.explainer",
+            recommendation: recommendation,
+            baseCurrency: baseCurrency
+        )
+
         Self.logger.debug("💰 [Insights] SavingsRate — \(String(format: "%.1f%%", rate), privacy: .public), severity=\(String(describing: severity), privacy: .public)")
         return Insight(
             id: "savings_rate",
@@ -59,7 +98,7 @@ extension InsightsService {
             trend: nil,
             severity: severity,
             category: .savings,
-            detailData: nil
+            detailData: .formulaBreakdown(model)
         )
     }
 
@@ -82,6 +121,37 @@ extension InsightsService {
         let monthsCovered = totalBalance / avgMonthlyExpenses
         let severity: InsightSeverity = monthsCovered >= 3 ? .positive : (monthsCovered >= 1 ? .warning : .critical)
         let monthsInt = Int(monthsCovered.rounded(.down))
+
+        let recommendation: String
+        if monthsCovered >= 3 {
+            recommendation = String(localized: "insights.formula.emergencyFund.rec.good")
+        } else {
+            let targetBalance = avgMonthlyExpenses * 3
+            let gap = targetBalance - totalBalance
+            recommendation = String(
+                format: String(localized: "insights.formula.emergencyFund.rec.gap"),
+                Formatting.formatCurrencySmart(max(0, gap), currency: baseCurrency)
+            )
+        }
+
+        let model = InsightFormulaModel(
+            id: "emergencyFund",
+            titleKey: "insights.formula.emergencyFund.title",
+            icon: "shield.lefthalf.filled",
+            color: severity.color,
+            heroValueText: String(format: String(localized: "insights.formula.value.months"), monthsCovered),
+            heroLabelKey: "insights.formula.emergencyFund.heroLabel",
+            formulaHeaderKey: "insights.formula.emergencyFund.formulaHeader",
+            formulaRows: [
+                InsightFormulaRow(id: "balance", labelKey: "insights.formula.emergencyFund.row.balance", value: totalBalance, kind: .currency),
+                InsightFormulaRow(id: "avgExpenses", labelKey: "insights.formula.emergencyFund.row.avgExpenses", value: avgMonthlyExpenses, kind: .currency),
+                InsightFormulaRow(id: "monthsCovered", labelKey: "insights.formula.emergencyFund.row.monthsCovered", value: monthsCovered, kind: .months, isEmphasised: true)
+            ],
+            explainerKey: "insights.formula.emergencyFund.explainer",
+            recommendation: recommendation,
+            baseCurrency: baseCurrency
+        )
+
         Self.logger.debug("🛡 [Insights] EmergencyFund — \(String(format: "%.1f", monthsCovered), privacy: .public) months, severity=\(String(describing: severity), privacy: .public)")
         return Insight(
             id: "emergency_fund",
@@ -97,7 +167,7 @@ extension InsightsService {
             trend: nil,
             severity: severity,
             category: .savings,
-            detailData: nil
+            detailData: .formulaBreakdown(model)
         )
     }
 
