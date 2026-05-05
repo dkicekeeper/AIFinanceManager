@@ -113,6 +113,7 @@ struct InsightDetailView<CategoryDestination: View>: View {
                     dataPoints: points,
                     series: insight.category == .wealth ? .wealth : .cashFlow,
                     granularity: gran,
+                    currency: currency,
                     mode: .full
                 )
             }

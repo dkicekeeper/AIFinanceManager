@@ -186,6 +186,11 @@ struct PeriodLineChart: View {
     let dataPoints: [PeriodDataPoint]
     let series: PeriodLineChartSeries
     let granularity: InsightGranularity
+    /// ISO currency code for the selection-banner amount. Defaults to "" so existing
+    /// call sites without a currency keep compiling — the selection banner falls back
+    /// to a non-currency formatter in that case (compact line-chart variants don't
+    /// need a banner).
+    var currency: String = ""
     var mode: ChartDisplayMode = .full
 
     @State private var zoomScale: CGFloat = 1.0
@@ -475,9 +480,21 @@ struct PeriodLineChart: View {
                 Text(axisLabelMap[point.label] ?? point.label)
                     .font(AppTypography.bodyEmphasis)
                     .foregroundStyle(AppColors.textPrimary)
-                Text(ChartAxisHelpers.formatCompact(value))
-                    .font(AppTypography.body)
-                    .foregroundStyle(series.pointColor(for: value))
+                if !currency.isEmpty {
+                    FormattedAmountText(
+                        amount: value,
+                        currency: currency,
+                        fontSize: AppTypography.body,
+                        fontWeight: .regular,
+                        color: series.pointColor(for: value)
+                    )
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                } else {
+                    Text(ChartAxisHelpers.formatCompact(value))
+                        .font(AppTypography.body)
+                        .foregroundStyle(series.pointColor(for: value))
+                }
             }
             Spacer(minLength: 0)
         }

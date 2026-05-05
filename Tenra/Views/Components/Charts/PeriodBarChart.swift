@@ -282,15 +282,27 @@ struct PeriodBarChart: View {
                 HStack(spacing: AppSpacing.md) {
                     HStack(spacing: 4) {
                         Circle().fill(AppColors.success).frame(width: 8, height: 8)
-                        Text(ChartAxisHelpers.formatCompact(point.income))
-                            .font(AppTypography.body)
-                            .foregroundStyle(AppColors.success)
+                        FormattedAmountText(
+                            amount: point.income,
+                            currency: currency,
+                            fontSize: AppTypography.body,
+                            fontWeight: .regular,
+                            color: AppColors.success
+                        )
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     }
                     HStack(spacing: 4) {
                         Circle().fill(AppColors.destructive).frame(width: 8, height: 8)
-                        Text(ChartAxisHelpers.formatCompact(point.expenses))
-                            .font(AppTypography.body)
-                            .foregroundStyle(AppColors.destructive)
+                        FormattedAmountText(
+                            amount: point.expenses,
+                            currency: currency,
+                            fontSize: AppTypography.body,
+                            fontWeight: .regular,
+                            color: AppColors.destructive
+                        )
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     }
                 }
             }
