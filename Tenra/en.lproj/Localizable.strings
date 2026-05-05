@@ -907,6 +907,17 @@
 "insights.formula.yearOverYear.rec.down" = "Spending is meaningfully down year-over-year. If unintentional, audit which categories cooled — sometimes a missed recurring is hiding here.";
 "insights.formula.yearOverYear.rec.up" = "Spending is up %@. Compare top categories for both months — single new subscriptions, an extra rent cycle, or one big purchase often explain the jump.";
 "insights.formula.yearOverYear.rec.flat" = "Modest change vs. last year — your spending pattern is stable. Track the same metric next month to spot any drift.";
+"insights.formula.projectedBalance.title" = "Projected Balance";
+"insights.formula.projectedBalance.heroLabel" = "Estimated balance at the end of period";
+"insights.formula.projectedBalance.formulaHeader" = "How it's computed";
+"insights.formula.projectedBalance.row.currentBalance" = "Current balance";
+"insights.formula.projectedBalance.row.recurringNet" = "Recurring net for the period";
+"insights.formula.projectedBalance.row.avgExpenses" = "Avg non-recurring expenses for the period";
+"insights.formula.projectedBalance.row.horizon" = "Horizon";
+"insights.formula.projectedBalance.row.projected" = "Projected balance";
+"insights.formula.projectedBalance.explainer" = "Current balance + (recurring net − avg non-recurring expenses) scaled to the selected period. Naïve linear projection — assumes the last 3 buckets represent what's coming. Use it for early warning, not as a precise forecast.";
+"insights.formula.projectedBalance.rec.growing" = "Projection trends upward — the current pattern adds to balance over the period.";
+"insights.formula.projectedBalance.rec.dropping" = "Projection drops by %@ over the period. Identify which categories pushed expenses up — those are where intervention compounds.";
 "insights.granularity.prev.week" = "vs previous week";
 "insights.granularity.prev.month" = "vs previous month";
 "insights.granularity.prev.quarter" = "vs previous quarter";

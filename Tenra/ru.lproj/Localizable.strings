@@ -907,6 +907,17 @@
 "insights.formula.yearOverYear.rec.down" = "Расходы заметно ниже год к году. Если это случайно — проверьте, не пропущена ли регулярная транзакция; иногда она «прячется» именно так.";
 "insights.formula.yearOverYear.rec.up" = "Рост на %@. Сравните топ-категории обоих месяцев — обычно скачок объясняется одной новой подпиской, дополнительным циклом аренды или крупной покупкой.";
 "insights.formula.yearOverYear.rec.flat" = "Изменение умеренное — ваш паттерн расходов стабилен. Проверьте тот же показатель в следующем месяце для отслеживания дрейфа.";
+"insights.formula.projectedBalance.title" = "Прогноз баланса";
+"insights.formula.projectedBalance.heroLabel" = "Ожидаемый баланс к концу периода";
+"insights.formula.projectedBalance.formulaHeader" = "Как считается";
+"insights.formula.projectedBalance.row.currentBalance" = "Текущий баланс";
+"insights.formula.projectedBalance.row.recurringNet" = "Чистый поток подписок за период";
+"insights.formula.projectedBalance.row.avgExpenses" = "Средние непостоянные расходы за период";
+"insights.formula.projectedBalance.row.horizon" = "Горизонт";
+"insights.formula.projectedBalance.row.projected" = "Прогнозный баланс";
+"insights.formula.projectedBalance.explainer" = "Текущий баланс + (чистый поток подписок − средние непостоянные расходы), масштабированные на выбранный период. Простая линейная проекция — предполагает, что последние 3 периода повторятся. Используйте для раннего сигнала, не как точный прогноз.";
+"insights.formula.projectedBalance.rec.growing" = "Тренд вверх — текущий паттерн прибавляет к балансу за период.";
+"insights.formula.projectedBalance.rec.dropping" = "Просадка на %@ за период. Найдите категории, которые подняли расходы — там вмешательство даёт максимальный эффект.";
 "insights.granularity.prev.week" = "к предыдущей неделе";
 "insights.granularity.prev.month" = "к предыдущему месяцу";
 "insights.granularity.prev.quarter" = "к предыдущему кварталу";
