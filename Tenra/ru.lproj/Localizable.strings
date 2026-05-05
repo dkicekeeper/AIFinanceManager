@@ -848,6 +848,17 @@
 "insights.summary.windowTotalsLabel" = "За весь период графика";
 "insights.formula.value.months" = "%.1f мес";
 "insights.formula.value.days" = "%d дн";
+"insights.formula.savingsRate.title" = "Норма сбережений";
+"insights.formula.savingsRate.heroLabel" = "С каждого заработанного остаётся";
+"insights.formula.savingsRate.formulaHeader" = "Как считается";
+"insights.formula.savingsRate.row.income" = "Доход";
+"insights.formula.savingsRate.row.expenses" = "Расходы";
+"insights.formula.savingsRate.row.saved" = "Сбережено (доход − расход)";
+"insights.formula.savingsRate.row.rate" = "Норма сбережений";
+"insights.formula.savingsRate.explainer" = "Какая доля дохода уцелела до конца периода. Чем выше — тем больше свободы: подушка на просадки, ускорение целей и настоящий резерв.";
+"insights.formula.savingsRate.rec.good" = "Сберегаете больше 20%% — держите ритм и направьте излишек на долгосрочную цель.";
+"insights.formula.savingsRate.rec.fair" = "Неплохо, но до 20%% не хватает %@ в месяц. Подрежьте регулярные или разовые категории, которые подросли.";
+"insights.formula.savingsRate.rec.low" = "Ниже 10%% — буфера почти нет. Минимум +%@ в месяц: начните с самой крупной дискреционной категории.";
 "insights.granularity.prev.week" = "к предыдущей неделе";
 "insights.granularity.prev.month" = "к предыдущему месяцу";
 "insights.granularity.prev.quarter" = "к предыдущему кварталу";

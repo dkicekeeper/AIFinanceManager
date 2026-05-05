@@ -848,6 +848,17 @@
 "insights.summary.windowTotalsLabel" = "Across the whole chart window";
 "insights.formula.value.months" = "%.1f mo";
 "insights.formula.value.days" = "%d days";
+"insights.formula.savingsRate.title" = "Savings Rate";
+"insights.formula.savingsRate.heroLabel" = "Of every dollar you earn, you keep";
+"insights.formula.savingsRate.formulaHeader" = "How it's computed";
+"insights.formula.savingsRate.row.income" = "Income";
+"insights.formula.savingsRate.row.expenses" = "Expenses";
+"insights.formula.savingsRate.row.saved" = "Saved (income − expenses)";
+"insights.formula.savingsRate.row.rate" = "Savings rate";
+"insights.formula.savingsRate.explainer" = "What share of your income survives the month. A higher rate buys you more freedom — flexibility in slow months, faster goal funding, and a real emergency cushion.";
+"insights.formula.savingsRate.rec.good" = "You're saving more than 20%% — keep the routine and consider directing the surplus toward a long-term goal.";
+"insights.formula.savingsRate.rec.fair" = "Decent, but pushing to 20%% means an extra %@ saved each month. Trim recurring or one-off categories that crept up.";
+"insights.formula.savingsRate.rec.low" = "Below 10%% leaves no buffer. Aim for at least %@ more each month — start with the largest discretionary category.";
 "insights.granularity.prev.week" = "vs previous week";
 "insights.granularity.prev.month" = "vs previous month";
 "insights.granularity.prev.quarter" = "vs previous quarter";
