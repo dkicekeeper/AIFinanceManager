@@ -91,7 +91,6 @@ struct InsightsSummaryDetailView: View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
             SectionHeaderView(String(localized: "insights.cashFlowTrend"), style: .large)
                 .padding(.top, AppSpacing.lg)
-                .screenPadding()
 
             // Chart bleeds edge-to-edge so the scrollable plot area aligns
             // with the screen edges. Apple Charts with chartScrollableAxes
@@ -123,7 +122,6 @@ struct InsightsSummaryDetailView: View {
                 )
             }
         }
-        .screenPadding()
     }
 }
 
