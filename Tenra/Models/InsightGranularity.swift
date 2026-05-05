@@ -335,6 +335,106 @@ enum InsightGranularity: String, CaseIterable, Identifiable {
         }
         return groupingKey(for: prev)
     }
+
+    // MARK: - Current Bucket Range
+    //
+    // `dateRange()` returns the FULL data window (used for charts: e.g. `.month`
+    // = all months from first transaction). `currentBucketRange()` returns ONLY
+    // the current period (this month / this quarter / this year / last 7 days /
+    // all-time), used for the totals card and any "current period" metric.
+
+    /// Range covering the current bucket only:
+    /// - `.week`     → last 7 days (rolling)
+    /// - `.month`    → current calendar month
+    /// - `.quarter`  → current calendar quarter
+    /// - `.year`     → current calendar year
+    /// - `.allTime`  → full data window (same as `dateRange`)
+    nonisolated func currentBucketRange(now: Date = Date()) -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let endOfDay = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: now)!)
+
+        switch self {
+        case .week:
+            let start = calendar.date(byAdding: .day, value: -7, to: endOfDay)!
+            return (start, endOfDay)
+
+        case .month:
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+            let end = calendar.date(byAdding: .month, value: 1, to: start)!
+            return (start, end)
+
+        case .quarter:
+            let m = calendar.component(.month, from: now)
+            let qMonth = ((m - 1) / 3) * 3 + 1
+            var comps = calendar.dateComponents([.year], from: now)
+            comps.month = qMonth
+            comps.day = 1
+            let start = calendar.date(from: comps)!
+            let end = calendar.date(byAdding: .month, value: 3, to: start)!
+            return (start, end)
+
+        case .year:
+            var comps = calendar.dateComponents([.year], from: now)
+            comps.month = 1
+            comps.day = 1
+            let start = calendar.date(from: comps)!
+            let end = calendar.date(byAdding: .year, value: 1, to: start)!
+            return (start, end)
+
+        case .allTime:
+            return dateRange(firstTransactionDate: nil)
+        }
+    }
+
+    /// Range covering the previous bucket — the period right before
+    /// `currentBucketRange`. Used for MoM/QoQ/YoY-style comparisons in the
+    /// totals card. For `.allTime` this returns a zero-length range
+    /// (no comparison possible).
+    nonisolated func previousBucketRange(now: Date = Date()) -> (start: Date, end: Date) {
+        let (curStart, _) = currentBucketRange(now: now)
+        let calendar = Calendar.current
+
+        switch self {
+        case .week:
+            let prevStart = calendar.date(byAdding: .day, value: -7, to: curStart)!
+            return (prevStart, curStart)
+        case .month:
+            let prevStart = calendar.date(byAdding: .month, value: -1, to: curStart)!
+            return (prevStart, curStart)
+        case .quarter:
+            let prevStart = calendar.date(byAdding: .month, value: -3, to: curStart)!
+            return (prevStart, curStart)
+        case .year:
+            let prevStart = calendar.date(byAdding: .year, value: -1, to: curStart)!
+            return (prevStart, curStart)
+        case .allTime:
+            return (curStart, curStart)
+        }
+    }
+
+    /// Human-readable label for the current bucket
+    /// ("May 2026", "Q2 2026", "2026", localised "Last 7 days", "All time").
+    nonisolated func currentBucketLabel(locale: Locale = .current, now: Date = Date()) -> String {
+        let calendar = Calendar.current
+        switch self {
+        case .week:
+            return String(localized: "insights.bucket.week.label")
+        case .month:
+            let df = DateFormatter()
+            df.locale = locale
+            df.dateFormat = DateFormatter.dateFormat(fromTemplate: "MMMMyyyy", options: 0, locale: locale)
+            return df.string(from: now)
+        case .quarter:
+            let m = calendar.component(.month, from: now)
+            let q = (m - 1) / 3 + 1
+            let y = calendar.component(.year, from: now)
+            return "Q\(q) \(y)"
+        case .year:
+            return "\(calendar.component(.year, from: now))"
+        case .allTime:
+            return String(localized: "insights.granularity.allTime")
+        }
+    }
 }
 
 // MARK: - Calendar helpers
