@@ -84,6 +84,39 @@ struct LoanDetailView: View {
         return category
     }
 
+    /// Previously-used subcategory ids for this loan's most recent payment —
+    /// resolved through `categoriesViewModel` since they're stored as a M:N
+    /// relationship rather than directly on the transaction.
+    private var lastUsedSubcategoryIds: Set<String> {
+        guard let txId = mostRecentPayment?.id else { return [] }
+        return Set(appCoordinator.categoriesViewModel
+            .getSubcategoriesForTransaction(txId)
+            .map(\.id))
+    }
+
+    /// Initial category for a new payment form — prefers the most recent
+    /// payment's category (mirrors user habits), falls back to the loan's
+    /// configured `defaultCategory`. Returns `nil` when neither applies so the
+    /// picker stays unselected.
+    private func resolvedInitialCategory(for loanInfo: LoanInfo) -> String? {
+        if let lastUsed = lastUsedCategory { return lastUsed }
+        guard let stored = loanInfo.defaultCategory,
+              !stored.isEmpty,
+              stored != TransactionType.loanPaymentCategoryName,
+              expensePickerCategories.contains(stored) else { return nil }
+        return stored
+    }
+
+    /// Initial subcategories for a new payment form — last-used wins when there
+    /// were prior payments; otherwise we fall back to the loan's configured
+    /// defaults so users don't repeatedly tag every payment.
+    private func resolvedInitialSubcategoryIds(for loanInfo: LoanInfo) -> Set<String> {
+        if mostRecentPayment != nil {
+            return lastUsedSubcategoryIds
+        }
+        return Set(loanInfo.defaultSubcategoryIds)
+    }
+
     /// Expense-catalog categories shown in the LoanPaymentView picker.
     ///
     /// Restricted to **currently active** custom categories — we deliberately
@@ -221,7 +254,8 @@ struct LoanDetailView: View {
                     availableCategories: expensePickerCategories,
                     customCategories: appCoordinator.categoriesViewModel.customCategories,
                     categoriesViewModel: appCoordinator.categoriesViewModel,
-                    initialCategory: lastUsedCategory,
+                    initialCategory: resolvedInitialCategory(for: loanInfo),
+                    initialSubcategoryIds: resolvedInitialSubcategoryIds(for: loanInfo),
                     onPayment: { result in
                         if let transaction = loansViewModel.makeManualPayment(
                             accountId: account.id,
@@ -264,7 +298,8 @@ struct LoanDetailView: View {
                     availableCategories: expensePickerCategories,
                     customCategories: appCoordinator.categoriesViewModel.customCategories,
                     categoriesViewModel: appCoordinator.categoriesViewModel,
-                    initialCategory: lastUsedCategory,
+                    initialCategory: resolvedInitialCategory(for: loanInfo),
+                    initialSubcategoryIds: resolvedInitialSubcategoryIds(for: loanInfo),
                     onRepayment: { result in
                         if let transaction = loansViewModel.makeEarlyRepayment(
                             accountId: account.id,

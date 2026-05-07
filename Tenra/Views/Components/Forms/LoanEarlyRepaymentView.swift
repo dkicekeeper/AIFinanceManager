@@ -34,6 +34,7 @@ struct LoanEarlyRepaymentView: View {
     var customCategories: [CustomCategory] = []
     var categoriesViewModel: CategoriesViewModel? = nil
     var initialCategory: String? = nil
+    var initialSubcategoryIds: Set<String> = []
     let onRepayment: (LoanEarlyRepaymentFormResult) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -332,6 +333,9 @@ struct LoanEarlyRepaymentView: View {
            candidate != TransactionType.loanPaymentCategoryName,
            availableCategories.contains(candidate) {
             selectedCategory = candidate
+            if selectedSubcategoryIds.isEmpty {
+                selectedSubcategoryIds = initialSubcategoryIds
+            }
         }
     }
 

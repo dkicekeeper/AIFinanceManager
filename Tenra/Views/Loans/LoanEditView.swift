@@ -15,6 +15,7 @@ struct LoanEditView: View {
     let onSave: (Account) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppCoordinator.self) private var appCoordinator
 
     @State private var name: String = ""
     @State private var bankName: String = ""
@@ -27,6 +28,34 @@ struct LoanEditView: View {
     @State private var paymentDay: Int = 1
     @State private var startDate: Date = Date()
     @State private var validationError: String? = nil
+
+    // Default tagging — pre-fills LoanPaymentView / LoanEarlyRepaymentView for
+    // every payment of this loan unless the user has already recorded one (then
+    // that prior payment's category wins). Empty == no default.
+    @State private var defaultCategory: String? = nil
+    @State private var defaultSubcategoryIds: Set<String> = []
+    @State private var showingSubcategorySearch: Bool = false
+    @State private var subcategorySearchText: String = ""
+
+    /// Resolves the active `CustomCategory.id` for the picked default category —
+    /// needed to feed `SubcategorySelectorView`.
+    private var defaultCategoryId: String? {
+        guard let name = defaultCategory else { return nil }
+        return appCoordinator.categoriesViewModel.customCategories.first { $0.name == name }?.id
+    }
+
+    /// Active expense-catalog category names. Mirrors `LoanDetailView.expense
+    /// PickerCategories` so the same options surface in both creation and
+    /// payment flows. Excludes deleted/historical strings.
+    private var expensePickerCategories: [String] {
+        appCoordinator.categoriesViewModel.customCategories
+            .filter { $0.type == .expense }
+            .map(\.name)
+            .sortedByCustomOrder(
+                customCategories: appCoordinator.categoriesViewModel.customCategories,
+                type: .expense
+            )
+    }
 
 
     /// True when converting a regular account → loan (account exists but has no loanInfo)
@@ -191,8 +220,27 @@ struct LoanEditView: View {
                             )
                         }
                     }
+
+                    // Default category + subcategories. These pre-fill the
+                    // LoanPaymentView form for every payment of this loan, so
+                    // recurring monthly payments don't require re-tagging from
+                    // scratch. Stored on `LoanInfo`; empty == no default.
+                    defaultTaggingSection
                 }
                 .padding(AppSpacing.lg)
+            }
+        }
+        .sheet(isPresented: $showingSubcategorySearch) {
+            if let categoryId = defaultCategoryId {
+                SubcategorySearchView(
+                    categoriesViewModel: appCoordinator.categoriesViewModel,
+                    categoryId: categoryId,
+                    selectedSubcategoryIds: $defaultSubcategoryIds,
+                    searchText: $subcategorySearchText
+                )
+                .onAppear { subcategorySearchText = "" }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
         }
         .onAppear {
@@ -210,6 +258,14 @@ struct LoanEditView: View {
                 if let start = DateFormatters.dateFormatter.date(from: loanInfo.startDate) {
                     startDate = start
                 }
+                // Pre-fill default tagging from the persisted LoanInfo. Skip the
+                // legacy `Loan Payment` sentinel in case it leaked into a default.
+                if let stored = loanInfo.defaultCategory,
+                   stored != TransactionType.loanPaymentCategoryName,
+                   expensePickerCategories.contains(stored) {
+                    defaultCategory = stored
+                }
+                defaultSubcategoryIds = Set(loanInfo.defaultSubcategoryIds)
             } else if let account = account {
                 // Converting regular account → loan: pre-fill from account
                 name = account.name
@@ -225,6 +281,53 @@ struct LoanEditView: View {
                 termMonthsText = ""
                 paymentDay = 1
                 startDate = Date()
+            }
+        }
+    }
+
+    // MARK: - Default Tagging Section
+
+    @ViewBuilder
+    private var defaultTaggingSection: some View {
+        if !expensePickerCategories.isEmpty {
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                SectionHeaderView(String(localized: "loan.defaultTagging", defaultValue: "Default category"))
+                    .padding(.horizontal, AppSpacing.lg)
+
+                CategorySelectorView(
+                    categories: expensePickerCategories,
+                    type: .expense,
+                    customCategories: appCoordinator.categoriesViewModel.customCategories,
+                    selectedCategory: $defaultCategory,
+                    onSelectionChange: { newValue in
+                        // Subcategory ids are scoped to a single category — when the
+                        // user switches the default category, the previously stored
+                        // subcategory selection no longer applies.
+                        if newValue != defaultCategory {
+                            defaultSubcategoryIds.removeAll()
+                        }
+                    },
+                    emptyStateMessage: nil
+                )
+
+                if defaultCategoryId != nil {
+                    SubcategorySelectorView(
+                        categoriesViewModel: appCoordinator.categoriesViewModel,
+                        categoryId: defaultCategoryId,
+                        selectedSubcategoryIds: $defaultSubcategoryIds,
+                        onSearchTap: {
+                            withAnimation { showingSubcategorySearch = true }
+                        }
+                    )
+                }
+
+                Text(String(
+                    localized: "loan.defaultTaggingHint",
+                    defaultValue: "Pre-fills the payment form. Last-used category from previous payments takes precedence."
+                ))
+                .font(AppTypography.caption)
+                .foregroundStyle(AppColors.textSecondary)
+                .padding(.horizontal, AppSpacing.lg)
             }
         }
     }
@@ -299,7 +402,9 @@ struct LoanEditView: View {
             paymentDay: paymentDay,
             paymentsMade: existingInfo?.paymentsMade ?? 0,
             lastPaymentDate: existingInfo?.lastPaymentDate,
-            earlyRepayments: existingInfo?.earlyRepayments ?? []
+            earlyRepayments: existingInfo?.earlyRepayments ?? [],
+            defaultCategory: defaultCategory,
+            defaultSubcategoryIds: Array(defaultSubcategoryIds)
         )
 
         let balance = NSDecimalNumber(decimal: principalAmount).doubleValue
@@ -329,6 +434,7 @@ struct LoanEditView: View {
         account: nil,
         onSave: { _ in }
     )
+    .environment(coordinator)
 }
 
 #Preview("Loan Edit - Edit") {
@@ -357,4 +463,5 @@ struct LoanEditView: View {
         account: sampleAccount,
         onSave: { _ in }
     )
+    .environment(coordinator)
 }

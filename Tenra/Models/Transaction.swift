@@ -377,12 +377,20 @@ struct LoanInfo: Codable, Equatable, Hashable {
     // Досрочные погашения
     var earlyRepayments: [EarlyRepayment]
 
+    // Дефолтное тегирование платежей. Подхватываются формами LoanPaymentView /
+    // LoanEarlyRepaymentView, чтобы пользователь не выбирал категорию каждый раз.
+    // Last-used категория предыдущего платежа имеет приоритет — defaults
+    // подхватываются только когда история пуста.
+    var defaultCategory: String?
+    var defaultSubcategoryIds: [String]
+
     enum CodingKeys: String, CodingKey {
         case bankName, loanType, originalPrincipal, remainingPrincipal
         case interestRateAnnual, interestRateHistory, totalInterestPaid
         case termMonths, startDate, endDate
         case monthlyPayment, paymentDay, paymentsMade, lastPaymentDate
         case earlyRepayments
+        case defaultCategory, defaultSubcategoryIds
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -402,6 +410,8 @@ struct LoanInfo: Codable, Equatable, Hashable {
         paymentsMade = try container.decode(Int.self, forKey: .paymentsMade)
         lastPaymentDate = try container.decodeIfPresent(String.self, forKey: .lastPaymentDate)
         earlyRepayments = try container.decode([EarlyRepayment].self, forKey: .earlyRepayments)
+        defaultCategory = try container.decodeIfPresent(String.self, forKey: .defaultCategory)
+        defaultSubcategoryIds = try container.decodeIfPresent([String].self, forKey: .defaultSubcategoryIds) ?? []
     }
 
     init(
@@ -419,7 +429,9 @@ struct LoanInfo: Codable, Equatable, Hashable {
         paymentDay: Int,
         paymentsMade: Int = 0,
         lastPaymentDate: String? = nil,
-        earlyRepayments: [EarlyRepayment] = []
+        earlyRepayments: [EarlyRepayment] = [],
+        defaultCategory: String? = nil,
+        defaultSubcategoryIds: [String] = []
     ) {
         self.bankName = bankName
         self.loanType = loanType
@@ -462,6 +474,8 @@ struct LoanInfo: Codable, Equatable, Hashable {
         self.paymentsMade = paymentsMade
         self.lastPaymentDate = lastPaymentDate
         self.earlyRepayments = earlyRepayments
+        self.defaultCategory = defaultCategory
+        self.defaultSubcategoryIds = defaultSubcategoryIds
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -481,6 +495,10 @@ struct LoanInfo: Codable, Equatable, Hashable {
         try container.encode(paymentsMade, forKey: .paymentsMade)
         try container.encodeIfPresent(lastPaymentDate, forKey: .lastPaymentDate)
         try container.encode(earlyRepayments, forKey: .earlyRepayments)
+        try container.encodeIfPresent(defaultCategory, forKey: .defaultCategory)
+        if !defaultSubcategoryIds.isEmpty {
+            try container.encode(defaultSubcategoryIds, forKey: .defaultSubcategoryIds)
+        }
     }
 }
 

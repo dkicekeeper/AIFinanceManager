@@ -1104,6 +1104,8 @@
 "loan.impact" = "Impact";
 "loan.note" = "Note";
 "loan.notePlaceholder" = "Optional note";
+"loan.defaultTagging" = "Default category";
+"loan.defaultTaggingHint" = "Pre-fills the payment form. Last-used category from previous payments takes precedence.";
 "loan.earlyRepaymentTitle" = "Early Repayment";
 "loan.termReduction" = "Term reduced by";
 "loan.monthsValue" = "%d months";

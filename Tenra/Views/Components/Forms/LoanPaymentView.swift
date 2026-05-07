@@ -41,8 +41,11 @@ struct LoanPaymentView: View {
     var availableCategories: [String] = []
     var customCategories: [CustomCategory] = []
     var categoriesViewModel: CategoriesViewModel? = nil
-    /// Pre-selected category (e.g. the one used for the previous payment of this loan).
+    /// Pre-selected category (e.g. the one used for the previous payment of this loan,
+    /// falling back to `LoanInfo.defaultCategory`).
     var initialCategory: String? = nil
+    /// Pre-selected subcategory ids — same precedence as `initialCategory`.
+    var initialSubcategoryIds: Set<String> = []
     let onPayment: (LoanPaymentFormResult) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -285,6 +288,12 @@ struct LoanPaymentView: View {
            candidate != TransactionType.loanPaymentCategoryName,
            availableCategories.contains(candidate) {
             selectedCategory = candidate
+            // Subcategory ids are scoped to a category — only seed them when
+            // the parent category was successfully pre-selected, otherwise the
+            // ids would refer to a category that's not visible in the picker.
+            if selectedSubcategoryIds.isEmpty {
+                selectedSubcategoryIds = initialSubcategoryIds
+            }
         }
     }
 
