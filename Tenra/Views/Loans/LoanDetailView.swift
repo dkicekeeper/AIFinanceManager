@@ -84,19 +84,17 @@ struct LoanDetailView: View {
         return category
     }
 
-    /// Expense-catalog categories shown in the LoanPaymentView picker. Mirrors the
-    /// catalog `TransactionEditCoordinator` builds for `.expense` so the same
-    /// options surface in both creation and edit flows.
+    /// Expense-catalog categories shown in the LoanPaymentView picker.
+    ///
+    /// Restricted to **currently active** custom categories — we deliberately
+    /// don't backfill from `transactionStore.transactions.category` (the way the
+    /// edit flow does) because deleted categories that still appear on legacy
+    /// transactions shouldn't be offered as options for a brand-new payment.
     private var expensePickerCategories: [String] {
-        var categories: Set<String> = []
-        for customCategory in appCoordinator.categoriesViewModel.customCategories
-        where customCategory.type == .expense {
-            categories.insert(customCategory.name)
-        }
-        for tx in transactionStore.transactions where tx.type == .expense {
-            if !tx.category.isEmpty { categories.insert(tx.category) }
-        }
-        return Array(categories).sortedByCustomOrder(
+        let names = appCoordinator.categoriesViewModel.customCategories
+            .filter { $0.type == .expense }
+            .map(\.name)
+        return names.sortedByCustomOrder(
             customCategories: appCoordinator.categoriesViewModel.customCategories,
             type: .expense
         )

@@ -188,6 +188,10 @@ class LoansViewModel {
                 resolvedSourceAccountName = nil
             }
 
+            // Preserve the original expense category — the user already picked it
+            // when recording the spend; converting to a loan payment shouldn't
+            // overwrite that with a technical pseudo-category. The transaction
+            // type itself (`type == .loanPayment`) is the source of truth.
             let updated = Transaction(
                 id: tx.id,
                 date: tx.date,
@@ -196,7 +200,7 @@ class LoansViewModel {
                 currency: tx.currency,
                 convertedAmount: tx.convertedAmount,
                 type: .loanPayment,
-                category: TransactionType.loanPaymentCategoryName,
+                category: tx.category,
                 subcategory: tx.subcategory,
                 accountId: resolvedSourceAccountId,
                 targetAccountId: loanId,

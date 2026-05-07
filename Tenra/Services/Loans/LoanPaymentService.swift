@@ -250,10 +250,9 @@ nonisolated enum LoanPaymentService {
             note: note
         )
 
-        let trimmedCategory = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let resolvedCategory = trimmedCategory.isEmpty
-            ? TransactionType.loanPaymentCategoryName
-            : trimmedCategory
+        // See `createManualPayment` — we leave the category empty when no override
+        // is supplied so the UI infers the label from the transaction type.
+        let resolvedCategory = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         let transaction = Transaction(
             id: UUID().uuidString,
@@ -312,12 +311,12 @@ nonisolated enum LoanPaymentService {
             ? String(localized: "loan.payment.description", defaultValue: "Loan payment")
             : trimmedDescription
 
-        // Custom category overrides the technical default. Empty/whitespace falls
-        // back to `loanPaymentCategoryName` so legacy queries still match.
-        let trimmedCategory = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let resolvedCategory = trimmedCategory.isEmpty
-            ? TransactionType.loanPaymentCategoryName
-            : trimmedCategory
+        // Category is optional — when the user doesn't pick one we leave it empty
+        // and let the UI infer the label from `type == .loanPayment` via
+        // `CategoryDisplay.displayName`. We deliberately do NOT fall back to the
+        // legacy `loanPaymentCategoryName` constant, which used to surface as a
+        // confusing technical pseudo-category in pickers and history.
+        let resolvedCategory = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         let transaction = Transaction(
             id: UUID().uuidString,
