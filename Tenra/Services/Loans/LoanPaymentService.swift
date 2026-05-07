@@ -282,7 +282,8 @@ nonisolated enum LoanPaymentService {
         dateStr: String,
         sourceAccountId: String,
         sourceAccountName: String?,
-        description: String? = nil
+        description: String? = nil,
+        category: String? = nil
     ) -> (transaction: Transaction, updatedLoanInfo: LoanInfo) {
         var updated = loanInfo
 
@@ -305,6 +306,13 @@ nonisolated enum LoanPaymentService {
             ? String(localized: "loan.payment.description", defaultValue: "Loan payment")
             : trimmedDescription
 
+        // Custom category overrides the technical default. Empty/whitespace falls
+        // back to `loanPaymentCategoryName` so legacy queries still match.
+        let trimmedCategory = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let resolvedCategory = trimmedCategory.isEmpty
+            ? TransactionType.loanPaymentCategoryName
+            : trimmedCategory
+
         let transaction = Transaction(
             id: UUID().uuidString,
             date: dateStr,
@@ -312,7 +320,7 @@ nonisolated enum LoanPaymentService {
             amount: NSDecimalNumber(decimal: actualPayment).doubleValue,
             currency: account.currency,
             type: .loanPayment,
-            category: TransactionType.loanPaymentCategoryName,
+            category: resolvedCategory,
             accountId: sourceAccountId,
             targetAccountId: account.id,
             accountName: sourceAccountName,

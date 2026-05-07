@@ -125,7 +125,8 @@ class LoansViewModel {
         amount: Decimal,
         date: String,
         sourceAccountId: String,
-        description: String? = nil
+        description: String? = nil,
+        category: String? = nil
     ) -> Transaction? {
         guard var account = accountsViewModel.getAccount(by: accountId),
               let loanInfo = account.loanInfo else {
@@ -141,7 +142,8 @@ class LoansViewModel {
             dateStr: date,
             sourceAccountId: sourceAccountId,
             sourceAccountName: sourceAccount?.name,
-            description: description
+            description: description,
+            category: category
         )
 
         account.loanInfo = updatedLoanInfo

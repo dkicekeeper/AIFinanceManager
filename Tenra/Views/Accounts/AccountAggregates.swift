@@ -78,9 +78,14 @@ nonisolated enum AccountAggregatesCalculator {
                 if isSource { income += amount }
                 if isTarget { income += amount }
             case .loanPayment, .loanEarlyRepayment:
-                // Payment from a regular account towards a loan.
+                // Post-orientation-flip: accountId = source bank, targetAccountId = loan.
+                // Both sides are outflows from the user's mental model — the bank
+                // loses cash AND the loan's balance (remaining principal) shrinks
+                // with each payment. Treating both as `expense` produces a coherent
+                // "money paid toward this loan" total on the loan-detail screen
+                // rather than misleading "income" on the obligation account.
                 if isSource { expense += amount }
-                if isTarget { income += amount }
+                if isTarget { expense += amount }
             }
         }
         return AccountAggregates(

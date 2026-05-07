@@ -55,17 +55,51 @@ struct LoanDetailView: View {
             .sorted { $0.date > $1.date }
     }
 
-    /// Most recent linked loan-payment amount for this loan, used to seed the
-    /// LoanPaymentView default value. Real-world payments are usually rounded above
-    /// the calculated annuity (e.g. 340 000 vs 336 829), so the prior actual is the
-    /// best suggestion.
+    /// Most recent loan-payment for this loan — feeds the LoanPaymentView defaults
+    /// (amount + previously-used category). Real-world payments are usually rounded
+    /// above the calculated annuity (e.g. 340 000 vs 336 829), so the prior actual
+    /// is the best suggestion.
+    private var mostRecentPayment: Transaction? {
+        transactionStore.transactions
+            .filter {
+                ($0.type == .loanPayment || $0.type == .loanEarlyRepayment)
+                && ($0.targetAccountId == accountId || $0.accountId == accountId)
+            }
+            .sorted { $0.date > $1.date }
+            .first
+    }
+
     private var lastPaidAmount: Decimal? {
-        let payments = transactionStore.transactions.filter {
-            ($0.type == .loanPayment || $0.type == .loanEarlyRepayment)
-            && ($0.targetAccountId == accountId || $0.accountId == accountId)
-        }.sorted { $0.date > $1.date }
-        guard let mostRecent = payments.first else { return nil }
-        return Decimal(mostRecent.amount)
+        mostRecentPayment.map { Decimal($0.amount) }
+    }
+
+    /// Previously-used expense category for this loan (skips the technical
+    /// "Loan Payment" sentinel so the UI doesn't pre-select a non-list value).
+    private var lastUsedCategory: String? {
+        guard let category = mostRecentPayment?.category,
+              !category.isEmpty,
+              category != TransactionType.loanPaymentCategoryName else {
+            return nil
+        }
+        return category
+    }
+
+    /// Expense-catalog categories shown in the LoanPaymentView picker. Mirrors the
+    /// catalog `TransactionEditCoordinator` builds for `.expense` so the same
+    /// options surface in both creation and edit flows.
+    private var expensePickerCategories: [String] {
+        var categories: Set<String> = []
+        for customCategory in appCoordinator.categoriesViewModel.customCategories
+        where customCategory.type == .expense {
+            categories.insert(customCategory.name)
+        }
+        for tx in transactionStore.transactions where tx.type == .expense {
+            if !tx.category.isEmpty { categories.insert(tx.category) }
+        }
+        return Array(categories).sortedByCustomOrder(
+            customCategories: appCoordinator.categoriesViewModel.customCategories,
+            type: .expense
+        )
     }
 
     var body: some View {
@@ -183,17 +217,29 @@ struct LoanDetailView: View {
                     loanInfo: loanInfo,
                     availableAccounts: loansViewModel.accountsViewModel.regularAccounts,
                     lastPaidAmount: lastPaidAmount,
-                    onPayment: { amount, date, sourceAccountId, note in
+                    availableCategories: expensePickerCategories,
+                    customCategories: appCoordinator.categoriesViewModel.customCategories,
+                    categoriesViewModel: appCoordinator.categoriesViewModel,
+                    initialCategory: lastUsedCategory,
+                    onPayment: { result in
                         if let transaction = loansViewModel.makeManualPayment(
                             accountId: account.id,
-                            amount: amount,
-                            date: date,
-                            sourceAccountId: sourceAccountId,
-                            description: note
+                            amount: result.amount,
+                            date: result.date,
+                            sourceAccountId: result.sourceAccountId,
+                            description: result.note,
+                            category: result.category
                         ) {
                             Task {
                                 do {
                                     _ = try await transactionStore.add(transaction)
+                                    if !result.subcategoryIds.isEmpty {
+                                        appCoordinator.categoriesViewModel
+                                            .linkSubcategoriesToTransaction(
+                                                transactionId: transaction.id,
+                                                subcategoryIds: Array(result.subcategoryIds)
+                                            )
+                                    }
                                     transactionsViewModel.recalculateAccountBalances()
                                 } catch {
                                     logger.error("Failed to add loan payment: \(error.localizedDescription)")
