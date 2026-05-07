@@ -90,7 +90,8 @@ class LoansViewModel {
         date: String,
         type: EarlyRepaymentType,
         sourceAccountId: String,
-        note: String? = nil
+        note: String? = nil,
+        category: String? = nil
     ) -> Transaction? {
         guard var account = accountsViewModel.getAccount(by: accountId),
               let loanInfo = account.loanInfo else {
@@ -107,7 +108,8 @@ class LoansViewModel {
             type: type,
             sourceAccountId: sourceAccountId,
             sourceAccountName: sourceAccount?.name,
-            note: note
+            note: note,
+            category: category
         )
 
         account.loanInfo = updatedLoanInfo

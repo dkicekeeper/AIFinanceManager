@@ -216,6 +216,9 @@ struct LoanDetailView: View {
                     account: account,
                     loanInfo: loanInfo,
                     availableAccounts: loansViewModel.accountsViewModel.regularAccounts,
+                    balanceCoordinator: balanceCoordinator,
+                    baseCurrency: transactionsViewModel.appSettings.baseCurrency,
+                    appSettings: transactionsViewModel.appSettings,
                     lastPaidAmount: lastPaidAmount,
                     availableCategories: expensePickerCategories,
                     customCategories: appCoordinator.categoriesViewModel.customCategories,
@@ -257,18 +260,33 @@ struct LoanDetailView: View {
                     account: account,
                     loanInfo: loanInfo,
                     availableAccounts: loansViewModel.accountsViewModel.regularAccounts,
-                    onRepayment: { amount, date, type, sourceAccountId, note in
+                    balanceCoordinator: balanceCoordinator,
+                    baseCurrency: transactionsViewModel.appSettings.baseCurrency,
+                    appSettings: transactionsViewModel.appSettings,
+                    availableCategories: expensePickerCategories,
+                    customCategories: appCoordinator.categoriesViewModel.customCategories,
+                    categoriesViewModel: appCoordinator.categoriesViewModel,
+                    initialCategory: lastUsedCategory,
+                    onRepayment: { result in
                         if let transaction = loansViewModel.makeEarlyRepayment(
                             accountId: account.id,
-                            amount: amount,
-                            date: date,
-                            type: type,
-                            sourceAccountId: sourceAccountId,
-                            note: note
+                            amount: result.amount,
+                            date: result.date,
+                            type: result.type,
+                            sourceAccountId: result.sourceAccountId,
+                            note: result.note,
+                            category: result.category
                         ) {
                             Task {
                                 do {
                                     _ = try await transactionStore.add(transaction)
+                                    if !result.subcategoryIds.isEmpty {
+                                        appCoordinator.categoriesViewModel
+                                            .linkSubcategoriesToTransaction(
+                                                transactionId: transaction.id,
+                                                subcategoryIds: Array(result.subcategoryIds)
+                                            )
+                                    }
                                     transactionsViewModel.recalculateAccountBalances()
                                 } catch {
                                     logger.error("Failed to add early repayment transaction: \(error.localizedDescription)")

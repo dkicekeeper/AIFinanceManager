@@ -237,7 +237,8 @@ nonisolated enum LoanPaymentService {
         type: EarlyRepaymentType,
         sourceAccountId: String,
         sourceAccountName: String?,
-        note: String? = nil
+        note: String? = nil,
+        category: String? = nil
     ) -> (transaction: Transaction, updatedLoanInfo: LoanInfo) {
         var updated = loanInfo
 
@@ -249,6 +250,11 @@ nonisolated enum LoanPaymentService {
             note: note
         )
 
+        let trimmedCategory = category?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let resolvedCategory = trimmedCategory.isEmpty
+            ? TransactionType.loanPaymentCategoryName
+            : trimmedCategory
+
         let transaction = Transaction(
             id: UUID().uuidString,
             date: date,
@@ -256,7 +262,7 @@ nonisolated enum LoanPaymentService {
             amount: NSDecimalNumber(decimal: amount).doubleValue,
             currency: account.currency,
             type: .loanEarlyRepayment,
-            category: TransactionType.loanPaymentCategoryName,
+            category: resolvedCategory,
             accountId: sourceAccountId,
             targetAccountId: account.id,
             accountName: sourceAccountName,

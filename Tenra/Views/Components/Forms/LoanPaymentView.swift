@@ -2,8 +2,10 @@
 //  LoanPaymentView.swift
 //  Tenra
 //
-//  View for making a manual monthly loan payment.
-//  Selects a source bank account and records the payment.
+//  Manual loan-payment composer. Mirrors the TransactionEditView layout
+//  (Hero → Amount → Source → Category → Subcategory → Note → Impact) so users
+//  see one consistent transaction form whether they're editing an existing tx
+//  or creating a new loan payment.
 //
 
 import SwiftUI
@@ -27,6 +29,9 @@ struct LoanPaymentView: View {
     let account: Account
     let loanInfo: LoanInfo
     let availableAccounts: [Account]
+    let balanceCoordinator: BalanceCoordinator
+    let baseCurrency: String
+    let appSettings: AppSettings
     /// Optional: amount of the most recent linked loan-payment for this loan, used as
     /// the default value in the amount field. If `nil`, falls back to `loanInfo.monthlyPayment`.
     var lastPaidAmount: Decimal? = nil
@@ -43,14 +48,14 @@ struct LoanPaymentView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var amountText: String = ""
+    @State private var selectedCurrency: String = ""
     @State private var paymentDate: Date = Date()
-    @State private var selectedSourceAccountId: String = ""
+    @State private var selectedSourceAccountId: String? = nil
     @State private var noteText: String = ""
     @State private var selectedCategory: String? = nil
     @State private var selectedSubcategoryIds: Set<String> = []
     @State private var showingSubcategorySearch: Bool = false
     @State private var subcategorySearchText: String = ""
-    @FocusState private var isAmountFocused: Bool
 
     @State private var validationError: String? = nil
 
@@ -61,202 +66,233 @@ struct LoanPaymentView: View {
         return customCategories.first { $0.name == name }?.id
     }
 
-    private var scheduledHint: String {
-        String(
+    /// Localised hero title — same key the rest of the app uses for `.loanPayment`
+    /// transactions, so the create flow and the edit flow read identically.
+    private var heroTitle: String {
+        String(localized: "transaction.type.loanPayment", defaultValue: "Платёж по кредиту")
+    }
+
+    /// Hero icon: prefer the loan account's brand logo (e.g. `halykbank.kz`),
+    /// fall back to a generic `creditcard.fill` SF Symbol when none is set.
+    private var heroIcon: IconSource {
+        account.iconSource ?? .sfSymbol("creditcard.fill")
+    }
+
+    /// Subtitle shown under the hero: scheduled monthly payment as reference so
+    /// the user can compare what the formula expects vs what they're entering.
+    private var heroSubtitle: String {
+        let scheduled = Formatting.formatCurrency(
+            NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue,
+            currency: account.currency
+        )
+        return String(
             format: String(localized: "loan.scheduledPayment", defaultValue: "Scheduled: %@"),
-            Formatting.formatCurrency(
-                NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue,
-                currency: account.currency
-            )
+            scheduled
         )
     }
 
     var body: some View {
-        EditSheetContainer(
-            title: String(localized: "loan.paymentTitle", defaultValue: "Loan Payment"),
-            isSaveDisabled: !isFormValid,
-            wrapInForm: false,
-            onSave: { savePayment() },
-            onCancel: { dismiss() }
-        ) {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
-                    if let error = validationError {
-                        InlineStatusText(message: error, type: .error)
-                    }
-
-                    // Amount + Source + Date in one card
-                    FormSection {
-                        UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("banknote", color: AppColors.accent, size: AppIconSize.lg),
-                            hint: scheduledHint
-                        ) {
-                            Text(String(localized: "loan.amountLabel", defaultValue: "Amount"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
-                            HStack(spacing: AppSpacing.xs) {
-                                TextField(
-                                    String(localized: "loan.amountPlaceholder", defaultValue: "Amount"),
-                                    text: $amountText
-                                )
-                                .inlineFieldStyle(keyboard: .decimalPad)
-                                .focused($isAmountFocused)
-                                Text(Formatting.currencySymbol(for: account.currency))
-                                    .font(AppTypography.bodySmall)
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
-                        }
-
-                        Divider().padding(.leading, AppSpacing.lg)
-
-                        if availableAccounts.isEmpty {
-                            UniversalRow(
-                                config: .standard,
-                                leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
-                            ) {
-                                Text(String(localized: "loan.sourceAccount", defaultValue: "From account"))
-                                    .font(AppTypography.body)
-                                    .foregroundStyle(AppColors.textPrimary)
-                            } trailing: {
-                                Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts"))
-                                    .font(AppTypography.bodySmall)
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
-                        } else {
-                            MenuPickerRow(
-                                icon: "building.columns",
-                                title: String(localized: "loan.sourceAccount", defaultValue: "From account"),
-                                selection: $selectedSourceAccountId,
-                                options: availableAccounts.map { (label: $0.name, value: $0.id) }
-                            )
-                        }
-
-                        Divider().padding(.leading, AppSpacing.lg)
-
-                        DatePickerRow(
-                            icon: "calendar",
-                            title: String(localized: "loan.date", defaultValue: "Date"),
-                            selection: $paymentDate
-                        )
-                    }
-
-                    // Category — pulled from the expense catalog so users can tag
-                    // a loan payment with "Auto" / "Mortgage" / etc. just like a
-                    // subscription. Defaults to the previous payment's category when
-                    // available, or no category (technical "Loan Payment").
-                    if !availableCategories.isEmpty {
-                        CategorySelectorView(
-                            categories: availableCategories,
-                            type: .expense,
-                            customCategories: customCategories,
-                            selectedCategory: $selectedCategory,
-                            onSelectionChange: { newValue in
-                                // When the category changes we must drop subcategory
-                                // selections — they're scoped to a single category id.
-                                if newValue != selectedCategory {
-                                    selectedSubcategoryIds.removeAll()
-                                }
-                            },
-                            emptyStateMessage: nil
-                        )
-                    }
-
-                    // Subcategory tags — only shown after a category is picked AND
-                    // there's at least one subcategory available for it (the inner
-                    // view collapses to nothing when its catalog is empty).
-                    if let categoriesVM = categoriesViewModel,
-                       selectedCategoryId != nil {
-                        SubcategorySelectorView(
-                            categoriesViewModel: categoriesVM,
-                            categoryId: selectedCategoryId,
-                            selectedSubcategoryIds: $selectedSubcategoryIds,
-                            onSearchTap: {
-                                withAnimation { showingSubcategorySearch = true }
-                            }
-                        )
-                    }
-
-                    // Optional note — surfaces as the transaction's `description`
-                    // so users can annotate ad-hoc payments (extra payment, partial,
-                    // etc.) without going back to edit the transaction.
-                    FormTextField(
-                        text: $noteText,
-                        placeholder: String(localized: "loan.notePlaceholder", defaultValue: "Note (optional)"),
-                        style: .multiline(min: 2, max: 4)
+                    HeroSection(
+                        icon: heroIcon,
+                        title: heroTitle,
+                        subtitle: heroSubtitle
                     )
 
-                    // Impact preview (conditional second section)
-                    if let amount = AmountFormatter.parse(amountText), amount > 0 {
-                        let breakdown = LoanPaymentService.paymentBreakdown(
-                            remainingPrincipal: loanInfo.remainingPrincipal,
-                            annualRate: loanInfo.interestRateAnnual,
-                            monthlyPayment: amount
-                        )
-                        FormSection(header: String(localized: "loan.impact", defaultValue: "Impact")) {
-                            InfoRow(
-                                icon: "percent",
-                                label: String(localized: "loan.interestPortion", defaultValue: "Interest"),
-                                value: Formatting.formatCurrency(NSDecimalNumber(decimal: breakdown.interest).doubleValue, currency: account.currency)
-                            )
-                            .padding(.horizontal, AppSpacing.lg)
-                            .padding(.vertical, AppSpacing.sm)
-                            Divider().padding(.leading, AppSpacing.lg)
-                            InfoRow(
-                                icon: "arrow.down.to.line",
-                                label: String(localized: "loan.principalPortion", defaultValue: "Principal"),
-                                value: Formatting.formatCurrency(NSDecimalNumber(decimal: breakdown.principal).doubleValue, currency: account.currency)
-                            )
-                            .padding(.horizontal, AppSpacing.lg)
-                            .padding(.vertical, AppSpacing.sm)
-                        }
+                    if let error = validationError {
+                        InlineStatusText(message: error, type: .error)
+                            .padding(.horizontal, AppSpacing.pageHorizontal)
                     }
+
+                    AmountInputView(
+                        amount: $amountText,
+                        selectedCurrency: $selectedCurrency,
+                        errorMessage: nil,
+                        baseCurrency: baseCurrency,
+                        accountCurrencies: Set([account.currency]),
+                        appSettings: appSettings
+                    )
+
+                    fromSection
+                    categorySection
+                    subcategorySection
+                    noteSection
+                    impactSection
                 }
-                .padding(AppSpacing.lg)
+                .animation(AppAnimation.gentleSpring, value: validationError)
+                .animation(AppAnimation.gentleSpring, value: selectedCategory)
+                .animation(AppAnimation.gentleSpring, value: amountText)
             }
-        }
-        .onAppear {
-            // Default to the most recently paid amount if available — users typically
-            // round their actual payment (e.g. 340 000) above the calculated annuity
-            // (e.g. 336 829) and the prior actual is the better suggestion.
-            let defaultAmount = lastPaidAmount ?? loanInfo.monthlyPayment
-            amountText = AmountInputFormatting.bindingString(for: defaultAmount)
-            if selectedSourceAccountId.isEmpty, let first = availableAccounts.first {
-                selectedSourceAccountId = first.id
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
+            .dateButtonsSafeArea(selectedDate: $paymentDate, isDisabled: !isFormValid) { _ in
+                savePayment()
             }
-            // Pre-select the previously-used category for this loan when available;
-            // skip the technical `Loan Payment` value (handled by `category == nil`).
-            if selectedCategory == nil,
-               let candidate = initialCategory,
-               candidate != TransactionType.loanPaymentCategoryName,
-               availableCategories.contains(candidate) {
-                selectedCategory = candidate
+            .sheet(isPresented: $showingSubcategorySearch) {
+                if let categoriesVM = categoriesViewModel,
+                   let categoryId = selectedCategoryId {
+                    SubcategorySearchView(
+                        categoriesViewModel: categoriesVM,
+                        categoryId: categoryId,
+                        selectedSubcategoryIds: $selectedSubcategoryIds,
+                        searchText: $subcategorySearchText
+                    )
+                    .onAppear { subcategorySearchText = "" }
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
             }
-        }
-        .sheet(isPresented: $showingSubcategorySearch) {
-            if let categoriesVM = categoriesViewModel,
-               let categoryId = selectedCategoryId {
-                SubcategorySearchView(
-                    categoriesViewModel: categoriesVM,
-                    categoryId: categoryId,
-                    selectedSubcategoryIds: $selectedSubcategoryIds,
-                    searchText: $subcategorySearchText
-                )
-                .onAppear { subcategorySearchText = "" }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-            }
-        }
-        .task {
-            await Task.yield()
-            isAmountFocused = true
+            .onAppear(perform: applyDefaults)
         }
     }
 
+    // MARK: - Sections
+
+    @ViewBuilder
+    private var fromSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            SectionHeaderView(String(localized: "transactionForm.fromHeader"))
+                .padding(.horizontal, AppSpacing.lg)
+
+            AccountSelectorView(
+                accounts: availableAccounts,
+                selectedAccountId: $selectedSourceAccountId,
+                emptyStateMessage: String(localized: "loan.noSourceAccounts", defaultValue: "No accounts"),
+                balanceCoordinator: balanceCoordinator
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var categorySection: some View {
+        if !availableCategories.isEmpty {
+            CategorySelectorView(
+                categories: availableCategories,
+                type: .expense,
+                customCategories: customCategories,
+                selectedCategory: $selectedCategory,
+                onSelectionChange: { newValue in
+                    if newValue != selectedCategory {
+                        selectedSubcategoryIds.removeAll()
+                    }
+                },
+                emptyStateMessage: nil
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var subcategorySection: some View {
+        if let categoriesVM = categoriesViewModel,
+           selectedCategoryId != nil {
+            SubcategorySelectorView(
+                categoriesViewModel: categoriesVM,
+                categoryId: selectedCategoryId,
+                selectedSubcategoryIds: $selectedSubcategoryIds,
+                onSearchTap: {
+                    withAnimation { showingSubcategorySearch = true }
+                }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var noteSection: some View {
+        FormTextField(
+            text: $noteText,
+            placeholder: String(localized: "transactionForm.descriptionPlaceholder"),
+            style: .multiline(min: 2, max: 6)
+        )
+        .screenPadding()
+    }
+
+    @ViewBuilder
+    private var impactSection: some View {
+        if let amount = AmountFormatter.parse(amountText), amount > 0 {
+            let breakdown = LoanPaymentService.paymentBreakdown(
+                remainingPrincipal: loanInfo.remainingPrincipal,
+                annualRate: loanInfo.interestRateAnnual,
+                monthlyPayment: amount
+            )
+            FormSection(header: String(localized: "loan.impact", defaultValue: "Impact")) {
+                InfoRow(
+                    icon: "percent",
+                    label: String(localized: "loan.interestPortion", defaultValue: "Interest"),
+                    value: Formatting.formatCurrency(
+                        NSDecimalNumber(decimal: breakdown.interest).doubleValue,
+                        currency: account.currency
+                    )
+                )
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.sm)
+                Divider().padding(.leading, AppSpacing.lg)
+                InfoRow(
+                    icon: "arrow.down.to.line",
+                    label: String(localized: "loan.principalPortion", defaultValue: "Principal"),
+                    value: Formatting.formatCurrency(
+                        NSDecimalNumber(decimal: breakdown.principal).doubleValue,
+                        currency: account.currency
+                    )
+                )
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.vertical, AppSpacing.sm)
+            }
+            .screenPadding()
+        }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .cancellationAction) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+            }
+            .accessibilityLabel(String(localized: "button.close"))
+        }
+        ToolbarItem(placement: .confirmationAction) {
+            Button {
+                savePayment()
+            } label: {
+                Image(systemName: "checkmark")
+            }
+            .glassProminentButton()
+            .disabled(!isFormValid)
+            .accessibilityLabel(String(localized: "button.save"))
+        }
+    }
+
+    // MARK: - Lifecycle
+
+    private func applyDefaults() {
+        // Default to the most recently paid amount if available — users typically
+        // round their actual payment (e.g. 340 000) above the calculated annuity
+        // (e.g. 336 829) and the prior actual is the better suggestion.
+        let defaultAmount = lastPaidAmount ?? loanInfo.monthlyPayment
+        amountText = AmountInputFormatting.bindingString(for: defaultAmount)
+        selectedCurrency = account.currency
+        if selectedSourceAccountId == nil, let first = availableAccounts.first {
+            selectedSourceAccountId = first.id
+        }
+        if selectedCategory == nil,
+           let candidate = initialCategory,
+           candidate != TransactionType.loanPaymentCategoryName,
+           availableCategories.contains(candidate) {
+            selectedCategory = candidate
+        }
+    }
+
+    // MARK: - Validation + Save
+
     private var isFormValid: Bool {
         guard let amount = AmountFormatter.parse(amountText), amount > 0 else { return false }
-        return !selectedSourceAccountId.isEmpty
+        return !(selectedSourceAccountId ?? "").isEmpty
     }
 
     private func savePayment() {
@@ -267,7 +303,7 @@ struct LoanPaymentView: View {
             HapticManager.error()
             return
         }
-        guard !selectedSourceAccountId.isEmpty else {
+        guard let sourceId = selectedSourceAccountId, !sourceId.isEmpty else {
             withAnimation(AppAnimation.contentSpring) {
                 validationError = String(localized: "loan.error.noSourceAccount", defaultValue: "Select a source account")
             }
@@ -282,7 +318,7 @@ struct LoanPaymentView: View {
         let result = LoanPaymentFormResult(
             amount: amount,
             date: dateStr,
-            sourceAccountId: selectedSourceAccountId,
+            sourceAccountId: sourceId,
             note: resolvedNote,
             category: selectedCategory,
             subcategoryIds: selectedSubcategoryIds
@@ -296,6 +332,7 @@ struct LoanPaymentView: View {
 // MARK: - Previews
 
 #Preview("Loan Payment") {
+    let coordinator = AppCoordinator()
     let sampleLoanAccount = Account(
         id: "preview-loan",
         name: "Car Loan",
@@ -319,6 +356,7 @@ struct LoanPaymentView: View {
         id: "source-1",
         name: "Kaspi Gold",
         currency: "KZT",
+        iconSource: .brandService("kaspi.kz"),
         initialBalance: 500_000
     )
 
@@ -326,6 +364,10 @@ struct LoanPaymentView: View {
         account: sampleLoanAccount,
         loanInfo: sampleLoanAccount.loanInfo!,
         availableAccounts: [sourceAccount],
+        balanceCoordinator: coordinator.balanceCoordinator,
+        baseCurrency: coordinator.transactionsViewModel.appSettings.baseCurrency,
+        appSettings: coordinator.transactionsViewModel.appSettings,
         onPayment: { _ in }
     )
+    .environment(coordinator)
 }
