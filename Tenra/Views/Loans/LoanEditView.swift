@@ -31,14 +31,16 @@ struct LoanEditView: View {
 
     // Default tagging — pre-fills LoanPaymentView / LoanEarlyRepaymentView for
     // every payment of this loan unless the user has already recorded one (then
-    // that prior payment's category wins). Empty == no default.
+    // that prior payment's category wins). Optional == no default.
+    //
+    // NOTE: `LoanInfo.defaultSubcategoryIds` stays as `[String]` for forward-
+    // compatibility (multi-select may return later), but the loan-edit form
+    // uses single-select dropdowns to mirror `SubscriptionEditView`'s style.
     @State private var defaultCategory: String? = nil
-    @State private var defaultSubcategoryIds: Set<String> = []
-    @State private var showingSubcategorySearch: Bool = false
-    @State private var subcategorySearchText: String = ""
+    @State private var defaultSubcategoryId: String? = nil
 
     /// Resolves the active `CustomCategory.id` for the picked default category —
-    /// needed to feed `SubcategorySelectorView`.
+    /// needed to enumerate subcategory options.
     private var defaultCategoryId: String? {
         guard let name = defaultCategory else { return nil }
         return appCoordinator.categoriesViewModel.customCategories.first { $0.name == name }?.id
@@ -55,6 +57,37 @@ struct LoanEditView: View {
                 customCategories: appCoordinator.categoriesViewModel.customCategories,
                 type: .expense
             )
+    }
+
+    /// Categories surfaced in the default-category dropdown. Always prefixed
+    /// with a `nil` "no default" option so the user can clear the selection.
+    private var categoryDropdownOptions: [(label: String, value: String?)] {
+        let none: (label: String, value: String?) = (
+            label: String(localized: "loan.noDefaultCategory", defaultValue: "Без категории"),
+            value: nil
+        )
+        return [none] + expensePickerCategories.map { (label: $0, value: Optional($0)) }
+    }
+
+    /// Subcategories of the picked default category, prefixed with "no default".
+    /// Empty (no rows beyond "None") when the picked category has no subcategories.
+    private var subcategoryDropdownOptions: [(label: String, value: String?)] {
+        let none: (label: String, value: String?) = (
+            label: String(localized: "loan.noDefaultSubcategory", defaultValue: "Без подкатегории"),
+            value: nil
+        )
+        guard let categoryId = defaultCategoryId else { return [none] }
+        let subs = appCoordinator.categoriesViewModel
+            .getSubcategoriesForCategory(categoryId)
+            .map { (label: $0.name, value: Optional($0.id)) }
+        return [none] + subs
+    }
+
+    /// `true` when the picked default category has at least one subcategory in
+    /// the catalog — controls whether the second dropdown is rendered at all.
+    private var defaultCategoryHasSubcategories: Bool {
+        guard let categoryId = defaultCategoryId else { return false }
+        return !appCoordinator.categoriesViewModel.getSubcategoriesForCategory(categoryId).isEmpty
     }
 
 
@@ -230,19 +263,6 @@ struct LoanEditView: View {
                 .padding(AppSpacing.lg)
             }
         }
-        .sheet(isPresented: $showingSubcategorySearch) {
-            if let categoryId = defaultCategoryId {
-                SubcategorySearchView(
-                    categoriesViewModel: appCoordinator.categoriesViewModel,
-                    categoryId: categoryId,
-                    selectedSubcategoryIds: $defaultSubcategoryIds,
-                    searchText: $subcategorySearchText
-                )
-                .onAppear { subcategorySearchText = "" }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-            }
-        }
         .onAppear {
             if let account = account, let loanInfo = account.loanInfo {
                 // Editing existing loan
@@ -265,7 +285,9 @@ struct LoanEditView: View {
                    expensePickerCategories.contains(stored) {
                     defaultCategory = stored
                 }
-                defaultSubcategoryIds = Set(loanInfo.defaultSubcategoryIds)
+                // Single-default convention: pick the first stored id (legacy
+                // multi-select rows collapse to their first entry).
+                defaultSubcategoryId = loanInfo.defaultSubcategoryIds.first
             } else if let account = account {
                 // Converting regular account → loan: pre-fill from account
                 name = account.name
@@ -291,48 +313,23 @@ struct LoanEditView: View {
     private var defaultTaggingSection: some View {
         if !expensePickerCategories.isEmpty {
             VStack(alignment: .leading, spacing: AppSpacing.sm) {
-                SectionHeaderView(String(localized: "loan.defaultTagging", defaultValue: "Default category"))
-                    .padding(.horizontal, AppSpacing.lg)
+                FormSection(header: String(localized: "loan.defaultTagging", defaultValue: "Default category")) {
+                    MenuPickerRow(
+                        icon: "tag",
+                        title: String(localized: "subscriptions.category", defaultValue: "Category"),
+                        selection: $defaultCategory,
+                        options: categoryDropdownOptions
+                    )
 
-                CategorySelectorView(
-                    categories: expensePickerCategories,
-                    type: .expense,
-                    customCategories: appCoordinator.categoriesViewModel.customCategories,
-                    selectedCategory: $defaultCategory,
-                    onSelectionChange: { newValue in
-                        // Subcategory ids are scoped to a single category — when the
-                        // user switches the default category, the previously stored
-                        // subcategory selection no longer applies.
-                        if newValue != defaultCategory {
-                            defaultSubcategoryIds.removeAll()
-                        }
-                    },
-                    emptyStateMessage: nil
-                )
+                    if defaultCategoryHasSubcategories {
+                        Divider()
 
-                // Subcategory section — visible regardless of category selection so
-                // users see the option upfront (matches the payment form's layout).
-                VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                    SectionHeaderView(String(localized: "loan.subcategoryHeader", defaultValue: "Subcategory"))
-                        .padding(.horizontal, AppSpacing.lg)
-
-                    if defaultCategoryId != nil {
-                        SubcategorySelectorView(
-                            categoriesViewModel: appCoordinator.categoriesViewModel,
-                            categoryId: defaultCategoryId,
-                            selectedSubcategoryIds: $defaultSubcategoryIds,
-                            onSearchTap: {
-                                withAnimation { showingSubcategorySearch = true }
-                            }
+                        MenuPickerRow(
+                            icon: "tag.fill",
+                            title: String(localized: "loan.subcategoryHeader", defaultValue: "Subcategory"),
+                            selection: $defaultSubcategoryId,
+                            options: subcategoryDropdownOptions
                         )
-                    } else {
-                        Text(String(
-                            localized: "loan.subcategoryEmpty",
-                            defaultValue: "Pick a category above to add subcategory tags"
-                        ))
-                        .font(AppTypography.bodySmall)
-                        .foregroundStyle(AppColors.textSecondary)
-                        .padding(.horizontal, AppSpacing.lg)
                     }
                 }
 
@@ -343,6 +340,14 @@ struct LoanEditView: View {
                 .font(AppTypography.caption)
                 .foregroundStyle(AppColors.textSecondary)
                 .padding(.horizontal, AppSpacing.lg)
+            }
+            .onChange(of: defaultCategory) { oldValue, newValue in
+                // Subcategory ids are scoped to a single category — clear the
+                // selection when the user switches the parent category so the
+                // dropdown's selected value isn't stale.
+                if oldValue != newValue {
+                    defaultSubcategoryId = nil
+                }
             }
         }
     }
@@ -419,7 +424,7 @@ struct LoanEditView: View {
             lastPaymentDate: existingInfo?.lastPaymentDate,
             earlyRepayments: existingInfo?.earlyRepayments ?? [],
             defaultCategory: defaultCategory,
-            defaultSubcategoryIds: Array(defaultSubcategoryIds)
+            defaultSubcategoryIds: defaultSubcategoryId.map { [$0] } ?? []
         )
 
         let balance = NSDecimalNumber(decimal: principalAmount).doubleValue

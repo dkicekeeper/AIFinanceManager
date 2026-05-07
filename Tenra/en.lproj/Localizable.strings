@@ -1108,6 +1108,8 @@
 "loan.defaultTaggingHint" = "Pre-fills the payment form. Last-used category from previous payments takes precedence.";
 "loan.subcategoryHeader" = "Subcategory";
 "loan.subcategoryEmpty" = "Pick a category above to add subcategory tags";
+"loan.noDefaultCategory" = "No category";
+"loan.noDefaultSubcategory" = "No subcategory";
 "loan.earlyRepaymentTitle" = "Early Repayment";
 "loan.termReduction" = "Term reduced by";
 "loan.monthsValue" = "%d months";
