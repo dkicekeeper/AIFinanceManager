@@ -1263,6 +1263,12 @@
 // MARK: - Transactions (Misc)
 "transaction.resumeRecurring" = "Resume";
 "transaction.type.internalTransfer" = "Transfer";
+"transaction.type.loanPayment" = "Loan payment";
+"transaction.type.loanEarlyRepayment" = "Early repayment";
+"transaction.type.depositTopUp" = "Deposit top-up";
+"transaction.type.depositWithdrawal" = "Deposit withdrawal";
+"transaction.type.depositInterestAccrual" = "Interest accrual";
+"category.uncategorized" = "Uncategorized";
 "category.budget" = "Budget";
 
 // MARK: - Recurring Errors

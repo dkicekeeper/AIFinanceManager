@@ -124,7 +124,8 @@ class LoansViewModel {
         accountId: String,
         amount: Decimal,
         date: String,
-        sourceAccountId: String
+        sourceAccountId: String,
+        description: String? = nil
     ) -> Transaction? {
         guard var account = accountsViewModel.getAccount(by: accountId),
               let loanInfo = account.loanInfo else {
@@ -139,7 +140,8 @@ class LoansViewModel {
             paymentAmount: amount,
             dateStr: date,
             sourceAccountId: sourceAccountId,
-            sourceAccountName: sourceAccount?.name
+            sourceAccountName: sourceAccount?.name,
+            description: description
         )
 
         account.loanInfo = updatedLoanInfo
@@ -163,21 +165,23 @@ class LoansViewModel {
         let loanName = loan.name
         let sortedTransactions = transactions.sorted { $0.date < $1.date }
 
-        // Convert each transaction to loanPayment
+        // Convert each transaction to loanPayment.
+        // Orientation contract: accountId = source bank, targetAccountId = loan
+        // (mirrors `.expense` semantics — see LoanPaymentService docs).
         for tx in sortedTransactions {
-            // Sanitize the source account reference — drop it if the account no longer
-            // exists, otherwise validate() throws targetAccountNotFound on stale ids
-            // (e.g. user picked an old expense whose source account was since deleted).
-            let resolvedTargetAccountId: String?
-            let resolvedTargetAccountName: String?
+            // Sanitize the source bank reference — drop it if the account no longer
+            // exists, otherwise validate() throws on stale ids (e.g. user picked an
+            // old expense whose source account was since deleted).
+            let resolvedSourceAccountId: String?
+            let resolvedSourceAccountName: String?
             if let originalAccountId = tx.accountId,
                !originalAccountId.isEmpty,
                transactionStore.accountById[originalAccountId] != nil {
-                resolvedTargetAccountId = originalAccountId
-                resolvedTargetAccountName = tx.accountName
+                resolvedSourceAccountId = originalAccountId
+                resolvedSourceAccountName = tx.accountName
             } else {
-                resolvedTargetAccountId = nil
-                resolvedTargetAccountName = nil
+                resolvedSourceAccountId = nil
+                resolvedSourceAccountName = nil
             }
 
             let updated = Transaction(
@@ -190,10 +194,10 @@ class LoansViewModel {
                 type: .loanPayment,
                 category: TransactionType.loanPaymentCategoryName,
                 subcategory: tx.subcategory,
-                accountId: loanId,
-                targetAccountId: resolvedTargetAccountId,
-                accountName: loanName,
-                targetAccountName: resolvedTargetAccountName,
+                accountId: resolvedSourceAccountId,
+                targetAccountId: loanId,
+                accountName: resolvedSourceAccountName,
+                targetAccountName: loanName,
                 targetCurrency: tx.targetCurrency,
                 targetAmount: tx.targetAmount,
                 recurringSeriesId: tx.recurringSeriesId,
@@ -209,9 +213,10 @@ class LoansViewModel {
             throw LoanLinkError.loanNotFound
         }
 
-        // Count ALL loanPayment transactions for this loan (including pre-existing ones)
+        // Count ALL loanPayment transactions for this loan (including pre-existing ones).
+        // Loan is the targetAccountId after orientation flip.
         let allLoanPayments = transactionStore.transactions.filter {
-            $0.accountId == loanId && $0.type == .loanPayment
+            $0.targetAccountId == loanId && $0.type == .loanPayment
         }.sorted { $0.date < $1.date }
 
         let allDates = allLoanPayments.map(\.date)

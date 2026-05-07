@@ -35,6 +35,36 @@ enum TransactionType: String, Codable, Sendable {
             return false
         }
     }
+
+    /// Whether the transaction edit screen should expose the category picker for this
+    /// type. Internal transfers have no category at all; everything else is
+    /// categorisable so users can tag loan/deposit payments alongside regular spend
+    /// (mirrors how subscriptions reuse expense categories).
+    nonisolated var allowsCategoryPicker: Bool {
+        self != .internalTransfer
+    }
+
+    /// Whether subcategory tagging is meaningful for this transaction type.
+    /// Loan / deposit ops still benefit from tags (e.g. specific loan id, deposit
+    /// purpose) — only `.internalTransfer` skips subcategories entirely.
+    nonisolated var allowsSubcategoryPicker: Bool {
+        self != .internalTransfer
+    }
+
+    /// Transaction types that should pull from the `.expense` category catalog when
+    /// rendering a category picker — loan and deposit ops behave like specialised
+    /// expenses (you tag them with "Auto", "Housing", etc.).
+    nonisolated var categoryPickerSourceType: TransactionType {
+        switch self {
+        case .loanPayment, .loanEarlyRepayment,
+             .depositTopUp, .depositWithdrawal:
+            return .expense
+        case .depositInterestAccrual:
+            return .income
+        default:
+            return self
+        }
+    }
 }
 
 struct Transaction: Identifiable, Codable, Equatable, Sendable {

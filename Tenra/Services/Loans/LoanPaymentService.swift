@@ -224,6 +224,11 @@ nonisolated enum LoanPaymentService {
 
     /// Create an early repayment transaction and update loan state.
     /// Returns the transaction + updated loanInfo so the caller can persist both.
+    ///
+    /// **Orientation contract:** for loan-payment transactions
+    /// `accountId = SOURCE bank` (where money leaves) and
+    /// `targetAccountId = LOAN` (debt being repaid). Mirrors `.expense` semantics:
+    /// the user-facing "from" account is the bank, and the loan is the destination.
     static func createEarlyRepaymentTransaction(
         account: Account,
         loanInfo: LoanInfo,
@@ -252,10 +257,10 @@ nonisolated enum LoanPaymentService {
             currency: account.currency,
             type: .loanEarlyRepayment,
             category: TransactionType.loanPaymentCategoryName,
-            accountId: account.id,
-            targetAccountId: sourceAccountId,
-            accountName: account.name,
-            targetAccountName: sourceAccountName
+            accountId: sourceAccountId,
+            targetAccountId: account.id,
+            accountName: sourceAccountName,
+            targetAccountName: account.name
         )
 
         return (transaction, updated)
@@ -265,13 +270,19 @@ nonisolated enum LoanPaymentService {
 
     /// Create a manual loan payment transaction and update loan state.
     /// Returns the transaction + updated loanInfo so the caller can persist both.
+    ///
+    /// **Orientation contract:** for loan-payment transactions
+    /// `accountId = SOURCE bank` (where money leaves) and
+    /// `targetAccountId = LOAN` (debt being repaid). Mirrors `.expense` semantics:
+    /// the user-facing "from" account is the bank, and the loan is the destination.
     static func createManualPayment(
         account: Account,
         loanInfo: LoanInfo,
         paymentAmount: Decimal,
         dateStr: String,
         sourceAccountId: String,
-        sourceAccountName: String?
+        sourceAccountName: String?,
+        description: String? = nil
     ) -> (transaction: Transaction, updatedLoanInfo: LoanInfo) {
         var updated = loanInfo
 
@@ -289,18 +300,23 @@ nonisolated enum LoanPaymentService {
         updated.paymentsMade += 1
         updated.lastPaymentDate = dateStr
 
+        let trimmedDescription = description?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let resolvedDescription = trimmedDescription.isEmpty
+            ? String(localized: "loan.payment.description", defaultValue: "Loan payment")
+            : trimmedDescription
+
         let transaction = Transaction(
             id: UUID().uuidString,
             date: dateStr,
-            description: String(localized: "loan.payment.description", defaultValue: "Loan payment"),
+            description: resolvedDescription,
             amount: NSDecimalNumber(decimal: actualPayment).doubleValue,
             currency: account.currency,
             type: .loanPayment,
             category: TransactionType.loanPaymentCategoryName,
-            accountId: account.id,
-            targetAccountId: sourceAccountId,
-            accountName: account.name,
-            targetAccountName: sourceAccountName
+            accountId: sourceAccountId,
+            targetAccountId: account.id,
+            accountName: sourceAccountName,
+            targetAccountName: account.name
         )
 
         return (transaction, updated)

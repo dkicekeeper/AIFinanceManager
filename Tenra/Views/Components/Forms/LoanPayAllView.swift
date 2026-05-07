@@ -12,15 +12,34 @@ struct LoanPayAllView: View {
     let activeLoans: [Account]
     let availableAccounts: [Account]
     let currency: String
-    let onPayAll: (String, String) -> Void // (sourceAccountId, dateStr)
+    /// Default amount per loan id (e.g. last actual payment). Falls back to
+    /// `loanInfo.monthlyPayment` when missing.
+    var defaultAmounts: [String: Decimal] = [:]
+    /// Receives per-loan amount overrides keyed by loan account id, the source
+    /// account id, and the date string.
+    let onPayAll: ([String: Decimal], String, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     @State private var paymentDate: Date = Date()
     @State private var selectedSourceAccountId: String = ""
+    @State private var amountOverrides: [String: String] = [:]
+
+    private func defaultAmount(for loan: Account) -> Decimal {
+        defaultAmounts[loan.id] ?? loan.loanInfo?.monthlyPayment ?? 0
+    }
+
+    private func parsedAmount(for loan: Account) -> Decimal {
+        if let raw = amountOverrides[loan.id],
+           let parsed = AmountFormatter.parse(raw),
+           parsed > 0 {
+            return parsed
+        }
+        return defaultAmount(for: loan)
+    }
 
     private var totalPayment: Decimal {
-        activeLoans.compactMap { $0.loanInfo?.monthlyPayment }.reduce(0, +)
+        activeLoans.reduce(Decimal(0)) { $0 + parsedAmount(for: $1) }
     }
 
     var body: some View {
@@ -53,12 +72,24 @@ struct LoanPayAllView: View {
                                             .foregroundStyle(AppColors.textSecondary)
                                     }
                                 } trailing: {
-                                    FormattedAmountText(
-                                        amount: NSDecimalNumber(decimal: loanInfo.monthlyPayment).doubleValue,
-                                        currency: loan.currency,
-                                        fontSize: AppTypography.bodySmall,
-                                        color: AppColors.expense
-                                    )
+                                    HStack(spacing: AppSpacing.xs) {
+                                        TextField(
+                                            String(localized: "loan.amountPlaceholder", defaultValue: "Amount"),
+                                            text: Binding(
+                                                get: {
+                                                    amountOverrides[loan.id]
+                                                        ?? AmountInputFormatting.bindingString(for: defaultAmount(for: loan))
+                                                },
+                                                set: { amountOverrides[loan.id] = $0 }
+                                            )
+                                        )
+                                        .inlineFieldStyle(keyboard: .decimalPad)
+                                        .multilineTextAlignment(.trailing)
+                                        .frame(maxWidth: 140)
+                                        Text(Formatting.currencySymbol(for: loan.currency))
+                                            .font(AppTypography.bodySmall)
+                                            .foregroundStyle(AppColors.textSecondary)
+                                    }
                                 }
                             }
                         }
@@ -129,7 +160,11 @@ struct LoanPayAllView: View {
 
     private func savePayAll() {
         let dateStr = DateFormatters.dateFormatter.string(from: paymentDate)
-        onPayAll(selectedSourceAccountId, dateStr)
+        var resolvedAmounts: [String: Decimal] = [:]
+        for loan in activeLoans {
+            resolvedAmounts[loan.id] = parsedAmount(for: loan)
+        }
+        onPayAll(resolvedAmounts, selectedSourceAccountId, dateStr)
         HapticManager.success()
         dismiss()
     }
@@ -185,6 +220,6 @@ struct LoanPayAllView: View {
         activeLoans: [loan1, loan2],
         availableAccounts: [sourceAccount],
         currency: "KZT",
-        onPayAll: { _, _ in }
+        onPayAll: { _, _, _ in }
     )
 }

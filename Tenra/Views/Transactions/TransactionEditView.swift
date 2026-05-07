@@ -104,8 +104,12 @@ struct TransactionEditView: View {
                             }
                         }
 
-                        // 3. Category + subcategories (not for transfers)
-                        if coordinator.transaction.type != .internalTransfer {
+                        // 3. Category + subcategories.
+                        // System transaction types (transfer, loan*, deposit*) have a
+                        // fixed technical category — the picker is hidden for them.
+                        // Subcategories remain editable for loan/deposit types so users
+                        // can still tag the payment (e.g. car-loan-#123, halyk-mortgage).
+                        if coordinator.transaction.type.allowsCategoryPicker {
                             CategorySelectorView(
                                 categories: coordinator.availableCategories,
                                 type: coordinator.transaction.type,
@@ -116,20 +120,21 @@ struct TransactionEditView: View {
                                 ),
                                 emptyStateMessage: String(localized: "transactionForm.noCategories")
                             )
+                        }
 
-                            if coordinator.categoryId != nil {
-                                SubcategorySelectorView(
-                                    categoriesViewModel: coordinator.categoriesViewModel,
-                                    categoryId: coordinator.categoryId,
-                                    selectedSubcategoryIds: $bindableCoordinator.formData.selectedSubcategoryIds,
-                                    onSearchTap: {
-                                        withAnimation { coordinator.formData.showingSubcategorySearch = true }
-                                    },
-                                    onReorderTap: {
-                                        coordinator.formData.showingSubcategoryReorder = true
-                                    }
-                                )
-                            }
+                        if coordinator.transaction.type.allowsSubcategoryPicker,
+                           coordinator.categoryId != nil {
+                            SubcategorySelectorView(
+                                categoriesViewModel: coordinator.categoriesViewModel,
+                                categoryId: coordinator.categoryId,
+                                selectedSubcategoryIds: $bindableCoordinator.formData.selectedSubcategoryIds,
+                                onSearchTap: {
+                                    withAnimation { coordinator.formData.showingSubcategorySearch = true }
+                                },
+                                onReorderTap: {
+                                    coordinator.formData.showingSubcategoryReorder = true
+                                }
+                            )
                         }
 
                         // 4. Description
@@ -246,16 +251,50 @@ struct TransactionEditView: View {
 
     // MARK: - Hero Helpers
 
+    /// The technical account this transaction is *attached* to: for `.loanPayment`
+    /// the loan account (held in `targetAccountId` after the orientation flip), for
+    /// `.deposit*` the deposit account. Used to source the hero icon (bank logo).
+    private var systemAccount: Account? {
+        switch coordinator.transaction.type {
+        case .loanPayment, .loanEarlyRepayment:
+            // Post-flip: loan = targetAccountId. Pre-flip rows fall back to accountId
+            // until the migration rewrites them — defensive lookup covers both.
+            if let targetId = coordinator.transaction.targetAccountId,
+               let acc = _accounts.first(where: { $0.id == targetId && $0.isLoan }) {
+                return acc
+            }
+            return _accounts.first { $0.id == coordinator.transaction.accountId && $0.isLoan }
+        case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            if let primary = _accounts.first(where: { $0.id == coordinator.transaction.accountId && $0.isDeposit }) {
+                return primary
+            }
+            return _accounts.first { $0.id == coordinator.transaction.targetAccountId && $0.isDeposit }
+        default:
+            return nil
+        }
+    }
+
     private var heroCategory: CustomCategory? {
-        guard coordinator.transaction.type != .internalTransfer else { return nil }
-        return _customCategories.first { $0.name == coordinator.formData.selectedCategory }
+        switch coordinator.transaction.type {
+        case .internalTransfer, .loanPayment, .loanEarlyRepayment,
+             .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            return nil
+        default:
+            return _customCategories.first { $0.name == coordinator.formData.selectedCategory }
+        }
     }
 
     private var heroIconSource: IconSource? {
-        if coordinator.transaction.type == .internalTransfer {
+        switch coordinator.transaction.type {
+        case .internalTransfer:
             return .sfSymbol("arrow.left.arrow.right")
+        case .loanPayment, .loanEarlyRepayment:
+            return systemAccount?.iconSource ?? .sfSymbol("creditcard.fill")
+        case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            return systemAccount?.iconSource ?? .sfSymbol("banknote.fill")
+        default:
+            return heroCategory?.iconSource
         }
-        return heroCategory?.iconSource
     }
 
     private var heroIconTint: IconTint? {
@@ -263,10 +302,22 @@ struct TransactionEditView: View {
     }
 
     private var heroTitle: String {
-        if coordinator.transaction.type == .internalTransfer {
+        switch coordinator.transaction.type {
+        case .internalTransfer:
             return String(localized: "transaction.type.internalTransfer", defaultValue: "Transfer")
+        case .loanPayment:
+            return String(localized: "transaction.type.loanPayment", defaultValue: "Платёж по кредиту")
+        case .loanEarlyRepayment:
+            return String(localized: "transaction.type.loanEarlyRepayment", defaultValue: "Досрочное погашение")
+        case .depositTopUp:
+            return String(localized: "transaction.type.depositTopUp", defaultValue: "Пополнение депозита")
+        case .depositWithdrawal:
+            return String(localized: "transaction.type.depositWithdrawal", defaultValue: "Снятие с депозита")
+        case .depositInterestAccrual:
+            return String(localized: "transaction.type.depositInterestAccrual", defaultValue: "Начисление процентов")
+        default:
+            return coordinator.formData.selectedCategory
         }
-        return coordinator.formData.selectedCategory
     }
 }
 

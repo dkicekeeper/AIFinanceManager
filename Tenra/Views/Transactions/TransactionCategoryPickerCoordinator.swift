@@ -101,7 +101,10 @@ final class TransactionCategoryPickerCoordinator {
         transactionsViewModel.appSettings.baseCurrency
     }
 
+    /// Accounts surfaced to the user-driven add-transaction flow.
+    /// Loan/deposit accounts are technical containers and never appear here —
+    /// they only show up via their dedicated detail screens (LoanDetailView, etc.).
     var accounts: [Account] {
-        accountsViewModel.accounts
+        accountsViewModel.regularAccounts
     }
 }

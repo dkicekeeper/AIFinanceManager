@@ -51,44 +51,39 @@ final class TransactionAddCoordinator {
 
     // MARK: - Public Methods
 
-    /// Compute suggested account ID asynchronously
+    /// Compute suggested account ID asynchronously.
+    /// Only regular accounts are eligible — loan/deposit accounts are technical
+    /// containers and never offered as the source for a new income/expense/transfer.
     func suggestedAccountId() async -> String? {
         let suggested = accountsViewModel.suggestedAccount(
             forCategory: formData.category,
             transactions: transactionsViewModel.allTransactions,
             amount: formData.amountDouble
         )
-        return suggested?.id ?? accountsViewModel.accounts.first?.id
+        if let suggested, !suggested.isLoan, !suggested.isDeposit {
+            return suggested.id
+        }
+        return accountsViewModel.regularAccounts.first?.id
     }
 
-    /// Get accounts sorted by manual order, then by balance (fast, no transaction scanning needed)
+    /// Get regular accounts (no loans / deposits) sorted by manual order, then by balance.
+    /// This is the picker source for income/expense/transfer creation flows.
     func rankedAccounts() -> [Account] {
-        // Simply sort by manual order first, then balance - instant and no need to scan transactions!
         guard let balanceCoordinator = accountsViewModel.balanceCoordinator else {
-            return accountsViewModel.accounts.sortedByOrder()
+            return accountsViewModel.regularAccounts.sortedByOrder()
         }
 
         let balances = balanceCoordinator.balances
 
-        return accountsViewModel.accounts.sorted { account1, account2 in
-            // 1. PRIORITY: Manual order (if both have order, sort by order)
+        return accountsViewModel.regularAccounts.sorted { account1, account2 in
+            // 1. PRIORITY: Manual order
             if let order1 = account1.order, let order2 = account2.order {
                 return order1 < order2
             }
-            // If only one has order, it goes first
-            if account1.order != nil {
-                return true
-            }
-            if account2.order != nil {
-                return false
-            }
+            if account1.order != nil { return true }
+            if account2.order != nil { return false }
 
-            // 2. Deposits at the end (for accounts without manual order)
-            if account1.isDeposit != account2.isDeposit {
-                return !account1.isDeposit
-            }
-
-            // 3. Higher balance first (for accounts without manual order)
+            // 2. Higher balance first (for accounts without manual order)
             let balance1 = balances[account1.id] ?? 0
             let balance2 = balances[account2.id] ?? 0
             return balance1 > balance2

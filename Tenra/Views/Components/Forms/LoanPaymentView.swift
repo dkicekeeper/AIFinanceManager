@@ -12,13 +12,17 @@ struct LoanPaymentView: View {
     let account: Account
     let loanInfo: LoanInfo
     let availableAccounts: [Account]
-    let onPayment: (Decimal, String, String) -> Void // (amount, date, sourceAccountId)
+    /// Optional: amount of the most recent linked loan-payment for this loan, used as
+    /// the default value in the amount field. If `nil`, falls back to `loanInfo.monthlyPayment`.
+    var lastPaidAmount: Decimal? = nil
+    let onPayment: (Decimal, String, String, String?) -> Void // (amount, date, sourceAccountId, note)
 
     @Environment(\.dismiss) private var dismiss
 
     @State private var amountText: String = ""
     @State private var paymentDate: Date = Date()
     @State private var selectedSourceAccountId: String = ""
+    @State private var noteText: String = ""
     @FocusState private var isAmountFocused: Bool
 
     @State private var validationError: String? = nil
@@ -104,6 +108,15 @@ struct LoanPaymentView: View {
                         )
                     }
 
+                    // Optional note — surfaces as the transaction's `description`
+                    // so users can annotate ad-hoc payments (extra payment, partial,
+                    // etc.) without going back to edit the transaction.
+                    FormTextField(
+                        text: $noteText,
+                        placeholder: String(localized: "loan.notePlaceholder", defaultValue: "Note (optional)"),
+                        style: .multiline(min: 2, max: 4)
+                    )
+
                     // Impact preview (conditional second section)
                     if let amount = AmountFormatter.parse(amountText), amount > 0 {
                         let breakdown = LoanPaymentService.paymentBreakdown(
@@ -134,7 +147,11 @@ struct LoanPaymentView: View {
             }
         }
         .onAppear {
-            amountText = AmountInputFormatting.bindingString(for: loanInfo.monthlyPayment)
+            // Default to the most recently paid amount if available — users typically
+            // round their actual payment (e.g. 340 000) above the calculated annuity
+            // (e.g. 336 829) and the prior actual is the better suggestion.
+            let defaultAmount = lastPaidAmount ?? loanInfo.monthlyPayment
+            amountText = AmountInputFormatting.bindingString(for: defaultAmount)
             if selectedSourceAccountId.isEmpty, let first = availableAccounts.first {
                 selectedSourceAccountId = first.id
             }
@@ -168,7 +185,9 @@ struct LoanPaymentView: View {
         validationError = nil
 
         let dateStr = DateFormatters.dateFormatter.string(from: paymentDate)
-        onPayment(amount, dateStr, selectedSourceAccountId)
+        let trimmedNote = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedNote = trimmedNote.isEmpty ? nil : trimmedNote
+        onPayment(amount, dateStr, selectedSourceAccountId, resolvedNote)
         HapticManager.success()
         dismiss()
     }
@@ -207,6 +226,6 @@ struct LoanPaymentView: View {
         account: sampleLoanAccount,
         loanInfo: sampleLoanAccount.loanInfo!,
         availableAccounts: [sourceAccount],
-        onPayment: { _, _, _ in }
+        onPayment: { _, _, _, _ in }
     )
 }

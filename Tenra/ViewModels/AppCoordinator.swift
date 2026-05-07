@@ -390,6 +390,13 @@ class AppCoordinator {
             await self?.backfillDateSectionKeysIfNeeded()
         }
 
+        // One-time migration: flip orientation of legacy loan-payment transactions.
+        // Runs on MainActor because TransactionStore is MainActor-bound. Idempotent —
+        // gated by UserDefaults flag; safe to no-op on every subsequent launch.
+        Task { [weak self] in
+            await self?.flipLoanPaymentOrientationIfNeeded()
+        }
+
         // Purge persistent history older than 7 days — prevents unbounded DB growth.
         // Runs on a bg CoreData context (see CoreDataStack.purgeHistory).
         Task(priority: .background) {
@@ -481,6 +488,74 @@ class AppCoordinator {
                 // UserDefaults.set() is thread-safe; call directly on the background queue.
                 UserDefaults.standard.set(true, forKey: completedKey)
             }
+        }
+    }
+
+    // MARK: - Loan Payment Orientation Flip Migration
+
+    /// UserDefaults key gating the one-time orientation flip for loan-payment transactions.
+    /// Pre-flip convention: `accountId = LOAN, targetAccountId = SOURCE bank`.
+    /// Post-flip convention: `accountId = SOURCE bank, targetAccountId = LOAN`
+    /// (mirrors `.expense` semantics so UI lookups treat the bank as the user-facing
+    /// "from" account).
+    private static let loanOrientationFlipKey = "tenra.migration.loanOrientationFlip.v1"
+
+    /// One-time migration: rewrites every existing `.loanPayment` / `.loanEarlyRepayment`
+    /// transaction so `accountId` points at the source bank and `targetAccountId` points
+    /// at the loan. Detects pre-flip rows by checking whether `accountId` resolves to a
+    /// loan account; rows already in the new orientation are skipped, so the migration
+    /// is safe to re-run if the flag is ever cleared.
+    private func flipLoanPaymentOrientationIfNeeded() async {
+        if UserDefaults.standard.bool(forKey: Self.loanOrientationFlipKey) {
+            return
+        }
+
+        let candidates = transactionStore.transactions.filter {
+            $0.type == .loanPayment || $0.type == .loanEarlyRepayment
+        }
+
+        var flippedCount = 0
+        for tx in candidates {
+            // Skip rows already in post-flip orientation:
+            // accountId either nil (orphaned) or pointing at a non-loan account.
+            guard let accId = tx.accountId,
+                  let acc = transactionStore.accountById[accId],
+                  acc.isLoan else {
+                continue
+            }
+
+            let flipped = Transaction(
+                id: tx.id,
+                date: tx.date,
+                description: tx.description,
+                amount: tx.amount,
+                currency: tx.currency,
+                convertedAmount: tx.convertedAmount,
+                type: tx.type,
+                category: tx.category,
+                subcategory: tx.subcategory,
+                accountId: tx.targetAccountId,
+                targetAccountId: tx.accountId,
+                accountName: tx.targetAccountName,
+                targetAccountName: tx.accountName,
+                targetCurrency: tx.targetCurrency,
+                targetAmount: tx.targetAmount,
+                recurringSeriesId: tx.recurringSeriesId,
+                recurringOccurrenceId: tx.recurringOccurrenceId,
+                createdAt: tx.createdAt
+            )
+            do {
+                try await transactionStore.update(flipped)
+                flippedCount += 1
+            } catch {
+                logger.error("⚠️ [LOAN-FLIP] failed to flip \(tx.id): \(error.localizedDescription)")
+            }
+        }
+
+        UserDefaults.standard.set(true, forKey: Self.loanOrientationFlipKey)
+        if flippedCount > 0 {
+            logger.debug("🔄 [LOAN-FLIP] migrated \(flippedCount) loan transactions to new orientation")
+            transactionsViewModel.recalculateAccountBalances()
         }
     }
 

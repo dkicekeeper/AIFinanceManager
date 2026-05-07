@@ -182,7 +182,7 @@ struct TransactionCard: View {
                     categoriesViewModel: catVM,
                     accountsViewModel: accVM,
                     transactionStore: transactionStore,
-                    accounts: accVM.accounts,
+                    accounts: accVM.accountsForTransactionEdit(tx: transaction),
                     customCategories: catVM.customCategories,
                     balanceCoordinator: balanceCoordinator
                 )

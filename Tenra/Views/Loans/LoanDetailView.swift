@@ -55,6 +55,19 @@ struct LoanDetailView: View {
             .sorted { $0.date > $1.date }
     }
 
+    /// Most recent linked loan-payment amount for this loan, used to seed the
+    /// LoanPaymentView default value. Real-world payments are usually rounded above
+    /// the calculated annuity (e.g. 340 000 vs 336 829), so the prior actual is the
+    /// best suggestion.
+    private var lastPaidAmount: Decimal? {
+        let payments = transactionStore.transactions.filter {
+            ($0.type == .loanPayment || $0.type == .loanEarlyRepayment)
+            && ($0.targetAccountId == accountId || $0.accountId == accountId)
+        }.sorted { $0.date > $1.date }
+        guard let mostRecent = payments.first else { return nil }
+        return Decimal(mostRecent.amount)
+    }
+
     var body: some View {
         Group {
             if let account = liveAccount {
@@ -169,12 +182,14 @@ struct LoanDetailView: View {
                     account: account,
                     loanInfo: loanInfo,
                     availableAccounts: loansViewModel.accountsViewModel.regularAccounts,
-                    onPayment: { amount, date, sourceAccountId in
+                    lastPaidAmount: lastPaidAmount,
+                    onPayment: { amount, date, sourceAccountId, note in
                         if let transaction = loansViewModel.makeManualPayment(
                             accountId: account.id,
                             amount: amount,
                             date: date,
-                            sourceAccountId: sourceAccountId
+                            sourceAccountId: sourceAccountId,
+                            description: note
                         ) {
                             Task {
                                 do {

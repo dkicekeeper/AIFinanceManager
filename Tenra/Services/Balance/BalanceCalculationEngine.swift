@@ -360,7 +360,9 @@ struct BalanceCalculationEngine {
                 break
 
             case .loanPayment, .loanEarlyRepayment:
-                if tx.accountId == accountId {
+                // Loan payments reduce balance on BOTH the source bank (accountId) and
+                // the loan (targetAccountId after the orientation flip).
+                if tx.accountId == accountId || tx.targetAccountId == accountId {
                     transactionsSum -= getTransactionAmount(tx, for: accountCurrency)
                 }
             }

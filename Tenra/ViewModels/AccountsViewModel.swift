@@ -341,6 +341,37 @@ class AccountsViewModel {
         return cachedLoanAccounts
     }
 
+    /// Returns the set of accounts a user can pick when editing or creating a
+    /// transaction of the given type.
+    ///
+    /// Loan and deposit accounts are technical containers — they should never appear
+    /// as picker options for `.income` / `.expense` / `.internalTransfer`. For system
+    /// transaction types (`.loanPayment`, `.deposit*`, etc.) the linked technical
+    /// account is included so the user can still see / change which loan or deposit
+    /// the transaction belongs to.
+    func accountsForTransactionEdit(tx: Transaction) -> [Account] {
+        switch tx.type {
+        case .income, .expense, .internalTransfer:
+            return regularAccounts
+        case .loanPayment, .loanEarlyRepayment:
+            // Source bank picker shows regulars; the loan is referenced via targetAccountId
+            // and surfaced in a separate read-only slot in the edit UI.
+            let linkedLoanIds: Set<String> = [tx.accountId, tx.targetAccountId]
+                .compactMap { $0 }.reduce(into: Set<String>()) { $0.insert($1) }
+            return accounts.filter { acc in
+                if acc.isLoan { return linkedLoanIds.contains(acc.id) }
+                return !acc.isDeposit
+            }
+        case .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            let linkedDepositIds: Set<String> = [tx.accountId, tx.targetAccountId]
+                .compactMap { $0 }.reduce(into: Set<String>()) { $0.insert($1) }
+            return accounts.filter { acc in
+                if acc.isDeposit { return linkedDepositIds.contains(acc.id) }
+                return !acc.isLoan
+            }
+        }
+    }
+
     /// Refills the regular/deposit/loan caches if `accountsMutationVersion` advanced
     /// since the last refill. Single O(N=accounts.count) pass replaces three separate
     /// `.filter` walks per access (and per body re-eval).

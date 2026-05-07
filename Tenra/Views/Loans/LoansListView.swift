@@ -130,8 +130,9 @@ struct LoansListView: View {
                 activeLoans: activeLoans,
                 availableAccounts: loansViewModel.accountsViewModel.regularAccounts,
                 currency: loansViewModel.loans.first?.currency ?? "KZT",
-                onPayAll: { sourceAccountId, dateStr in
-                    payAllLoans(sourceAccountId: sourceAccountId, dateStr: dateStr)
+                defaultAmounts: lastPaidAmounts(for: activeLoans),
+                onPayAll: { amounts, sourceAccountId, dateStr in
+                    payAllLoans(amounts: amounts, sourceAccountId: sourceAccountId, dateStr: dateStr)
                 }
             )
         }
@@ -205,14 +206,35 @@ struct LoansListView: View {
         return currencies.count == 1
     }
 
-    private func payAllLoans(sourceAccountId: String, dateStr: String) {
+    /// Resolves a per-loan default payment amount = the most recent linked
+    /// loan-payment for that loan, falling back to `monthlyPayment` when no
+    /// prior payment exists.
+    private func lastPaidAmounts(for loans: [Account]) -> [String: Decimal] {
+        var result: [String: Decimal] = [:]
+        let allPayments = transactionStore.transactions.filter {
+            $0.type == .loanPayment || $0.type == .loanEarlyRepayment
+        }
+        for loan in loans {
+            let mostRecent = allPayments
+                .filter { $0.targetAccountId == loan.id || $0.accountId == loan.id }
+                .sorted { $0.date > $1.date }
+                .first
+            if let mostRecent {
+                result[loan.id] = Decimal(mostRecent.amount)
+            }
+        }
+        return result
+    }
+
+    private func payAllLoans(amounts: [String: Decimal], sourceAccountId: String, dateStr: String) {
         Task {
             var failedLoanNames: [String] = []
             for loan in activeLoans {
                 guard let loanInfo = loan.loanInfo else { continue }
+                let amount = amounts[loan.id] ?? loanInfo.monthlyPayment
                 if let transaction = loansViewModel.makeManualPayment(
                     accountId: loan.id,
-                    amount: loanInfo.monthlyPayment,
+                    amount: amount,
                     date: dateStr,
                     sourceAccountId: sourceAccountId
                 ) {

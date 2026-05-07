@@ -1263,6 +1263,12 @@
 // MARK: - Transactions (Misc)
 "transaction.resumeRecurring" = "Возобновить";
 "transaction.type.internalTransfer" = "Перевод";
+"transaction.type.loanPayment" = "Платёж по кредиту";
+"transaction.type.loanEarlyRepayment" = "Досрочное погашение";
+"transaction.type.depositTopUp" = "Пополнение депозита";
+"transaction.type.depositWithdrawal" = "Снятие с депозита";
+"transaction.type.depositInterestAccrual" = "Начисление процентов";
+"category.uncategorized" = "Без категории";
 "category.budget" = "Бюджет";
 
 // MARK: - Recurring Errors

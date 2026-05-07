@@ -133,6 +133,13 @@ final class CategoryStyleCache {
             )
         }
 
+        // System types fall back to a clean expense-coloured style with a typed
+        // SF Symbol when the user hasn't picked a real category. If a custom
+        // category IS selected, the regular branch below picks up its color/icon.
+        if let systemStyle = systemTypeStyle(category: category, type: type, customCategories: customCategories) {
+            return systemStyle
+        }
+
         // Regular category
         let baseColor = CategoryColors.hexColor(for: category, opacity: 1.0, customCategories: customCategories)
 
@@ -143,6 +150,44 @@ final class CategoryStyleCache {
             primaryColor: baseColor,
             lightBackgroundColor: CategoryColors.hexColor(for: category, opacity: 0.15, customCategories: customCategories),
             iconName: CategoryIcon.iconName(for: category, type: type, customCategories: customCategories)
+        )
+    }
+
+    /// Returns a baked-in style for system transaction types (loan / deposit) when
+    /// the user is still on the technical default category — otherwise nil so the
+    /// regular custom-category lookup runs.
+    private func systemTypeStyle(
+        category: String,
+        type: TransactionType,
+        customCategories: [CustomCategory]
+    ) -> CategoryStyleData? {
+        let pickedCustom = customCategories.contains { $0.name == category }
+        if pickedCustom { return nil }
+
+        switch type {
+        case .loanPayment, .loanEarlyRepayment:
+            return systemStyle(tint: AppColors.expense, iconName: "creditcard.fill")
+        case .depositTopUp:
+            return systemStyle(tint: AppColors.income, iconName: "banknote.fill")
+        case .depositWithdrawal:
+            return systemStyle(tint: AppColors.expense, iconName: "banknote.fill")
+        case .depositInterestAccrual:
+            return systemStyle(tint: AppColors.income, iconName: "percent")
+        case .internalTransfer:
+            return systemStyle(tint: .gray, iconName: "arrow.left.arrow.right")
+        default:
+            return nil
+        }
+    }
+
+    private func systemStyle(tint: Color, iconName: String) -> CategoryStyleData {
+        CategoryStyleData(
+            coinColor: tint.opacity(0.3),
+            coinBorderColor: tint.opacity(0.6),
+            iconColor: tint,
+            primaryColor: tint,
+            lightBackgroundColor: tint.opacity(0.15),
+            iconName: iconName
         )
     }
 }

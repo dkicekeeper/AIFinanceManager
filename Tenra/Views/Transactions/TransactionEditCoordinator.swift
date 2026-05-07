@@ -59,13 +59,16 @@ final class TransactionEditCoordinator {
 
     var availableCategories: [String] {
         var categories: Set<String> = []
-        let transactionType = transaction.type
+        // Loan/deposit transaction types pull from the .expense (or .income for
+        // interest accrual) catalog so users can tag payments alongside regular
+        // spend — matches the subscription edit flow.
+        let pickerType = transaction.type.categoryPickerSourceType
 
-        for customCategory in categoriesViewModel.customCategories where customCategory.type == transactionType {
+        for customCategory in categoriesViewModel.customCategories where customCategory.type == pickerType {
             categories.insert(customCategory.name)
         }
 
-        for tx in transactionsViewModel.allTransactions where tx.type == transactionType {
+        for tx in transactionsViewModel.allTransactions where tx.type == pickerType {
             if !tx.category.isEmpty {
                 categories.insert(tx.category)
             }
@@ -77,7 +80,7 @@ final class TransactionEditCoordinator {
 
         return Array(categories).sortedByCustomOrder(
             customCategories: categoriesViewModel.customCategories,
-            type: transactionType
+            type: pickerType
         )
     }
 
@@ -97,9 +100,19 @@ final class TransactionEditCoordinator {
     // MARK: - Computed: Can Save
 
     var canSave: Bool {
-        if transaction.type == .internalTransfer { return true }
-        return !formData.selectedCategory.isEmpty &&
-               availableCategories.contains(formData.selectedCategory)
+        // Internal transfers carry no category. System types (loan/deposit) accept
+        // either the technical default ("Loan Payment", etc.) or any expense/income
+        // category the user picked.
+        switch transaction.type {
+        case .internalTransfer:
+            return true
+        case .loanPayment, .loanEarlyRepayment,
+             .depositTopUp, .depositWithdrawal, .depositInterestAccrual:
+            return true
+        default:
+            return !formData.selectedCategory.isEmpty &&
+                   availableCategories.contains(formData.selectedCategory)
+        }
     }
 
     // MARK: - Initialization
@@ -186,14 +199,19 @@ final class TransactionEditCoordinator {
             return false
         }
 
-        // Validate category (not required for transfers)
-        if transaction.type != .internalTransfer {
+        // Validate category — required only for plain income/expense.
+        // Transfer / loan / deposit types carry a fixed technical category (or any
+        // category the user picked) and skip strict membership validation.
+        switch transaction.type {
+        case .income, .expense:
             guard !formData.selectedCategory.isEmpty,
                   availableCategories.contains(formData.selectedCategory) else {
                 errorMessage = String(localized: "transactionForm.selectCategory")
                 HapticManager.warning()
                 return false
             }
+        default:
+            break
         }
 
         // Validate transfer: no self-transfer

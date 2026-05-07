@@ -68,10 +68,9 @@ struct TransactionInfoView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.xs) {
-            // Category name
-            Text(transaction.type == .internalTransfer
-                 ? String(localized: "transactionType.transfer")
-                 : transaction.category)
+            // Category name — resolved through CategoryDisplay so technical
+            // values like "Loan Payment" surface as localized strings.
+            Text(CategoryDisplay.displayName(for: transaction.category, type: transaction.type))
                 .font(AppTypography.h4)
 
             // Subcategories

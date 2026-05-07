@@ -338,10 +338,20 @@ struct VoiceInputView: View {
     }
 
     private func quickSave(_ parsed: ParsedOperation) {
-        let accountId = parsed.accountId ?? accountsViewModel.accounts.first?.id
-        guard let accountId else { return }
-        let account = accountsViewModel.accounts.first { $0.id == accountId }
-        let currency = parsed.currencyCode ?? account?.currency ?? "KZT"
+        // Voice quick-save creates regular income/expense, never loan/deposit ops.
+        // Resolve account: parsed id wins only if it's a regular account; fall back
+        // to the first regular account otherwise.
+        let resolvedAccount: Account? = {
+            if let parsedId = parsed.accountId,
+               let acc = accountsViewModel.accounts.first(where: { $0.id == parsedId }),
+               !acc.isLoan, !acc.isDeposit {
+                return acc
+            }
+            return accountsViewModel.regularAccounts.first
+        }()
+        guard let account = resolvedAccount else { return }
+        let accountId = account.id
+        let currency = parsed.currencyCode ?? account.currency
 
         let transaction = Transaction(
             id: "",

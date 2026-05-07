@@ -72,10 +72,19 @@ struct VoiceInputConfirmationView: View {
             formatter.usesGroupingSeparator = false
             return formatter.string(from: NSNumber(value: amountValue)) ?? String(format: "%.2f", amountValue)
         } ?? "")
-        _selectedCurrency = State(initialValue: parsedOperation.currencyCode ?? accountsViewModel.accounts.first?.currency ?? "KZT")
-        // Устанавливаем счет - сначала из parsedOperation, потом по умолчанию
-        let initialAccountId = parsedOperation.accountId ?? accountsViewModel.accounts.first?.id
-        _selectedAccountId = State(initialValue: initialAccountId)
+        _selectedCurrency = State(initialValue: parsedOperation.currencyCode ?? accountsViewModel.regularAccounts.first?.currency ?? "KZT")
+        // Устанавливаем счет — голосовой ввод создаёт обычные income/expense, поэтому
+        // дефолт выбираем из regular-счетов (loan/deposit — технические, не должны
+        // предлагаться как источник).
+        let voiceDefaultAccountId: String? = {
+            if let parsedId = parsedOperation.accountId,
+               let acc = accountsViewModel.accounts.first(where: { $0.id == parsedId }),
+               !acc.isLoan, !acc.isDeposit {
+                return parsedId
+            }
+            return accountsViewModel.regularAccounts.first?.id
+        }()
+        _selectedAccountId = State(initialValue: voiceDefaultAccountId)
         _selectedCategoryName = State(initialValue: parsedOperation.categoryName)
         _selectedSubcategoryNames = State(initialValue: Set(parsedOperation.subcategoryNames))
         _noteText = State(initialValue: parsedOperation.note.isEmpty ? originalText : parsedOperation.note)
@@ -124,10 +133,10 @@ struct VoiceInputConfirmationView: View {
                         }
                     )
                     
-                    // 3. Счет
+                    // 3. Счет — только обычные счета (loan/deposit — технические).
                     if let balanceCoordinator = accountsViewModel.balanceCoordinator {
                         AccountSelectorView(
-                            accounts: accountsViewModel.accounts,
+                            accounts: accountsViewModel.regularAccounts,
                             selectedAccountId: $selectedAccountId,
                             onSelectionChange: { _ in
                                 validateAccount()
@@ -231,9 +240,16 @@ struct VoiceInputConfirmationView: View {
                 }
             }
             .onAppear {
-                // Убеждаемся, что счет выбран правильно при появлении
-                if selectedAccountId == nil && !accountsViewModel.accounts.isEmpty {
-                    selectedAccountId = parsedOperation.accountId ?? accountsViewModel.accounts.first?.id
+                // Убеждаемся, что счет выбран правильно при появлении.
+                // Голосовой ввод работает только с обычными счетами.
+                if selectedAccountId == nil && !accountsViewModel.regularAccounts.isEmpty {
+                    if let parsedId = parsedOperation.accountId,
+                       let acc = accountsViewModel.accounts.first(where: { $0.id == parsedId }),
+                       !acc.isLoan, !acc.isDeposit {
+                        selectedAccountId = parsedId
+                    } else {
+                        selectedAccountId = accountsViewModel.regularAccounts.first?.id
+                    }
                 }
                 // Конвертируем имена подкатегорий в ID
                 if !selectedSubcategoryNames.isEmpty {
@@ -302,21 +318,22 @@ struct VoiceInputConfirmationView: View {
     }
     
     private func validateAccount() {
-        // Проверяем, что выбранный счет существует
+        // Проверяем, что выбранный счет существует и НЕ технический (loan/deposit).
         if let accountId = selectedAccountId {
-            if accountsViewModel.accounts.contains(where: { $0.id == accountId }) {
+            if let acc = accountsViewModel.accounts.first(where: { $0.id == accountId }),
+               !acc.isLoan, !acc.isDeposit {
                 accountWarning = nil
             } else {
-                // Счет не найден, выбираем по умолчанию
+                // Счёт не найден или технический — переключаем на первый regular.
                 accountWarning = String(localized: "voiceConfirmation.warning.accountNotFound")
-                if let defaultAccount = accountsViewModel.accounts.first {
+                if let defaultAccount = accountsViewModel.regularAccounts.first {
                     selectedAccountId = defaultAccount.id
                 }
             }
         } else {
             accountWarning = String(localized: "voiceConfirmation.warning.accountNotRecognized")
-            // Устанавливаем счет по умолчанию (первый счет)
-            if let defaultAccount = accountsViewModel.accounts.first {
+            // Устанавливаем счёт по умолчанию (первый regular)
+            if let defaultAccount = accountsViewModel.regularAccounts.first {
                 selectedAccountId = defaultAccount.id
             }
         }
@@ -410,10 +427,11 @@ struct VoiceInputConfirmationView: View {
             return
         }
         
-        guard let accountId = selectedAccountId, accountsViewModel.accounts.contains(where: { $0.id == accountId }) else {
+        guard let accountId = selectedAccountId,
+              let acc = accountsViewModel.accounts.first(where: { $0.id == accountId }),
+              !acc.isLoan, !acc.isDeposit else {
             accountWarning = String(localized: "voiceConfirmation.warning.selectAccount")
-            // Устанавливаем счет по умолчанию, если не выбран
-            if let defaultAccount = accountsViewModel.accounts.first {
+            if let defaultAccount = accountsViewModel.regularAccounts.first {
                 selectedAccountId = defaultAccount.id
                 accountWarning = String(localized: "voiceConfirmation.warning.accountNotSelected")
             }
