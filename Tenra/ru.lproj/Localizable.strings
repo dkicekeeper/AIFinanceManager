@@ -1106,6 +1106,8 @@
 "loan.notePlaceholder" = "Необязательная заметка";
 "loan.defaultTagging" = "Категория по умолчанию";
 "loan.defaultTaggingHint" = "Подставится в форму платежа. Категория последнего платежа имеет приоритет.";
+"loan.subcategoryHeader" = "Подкатегория";
+"loan.subcategoryEmpty" = "Выберите категорию выше, чтобы добавить теги";
 "loan.earlyRepaymentTitle" = "Досрочное погашение";
 "loan.termReduction" = "Срок сокращён на";
 "loan.monthsValue" = "%d мес.";

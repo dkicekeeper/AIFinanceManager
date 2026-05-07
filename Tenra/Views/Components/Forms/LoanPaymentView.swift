@@ -189,16 +189,35 @@ struct LoanPaymentView: View {
 
     @ViewBuilder
     private var subcategorySection: some View {
-        if let categoriesVM = categoriesViewModel,
-           selectedCategoryId != nil {
-            SubcategorySelectorView(
-                categoriesViewModel: categoriesVM,
-                categoryId: selectedCategoryId,
-                selectedSubcategoryIds: $selectedSubcategoryIds,
-                onSearchTap: {
-                    withAnimation { showingSubcategorySearch = true }
+        // Show the section unconditionally when subcategory tagging is available
+        // for this loan (i.e. there's an expense catalog the user can tag against).
+        // Without an explicit header users can miss the picker — it only renders
+        // *after* a category is picked, which fails the "what fields can I fill"
+        // discoverability test.
+        if let categoriesVM = categoriesViewModel, !availableCategories.isEmpty {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                SectionHeaderView(String(localized: "loan.subcategoryHeader", defaultValue: "Subcategory"))
+                    .padding(.horizontal, AppSpacing.lg)
+
+                if selectedCategoryId != nil {
+                    SubcategorySelectorView(
+                        categoriesViewModel: categoriesVM,
+                        categoryId: selectedCategoryId,
+                        selectedSubcategoryIds: $selectedSubcategoryIds,
+                        onSearchTap: {
+                            withAnimation { showingSubcategorySearch = true }
+                        }
+                    )
+                } else {
+                    Text(String(
+                        localized: "loan.subcategoryEmpty",
+                        defaultValue: "Pick a category above to add subcategory tags"
+                    ))
+                    .font(AppTypography.bodySmall)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .padding(.horizontal, AppSpacing.lg)
                 }
-            )
+            }
         }
     }
 

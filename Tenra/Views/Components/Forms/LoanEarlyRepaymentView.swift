@@ -203,16 +203,33 @@ struct LoanEarlyRepaymentView: View {
 
     @ViewBuilder
     private var subcategorySection: some View {
-        if let categoriesVM = categoriesViewModel,
-           selectedCategoryId != nil {
-            SubcategorySelectorView(
-                categoriesViewModel: categoriesVM,
-                categoryId: selectedCategoryId,
-                selectedSubcategoryIds: $selectedSubcategoryIds,
-                onSearchTap: {
-                    withAnimation { showingSubcategorySearch = true }
+        // Always show the subcategory section when an expense catalog is available
+        // — see `LoanPaymentView` for rationale (discoverability before the user
+        // picks a category).
+        if let categoriesVM = categoriesViewModel, !availableCategories.isEmpty {
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                SectionHeaderView(String(localized: "loan.subcategoryHeader", defaultValue: "Subcategory"))
+                    .padding(.horizontal, AppSpacing.lg)
+
+                if selectedCategoryId != nil {
+                    SubcategorySelectorView(
+                        categoriesViewModel: categoriesVM,
+                        categoryId: selectedCategoryId,
+                        selectedSubcategoryIds: $selectedSubcategoryIds,
+                        onSearchTap: {
+                            withAnimation { showingSubcategorySearch = true }
+                        }
+                    )
+                } else {
+                    Text(String(
+                        localized: "loan.subcategoryEmpty",
+                        defaultValue: "Pick a category above to add subcategory tags"
+                    ))
+                    .font(AppTypography.bodySmall)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .padding(.horizontal, AppSpacing.lg)
                 }
-            )
+            }
         }
     }
 

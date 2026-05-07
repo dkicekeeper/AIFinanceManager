@@ -310,15 +310,30 @@ struct LoanEditView: View {
                     emptyStateMessage: nil
                 )
 
-                if defaultCategoryId != nil {
-                    SubcategorySelectorView(
-                        categoriesViewModel: appCoordinator.categoriesViewModel,
-                        categoryId: defaultCategoryId,
-                        selectedSubcategoryIds: $defaultSubcategoryIds,
-                        onSearchTap: {
-                            withAnimation { showingSubcategorySearch = true }
-                        }
-                    )
+                // Subcategory section — visible regardless of category selection so
+                // users see the option upfront (matches the payment form's layout).
+                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                    SectionHeaderView(String(localized: "loan.subcategoryHeader", defaultValue: "Subcategory"))
+                        .padding(.horizontal, AppSpacing.lg)
+
+                    if defaultCategoryId != nil {
+                        SubcategorySelectorView(
+                            categoriesViewModel: appCoordinator.categoriesViewModel,
+                            categoryId: defaultCategoryId,
+                            selectedSubcategoryIds: $defaultSubcategoryIds,
+                            onSearchTap: {
+                                withAnimation { showingSubcategorySearch = true }
+                            }
+                        )
+                    } else {
+                        Text(String(
+                            localized: "loan.subcategoryEmpty",
+                            defaultValue: "Pick a category above to add subcategory tags"
+                        ))
+                        .font(AppTypography.bodySmall)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .padding(.horizontal, AppSpacing.lg)
+                    }
                 }
 
                 Text(String(
