@@ -41,9 +41,14 @@ struct MenuPickerRow<T: Hashable>: View {
         // causes the surrounding `FormSection` content to briefly collapse while the
         // menu animates open (sibling rows disappear). Anchoring the menu in the
         // trailing region keeps the rest of the section visible throughout the
-        // open/close transition. The trailing label uses the native iOS chevron
-        // pattern (value + chevron.up.chevron.down) instead of the prior capsule
-        // background, which would visibly flicker during the menu's blur transition.
+        // open/close transition.
+        //
+        // NOTE on styling: do NOT apply `.menuStyle(.button)` or `.buttonStyle(.plain)`
+        // here. iOS 26's button-style menu attaches a press/highlight overlay to the
+        // entire label region, which makes the capsule text briefly disappear at the
+        // exact moment the menu opens (the "title disappears on tap" bug). Letting
+        // the system pick the default menu style preserves the capsule label
+        // throughout the open/close transition.
         UniversalRow(
             leadingIcon: icon.map { .sfSymbol($0, color: AppColors.accent, size: AppIconSize.lg) },
             title: title
@@ -71,8 +76,6 @@ struct MenuPickerRow<T: Hashable>: View {
                     .background(Color(.systemFill))
                     .clipShape(Capsule())
             }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
         }
     }
 }
