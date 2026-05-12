@@ -1080,7 +1080,7 @@
 "loan.principalHeader" = "Loan Amount";
 "loan.principalPlaceholder" = "Total loan amount";
 "loan.interestRateHeader" = "Interest Rate";
-"loan.interestRateLabel" = "Interest rate";
+"loan.interestRateLabel" = "Rate (year)";
 "loan.rateAnnualSuffix" = "% annual";
 "loan.termHeader" = "Term";
 "loan.termPlaceholder" = "Number of months";
@@ -1209,7 +1209,7 @@
 "loan.paymentSection" = "Payment";
 "loan.rateLabel" = "Annual rate";
 "loan.scheduleSection" = "Schedule";
-"loan.termLabel" = "Term";
+"loan.termLabel" = "Term (month)";
 "loan.error.exceedsRemaining" = "Amount exceeds remaining balance";
 "loan.error.invalidAmount" = "Enter a valid amount";
 "loan.error.invalidRate" = "Enter a valid interest rate";

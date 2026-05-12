@@ -115,12 +115,14 @@ struct DatePickerRow: View {
                     text: $name,
                     placeholder: String(localized: "subscription.namePlaceholder")
                 )
+                .padding(AppSpacing.lg)
                 Divider()
                 FormTextField(
                     text: $amount,
                     placeholder: "0.00",
                     keyboardType: .decimalPad
                 )
+                .padding(AppSpacing.lg)
                 Divider()
                 DatePickerRow(
                     title: String(localized: "common.startDate"),

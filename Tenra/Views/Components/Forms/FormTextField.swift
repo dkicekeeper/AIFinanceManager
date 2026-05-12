@@ -9,12 +9,23 @@
 import SwiftUI
 
 /// Enhanced text field for forms with error/help states and multiple styles.
-/// Supports single-line and multiline variants.
+/// Supports single-line, multi-line, and `inline` variants.
 ///
-/// **States supported:**
+/// **States supported (standard/multiline only):**
 /// - Normal (idle), Focused (accent border + tinted bg), Filled (has text),
 ///   Error (red border + message), Disabled (dimmed, non-interactive),
 ///   Help (info text below)
+///
+/// **Choosing a style:**
+/// - `.standard` / `.multiline` — full-width form field used standalone with a
+///   separate label above. Padded chrome (`AppSpacing.lg`, `AppRadius.lg`),
+///   tinted background, accent border on focus.
+/// - `.inline` / `.inlineMultiline` — bare right-aligned text field for the
+///   trailing slot of `UniversalRow`. **No chrome** — no background, no border,
+///   no padding, no width-stretching — just font + alignment + keyboard so the
+///   row's height stays compact and stable while typing. `errorMessage`/
+///   `helpText` are intentionally hidden in inline mode; surface validation at
+///   form level (`InlineStatusText`).
 struct FormTextField: View {
     @Binding var text: String
     let placeholder: String
@@ -23,14 +34,27 @@ struct FormTextField: View {
     let errorMessage: String?
     let helpText: String?
     let isDisabled: Bool
+    /// When true, the field auto-focuses shortly after appearing. Replaces the
+    /// ad-hoc `@FocusState … .task { isFocused = true }` pattern at call sites.
+    let autofocus: Bool
     @FocusState private var isFocused: Bool
 
     enum Style {
-        /// Standard single-line text field with filled background
+        /// Standard single-line text field with filled background.
         case standard
 
-        /// Multiline text field with line limits and filled background
+        /// Multi-line text field with line limits and filled background.
         case multiline(min: Int, max: Int)
+
+        /// Bare right-aligned single-line field for `UniversalRow` trailing.
+        /// No background, no border, no padding — keeps the row's height
+        /// stable.
+        case inline
+
+        /// Bare right-aligned multi-line field for `UniversalRow` trailing
+        /// (notes, descriptions). `lineLimit(min...max)` bounds the vertical
+        /// growth so the row doesn't snap to many lines on first focus.
+        case inlineMultiline(min: Int, max: Int)
     }
 
     init(
@@ -40,7 +64,8 @@ struct FormTextField: View {
         keyboardType: UIKeyboardType = .default,
         errorMessage: String? = nil,
         helpText: String? = nil,
-        isDisabled: Bool = false
+        isDisabled: Bool = false,
+        autofocus: Bool = false
     ) {
         self._text = text
         self.placeholder = placeholder
@@ -49,6 +74,17 @@ struct FormTextField: View {
         self.errorMessage = errorMessage
         self.helpText = helpText
         self.isDisabled = isDisabled
+        self.autofocus = autofocus
+    }
+
+    /// True when the active style is one of the compact `.inline*` variants —
+    /// gates the chrome (capsule vs rounded rect, padding, alignment) and
+    /// suppresses the error/help labels (caller surfaces those at form level).
+    private var isInline: Bool {
+        switch style {
+        case .inline, .inlineMultiline: return true
+        case .standard, .multiline: return false
+        }
     }
 
     var body: some View {
@@ -57,20 +93,33 @@ struct FormTextField: View {
                 .disabled(isDisabled)
                 .opacity(isDisabled ? 0.45 : 1)
 
-            if let error = errorMessage {
-                errorLabel(error)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            // Inline styles intentionally suppress these — there's no room for
+            // an inline help/error label inside a UniversalRow trailing slot.
+            // Surface validation at the form level (banner / `InlineStatusText`).
+            if !isInline {
+                if let error = errorMessage {
+                    errorLabel(error)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
 
-            if let help = helpText, errorMessage == nil {
-                Text(help)
-                    .font(AppTypography.caption)
-                    .foregroundStyle(AppColors.textSecondary)
-                    .transition(.opacity)
+                if let help = helpText, errorMessage == nil {
+                    Text(help)
+                        .font(AppTypography.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                        .transition(.opacity)
+                }
             }
         }
         .animation(AppAnimation.fastAnimation, value: isFocused)
         .animation(AppAnimation.fastAnimation, value: errorMessage != nil)
+        .task {
+            guard autofocus else { return }
+            // One yield so the field is mounted before the keyboard tries to
+            // come up — without this the focus is silently dropped on first
+            // present (observed in deposit/loan rate-change sheets).
+            await Task.yield()
+            isFocused = true
+        }
     }
 
     // MARK: - Field Area
@@ -97,6 +146,12 @@ struct FormTextField: View {
                     RoundedRectangle(cornerRadius: AppRadius.lg)
                         .stroke(borderForState, lineWidth: borderWidth)
                 )
+
+        case .inline:
+            inlineField
+
+        case .inlineMultiline(let min, let max):
+            inlineMultilineField(min: min, max: max)
         }
     }
 
@@ -114,6 +169,29 @@ struct FormTextField: View {
             .lineLimit(min...max)
             .focused($isFocused)
             .font(AppTypography.body)
+    }
+
+    /// Bare right-aligned single-line variant for `UniversalRow` trailings.
+    /// Native chrome only — no background/border/padding — so the row keeps
+    /// its standard height regardless of focus state.
+    private var inlineField: some View {
+        TextField(placeholder, text: $text)
+            .keyboardType(keyboardType)
+            .focused($isFocused)
+            .font(AppTypography.body)
+            .foregroundStyle(AppColors.textPrimary)
+            .multilineTextAlignment(.trailing)
+    }
+
+    /// Bare right-aligned multi-line variant. `lineLimit(min...max)` bounds the
+    /// vertical growth — without it the row would jump to N lines on focus.
+    private func inlineMultilineField(min: Int, max: Int) -> some View {
+        TextField(placeholder, text: $text, axis: .vertical)
+            .lineLimit(min...max)
+            .focused($isFocused)
+            .font(AppTypography.body)
+            .foregroundStyle(AppColors.textPrimary)
+            .multilineTextAlignment(.trailing)
     }
 
     // MARK: - Styling Helpers

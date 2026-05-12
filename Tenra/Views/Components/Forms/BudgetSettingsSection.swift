@@ -20,16 +20,16 @@ struct BudgetSettingsSection: View {
             VStack(spacing: 0) {
                 // Budget Amount
                 UniversalRow(
-                    config: .standard,
-                    leadingIcon: .sfSymbol("banknote", color: AppColors.accent, size: AppIconSize.lg)
+                    leadingIcon: .sfSymbol("banknote", color: AppColors.accent, size: AppIconSize.lg),
+                    title: String(localized: "budget.amount")
                 ) {
-                    Text(String(localized: "budget.amount"))
-                        .font(AppTypography.body)
-                        .foregroundStyle(AppColors.textPrimary)
-                } trailing: {
-                    TextField("0", text: $budgetAmount)
-                        .inlineFieldStyle(keyboard: .decimalPad)
-                        .accessibilityLabel(String(localized: "budget.amount"))
+                    FormTextField(
+                        text: $budgetAmount,
+                        placeholder: "0",
+                        style: .inline,
+                        keyboardType: .decimalPad
+                    )
+                    .accessibilityLabel(String(localized: "budget.amount"))
                 }
 
                 Divider()

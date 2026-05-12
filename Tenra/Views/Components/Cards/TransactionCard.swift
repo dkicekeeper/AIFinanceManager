@@ -78,7 +78,23 @@ struct TransactionCard: View {
         // alert binding) all read from the same `series` value below.
         let series = linkedRecurringSeries
         let isSeriesActive = series?.isActive ?? false
-        let subscriptionIconSource: IconSource? = (series?.kind == .subscription) ? series?.iconSource : nil
+        // Icon precedence for the row's main glyph (consumed via `subscriptionIconSource`):
+        //   1. linked subscription series logo (Netflix, Spotify, etc.)
+        //   2. loan-account logo for loan-payment / early-repayment rows so the
+        //      bank/loan brand surfaces in History instead of the generic
+        //      "Loan Payment" category symbol (loan account == `targetAccount`).
+        // Falls back to the category icon resolved inside `TransactionIconView`.
+        let loanIconSource: IconSource? = {
+            switch transaction.type {
+            case .loanPayment, .loanEarlyRepayment:
+                return targetAccount?.iconSource
+            default:
+                return nil
+            }
+        }()
+        let subscriptionIconSource: IconSource? = (series?.kind == .subscription)
+            ? series?.iconSource
+            : loanIconSource
         let showRecurringBadge = transaction.recurringSeriesId != nil && isFutureDate && isSeriesActive
 
         return TransactionCardView(

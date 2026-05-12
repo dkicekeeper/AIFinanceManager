@@ -245,15 +245,31 @@ EditableHeroSection(
 **The atomic building block for ALL form rows.** Every row inside `FormSection(.card)` must use it.
 
 ```swift
+// Preferred — title is auto-styled (AppTypography.body + textPrimary).
+// Use this form whenever the leading content is a plain string label.
+UniversalRow(
+    leadingIcon: .sfSymbol("star", color: .blue, size: .lg),
+    title: "Label"
+) {
+    Text("Value").font(AppTypography.bodySmall)
+}
+
+// Full form — only when the leading content is NOT a plain string
+// (e.g. a two-line VStack, a custom HStack, etc.).
 UniversalRow(
     config: .standard,
     leadingIcon: .sfSymbol("star", color: .blue, size: .lg)
 ) {
-    Text("Label").font(AppTypography.body)
+    VStack(alignment: .leading) {
+        Text("Loan name").font(AppTypography.body)
+        Text("Bank").font(AppTypography.caption).foregroundStyle(.secondary)
+    }
 } trailing: {
     Text("Value").font(AppTypography.bodySmall)
 }
 ```
+
+**Rule:** do NOT manually apply `.font(AppTypography.body).foregroundStyle(AppColors.textPrimary)` to the title `Text` — use the `title:` initializer instead. Keeps form styling consistent.
 
 **Configurations:**
 
@@ -311,6 +327,48 @@ Inline `DatePicker` inside `UniversalRow`.
 ```swift
 DatePickerRow(icon: "calendar", title: "Start Date", selection: $startDate)
 ```
+
+#### `FormTextField`
+**The single text-field component for the whole app.** Four styles — pick by context:
+
+| Style | Use it for | Chrome |
+|---|---|---|
+| `.standard` | Stand-alone field with a label above (subscription name, transaction description). | Full-width, `AppRadius.lg`, padding `lg`, tinted bg, accent border on focus. |
+| `.multiline(min:max:)` | Stand-alone multi-line (notes, descriptions). | Same chrome as `.standard`. |
+| `.inline` | Editable trailing inside a `UniversalRow` — bank name, rate, amount. | **No chrome.** Right-aligned text only. Keeps row height stable. |
+| `.inlineMultiline(min:max:)` | Multi-line trailing inside a `UniversalRow` — notes column. | **No chrome.** Right-aligned text, `lineLimit(min...max)` bounds the vertical growth. |
+
+**Inline rationale:** the trailing slot of a `UniversalRow` already pairs the field with a row-level title and an icon, so a tinted chip on top of that would double the visual weight and stretch row height on focus. The inline styles render the TextField with native chrome only — alignment + keyboard + focus — so the row stays compact. `errorMessage`/`helpText` are suppressed in inline mode; surface validation at form level (`InlineStatusText`).
+
+```swift
+// Standalone — has its own label above. Tinted chrome.
+FormTextField(text: $description, placeholder: "Optional", style: .multiline(min: 2, max: 4))
+
+// Inside a UniversalRow — bare right-aligned field
+UniversalRow(leadingIcon: .sfSymbol("building.columns"), title: "Bank") {
+    FormTextField(text: $bankName, placeholder: "Bank name", style: .inline)
+}
+
+// Decimal input — keyboard variant
+UniversalRow(leadingIcon: .sfSymbol("percent"), title: "Rate (year)") {
+    FormTextField(text: $rate, placeholder: "0.0", style: .inline, keyboardType: .decimalPad)
+}
+
+// Auto-focus on appear (replaces ad-hoc @FocusState … .task patterns)
+FormTextField(text: $rate, placeholder: "0.0", style: .inline,
+              keyboardType: .decimalPad, autofocus: true)
+
+// Multi-line trailing for notes — bounded so focus doesn't jump the row to 4 lines
+UniversalRow(leadingIcon: .sfSymbol("note.text"), title: "Note") {
+    FormTextField(text: $noteText, placeholder: "Optional",
+                  style: .inlineMultiline(min: 1, max: 4))
+}
+```
+
+**Do NOT:**
+- Drop a bare `TextField(...).inlineFieldStyle(...)` into a `UniversalRow` trailing — the deprecated modifier exists for legacy compatibility only; use `.inline` style instead.
+- Wrap the inline field in an `HStack` with a suffix `Text("%")` / `Text("KZT")` — bake the unit into the row's title ("Rate (year)", "Term (month)", "Amount, KZT"). Keeps the row stable when typing.
+- Roll a second TextField wrapper. There's exactly one component — `FormTextField`.
 
 Use in: subscription/deposit/loan form sections. NOT for transaction dates (use `DateButtonsView`).
 

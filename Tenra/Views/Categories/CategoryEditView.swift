@@ -89,13 +89,9 @@ struct CategoryEditView: View {
                     if let category = category {
 //                        FormSection(header: String(localized: "category.subcategories")) {
                             UniversalRow(
-                                config: .standard,
-                                leadingIcon: .sfSymbol("list.bullet", color: AppColors.accent)
+                                leadingIcon: .sfSymbol("list.bullet", color: AppColors.accent),
+                                title: String(localized: "category.manageSubcategories")
                             ) {
-                                Text(String(localized: "category.manageSubcategories"))
-                                    .font(AppTypography.body)
-                                    .foregroundStyle(AppColors.textPrimary)
-                            } trailing: {
                                 Text("\(linkedSubcategories.count)")
                                     .font(AppTypography.body)
                                     .foregroundStyle(AppColors.textSecondary)

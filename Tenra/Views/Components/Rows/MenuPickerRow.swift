@@ -28,15 +28,26 @@ struct MenuPickerRow<T: Hashable>: View {
         self.options = options
     }
 
+    /// Selected option's label, or empty string if no option matches (e.g., the bound
+    /// value was deleted elsewhere). The view always renders a label so the row title
+    /// never gets visually obscured by an empty trailing region while the Menu opens.
+    private var selectedLabel: String {
+        options.first(where: { $0.value == selection })?.label ?? ""
+    }
+
     var body: some View {
+        // `Menu` lives inside the `UniversalRow`'s trailing slot — NOT wrapping the
+        // whole row. Wrapping the entire row in `Menu { } label: { … }` on iOS 26
+        // causes the surrounding `FormSection` content to briefly collapse while the
+        // menu animates open (sibling rows disappear). Anchoring the menu in the
+        // trailing region keeps the rest of the section visible throughout the
+        // open/close transition. The trailing label uses the native iOS chevron
+        // pattern (value + chevron.up.chevron.down) instead of the prior capsule
+        // background, which would visibly flicker during the menu's blur transition.
         UniversalRow(
-            config: .standard,
-            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.accent, size: AppIconSize.lg) }
+            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.accent, size: AppIconSize.lg) },
+            title: title
         ) {
-            Text(title)
-                .font(AppTypography.body)
-                .foregroundStyle(AppColors.textPrimary)
-        } trailing: {
             Menu {
                 ForEach(options, id: \.value) { option in
                     Button {
@@ -51,16 +62,17 @@ struct MenuPickerRow<T: Hashable>: View {
                     }
                 }
             } label: {
-                if let selectedOption = options.first(where: { $0.value == selection }) {
-                    Text(selectedOption.label)
-                        .font(AppTypography.body)
-                        .foregroundStyle(AppColors.textPrimary)
-                        .padding(.horizontal, AppSpacing.lg)
-                        .padding(.vertical, AppSpacing.sm)
-                        .background(Color(.systemFill))
-                        .clipShape(Capsule())
-                }
+                Text(selectedLabel)
+                    .font(AppTypography.body)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, AppSpacing.lg)
+                    .padding(.vertical, AppSpacing.sm)
+                    .background(Color(.systemFill))
+                    .clipShape(Capsule())
             }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
         }
     }
 }
@@ -99,6 +111,25 @@ extension MenuPickerRow where T == RecurringOption {
         ] + RecurringFrequency.allCases.map {
             (label: $0.displayName, value: .frequency($0))
         }
+    }
+}
+
+extension MenuPickerRow where T == LoanType {
+    /// Convenience initializer for LoanType — picks between annuity ("Credit") and
+    /// installment. Mirrors `LoanTypeBadge`'s short labels so the same wording
+    /// surfaces in both the edit form and the loan list.
+    init(
+        icon: String? = "creditcard",
+        title: String = String(localized: "loan.typePicker", defaultValue: "Type"),
+        selection: Binding<LoanType>
+    ) {
+        self.icon = icon
+        self.title = title
+        self._selection = selection
+        self.options = [
+            (label: String(localized: "loan.typeAnnuityShort", defaultValue: "Credit"), value: .annuity),
+            (label: String(localized: "loan.typeInstallmentShort", defaultValue: "Installment"), value: .installment)
+        ]
     }
 }
 

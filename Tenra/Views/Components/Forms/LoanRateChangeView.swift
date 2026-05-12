@@ -16,7 +16,6 @@ struct LoanRateChangeView: View {
     @State private var rateText: String = ""
     @State private var effectiveFromDate: Date = Date()
     @State private var noteText: String = ""
-    @FocusState private var isRateFocused: Bool
 
     var body: some View {
         EditSheetContainer(
@@ -31,21 +30,16 @@ struct LoanRateChangeView: View {
                     // Rate + Date + Note in one card
                     FormSection {
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "loan.rateLabel", defaultValue: "Annual rate")
                         ) {
-                            Text(String(localized: "loan.rateLabel", defaultValue: "Annual rate"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
-                            HStack(spacing: AppSpacing.xs) {
-                                TextField("0.0", text: $rateText)
-                                    .inlineFieldStyle(keyboard: .decimalPad, maxWidth: 80)
-                                    .focused($isRateFocused)
-                                Text(String(localized: "loan.rateAnnualSuffix", defaultValue: "% annual"))
-                                    .font(AppTypography.caption)
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
+                            FormTextField(
+                                text: $rateText,
+                                placeholder: "0.0",
+                                style: .inline,
+                                keyboardType: .decimalPad,
+                                autofocus: true
+                            )
                         }
 
                         Divider().padding(.leading, AppSpacing.lg)
@@ -59,19 +53,14 @@ struct LoanRateChangeView: View {
                         Divider().padding(.leading, AppSpacing.lg)
 
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("note.text", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("note.text", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "loan.noteLabel", defaultValue: "Note")
                         ) {
-                            Text(String(localized: "loan.noteLabel", defaultValue: "Note"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
-                            TextField(
-                                String(localized: "loan.notePlaceholder", defaultValue: "Optional"),
+                            FormTextField(
                                 text: $noteText,
-                                axis: .vertical
+                                placeholder: String(localized: "loan.notePlaceholder", defaultValue: "Optional"),
+                                style: .inlineMultiline(min: 1, max: 4)
                             )
-                            .inlineNoteStyle()
                         }
                     }
 
@@ -112,10 +101,6 @@ struct LoanRateChangeView: View {
             if let loanInfo = account.loanInfo {
                 rateText = AmountInputFormatting.bindingString(for: loanInfo.interestRateAnnual)
             }
-        }
-        .task {
-            await Task.yield()
-            isRateFocused = true
         }
     }
 

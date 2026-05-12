@@ -144,62 +144,54 @@ struct LoanEditView: View {
                     // Loan details: bank, type, interest rate
                     FormSection(header: String(localized: "loan.detailsSection", defaultValue: "Loan Details")) {
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "loan.bankLabel", defaultValue: "Bank")
                         ) {
-                            Text(String(localized: "loan.bankLabel", defaultValue: "Bank"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
-                            TextField(
-                                String(localized: "loan.bankPlaceholder", defaultValue: "Bank name"),
-                                text: $bankName
+                            FormTextField(
+                                text: $bankName,
+                                placeholder: String(localized: "loan.bankPlaceholder", defaultValue: "Bank name"),
+                                style: .inline
                             )
-                            .inlineFieldStyle()
                         }
 
                         Divider()
 
-                        // Loan type segmented picker
-                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                            Picker(String(localized: "loan.typePicker", defaultValue: "Type"), selection: $loanType) {
-                                Text(String(localized: "loan.typeAnnuity", defaultValue: "Annuity (Credit)")).tag(LoanType.annuity)
-                                Text(String(localized: "loan.typeInstallment", defaultValue: "Installment")).tag(LoanType.installment)
-                            }
-                            .pickerStyle(.segmented)
-                            .disabled(isEditing)
+                        // Loan type — menu picker (default `.annuity`, i.e. "Credit").
+                        // Locked once the loan exists because amortisation tables
+                        // can't be retroactively flipped between annuity/installment.
+                        MenuPickerRow(
+                            title: String(localized: "loan.typePicker", defaultValue: "Type"),
+                            selection: $loanType
+                        )
+                        .disabled(isEditing)
 
-                            if isEditing {
-                                Text(String(localized: "loan.typeLockedHint", defaultValue: "Loan type cannot be changed after creation"))
-                                    .font(AppTypography.caption)
-                                    .foregroundStyle(AppColors.textSecondary)
-                            } else if loanType == .installment {
-                                Text(String(localized: "loan.installmentHint", defaultValue: "Installment = 0% interest, equal payments"))
-                                    .font(AppTypography.caption)
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
+                        if isEditing {
+                            Text(String(localized: "loan.typeLockedHint", defaultValue: "Loan type cannot be changed after creation"))
+                                .font(AppTypography.caption)
+                                .foregroundStyle(AppColors.textSecondary)
+                                .padding(.horizontal, AppSpacing.lg)
+                                .padding(.bottom, AppSpacing.lg)
+                        } else if loanType == .installment {
+                            Text(String(localized: "loan.installmentHint", defaultValue: "Installment = 0% interest, equal payments"))
+                                .font(AppTypography.caption)
+                                .foregroundStyle(AppColors.textSecondary)
+                                .padding(.horizontal, AppSpacing.lg)
+                                .padding(.bottom, AppSpacing.lg)
                         }
-                        .padding(.vertical, AppSpacing.sm)
-                        .padding(.horizontal, AppSpacing.lg)
 
                         if loanType == .annuity {
                             Divider()
 
                             UniversalRow(
-                                config: .standard,
-                                leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg)
+                                leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg),
+                                title: String(localized: "loan.interestRateLabel", defaultValue: "Rate (year)")
                             ) {
-                                Text(String(localized: "loan.interestRateLabel", defaultValue: "Interest rate"))
-                                    .font(AppTypography.body)
-                                    .foregroundStyle(AppColors.textPrimary)
-                            } trailing: {
-                                HStack(spacing: AppSpacing.xs) {
-                                    TextField("0.0", text: $interestRateText)
-                                        .inlineFieldStyle(keyboard: .decimalPad, maxWidth: 80)
-                                    Text(String(localized: "loan.rateAnnualSuffix", defaultValue: "% annual"))
-                                        .font(AppTypography.caption)
-                                        .foregroundStyle(AppColors.textSecondary)
-                                }
+                                FormTextField(
+                                    text: $interestRateText,
+                                    placeholder: "0.0",
+                                    style: .inline,
+                                    keyboardType: .decimalPad
+                                )
                             }
                         }
                     }
@@ -207,32 +199,23 @@ struct LoanEditView: View {
                     // Loan schedule: term, payment day, start date
                     FormSection(header: String(localized: "loan.scheduleSection", defaultValue: "Schedule")) {
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("clock", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("clock", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "loan.termLabel", defaultValue: "Term (month)")
                         ) {
-                            Text(String(localized: "loan.termLabel", defaultValue: "Term"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
-                            HStack(spacing: AppSpacing.xs) {
-                                TextField("0", text: $termMonthsText)
-                                    .inlineFieldStyle(keyboard: .numberPad, maxWidth: 60)
-                                Text(String(localized: "loan.months", defaultValue: "months"))
-                                    .font(AppTypography.caption)
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
+                            FormTextField(
+                                text: $termMonthsText,
+                                placeholder: "0",
+                                style: .inline,
+                                keyboardType: .numberPad
+                            )
                         }
 
                         Divider()
 
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("calendar.badge.clock", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("calendar.badge.clock", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "loan.paymentDay", defaultValue: "Payment day")
                         ) {
-                            Text(String(localized: "loan.paymentDay", defaultValue: "Payment day"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
                             HStack(spacing: AppSpacing.sm) {
                                 Text("\(paymentDay)")
                                     .font(AppTypography.bodySmall)
@@ -457,7 +440,7 @@ struct LoanEditView: View {
     .environment(coordinator)
 }
 
-#Preview("Loan Edit - Edit") {
+#Preview("Loan Edit - Edit (Annuity)") {
     let coordinator = AppCoordinator()
     let sampleAccount = Account(
         id: "preview-loan",
@@ -476,6 +459,99 @@ struct LoanEditView: View {
             paymentsMade: 9
         ),
         initialBalance: 5_000_000
+    )
+
+    LoanEditView(
+        loansViewModel: coordinator.loansViewModel,
+        account: sampleAccount,
+        onSave: { _ in }
+    )
+    .environment(coordinator)
+}
+
+/// Exercises the installment branch: no interest-rate row should render and
+/// the "0% interest, equal payments" hint replaces it.
+#Preview("Loan Edit - Edit (Installment)") {
+    let coordinator = AppCoordinator()
+    let sampleAccount = Account(
+        id: "preview-installment",
+        name: "iPhone 17 Pro",
+        currency: "KZT",
+        iconSource: .brandService("kaspi.kz"),
+        loanInfo: LoanInfo(
+            bankName: "Kaspi Bank",
+            loanType: .installment,
+            originalPrincipal: 720_000,
+            remainingPrincipal: 480_000,
+            interestRateAnnual: 0,
+            termMonths: 12,
+            startDate: "2026-01-15",
+            paymentDay: 15,
+            paymentsMade: 4
+        ),
+        initialBalance: 720_000
+    )
+
+    LoanEditView(
+        loansViewModel: coordinator.loansViewModel,
+        account: sampleAccount,
+        onSave: { _ in }
+    )
+    .environment(coordinator)
+}
+
+/// Convert-mode: regular account → loan. `loanInfo` is nil, so the form
+/// pre-fills name/currency/balance from the account and the type picker is
+/// editable (unlike Edit-mode).
+#Preview("Loan Edit - Convert Account") {
+    let coordinator = AppCoordinator()
+    let regularAccount = Account(
+        id: "preview-convert",
+        name: "Mortgage",
+        currency: "KZT",
+        iconSource: .sfSymbol("house.fill"),
+        initialBalance: 18_500_000
+    )
+
+    LoanEditView(
+        loansViewModel: coordinator.loansViewModel,
+        account: regularAccount,
+        onSave: { _ in }
+    )
+    .environment(coordinator)
+}
+
+/// Edit-mode for a loan that already carries default category/subcategory
+/// tagging — verifies both dropdowns appear with the persisted values.
+#Preview("Loan Edit - With Default Tagging") {
+    let coordinator = AppCoordinator()
+    let defaultCategory = coordinator.categoriesViewModel.customCategories
+        .first { $0.type == .expense }?.name
+    let firstSubId = defaultCategory
+        .flatMap { name in
+            coordinator.categoriesViewModel.customCategories.first { $0.name == name }?.id
+        }
+        .flatMap { coordinator.categoriesViewModel.getSubcategoriesForCategory($0).first?.id }
+
+    let sampleAccount = Account(
+        id: "preview-tagged",
+        name: "Renovation Loan",
+        currency: "KZT",
+        iconSource: .brandService("kaspi.kz"),
+        loanInfo: LoanInfo(
+            bankName: "Kaspi Bank",
+            loanType: .annuity,
+            originalPrincipal: 3_000_000,
+            remainingPrincipal: 2_100_000,
+            interestRateAnnual: 22.0,
+            termMonths: 24,
+            startDate: "2025-09-01",
+            paymentDay: 5,
+            paymentsMade: 8,
+            defaultCategory: defaultCategory,
+            defaultSubcategoryIds: firstSubId.map { [$0] } ?? []
+        ),
+        initialBalance: 3_000_000
     )
 
     LoanEditView(

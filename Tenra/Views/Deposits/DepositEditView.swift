@@ -54,50 +54,37 @@ struct DepositEditView: View {
                     // Bank name + interest rate grouped in one card
                     FormSection(header: String(localized: "deposit.bankDetails", defaultValue: "Bank & Rate")) {
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "deposit.bank")
                         ) {
-                            Text(String(localized: "deposit.bank"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
-                            TextField(
-                                String(localized: "deposit.bankNamePlaceholder"),
-                                text: $bankName
+                            FormTextField(
+                                text: $bankName,
+                                placeholder: String(localized: "deposit.bankNamePlaceholder"),
+                                style: .inline
                             )
-                            .inlineFieldStyle()
                         }
 
                         Divider()
 
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("percent", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "deposit.interestRate")
                         ) {
-                            Text(String(localized: "deposit.interestRate"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
-                            HStack(spacing: AppSpacing.xs) {
-                                TextField("0.0", text: $interestRateText)
-                                    .inlineFieldStyle(keyboard: .decimalPad, maxWidth: 80)
-                                Text(String(localized: "deposit.rateAnnual"))
-                                    .font(AppTypography.caption)
-                                    .foregroundStyle(AppColors.textSecondary)
-                            }
+                            FormTextField(
+                                text: $interestRateText,
+                                placeholder: "0.0",
+                                style: .inline,
+                                keyboardType: .decimalPad
+                            )
                         }
                     }
 
                     // Posting day + capitalization grouped in one card
                     FormSection(header: String(localized: "deposit.schedule", defaultValue: "Schedule")) {
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("calendar.badge.clock", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("calendar.badge.clock", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "deposit.dayOfMonth")
                         ) {
-                            Text(String(localized: "deposit.dayOfMonth"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
                             HStack(spacing: AppSpacing.sm) {
                                 Text("\(interestPostingDay)")
                                     .font(AppTypography.bodySmall)
@@ -112,14 +99,10 @@ struct DepositEditView: View {
                         Divider()
 
                         UniversalRow(
-                            config: .standard,
                             leadingIcon: .sfSymbol("arrow.triangle.2.circlepath", color: AppColors.accent, size: AppIconSize.lg),
-                            hint: String(localized: "deposit.capitalizationHint")
+                            hint: String(localized: "deposit.capitalizationHint"),
+                            title: String(localized: "deposit.enableCapitalization")
                         ) {
-                            Text(String(localized: "deposit.enableCapitalization"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
                             Toggle("", isOn: $capitalizationEnabled)
                                 .labelsHidden()
                         }

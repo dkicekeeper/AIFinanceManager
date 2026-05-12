@@ -1080,7 +1080,7 @@
 "loan.principalHeader" = "Сумма кредита";
 "loan.principalPlaceholder" = "Общая сумма кредита";
 "loan.interestRateHeader" = "Процентная ставка";
-"loan.interestRateLabel" = "Процентная ставка";
+"loan.interestRateLabel" = "Ставка (год)";
 "loan.rateAnnualSuffix" = "% годовых";
 "loan.termHeader" = "Срок";
 "loan.termPlaceholder" = "Количество месяцев";
@@ -1209,7 +1209,7 @@
 "loan.paymentSection" = "Оплата";
 "loan.rateLabel" = "Годовая ставка";
 "loan.scheduleSection" = "График";
-"loan.termLabel" = "Срок";
+"loan.termLabel" = "Срок (месяц)";
 "loan.error.exceedsRemaining" = "Сумма превышает остаток";
 "loan.error.invalidAmount" = "Введите корректную сумму";
 "loan.error.invalidRate" = "Введите корректную процентную ставку";

@@ -72,24 +72,18 @@ struct LoanPayAllView: View {
                                             .foregroundStyle(AppColors.textSecondary)
                                     }
                                 } trailing: {
-                                    HStack(spacing: AppSpacing.xs) {
-                                        TextField(
-                                            String(localized: "loan.amountPlaceholder", defaultValue: "Amount"),
-                                            text: Binding(
-                                                get: {
-                                                    amountOverrides[loan.id]
-                                                        ?? AmountInputFormatting.bindingString(for: defaultAmount(for: loan))
-                                                },
-                                                set: { amountOverrides[loan.id] = $0 }
-                                            )
-                                        )
-                                        .inlineFieldStyle(keyboard: .decimalPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .frame(maxWidth: 140)
-                                        Text(Formatting.currencySymbol(for: loan.currency))
-                                            .font(AppTypography.bodySmall)
-                                            .foregroundStyle(AppColors.textSecondary)
-                                    }
+                                    FormTextField(
+                                        text: Binding(
+                                            get: {
+                                                amountOverrides[loan.id]
+                                                    ?? AmountInputFormatting.bindingString(for: defaultAmount(for: loan))
+                                            },
+                                            set: { amountOverrides[loan.id] = $0 }
+                                        ),
+                                        placeholder: String(localized: "loan.amountPlaceholder", defaultValue: "Amount"),
+                                        style: .inline,
+                                        keyboardType: .decimalPad
+                                    )
                                 }
                             }
                         }
@@ -97,13 +91,9 @@ struct LoanPayAllView: View {
                         Divider().padding(.leading, AppSpacing.lg)
 
                         UniversalRow(
-                            config: .standard,
-                            leadingIcon: .sfSymbol("sum", color: AppColors.accent, size: AppIconSize.lg)
+                            leadingIcon: .sfSymbol("sum", color: AppColors.accent, size: AppIconSize.lg),
+                            title: String(localized: "loan.payAllTotal", defaultValue: "Total")
                         ) {
-                            Text(String(localized: "loan.payAllTotal", defaultValue: "Total"))
-                                .font(AppTypography.body)
-                                .foregroundStyle(AppColors.textPrimary)
-                        } trailing: {
                             FormattedAmountText(
                                 amount: NSDecimalNumber(decimal: totalPayment).doubleValue,
                                 currency: currency,
@@ -117,13 +107,9 @@ struct LoanPayAllView: View {
                     FormSection(header: String(localized: "loan.paymentSection", defaultValue: "Payment")) {
                         if availableAccounts.isEmpty {
                             UniversalRow(
-                                config: .standard,
-                                leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg)
+                                leadingIcon: .sfSymbol("building.columns", color: AppColors.accent, size: AppIconSize.lg),
+                                title: String(localized: "loan.sourceAccount", defaultValue: "From account")
                             ) {
-                                Text(String(localized: "loan.sourceAccount", defaultValue: "From account"))
-                                    .font(AppTypography.body)
-                                    .foregroundStyle(AppColors.textPrimary)
-                            } trailing: {
                                 Text(String(localized: "loan.noSourceAccounts", defaultValue: "No accounts"))
                                     .font(AppTypography.bodySmall)
                                     .foregroundStyle(AppColors.textSecondary)

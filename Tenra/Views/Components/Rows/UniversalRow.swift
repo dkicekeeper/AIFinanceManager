@@ -348,6 +348,35 @@ extension UniversalRow where Content == Text, Trailing == EmptyView {
     }
 }
 
+extension UniversalRow where Content == Text {
+    /// Initializer with a string `title` (auto-styled as `AppTypography.body` +
+    /// `AppColors.textPrimary`) and a custom `trailing` view. Removes the boilerplate
+    /// of building the leading `Text { … }.font(…).foregroundStyle(…)` at every call
+    /// site — see `LoanEditView`, `SubscriptionEditView`, etc., where the same three
+    /// modifiers were duplicated on every row's content closure.
+    ///
+    /// Use `titleColor: AppColors.destructive` for destructive labels; otherwise
+    /// stick to the default so all forms remain visually consistent.
+    init(
+        config: RowConfiguration = .standard,
+        leadingIcon: IconConfig? = nil,
+        hint: String? = nil,
+        title: String,
+        titleColor: Color = AppColors.textPrimary,
+        @ViewBuilder trailing: @escaping () -> Trailing
+    ) {
+        self.config = config
+        self.leadingIcon = leadingIcon
+        self.hint = hint
+        self.content = {
+            Text(title)
+                .font(AppTypography.body)
+                .foregroundStyle(titleColor)
+        }
+        self.trailing = trailing
+    }
+}
+
 // Note: Removed overly-specific convenience initializer for navigation rows
 // Use the standard UniversalRow initializer with explicit trailing view instead
 
