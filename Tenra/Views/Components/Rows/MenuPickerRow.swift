@@ -8,8 +8,16 @@
 
 import SwiftUI
 
-/// Universal menu picker row for forms
-/// Shows icon + title on left, selected value + menu on right
+/// Universal menu picker row for forms.
+/// Shows `icon + title` on the left and a native `Menu` trigger (selected
+/// label + chevron) on the right. Tapping the trigger opens an iOS menu with
+/// the selectable options; iOS handles the open transition, checkmark on the
+/// current selection, and dismissal.
+///
+/// The menu uses a `Picker` inside `Menu` — Apple's canonical pattern for a
+/// single-select dropdown bound to a `Hashable` value. iOS renders the
+/// options as native menu items with a built-in checkmark on the selected
+/// row, so we don't draw the checkmark ourselves.
 struct MenuPickerRow<T: Hashable>: View {
     let icon: String?
     let title: String
@@ -28,53 +36,33 @@ struct MenuPickerRow<T: Hashable>: View {
         self.options = options
     }
 
-    /// Selected option's label, or empty string if no option matches (e.g., the bound
-    /// value was deleted elsewhere). The view always renders a label so the row title
-    /// never gets visually obscured by an empty trailing region while the Menu opens.
-    private var selectedLabel: String {
-        options.first(where: { $0.value == selection })?.label ?? ""
-    }
-
     var body: some View {
-        // `Menu` lives inside the `UniversalRow`'s trailing slot — NOT wrapping the
-        // whole row. Wrapping the entire row in `Menu { } label: { … }` on iOS 26
-        // causes the surrounding `FormSection` content to briefly collapse while the
-        // menu animates open (sibling rows disappear). Anchoring the menu in the
-        // trailing region keeps the rest of the section visible throughout the
-        // open/close transition.
-        //
-        // NOTE on styling: do NOT apply `.menuStyle(.button)` or `.buttonStyle(.plain)`
-        // here. iOS 26's button-style menu attaches a press/highlight overlay to the
-        // entire label region, which makes the capsule text briefly disappear at the
-        // exact moment the menu opens (the "title disappears on tap" bug). Letting
-        // the system pick the default menu style preserves the capsule label
-        // throughout the open/close transition.
         UniversalRow(
-            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.accent, size: AppIconSize.lg) },
-            title: title
+            config: .standard,
+            leadingIcon: icon.map { .sfSymbol($0, color: AppColors.accent, size: AppIconSize.lg) }
         ) {
+            Text(title)
+                .font(AppTypography.body)
+                .foregroundStyle(AppColors.textPrimary)
+        } trailing: {
             Menu {
-                ForEach(options, id: \.value) { option in
-                    Button {
-                        selection = option.value
-                    } label: {
-                        HStack {
-                            Text(option.label)
-                            if selection == option.value {
-                                Image(systemName: "checkmark")
-                            }
-                        }
+                Picker(title, selection: $selection) {
+                    ForEach(options, id: \.value) { option in
+                        Text(option.label).tag(option.value)
                     }
                 }
             } label: {
-                Text(selectedLabel)
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppColors.textPrimary)
-                    .lineLimit(1)
-                    .padding(.horizontal, AppSpacing.lg)
-                    .padding(.vertical, AppSpacing.sm)
-                    .background(Color(.systemFill))
-                    .clipShape(Capsule())
+                if let selectedOption = options.first(where: { $0.value == selection }) {
+                    HStack(spacing: AppSpacing.xs) {
+                        Text(selectedOption.label)
+                            .font(AppTypography.body)
+                            .foregroundStyle(AppColors.textPrimary)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(AppColors.textPrimary)
+                    }
+                }
             }
         }
     }

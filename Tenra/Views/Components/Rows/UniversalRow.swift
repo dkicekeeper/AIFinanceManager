@@ -95,7 +95,7 @@ struct UniversalRow<Content: View, Trailing: View>: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(alignment: .leading, spacing: hint != nil ? AppSpacing.xs : 0) {
+        let stack = VStack(alignment: .leading, spacing: hint != nil ? AppSpacing.xs : 0) {
             HStack(spacing: config.spacing) {
                 // Leading icon via IconView
                 if let iconConfig = leadingIcon {
@@ -127,7 +127,21 @@ struct UniversalRow<Content: View, Trailing: View>: View {
         .padding(.vertical, config.verticalPadding)
         .padding(.horizontal, config.horizontalPadding)
         .background(config.backgroundColor)
-        .clipShape(.rect(cornerRadius: config.cornerRadius))
+
+        // Apply `clipShape` only when the row actually needs a rounded corner.
+        // A `0`-radius `clipShape(.rect)` still creates a content boundary that
+        // iOS 26's `Picker`/`Menu` morph picks up as its *source view* — so the
+        // entire row collapses into the menu popover on tap. Skipping the
+        // clip for the no-op case (every shipped `RowConfiguration` uses
+        // cornerRadius=0 today) keeps the morph anchored to the trigger
+        // control itself.
+        return Group {
+            if config.cornerRadius > 0 {
+                stack.clipShape(.rect(cornerRadius: config.cornerRadius))
+            } else {
+                stack
+            }
+        }
     }
 }
 

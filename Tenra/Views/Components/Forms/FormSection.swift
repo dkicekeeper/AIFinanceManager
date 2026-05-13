@@ -47,7 +47,12 @@ struct FormSection<Content: View>: View {
             VStack(spacing: 0) {
                 content
             }
-            .cardStyle()
+            // `formCardStyle()` (Material on every iOS) instead of `cardStyle()`
+            // (`glassEffect` on iOS 26). Liquid Glass becomes the morph-source for
+            // any `Picker(.menu)` / `Menu` rendered inside the card — in a single-
+            // row section the glass-rect ≈ row, so iOS collapses the whole row
+            // into the menu popover at tap. Material has no such interaction.
+            .formCardStyle()
 
             // Footer
             if let footer = footer {

@@ -47,9 +47,15 @@ extension View {
         }
     }
 
-    /// Применяет glass effect с стандартным cornerRadius для карточек (iOS 26+)
+    /// Применяет glass effect с стандартным cornerRadius для карточек (iOS 26+).
     /// Padding НЕ добавляется — ответственность за отступы лежит на содержимом
-    /// (строки используют собственный padding; произвольный контент добавляет .padding перед вызовом)
+    /// (строки используют собственный padding; произвольный контент добавляет .padding перед вызовом).
+    ///
+    /// **Use this for display cards** (AccountCard, LoanCard, HealthScoreCard, hero
+    /// sections, etc.). For interactive form sections that contain `Picker(.menu)` /
+    /// `Menu` triggers, use `formCardStyle()` instead — `glassEffect` is the morph
+    /// source for iOS 26 menus, and a single-row section collapses the whole row into
+    /// the popover at tap.
     @ViewBuilder
     func cardStyle(radius: CGFloat = AppRadius.xl) -> some View {
         if #available(iOS 26, *) {
@@ -64,6 +70,24 @@ extension View {
                     in: RoundedRectangle(cornerRadius: radius)
                 )
         }
+    }
+
+    /// Card chrome for form-like containers that host interactive controls
+    /// (`Picker(.menu)`, `Menu`, etc.). Uses `.ultraThinMaterial` on every iOS
+    /// version instead of `.glassEffect` because iOS 26's Liquid Glass surface
+    /// becomes the morph-source for any native menu trigger inside it — in a
+    /// single-row `FormSection` the glass-rect ≈ row bounds and the entire row
+    /// collapses into the popover at tap.
+    ///
+    /// **Use this for `FormSection`, `BudgetSettingsSection`, and any other
+    /// container that wraps rows users tap to open menus.** Use `cardStyle()`
+    /// (above) for non-interactive display cards.
+    func formCardStyle(radius: CGFloat = AppRadius.xl) -> some View {
+        self
+            .background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: radius)
+            )
     }
 }
 

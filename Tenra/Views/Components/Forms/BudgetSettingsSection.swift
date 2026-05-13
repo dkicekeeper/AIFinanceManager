@@ -67,7 +67,10 @@ struct BudgetSettingsSection: View {
                 }
 
             }
-            .cardStyle()
+            // Form-style card (Material, not Liquid Glass) — this card hosts a
+            // `MenuPickerRow` whose menu would otherwise morph the whole card on
+            // iOS 26. See `formCardStyle` doc.
+            .formCardStyle()
 
             if selectedPeriod == .monthly {
                 Text(String(localized: "budget_reset_day_description"))

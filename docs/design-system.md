@@ -155,7 +155,8 @@ All have Reduce Motion-aware variants (`adaptiveSpring`, `fastAnimation`, etc.) 
 
 | Modifier | Effect | When to Use |
 |----------|--------|-------------|
-| `.cardStyle(radius:)` | Liquid Glass (iOS 26+) or `.ultraThinMaterial` card background. Default radius: `AppRadius.xl` (20pt) | Every card container in detail/list views |
+| `.cardStyle(radius:)` | Liquid Glass (iOS 26+) or `.ultraThinMaterial` card background. Default radius: `AppRadius.xl` (20pt) | **Display cards only.** Account/Loan/Health hero cards, list cards, detail-view cards — anything without interactive `Picker(.menu)` / `Menu` inside |
+| `.formCardStyle(radius:)` | `.ultraThinMaterial` card background on every iOS. Same shape/padding contract as `cardStyle`. | **Form-section cards.** `FormSection`, `BudgetSettingsSection` — any card that wraps `MenuPickerRow` / `Picker(.menu)` / `Menu`. iOS 26's `glassEffect` becomes the morph-source for menus, so single-row form sections would collapse the whole row into the popover at tap. `formCardStyle` uses Material to side-step that |
 | `.filterChipStyle(isSelected:)` | Glass chip styling with accent tint when selected. Animated selection transition | Filter buttons, `UniversalFilterButton` |
 | `.screenPadding()` | `.padding(.horizontal, AppSpacing.pageHorizontal)` (16pt) | Screen-level horizontal insets |
 | `.cardContentPadding()` | `.padding(AppSpacing.cardPadding)` (12pt) | Internal card content padding |
@@ -212,7 +213,7 @@ FormSection(header: "Settings", footer: nil, style: .card) {
 
 | Style | Background | Use For |
 |-------|-----------|---------|
-| `.card` | `.cardStyle()` (Liquid Glass) | Default; hero-form sections |
+| `.card` | `.formCardStyle()` (Material; **not** Liquid Glass) | Default; hero-form sections. Material is intentional — iOS 26 `glassEffect` would become the morph-source for any `Picker(.menu)` / `MenuPickerRow` inside, collapsing single-row sections into the popover at tap |
 | `.list` | None | Inside `List` |
 | `.plain` | None | Raw passthrough |
 
