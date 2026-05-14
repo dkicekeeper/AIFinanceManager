@@ -48,4 +48,25 @@ struct OnboardingViewModelTests {
         }
         #expect(vm.canFinish == false)
     }
+
+    @Test func currentScreenStartsAtWelcome1() {
+        let vm = OnboardingViewModel.makeForTesting()
+        #expect(vm.currentScreen == .welcome1)
+        #expect(vm.transitionDirection == .forward)
+    }
+
+    @Test func goForwardSetsForwardDirectionAndScreen() {
+        let vm = OnboardingViewModel.makeForTesting()
+        vm.goForward(to: .welcome2)
+        #expect(vm.currentScreen == .welcome2)
+        #expect(vm.transitionDirection == .forward)
+    }
+
+    @Test func goBackSetsBackDirectionAndScreen() {
+        let vm = OnboardingViewModel.makeForTesting()
+        vm.goForward(to: .currency)
+        vm.goBack(to: .welcome3)
+        #expect(vm.currentScreen == .welcome3)
+        #expect(vm.transitionDirection == .back)
+    }
 }

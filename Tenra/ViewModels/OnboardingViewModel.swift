@@ -17,6 +17,16 @@ enum OnboardingStep: Hashable {
     case categories
 }
 
+/// Every screen in the onboarding flow — welcome carousel + data-collection steps.
+enum OnboardingScreen: Int, CaseIterable {
+    case welcome1, welcome2, welcome3, currency, account, categories
+}
+
+/// Direction of a screen change — drives which way the transition slides.
+enum TransitionDirection {
+    case forward, back
+}
+
 /// Draft for the first account being created during onboarding.
 struct AccountDraft: Equatable {
     var name: String = ""
@@ -35,6 +45,12 @@ final class OnboardingViewModel {
     // MARK: - Welcome carousel
 
     var welcomePage: Int = 0
+
+    /// The currently displayed onboarding screen. Single source of navigation truth.
+    var currentScreen: OnboardingScreen = .welcome1
+
+    /// Direction of the most recent screen change — read by the transition.
+    var transitionDirection: TransitionDirection = .forward
 
     // MARK: - Step state
 
@@ -89,6 +105,22 @@ final class OnboardingViewModel {
     }
 
     // MARK: - Step navigation
+
+    /// Advance to `screen` with a forward (slide-in-from-trailing) transition.
+    func goForward(to screen: OnboardingScreen) {
+        transitionDirection = .forward
+        withAnimation(AppAnimation.onboardingTransition) {
+            currentScreen = screen
+        }
+    }
+
+    /// Return to `screen` with a back (slide-in-from-leading) transition.
+    func goBack(to screen: OnboardingScreen) {
+        transitionDirection = .back
+        withAnimation(AppAnimation.onboardingTransition) {
+            currentScreen = screen
+        }
+    }
 
     func startDataCollection() {
         // Root of the NavigationStack is OnboardingCurrencyStep already; path stays empty.
