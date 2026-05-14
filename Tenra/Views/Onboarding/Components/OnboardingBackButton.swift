@@ -17,6 +17,6 @@ struct OnboardingBackButton: View {
                 .font(.body.weight(.semibold))
                 .foregroundStyle(AppColors.textPrimary)
         }
-        .accessibilityLabel(Text("Back"))
+        .accessibilityLabel(Text("common.back"))
     }
 }

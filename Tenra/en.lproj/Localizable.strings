@@ -199,6 +199,7 @@
 "common.uncategorized" = "Uncategorized";
 "common.unknown" = "Unknown";
 "common.cancel" = "Cancel";
+"common.back" = "Back";
 "common.select" = "Select";
 "common.selectAccount" = "Select Account";
 "common.selectCategory" = "Select Category";

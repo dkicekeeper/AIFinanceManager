@@ -199,6 +199,7 @@
 "common.uncategorized" = "Без категории";
 "common.unknown" = "Неизвестно";
 "common.cancel" = "Отмена";
+"common.back" = "Назад";
 "common.select" = "Выбрать";
 "common.selectAccount" = "Выбрать счёт";
 "common.selectCategory" = "Выбрать категорию";
