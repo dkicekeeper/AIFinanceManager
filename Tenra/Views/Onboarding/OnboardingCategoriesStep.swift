@@ -27,7 +27,8 @@ struct OnboardingCategoriesStep: View {
             primaryButtonEnabled: vm.canFinish,
             onPrimaryTap: {
                 vm.finish()    // finish() is sync, NOT async
-            }
+            },
+            onBack: { vm.goBack(to: .account) }
         ) {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: AppSpacing.md) {

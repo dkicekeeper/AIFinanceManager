@@ -10,13 +10,6 @@ import SwiftUI
 import Observation
 import os
 
-/// One step in the data-collection portion of onboarding.
-enum OnboardingStep: Hashable {
-    case currency
-    case account
-    case categories
-}
-
 /// Every screen in the onboarding flow — welcome carousel + data-collection steps.
 enum OnboardingScreen: Int, CaseIterable {
     case welcome1, welcome2, welcome3, currency, account, categories
@@ -44,8 +37,6 @@ final class OnboardingViewModel {
 
     // MARK: - Welcome carousel
 
-    var welcomePage: Int = 0
-
     /// The currently displayed onboarding screen. Single source of navigation truth.
     var currentScreen: OnboardingScreen = .welcome1
 
@@ -53,8 +44,6 @@ final class OnboardingViewModel {
     var transitionDirection: TransitionDirection = .forward
 
     // MARK: - Step state
-
-    var path: [OnboardingStep] = []
 
     /// Step 1: chosen base currency. Default `KZT` (matches `AppSettings.defaultCurrency`).
     var draftCurrency: String = AppSettings.defaultCurrency
@@ -123,15 +112,14 @@ final class OnboardingViewModel {
     }
 
     func startDataCollection() {
-        // Root of the NavigationStack is OnboardingCurrencyStep already; path stays empty.
-        path = []
+        goForward(to: .currency)
         logger.info("onboarding_started")
     }
 
     func advanceToAccountStep() async {
         guard let coordinator else { return }
         await coordinator.settingsViewModel.updateBaseCurrency(draftCurrency)
-        path.append(.account)
+        goForward(to: .account)
         logger.info("onboarding_step_completed step=currency currency=\(self.draftCurrency, privacy: .public)")
     }
 
@@ -159,7 +147,7 @@ final class OnboardingViewModel {
             // Last-added account id (AccountsViewModel appends to the end of the array).
             createdAccountId = coordinator.accountsViewModel.accounts.last?.id
         }
-        path.append(.categories)
+        goForward(to: .categories)
         logger.info("onboarding_step_completed step=account")
     }
 

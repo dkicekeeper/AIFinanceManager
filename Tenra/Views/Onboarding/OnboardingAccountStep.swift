@@ -25,7 +25,8 @@ struct OnboardingAccountStep: View {
             primaryButtonEnabled: vm.canAdvanceFromAccountStep,
             onPrimaryTap: {
                 Task { await vm.advanceToCategoriesStep() }
-            }
+            },
+            onBack: { vm.goBack(to: .currency) }
         ) {
             ScrollView {
                 VStack(spacing: AppSpacing.md) {

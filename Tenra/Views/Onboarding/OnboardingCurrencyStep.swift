@@ -17,13 +17,13 @@ struct OnboardingCurrencyStep: View {
             primaryButtonEnabled: true,
             onPrimaryTap: {
                 Task { await vm.advanceToAccountStep() }
-            }
+            },
+            onBack: { vm.goBack(to: .welcome3) }
         ) {
             CurrencyListContent(selectedCurrency: vm.draftCurrency) { code in
                 vm.draftCurrency = code
             }
             .padding(.top, AppSpacing.md)
         }
-        .navigationBarBackButtonHidden(false)
     }
 }
