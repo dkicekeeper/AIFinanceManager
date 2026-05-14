@@ -3,7 +3,8 @@
 //  Tenra
 //
 //  Shared layout for onboarding data-collection steps:
-//  progress bar (top), title + subtitle, body content, primary CTA pinned at the bottom.
+//  optional back chevron, progress bar, title + subtitle, body content,
+//  primary CTA pinned at the bottom.
 //
 
 import SwiftUI
@@ -15,12 +16,26 @@ struct OnboardingPageContainer<Content: View>: View {
     let primaryButtonTitle: String
     let primaryButtonEnabled: Bool
     let onPrimaryTap: () -> Void
+    var onBack: (() -> Void)? = nil
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         VStack(spacing: 0) {
+            if let onBack {
+                HStack {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.left")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(AppColors.textPrimary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.top, AppSpacing.md)
+            }
+
             OnboardingProgressBar(totalSteps: 3, currentStep: progressStep)
-                .padding(.top, AppSpacing.lg)
+                .padding(.top, onBack == nil ? AppSpacing.lg : AppSpacing.md)
 
             VStack(alignment: .leading, spacing: AppSpacing.sm) {
                 Text(title)
