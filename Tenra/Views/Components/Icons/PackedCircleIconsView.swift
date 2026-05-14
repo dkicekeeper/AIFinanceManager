@@ -33,9 +33,6 @@ struct PackedCircleIconsView: View {
     var maxVisible: Int = 5
     var containerWidth: CGFloat = AppSize.subscriptionCardWidth
 
-    @State private var packedCircles: [PackedCircle] = []
-    @State private var isBreathing = false
-
     private let containerHeight: CGFloat = 100
     private let borderWidth: CGFloat = 1
 
@@ -47,91 +44,16 @@ struct PackedCircleIconsView: View {
         max(0, items.count - maxVisible)
     }
 
-    /// Key for recalculation when items change.
-    private var layoutKey: String {
-        visible.map { "\($0.id):\($0.amount)" }.joined(separator: ",")
-        + (overflowCount > 0 ? ",+\(overflowCount)" : "")
-    }
-
-    var body: some View {
-        ZStack {
-            ForEach(Array(packedCircles.enumerated()), id: \.element.id) { index, circle in
-                let target = CGSize(width: circle.x, height: circle.y)
-                let perimeter = Self.radialStartOffset(
-                    index: index,
-                    totalCount: packedCircles.count,
-                    containerWidth: containerWidth,
-                    containerHeight: containerHeight
-                )
-                if index < visible.count {
-                    PackedCircleIcon(
-                        iconSource: visible[index].iconSource,
-                        tintOverride: visible[index].tint,
-                        diameter: circle.diameter,
-                        borderWidth: borderWidth,
-                        isBreathing: isBreathing,
-                        breathingIndex: index,
-                        animationDelay: Double(index) * AppAnimation.facepileStagger,
-                        targetOffset: target,
-                        perimeterOffset: perimeter
-                    )
-                } else {
-                    // Overflow badge
-                    PackedOverflowBadge(
-                        count: overflowCount,
-                        diameter: circle.diameter,
-                        borderWidth: borderWidth,
-                        animationDelay: Double(index) * AppAnimation.facepileStagger,
-                        targetOffset: target,
-                        perimeterOffset: perimeter
-                    )
-                }
-            }
-        }
-        .frame(width: containerWidth, height: containerHeight)
-        .task(id: layoutKey) {
-            recalculateLayout()
-            // Start breathing after entrance animations settle
-            if !AppAnimation.isReduceMotionEnabled {
-                try? await Task.sleep(for: .milliseconds(
-                    Int(Double(packedCircles.count) * AppAnimation.facepileStagger * 1000 + 400)
-                ))
-                isBreathing = true
-            }
-        }
-    }
-
-    // MARK: - Radial Entrance Geometry
-
-    /// Returns a starting offset for the entrance animation distributed evenly
-    /// around the perimeter of an imaginary circle centered on the container.
+    /// Packed layout — derived **synchronously** from `items`, not stored in `@State`.
     ///
-    /// The packed layout itself is largely horizontal (first circle at center,
-    /// rest tangent to its right/bottom), so anchoring the start position to the
-    /// final-position vector collapsed everything onto a horizontal line — which
-    /// read as a left-to-right slide. Distributing starts by **index** instead
-    /// gives a true bloom-from-perimeter convergence regardless of packing shape.
-    private static func radialStartOffset(
-        index: Int,
-        totalCount: Int,
-        containerWidth: CGFloat,
-        containerHeight: CGFloat
-    ) -> CGSize {
-        let perimeterRadius = max(containerWidth, containerHeight) * 0.7
-        guard totalCount > 0 else {
-            return CGSize(width: 0, height: -perimeterRadius)
-        }
-        // Step around a full revolution; offset by -π/2 so item 0 enters from the top.
-        let angle = (Double(index) / Double(totalCount)) * 2 * .pi - .pi / 2
-        return CGSize(
-            width: perimeterRadius * cos(angle),
-            height: perimeterRadius * sin(angle)
-        )
-    }
-
-    // MARK: - Layout
-
-    private func recalculateLayout() {
+    /// `CirclePackingLayout.pack` is pure geometry with no SwiftUI dependency and is
+    /// cheap for ≤6 circles, so it is safe to compute in `body`. Doing it here (rather
+    /// than mutating `@State` from a `.task`) means every render already has the final
+    /// positions: icons are never inserted with one layout and then repositioned when
+    /// balances / currency conversions finish loading. That async "insert → recompute →
+    /// move" was what let the icon positions get caught in an ambient animation
+    /// transaction and visibly slide across the card on every Finances-tab open.
+    private var packedCircles: [PackedCircle] {
         var amounts = visible.map(\.amount)
         var ids = visible.map(\.id)
 
@@ -151,13 +73,40 @@ struct PackedCircleIconsView: View {
             diameters = CirclePackingLayout.diameters(for: amounts)
         }
 
-        packedCircles = CirclePackingLayout.pack(
+        return CirclePackingLayout.pack(
             ids: ids,
             diameters: diameters,
             containerWidth: containerWidth,
             containerHeight: containerHeight
         )
-        isBreathing = false
+    }
+
+    var body: some View {
+        ZStack {
+            ForEach(Array(packedCircles.enumerated()), id: \.element.id) { index, circle in
+                let target = CGSize(width: circle.x, height: circle.y)
+                if index < visible.count {
+                    PackedCircleIcon(
+                        iconSource: visible[index].iconSource,
+                        tintOverride: visible[index].tint,
+                        diameter: circle.diameter,
+                        borderWidth: borderWidth,
+                        animationDelay: Double(index) * AppAnimation.facepileStagger,
+                        targetOffset: target
+                    )
+                } else {
+                    // Overflow badge
+                    PackedOverflowBadge(
+                        count: overflowCount,
+                        diameter: circle.diameter,
+                        borderWidth: borderWidth,
+                        animationDelay: Double(index) * AppAnimation.facepileStagger,
+                        targetOffset: target
+                    )
+                }
+            }
+        }
+        .frame(width: containerWidth, height: containerHeight)
     }
 }
 
@@ -168,11 +117,8 @@ private struct PackedCircleIcon: View {
     let tintOverride: Color?
     let diameter: CGFloat
     let borderWidth: CGFloat
-    let isBreathing: Bool
-    let breathingIndex: Int
     let animationDelay: Double
     let targetOffset: CGSize
-    let perimeterOffset: CGSize
 
     @State private var hasAppeared = false
 
@@ -209,21 +155,21 @@ private struct PackedCircleIcon: View {
     var body: some View {
         IconView(source: iconSource, style: iconStyle)
             .overlay(Circle().strokeBorder(.background, lineWidth: borderWidth))
-            .scaleEffect(isBreathing ? AppAnimation.breathingScale : 1.0)
-            .animation(
-                isBreathing
-                    ? AppAnimation.breathingAnimation(index: breathingIndex)
-                    : .default,
-                value: isBreathing
-            )
+            // Entrance animates scale + opacity only — a staggered pop-in, no slide.
+            .scaleEffect(hasAppeared ? 1 : AppAnimation.facepileHiddenScale)
             .opacity(hasAppeared ? 1 : 0)
-            .offset(hasAppeared ? targetOffset : perimeterOffset)
             .animation(
                 AppAnimation.isReduceMotionEnabled
                     ? .linear(duration: 0)
                     : AppAnimation.facepileSpring.delay(animationDelay),
                 value: hasAppeared
             )
+            .offset(targetOffset)
+            // Position is layout, never animation. The packed layout is recomputed
+            // when balances/conversions finish loading; without this, that recompute
+            // gets caught in an ambient transaction and the icons visibly slide into
+            // place every time the Finances tab opens.
+            .animation(nil, value: targetOffset)
             .task { hasAppeared = true }
     }
 }
@@ -236,7 +182,6 @@ private struct PackedOverflowBadge: View {
     let borderWidth: CGFloat
     let animationDelay: Double
     let targetOffset: CGSize
-    let perimeterOffset: CGSize
 
     @State private var hasAppeared = false
 
@@ -249,14 +194,16 @@ private struct PackedOverflowBadge: View {
         }
         .frame(width: diameter, height: diameter)
         .overlay(Circle().stroke(.background, lineWidth: borderWidth))
+        .scaleEffect(hasAppeared ? 1 : AppAnimation.facepileHiddenScale)
         .opacity(hasAppeared ? 1 : 0)
-        .offset(hasAppeared ? targetOffset : perimeterOffset)
         .animation(
             AppAnimation.isReduceMotionEnabled
                 ? .linear(duration: 0)
                 : AppAnimation.facepileSpring.delay(animationDelay),
             value: hasAppeared
         )
+        .offset(targetOffset)
+        .animation(nil, value: targetOffset)
         .task { hasAppeared = true }
     }
 }

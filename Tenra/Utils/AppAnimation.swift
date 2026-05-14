@@ -51,47 +51,7 @@ enum AppAnimation {
     /// Delay increment per facepile icon (each icon delays by `index * facepileStagger`).
     static let facepileStagger: Double = 0.06
 
-    /// Breathing animation for packed circle idle state.
-    /// 3% scale oscillation, Reduce Motion-aware.
-    static let breathingScale: CGFloat = 1.03
-
-    /// Base duration for breathing cycle (each circle offsets by +0.4s per index).
-    static let breathingBaseDuration: Double = 3.0
-
-    /// Per-index duration offset for desynchronized breathing.
-    static let breathingStagger: Double = 0.4
-
-    /// Reduce-Motion-aware breathing animation factory.
-    static func breathingAnimation(index: Int) -> Animation {
-        isReduceMotionEnabled
-            ? .linear(duration: 0)
-            : .easeInOut(duration: breathingBaseDuration + Double(index) * breathingStagger)
-                .repeatForever(autoreverses: true)
-    }
-
     // MARK: - Gradient Background Orbs
-
-    /// Breathing scale range for gradient orbs — weight=1.0 → 1.15, weight=0.4 → 1.05.
-    static func orbBreathScale(weight: CGFloat) -> CGFloat {
-        1.0 + (0.05 + weight * 0.10)
-    }
-
-    /// Breathing duration for gradient orbs — weight=1.0 → 4s, weight=0.4 → 7s.
-    /// Heavier categories breathe faster (more visual prominence).
-    static func orbBreathDuration(weight: CGFloat) -> Double {
-        7.0 - weight * 3.0
-    }
-
-    /// Drift radius for gradient orbs. Back layer drifts less than front layer.
-    static func orbDriftRadius(isBackLayer: Bool) -> CGFloat {
-        isBackLayer ? 15 : 25
-    }
-
-    /// Drift duration per orb — randomised per index to prevent synchronisation.
-    /// Base 8s + index offset creates lava lamp desynchronisation.
-    static func orbDriftDuration(index: Int) -> Double {
-        8.0 + Double(index) * 1.2
-    }
 
     /// Opacity for gradient orbs — weight=1.0 → 0.45, weight=0.4 → 0.25.
     static func orbOpacity(weight: CGFloat) -> Double {
@@ -99,27 +59,8 @@ enum AppAnimation {
     }
 
     /// Blur radius per layer. Back layer = deeper blur (farther), front = sharper (closer).
-    /// Reduced from 60/35 to 44/28: the original radii were eating GPU during scroll
-    /// without adding visual softness — at this size the perceptual difference is small
-    /// but the blur convolution cost scales with radius squared.
     static func orbBlur(isBackLayer: Bool) -> CGFloat {
         isBackLayer ? 44 : 28
-    }
-
-    /// Reduce-Motion-aware orb breathing animation factory.
-    static func orbBreathAnimation(weight: CGFloat) -> Animation {
-        isReduceMotionEnabled
-            ? .linear(duration: 0)
-            : .easeInOut(duration: orbBreathDuration(weight: weight))
-                .repeatForever(autoreverses: true)
-    }
-
-    /// Reduce-Motion-aware orb drift animation factory.
-    static func orbDriftAnimation(index: Int) -> Animation {
-        isReduceMotionEnabled
-            ? .linear(duration: 0)
-            : .easeInOut(duration: orbDriftDuration(index: index))
-                .repeatForever(autoreverses: true)
     }
 
     /// Content reveal animation — for staggered section fade-in during initialization.

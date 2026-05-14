@@ -37,26 +37,23 @@ struct FinancesView: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
-                    if coordinator.isFastPathDone {
-                        accountsCard
-                            .transition(.opacity)
-                    }
-                    if coordinator.isFullyInitialized {
-                        subscriptionsCard
-                            .transition(.opacity)
-                        loansCard
-                            .transition(.opacity)
-                    }
-                    if coordinator.isFastPathDone {
-                        categoriesCard
-                            .transition(.opacity)
-                        subcategoriesCard
-                            .transition(.opacity)
-                    }
+                    // `.contentReveal` (the pattern used by InsightsView) keeps each card
+                    // in the tree and fades it in via its own @State once data is ready.
+                    // Unlike `if`-gating + `.transition`, the reveal fires on the view's
+                    // own appearance — so the cascade plays when the Finances tab opens,
+                    // not only at the instant the init flags flip during app startup.
+                    accountsCard
+                        .contentReveal(isReady: coordinator.isFastPathDone)
+                    subscriptionsCard
+                        .contentReveal(isReady: coordinator.isFullyInitialized, delay: 0.05)
+                    loansCard
+                        .contentReveal(isReady: coordinator.isFullyInitialized, delay: 0.10)
+                    categoriesCard
+                        .contentReveal(isReady: coordinator.isFastPathDone, delay: 0.15)
+                    subcategoriesCard
+                        .contentReveal(isReady: coordinator.isFastPathDone, delay: 0.20)
                 }
                 .padding(.vertical, AppSpacing.md)
-                .animation(AppAnimation.contentRevealAnimation, value: coordinator.isFastPathDone)
-                .animation(AppAnimation.contentRevealAnimation, value: coordinator.isFullyInitialized)
             }
             .navigationTitle(String(localized: "finances.title"))
             .navigationBarTitleDisplayMode(.large)

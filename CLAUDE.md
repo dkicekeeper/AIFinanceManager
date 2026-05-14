@@ -34,6 +34,10 @@ xcodebuild test \
 # Available destinations (Xcode 26 beta): iPhone 17 Pro (iOS 26.2), iPhone Air, iPhone 16e
 # Physical device: name:Dkicekeeper 17
 
+# ⚠️ If the user is testing on the physical device, build/run to it (-destination 'id=...' or
+# 'platform=iOS,name=Dkicekeeper 17'). A Simulator build never reaches a connected device —
+# the user will report "the fix didn't work" while running a stale binary.
+
 # Quickly isolate build errors (skip swiftc log noise)
 xcodebuild build -scheme Tenra \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E "error:" | head -30
