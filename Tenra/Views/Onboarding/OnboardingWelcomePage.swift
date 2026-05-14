@@ -21,11 +21,7 @@ struct OnboardingWelcomePage: View {
         VStack(spacing: 0) {
             HStack {
                 if let onBack {
-                    Button(action: onBack) {
-                        Image(systemName: "chevron.left")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(AppColors.textPrimary)
-                    }
+                    OnboardingBackButton(action: onBack)
                 }
                 Spacer()
             }
