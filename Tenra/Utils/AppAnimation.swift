@@ -170,6 +170,14 @@ enum AppAnimation {
             : bouncySpring
     }
 
+    /// Onboarding step transition — bouncy spring with a dramatic, visible settle.
+    /// Reduce-Motion-aware: collapses to an instant transition.
+    static var onboardingTransition: Animation {
+        isReduceMotionEnabled
+            ? .linear(duration: 0)
+            : .spring(response: 0.5, dampingFraction: 0.68)
+    }
+
 }
 
 // MARK: - Interactive Button Style
