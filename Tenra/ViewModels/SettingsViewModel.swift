@@ -306,6 +306,14 @@ final class SettingsViewModel {
         await setLoading(false)
     }
 
+    #if DEBUG
+    /// Debug-only: reset the onboarding flag and relaunch the onboarding flow.
+    /// Swaps the whole app to `OnboardingFlowView` at the root via the coordinator.
+    func debugRelaunchOnboarding() {
+        coordinator?.resetOnboarding()
+    }
+    #endif
+
     /// Recalculate all account balances
     func recalculateBalances() async {
 

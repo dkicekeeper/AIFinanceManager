@@ -188,6 +188,12 @@ struct SettingsView: View {
             ) {
                 NotificationDebugView()
             }
+            ActionSettingsRow(
+                icon: "arrow.counterclockwise",
+                title: String(localized: "settings.debug.relaunchOnboarding"),
+                isDestructive: false,
+                action: { settingsViewModel.debugRelaunchOnboarding() }
+            )
         }
     }
     #endif

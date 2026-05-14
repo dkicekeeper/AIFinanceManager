@@ -1149,6 +1149,7 @@
 
 // MARK: - Settings (extras)
 "settings.experiments" = "Эксперименты";
+"settings.debug.relaunchOnboarding" = "Перезапустить онбординг";
 "settings.notificationDebug" = "Отладка уведомлений";
 
 // MARK: - Settings (About)
