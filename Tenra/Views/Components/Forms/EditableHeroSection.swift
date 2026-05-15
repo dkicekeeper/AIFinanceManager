@@ -46,6 +46,9 @@ struct EditableHeroSection: View {
     /// When set, the icon renders as a tinted circle (e.g. for categories).
     /// When nil, the icon renders as a glass hero (e.g. for accounts, subscriptions).
     let iconTintColor: String?
+    /// Forwarded to the underlying `AnimatedTitleInput` — when `true`, focus is
+    /// requested on first appear (e.g. onboarding account step).
+    let autoFocusTitle: Bool
 
     // MARK: - State
 
@@ -61,7 +64,8 @@ struct EditableHeroSection: View {
         currency: Binding<String> = .constant("USD"),
         iconTintColor: String? = nil,
         titlePlaceholder: String,
-        config: HeroConfig = HeroConfig()
+        config: HeroConfig = HeroConfig(),
+        autoFocusTitle: Bool = false
     ) {
         self._iconSource = iconSource
         self._title = title
@@ -70,6 +74,7 @@ struct EditableHeroSection: View {
         self.iconTintColor = iconTintColor
         self.titlePlaceholder = titlePlaceholder
         self.config = config
+        self.autoFocusTitle = autoFocusTitle
     }
 
     // MARK: - Body
@@ -88,7 +93,8 @@ struct EditableHeroSection: View {
             // Animated Title
             AnimatedTitleInput(
                 text: $title,
-                placeholder: titlePlaceholder
+                placeholder: titlePlaceholder,
+                autoFocus: autoFocusTitle
             )
             .screenPadding()
 

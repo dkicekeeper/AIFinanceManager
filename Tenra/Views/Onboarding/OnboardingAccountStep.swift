@@ -37,7 +37,8 @@ struct OnboardingAccountStep: View {
                     balance: $balanceText,
                     currency: .constant(vm.draftCurrency),
                     titlePlaceholder: String(localized: "account.namePlaceholder"),
-                    config: Self.heroConfig
+                    config: Self.heroConfig,
+                    autoFocusTitle: true
                 )
                 .padding(.top, AppSpacing.md)
             }

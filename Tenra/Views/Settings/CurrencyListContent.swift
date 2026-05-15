@@ -2,8 +2,11 @@
 //  CurrencyListContent.swift
 //  Tenra
 //
-//  Reusable currency list (List + searchable + popular/all sections).
-//  Owners: CurrencyPickerView (legacy callback flow), OnboardingCurrencyStep (binding flow).
+//  Reusable currency picker. Uses `ScrollView + VStack` (not `List`) so the
+//  parent surface — including the onboarding accent-glow background — shows
+//  through without being painted over by `List`'s grouped-background grey.
+//  `.searchable` remains attached so the native search field is rendered in
+//  the navigation bar drawer.
 //
 
 import SwiftUI
@@ -30,17 +33,49 @@ struct CurrencyListContent: View {
     // MARK: - Body
 
     var body: some View {
-        List {
-            if showPopularSection {
-                Section(header: Text(String(localized: "currency.popular"))) {
-                    ForEach(CurrencyInfo.popularCurrencies) { currencyRow($0) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                if showPopularSection {
+                    section(
+                        title: String(localized: "currency.popular"),
+                        items: CurrencyInfo.popularCurrencies
+                    )
+                }
+                section(
+                    title: String(localized: "currency.all"),
+                    items: filteredCurrencies
+                )
+            }
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.vertical, AppSpacing.md)
+        }
+        .scrollContentBackground(.hidden)
+        .searchable(text: $searchText, prompt: String(localized: "currency.searchPrompt"))
+    }
+
+    // MARK: - Section
+
+    @ViewBuilder
+    private func section(title: String, items: [CurrencyInfo]) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Text(title)
+                .font(AppTypography.bodySmall)
+                .foregroundStyle(AppColors.textSecondary)
+                .padding(.horizontal, AppSpacing.sm)
+
+            // LazyVStack defers row construction until rows scroll into view.
+            // With ~150 currencies this keeps the initial render cheap.
+            LazyVStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, currency in
+                    currencyRow(currency)
+                    if index < items.count - 1 {
+                        Divider()
+                            .padding(.leading, AppSpacing.lg)
+                    }
                 }
             }
-            Section(header: Text(String(localized: "currency.all"))) {
-                ForEach(filteredCurrencies) { currencyRow($0) }
-            }
+            .cardStyle()
         }
-        .searchable(text: $searchText, prompt: String(localized: "currency.searchPrompt"))
     }
 
     // MARK: - Row
@@ -69,6 +104,8 @@ struct CurrencyListContent: View {
                         .foregroundStyle(AppColors.accent)
                 }
             }
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.vertical, AppSpacing.md)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

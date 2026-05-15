@@ -2,15 +2,13 @@
 //  LoopOnBoardingView.swift
 //  Tenra
 //
-//  Animated hero block for onboarding-style screens. Cycles through a list of
-//  phases (SF Symbol + title + subtitle), bouncing the icon and emitting
-//  expanding pulse rings that swell, peak, then fade before the next loop.
+//  Animated hero block for onboarding-style screens. Renders a bouncing icon
+//  with three staggered pulse rings that swell, peak, then fade before the
+//  next loop. Stateless about phase cycling — callers drive the symbol via
+//  their own TimelineView (see `OnboardingWelcomeStep`).
 //
-//  Two surfaces:
-//  - `LoopOnboardingHero` renders just the animated icon + pulse rings for a
-//    given symbol. Composable with custom layouts.
-//  - `LoopOnBoardingView` is a convenience that owns the phase-cycling
-//    `TimelineView` and renders the hero with title/subtitle below.
+//  Also exposes `LoopOnboardingTextTransition` — the blur+slide transition
+//  used on the synced title/subtitle block.
 //
 
 import SwiftUI
@@ -87,6 +85,9 @@ struct LoopOnboardingHero: View {
             pulseRing(delay: 1.0, expand: 1.5, hold: 0.5)
         }
         .frame(width: config.iconSize, height: config.iconSize)
+        // Pulse rings and icon are pure decoration — the synced title/subtitle
+        // is the meaningful element for VoiceOver.
+        .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -145,67 +146,9 @@ struct LoopOnboardingTextTransition: Transition {
     }
 }
 
-// MARK: - Convenience: hero + caption stacked
-
-/// Cycles through phases and renders the hero with title/subtitle stacked below.
-/// Most onboarding screens compose `LoopOnboardingHero` directly instead, because
-/// they want custom layout (e.g. text near the CTA, hero floating in the middle).
-struct LoopOnBoardingView: View {
-    let phases: [LoopOnBoardingPhase]
-    var config: LoopOnBoardingConfig = LoopOnBoardingConfig()
-    var onPhaseChange: ((Int) -> Void)? = nil
-
-    @State private var startDate: Date = .now
-
-    var body: some View {
-        if phases.isEmpty {
-            EmptyView()
-        } else {
-            let timelineDuration = CGFloat(config.phaseUpdateAfter) * 3.0
-
-            TimelineView(.periodic(from: startDate, by: timelineDuration)) { ctx in
-                let diff = Int(startDate.distance(to: ctx.date)) / (config.phaseUpdateAfter * 3)
-                let index = diff % phases.count
-                let phase = phases[index]
-
-                VStack(spacing: AppSpacing.xxl) {
-                    LoopOnboardingHero(symbol: phase.symbol, config: config)
-
-                    VStack(spacing: AppSpacing.sm) {
-                        Text(phase.title)
-                            .font(AppTypography.h3)
-                            .foregroundStyle(AppColors.textPrimary)
-                            .multilineTextAlignment(.center)
-                        Text(phase.subtitle)
-                            .font(AppTypography.body)
-                            .foregroundStyle(AppColors.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, AppSpacing.lg)
-                    }
-                    .id(index)
-                    .transition(LoopOnboardingTextTransition())
-                }
-                .animation(.spring(response: 0.55, dampingFraction: 0.85), value: index)
-                .onChange(of: index) { _, newValue in
-                    onPhaseChange?(newValue)
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Previews
 
 #Preview("Loop Hero — globe") {
     LoopOnboardingHero(symbol: "globe")
         .padding(40)
-}
-
-#Preview("Loop OnBoarding — cycle") {
-    LoopOnBoardingView(phases: [
-        LoopOnBoardingPhase(symbol: "chart.pie.fill", title: "Phase 1", subtitle: "First phase subtitle"),
-        LoopOnBoardingPhase(symbol: "mic.fill", title: "Phase 2", subtitle: "Second phase subtitle"),
-        LoopOnBoardingPhase(symbol: "lock.shield.fill", title: "Phase 3", subtitle: "Third phase subtitle"),
-    ])
-    .padding()
 }

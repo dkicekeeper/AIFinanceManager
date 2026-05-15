@@ -26,6 +26,8 @@ struct AnimatedTitleInput: View {
     var font: Font = AppTypography.h2
     var color: Color = AppColors.textPrimary
     var alignment: TextAlignment = .center
+    /// When `true`, the underlying TextField receives focus on first appear.
+    var autoFocus: Bool = false
 
     @FocusState private var isFocused: Bool
 
@@ -85,6 +87,15 @@ struct AnimatedTitleInput: View {
         }
         .animation(AppAnimation.fastAnimation, value: showPlaceholder)
         .animation(AppAnimation.fastAnimation, value: showCursor)
+        .onAppear {
+            guard autoFocus else { return }
+            // Brief delay so the field exists in the responder chain before we
+            // request focus — without this the keyboard sometimes refuses to
+            // raise on push-driven appearances.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                isFocused = true
+            }
+        }
     }
 }
 

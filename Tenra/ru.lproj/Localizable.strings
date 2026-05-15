@@ -1406,6 +1406,7 @@
 "onboarding.cta.start" = "Начать";
 "onboarding.cta.done" = "Готово";
 "onboarding.cta.doneWithCount" = "Готово • выбрано %d";
+"onboarding.stepIndicator.label" = "Шаг %d из %d";
 
 "onboarding.currency.title" = "Выберите основную валюту";
 "onboarding.currency.subtitle" = "В этой валюте Tenra будет показывать общий баланс и аналитику. Валюту можно сменить позже в Настройках.";

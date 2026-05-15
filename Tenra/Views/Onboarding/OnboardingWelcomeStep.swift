@@ -6,6 +6,11 @@
 //  and stacks the synced title/subtitle just above the primary CTA so the
 //  copy reads alongside the action, not floating under the hero.
 //
+//  When the user advances past welcome (`vm.path` becomes non-empty), the
+//  TimelineView and its keyframe animators are torn down — the welcome view
+//  is invisible behind the pushed step, no need to keep ticking. They are
+//  reconstructed with a fresh `startDate` if the user pops back.
+//
 
 import SwiftUI
 
@@ -13,7 +18,6 @@ struct OnboardingWelcomeStep: View {
     @Bindable var vm: OnboardingViewModel
 
     @State private var startDate: Date = .now
-    @State private var phaseIndex: Int = 0
 
     private static let phases: [LoopOnBoardingPhase] = [
         LoopOnBoardingPhase(
@@ -36,9 +40,27 @@ struct OnboardingWelcomeStep: View {
     private let config = LoopOnBoardingConfig()
 
     var body: some View {
+        Group {
+            if vm.path.isEmpty {
+                animatedWelcome
+            } else {
+                Color.clear
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .onboardingAccentGlow()
+        .onChange(of: vm.path.isEmpty) { _, isBackOnWelcome in
+            if isBackOnWelcome {
+                // Restart the phase cycle from index 0 when the user pops back.
+                startDate = .now
+            }
+        }
+    }
+
+    private var animatedWelcome: some View {
         let timelineDuration = CGFloat(config.phaseUpdateAfter) * 3.0
 
-        TimelineView(.periodic(from: startDate, by: timelineDuration)) { ctx in
+        return TimelineView(.periodic(from: startDate, by: timelineDuration)) { ctx in
             let diff = Int(startDate.distance(to: ctx.date)) / (config.phaseUpdateAfter * 3)
             let index = diff % Self.phases.count
             let phase = Self.phases[index]
@@ -78,12 +100,7 @@ struct OnboardingWelcomeStep: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.spring(response: 0.55, dampingFraction: 0.85), value: index)
             .sensoryFeedback(.selection, trigger: index)
-            .onChange(of: index) { _, newValue in
-                phaseIndex = newValue
-            }
         }
-        .background(AppColors.backgroundPrimary.ignoresSafeArea())
-        .toolbar(.hidden, for: .navigationBar)
     }
 }
 

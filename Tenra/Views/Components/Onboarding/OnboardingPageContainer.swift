@@ -2,9 +2,11 @@
 //  OnboardingPageContainer.swift
 //  Tenra
 //
-//  Shared layout for onboarding data-collection steps:
-//  step indicator lives in the navigation toolbar (principal slot),
-//  title + subtitle sit above the body content, primary CTA pinned at the bottom.
+//  Shared layout for onboarding data-collection steps. Mirrors the welcome
+//  screen's vertical rhythm: content lives at the top under the toolbar step
+//  indicator, then title + subtitle sit just above the primary CTA at the
+//  bottom. No forced page background — the accent-glow background shows
+//  through.
 //
 
 import SwiftUI
@@ -19,23 +21,37 @@ struct OnboardingPageContainer<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+        content()
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                bottomChrome
+            }
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    OnboardingStepIndicator(currentStep: progressStep)
+                }
+            }
+            // Hide the navigation bar background so the accent-glow under
+            // the screen shows through behind the toolbar step indicator.
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .onboardingAccentGlow()
+    }
+
+    private var bottomChrome: some View {
+        VStack(spacing: AppSpacing.md) {
+            VStack(alignment: .center, spacing: AppSpacing.sm) {
                 Text(title)
                     .font(AppTypography.h3)
                     .foregroundStyle(AppColors.textPrimary)
+                    .multilineTextAlignment(.center)
                 if let subtitle {
                     Text(subtitle)
                         .font(AppTypography.body)
                         .foregroundStyle(AppColors.textSecondary)
+                        .multilineTextAlignment(.center)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, AppSpacing.lg)
-            .padding(.top, AppSpacing.lg)
-
-            content()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             Button(action: onPrimaryTap) {
                 Text(primaryButtonTitle)
@@ -44,13 +60,35 @@ struct OnboardingPageContainer<Content: View>: View {
             .buttonStyle(PrimaryButtonStyle())
             .disabled(!primaryButtonEnabled)
             .padding(.horizontal, AppSpacing.lg)
-            .padding(.bottom, AppSpacing.lg)
         }
-        .background(AppColors.backgroundPrimary.ignoresSafeArea())
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                OnboardingStepIndicator(currentStep: progressStep)
-            }
+        .padding(.top, AppSpacing.xl)
+        .padding(.bottom, AppSpacing.sm)
+        .background {
+            // Frosted-glass backdrop that fades in from clear at the top so the
+            // accent-glow stays visible and the title/button don't visually
+            // collide with the scroll content above.
+            Rectangle()
+                .fill(.regularMaterial)
+                .overlay {
+                    LinearGradient(
+                        colors: [.clear, AppColors.backgroundPrimary.opacity(0.55)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .black.opacity(0.6), location: 0.05),
+                            .init(color: .black, location: 0.3),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
         }
     }
 }
@@ -65,9 +103,11 @@ struct OnboardingPageContainer<Content: View>: View {
             primaryButtonEnabled: true,
             onPrimaryTap: {}
         ) {
-            Text("Body content")
-                .foregroundStyle(.secondary)
-                .padding()
+            ScrollView {
+                ForEach(0..<30) { i in
+                    Text("Row \(i)").frame(maxWidth: .infinity).padding()
+                }
+            }
         }
     }
 }

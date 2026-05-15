@@ -1406,6 +1406,7 @@
 "onboarding.cta.start" = "Get started";
 "onboarding.cta.done" = "Done";
 "onboarding.cta.doneWithCount" = "Done • %d selected";
+"onboarding.stepIndicator.label" = "Step %d of %d";
 
 "onboarding.currency.title" = "Choose your base currency";
 "onboarding.currency.subtitle" = "Tenra will show your total balance and analytics in this currency. You can change it later in Settings.";

@@ -25,17 +25,17 @@ struct OnboardingCategoryGrid: View {
 
     var body: some View {
         LazyVGrid(columns: gridColumns, spacing: AppSpacing.xxl) {
-            ForEach(presets.indices, id: \.self) { idx in
-                cell(at: idx)
+            ForEach($presets) { $selectable in
+                cell(for: $selectable)
             }
         }
         .padding(AppSpacing.xxs)
     }
 
     @ViewBuilder
-    private func cell(at index: Int) -> some View {
-        let selectable = presets[index]
-        let preset = selectable.preset
+    private func cell(for selectable: Binding<SelectablePreset>) -> some View {
+        let preset = selectable.wrappedValue.preset
+        let isSelected = selectable.wrappedValue.isSelected
         let name = String(localized: String.LocalizationValue(preset.nameKey))
         let color = Color(hex: preset.colorHex)
         let iconName: String = {
@@ -47,17 +47,17 @@ struct OnboardingCategoryGrid: View {
             category: name,
             type: preset.type,
             customCategories: [],
-            isSelected: selectable.isSelected,
+            isSelected: isSelected,
             onTap: {
-                presets[index].isSelected.toggle()
+                selectable.wrappedValue.isSelected.toggle()
             },
             budgetProgress: nil,
             iconName: iconName,
             iconColor: color
         )
-        .opacity(selectable.isSelected ? 1 : 0.55)
-        .animation(AppAnimation.contentSpring, value: selectable.isSelected)
-        .sensoryFeedback(.selection, trigger: selectable.isSelected)
+        .opacity(isSelected ? 1 : 0.55)
+        .animation(AppAnimation.contentSpring, value: isSelected)
+        .sensoryFeedback(.selection, trigger: isSelected)
     }
 }
 
