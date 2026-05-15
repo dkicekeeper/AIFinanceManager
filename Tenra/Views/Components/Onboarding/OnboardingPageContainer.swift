@@ -3,8 +3,8 @@
 //  Tenra
 //
 //  Shared layout for onboarding data-collection steps:
-//  optional back chevron, progress bar, title + subtitle, body content,
-//  primary CTA pinned at the bottom.
+//  step indicator lives in the navigation toolbar (principal slot),
+//  title + subtitle sit above the body content, primary CTA pinned at the bottom.
 //
 
 import SwiftUI
@@ -16,23 +16,10 @@ struct OnboardingPageContainer<Content: View>: View {
     let primaryButtonTitle: String
     let primaryButtonEnabled: Bool
     let onPrimaryTap: () -> Void
-    var onBack: (() -> Void)? = nil
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         VStack(spacing: 0) {
-            if let onBack {
-                HStack {
-                    OnboardingBackButton(action: onBack)
-                    Spacer()
-                }
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.top, AppSpacing.md)
-            }
-
-            OnboardingProgressBar(totalSteps: 3, currentStep: progressStep)
-                .padding(.top, onBack == nil ? AppSpacing.lg : AppSpacing.md)
-
             VStack(alignment: .leading, spacing: AppSpacing.sm) {
                 Text(title)
                     .font(AppTypography.h3)
@@ -60,5 +47,27 @@ struct OnboardingPageContainer<Content: View>: View {
             .padding(.bottom, AppSpacing.lg)
         }
         .background(AppColors.backgroundPrimary.ignoresSafeArea())
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                OnboardingStepIndicator(currentStep: progressStep)
+            }
+        }
+    }
+}
+
+#Preview("Onboarding Page Container") {
+    NavigationStack {
+        OnboardingPageContainer(
+            progressStep: 2,
+            title: "Step title goes here",
+            subtitle: "Short supporting copy that explains the step.",
+            primaryButtonTitle: "Next",
+            primaryButtonEnabled: true,
+            onPrimaryTap: {}
+        ) {
+            Text("Body content")
+                .foregroundStyle(.secondary)
+                .padding()
+        }
     }
 }

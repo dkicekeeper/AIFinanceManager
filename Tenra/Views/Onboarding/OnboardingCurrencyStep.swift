@@ -2,6 +2,9 @@
 //  OnboardingCurrencyStep.swift
 //  Tenra
 //
+//  Step 1: choose the base currency. Uses the shared CurrencyListContent
+//  which exposes a native `.searchable` field in the nav-bar drawer.
+//
 
 import SwiftUI
 
@@ -17,13 +20,19 @@ struct OnboardingCurrencyStep: View {
             primaryButtonEnabled: true,
             onPrimaryTap: {
                 Task { await vm.advanceToAccountStep() }
-            },
-            onBack: { vm.goBack(to: .welcome3) }
+            }
         ) {
             CurrencyListContent(selectedCurrency: vm.draftCurrency) { code in
                 vm.draftCurrency = code
             }
             .padding(.top, AppSpacing.md)
         }
+    }
+}
+
+#Preview("Onboarding — Currency") {
+    let vm = OnboardingViewModel.makeForTesting()
+    return NavigationStack {
+        OnboardingCurrencyStep(vm: vm)
     }
 }

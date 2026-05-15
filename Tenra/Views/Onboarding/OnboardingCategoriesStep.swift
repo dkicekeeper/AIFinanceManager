@@ -1,17 +1,15 @@
 //
 //  OnboardingCategoriesStep.swift
 //  Tenra
+//
+//  Step 3: pick which preset expense categories to seed. Uses the shared
+//  CategoryChip-based grid so visuals match the production category screen.
+//
 
 import SwiftUI
 
 struct OnboardingCategoriesStep: View {
     @Bindable var vm: OnboardingViewModel
-    @Environment(\.horizontalSizeClass) private var sizeClass
-
-    private var columns: [GridItem] {
-        let count = sizeClass == .regular ? 4 : 3
-        return Array(repeating: GridItem(.flexible(), spacing: AppSpacing.md), count: count)
-    }
 
     private var doneTitle: String {
         let count = vm.selectedPresetCount
@@ -26,23 +24,21 @@ struct OnboardingCategoriesStep: View {
             primaryButtonTitle: doneTitle,
             primaryButtonEnabled: vm.canFinish,
             onPrimaryTap: {
-                vm.finish()    // finish() is sync, NOT async
-            },
-            onBack: { vm.goBack(to: .account) }
+                vm.finish()
+            }
         ) {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: AppSpacing.md) {
-                    ForEach(vm.draftCategories.indices, id: \.self) { idx in
-                        let preset = vm.draftCategories[idx].preset
-                        let isSelected = vm.draftCategories[idx].isSelected
-                        CategoryPresetCell(preset: preset, isSelected: isSelected) {
-                            vm.draftCategories[idx].isSelected.toggle()
-                        }
-                    }
-                }
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.top, AppSpacing.md)
+                OnboardingCategoryGrid(presets: $vm.draftCategories)
+                    .padding(.horizontal, AppSpacing.lg)
+                    .padding(.top, AppSpacing.md)
             }
         }
+    }
+}
+
+#Preview("Onboarding — Categories") {
+    let vm = OnboardingViewModel.makeForTesting()
+    return NavigationStack {
+        OnboardingCategoriesStep(vm: vm)
     }
 }

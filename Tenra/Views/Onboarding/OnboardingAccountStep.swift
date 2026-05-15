@@ -1,20 +1,23 @@
 //
 //  OnboardingAccountStep.swift
 //  Tenra
+//
+//  Step 2: create the first account. Uses `EditableHeroSection` for visual
+//  parity with the production `AccountEditView`. The currency picker is
+//  hidden — the user already picked their base currency in step 1.
+//
 
 import SwiftUI
 
 struct OnboardingAccountStep: View {
     @Bindable var vm: OnboardingViewModel
-    @State private var showIconPicker = false
 
-    // AmountInput works with String; draftAccount.balance is Double.
-    // We maintain a local string and sync to vm on every change.
-    @State private var balanceString: String = ""
+    // EditableHeroSection takes a Binding<IconSource?>; bridge to the non-optional draft.
+    @State private var iconSource: IconSource? = nil
+    // EditableHeroSection's balance binding is a formatted string.
+    @State private var balanceText: String = ""
 
-    // IconPickerView requires Binding<IconSource?> (optional).
-    // draftAccount.iconSource is non-optional, so we bridge via local state.
-    @State private var pickerSource: IconSource? = nil
+    private static let heroConfig = HeroConfig(showBalance: true, showCurrency: false)
 
     var body: some View {
         OnboardingPageContainer(
@@ -25,99 +28,41 @@ struct OnboardingAccountStep: View {
             primaryButtonEnabled: vm.canAdvanceFromAccountStep,
             onPrimaryTap: {
                 Task { await vm.advanceToCategoriesStep() }
-            },
-            onBack: { vm.goBack(to: .currency) }
+            }
         ) {
             ScrollView {
-                VStack(spacing: AppSpacing.md) {
-                    formSection
-                }
-                .padding(.horizontal, AppSpacing.lg)
+                EditableHeroSection(
+                    iconSource: $iconSource,
+                    title: $vm.draftAccount.name,
+                    balance: $balanceText,
+                    currency: .constant(vm.draftCurrency),
+                    titlePlaceholder: String(localized: "account.namePlaceholder"),
+                    config: Self.heroConfig
+                )
                 .padding(.top, AppSpacing.md)
             }
         }
         .onAppear {
-            // Initialise local state from VM on first appear
-            balanceString = vm.draftAccount.balance == 0 ? "" : AmountInputFormatting.cleanAmountString(String(vm.draftAccount.balance))
-            pickerSource = vm.draftAccount.iconSource
+            iconSource = vm.draftAccount.iconSource
+            balanceText = vm.draftAccount.balance == 0
+                ? ""
+                : AmountInputFormatting.bindingString(for: vm.draftAccount.balance)
         }
-        .sheet(isPresented: $showIconPicker) {
-            // IconPickerView has its own NavigationStack; do NOT wrap again.
-            IconPickerView(selectedSource: $pickerSource)
-        }
-        .onChange(of: pickerSource) { _, newSource in
+        .onChange(of: iconSource) { _, newSource in
             if let source = newSource {
                 vm.draftAccount.iconSource = source
             }
         }
-    }
-
-    @ViewBuilder
-    private var formSection: some View {
-        VStack(spacing: 0) {
-            // Name row
-            HStack {
-                Text(String(localized: "onboarding.account.nameLabel"))
-                    .foregroundStyle(AppColors.textPrimary)
-                Spacer()
-                TextField(
-                    String(localized: "onboarding.account.namePlaceholder"),
-                    text: $vm.draftAccount.name
-                )
-                .multilineTextAlignment(.trailing)
-                .textFieldStyle(.plain)
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-
-            Divider().padding(.leading, AppSpacing.lg)
-
-            // Icon row
-            Button {
-                HapticManager.light()
-                showIconPicker = true
-            } label: {
-                HStack {
-                    Text(String(localized: "onboarding.account.iconLabel"))
-                        .foregroundStyle(AppColors.textPrimary)
-                    Spacer()
-                    // .roundedLogo() matches the account row style used throughout the app
-                    IconView(source: vm.draftAccount.iconSource, style: .roundedLogo())
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(AppColors.textSecondary)
-                        .font(.caption)
-                }
-                .padding(.vertical, 12)
-                .padding(.horizontal, 16)
-            }
-            .buttonStyle(.plain)
-
-            Divider().padding(.leading, AppSpacing.lg)
-
-            // Balance row
-            HStack {
-                Text(String(localized: "onboarding.account.balanceLabel"))
-                    .foregroundStyle(AppColors.textPrimary)
-                Spacer()
-                AmountInput(
-                    amount: $balanceString,
-                    baseFontSize: 17,
-                    color: AppColors.textPrimary,
-                    placeholderColor: AppColors.textSecondary,
-                    autoFocus: false,
-                    showContextMenu: false
-                )
-                .frame(maxWidth: 160)
-                .onChange(of: balanceString) { _, newValue in
-                    let cleaned = AmountInputFormatting.cleanAmountString(newValue)
-                    vm.draftAccount.balance = Double(cleaned) ?? 0
-                }
-                Text(vm.draftCurrency)
-                    .foregroundStyle(AppColors.textSecondary)
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
+        .onChange(of: balanceText) { _, newValue in
+            let cleaned = AmountInputFormatting.cleanAmountString(newValue)
+            vm.draftAccount.balance = Double(cleaned) ?? 0
         }
-        .cardStyle()
+    }
+}
+
+#Preview("Onboarding — Account") {
+    let vm = OnboardingViewModel.makeForTesting()
+    return NavigationStack {
+        OnboardingAccountStep(vm: vm)
     }
 }

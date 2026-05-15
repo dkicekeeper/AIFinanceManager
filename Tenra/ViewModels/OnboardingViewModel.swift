@@ -10,14 +10,11 @@ import SwiftUI
 import Observation
 import os
 
-/// Every screen in the onboarding flow — welcome carousel + data-collection steps.
-enum OnboardingScreen: Int, CaseIterable {
-    case welcome1, welcome2, welcome3, currency, account, categories
-}
-
-/// Direction of a screen change — drives which way the transition slides.
-enum TransitionDirection {
-    case forward, back
+/// One step in the data-collection portion of onboarding.
+enum OnboardingStep: Hashable {
+    case currency
+    case account
+    case categories
 }
 
 /// Draft for the first account being created during onboarding.
@@ -35,15 +32,9 @@ final class OnboardingViewModel {
     @ObservationIgnored private weak var coordinator: AppCoordinator?
     @ObservationIgnored private let logger = Logger(subsystem: "Tenra", category: "Onboarding")
 
-    // MARK: - Welcome carousel
-
-    /// The currently displayed onboarding screen. Single source of navigation truth.
-    var currentScreen: OnboardingScreen = .welcome1
-
-    /// Direction of the most recent screen change — read by the transition.
-    var transitionDirection: TransitionDirection = .forward
-
     // MARK: - Step state
+
+    var path: [OnboardingStep] = []
 
     /// Step 1: chosen base currency. Default `KZT` (matches `AppSettings.defaultCurrency`).
     var draftCurrency: String = AppSettings.defaultCurrency
@@ -95,31 +86,16 @@ final class OnboardingViewModel {
 
     // MARK: - Step navigation
 
-    /// Advance to `screen` with a forward (slide-in-from-trailing) transition.
-    func goForward(to screen: OnboardingScreen) {
-        transitionDirection = .forward
-        withAnimation(AppAnimation.onboardingTransition) {
-            currentScreen = screen
-        }
-    }
-
-    /// Return to `screen` with a back (slide-in-from-leading) transition.
-    func goBack(to screen: OnboardingScreen) {
-        transitionDirection = .back
-        withAnimation(AppAnimation.onboardingTransition) {
-            currentScreen = screen
-        }
-    }
-
     func startDataCollection() {
-        goForward(to: .currency)
+        // NavigationStack root is the welcome screen; push currency as the first data step.
+        path = [.currency]
         logger.info("onboarding_started")
     }
 
     func advanceToAccountStep() async {
         guard let coordinator else { return }
         await coordinator.settingsViewModel.updateBaseCurrency(draftCurrency)
-        goForward(to: .account)
+        path.append(.account)
         logger.info("onboarding_step_completed step=currency currency=\(self.draftCurrency, privacy: .public)")
     }
 
@@ -147,7 +123,7 @@ final class OnboardingViewModel {
             // Last-added account id (AccountsViewModel appends to the end of the array).
             createdAccountId = coordinator.accountsViewModel.accounts.last?.id
         }
-        goForward(to: .categories)
+        path.append(.categories)
         logger.info("onboarding_step_completed step=account")
     }
 
