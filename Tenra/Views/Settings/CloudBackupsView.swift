@@ -62,7 +62,7 @@ struct CloudBackupsView: View {
                     Spacer()
                 }
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .primaryButton()
             .disabled(cloudSyncViewModel.isCreatingBackup)
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.md)

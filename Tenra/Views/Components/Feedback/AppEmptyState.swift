@@ -107,6 +107,7 @@ struct EmptyStateView: View {
             if let actionTitle = actionTitle, let action = action {
                 Button(action: action) {
                     Text(actionTitle)
+                        .frame(maxWidth: .infinity)
                 }
                 .primaryButton()
                 .padding(.top, AppSpacing.sm)
@@ -169,6 +170,7 @@ struct EmptyStateView: View {
                         Image(systemName: "arrow.clockwise")
                         Text(actionTitle)
                     }
+                    .frame(maxWidth: .infinity)
                 }
                 .primaryButton()
                 .padding(.top, AppSpacing.sm)

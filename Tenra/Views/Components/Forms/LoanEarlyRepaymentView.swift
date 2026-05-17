@@ -332,7 +332,7 @@ struct LoanEarlyRepaymentView: View {
             } label: {
                 Image(systemName: "checkmark")
             }
-            .glassProminentButton()
+            .primaryButton()
             .disabled(!isFormValid)
             .accessibilityLabel(String(localized: "button.save"))
         }

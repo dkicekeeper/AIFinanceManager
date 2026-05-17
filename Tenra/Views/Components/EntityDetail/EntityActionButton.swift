@@ -53,15 +53,14 @@ struct EntityActionButton: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(tint)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.vertical, AppSpacing.md)
             .padding(.horizontal, AppSpacing.sm)
-            .background(tint.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous))
         }
-        .buttonStyle(BounceButtonStyle())
+        .buttonStyle(.glass)
+        .tint(tint)
+        .controlSize(.large)
+        .buttonBorderShape(.roundedRectangle(radius: AppRadius.lg))
         .accessibilityLabel(title)
     }
 }

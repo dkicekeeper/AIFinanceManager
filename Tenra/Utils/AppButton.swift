@@ -2,76 +2,35 @@
 //  AppButton.swift
 //  Tenra
 //
-//  Consistent button styles
+//  Consistent button styles — Liquid Glass (iOS 26+).
 //
 
 import SwiftUI
 
-// MARK: - Button Styles
-
-/// Primary Button - основное действие (CTA)
-/// Используй для: Save, Add, Confirm, Primary actions
-struct PrimaryButtonStyle: ButtonStyle {
-    /// Явный disabled параметр — дополняет `.disabled()` SwiftUI modifier.
-    /// Предпочтительный способ: используй `.primaryButton(disabled: true)`,
-    /// который применяет и этот стиль, и `.disabled()` на View.
-    var isDisabled: Bool = false
-
-    /// Читаем disabled state из SwiftUI environment — реагирует на `.disabled()`.
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        let effectivelyDisabled = isDisabled || !isEnabled
-        configuration.label
-            .font(AppTypography.bodyEmphasis)
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, AppSpacing.md)
-            .background(AppColors.accent)
-            .clipShape(.rect(cornerRadius: AppRadius.circle))
-            .opacity(effectivelyDisabled ? 0.4 : 1.0)
-            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
-            .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
-    }
-}
-
-/// Secondary Button - второстепенное действие
-/// Используй для: Cancel, Back, Secondary actions
-struct SecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(AppTypography.body)
-            .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, AppSpacing.md)
-            .background(AppColors.secondaryBackground)
-            .clipShape(.rect(cornerRadius: AppRadius.circle))
-            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
-            .animation(.easeInOut(duration: AppAnimation.fast), value: configuration.isPressed)
-    }
-}
-
 // MARK: - Convenience Extensions
 
 extension View {
-    /// Применяет primary button style.
-    /// `disabled: true` визуально скрывает кнопку (opacity 0.4) И блокирует тапы (.disabled modifier).
+    /// Primary CTA — `.glassProminent` + accent tint + capsule.
+    /// Используй для: Save, Add, Confirm, primary actions.
+    ///
+    /// Sizing follows the button's label — для full-width CTA добавь
+    /// `.frame(maxWidth: .infinity)` к содержимому Button.
+    ///
+    /// `disabled: true` блокирует тапы (`.disabled` modifier) — glass-стиль сам
+    /// затемнит кнопку. Дополняет SwiftUI `.disabled()` modifier.
     func primaryButton(disabled: Bool = false) -> some View {
-        self
-            .buttonStyle(PrimaryButtonStyle(isDisabled: disabled))
-            .disabled(disabled)
-    }
-
-    /// Применяет secondary button style
-    func secondaryButton() -> some View {
-        self.buttonStyle(SecondaryButtonStyle())
-    }
-
-    /// Применяет glass prominent style с accent tint (iOS 26+)
-    /// Используй для: основных CTA в glass-контексте (sheets, overlays, toolbars)
-    func glassProminentButton() -> some View {
         self
             .buttonStyle(.glassProminent)
             .tint(AppColors.accent)
+            .controlSize(.large)
+            .disabled(disabled)
+    }
+
+    /// Secondary action — `.glass`.
+    /// Используй для: Cancel, Back, secondary actions.
+    func secondaryButton() -> some View {
+        self
+            .buttonStyle(.glass)
+            .controlSize(.large)
     }
 }

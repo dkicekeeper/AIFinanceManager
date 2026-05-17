@@ -22,7 +22,10 @@ struct OnboardingCurrencyStep: View {
                 Task { await vm.advanceToAccountStep() }
             }
         ) {
-            CurrencyListContent(selectedCurrency: vm.draftCurrency) { code in
+            CurrencyListContent(
+                selectedCurrency: vm.draftCurrency,
+                searchDisplayMode: .always
+            ) { code in
                 vm.draftCurrency = code
             }
             .padding(.top, AppSpacing.md)

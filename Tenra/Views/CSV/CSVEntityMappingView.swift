@@ -164,7 +164,7 @@ struct CSVEntityMappingView: View {
                     } label: {
                         Image(systemName: "square.and.arrow.down")
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                 }
             }
             .onAppear {

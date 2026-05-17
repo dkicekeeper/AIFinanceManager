@@ -95,7 +95,7 @@ struct SubcategoriesManagementView: View {
                     } label: {
                         Text(String(localized: "bulk.done"))
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                 case .reordering:
                     EmptyView()
                 }
@@ -109,7 +109,7 @@ struct SubcategoriesManagementView: View {
                     }) {
                         Image(systemName: "plus")
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                 } else if mode.isSelecting {
                     Button {
                         HapticManager.selection()

@@ -32,8 +32,7 @@ struct OnboardingPageContainer<Content: View>: View {
             }
             // Hide the navigation bar background so the accent-glow under
             // the screen shows through behind the toolbar step indicator.
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .onboardingAccentGlow()
+            .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
     }
 
     private var bottomChrome: some View {
@@ -57,7 +56,7 @@ struct OnboardingPageContainer<Content: View>: View {
                 Text(primaryButtonTitle)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .primaryButton()
             .disabled(!primaryButtonEnabled)
             .padding(.horizontal, AppSpacing.lg)
         }
@@ -66,27 +65,33 @@ struct OnboardingPageContainer<Content: View>: View {
         .background {
             // Frosted-glass backdrop that fades in from clear at the top so the
             // accent-glow stays visible and the title/button don't visually
-            // collide with the scroll content above.
+            // collide with the scroll content above. Material alone (без opaque
+            // overlay) пропускает свечение снизу.
             Rectangle()
-                .fill(.regularMaterial)
-                .overlay {
-                    LinearGradient(
-                        colors: [.clear, AppColors.backgroundPrimary.opacity(0.55)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
+                .fill(AppColors.backgroundPrimary)
                 .mask(
                     LinearGradient(
                         stops: [
                             .init(color: .clear, location: 0),
-                            .init(color: .black.opacity(0.6), location: 0.05),
                             .init(color: .black, location: 0.3),
                         ],
                         startPoint: .top,
                         endPoint: .bottom
                     )
                 )
+                .overlay {
+                    // Accent-glow поверх rectangle, но под title/button
+                    // (background-слой рисуется ниже content).
+                    Circle()
+                        .fill(AppColors.accent.gradient)
+                        .visualEffect { content, proxy in
+                            content.offset(y: proxy.size.height * 0.5)
+                        }
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                        .blur(radius: 120)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
                 .ignoresSafeArea(edges: .bottom)
                 .allowsHitTesting(false)
         }

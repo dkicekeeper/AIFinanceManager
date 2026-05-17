@@ -5,14 +5,18 @@
 //  Reusable currency picker. Uses `ScrollView + VStack` (not `List`) so the
 //  parent surface — including the onboarding accent-glow background — shows
 //  through without being painted over by `List`'s grouped-background grey.
-//  `.searchable` remains attached so the native search field is rendered in
-//  the navigation bar drawer.
+//  `.searchable` is attached in nav-bar drawer placement; the `searchDisplayMode`
+//  parameter controls whether the search field stays pinned (`.always`, for
+//  onboarding) or hides on scroll (`.automatic`, for Settings).
 //
 
 import SwiftUI
 
 struct CurrencyListContent: View {
     let selectedCurrency: String
+    /// Когда `.always` — нативный search всегда виден под toolbar (для онбординга).
+    /// `.automatic` (по умолчанию) — search скрывается при скролле (Settings).
+    var searchDisplayMode: SearchFieldPlacement.NavigationBarDrawerDisplayMode = .automatic
     let onTap: (String) -> Void
 
     @State private var searchText = ""
@@ -49,8 +53,11 @@ struct CurrencyListContent: View {
             .padding(.horizontal, AppSpacing.lg)
             .padding(.vertical, AppSpacing.md)
         }
-        .scrollContentBackground(.hidden)
-        .searchable(text: $searchText, prompt: String(localized: "currency.searchPrompt"))
+        .searchable(
+            text: $searchText,
+            placement: .navigationBarDrawer(displayMode: searchDisplayMode),
+            prompt: String(localized: "currency.searchPrompt")
+        )
     }
 
     // MARK: - Section
@@ -66,15 +73,18 @@ struct CurrencyListContent: View {
             // LazyVStack defers row construction until rows scroll into view.
             // With ~150 currencies this keeps the initial render cheap.
             LazyVStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, currency in
+                ForEach(items) { currency in
                     currencyRow(currency)
-                    if index < items.count - 1 {
+                    if currency.id != items.last?.id {
                         Divider()
                             .padding(.leading, AppSpacing.lg)
                     }
                 }
             }
-            .cardStyle()
+            .background(
+                AppColors.secondaryBackground,
+                in: RoundedRectangle(cornerRadius: AppRadius.xl, style: .continuous)
+            )
         }
     }
 

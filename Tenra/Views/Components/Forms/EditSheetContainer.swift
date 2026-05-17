@@ -96,7 +96,7 @@ struct EditSheetContainer<Content: View>: View {
                 Image(systemName: "checkmark")
             }
             .disabled(isSaveDisabled)
-            .glassProminentButton()
+            .primaryButton()
             .accessibilityLabel(String(localized: "button.save"))
         }
     }

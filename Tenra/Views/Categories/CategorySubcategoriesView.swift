@@ -69,7 +69,7 @@ struct CategorySubcategoriesView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
-                .glassProminentButton()
+                .primaryButton()
             }
         }
         .sheet(isPresented: $showingAddNew) {

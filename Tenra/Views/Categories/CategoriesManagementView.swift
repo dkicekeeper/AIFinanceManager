@@ -158,7 +158,7 @@ struct CategoriesManagementView: View {
                     } label: {
                         Text(String(localized: "bulk.done"))
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                 case .reordering:
                     Button {
                         HapticManager.light()
@@ -166,7 +166,7 @@ struct CategoriesManagementView: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                 }
             }
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
@@ -189,7 +189,7 @@ struct CategoriesManagementView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                 } else if mode.isSelecting {
                     Button {
                         HapticManager.selection()

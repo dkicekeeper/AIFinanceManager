@@ -68,7 +68,7 @@ struct SubscriptionsListView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
-                .glassProminentButton()
+                .primaryButton()
             }
         }
         .sheet(item: $sheetItem) { item in

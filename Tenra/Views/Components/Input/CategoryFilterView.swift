@@ -114,7 +114,7 @@ struct CategoryFilterView: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                 }
             }
             .onAppear {

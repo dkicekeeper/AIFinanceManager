@@ -307,7 +307,7 @@ struct VoiceInputView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, AppSpacing.md)
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .primaryButton()
             .padding(.horizontal, AppSpacing.lg)
             .padding(.bottom, AppSpacing.xl)
             .transition(.move(edge: .bottom).combined(with: .opacity))

@@ -170,9 +170,11 @@ All have Reduce Motion-aware variants (`adaptiveSpring`, `fastAnimation`, etc.) 
 
 | Style | Visual | Usage |
 |-------|--------|-------|
-| `.primaryButton(disabled:)` | Full-width, accent background, white text | Primary CTA (save, submit) |
-| `.secondaryButton()` | Full-width, secondary background, primary text | Secondary action (cancel, alternative) |
-| `.buttonStyle(.bounce)` | Scale 0.96 on press | Interactive card taps |
+| `.primaryButton(disabled:)` | `.glassProminent` + `.tint(AppColors.accent)` + `.controlSize(.large)` | Primary CTA. Sizing follows label — wrap with `.frame(maxWidth: .infinity)` for full-width |
+| `.secondaryButton()` | `.glass` + `.controlSize(.large)` | Cancel, Back, secondary actions |
+| `.buttonStyle(.bounce)` | Scale 0.96 on press | Interactive card taps (non-glass) |
+
+⚠️ **For destructive buttons, do NOT use `.primaryButton()`** — it forces `.tint(AppColors.accent)` which silently overrides `role: .destructive` (button looks accent-colored instead of red). Use native directly: `.buttonStyle(.glassProminent).tint(AppColors.destructive).controlSize(.large)` with `Button(role: .destructive, ...)`. See [BulkDeleteButton.swift](../Tenra/Views/Components/Input/BulkDeleteButton.swift) and [EntityActionButton.swift](../Tenra/Views/Components/EntityDetail/EntityActionButton.swift).
 
 ---
 

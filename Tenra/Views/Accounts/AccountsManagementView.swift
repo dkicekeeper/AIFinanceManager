@@ -158,7 +158,7 @@ struct AccountsManagementView: View {
                     } label: {
                         Text(String(localized: "bulk.done"))
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                 case .reordering:
                     Button {
                         HapticManager.light()
@@ -166,7 +166,7 @@ struct AccountsManagementView: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .glassProminentButton()
+                    .primaryButton()
                     .accessibilityLabel(String(localized: "accessibility.accounts.doneReordering"))
                 }
             }

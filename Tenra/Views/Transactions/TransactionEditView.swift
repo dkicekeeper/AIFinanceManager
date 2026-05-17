@@ -213,7 +213,7 @@ struct TransactionEditView: View {
                 } label: {
                     Image(systemName: "checkmark")
                 }
-                .glassProminentButton()
+                .primaryButton()
                 .disabled(!coordinator.canSave)
                 .accessibilityLabel(String(localized: "button.save"))
             }
